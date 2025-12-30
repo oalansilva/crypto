@@ -27,9 +27,12 @@ def calculate_metrics(equity_curve: pd.DataFrame, trades: list, initial_capital=
         
     # Trade Metrics
     df_trades = pd.DataFrame(trades)
+    sharpe = 0.0  # Initialize sharpe here
+    
     if not df_trades.empty and 'pnl' in df_trades.columns:
-        # PnL only exists for closed trades (SELLs)
-        closed_trades = df_trades[df_trades['side'] == 'SELL']
+        # PnL only exists for closed trades
+        # We look for rows where 'pnl' is not null (NaN)
+        closed_trades = df_trades[df_trades['pnl'].notna()]
         if not closed_trades.empty:
             num_trades = len(closed_trades)
             winners = closed_trades[closed_trades['pnl'] > 0]
@@ -40,6 +43,22 @@ def calculate_metrics(equity_curve: pd.DataFrame, trades: list, initial_capital=
             
             profit_factor = gross_profit / gross_loss if gross_loss > 0 else np.inf
             avg_trade_return = closed_trades['pnl'].mean()
+            
+            # Sharpe Ratio - Calculate from trade returns, not daily equity changes
+            # For low-frequency strategies, daily returns are mostly zero which gives Sharpe ≈ 0
+            if len(closed_trades) > 1:
+                # Calculate returns as percentage of capital per trade
+                trade_returns = closed_trades['pnl'] / initial_capital
+                mean_trade_return = trade_returns.mean()
+                std_trade_return = trade_returns.std()
+                
+                if std_trade_return > 0:
+                    # Sharpe Ratio = (Mean Return - Risk Free Rate) / Std Dev
+                    # Assuming risk-free rate = 0 for crypto
+                    # Annualize: multiply by sqrt(trades_per_year)
+                    # Estimate trades per year based on duration
+                    trades_per_year = (num_trades / duration_days) * 365 if duration_days > 0 else num_trades
+                    sharpe = (mean_trade_return / std_trade_return) * np.sqrt(trades_per_year)
         else:
             num_trades = 0
             win_rate = 0.0
@@ -50,25 +69,21 @@ def calculate_metrics(equity_curve: pd.DataFrame, trades: list, initial_capital=
         win_rate = 0.0
         profit_factor = 0.0
         avg_trade_return = 0.0
-        
-    # Periodic Returns for Sharpe
-    # Resample to common timeframe? Or just pct_change of equity curve?
-    # Equity curve is per candle.
-    equity_curve['returns'] = equity_series.pct_change().dropna()
-    mean_ret = equity_curve['returns'].mean()
-    std_ret = equity_curve['returns'].std()
-    
-    sharpe = mean_ret / std_ret if std_ret > 0 else 0.0
     
     return {
         'total_return_pct': total_return_pct,
+        'total_pnl_pct': total_return_pct, # Alias
+        'total_pnl': final_equity - initial_capital, # Added
         'max_drawdown_pct': max_drawdown_pct,
+        'max_drawdown': max_drawdown_pct, # Alias
         'cagr': cagr,
         'num_trades': num_trades,
+        'total_trades': num_trades, # Alias
         'win_rate': win_rate,
         'profit_factor': profit_factor,
         'avg_trade_return': avg_trade_return,
         'sharpe': sharpe,
+        'sharpe_ratio': sharpe, # Alias for consistency
         'final_equity': final_equity,
         'duration_days': duration_days
     }

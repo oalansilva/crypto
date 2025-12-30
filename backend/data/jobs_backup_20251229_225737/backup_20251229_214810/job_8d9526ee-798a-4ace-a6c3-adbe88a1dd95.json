@@ -1,0 +1,1923 @@
+{
+  "status": "COMPLETED",
+  "final_results": {
+    "job_id": "8d9526ee-798a-4ace-a6c3-adbe88a1dd95",
+    "status": "COMPLETED",
+    "config": {
+      "mode": "optimize",
+      "exchange": "binance",
+      "symbol": "BTC/USDT",
+      "timeframe": [
+        "1d",
+        "15m",
+        "30m",
+        "1h",
+        "4h",
+        "3d",
+        "1w"
+      ],
+      "timeframes": [
+        "1d",
+        "15m",
+        "30m",
+        "1h",
+        "4h",
+        "3d",
+        "1w"
+      ],
+      "since": "2023-12-29 00:00:00",
+      "until": "2025-12-29 23:59:59",
+      "strategies": [
+        {
+          "name": "rsi",
+          "length": {
+            "min": 14,
+            "max": 24,
+            "step": 1
+          }
+        }
+      ],
+      "params": {
+        "rsi": {
+          "length": {
+            "min": 14,
+            "max": 24,
+            "step": 1
+          }
+        }
+      },
+      "fee": 0.001,
+      "slippage": 0.0005,
+      "cash": 10000.0,
+      "stop_pct": null,
+      "take_pct": null,
+      "fill_mode": "close"
+    },
+    "progress": {
+      "current_iteration": 77,
+      "total_iterations": 77
+    },
+    "results": [
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 21.0
+        },
+        "metrics": {
+          "total_return_pct": 1.0909479605378731,
+          "total_pnl_pct": 1.0909479605378731,
+          "total_pnl": 10909.479605378732,
+          "max_drawdown_pct": -0.19798507096711435,
+          "max_drawdown": -0.19798507096711435,
+          "cagr": 12.011782260735604,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 10917.378222026717,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 20909.479605378732,
+          "duration_days": 728,
+          "monthly_return_avg": null,
+          "avg_drawdown": 0.07669514795337629,
+          "max_dd_duration_days": 32,
+          "recovery_factor": -5.51025365300943,
+          "sortino_ratio": 4.5062594899063555,
+          "calmar_ratio": 60.67014145087122,
+          "expectancy": 10917.378222026717,
+          "max_consecutive_wins": 1,
+          "max_consecutive_losses": 0,
+          "trade_concentration_top_10_pct": 1.0,
+          "benchmark": {
+            "return_pct": 1.0388522211513027,
+            "cagr": 10.91846774989147,
+            "final_value": 20388.522211513027
+          },
+          "alpha": 1.0933145108441344,
+          "criteria_result": {
+            "status": "NO-GO",
+            "reasons": [
+              "Sharpe Ratio muito baixo: 0.00 < 0.8",
+              "Poucos trades para valida\u00e7\u00e3o estat\u00edstica: 1 < 100"
+            ],
+            "warnings": []
+          }
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 20.0
+        },
+        "metrics": {
+          "total_return_pct": 1.0305286972185488,
+          "total_pnl_pct": 1.0305286972185488,
+          "total_pnl": 10305.286972185488,
+          "max_drawdown_pct": -0.19798507096711435,
+          "max_drawdown": -0.19798507096711435,
+          "cagr": 0.4263532823672571,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 10313.185588833472,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 20305.286972185488,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 16.0
+        },
+        "metrics": {
+          "total_return_pct": 0.972718463917053,
+          "total_pnl_pct": 0.972718463917053,
+          "total_pnl": 9727.18463917053,
+          "max_drawdown_pct": -0.19798507096711435,
+          "max_drawdown": -0.19798507096711435,
+          "cagr": 0.4058463702638091,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 9735.083255818514,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 19727.18463917053,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 17.0
+        },
+        "metrics": {
+          "total_return_pct": 0.972718463917053,
+          "total_pnl_pct": 0.972718463917053,
+          "total_pnl": 9727.18463917053,
+          "max_drawdown_pct": -0.19798507096711435,
+          "max_drawdown": -0.19798507096711435,
+          "cagr": 0.4058463702638091,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 9735.083255818514,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 19727.18463917053,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 18.0
+        },
+        "metrics": {
+          "total_return_pct": 0.972718463917053,
+          "total_pnl_pct": 0.972718463917053,
+          "total_pnl": 9727.18463917053,
+          "max_drawdown_pct": -0.19798507096711435,
+          "max_drawdown": -0.19798507096711435,
+          "cagr": 0.4058463702638091,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 9735.083255818514,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 19727.18463917053,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 19.0
+        },
+        "metrics": {
+          "total_return_pct": 0.972718463917053,
+          "total_pnl_pct": 0.972718463917053,
+          "total_pnl": 9727.18463917053,
+          "max_drawdown_pct": -0.19798507096711435,
+          "max_drawdown": -0.19798507096711435,
+          "cagr": 0.4058463702638091,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 9735.083255818514,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 19727.18463917053,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 15.0
+        },
+        "metrics": {
+          "total_return_pct": 0.8278294897029428,
+          "total_pnl_pct": 0.8278294897029428,
+          "total_pnl": 8278.294897029427,
+          "max_drawdown_pct": -0.19798507096711435,
+          "max_drawdown": -0.19798507096711435,
+          "cagr": 0.35309298248139975,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 8286.193513677414,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 18278.294897029427,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 22.0
+        },
+        "metrics": {
+          "total_return_pct": 0.8225842316325812,
+          "total_pnl_pct": 0.8225842316325812,
+          "total_pnl": 8225.842316325812,
+          "max_drawdown_pct": -0.271322453284054,
+          "max_drawdown": -0.271322453284054,
+          "cagr": 0.35114479227246087,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 8233.740932973798,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 18225.842316325812,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 23.0
+        },
+        "metrics": {
+          "total_return_pct": 0.8225842316325812,
+          "total_pnl_pct": 0.8225842316325812,
+          "total_pnl": 8225.842316325812,
+          "max_drawdown_pct": -0.271322453284054,
+          "max_drawdown": -0.271322453284054,
+          "cagr": 0.35114479227246087,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 8233.740932973798,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 18225.842316325812,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 24.0
+        },
+        "metrics": {
+          "total_return_pct": 0.8225842316325812,
+          "total_pnl_pct": 0.8225842316325812,
+          "total_pnl": 8225.842316325812,
+          "max_drawdown_pct": -0.271322453284054,
+          "max_drawdown": -0.271322453284054,
+          "cagr": 0.35114479227246087,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 8233.740932973798,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 18225.842316325812,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1w",
+          "length": 14.0
+        },
+        "metrics": {
+          "total_return_pct": 0.7424174227959571,
+          "total_pnl_pct": 0.7424174227959571,
+          "total_pnl": 7424.174227959571,
+          "max_drawdown_pct": -0.17831365252614473,
+          "max_drawdown": -0.17831365252614473,
+          "cagr": 0.3210138031666654,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 7430.894801338701,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 17424.17422795957,
+          "duration_days": 728
+        },
+        "timeframe": "1w"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 24.0
+        },
+        "metrics": {
+          "total_return_pct": 0.6559801519471589,
+          "total_pnl_pct": 0.6559801519471589,
+          "total_pnl": 6559.801519471588,
+          "max_drawdown_pct": -0.24686656738696086,
+          "max_drawdown": -0.24686656738696086,
+          "cagr": 0.28640503450782373,
+          "num_trades": 24,
+          "total_trades": 24,
+          "win_rate": 0.875,
+          "profit_factor": 4.255895500191785,
+          "avg_trade_return": 283.30327650458327,
+          "sharpe": 1.8876335901722077,
+          "sharpe_ratio": 1.8876335901722077,
+          "final_equity": 16559.801519471588,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 23.0
+        },
+        "metrics": {
+          "total_return_pct": 0.627318993731737,
+          "total_pnl_pct": 0.627318993731737,
+          "total_pnl": 6273.189937317371,
+          "max_drawdown_pct": -0.24692375743392378,
+          "max_drawdown": -0.24692375743392378,
+          "cagr": 0.2752393362110346,
+          "num_trades": 26,
+          "total_trades": 26,
+          "win_rate": 0.8461538461538461,
+          "profit_factor": 3.9751958458216166,
+          "avg_trade_return": 251.17676746180248,
+          "sharpe": 1.7740846575869325,
+          "sharpe_ratio": 1.7740846575869325,
+          "final_equity": 16273.189937317371,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 22.0
+        },
+        "metrics": {
+          "total_return_pct": 0.5813903690236928,
+          "total_pnl_pct": 0.5813903690236928,
+          "total_pnl": 5813.903690236928,
+          "max_drawdown_pct": -0.2493972387837402,
+          "max_drawdown": -0.2493972387837402,
+          "cagr": 0.2571392995349546,
+          "num_trades": 29,
+          "total_trades": 29,
+          "win_rate": 0.7586206896551724,
+          "profit_factor": 2.9697824649854465,
+          "avg_trade_return": 209.80523546643386,
+          "sharpe": 1.5601126923545021,
+          "sharpe_ratio": 1.5601126923545021,
+          "final_equity": 15813.903690236928,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 18.0
+        },
+        "metrics": {
+          "total_return_pct": 0.5636610276051277,
+          "total_pnl_pct": 0.5636610276051277,
+          "total_pnl": 5636.610276051277,
+          "max_drawdown_pct": -0.16183153052680754,
+          "max_drawdown": -0.16183153052680754,
+          "cagr": 0.2500820337836098,
+          "num_trades": 12,
+          "total_trades": 12,
+          "win_rate": 0.8333333333333334,
+          "profit_factor": 8.886981173214474,
+          "avg_trade_return": 478.1183349149905,
+          "sharpe": 1.9742109188349155,
+          "sharpe_ratio": 1.9742109188349155,
+          "final_equity": 15636.610276051277,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 20.0
+        },
+        "metrics": {
+          "total_return_pct": 0.5097011511956827,
+          "total_pnl_pct": 0.5097011511956827,
+          "total_pnl": 5097.011511956827,
+          "max_drawdown_pct": -0.19640359920681852,
+          "max_drawdown": -0.19640359920681852,
+          "cagr": 0.2283528354018567,
+          "num_trades": 35,
+          "total_trades": 35,
+          "win_rate": 0.7142857142857143,
+          "profit_factor": 2.731343897782376,
+          "avg_trade_return": 155.23904606999764,
+          "sharpe": 1.7144244588134248,
+          "sharpe_ratio": 1.7144244588134248,
+          "final_equity": 15097.011511956827,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 14.0
+        },
+        "metrics": {
+          "total_return_pct": 0.4843460060986468,
+          "total_pnl_pct": 0.4843460060986468,
+          "total_pnl": 4843.460060986468,
+          "max_drawdown_pct": -0.20627108945589076,
+          "max_drawdown": -0.20627108945589076,
+          "cagr": 0.21800829232757124,
+          "num_trades": 21,
+          "total_trades": 21,
+          "win_rate": 0.8571428571428571,
+          "profit_factor": 2.956559565796649,
+          "avg_trade_return": 239.36539215370232,
+          "sharpe": 1.327156529313933,
+          "sharpe_ratio": 1.327156529313933,
+          "final_equity": 14843.460060986468,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 15.0
+        },
+        "metrics": {
+          "total_return_pct": 0.452728197796126,
+          "total_pnl_pct": 0.452728197796126,
+          "total_pnl": 4527.28197796126,
+          "max_drawdown_pct": -0.1947554220208279,
+          "max_drawdown": -0.1947554220208279,
+          "cagr": 0.20498391581660114,
+          "num_trades": 18,
+          "total_trades": 18,
+          "win_rate": 0.8333333333333334,
+          "profit_factor": 3.5910283622489336,
+          "avg_trade_return": 259.65102389512435,
+          "sharpe": 1.4753489804144957,
+          "sharpe_ratio": 1.4753489804144957,
+          "final_equity": 14527.28197796126,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 17.0
+        },
+        "metrics": {
+          "total_return_pct": 0.4438859029177967,
+          "total_pnl_pct": 0.4438859029177967,
+          "total_pnl": 4438.859029177967,
+          "max_drawdown_pct": -0.1702125594361725,
+          "max_drawdown": -0.1702125594361725,
+          "cagr": 0.20131615811236547,
+          "num_trades": 12,
+          "total_trades": 12,
+          "win_rate": 0.8333333333333334,
+          "profit_factor": 3.431000181511784,
+          "avg_trade_return": 378.80279840559143,
+          "sharpe": 1.1670775625236562,
+          "sharpe_ratio": 1.1670775625236562,
+          "final_equity": 14438.859029177967,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 21.0
+        },
+        "metrics": {
+          "total_return_pct": 0.3911876595452077,
+          "total_pnl_pct": 0.3911876595452077,
+          "total_pnl": 3911.876595452077,
+          "max_drawdown_pct": -0.24958153700994185,
+          "max_drawdown": -0.24958153700994185,
+          "cagr": 0.17921985581370747,
+          "num_trades": 31,
+          "total_trades": 31,
+          "win_rate": 0.7419354838709677,
+          "profit_factor": 2.2050050043813214,
+          "avg_trade_return": 134.8437010422639,
+          "sharpe": 1.260216326051339,
+          "sharpe_ratio": 1.260216326051339,
+          "final_equity": 13911.876595452077,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 19.0
+        },
+        "metrics": {
+          "total_return_pct": 0.38307354749584593,
+          "total_pnl_pct": 0.38307354749584593,
+          "total_pnl": 3830.7354749584592,
+          "max_drawdown_pct": -0.21106942161342532,
+          "max_drawdown": -0.21106942161342532,
+          "cagr": 0.1757806270113631,
+          "num_trades": 38,
+          "total_trades": 38,
+          "win_rate": 0.7105263157894737,
+          "profit_factor": 2.1560783174754605,
+          "avg_trade_return": 109.79880777341594,
+          "sharpe": 1.3654922175696012,
+          "sharpe_ratio": 1.3654922175696012,
+          "final_equity": 13830.73547495846,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 19.0
+        },
+        "metrics": {
+          "total_return_pct": 0.3661412015246511,
+          "total_pnl_pct": 0.3661412015246511,
+          "total_pnl": 3661.412015246511,
+          "max_drawdown_pct": -0.2292716921246654,
+          "max_drawdown": -0.2292716921246654,
+          "cagr": 0.16857103255690475,
+          "num_trades": 11,
+          "total_trades": 11,
+          "win_rate": 0.8181818181818182,
+          "profit_factor": 2.492606746974851,
+          "avg_trade_return": 340.6047711168583,
+          "sharpe": 0.7729253143077728,
+          "sharpe_ratio": 0.7729253143077728,
+          "final_equity": 13661.412015246511,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 20.0
+        },
+        "metrics": {
+          "total_return_pct": 0.364779605730235,
+          "total_pnl_pct": 0.364779605730235,
+          "total_pnl": 3647.79605730235,
+          "max_drawdown_pct": -0.20963419836701447,
+          "max_drawdown": -0.20963419836701447,
+          "cagr": 0.16798934253142783,
+          "num_trades": 11,
+          "total_trades": 11,
+          "win_rate": 0.8181818181818182,
+          "profit_factor": 2.6619028552135098,
+          "avg_trade_return": 338.70932297078406,
+          "sharpe": 0.8299833805913006,
+          "sharpe_ratio": 0.8299833805913006,
+          "final_equity": 13647.79605730235,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 16.0
+        },
+        "metrics": {
+          "total_return_pct": 0.36304327973051004,
+          "total_pnl_pct": 0.36304327973051004,
+          "total_pnl": 3630.4327973051004,
+          "max_drawdown_pct": -0.18270706033420056,
+          "max_drawdown": -0.18270706033420056,
+          "cagr": 0.16724714159414633,
+          "num_trades": 14,
+          "total_trades": 14,
+          "win_rate": 0.8571428571428571,
+          "profit_factor": 2.914233922345333,
+          "avg_trade_return": 267.8884853345124,
+          "sharpe": 1.1689896028376783,
+          "sharpe_ratio": 1.1689896028376783,
+          "final_equity": 13630.4327973051,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 21.0
+        },
+        "metrics": {
+          "total_return_pct": 0.35843241354181116,
+          "total_pnl_pct": 0.35843241354181116,
+          "total_pnl": 3584.324135418112,
+          "max_drawdown_pct": -0.20963419836701444,
+          "max_drawdown": -0.20963419836701444,
+          "cagr": 0.16527390378055262,
+          "num_trades": 9,
+          "total_trades": 9,
+          "win_rate": 0.8888888888888888,
+          "profit_factor": 2.773306189705583,
+          "avg_trade_return": 405.9929476661864,
+          "sharpe": 0.7698940015848932,
+          "sharpe_ratio": 0.7698940015848932,
+          "final_equity": 13584.324135418112,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 18.0
+        },
+        "metrics": {
+          "total_return_pct": 0.34605702236753966,
+          "total_pnl_pct": 0.34605702236753966,
+          "total_pnl": 3460.570223675397,
+          "max_drawdown_pct": -0.23210638260567493,
+          "max_drawdown": -0.23210638260567493,
+          "cagr": 0.1599611673126935,
+          "num_trades": 43,
+          "total_trades": 43,
+          "win_rate": 0.7441860465116279,
+          "profit_factor": 1.8769361336707913,
+          "avg_trade_return": 89.20617305658126,
+          "sharpe": 1.14205151029518,
+          "sharpe_ratio": 1.14205151029518,
+          "final_equity": 13460.570223675397,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 23.0
+        },
+        "metrics": {
+          "total_return_pct": 0.32828754876490857,
+          "total_pnl_pct": 0.32828754876490857,
+          "total_pnl": 3282.8754876490857,
+          "max_drawdown_pct": -0.19051286789741495,
+          "max_drawdown": -0.19051286789741495,
+          "cagr": 0.15228980567665773,
+          "num_trades": 6,
+          "total_trades": 6,
+          "win_rate": 0.8333333333333334,
+          "profit_factor": 4.496759606993207,
+          "avg_trade_return": 554.6512331899861,
+          "sharpe": 1.0761199054551378,
+          "sharpe_ratio": 1.0761199054551378,
+          "final_equity": 13282.875487649086,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 22.0
+        },
+        "metrics": {
+          "total_return_pct": 0.3103299699720965,
+          "total_pnl_pct": 0.3103299699720965,
+          "total_pnl": 3103.299699720965,
+          "max_drawdown_pct": -0.19314871399158098,
+          "max_drawdown": -0.19314871399158098,
+          "cagr": 0.14448485347101103,
+          "num_trades": 8,
+          "total_trades": 8,
+          "win_rate": 0.875,
+          "profit_factor": 3.2964802578461256,
+          "avg_trade_return": 394.7925912902565,
+          "sharpe": 0.9254565339397787,
+          "sharpe_ratio": 0.9254565339397787,
+          "final_equity": 13103.299699720965,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 15.0
+        },
+        "metrics": {
+          "total_return_pct": 0.28546432976754366,
+          "total_pnl_pct": 0.28546432976754366,
+          "total_pnl": 2854.6432976754368,
+          "max_drawdown_pct": -0.11070692164627113,
+          "max_drawdown": -0.11070692164627113,
+          "cagr": 0.13378319345787792,
+          "num_trades": 3,
+          "total_trades": 3,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 958.5373655555626,
+          "sharpe": 1.5049343420323675,
+          "sharpe_ratio": 1.5049343420323675,
+          "final_equity": 12854.643297675437,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 16.0
+        },
+        "metrics": {
+          "total_return_pct": 0.28044270865600046,
+          "total_pnl_pct": 0.28044270865600046,
+          "total_pnl": 2804.4270865600047,
+          "max_drawdown_pct": -0.09815738284967866,
+          "max_drawdown": -0.09815738284967866,
+          "cagr": 0.13156648441706698,
+          "num_trades": 3,
+          "total_trades": 3,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 940.7321441795851,
+          "sharpe": 2.0955297800215016,
+          "sharpe_ratio": 2.0955297800215016,
+          "final_equity": 12804.427086560005,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 17.0
+        },
+        "metrics": {
+          "total_return_pct": 0.2633609587705172,
+          "total_pnl_pct": 0.2633609587705172,
+          "total_pnl": 2633.609587705172,
+          "max_drawdown_pct": -0.24444737896225138,
+          "max_drawdown": -0.24444737896225138,
+          "cagr": 0.12381359549841409,
+          "num_trades": 45,
+          "total_trades": 45,
+          "win_rate": 0.6888888888888889,
+          "profit_factor": 1.702976055776261,
+          "avg_trade_return": 67.4643652091223,
+          "sharpe": 1.011639915211011,
+          "sharpe_ratio": 1.011639915211011,
+          "final_equity": 12633.609587705172,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "4h",
+          "length": 24.0
+        },
+        "metrics": {
+          "total_return_pct": 0.24302555193517947,
+          "total_pnl_pct": 0.24302555193517947,
+          "total_pnl": 2430.2555193517946,
+          "max_drawdown_pct": -0.19051286789741517,
+          "max_drawdown": -0.19051286789741517,
+          "cagr": 0.11474466935846439,
+          "num_trades": 5,
+          "total_trades": 5,
+          "win_rate": 0.8,
+          "profit_factor": 6.899286442892699,
+          "avg_trade_return": 493.1404824670943,
+          "sharpe": 1.1120672249990025,
+          "sharpe_ratio": 1.1120672249990025,
+          "final_equity": 12430.255519351795,
+          "duration_days": 731
+        },
+        "timeframe": "4h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 17.0
+        },
+        "metrics": {
+          "total_return_pct": 0.2272978084542119,
+          "total_pnl_pct": 0.2272978084542119,
+          "total_pnl": 2272.978084542119,
+          "max_drawdown_pct": -0.0981573828496788,
+          "max_drawdown": -0.0981573828496788,
+          "cagr": 0.10783473878291616,
+          "num_trades": 3,
+          "total_trades": 3,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 762.444484569973,
+          "sharpe": 2.1279231195229444,
+          "sharpe_ratio": 2.1279231195229444,
+          "final_equity": 12272.97808454212,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 14.0
+        },
+        "metrics": {
+          "total_return_pct": 0.20614969919493978,
+          "total_pnl_pct": 0.20614969919493978,
+          "total_pnl": 2061.496991949398,
+          "max_drawdown_pct": -0.11669550624144898,
+          "max_drawdown": -0.11669550624144898,
+          "cagr": 0.09824846878788773,
+          "num_trades": 3,
+          "total_trades": 3,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 694.2805094315837,
+          "sharpe": 1.5029367310921888,
+          "sharpe_ratio": 1.5029367310921888,
+          "final_equity": 12061.496991949398,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 18.0
+        },
+        "metrics": {
+          "total_return_pct": 0.13049136187965069,
+          "total_pnl_pct": 0.13049136187965069,
+          "total_pnl": 1304.9136187965069,
+          "max_drawdown_pct": -0.09815738284967881,
+          "max_drawdown": -0.09815738284967881,
+          "cagr": 0.06324567334160847,
+          "num_trades": 2,
+          "total_trades": 2,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 657.5972066546723,
+          "sharpe": 1.1098337382874173,
+          "sharpe_ratio": 1.1098337382874173,
+          "final_equity": 11304.913618796507,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 16.0
+        },
+        "metrics": {
+          "total_return_pct": 0.09044842113297764,
+          "total_pnl_pct": 0.09044842113297764,
+          "total_pnl": 904.4842113297764,
+          "max_drawdown_pct": -0.2685248448362226,
+          "max_drawdown": -0.2685248448362226,
+          "cagr": 0.0441835385115672,
+          "num_trades": 49,
+          "total_trades": 49,
+          "win_rate": 0.673469387755102,
+          "profit_factor": 1.2476600689558428,
+          "avg_trade_return": 26.653795269249105,
+          "sharpe": 0.43247352433814784,
+          "sharpe_ratio": 0.43247352433814784,
+          "final_equity": 10904.484211329776,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 19.0
+        },
+        "metrics": {
+          "total_return_pct": 0.06644203507203801,
+          "total_pnl_pct": 0.06644203507203801,
+          "total_pnl": 664.4203507203802,
+          "max_drawdown_pct": -0.043178410589155426,
+          "max_drawdown": -0.043178410589155426,
+          "cagr": 0.03268680395947632,
+          "num_trades": 2,
+          "total_trades": 2,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 335.75806891335304,
+          "sharpe": 2.145572134251319,
+          "sharpe_ratio": 2.145572134251319,
+          "final_equity": 10664.42035072038,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 14.0
+        },
+        "metrics": {
+          "total_return_pct": 0.05596153869631016,
+          "total_pnl_pct": 0.05596153869631016,
+          "total_pnl": 559.6153869631016,
+          "max_drawdown_pct": -0.27540513044188714,
+          "max_drawdown": -0.27540513044188714,
+          "cagr": 0.027561620375017526,
+          "num_trades": 66,
+          "total_trades": 66,
+          "win_rate": 0.7121212121212122,
+          "profit_factor": 1.1593531667376347,
+          "avg_trade_return": 16.39848681108604,
+          "sharpe": 0.3163214869899028,
+          "sharpe_ratio": 0.3163214869899028,
+          "final_equity": 10559.615386963102,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 21.0
+        },
+        "metrics": {
+          "total_return_pct": 0.03889791558849138,
+          "total_pnl_pct": 0.03889791558849138,
+          "total_pnl": 388.9791558849138,
+          "max_drawdown_pct": -0.2894729023311547,
+          "max_drawdown": -0.2894729023311547,
+          "cagr": 0.03404896484730746,
+          "num_trades": 32,
+          "total_trades": 32,
+          "win_rate": 0.6875,
+          "profit_factor": 1.1798983734922257,
+          "avg_trade_return": 20.759836256299423,
+          "sharpe": 0.32325365899775027,
+          "sharpe_ratio": 0.32325365899775027,
+          "final_equity": 10388.979155884914,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 22.0
+        },
+        "metrics": {
+          "total_return_pct": 0.03823605625100827,
+          "total_pnl_pct": 0.03823605625100827,
+          "total_pnl": 382.3605625100827,
+          "max_drawdown_pct": -0.2946716982593016,
+          "max_drawdown": -0.2946716982593016,
+          "cagr": 0.0334709347835247,
+          "num_trades": 30,
+          "total_trades": 30,
+          "win_rate": 0.7,
+          "profit_factor": 1.1675011753998643,
+          "avg_trade_return": 21.163670395592977,
+          "sharpe": 0.2867990942060686,
+          "sharpe_ratio": 0.2867990942060686,
+          "final_equity": 10382.360562510083,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 24.0
+        },
+        "metrics": {
+          "total_return_pct": 0.03351750809738642,
+          "total_pnl_pct": 0.03351750809738642,
+          "total_pnl": 335.17508097386417,
+          "max_drawdown_pct": -0.25436563303675674,
+          "max_drawdown": -0.25436563303675674,
+          "cagr": 0.029348713864298714,
+          "num_trades": 26,
+          "total_trades": 26,
+          "win_rate": 0.6923076923076923,
+          "profit_factor": 1.1706827773058885,
+          "avg_trade_return": 20.18957346092479,
+          "sharpe": 0.255611045735475,
+          "sharpe_ratio": 0.255611045735475,
+          "final_equity": 10335.175080973864,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 20.0
+        },
+        "metrics": {
+          "total_return_pct": 0.02106465756586731,
+          "total_pnl_pct": 0.02106465756586731,
+          "total_pnl": 210.6465756586731,
+          "max_drawdown_pct": -0.04317841058915562,
+          "max_drawdown": -0.04317841058915562,
+          "cagr": 0.010477440404221605,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 215.52553573867314,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 10210.646575658673,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 21.0
+        },
+        "metrics": {
+          "total_return_pct": 0.02106465756586731,
+          "total_pnl_pct": 0.02106465756586731,
+          "total_pnl": 210.6465756586731,
+          "max_drawdown_pct": -0.04317841058915562,
+          "max_drawdown": -0.04317841058915562,
+          "cagr": 0.010477440404221605,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 215.52553573867314,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 10210.646575658673,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 22.0
+        },
+        "metrics": {
+          "total_return_pct": 0.02106465756586731,
+          "total_pnl_pct": 0.02106465756586731,
+          "total_pnl": 210.6465756586731,
+          "max_drawdown_pct": -0.04317841058915562,
+          "max_drawdown": -0.04317841058915562,
+          "cagr": 0.010477440404221605,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 215.52553573867314,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 10210.646575658673,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 23.0
+        },
+        "metrics": {
+          "total_return_pct": 0.018555263964288315,
+          "total_pnl_pct": 0.018555263964288315,
+          "total_pnl": 185.55263964288315,
+          "max_drawdown_pct": -0.032368961394468744,
+          "max_drawdown": -0.032368961394468744,
+          "cagr": 0.009234989466917032,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 189.15223964288185,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 10185.552639642883,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1d",
+          "length": 24.0
+        },
+        "metrics": {
+          "total_return_pct": 0.018555263964288315,
+          "total_pnl_pct": 0.018555263964288315,
+          "total_pnl": 185.55263964288315,
+          "max_drawdown_pct": -0.032368961394468744,
+          "max_drawdown": -0.032368961394468744,
+          "cagr": 0.009234989466917032,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 189.15223964288185,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 10185.552639642883,
+          "duration_days": 730
+        },
+        "timeframe": "1d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 14.0
+        },
+        "metrics": {
+          "total_return_pct": 0.010693332507177002,
+          "total_pnl_pct": 0.010693332507177002,
+          "total_pnl": 106.93332507177001,
+          "max_drawdown_pct": -0.025415687016335037,
+          "max_drawdown": -0.025415687016335037,
+          "cagr": 0.005361907257758425,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 110.53292507177,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 10106.93332507177,
+          "duration_days": 726
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 20.0
+        },
+        "metrics": {
+          "total_return_pct": 0.007666290309695978,
+          "total_pnl_pct": 0.007666290309695978,
+          "total_pnl": 76.66290309695978,
+          "max_drawdown_pct": -0.30383288960134064,
+          "max_drawdown": -0.30383288960134064,
+          "cagr": 0.00672328068983985,
+          "num_trades": 35,
+          "total_trades": 35,
+          "win_rate": 0.6857142857142857,
+          "profit_factor": 1.0966283215348074,
+          "avg_trade_return": 10.536758544202769,
+          "sharpe": 0.1823697165838856,
+          "sharpe_ratio": 0.1823697165838856,
+          "final_equity": 10076.66290309696,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 15.0
+        },
+        "metrics": {
+          "total_return_pct": 0.006144973679398572,
+          "total_pnl_pct": 0.006144973679398572,
+          "total_pnl": 61.44973679398572,
+          "max_drawdown_pct": -0.014277981994109875,
+          "max_drawdown": -0.014277981994109875,
+          "cagr": 0.0030847096174784205,
+          "num_trades": 1,
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "profit_factor": Infinity,
+          "avg_trade_return": 63.44973679398564,
+          "sharpe": 0.0,
+          "sharpe_ratio": 0.0,
+          "final_equity": 10061.449736793986,
+          "duration_days": 726
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 16.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 17.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 18.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 19.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 20.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 21.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 22.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 23.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "3d",
+          "length": 24.0
+        },
+        "metrics": {
+          "total_pnl": 0.0,
+          "win_rate": 0.0,
+          "total_trades": 0,
+          "sharpe_ratio": 0.0,
+          "drawdown": 0.0
+        },
+        "timeframe": "3d"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 19.0
+        },
+        "metrics": {
+          "total_return_pct": -0.007248699408770517,
+          "total_pnl_pct": -0.007248699408770517,
+          "total_pnl": -72.48699408770517,
+          "max_drawdown_pct": -0.32842717866171545,
+          "max_drawdown": -0.32842717866171545,
+          "cagr": -0.0063628703993925395,
+          "num_trades": 37,
+          "total_trades": 37,
+          "win_rate": 0.7027027027027027,
+          "profit_factor": 1.0545463007341338,
+          "avg_trade_return": 6.543476832673975,
+          "sharpe": 0.1084346488877844,
+          "sharpe_ratio": 0.1084346488877844,
+          "final_equity": 9927.513005912295,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 23.0
+        },
+        "metrics": {
+          "total_return_pct": -0.015545781160580736,
+          "total_pnl_pct": -0.015545781160580736,
+          "total_pnl": -155.45781160580736,
+          "max_drawdown_pct": -0.2634331694284515,
+          "max_drawdown": -0.2634331694284515,
+          "cagr": -0.013653002271736936,
+          "num_trades": 26,
+          "total_trades": 26,
+          "win_rate": 0.6923076923076923,
+          "profit_factor": 1.0128924705741618,
+          "avg_trade_return": 1.73958072650189,
+          "sharpe": 0.020641892589791072,
+          "sharpe_ratio": 0.020641892589791072,
+          "final_equity": 9844.542188394193,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "1h",
+          "length": 15.0
+        },
+        "metrics": {
+          "total_return_pct": -0.06970898239453127,
+          "total_pnl_pct": -0.06970898239453127,
+          "total_pnl": -697.0898239453127,
+          "max_drawdown_pct": -0.28996340938298887,
+          "max_drawdown": -0.28996340938298887,
+          "cagr": -0.035436378733880836,
+          "num_trades": 54,
+          "total_trades": 54,
+          "win_rate": 0.6851851851851852,
+          "profit_factor": 0.9523339918279211,
+          "avg_trade_return": -5.284469452554938,
+          "sharpe": -0.09663469482733783,
+          "sharpe_ratio": -0.09663469482733783,
+          "final_equity": 9302.910176054687,
+          "duration_days": 731
+        },
+        "timeframe": "1h"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 19.0
+        },
+        "metrics": {
+          "total_return_pct": -0.0856564145081742,
+          "total_pnl_pct": -0.0856564145081742,
+          "total_pnl": -856.564145081742,
+          "max_drawdown_pct": -0.2700808604841734,
+          "max_drawdown": -0.2700808604841734,
+          "cagr": -0.14541647628963383,
+          "num_trades": 41,
+          "total_trades": 41,
+          "win_rate": 0.6585365853658537,
+          "profit_factor": 0.8073054878224467,
+          "avg_trade_return": -13.94213152251204,
+          "sharpe": -0.4917055997087028,
+          "sharpe_ratio": -0.4917055997087028,
+          "final_equity": 9143.435854918258,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 16.0
+        },
+        "metrics": {
+          "total_return_pct": -0.08809336381853354,
+          "total_pnl_pct": -0.08809336381853354,
+          "total_pnl": -880.9336381853354,
+          "max_drawdown_pct": -0.27535623408015486,
+          "max_drawdown": -0.27535623408015486,
+          "cagr": -0.07772527690359898,
+          "num_trades": 51,
+          "total_trades": 51,
+          "win_rate": 0.7058823529411765,
+          "profit_factor": 0.9143797644177662,
+          "avg_trade_return": -9.561143705857226,
+          "sharpe": -0.19874119806898274,
+          "sharpe_ratio": -0.19874119806898274,
+          "final_equity": 9119.066361814665,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 18.0
+        },
+        "metrics": {
+          "total_return_pct": -0.09778719331765241,
+          "total_pnl_pct": -0.09778719331765241,
+          "total_pnl": -977.8719331765242,
+          "max_drawdown_pct": -0.3347351409732306,
+          "max_drawdown": -0.3347351409732306,
+          "cagr": -0.08633301160173623,
+          "num_trades": 40,
+          "total_trades": 40,
+          "win_rate": 0.675,
+          "profit_factor": 0.8709441719643388,
+          "avg_trade_return": -16.43750363040303,
+          "sharpe": -0.2690435675117347,
+          "sharpe_ratio": -0.2690435675117347,
+          "final_equity": 9022.128066823476,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 14.0
+        },
+        "metrics": {
+          "total_return_pct": -0.10130640372090402,
+          "total_pnl_pct": -0.10130640372090402,
+          "total_pnl": -1013.0640372090402,
+          "max_drawdown_pct": -0.24768535787045928,
+          "max_drawdown": -0.24768535787045928,
+          "cagr": -0.08946073034702029,
+          "num_trades": 71,
+          "total_trades": 71,
+          "win_rate": 0.6901408450704225,
+          "profit_factor": 0.9098425402610202,
+          "avg_trade_return": -7.5623718272671185,
+          "sharpe": -0.24616451251250535,
+          "sharpe_ratio": -0.24616451251250535,
+          "final_equity": 8986.93596279096,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 17.0
+        },
+        "metrics": {
+          "total_return_pct": -0.11448851434479602,
+          "total_pnl_pct": -0.11448851434479602,
+          "total_pnl": -1144.8851434479602,
+          "max_drawdown_pct": -0.2591473717207296,
+          "max_drawdown": -0.2591473717207296,
+          "cagr": -0.1921402448572933,
+          "num_trades": 51,
+          "total_trades": 51,
+          "win_rate": 0.6666666666666666,
+          "profit_factor": 0.7566686799812593,
+          "avg_trade_return": -15.76130256711217,
+          "sharpe": -0.7369347719386944,
+          "sharpe_ratio": -0.7369347719386944,
+          "final_equity": 8855.11485655204,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 24.0
+        },
+        "metrics": {
+          "total_return_pct": -0.1242329502848821,
+          "total_pnl_pct": -0.1242329502848821,
+          "total_pnl": -1242.329502848821,
+          "max_drawdown_pct": -0.29077738348524956,
+          "max_drawdown": -0.29077738348524956,
+          "cagr": -0.20767552057285987,
+          "num_trades": 22,
+          "total_trades": 22,
+          "win_rate": 0.7272727272727273,
+          "profit_factor": 0.6572736129194225,
+          "avg_trade_return": -49.2086062108797,
+          "sharpe": -0.7449840062782691,
+          "sharpe_ratio": -0.7449840062782691,
+          "final_equity": 8757.670497151179,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 18.0
+        },
+        "metrics": {
+          "total_return_pct": -0.13028552594316462,
+          "total_pnl_pct": -0.13028552594316462,
+          "total_pnl": -1302.8552594316461,
+          "max_drawdown_pct": -0.2811454256722669,
+          "max_drawdown": -0.2811454256722669,
+          "cagr": -0.21725957640770088,
+          "num_trades": 43,
+          "total_trades": 43,
+          "win_rate": 0.6511627906976745,
+          "profit_factor": 0.6929881995692254,
+          "avg_trade_return": -23.264139801869536,
+          "sharpe": -0.9001627936844515,
+          "sharpe_ratio": -0.9001627936844515,
+          "final_equity": 8697.144740568354,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 15.0
+        },
+        "metrics": {
+          "total_return_pct": -0.13347428283682383,
+          "total_pnl_pct": -0.13347428283682383,
+          "total_pnl": -1334.7428283682384,
+          "max_drawdown_pct": -0.26454116640896197,
+          "max_drawdown": -0.26454116640896197,
+          "cagr": -0.2222886786226581,
+          "num_trades": 64,
+          "total_trades": 64,
+          "win_rate": 0.640625,
+          "profit_factor": 0.7590716238153643,
+          "avg_trade_return": -14.219567801701944,
+          "sharpe": -0.9125393530812862,
+          "sharpe_ratio": -0.9125393530812862,
+          "final_equity": 8665.257171631762,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 15.0
+        },
+        "metrics": {
+          "total_return_pct": -0.13555223635734,
+          "total_pnl_pct": -0.13555223635734,
+          "total_pnl": -1355.5223635734,
+          "max_drawdown_pct": -0.27399888368699005,
+          "max_drawdown": -0.27399888368699005,
+          "cagr": -0.11997635657047723,
+          "num_trades": 59,
+          "total_trades": 59,
+          "win_rate": 0.6610169491525424,
+          "profit_factor": 0.8431402076879233,
+          "avg_trade_return": -15.926625407950489,
+          "sharpe": -0.38657021938752745,
+          "sharpe_ratio": -0.38657021938752745,
+          "final_equity": 8644.4776364266,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 16.0
+        },
+        "metrics": {
+          "total_return_pct": -0.1442530406315429,
+          "total_pnl_pct": -0.1442530406315429,
+          "total_pnl": -1442.530406315429,
+          "max_drawdown_pct": -0.2619642911966751,
+          "max_drawdown": -0.2619642911966751,
+          "cagr": -0.23918489648349206,
+          "num_trades": 56,
+          "total_trades": 56,
+          "win_rate": 0.6785714285714286,
+          "profit_factor": 0.7055189515946139,
+          "avg_trade_return": -19.19753807976416,
+          "sharpe": -1.104884367263072,
+          "sharpe_ratio": -1.104884367263072,
+          "final_equity": 8557.469593684571,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 22.0
+        },
+        "metrics": {
+          "total_return_pct": -0.1496705251153966,
+          "total_pnl_pct": -0.1496705251153966,
+          "total_pnl": -1496.705251153966,
+          "max_drawdown_pct": -0.31742250338151956,
+          "max_drawdown": -0.31742250338151956,
+          "cagr": -0.24761672090808173,
+          "num_trades": 26,
+          "total_trades": 26,
+          "win_rate": 0.7307692307692307,
+          "profit_factor": 0.6132633185427967,
+          "avg_trade_return": -50.7079703844098,
+          "sharpe": -0.9139400658902808,
+          "sharpe_ratio": -0.9139400658902808,
+          "final_equity": 8503.294748846034,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 23.0
+        },
+        "metrics": {
+          "total_return_pct": -0.15433710887274593,
+          "total_pnl_pct": -0.15433710887274593,
+          "total_pnl": -1543.3710887274592,
+          "max_drawdown_pct": -0.3103727017240381,
+          "max_drawdown": -0.3103727017240381,
+          "cagr": -0.2548474094697746,
+          "num_trades": 24,
+          "total_trades": 24,
+          "win_rate": 0.7083333333333334,
+          "profit_factor": 0.5909152208120679,
+          "avg_trade_return": -57.22309627313882,
+          "sharpe": -0.9511511389132373,
+          "sharpe_ratio": -0.9511511389132373,
+          "final_equity": 8456.62891127254,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 20.0
+        },
+        "metrics": {
+          "total_return_pct": -0.15724141643895928,
+          "total_pnl_pct": -0.15724141643895928,
+          "total_pnl": -1572.4141643895928,
+          "max_drawdown_pct": -0.3207088698034122,
+          "max_drawdown": -0.3207088698034122,
+          "cagr": -0.25933234958150053,
+          "num_trades": 32,
+          "total_trades": 32,
+          "win_rate": 0.71875,
+          "profit_factor": 0.6159505734884196,
+          "avg_trade_return": -42.22657511733456,
+          "sharpe": -0.9161001499483094,
+          "sharpe_ratio": -0.9161001499483094,
+          "final_equity": 8427.585835610407,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 14.0
+        },
+        "metrics": {
+          "total_return_pct": -0.16263739539029828,
+          "total_pnl_pct": -0.16263739539029828,
+          "total_pnl": -1626.373953902983,
+          "max_drawdown_pct": -0.2691789133661985,
+          "max_drawdown": -0.2691789133661985,
+          "cagr": -0.26763408153535295,
+          "num_trades": 71,
+          "total_trades": 71,
+          "win_rate": 0.647887323943662,
+          "profit_factor": 0.7006902071309857,
+          "avg_trade_return": -16.334462729660935,
+          "sharpe": -1.2788091944497466,
+          "sharpe_ratio": -1.2788091944497466,
+          "final_equity": 8373.626046097017,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "15m",
+          "length": 21.0
+        },
+        "metrics": {
+          "total_return_pct": -0.16975596071968613,
+          "total_pnl_pct": -0.16975596071968613,
+          "total_pnl": -1697.5596071968612,
+          "max_drawdown_pct": -0.32906494221600546,
+          "max_drawdown": -0.32906494221600546,
+          "cagr": -0.27852438481503883,
+          "num_trades": 30,
+          "total_trades": 30,
+          "win_rate": 0.7333333333333333,
+          "profit_factor": 0.5693321686069346,
+          "avg_trade_return": -50.17792898790612,
+          "sharpe": -1.0473920893726354,
+          "sharpe_ratio": -1.0473920893726354,
+          "final_equity": 8302.440392803139,
+          "duration_days": 208
+        },
+        "timeframe": "15m"
+      },
+      {
+        "strategy": "rsi",
+        "params": {
+          "timeframe": "30m",
+          "length": 17.0
+        },
+        "metrics": {
+          "total_return_pct": -0.17749213146377005,
+          "total_pnl_pct": -0.17749213146377005,
+          "total_pnl": -1774.9213146377006,
+          "max_drawdown_pct": -0.3438992638296853,
+          "max_drawdown": -0.3438992638296853,
+          "cagr": -0.1575511080216372,
+          "num_trades": 43,
+          "total_trades": 43,
+          "win_rate": 0.6744186046511628,
+          "profit_factor": 0.7391254675339675,
+          "avg_trade_return": -33.839219054106366,
+          "sharpe": -0.5880305145323553,
+          "sharpe_ratio": -0.5880305145323553,
+          "final_equity": 8225.0786853623,
+          "duration_days": 416
+        },
+        "timeframe": "30m"
+      }
+    ]
+  },
+  "updated_at": "2025-12-29T18:00:29.213264"
+}

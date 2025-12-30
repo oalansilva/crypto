@@ -1,0 +1,20 @@
+{
+    "mode": "compare",
+    "exchange": "binance",
+    "symbol": "BTC/USDT",
+    "timeframe": "4h",
+    "since": "2023-12-29 00:00:00",
+    "until": null,
+    "strategies": [
+        "sma_cross",
+        "rsi_reversal",
+        "bb_meanrev"
+    ],
+    "params": null,
+    "cash": 10000,
+    "fee": 0.001,
+    "slippage": 0.0005,
+    "stop_pct": 0.03,
+    "take_pct": 0.06,
+    "fill_mode": "close"
+}

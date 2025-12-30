@@ -1,0 +1,67 @@
+{
+  "status": "COMPLETED",
+  "final_results": {
+    "job_id": "385b5546-54e6-4f04-adb9-e8ff4b9ae1b2",
+    "status": "COMPLETED",
+    "config": {
+      "mode": "optimize",
+      "exchange": "binance",
+      "symbol": "BTC/USDT",
+      "timeframe": [
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "4h",
+        "1d",
+        "3d",
+        "1w"
+      ],
+      "timeframes": [
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "4h",
+        "1d",
+        "3d",
+        "1w"
+      ],
+      "full_period": true,
+      "since": null,
+      "until": null,
+      "strategies": [
+        {
+          "name": "rsi",
+          "length": {
+            "min": 14,
+            "max": 24,
+            "step": 1
+          }
+        }
+      ],
+      "params": {
+        "rsi": {
+          "length": {
+            "min": 14,
+            "max": 24,
+            "step": 1
+          }
+        }
+      },
+      "fee": 0.001,
+      "slippage": 0.0005,
+      "cash": 10000.0,
+      "stop_pct": null,
+      "take_pct": null,
+      "fill_mode": "close"
+    },
+    "progress": {
+      "current_iteration": 99,
+      "total_iterations": 99
+    }
+  },
+  "updated_at": "2025-12-30T09:24:05.605978"
+}

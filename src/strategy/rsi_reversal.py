@@ -30,7 +30,7 @@ class RSIReversalStrategy(Strategy):
         rsi = 100 - (100 / (1 + rs))
         return rsi
 
-    def generate_signals(self, df: pd.DataFrame) -> pd.Series:
+    def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
         
         # Calculate RSI
@@ -51,4 +51,5 @@ class RSIReversalStrategy(Strategy):
         df.loc[buy_cond, 'signal'] = 1
         df.loc[sell_cond, 'signal'] = -1
         
-        return df['signal']
+        # Return DataFrame with rsi and signal columns
+        return df[['rsi', 'signal']]

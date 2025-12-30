@@ -36,5 +36,7 @@ class SMACrossStrategy(Strategy):
         df.loc[buy_cond, 'signal'] = 1
         df.loc[sell_cond, 'signal'] = -1
         
-        # Return only the signal series
-        return df['signal']
+        # Return the full dataframe with indicators and signal
+        # We perform a forward fill to handle NaN values at the beginning (though for backtest logic, strict NaN handling might be better, for viz it's fine)
+        # Actually, let's just return the columns we need.
+        return df[['sma_fast', 'sma_slow', 'signal']]

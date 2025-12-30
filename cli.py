@@ -2,7 +2,7 @@ import argparse
 import sys
 import pandas as pd
 from datetime import datetime
-from src.data.ccxt_loader import CCXTLoader
+from src.data.incremental_loader import IncrementalLoader
 from src.engine.backtester import Backtester
 from src.strategy.sma_cross import SMACrossStrategy
 from src.strategy.rsi_reversal import RSIReversalStrategy
@@ -60,7 +60,7 @@ def run_backtest(loader, exchange, symbol, timeframe, since, until, strategy_nam
     return metrics, equity_curve, backtester.trades
 
 def command_run(args):
-    loader = CCXTLoader()
+    loader = IncrementalLoader()
     strategy = get_strategy(args.strategy, args)
     
     print(f"Running {args.strategy} on {args.symbol} {args.timeframe}...")
@@ -80,7 +80,7 @@ def command_run(args):
             plot_drawdown(equity_curve, title=f"Drawdown - {args.strategy}")
 
 def command_batch(args):
-    loader = CCXTLoader()
+    loader = IncrementalLoader()
     strategy = get_strategy(args.strategy, args)
     timeframes = args.timeframes.split(',')
     
@@ -100,7 +100,7 @@ def command_batch(args):
         print(df_results.to_string())
 
 def command_compare(args):
-    loader = CCXTLoader()
+    loader = IncrementalLoader()
     strategies = args.strategies.split(',')
     
     timeframes = args.timeframes.split(',') if args.timeframes else [args.timeframe]

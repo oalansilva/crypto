@@ -27,7 +27,17 @@ class Backtester:
         # Generate signals
         # We expect the strategy to add a 'signal' column or return a Series
         # But to be safe and clean, let's copy the DF or expect the strategy to return signals
-        signals = strategy.generate_signals(df)
+        signals_output = strategy.generate_signals(df)
+        
+        # Handle different return types (Series vs DataFrame)
+        if isinstance(signals_output, pd.DataFrame):
+            signals = signals_output['signal']
+            # Store the full strategy output (indicators) for visualization
+            # We enforce that the index aligns
+            if 'signal' not in signals_output.columns:
+                 raise ValueError("Strategy DataFrame must contain 'signal' column")
+        else:
+             signals = signals_output
         
         # Check alignment
         if len(signals) != len(df):
@@ -38,16 +48,37 @@ class Backtester:
         simulation_df = df.copy()
         simulation_df['signal'] = signals
         
+        # Merge other strategy columns (indicators) if available
+        if isinstance(signals_output, pd.DataFrame):
+            # Join everything except signal which we already added (and potentially overwrote if index matched)
+            # Actually, just joining everything is fine.
+            cols_to_use = signals_output.columns.difference(simulation_df.columns)
+            simulation_df = simulation_df.join(signals_output[cols_to_use])
+            
+        self.simulation_data = simulation_df # Store for later use (e.g. plotting indicators)
+        
+        # --- Pre-calculate Numpy Arrays (CPU Optimization) ---
+        # accessing numpy arrays by index is ~100x faster than iterrows
+        timestamps = simulation_df['timestamp_utc'].values
+        opens = simulation_df['open'].values
+        closes = simulation_df['close'].values
+        highs = simulation_df['high'].values
+        lows = simulation_df['low'].values
+        signals = simulation_df['signal'].to_numpy() # Ensure numpy array
+        
         # Entry price variable for SL/TP tracking
         avg_entry_price = 0.0
+        current_trade_entry_time = None
+        
+        n_rows = len(simulation_df)
 
-        for i, row in simulation_df.iterrows():
-            timestamp = row['timestamp_utc']
-            open_price = row['open']
-            close_price = row['close']
-            high_price = row['high']
-            low_price = row['low']
-            signal = row['signal']
+        for i in range(n_rows):
+            timestamp = timestamps[i]
+            open_price = opens[i]
+            close_price = closes[i]
+            high_price = highs[i]
+            low_price = lows[i]
+            signal = signals[i]
             
             # --- Stop Loss / Take Profit Logic (Intrabar trigger check, exit at Close) ---
             sl_hit = False
@@ -69,7 +100,28 @@ class Backtester:
             # We exit at CLOSE price as per requirements.
             if sl_hit or tp_hit:
                 # Sell everything
-                exit_price = close_price * (1 - self.slippage)
+                # Determine exit price based on what hit
+                # Priority: SL hit? Exit at Stop Price (or Open if gapped down)
+                # TP hit? Exit at Take Profit Price (or Open if gapped up)
+                # If both hit? Ambiguous. Assume SL hit first (conservative) => Stop Price.
+                
+                raw_exit_price = close_price # Default fall through
+                
+                if sl_hit:
+                    # Check for gap down
+                    if open_price < stop_price:
+                        raw_exit_price = open_price # Gapped down, filled at Open
+                    else:
+                        raw_exit_price = stop_price # Filled at Stop level
+                        
+                elif tp_hit:
+                    # Check for gap up
+                    if open_price > tp_price:
+                         raw_exit_price = open_price
+                    else:
+                         raw_exit_price = tp_price
+                
+                exit_price = raw_exit_price * (1 - self.slippage)
                 revenue = self.position * exit_price
                 cost_fee = revenue * self.fee
                 
@@ -78,15 +130,19 @@ class Backtester:
                 reason = "SL" if sl_hit else "TP"
                 if sl_hit and tp_hit: reason = "SL/TP" # Ambiguous
                 
+                pnl = (exit_price - avg_entry_price) * self.position - cost_fee
+                pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
+
                 self.trades.append({
                     'entry_time': current_trade_entry_time,
                     'exit_time': timestamp,
-                    'symbol': 'BTC/USDT', # TODO: Pass symbol
-                    'side': 'SELL',
+                    'side': 'long',
                     'reason': reason,
-                    'price': exit_price,
+                    'entry_price': avg_entry_price,
+                    'exit_price': exit_price,
                     'size': self.position,
-                    'pnl': (exit_price - avg_entry_price) * self.position - cost_fee, # Approx
+                    'pnl': pnl,
+                    'pnl_pct': pnl_pct,
                     'commission': cost_fee
                 })
                 
@@ -136,37 +192,31 @@ class Backtester:
                      self.cash -= (quantity * entry_exec_price + commission)
                      self.position += quantity
                      
-                     self.trades.append({
-                        'entry_time': timestamp,
-                        'exit_time': None,
-                        'side': 'BUY',
-                        'price': entry_exec_price,
-                        'size': quantity,
-                        'commission': commission
-                     })
+                     # Determine trade entry time if this is a new position
+                     if current_trade_entry_time is None:
+                         current_trade_entry_time = timestamp
 
             elif signal == -1: # SELL
                 if self.position > 0:
-                    # Sell ALL? "só vende se tiver posição".
-                    # Strategies like SMA cross usually imply flip or full exit.
-                    # Simplest is Full Exit on signal.
-                    
                     exit_price = close_price * (1 - self.slippage)
                     revenue = self.position * exit_price
                     commission = revenue * self.fee
                     
                     self.cash += (revenue - commission)
                     
+                    pnl = (exit_price - avg_entry_price) * self.position - commission
+                    pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
+                    
                     self.trades.append({
-                        'entry_time': current_trade_entry_time, # From last full open? 
-                        # This logging is tricky with partial scale-ins. 
-                        # But for "Swing" usually 1 entry / 1 exit.
+                        'entry_time': current_trade_entry_time,
                         'exit_time': timestamp,
-                        'side': 'SELL',
+                        'side': 'long', # It was a long position
                         'reason': 'Signal',
-                        'price': exit_price,
+                        'entry_price': avg_entry_price,
+                        'exit_price': exit_price,
                         'size': self.position,
-                        'pnl': (exit_price - avg_entry_price) * self.position - commission,
+                        'pnl': pnl,
+                        'pnl_pct': pnl_pct,
                         'commission': commission
                     })
                     
@@ -180,9 +230,9 @@ class Backtester:
 
         # End of loop: Force close position if exists
         if self.position > 0:
-            last_price = simulation_df.iloc[-1]['close'] # Or use the last close_price from loop
-            # Use last timestamp
-            last_ts = simulation_df.iloc[-1]['timestamp_utc']
+            # Use last element of arrays instead of iloc
+            last_price = closes[-1]
+            last_ts = timestamps[-1]
             
             exit_price = last_price * (1 - self.slippage)
             revenue = self.position * exit_price
@@ -190,20 +240,23 @@ class Backtester:
             
             self.cash += (revenue - commission)
             
+            pnl = (exit_price - avg_entry_price) * self.position - commission
+            pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
+            
             self.trades.append({
                 'entry_time': current_trade_entry_time,
                 'exit_time': last_ts,
-                'side': 'SELL',
+                'side': 'long',
                 'reason': 'Force Close',
-                'price': exit_price,
+                'entry_price': avg_entry_price,
+                'exit_price': exit_price,
                 'size': self.position,
-                'pnl': (exit_price - avg_entry_price) * self.position - commission,
+                'pnl': pnl,
+                'pnl_pct': pnl_pct,
                 'commission': commission
             })
             self.position = 0.0
             
-            # Update last point in equity curve to reflect cash only (minus fees)
-            # Actually equity curve tracks mark-to-market so it shouldn't change much except for fee
             self.equity_curve[-1]['equity'] = self.cash
 
         return pd.DataFrame(self.equity_curve)

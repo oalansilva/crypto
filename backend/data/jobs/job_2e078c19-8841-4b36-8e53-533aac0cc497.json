@@ -1,0 +1,49 @@
+{
+  "job_id": "2e078c19-8841-4b36-8e53-533aac0cc497",
+  "status": "RUNNING",
+  "created_at": "2025-12-30T09:09:04.151380",
+  "updated_at": "2025-12-30T09:09:04.151397",
+  "config": {
+    "mode": "optimize",
+    "exchange": "binance",
+    "symbol": "BTC/USDT",
+    "timeframe": "1d",
+    "timeframes": [
+      "1d"
+    ],
+    "full_period": true,
+    "since": null,
+    "until": null,
+    "strategies": [
+      {
+        "name": "rsi",
+        "length": {
+          "min": 14,
+          "max": 24,
+          "step": 1
+        }
+      }
+    ],
+    "params": {
+      "rsi": {
+        "length": {
+          "min": 14,
+          "max": 24,
+          "step": 1
+        }
+      }
+    },
+    "fee": 0.001,
+    "slippage": 0.0005,
+    "cash": 10000.0,
+    "stop_pct": null,
+    "take_pct": null,
+    "fill_mode": "close"
+  },
+  "progress": {
+    "current_iteration": 0,
+    "total_iterations": 0,
+    "strategy_index": 0
+  },
+  "results": []
+}

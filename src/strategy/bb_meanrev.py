@@ -8,15 +8,15 @@ class BBMeanReversionStrategy(Strategy):
         self.bb_std = bb_std
         self.exit_mode = exit_mode # 'mid' or 'upper'
 
-    def generate_signals(self, df: pd.DataFrame) -> pd.Series:
+    def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
         
         # Calculate Bollinger Bands
         # Middle Band = SMA(20)
-        df['bb_mid'] = df['close'].rolling(window=self.bb_period).mean()
+        df['bb_middle'] = df['close'].rolling(window=self.bb_period).mean()
         df['bb_std'] = df['close'].rolling(window=self.bb_period).std()
-        df['bb_upper'] = df['bb_mid'] + (self.bb_std * df['bb_std'])
-        df['bb_lower'] = df['bb_mid'] - (self.bb_std * df['bb_std'])
+        df['bb_upper'] = df['bb_middle'] + (self.bb_std * df['bb_std'])
+        df['bb_lower'] = df['bb_middle'] - (self.bb_std * df['bb_std'])
         
         df['signal'] = 0
         
@@ -30,9 +30,10 @@ class BBMeanReversionStrategy(Strategy):
         if self.exit_mode == 'upper':
             sell_cond = df['close'] > df['bb_upper']
         else: # default 'mid'
-            sell_cond = df['close'] > df['bb_mid']
+            sell_cond = df['close'] > df['bb_middle']
             
         df.loc[buy_cond, 'signal'] = 1
         df.loc[sell_cond, 'signal'] = -1
         
-        return df['signal']
+        # Return DataFrame with bollinger bands and signal columns
+        return df[['bb_upper', 'bb_middle', 'bb_lower', 'signal']]

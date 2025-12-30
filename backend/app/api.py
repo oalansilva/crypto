@@ -1,0 +1,292 @@
+# file: backend/app/api.py
+from fastapi import APIRouter, HTTPException, Depends
+from uuid import UUID
+from typing import List
+from sqlalchemy.orm import Session
+from app.schemas.backtest import (
+    BacktestRunCreate,
+    BacktestRunResponse,
+    BacktestStatusResponse,
+    BacktestRunListItem,
+    PresetResponse
+)
+from app.services.run_repository import RunRepository
+from app.services.preset_service import get_presets
+from app.services.job_manager import JobManager
+from app.workers.runner import start_backtest_job
+from app.database import get_db
+from app.services.pandas_ta_inspector import get_all_indicators_metadata
+
+router = APIRouter(prefix="/api")
+
+def get_repository(db: Session = Depends(get_db)) -> RunRepository:
+    return RunRepository(db)
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "ok", "service": "crypto-backtester-api"}
+
+@router.get("/presets", response_model=List[PresetResponse])
+async def list_presets():
+    """Get predefined backtest presets for Playground"""
+    return get_presets()
+
+@router.post("/backtest/run", response_model=BacktestRunResponse)
+async def create_run(
+    request: BacktestRunCreate,
+    repo: RunRepository = Depends(get_repository)
+):
+    """Create and start a single strategy backtest"""
+    # Relaxed check: 'run' mode now supports multiple strategies/timeframes for benchmarking
+    if request.mode != "run":
+        raise HTTPException(400, "Invalid mode for this endpoint")
+    
+    # Create run record
+    run_data = request.model_dump()
+    run_data["status"] = "PENDING"
+    run_data["strategies"] = request.strategies # Ensure JSON
+    run_data["params"] = request.params
+    
+    try:
+        run = repo.create_run(run_data)
+        run_id = UUID(run['id'])
+        
+        # Start background job
+        config = request.model_dump()
+        start_backtest_job(run_id, config)
+        
+        return BacktestRunResponse(
+            run_id=run_id,
+            status="PENDING",
+            message="Backtest started"
+        )
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(500, f"Error starting run: {str(e)}")
+
+@router.post("/backtest/optimize", response_model=BacktestRunResponse)
+async def create_optimization(
+    request: BacktestRunCreate,
+    repo: RunRepository = Depends(get_repository)
+):
+    """Create and start a strategy optimization (Grid Search)"""
+    if request.mode != "optimize":
+        raise HTTPException(400, "Use mode 'optimize' for this endpoint")
+    
+    # Validation: Ensure ranges are present? Or allow scalar (1 run optimization).
+    # Allowed.
+    
+    # DEBUG: Print request to see what we're receiving
+    print(f"DEBUG: Received optimization request:")
+    print(f"  timeframe type: {type(request.timeframe)}")
+    print(f"  timeframe value: {request.timeframe}")
+    
+    run_data = request.model_dump()
+    run_data["status"] = "PENDING"
+    
+    try:
+        run = repo.create_run(run_data)
+        run_id = UUID(run['id'])
+        
+        # Start background job
+        config = request.model_dump()
+        start_backtest_job(run_id, config)
+        
+        return BacktestRunResponse(
+            run_id=run_id,
+            status="PENDING",
+            message="Optimization started"
+        )
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(500, f"Error starting optimization: {str(e)}")
+
+@router.post("/backtest/compare", response_model=BacktestRunResponse)
+async def create_compare(
+    request: BacktestRunCreate,
+    repo: RunRepository = Depends(get_repository)
+):
+    """Create and start a comparison backtest"""
+    if request.mode != "compare":
+        raise HTTPException(400, "Use mode 'compare' for this endpoint")
+    
+    if len(request.strategies) < 2 or len(request.strategies) > 3:
+        raise HTTPException(400, "Compare mode requires 2-3 strategies")
+    
+    run_data = request.model_dump()
+    run_data["status"] = "PENDING"
+    
+    try:
+        run = repo.create_run(run_data)
+        run_id = UUID(run['id'])
+        
+        # Start background job
+        config = request.model_dump()
+        start_backtest_job(run_id, config)
+        
+        return BacktestRunResponse(
+            run_id=run_id,
+            status="PENDING",
+            message=f"Comparing {len(request.strategies)} strategies"
+        )
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(500, f"Error starting compare: {str(e)}")
+
+from app.globals import RUN_PROGRESS
+
+@router.get("/backtest/status/{run_id}", response_model=BacktestStatusResponse)
+async def get_status(
+    run_id: UUID,
+    repo: RunRepository = Depends(get_repository)
+):
+    """Get backtest execution status"""
+    run = repo.get_run(run_id)
+    
+    if not run:
+        raise HTTPException(404, "Run not found")
+        
+    # Get ephemeral progress if running
+    run_id_str = str(run_id)
+    progress_info = RUN_PROGRESS.get(run_id_str, {})
+    
+    return BacktestStatusResponse(
+        run_id=run_id,
+        status=run['status'],
+        created_at=run['created_at'],
+        error_message=run.get('error_message'),
+        progress=progress_info.get('progress', 0.0),
+        current_step=progress_info.get('step')
+    )
+
+@router.get("/backtest/result/{run_id}")
+async def get_result(
+    run_id: UUID,
+    repo: RunRepository = Depends(get_repository)
+):
+    """Get complete backtest result"""
+    run = repo.get_run(run_id)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    
+    if run['status'] != 'DONE':
+        raise HTTPException(400, f"Run status is {run['status']}, not DONE")
+    
+    result = repo.get_result(run_id)
+    if not result:
+        raise HTTPException(404, "Result not found")
+    
+    return {
+        "run_id": run_id,
+        "mode": run['mode'],
+        "created_at": run['created_at'],
+        **result['result_json']
+    }
+    
+@router.post("/backtest/pause/{run_id}")
+async def pause_run(
+    run_id: UUID,
+    repo: RunRepository = Depends(get_repository)
+):
+    """Signal a running backtest to pause"""
+    job_manager = JobManager()
+    run_id_str = str(run_id)
+    
+    # Check if actually running or optimization
+    run = repo.get_run(run_id)
+    if not run:
+         raise HTTPException(404, "Run not found")
+         
+    if run['status'] not in ['RUNNING', 'PENDING']:
+         raise HTTPException(400, f"Cannot pause run with status {run['status']}")
+    
+    # Signal Pause
+    job_manager.signal_pause(run_id_str)
+    
+    # Optimistically update status to PAUSING
+    repo.update_run_status(run_id, "PAUSING")
+    
+    return {"status": "PAUSING", "message": "Pause signal sent"}
+
+@router.post("/backtest/resume/{run_id}")
+async def resume_run(
+    run_id: UUID,
+    repo: RunRepository = Depends(get_repository)
+):
+    """Resume a paused backtest"""
+    job_manager = JobManager()
+    run_id_str = str(run_id)
+    
+    run = repo.get_run(run_id)
+    if not run:
+         raise HTTPException(404, "Run not found")
+
+    # Double check job file validity
+    state = job_manager.load_state(run_id_str)
+    if not state:
+         raise HTTPException(404, "Job state file not found on disk")
+         
+    # Restart worker with resume=True
+    config = state['config'] # Use config from saved state to be safe
+    
+    try:
+        start_backtest_job(run_id, config, resume=True)
+        return {"status": "RUNNING", "message": "Resuming backtest..."}
+    except Exception as e:
+        raise HTTPException(500, f"Failed to resume: {e}")
+
+@router.get("/backtest/jobs")
+async def list_jobs_manager():
+    """List jobs from Job Manager (Disk State)"""
+    job_manager = JobManager()
+    return job_manager.list_jobs()
+
+@router.get("/backtest/runs", response_model=List[BacktestRunListItem])
+async def list_runs(
+    limit: int = 50,
+    offset: int = 0,
+    repo: RunRepository = Depends(get_repository)
+):
+    """List recent backtest runs"""
+    runs = repo.list_runs(limit, offset)
+    result = []
+    
+    for run in runs:
+        item = BacktestRunListItem(**run)
+        
+        # Inject ephemeral progress if running
+        if item.status in ['RUNNING', 'PENDING']:
+            prog = RUN_PROGRESS.get(str(item.id))
+            if prog:
+                item.progress = prog.get('progress', 0.0)
+                if prog.get('step'):
+                    item.message = prog.get('step') # Update message with current step
+        
+        result.append(item)
+        
+    return result
+
+@router.delete("/backtest/runs/{run_id}")
+async def delete_run(
+    run_id: UUID,
+    repo: RunRepository = Depends(get_repository)
+):
+    """Delete a backtest run"""
+    run = repo.get_run(run_id)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    
+    repo.delete_run(run_id)
+    return {"message": "Run deleted"}
+
+@router.get("/strategies/metadata")
+async def get_strategies_metadata():
+    """Get metadata for all available pandas-ta indicators"""
+    try:
+        return get_all_indicators_metadata()
+    except Exception as e:
+        raise HTTPException(500, f"Error getting metadata: {str(e)}")
