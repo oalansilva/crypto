@@ -32,3 +32,17 @@ Thumbs.db
 backend/data/
 backend/backend/data/
 data/storage/
+
+# Large data files (prevent accidental commits)
+*.parquet
+*.csv
+*.json.gz
+*.db
+*.sqlite
+*.h5
+*.hdf5
+
+# Checkpoint and cache files
+**/checkpoints/
+**/cache/
+**/.cache/
