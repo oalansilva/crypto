@@ -286,7 +286,27 @@ async def delete_run(
 @router.get("/strategies/metadata")
 async def get_strategies_metadata():
     """Get metadata for all available pandas-ta indicators"""
+    print("🔍 GET /strategies/metadata called")
     try:
-        return get_all_indicators_metadata()
+        result = get_all_indicators_metadata()
+        print(f"✅ Returning {len(result)} categories")
+        return result
     except Exception as e:
+        print(f"❌ Error: {e}")
         raise HTTPException(500, f"Error getting metadata: {str(e)}")
+
+@router.get("/indicator/{strategy_name}/schema")
+async def get_indicator_schema_endpoint(strategy_name: str):
+    """Get parameter schema for a specific indicator - dynamically generated from pandas_ta"""
+    from app.schemas.dynamic_schema_generator import get_dynamic_indicator_schema
+    
+    # Generate schema dynamically from pandas_ta
+    schema = get_dynamic_indicator_schema(strategy_name)
+    
+    if not schema:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Indicator '{strategy_name}' not found in pandas_ta library"
+        )
+    
+    return schema
