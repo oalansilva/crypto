@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Play, Shield, List, X, ArrowUp, ArrowDown } from 'lucide-react';
-import { OptimizationResults } from '../components/results/OptimizationResultsNew';
+import { Play, Shield, Award, List, X, ArrowUp, ArrowDown } from 'lucide-react';
 
 const SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT'];
 const TIMEFRAMES = ['5m', '15m', '30m', '1h', '2h', '4h', '1d'];
@@ -17,16 +16,9 @@ const STOP_GAIN_OPTIONS = [
     { value: 0.10, label: '10%' }
 ];
 
-interface IndicatorParam {
-    name: string;
-    type: string;
-    default: any;
-}
-
 interface IndicatorMetadata {
     name: string;
     category: string;
-    params?: IndicatorParam[];
 }
 
 interface Trade {
@@ -54,13 +46,6 @@ interface RiskResult {
     win_rate: number;
     total_trades: number;
     trades?: Trade[]; // Added trades
-    // Advanced fields
-    profit_factor?: number;
-    expectancy?: number;
-    max_consecutive_losses?: number;
-    avg_atr?: number;
-    avg_adx?: number;
-    regime_performance?: Record<string, any>;
 }
 
 const TradesModal: React.FC<{ result: RiskResult; onClose: () => void }> = ({ result, onClose }) => {
@@ -71,7 +56,7 @@ const TradesModal: React.FC<{ result: RiskResult; onClose: () => void }> = ({ re
                     <div>
                         <h2 className="text-xl font-bold text-white mb-1">Trade History</h2>
                         <div className="text-sm text-gray-400 font-mono">
-                            SL: {result.stop_loss === 0 ? 'None' : `${(result.stop_loss * 100).toFixed(1)}%`} |
+                            SL: {(result.stop_loss * 100).toFixed(1)}% |
                             TP: {result.stop_gain ? `${(result.stop_gain * 100).toFixed(1)}%` : 'None'} |
                             Total Trades: {result.total_trades}
                         </div>
@@ -175,9 +160,8 @@ export const RiskManagementOptimizationPage: React.FC = () => {
 
     // Stop-Loss configuration
     const [stopLossMin, setStopLossMin] = useState(0.005); // 0.5%
-    const [stopLossMax, setStopLossMax] = useState(0.13);  // 13%
-    const [stopLossStep, setStopLossStep] = useState(0.002); // 0.2%
-    const [includeZeroStopLoss, setIncludeZeroStopLoss] = useState(true);
+    const [stopLossMax, setStopLossMax] = useState(0.05);  // 5%
+    const [stopLossStep, setStopLossStep] = useState(0.005); // 0.5%
 
     // Stop-Gain configuration
     const [selectedStopGains, setSelectedStopGains] = useState<(number | null)[]>([null]);
@@ -205,8 +189,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                     indicators.forEach((indicator: any) => {
                         flattened.push({
                             name: indicator.id || indicator.name,
-                            category,
-                            params: indicator.params
+                            category
                         });
                     });
                 }
@@ -214,58 +197,6 @@ export const RiskManagementOptimizationPage: React.FC = () => {
             return flattened.sort((a, b) => a.name.localeCompare(b.name));
         }
     });
-
-    // Sync main fields from URL
-    React.useEffect(() => {
-        const s = searchParams.get('strategy');
-        if (s && s !== selectedIndicator) setSelectedIndicator(s);
-
-        const t = searchParams.get('timeframe');
-        if (t && t !== selectedTimeframe) setSelectedTimeframe(t);
-
-        const sym = searchParams.get('symbol');
-        if (sym && sym !== symbol) setSymbol(sym);
-    }, [searchParams]);
-
-    // Effect to populate strategy parameters when indicator changes or URL params update
-    React.useEffect(() => {
-        if (!selectedIndicator || !indicators) return;
-
-        // Find metadata (handle potential case differences or extra info in name)
-        const meta = indicators.find(i =>
-            i.name === selectedIndicator ||
-            i.name.toLowerCase() === selectedIndicator.toLowerCase() ||
-            i.name === selectedIndicator.split('(')[0].trim().toLowerCase()
-        );
-
-        if (meta && meta.params) {
-            const defaults: Record<string, string | number> = {};
-            meta.params.forEach(p => {
-                // Check URL params first
-                const urlParam = searchParams.get(p.name);
-
-                if (urlParam !== null) {
-                    // query params are strings, convert to number if possible/appropriate
-                    // We check if it looks like a number
-                    const parsed = parseFloat(urlParam);
-                    if (!isNaN(parsed) && urlParam.trim() !== '') {
-                        defaults[p.name] = parsed;
-                    } else {
-                        defaults[p.name] = urlParam;
-                    }
-                }
-                // Fallback to default from metadata
-                else if (p.default !== undefined && p.default !== null) {
-                    defaults[p.name] = p.default;
-                }
-            });
-
-            // Update state with combined values
-            if (Object.keys(defaults).length > 0) {
-                setStrategyParams(defaults);
-            }
-        }
-    }, [selectedIndicator, indicators, searchParams]);
 
     const toggleStopGain = (value: number | null) => {
         if (selectedStopGains.includes(value)) {
@@ -283,28 +214,17 @@ export const RiskManagementOptimizationPage: React.FC = () => {
         setBestConfig(null);
 
         try {
-            // Sanitize strategy name (remove category/parentheses if present, e.g. "MACD (momentum)" -> "macd")
-            const strategySlug = selectedIndicator.split('(')[0].trim().toLowerCase();
-
             // Construct payload separately to avoid complex nesting issues
             const payload = {
                 symbol: symbol,
-                strategy: strategySlug,
+                strategy: selectedIndicator,
                 timeframe: selectedTimeframe,
                 custom_ranges: {
-                    stop_loss: (() => {
-                        const slValues = [];
-                        if (includeZeroStopLoss) slValues.push(0);
-
-                        // Generate range values
-                        let current = stopLossMin;
-                        // Use epsilon to avoid floating point issues
-                        while (current <= stopLossMax + 1e-10) {
-                            slValues.push(Number(current.toFixed(4)));
-                            current += stopLossStep;
-                        }
-                        return slValues;
-                    })(),
+                    stop_loss: {
+                        min: stopLossMin,
+                        max: stopLossMax,
+                        step: stopLossStep
+                    },
                     stop_gain: selectedStopGains // Pass list directly, backend now supports it
                 },
                 ...strategyParams // Include dynamic strategy parameters at top level
@@ -334,14 +254,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                 max_drawdown: res.metrics.max_drawdown || 0,
                 win_rate: res.metrics.win_rate || 0,
                 total_trades: res.metrics.total_trades || 0,
-                trades: res.trades || [],
-                // Advanced
-                profit_factor: res.metrics.profit_factor,
-                expectancy: res.metrics.expectancy,
-                max_consecutive_losses: res.metrics.max_consecutive_losses,
-                avg_atr: res.metrics.avg_atr,
-                avg_adx: res.metrics.avg_adx,
-                regime_performance: res.metrics.regime_performance
+                trades: res.trades || []
             }));
 
             // Sort by total return (or sharpe)
@@ -447,49 +360,49 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                     </div>
 
                     {/* Dynamic Strategy Parameters */}
-                    {/* Strategy Parameters - Always Visible */}
-                    <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#0B0E14', border: '1px solid #2A2F3A' }}>
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <List className="w-5 h-5" style={{ color: '#14b8a6' }} />
-                            Strategy Parameters
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {Object.entries(strategyParams).map(([key, value]) => (
-                                <div key={key}>
-                                    <label className="block text-sm text-gray-400 mb-1 capitalize">{key.replace(/_/g, ' ')}</label>
-                                    <input
-                                        type="text"
-                                        value={value}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            setStrategyParams(prev => ({
-                                                ...prev,
-                                                [key]: val
-                                            }));
-                                        }}
-                                        onBlur={(e) => {
-                                            const val = e.target.value;
-                                            // Try to convert to number on blur if it looks like one
-                                            const numVal = parseFloat(val);
-                                            if (!isNaN(numVal) && val.trim() !== '') {
+                    {Object.keys(strategyParams).length > 0 && (
+                        <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#0B0E14', border: '1px solid #2A2F3A' }}>
+                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <List className="w-5 h-5" style={{ color: '#14b8a6' }} />
+                                Strategy Parameters
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {Object.entries(strategyParams).map(([key, value]) => (
+                                    <div key={key}>
+                                        <label className="block text-sm text-gray-400 mb-1 capitalize">{key.replace(/_/g, ' ')}</label>
+                                        <input
+                                            type="text"
+                                            value={value}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
                                                 setStrategyParams(prev => ({
                                                     ...prev,
-                                                    [key]: numVal
+                                                    [key]: val
                                                 }));
-                                            }
-                                        }}
-                                        className="w-full px-3 py-2 rounded-md border"
-                                        style={{
-                                            backgroundColor: '#151922',
-                                            borderColor: '#2D3748',
-                                            color: '#E2E8F0'
-                                        }}
-                                    />
-                                </div>
-                            ))}
+                                            }}
+                                            onBlur={(e) => {
+                                                const val = e.target.value;
+                                                // Try to convert to number on blur if it looks like one
+                                                const numVal = parseFloat(val);
+                                                if (!isNaN(numVal) && val.trim() !== '') {
+                                                    setStrategyParams(prev => ({
+                                                        ...prev,
+                                                        [key]: numVal
+                                                    }));
+                                                }
+                                            }}
+                                            className="w-full px-3 py-2 rounded-md border"
+                                            style={{
+                                                backgroundColor: '#151922',
+                                                borderColor: '#2D3748',
+                                                color: '#E2E8F0'
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-
+                    )}
 
                     {/* Risk Configuration */}
                     <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#0B0E14', border: '1px solid #2A2F3A' }}>
@@ -524,7 +437,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                     <label className="block text-sm text-gray-400 mb-1">Max (%)</label>
                                     <input
                                         type="text"
-                                        defaultValue="13"
+                                        defaultValue="5"
                                         onBlur={(e) => {
                                             const val = e.target.value.replace(',', '.');
                                             const parsed = parseFloat(val);
@@ -542,7 +455,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                     <label className="block text-sm text-gray-400 mb-1">Step (%)</label>
                                     <input
                                         type="text"
-                                        defaultValue="0.2"
+                                        defaultValue="0.5"
                                         onBlur={(e) => {
                                             const val = e.target.value.replace(',', '.');
                                             const parsed = parseFloat(val);
@@ -556,17 +469,6 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                         }}
                                     />
                                 </div>
-                            </div>
-                            <div className="mt-3">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={includeZeroStopLoss}
-                                        onChange={(e) => setIncludeZeroStopLoss(e.target.checked)}
-                                        className="w-4 h-4 rounded border-gray-600 text-teal-500 focus:ring-teal-500 bg-[#151922]"
-                                    />
-                                    <span className="text-sm text-gray-300">Include "No Stop Loss" (0%) test</span>
-                                </label>
                             </div>
                             <p className="text-xs text-gray-400 mt-2">💡 Most traders use 1-2%. Range 0.5%-5% covers conservative to aggressive.</p>
                         </div>
@@ -613,49 +515,84 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                 {results.length > 0 && (
                     <div className="rounded-xl p-6" style={{ backgroundColor: '#151922', border: '1px solid #2A2F3A' }}>
                         <h2 className="text-xl font-bold mb-4 text-white">Results</h2>
-                        <OptimizationResults
-                            results={results.map(r => ({
-                                params: {
-                                    stop_loss: r.stop_loss,
-                                    stop_gain: r.stop_gain
-                                },
-                                metrics: {
-                                    total_pnl: (r.total_return / 100) * 10000, // Estimate based on 10k capital as we don't have absolute pnl here easily in RiskResult yet, or pass it if available
-                                    total_pnl_pct: r.total_return / 100, // Convert % to decimal
-                                    win_rate: r.win_rate,
-                                    total_trades: r.total_trades,
-                                    max_drawdown: r.max_drawdown,
-                                    profit_factor: r.profit_factor || 0,
-                                    // Advanced metrics
-                                    expectancy: r.expectancy,
-                                    max_consecutive_losses: r.max_consecutive_losses,
-                                    avg_atr: r.avg_atr,
-                                    avg_adx: r.avg_adx,
-                                    regime_performance: r.regime_performance
-                                }
-                            }))}
-                            bestResult={{
-                                params: {
-                                    stop_loss: bestConfig?.stop_loss,
-                                    stop_gain: bestConfig?.stop_gain
-                                },
-                                metrics: {
-                                    total_pnl: (bestConfig?.total_return || 0) / 100 * 10000,
-                                    total_pnl_pct: (bestConfig?.total_return || 0) / 100,
-                                    win_rate: bestConfig?.win_rate || 0,
-                                    total_trades: bestConfig?.total_trades || 0,
-                                    max_drawdown: bestConfig?.max_drawdown || 0,
-                                    profit_factor: bestConfig?.profit_factor || 0,
-                                    // Advanced
-                                    expectancy: bestConfig?.expectancy,
-                                    max_consecutive_losses: bestConfig?.max_consecutive_losses,
-                                    avg_atr: bestConfig?.avg_atr,
-                                    avg_adx: bestConfig?.avg_adx,
-                                    regime_performance: bestConfig?.regime_performance
-                                }
-                            }}
-                            timeframe={selectedTimeframe}
-                        />
+
+                        {/* Best Configuration Card */}
+                        {bestConfig && (
+                            <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#14b8a6/10', border: '1px solid #14b8a6' }}>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-sm text-gray-400 mb-1">Best Configuration</div>
+                                        <div className="text-2xl font-bold font-mono" style={{ color: '#14b8a6' }}>
+                                            SL {(bestConfig.stop_loss * 100).toFixed(1)}% / TP {bestConfig.stop_gain ? `${(bestConfig.stop_gain * 100).toFixed(1)}%` : 'None'}
+                                        </div>
+                                        <div className="text-sm text-gray-300 mt-1">
+                                            Return: {bestConfig.total_return >= 0 ? '+' : ''}{bestConfig.total_return.toFixed(2)}% |
+                                            Sharpe: {bestConfig.sharpe_ratio.toFixed(2)}
+                                        </div>
+                                    </div>
+                                    <Award className="w-12 h-12" style={{ color: '#14b8a6' }} />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="border-b" style={{ borderColor: '#2A2F3A' }}>
+                                    <tr>
+                                        <th className="text-left py-3 px-4 font-semibold text-gray-400">Stop-Loss</th>
+                                        <th className="text-left py-3 px-4 font-semibold text-gray-400">Stop-Gain</th>
+                                        <th className="text-right py-3 px-4 font-semibold text-gray-400">Total Return</th>
+                                        <th className="text-right py-3 px-4 font-semibold text-gray-400">Sharpe Ratio</th>
+                                        <th className="text-right py-3 px-4 font-semibold text-gray-400">Win Rate</th>
+                                        <th className="text-right py-3 px-4 font-semibold text-gray-400">Trades</th>
+                                        <th className="text-center py-3 px-4 font-semibold text-gray-400">Explore</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {results.map((result, idx) => {
+                                        const isBest = idx === 0;
+                                        return (
+                                            <tr
+                                                key={idx}
+                                                className="border-b transition-colors"
+                                                style={{
+                                                    borderColor: '#2A2F3A',
+                                                    backgroundColor: isBest ? '#14b8a6/10' : 'transparent'
+                                                }}
+                                            >
+                                                <td className="py-3 px-4 font-mono" style={{ color: isBest ? '#14b8a6' : '#E2E8F0' }}>
+                                                    {(result.stop_loss * 100).toFixed(1)}%
+                                                </td>
+                                                <td className="py-3 px-4 font-mono" style={{ color: isBest ? '#14b8a6' : '#E2E8F0' }}>
+                                                    {result.stop_gain ? `${(result.stop_gain * 100).toFixed(1)}%` : 'None'}
+                                                </td>
+                                                <td className="py-3 px-4 text-right font-mono" style={{ color: result.total_return >= 0 ? '#10B981' : '#EF4444' }}>
+                                                    {result.total_return >= 0 ? '+' : ''}{result.total_return.toFixed(2)}%
+                                                </td>
+                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
+                                                    {result.sharpe_ratio.toFixed(2)}
+                                                </td>
+                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
+                                                    {(result.win_rate).toFixed(1)}%
+                                                </td>
+                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
+                                                    {result.total_trades}
+                                                </td>
+                                                <td className="py-3 px-4 text-center">
+                                                    <button
+                                                        onClick={() => setSelectedTradeResult(result)}
+                                                        className="p-1.5 hover:bg-[#2A2F3A] rounded transition-colors text-gray-400 hover:text-white"
+                                                        title="View Trades"
+                                                    >
+                                                        <List className="w-5 h-5" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </div>
