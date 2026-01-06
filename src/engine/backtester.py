@@ -17,7 +17,7 @@ class Backtester:
         self.trades = []
         self.equity_curve = []
 
-    def run(self, df: pd.DataFrame, strategy: Strategy):
+    def run(self, df: pd.DataFrame, strategy: Strategy, record_force_close: bool = False):
         # Reset state
         self.cash = self.initial_capital
         self.position = 0.0
@@ -26,14 +26,11 @@ class Backtester:
         
         # Generate signals
         # We expect the strategy to add a 'signal' column or return a Series
-        # But to be safe and clean, let's copy the DF or expect the strategy to return signals
         signals_output = strategy.generate_signals(df)
         
         # Handle different return types (Series vs DataFrame)
         if isinstance(signals_output, pd.DataFrame):
             signals = signals_output['signal']
-            # Store the full strategy output (indicators) for visualization
-            # We enforce that the index aligns
             if 'signal' not in signals_output.columns:
                  raise ValueError("Strategy DataFrame must contain 'signal' column")
         else:
@@ -44,219 +41,245 @@ class Backtester:
             raise ValueError("Signals length mismatch with DataFrame")
 
         # Combine for iteration
-        # We need to iterate row by row for proper portfolio simulation (path dependent)
         simulation_df = df.copy()
-        simulation_df['signal'] = signals
+        # Use .values to ignore index mismatch
+        simulation_df['signal'] = signals.values if hasattr(signals, 'values') else signals
         
-        # Merge other strategy columns (indicators) if available
         if isinstance(signals_output, pd.DataFrame):
-            # Join everything except signal which we already added (and potentially overwrote if index matched)
-            # Actually, just joining everything is fine.
             cols_to_use = signals_output.columns.difference(simulation_df.columns)
             simulation_df = simulation_df.join(signals_output[cols_to_use])
             
-        self.simulation_data = simulation_df # Store for later use (e.g. plotting indicators)
+        accumulated_commission = 0.0
+        entry_equity = 0.0
+        
+        # --- 3. Simulation Loop ---
+        self.simulation_data = simulation_df 
         
         # --- Pre-calculate Numpy Arrays (CPU Optimization) ---
-        # accessing numpy arrays by index is ~100x faster than iterrows
-        timestamps = simulation_df['timestamp_utc'].values
+        if 'timestamp_utc' in simulation_df.columns:
+            timestamps = simulation_df['timestamp_utc'].values
+        elif 'timestamp' in simulation_df.columns:
+            timestamps = simulation_df['timestamp'].values
+        elif isinstance(simulation_df.index, pd.DatetimeIndex):
+            timestamps = simulation_df.index.values
+        else:
+            timestamps = np.array([i for i in range(len(simulation_df))])
+
         opens = simulation_df['open'].values
         closes = simulation_df['close'].values
         highs = simulation_df['high'].values
         lows = simulation_df['low'].values
-        signals = simulation_df['signal'].to_numpy() # Ensure numpy array
+        signals = simulation_df['signal'].to_numpy() 
         
-        # Entry price variable for SL/TP tracking
         avg_entry_price = 0.0
         current_trade_entry_time = None
         
         n_rows = len(simulation_df)
+        
+        
+        # Pre-calculate Buy Signals for fast jumping
+        buy_indices = np.where(signals == 1)[0]
+        
+        # Initial Equity Record
+        self.equity_curve.append({'timestamp': timestamps[0], 'equity': self.cash})
+        
+        i = 0
+        while i < n_rows:
+            # Current candle data
+            # timestamp = timestamps[i] # Accessed only if needed
+            
+            if self.position == 0:
+                # Flat: Fast Jump to next Buy
+                # Find first index in buy_indices >= i
+                # searchsorted returns insertion point index in buy_indices
+                next_buy_ptr = np.searchsorted(buy_indices, i)
+                
+                if next_buy_ptr >= len(buy_indices):
+                    break # No more buys
+                    
+                next_buy_idx = buy_indices[next_buy_ptr]
+                
+                # Jump!
+                i = next_buy_idx
+                
+                # Execute BUY
+                close_price = closes[i]
+                timestamp = timestamps[i]
+                
+                if self.cash <= 0:
+                    # Bankrupt
+                    break
+                
+                allocated_cash = self.cash * self.position_size_pct
+                entry_exec_price = close_price * (1 + self.slippage)
+                
+                quantity = allocated_cash / (entry_exec_price * (1 + self.fee))
+                
+                if quantity * entry_exec_price > 10: 
+                    commission = (quantity * entry_exec_price) * self.fee
+                    
+                    avg_entry_price = entry_exec_price
+                    current_trade_entry_time = timestamp
+                    accumulated_commission = commission
+                    entry_equity = self.cash 
+                    
+                    self.cash -= (quantity * entry_exec_price + commission)
+                    self.position += quantity
+                    
+                    # Record Equity at Entry
+                    self.equity_curve.append({'timestamp': timestamp, 'equity': self.cash + (self.position * close_price)})
+                
+                # Move to next candle to start monitoring exit
+                i += 1
 
-        for i in range(n_rows):
-            timestamp = timestamps[i]
-            open_price = opens[i]
-            close_price = closes[i]
-            high_price = highs[i]
-            low_price = lows[i]
-            signal = signals[i]
-            
-            # --- Stop Loss / Take Profit Logic (Intrabar trigger check, exit at Close) ---
-            sl_hit = False
-            tp_hit = False
-            
-            if self.position > 0:
+            else:
+                # Long: Step-by-step logic (safe & correct for intra-candle checks)
+                timestamp = timestamps[i]
+                open_price = opens[i]
+                close_price = closes[i]
+                high_price = highs[i]
+                low_price = lows[i]
+                signal = signals[i]
+                
+                # Check Exits
+                exit_candidates = []
+                
+                # 1. Signal Sell
+                if signal == -1:
+                    exit_candidates.append(('signal', 0, -1))
+                
+                # 2. Stop Loss
                 if self.stop_loss_pct:
                     stop_price = avg_entry_price * (1 - self.stop_loss_pct)
-                    if low_price < stop_price: # Triggered
-                        sl_hit = True
-                        
+                    if low_price < stop_price:
+                        exit_candidates.append(('sl', 0, stop_price))
+
+                # 3. Take Profit
                 if self.take_profit_pct:
                     tp_price = avg_entry_price * (1 + self.take_profit_pct)
-                    if high_price > tp_price: # Triggered
-                        tp_hit = True
-            
-            # Executing SL/TP
-            # If both hit in same candle, simpler to assume SL hit first for conservative backtest, or just exit.
-            # We exit at CLOSE price as per requirements.
-            if sl_hit or tp_hit:
-                # Sell everything
-                # Determine exit price based on what hit
-                # Priority: SL hit? Exit at Stop Price (or Open if gapped down)
-                # TP hit? Exit at Take Profit Price (or Open if gapped up)
-                # If both hit? Ambiguous. Assume SL hit first (conservative) => Stop Price.
+                    if high_price > tp_price:
+                        exit_candidates.append(('tp', 0, tp_price))
                 
-                raw_exit_price = close_price # Default fall through
+                if not exit_candidates:
+                    # Hold
+                    i += 1
+                    continue
+                
+                # Sort exits (priority: SL > TP > Signal usually, or Intra-bar assumption)
+                # ... Previous Logic ...
+                # Priority: SL hit? 
+                
+                sl_hit = any(x[0] == 'sl' for x in exit_candidates)
+                tp_hit = any(x[0] == 'tp' for x in exit_candidates)
+                sig_hit = any(x[0] == 'signal' for x in exit_candidates)
+                
+                # Determining exit type
+                event_type = 'signal'
+                best_exit_price = 0
                 
                 if sl_hit:
-                    # Check for gap down
-                    if open_price < stop_price:
-                        raw_exit_price = open_price # Gapped down, filled at Open
-                    else:
-                        raw_exit_price = stop_price # Filled at Stop level
-                        
+                    event_type = 'sl'
+                    stop_price = avg_entry_price * (1 - self.stop_loss_pct)
+                    if open_price < stop_price: best_exit_price = open_price
+                    else: best_exit_price = stop_price
                 elif tp_hit:
-                    # Check for gap up
-                    if open_price > tp_price:
-                         raw_exit_price = open_price
-                    else:
-                         raw_exit_price = tp_price
+                    event_type = 'tp'
+                    tp_price = avg_entry_price * (1 + self.take_profit_pct)
+                    if open_price > tp_price: best_exit_price = open_price
+                    else: best_exit_price = tp_price
+                elif sig_hit:
+                    event_type = 'signal'
+                    best_exit_price = close_price
+
+                # Execute Exit
+                raw_exit_price = best_exit_price
+                exit_reason = "Signal"
+                if event_type == 'sl': exit_reason = "SL"
+                if event_type == 'tp': exit_reason = "TP"
                 
                 exit_price = raw_exit_price * (1 - self.slippage)
                 revenue = self.position * exit_price
-                cost_fee = revenue * self.fee
+                exit_commission = revenue * self.fee
+                total_commission = accumulated_commission + exit_commission
                 
-                self.cash += (revenue - cost_fee)
+                self.cash += (revenue - exit_commission)
                 
-                reason = "SL" if sl_hit else "TP"
-                if sl_hit and tp_hit: reason = "SL/TP" # Ambiguous
-                
-                pnl = (exit_price - avg_entry_price) * self.position - cost_fee
+                pnl_gross = (exit_price - avg_entry_price) * self.position
+                pnl = pnl_gross - total_commission
                 pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
-
+                
+                current_equity = self.cash
+                
                 self.trades.append({
                     'entry_time': current_trade_entry_time,
                     'exit_time': timestamp,
                     'side': 'long',
-                    'reason': reason,
+                    'reason': exit_reason,
                     'entry_price': avg_entry_price,
                     'exit_price': exit_price,
                     'size': self.position,
+                    'pnl_gross': pnl_gross,
                     'pnl': pnl,
                     'pnl_pct': pnl_pct,
-                    'commission': cost_fee
+                    'commission': total_commission,
+                    'initial_capital': entry_equity,
+                    'final_capital': current_equity
                 })
                 
                 self.position = 0.0
-                avg_entry_price = 0.0
-                current_trade_entry_time = None
+                accumulated_commission = 0.0
                 
-                # If we exited due to SL/TP, we ignore the strategy signal for THIS candle?
-                # Usually yes, we are out.
-                # However, if signal is BUY, do we re-enter? 
-                # Let's assume SL/TP forces flat for this candle.
+                self.equity_curve.append({'timestamp': timestamp, 'equity': self.cash})
                 
-            # --- Strategy Signals (if not just exited) ---
-            elif signal == 1: # BUY
-                # Calculate max buy amount
-                # Position Sizing: % of CURRENT equity (Cash + Value)? Or % of Cash?
-                # "percent_of_cash (default 20% por entrada)" -> implies % of available CASH.
-                
-                amount_to_invest = self.cash * self.position_size_pct
-                # Fee buffer? 
-                # If we invest X, we pay X.
-                # Fee is additional or included? usually additional.
-                # But if X is % of cash, we have X available.
-                
-                if amount_to_invest > 10: # Min trade size 10 USDT
-                     # Execute at Close
-                     entry_exec_price = close_price * (1 + self.slippage)
-                     
-                     # Can we afford it?
-                     cost_with_fee = amount_to_invest * (1 + self.fee)
-                     if cost_with_fee > self.cash:
-                         # Adjust to max possible
-                         amount_to_invest = self.cash / (1 + self.fee)
-                         cost_with_fee = self.cash # Float precision?
-                    
-                     quantity = amount_to_invest / entry_exec_price
-                     commission = amount_to_invest * self.fee
-                     
-                     # Update avg entry price (weighted avg if adding to position)
-                     if self.position > 0:
-                         total_val = (self.position * avg_entry_price) + (quantity * entry_exec_price)
-                         avg_entry_price = total_val / (self.position + quantity)
-                     else:
-                         avg_entry_price = entry_exec_price
-                         current_trade_entry_time = timestamp
+                i += 1
 
-                     self.cash -= (quantity * entry_exec_price + commission)
-                     self.position += quantity
-                     
-                     # Determine trade entry time if this is a new position
-                     if current_trade_entry_time is None:
-                         current_trade_entry_time = timestamp
 
-            elif signal == -1: # SELL
-                if self.position > 0:
-                    exit_price = close_price * (1 - self.slippage)
-                    revenue = self.position * exit_price
-                    commission = revenue * self.fee
-                    
-                    self.cash += (revenue - commission)
-                    
-                    pnl = (exit_price - avg_entry_price) * self.position - commission
-                    pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
-                    
-                    self.trades.append({
-                        'entry_time': current_trade_entry_time,
-                        'exit_time': timestamp,
-                        'side': 'long', # It was a long position
-                        'reason': 'Signal',
-                        'entry_price': avg_entry_price,
-                        'exit_price': exit_price,
-                        'size': self.position,
-                        'pnl': pnl,
-                        'pnl_pct': pnl_pct,
-                        'commission': commission
-                    })
-                    
-                    self.position = 0.0
-                    avg_entry_price = 0.0
-                    current_trade_entry_time = None
-
-            # --- Tracking ---
-            equity = self.cash + (self.position * close_price)
-            self.equity_curve.append({'timestamp': timestamp, 'equity': equity})
-
-        # End of loop: Force close position if exists
+        # End of loop: Force close position if exists (for Equity Curve only)
+        # Note: We do NOT append to self.trades as user requested to ignore force close
         if self.position > 0:
-            # Use last element of arrays instead of iloc
             last_price = closes[-1]
             last_ts = timestamps[-1]
+            # Mark to Market
+            equity_val = self.cash + (self.position * last_price)
+            self.equity_curve.append({'timestamp': last_ts, 'equity': equity_val})
             
-            exit_price = last_price * (1 - self.slippage)
-            revenue = self.position * exit_price
-            commission = revenue * self.fee
-            
-            self.cash += (revenue - commission)
-            
-            pnl = (exit_price - avg_entry_price) * self.position - commission
-            pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
-            
-            self.trades.append({
-                'entry_time': current_trade_entry_time,
-                'exit_time': last_ts,
-                'side': 'long',
-                'reason': 'Force Close',
-                'entry_price': avg_entry_price,
-                'exit_price': exit_price,
-                'size': self.position,
-                'pnl': pnl,
-                'pnl_pct': pnl_pct,
-                'commission': commission
-            })
-            self.position = 0.0
-            
-            self.equity_curve[-1]['equity'] = self.cash
+            if record_force_close:
+                # Force Exit Logic
+                raw_exit_price = last_price
+                exit_reason = "Force Close"
+                
+                exit_price = raw_exit_price * (1 - self.slippage) # Still apply slippage on hypothetical exit? Yes.
+                revenue = self.position * exit_price
+                exit_commission = revenue * self.fee
+                total_commission = accumulated_commission + exit_commission
+                
+                # Update cash for final theoretical state (optional, but consistent with trade record)
+                final_cash = self.cash + (revenue - exit_commission) 
+                
+                pnl_gross = (exit_price - avg_entry_price) * self.position
+                pnl = pnl_gross - total_commission
+                pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
+                
+                self.trades.append({
+                    'entry_time': current_trade_entry_time,
+                    'exit_time': last_ts,
+                    'side': 'long',
+                    'reason': exit_reason,
+                    'entry_price': avg_entry_price,
+                    'exit_price': exit_price,
+                    'size': self.position,
+                    'pnl_gross': pnl_gross,
+                    'pnl': pnl,
+                    'pnl_pct': pnl_pct,
+                    'commission': total_commission,
+                    'initial_capital': entry_equity,
+                    'final_capital': final_cash
+                })
 
-        return pd.DataFrame(self.equity_curve)
+        df_result = pd.DataFrame(self.equity_curve)
+        if not df_result.empty:
+             # Ensure timestamp is datetime
+             df_result['timestamp'] = pd.to_datetime(df_result['timestamp'])
+             df_result.set_index('timestamp', inplace=True, drop=False)
+             
+        return df_result

@@ -20,7 +20,6 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(log_file, mode='a'),
         logging.StreamHandler()
     ]
 )
@@ -33,9 +32,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../'))
 
 from src.data.incremental_loader import IncrementalLoader
 from src.engine.backtester import Backtester
-from src.strategy.sma_cross import SMACrossStrategy
-from src.strategy.rsi_reversal import RSIReversalStrategy
-from src.strategy.bb_meanrev import BBMeanReversionStrategy
+# from src.strategy.sma_cross import SMACrossStrategy
+# from src.strategy.rsi_reversal import RSIReversalStrategy
+# from src.strategy.bb_meanrev import BBMeanReversionStrategy
 from app.strategies.dynamic_strategy import DynamicStrategy
 from src.report.metrics import calculate_metrics
 
@@ -57,15 +56,14 @@ from app.metrics import (
     calculate_correlation,
     evaluate_go_nogo
 )
+# New imports for context/regime
+from app.metrics.regime import calculate_regime_classification
+from app.metrics.indicators import calculate_avg_indicators
 
 # Import Job Manager
 from app.services.job_manager import JobManager
 
-STRATEGY_MAP = {
-    'sma_cross': SMACrossStrategy,
-    'rsi_reversal': RSIReversalStrategy,
-    'bb_meanrev': BBMeanReversionStrategy
-}
+
 
 class BacktestService:
     def __init__(self):
@@ -81,13 +79,11 @@ class BacktestService:
                 return DynamicStrategy(merged_config)
             return DynamicStrategy(name_or_config)
             
-        strategy_class = STRATEGY_MAP.get(name_or_config)
-        if not strategy_class:
-            raise ValueError(f"Unknown strategy: {name_or_config}")
-        
+        # String name -> Use GenericStrategy directly
+        from src.strategy.generic import GenericStrategy
         if params:
-            return strategy_class(**params)
-        return strategy_class()
+            return GenericStrategy(name_or_config, **params)
+        return GenericStrategy(name_or_config)
     
     def run_backtest(self, config: dict, progress_callback=None, job_id: str = None, resume: bool = False) -> dict:
         """
@@ -132,8 +128,15 @@ class BacktestService:
                 pct = (current_step_count / total_steps) * 100 if total_steps > 0 else 0
                 progress_callback(f"Downloading data for {symbol} ({timeframe})...", pct)
                 
+            # Define data loader callback
+            def loader_callback(data):
+                if progress_callback:
+                    msg = f"Downloading {data['symbol']} {data['timeframe']}: {data['downloaded_candles']} candles ({data['current_date']})"
+                    # Keep current overall percentage
+                    progress_callback(msg, pct)
+
             try:
-                df = self.loader.fetch_data(symbol, timeframe, since, until)
+                df = self.loader.fetch_data(symbol, timeframe, since, until, progress_callback=loader_callback)
             except Exception as e:
                 print(f"Error fetching data for {timeframe}: {e}")
                 current_step_count += len(strategies)
@@ -142,18 +145,32 @@ class BacktestService:
                     progress_callback(f"Error loading {timeframe}. Skipping...", pct)
                 continue
             
+            
             if df is None or df.empty:
                 current_step_count += len(strategies)
                 continue
-            
+                
+            # SAFETY: Ensure index is datetime (handle ms timestamps from Parquet/CCXT)
+            if not isinstance(df.index, pd.DatetimeIndex):
+                if 'timestamp' in df.columns:
+                    df = df.set_index('timestamp')
+                
+                # Check numeric again after set_index
+                if pd.api.types.is_numeric_dtype(df.index):
+                    df.index = pd.to_datetime(df.index, unit='ms')
+                else:
+                    df.index = pd.to_datetime(df.index)
+
             # Limit check
-            if len(df) > 20000:
-                print(f"Warning: Dataset too large: {len(df)} candles for {timeframe}. Truncating.")
-                df = df.tail(20000)
+            # Performance Update: Removed artificial 20k limit for backtesting (now optimized).
+            # if len(df) > 20000: ...
             
             # Keep first valid candles for frontend visualization context
+            # NOTE: We truncate this for the Frontend to avoid crashing user browser with 1M points.
             if not first_valid_candles:
-                 temp_df = df.reset_index()
+                 # Take last 2000 candles for visualization
+                 viz_df = df.tail(2000).copy()
+                 temp_df = viz_df.reset_index()
                  # Ensure timestamp format for JSON
                  if 'timestamp_utc' not in temp_df.columns:
                      if 'timestamp' in temp_df.columns:
@@ -172,7 +189,9 @@ class BacktestService:
                          c['timestamp_utc'] = c['timestamp_utc'].isoformat()
                  first_valid_candles = json_candles
                  
-                 # Calculate benchmark on first valid data data
+                 # Calculate benchmark on first valid data data (using full df or viz df?)
+                 # Benchmark usually "Buy and Hold" for the period. 
+                 # Let's benchmark full period to be fair.
                  benchmark_result = self._calculate_benchmark(df, config.get('cash', 10000))
 
             # Run each strategy
@@ -208,26 +227,27 @@ class BacktestService:
                         initial_capital=config.get('cash', 10000),
                         fee=config.get('fee', 0.001),
                         slippage=config.get('slippage', 0.0005),
-                        position_size_pct=0.2,
+                        position_size_pct=config.get('position_size_pct', 0.99), # Default to 99% (All-in)
                         stop_loss_pct=config.get('stop_pct'),
                         take_profit_pct=config.get('take_pct')
                     )
                     
-                    equity_curve = backtester.run(df, strategy)
+                    equity_curve = backtester.run(df, strategy, record_force_close=True)
                     
-                    metrics = calculate_metrics(equity_curve, backtester.trades, config.get('cash', 10000))
-                    
-                    # Calculate enhanced metrics (CAGR, Sortino, Calmar, etc.)
-                    try:
-                        metrics = self._calculate_enhanced_metrics(
-                            equity_curve=equity_curve,
-                            trades=backtester.trades,
-                            df=df,
-                            initial_capital=config.get('cash', 10000),
-                            existing_metrics=metrics
-                        )
-                    except Exception as e:
-                        print(f"Warning: Could not calculate enhanced metrics: {e}")
+                    if equity_curve is not None and not equity_curve.empty:
+                        metrics = calculate_metrics(equity_curve, backtester.trades, config.get('cash', 10000))
+                        
+                        # Calculate enhanced metrics (CAGR, Sortino, Calmar, etc.)
+                        try:
+                            metrics = self._calculate_enhanced_metrics(
+                                equity_curve=equity_curve['equity'], # Pass SERIES
+                                trades=backtester.trades,
+                                df=df,
+                                initial_capital=config.get('cash', 10000),
+                                existing_metrics=metrics
+                            )
+                        except Exception as e:
+                            print(f"Warning: Could not calculate enhanced metrics: {e}")
                     
                     # Drawdown series
                     running_max = equity_curve['equity'].cummax()
@@ -590,10 +610,16 @@ class BacktestService:
         opt_results = all_results_data['results']
         opt_results.sort(key=get_pnl, reverse=True)
         
+        print(f"🔍 DEBUG: opt_results length: {len(opt_results)}")
+        print(f"🔍 DEBUG: About to check if opt_results (bool: {bool(opt_results)})")
+        
         # 6. Re-run Best Result (to get full rich metrics/equity curve for the UI)
         best_result = None
         if opt_results:
             best_scout = opt_results[0]
+            
+            print(f"🔍 DEBUG: best_scout keys: {best_scout.keys()}")
+            print(f"🔍 DEBUG: 'error' in best_scout: {'error' in best_scout}")
             
             # Safety check: if the best result is actually an error, don't try to re-run
             if 'error' in best_scout:
@@ -629,9 +655,19 @@ class BacktestService:
                     if equity_curve is not None and not equity_curve.empty:
                         full_metrics = calculate_metrics(equity_curve, backtester.trades, config.get('cash', 10000))
                         # Add enhanced
-                        full_metrics = self._calculate_enhanced_metrics(
-                            equity_curve['equity'], backtester.trades, df_best, config.get('cash', 10000), full_metrics
-                        )
+                        print(f"🔍 DEBUG: About to call _calculate_enhanced_metrics with {len(backtester.trades)} trades")
+                        # Call _calculate_enhanced_metrics for the best result
+                        try:
+                            full_metrics = self._calculate_enhanced_metrics(
+                                equity_curve['equity'], backtester.trades, df_best, config.get('cash', 10000), full_metrics
+                            )
+                            log_debug(f"🔍 DEBUG: Best Result Metrics: {full_metrics}")
+                            log_debug(f"🔍 DEBUG: Profit Factor: {full_metrics.get('profit_factor')}")
+                            log_debug(f"🔍 DEBUG: _calculate_enhanced_metrics completed. regime_performance: {full_metrics.get('regime_performance', 'MISSING')}")
+                        except Exception as e:
+                            print(f"❌ ERROR in _calculate_enhanced_metrics: {e}")
+                            import traceback
+                            traceback.print_exc()
                     
                         best_result = {
                             'strategy': base_name,
@@ -716,10 +752,22 @@ class BacktestService:
     
     def _sanitize(self, obj):
         import math
+        import numpy as np
+        
         if isinstance(obj, float):
             if math.isnan(obj) or math.isinf(obj):
                 return None
             return obj
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            if np.isnan(obj) or np.isinf(obj):
+                return None
+            return float(obj)
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, (np.datetime64, pd.Timestamp)):
+            return str(obj)
         if isinstance(obj, dict):
             return {k: self._sanitize(v) for k, v in obj.items()}
         if isinstance(obj, list):
@@ -731,23 +779,38 @@ class BacktestService:
         markers = []
         for trade in trades:
             if 'entry_time' in trade and trade['entry_time']:
-                markers.append({
-                    'time': trade['entry_time'] if isinstance(trade['entry_time'], (int, float)) else trade['entry_time'].timestamp(),
-                    'position': 'belowBar',
-                    'color': '#2196F3',
-                    'shape': 'arrowUp',
-                    'text': 'BUY'
-                })
+                # Ensure valid timestamp for entry
+                try:
+                    ts = trade['entry_time']
+                    if not isinstance(ts, (int, float)):
+                        ts = pd.to_datetime(ts).timestamp()
+                    
+                    markers.append({
+                        'time': ts,
+                        'position': 'belowBar',
+                        'color': '#2196F3',
+                        'shape': 'arrowUp',
+                        'text': 'BUY'
+                    })
+                except Exception:
+                    pass
             
             if 'exit_time' in trade and trade['exit_time']:
-                is_win = trade.get('pnl', 0) > 0
-                markers.append({
-                    'time': trade['exit_time'] if isinstance(trade['exit_time'], (int, float)) else trade['exit_time'].timestamp(),
-                    'position': 'aboveBar',
-                    'color': '#e91e63' if not is_win else '#e91e63',
-                    'shape': 'arrowDown',
-                    'text': 'SELL'
-                })
+                try:
+                    ts = trade['exit_time']
+                    if not isinstance(ts, (int, float)):
+                        ts = pd.to_datetime(ts).timestamp()
+                        
+                    is_win = trade.get('pnl', 0) > 0
+                    markers.append({
+                        'time': ts,
+                        'position': 'aboveBar',
+                        'color': '#e91e63' if not is_win else '#00E676', # Green for win, Pink for loss
+                        'shape': 'arrowDown',
+                        'text': 'SELL'
+                    })
+                except Exception:
+                    pass
         return markers
     
     def _calculate_benchmark(self, df, initial_capital: float) -> dict:
@@ -885,6 +948,95 @@ class BacktestService:
                 enhanced['benchmark'] = None
                 enhanced['alpha'] = None
             
+            # === Market Context (Avg ATR/ADX) & Regime Analysis ===
+            try:
+                # 1. Ensure Indicators exist (if simple strategy didn't calculate them)
+                # Need pandas_ta or manual calc?
+                # We can try using pandas_ta if available on the DF, or just rely on what is there.
+                # If the strategy uses them, they are in df (maybe).
+                # Actually, DynamicStrategy *returns* signals, but Backtester doesn't modify DF with indicators unless strategy did.
+                # The 'df' passed here is the original OHLCV (mostly).
+                # If we want context, we might need to calc them here for the reporting.
+                import pandas_ta as ta
+                
+                # We work on a copy to not affect other things
+                context_df = df.copy()
+                
+                # Check/Calc ATR (14)
+                if not any(c.startswith('ATR') for c in context_df.columns):
+                    context_df.ta.atr(length=14, append=True)
+                
+                # Check/Calc ADX (14)
+                if not any(c.startswith('ADX') for c in context_df.columns):
+                    context_df.ta.adx(length=14, append=True)
+                    
+                # Check/Calc SMA (200) for Regime
+                if 'SMA_200' not in context_df.columns:
+                     context_df.ta.sma(length=200, append=True)
+                
+                # DEBUG: Print columns to verify SMA_200 existence
+                print(f"DEBUG: Context DF Columns after TA: {context_df.columns.tolist()}")
+                
+                # 2. Avg Indicators
+                avg_inds = calculate_avg_indicators(context_df)
+                enhanced.update(avg_inds)
+                
+                # 3. Regime Classification
+                regime_df = calculate_regime_classification(context_df, sma_period=200)
+                # DEBUG: Check regime distribution
+                print(f"DEBUG: Regime counts: {regime_df['regime'].value_counts().to_dict()}")
+                
+                # 4. Segment Trades by Regime
+                # We need to map trade entry_time to the regime at that time.
+                # Trade dict has 'entry_time' (timestamp or str).
+                if trades and not regime_df.empty:
+                    regime_stats = {}
+                    
+                    # Ensure index is datetime
+                    if not isinstance(regime_df.index, pd.DatetimeIndex):
+                         regime_df.index = pd.to_datetime(regime_df.index)
+                    
+                    for trade in trades:
+                        entry_time = trade.get('entry_time')
+                        if entry_time:
+                            try:
+                                et = pd.to_datetime(entry_time)
+                                # Find nearest regime (asof)
+                                idx = regime_df.index.asof(et)
+                                if pd.notna(idx):
+                                    r = regime_df.loc[idx, 'regime']
+                                    
+                                    if r not in regime_stats:
+                                        regime_stats[r] = {'count': 0, 'wins': 0, 'losses': 0, 'pnl': 0.0}
+                                    
+                                    regime_stats[r]['count'] += 1
+                                    pnl = trade.get('pnl', 0)
+                                    regime_stats[r]['pnl'] += pnl
+                                    if pnl > 0:
+                                        regime_stats[r]['wins'] += 1
+                                    elif pnl < 0:
+                                        regime_stats[r]['losses'] += 1
+                            except:
+                                pass
+                                
+                    # Calc rates
+                    for r, stats in regime_stats.items():
+                        total = stats['count']
+                        if total > 0:
+                            stats['win_rate'] = (stats['wins'] / total) * 100
+                            
+                    enhanced['regime_performance'] = regime_stats
+                    # DEBUG: Print final stats
+                    enhanced['regime_performance'] = regime_stats
+                    # DEBUG: Print final stats
+                    # print(f"DEBUG: Final Regime Stats: {regime_stats}")
+                    
+            except Exception as e:
+                print(f"Error calculating context/regime metrics: {e}")
+                enhanced['regime_performance'] = {}
+                enhanced['avg_atr'] = 0
+                enhanced['avg_adx'] = 0
+
             # === GO/NO-GO Criteria ===
             try:
                 criteria_result = evaluate_go_nogo(enhanced)

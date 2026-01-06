@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card } from '../ui'
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, Shield, Award } from 'lucide-react'
 
 interface OptimizationItem {
     params: Record<string, any>
@@ -11,6 +11,12 @@ interface OptimizationItem {
         total_trades: number
         max_drawdown: number
         profit_factor: number
+        // Advanced
+        expectancy?: number
+        max_consecutive_losses?: number
+        avg_atr?: number
+        avg_adx?: number
+        regime_performance?: Record<string, any>
     }
 }
 
@@ -31,28 +37,6 @@ function getAllRelevantParams(results: OptimizationItem[]) {
     return Array.from(keys).sort()
 }
 
-// Helper to identify which params actually vary (for chart axis selector)
-function getVaryingParams(results: OptimizationItem[]) {
-    const paramValues: Record<string, Set<any>> = {}
-
-    // Initialize sets
-    if (results.length > 0) {
-        Object.keys(results[0].params).forEach(k => {
-            paramValues[k] = new Set()
-        })
-    }
-
-    // Collect all values
-    results.forEach(r => {
-        Object.entries(r.params).forEach(([k, v]) => {
-            if (!paramValues[k]) paramValues[k] = new Set()
-            paramValues[k].add(JSON.stringify(v)) // Stringify to handle objects/arrays uniqueness
-        })
-    })
-
-    // Return keys with > 1 unique value
-    return Object.keys(paramValues).filter(k => paramValues[k].size > 1)
-}
 
 function formatParamKey(key: string): string {
     return key.replace(/_/g, ' ').toUpperCase()
@@ -90,70 +74,166 @@ export function OptimizationResults({ results, bestResult, timeframe }: Optimiza
         setCurrentPage(1)
     }, [itemsPerPage, results])
 
-    // DEBUG LOGS
-    console.log('=== OptimizationResults Debug ===')
-    console.log('results.length:', results.length)
-    console.log('sortedResults.length:', sortedResults.length)
-    console.log('displayedResults.length:', displayedResults.length)
-    console.log('allParams:', allParams)
-    console.log('bestResult.params:', bestResult?.params)
+    // --- Helper for Regime Display ---
+    const renderRegimeInfo = (regimePerf: Record<string, any> | undefined) => {
+        if (!regimePerf) return null;
+        // Limit to Bull/Bear for simplicity
+        const regimes = ['Bull', 'Bear'];
+
+        // Check if we have any data to show
+        const hasData = regimes.some(r => regimePerf[r] && regimePerf[r].count > 0);
+
+        if (!hasData) return (
+            <div className="mt-3 pt-3 border-t border-white/5">
+                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-2 text-center">Win Rate por Cenário</p>
+                <div className="text-xs text-gray-500 italic text-center py-2">Sem dados suficientes</div>
+            </div>
+        );
+
+        return (
+            <div className="mt-3 pt-3 border-t border-white/5">
+                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold mb-2">Win Rate por Cenário</p>
+                <div className="grid grid-cols-2 gap-2">
+                    {regimes.map(r => {
+                        const stats = regimePerf[r];
+                        if (!stats || !stats.count) {
+                            return (
+                                <div key={r} className="bg-white/5 rounded-lg p-2 flex flex-col items-center justify-center border border-white/5 opacity-50">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider mb-0.5 text-gray-500">
+                                        {r === 'Bull' ? 'Alta' : 'Baixa'}
+                                    </span>
+                                    <span className="text-xs text-gray-600">-</span>
+                                </div>
+                            );
+                        }
+
+                        const wr = stats.win_rate || 0;
+                        const count = stats.count || 0;
+
+                        return (
+                            <div key={r} className="bg-white/5 rounded-lg p-2 flex flex-col items-center justify-center border border-white/5">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${r === 'Bull' ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                                    {r === 'Bull' ? 'Alta' : 'Baixa'}
+                                </span>
+                                <span className={`text-lg font-mono font-bold leading-none ${wr >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {wr.toFixed(0)}%
+                                </span>
+                                <span className="text-[9px] text-[var(--text-tertiary)] mt-1">
+                                    {count} trades
+                                </span>
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+        )
+    }
+
 
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Key Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-6">
-                    <p className="text-sm text-[var(--text-secondary)] font-medium mb-1">Melhor Retorno</p>
-                    <div className="mt-2">
-                        <span className="text-2xl font-bold text-[var(--accent-primary)]">
+                <Card className="p-6 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <TrendingUp className="w-16 h-16 text-[var(--accent-primary)]" />
+                    </div>
+                    <p className="text-sm text-[var(--text-secondary)] font-medium mb-1">Retorno Total</p>
+                    <div className="mt-2 relative z-10">
+                        <span className="text-3xl font-bold text-[var(--accent-primary)] tracking-tight block">
                             {bestResult?.metrics?.total_pnl_pct != null
                                 ? `${(bestResult.metrics.total_pnl_pct * 100).toFixed(2)}%`
                                 : '0.00%'}
                         </span>
-                        <div className="flex items-center gap-1 text-sm text-[var(--text-tertiary)] mt-1">
-                            <span>PnL:</span>
-                            <span className="text-white">
+                        <div className="flex items-center gap-2 text-sm text-[var(--text-tertiary)] mt-1 font-mono">
+                            <span className="text-white bg-white/10 px-1.5 rounded text-xs py-0.5">
                                 ${bestResult?.metrics?.total_pnl != null
-                                    ? bestResult.metrics.total_pnl.toFixed(2)
+                                    ? bestResult.metrics.total_pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                                     : '0.00'}
                             </span>
-                        </div>
-                        <div className="mt-2">
-                            <TrendingUp className="w-5 h-5 text-[var(--accent-primary)]" />
+                            <span className="text-xs">Lucro Líquido</span>
                         </div>
                     </div>
                 </Card>
 
                 <Card className="p-6">
-                    <p className="text-sm text-[var(--text-secondary)] font-medium mb-1">Melhor Configuração</p>
-                    <div className="space-y-3 mt-4">
-                        {bestResult?.params ? Object.entries(bestResult.params)
-                            .filter(([_, val]) => val !== null && val !== undefined && val !== '')
-                            .map(([key, val]) => (
-                                <div key={key} className="flex justify-between items-center text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                                    <span className="text-[var(--text-tertiary)] text-xs font-semibold tracking-wider">{formatParamKey(key)}</span>
-                                    <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded text-xs">
-                                        {formatParamValue(key, val)}
-                                    </span>
-                                </div>
-                            )) : <p className="text-gray-500 text-sm">Nenhum resultado</p>}
+                    <p className="text-sm text-[var(--text-secondary)] font-medium mb-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-orange-400" />
+                        Análise de Risco
+                    </p>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center group w-full">
+                            <span className="text-xs text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors pr-2">Expectativa / Trade</span>
+                            <span className={`font-mono font-bold text-sm whitespace-nowrap ${bestResult?.metrics?.expectancy && bestResult.metrics.expectancy > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                ${bestResult?.metrics?.expectancy?.toFixed(2) ?? 'N/A'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center group w-full">
+                            <span className="text-xs text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors pr-2">Seq. Perdas (Max)</span>
+                            <span className="font-mono text-white text-sm bg-red-900/20 px-2 py-0.5 rounded text-red-200">
+                                {bestResult?.metrics?.max_consecutive_losses ?? 0}
+                            </span>
+                        </div>
+                        <div className="w-full h-px bg-white/5 my-2"></div>
+                        <div className="flex justify-between items-center group w-full">
+                            <div className="flex flex-col">
+                                <span className="text-xs text-[var(--text-tertiary)] pr-2">Volatilidade (ATR)</span>
+                            </div>
+                            <span className="font-mono text-[var(--accent-secondary)] text-sm whitespace-nowrap">
+                                {bestResult?.metrics?.avg_atr?.toFixed(2) ?? 'N/A'}
+                            </span>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="p-6 flex flex-col">
+                    <p className="text-sm text-[var(--text-secondary)] font-medium mb-1 flex items-center gap-2">
+                        <Award className="w-4 h-4 text-purple-400" />
+                        Performance Contextual
+                    </p>
+                    {/* Regime Breakdown */}
+                    <div className="flex-1">
+                        {bestResult?.metrics?.regime_performance ? (
+                            renderRegimeInfo(bestResult.metrics.regime_performance)
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-gray-600 italic mt-4">
+                                Sem dados de regime
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex justify-between items-center pt-3 mt-auto border-t border-white/5">
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-bold pr-2">Força Tendência (ADX)</span>
+                        <span className="text-sm font-bold text-yellow-400 font-mono whitespace-nowrap">
+                            {bestResult?.metrics?.avg_adx?.toFixed(1) ?? 'N/A'}
+                        </span>
                     </div>
                 </Card>
 
                 <Card className="p-6">
-                    <p className="text-sm text-[var(--text-secondary)] font-medium mb-1">Trades & Win Rate</p>
-                    <div className="mt-4 space-y-3">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-2xl font-bold text-white">
-                                {bestResult?.metrics?.win_rate != null ? bestResult.metrics.win_rate.toFixed(1) : '0.0'}%
-                            </span>
-                            <span className="text-xs text-[var(--text-tertiary)] uppercase tracking-wide">Taxa de Acerto</span>
+                    <p className="text-sm text-[var(--text-secondary)] font-medium mb-1">Estatísticas Gerais</p>
+                    <div className="mt-4 space-y-4">
+                        <div className="flex items-end justify-between">
+                            <div>
+                                <div className="text-xs text-[var(--text-tertiary)] uppercase tracking-wide mb-1">Taxa de Acerto</div>
+                                <span className={`text-2xl font-bold ${bestResult?.metrics?.win_rate && bestResult.metrics.win_rate >= 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                    {bestResult?.metrics?.win_rate != null ? bestResult.metrics.win_rate.toFixed(1) : '0.0'}%
+                                </span>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs text-[var(--text-tertiary)] uppercase tracking-wide mb-1">Trades</div>
+                                <span className="text-xl font-bold text-white">
+                                    {bestResult?.metrics?.total_trades || 0}
+                                </span>
+                            </div>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-xl font-bold text-white">
-                                {bestResult?.metrics?.total_trades || 0}
-                            </span>
-                            <span className="text-xs text-[var(--text-tertiary)] uppercase tracking-wide">Trades Totais</span>
+
+                        <div className="pt-3 border-t border-white/5">
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-[var(--text-tertiary)]">Profit Factor</span>
+                                <span className="font-mono text-white">
+                                    {bestResult?.metrics?.profit_factor?.toFixed(2) ?? 'N/A'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </Card>
@@ -165,7 +245,7 @@ export function OptimizationResults({ results, bestResult, timeframe }: Optimiza
                 <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/5">
                     <h3 className="text-lg font-bold text-red-500 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-blue-400" />
-                        Resultados da Otimização (UPDATED V2)
+                        Resultados da Otimização (INLINE BORDERS)
                     </h3>
 
                     {/* Pagination Controls Header */}
@@ -191,20 +271,21 @@ export function OptimizationResults({ results, bestResult, timeframe }: Optimiza
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full whitespace-nowrap">
+                    <table style={{ borderCollapse: 'collapse', border: '2px solid #4b5563', width: '100%' }}>
                         <thead>
-                            <tr className="bg-black/20 text-left">
-                                <th className="py-3 px-6 text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider border-b border-white/5">Rank</th>
-                                <th className="py-3 px-6 text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider border-b border-white/5">Timeframe</th>
-                                <th className="py-3 px-6 text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider border-b border-white/5 text-right">Retorno</th>
-                                <th className="py-3 px-6 text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider border-b border-white/5 text-right">Lucro ($)</th>
-                                {allParams.map(p => (
-                                    <th key={p} className="py-3 px-6 text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider border-b border-white/5 text-center">{formatParamKey(p)}</th>
+                            <tr className="bg-black/50 text-left">
+                                <th style={{ border: '1px solid #4b5563', padding: '12px 24px' }} className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Rank</th>
+                                <th style={{ border: '1px solid #4b5563', padding: '12px 24px' }} className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Timeframe</th>
+                                <th style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'right' }} className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Retorno</th>
+                                <th style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'right' }} className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Lucro ($)</th>
+                                <th style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'right' }} className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Trades</th>
+                                {allParams.map((p) => (
+                                    <th key={p} style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'center' }} className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider">{formatParamKey(p)}</th>
                                 ))}
-                                <th className="py-3 px-6 text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider border-b border-white/5 text-right">Win Rate</th>
+                                <th style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'right' }} className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Win Rate</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody>
                             {displayedResults.map((r, i) => (
                                 <tr
                                     key={startIndex + i}
@@ -213,26 +294,29 @@ export function OptimizationResults({ results, bestResult, timeframe }: Optimiza
                                         : 'bg-gray-800/40 hover:bg-gray-700/50'
                                         }`}
                                 >
-                                    <td className="py-3 px-6 text-[var(--text-secondary)] font-mono text-xs">
+                                    <td style={{ border: '1px solid #4b5563', padding: '12px 24px' }} className="text-[var(--text-secondary)] font-mono text-xs">
                                         <span className={`inline-block w-6 text-right ${(startIndex + i) < 3 ? 'text-yellow-400 font-bold' : ''}`}>
                                             #{(startIndex + i + 1)}
                                         </span>
                                     </td>
-                                    <td className="py-3 px-6 font-mono text-blue-300 text-xs font-bold">{r.params.timeframe || timeframe || 'N/A'}</td>
-                                    <td className={`py-3 px-6 font-mono font-bold text-right text-sm ${r.metrics.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    <td style={{ border: '1px solid #4b5563', padding: '12px 24px' }} className="font-mono text-blue-300 text-xs font-bold">{r.params.timeframe || timeframe || 'N/A'}</td>
+                                    <td style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'right' }} className={`font-mono font-bold text-sm ${r.metrics.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                         {(r.metrics.total_pnl_pct * 100).toFixed(2)}%
                                     </td>
-                                    <td className={`py-3 px-6 font-mono text-right text-sm ${r.metrics.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    <td style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'right' }} className={`font-mono text-sm ${r.metrics.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                         ${r.metrics.total_pnl.toFixed(2)}
                                     </td>
-                                    {allParams.map(p => (
-                                        <td key={p} className="py-3 px-6 font-mono text-gray-400 text-center text-xs group-hover:text-white transition-colors">
+                                    <td style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'right' }} className="font-mono text-white text-sm">
+                                        {r.metrics.total_trades}
+                                    </td>
+                                    {allParams.map((p) => (
+                                        <td key={p} style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'center' }} className="font-mono text-gray-400 text-xs group-hover:text-white transition-colors">
                                             <span className="bg-white/5 px-2 py-0.5 rounded">
                                                 {formatParamValue(p, r.params[p])}
                                             </span>
                                         </td>
                                     ))}
-                                    <td className="py-3 px-6 font-mono text-white text-right text-xs">{(r.metrics.win_rate * 100).toFixed(1)}%</td>
+                                    <td style={{ border: '1px solid #4b5563', padding: '12px 24px', textAlign: 'right' }} className="font-mono text-white text-xs">{(r.metrics.win_rate * 100).toFixed(1)}%</td>
                                 </tr>
                             ))}
                         </tbody>
