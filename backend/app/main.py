@@ -1,9 +1,11 @@
 # file: backend/app/main.py
-# force reload 13
+# force reload 14
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.api import router
+from app.routes.sequential_optimization import router as sequential_router
+from app.routes.parameter_optimization import router as parameter_router
 
 settings = get_settings()
 
@@ -23,6 +25,8 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(router)
+app.include_router(sequential_router)  # Sequential optimization routes (WebSocket-based, legacy)
+app.include_router(parameter_router)  # Parameter optimization routes (simplified)
 
 @app.get("/")
 async def root():
