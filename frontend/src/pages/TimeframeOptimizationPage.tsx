@@ -31,8 +31,8 @@ export const TimeframeOptimizationPage: React.FC = () => {
     const [bestTimeframe, setBestTimeframe] = useState<string | null>(null);
     const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null);
     const [expandedTimeframe, setExpandedTimeframe] = useState<string | null>(null);
-    const [fee, setFee] = useState<number>(0); // 0% - Disable for TradingView alignment
-    const [slippage, setSlippage] = useState<number>(0); // 0% - Disable for TradingView alignment
+    const [fee, setFee] = useState(0.00075); // Default 0.075% (enabled)
+    const [slippage, setSlippage] = useState(0); // Default 0% (disabled) for TradingView alignment
 
     // Fetch indicators
     const { data: indicators, isLoading: loadingIndicators } = useQuery({

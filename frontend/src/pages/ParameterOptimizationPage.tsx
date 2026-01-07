@@ -58,7 +58,7 @@ export const ParameterOptimizationPage: React.FC = () => {
     const [parameterRanges, setParameterRanges] = useState<Record<string, ParameterRange>>({});
     const [showParameters, setShowParameters] = useState(false);
     const [selectedIndicator, setSelectedIndicator] = useState<IndicatorMetadata | null>(null);
-    const [fee, setFee] = useState(0); // Default 0% (disabled)
+    const [fee, setFee] = useState(0.00075); // Default 0.075% (enabled)
     const [slippage, setSlippage] = useState(0); // Default 0% (disabled)
 
     // Fetch all indicators metadata
