@@ -34,6 +34,8 @@ class TimeframeOptimizationRequest(BaseModel):
     """Request model for timeframe optimization only"""
     symbol: str
     strategy: str
+    fee: Optional[float] = 0.00075  # Default 0.075% (Binance standard)
+    slippage: Optional[float] = 0.0005  # Default 0.05%
 
 
 class TimeframeOptimizationResponse(BaseModel):
@@ -88,13 +90,19 @@ async def optimize_timeframe(request: TimeframeOptimizationRequest):
     }
     
     try:
+        # Prepare config params
+        config_params = {
+            'fee': request.fee,
+            'slippage': request.slippage
+        }
+        
         # Run timeframe stage
         result = await optimizer.run_stage(
             job_id=job_id,
             stage_config=stage_config,
             symbol=request.symbol,
             strategy=request.strategy,
-            locked_params={},
+            locked_params=config_params,
             start_from_test=0
         )
         

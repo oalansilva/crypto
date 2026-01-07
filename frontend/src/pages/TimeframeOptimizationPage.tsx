@@ -31,7 +31,8 @@ export const TimeframeOptimizationPage: React.FC = () => {
     const [bestTimeframe, setBestTimeframe] = useState<string | null>(null);
     const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null);
     const [expandedTimeframe, setExpandedTimeframe] = useState<string | null>(null);
-    const [jobId, setJobId] = useState<string | null>(null);
+    const [fee, setFee] = useState<number>(0); // 0% - Disable for TradingView alignment
+    const [slippage, setSlippage] = useState<number>(0); // 0% - Disable for TradingView alignment
 
     // Fetch indicators
     const { data: indicators, isLoading: loadingIndicators } = useQuery({
@@ -87,6 +88,8 @@ export const TimeframeOptimizationPage: React.FC = () => {
                 body: JSON.stringify({
                     symbol,
                     strategy: selectedIndicator,
+                    fee,
+                    slippage,
                     timeframes: TIMEFRAMES,
                     parameters: defaultParams
                 })
@@ -187,6 +190,34 @@ export const TimeframeOptimizationPage: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Advanced Options */}
+                    <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#0B0E14', border: '1px solid #2A2F3A' }}>
+                        <h3 className="text-white font-medium mb-3">Advanced Options</h3>
+                        <div className="flex gap-6">
+                            <label className="flex items-center gap-2 text-gray-300 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={fee > 0}
+                                    onChange={(e) => setFee(e.target.checked ? 0.00075 : 0)}
+                                    className="w-4 h-4 rounded border-gray-600 text-teal-500 focus:ring-teal-500"
+                                />
+                                <span>Enable Trading Fees (0.075% - Binance)</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-gray-300 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={slippage > 0}
+                                    onChange={(e) => setSlippage(e.target.checked ? 0.0005 : 0)}
+                                    className="w-4 h-4 rounded border-gray-600 text-teal-500 focus:ring-teal-500"
+                                />
+                                <span>Enable Slippage (0.05%)</span>
+                            </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                            💡 Disable both for TradingView alignment (default)
+                        </p>
+                    </div>
+
                     {/* Start Button */}
                     <button
                         onClick={handleStartOptimization}
@@ -251,7 +282,7 @@ export const TimeframeOptimizationPage: React.FC = () => {
                                                         {result.timeframe} {isSelected && !isBest && <span className="text-xs text-gray-500 ml-2">(Selected)</span>}
                                                     </td>
                                                     <td className="py-3 px-4 text-right font-mono" style={{ color: result.total_return >= 0 ? '#10B981' : '#EF4444' }}>
-                                                        {result.total_return >= 0 ? '+' : ''}{result.total_return.toFixed(2)}%
+                                                        {result.total_return >= 0 ? '+' : ''}{(result.total_return * 100).toFixed(2)}%
                                                     </td>
                                                     <td className="py-3 px-4 text-right font-mono text-gray-300">
                                                         {result.sharpe_ratio.toFixed(2)}
@@ -276,11 +307,12 @@ export const TimeframeOptimizationPage: React.FC = () => {
                                                                             <th className="p-2 text-right">Entry Price</th>
                                                                             <th className="p-2 text-right">Exit Price</th>
                                                                             <th className="p-2 text-right">PnL</th>
+                                                                            <th className="p-2 text-left">Reason</th>
                                                                             <th className="p-2 text-right">Exit Time</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        {result.trades?.map((trade: any, idx: number) => (
+                                                                        {result.trades?.sort((a: any, b: any) => new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime()).map((trade: any, idx: number) => (
                                                                             <tr key={idx} className="border-b border-[#2A2F3A] hover:bg-[#1A202C]/50">
                                                                                 <td className="p-2 font-mono text-gray-300">{trade.entry_time?.substring(0, 16).replace('T', ' ')}</td>
                                                                                 <td className={`p-2 font-bold ${trade.side === 'buy' || trade.side === 'long' ? 'text-green-500' : 'text-red-500'}`}>
@@ -289,14 +321,26 @@ export const TimeframeOptimizationPage: React.FC = () => {
                                                                                 <td className="p-2 text-right font-mono text-gray-300">{trade.entry_price?.toFixed(2)}</td>
                                                                                 <td className="p-2 text-right font-mono text-gray-300">{trade.exit_price?.toFixed(2)}</td>
                                                                                 <td className={`p-2 text-right font-mono font-bold ${(trade.pnl || trade.profit) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                                                    {(trade.pnl || trade.profit)?.toFixed(2)}%
+                                                                                    {trade.pnl_pct ?
+                                                                                        `${(trade.pnl_pct * 100).toFixed(2)}%` :
+                                                                                        `$${(trade.pnl || trade.profit)?.toFixed(2)}`
+                                                                                    }
+                                                                                </td>
+                                                                                <td className="p-2 font-mono text-gray-400">
+                                                                                    <span className={`px-2 py-1 rounded text-xs ${trade.reason === 'Signal' ? 'bg-blue-900/30 text-blue-400' :
+                                                                                        trade.reason === 'SL' ? 'bg-red-900/30 text-red-400' :
+                                                                                            trade.reason === 'TP' ? 'bg-green-900/30 text-green-400' :
+                                                                                                'bg-gray-900/30 text-gray-400'
+                                                                                        }`}>
+                                                                                        {trade.reason || 'N/A'}
+                                                                                    </span>
                                                                                 </td>
                                                                                 <td className="p-2 text-right font-mono text-gray-300">{trade.exit_time?.substring(0, 16).replace('T', ' ')}</td>
                                                                             </tr>
                                                                         ))}
                                                                         {(!result.trades || result.trades.length === 0) && (
                                                                             <tr>
-                                                                                <td colSpan={6} className="p-4 text-center text-gray-500">No trades recorded for this period.</td>
+                                                                                <td colSpan={7} className="p-4 text-center text-gray-500">No trades recorded for this period.</td>
                                                                             </tr>
                                                                         )}
                                                                     </tbody>

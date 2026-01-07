@@ -89,113 +89,167 @@ class Backtester:
             # timestamp = timestamps[i] # Accessed only if needed
             
             if self.position == 0:
-                # Flat: Fast Jump to next Buy
-                # Find first index in buy_indices >= i
-                # searchsorted returns insertion point index in buy_indices
-                next_buy_ptr = np.searchsorted(buy_indices, i)
-                
-                if next_buy_ptr >= len(buy_indices):
-                    break # No more buys
+                # Flat: Search for next BUY signal
+                if i < n_rows:
+                    # Find first index where signal == 1 AND index >= i
+                    # Note: We need a buy signal at 'k', to execute at 'k+1'
+                    next_buy_ptr = np.searchsorted(buy_indices, i)
                     
-                next_buy_idx = buy_indices[next_buy_ptr]
-                
-                # Jump!
-                i = next_buy_idx
-                
-                # Execute BUY
-                close_price = closes[i]
-                timestamp = timestamps[i]
-                
-                if self.cash <= 0:
-                    # Bankrupt
+                    if next_buy_ptr >= len(buy_indices):
+                        break # No more buys
+                        
+                    next_buy_idx = buy_indices[next_buy_ptr]
+                    
+                    # Execution happens at Open of NEXT candle
+                    execution_idx = next_buy_idx + 1
+                    
+                    if execution_idx >= n_rows:
+                        # Signal on last candle, cannot enter
+                        break
+                    
+                    # Jump to execution candle
+                    i = execution_idx
+                    
+                    # Execute BUY at Open
+                    open_price = opens[i]
+                    timestamp = timestamps[i]
+                    
+                    if self.cash <= 0:
+                        break
+                    
+                    allocated_cash = self.cash * self.position_size_pct
+                    entry_exec_price = open_price * (1 + self.slippage)
+                    
+                    quantity = allocated_cash / (entry_exec_price * (1 + self.fee))
+                    
+                    if quantity * entry_exec_price > 10: 
+                        commission = (quantity * entry_exec_price) * self.fee
+                        
+                        avg_entry_price = entry_exec_price
+                        current_trade_entry_time = timestamp
+                        accumulated_commission = commission
+                        entry_equity = self.cash 
+                        
+                        self.cash -= (quantity * entry_exec_price + commission)
+                        self.position += quantity
+                        
+                        # Record Equity at Entry
+                        # We are at 'i' (execution day). We hold position.
+                        # Equity will be recorded at the end of this iteration loop (or next?)
+                        # Strictly, if we buy at Open, we are exposed to 'i' close.
+                        # We should let the loop continue to process 'i' as holding.
+                    
+                    # Do NOT increment i here. 
+                    # We want to process candle 'i' in the 'else' block (Checking SL/TP/Close)
+                    # changing state to position > 0 will make next iteration go to 'else'
+                    # But we need to force next iteration on SAME 'i'
+                    continue 
+                else:
                     break
-                
-                allocated_cash = self.cash * self.position_size_pct
-                entry_exec_price = close_price * (1 + self.slippage)
-                
-                quantity = allocated_cash / (entry_exec_price * (1 + self.fee))
-                
-                if quantity * entry_exec_price > 10: 
-                    commission = (quantity * entry_exec_price) * self.fee
-                    
-                    avg_entry_price = entry_exec_price
-                    current_trade_entry_time = timestamp
-                    accumulated_commission = commission
-                    entry_equity = self.cash 
-                    
-                    self.cash -= (quantity * entry_exec_price + commission)
-                    self.position += quantity
-                    
-                    # Record Equity at Entry
-                    self.equity_curve.append({'timestamp': timestamp, 'equity': self.cash + (self.position * close_price)})
-                
-                # Move to next candle to start monitoring exit
-                i += 1
 
             else:
-                # Long: Step-by-step logic (safe & correct for intra-candle checks)
+                # Long: Step-by-step logic
                 timestamp = timestamps[i]
                 open_price = opens[i]
                 close_price = closes[i]
                 high_price = highs[i]
                 low_price = lows[i]
                 signal = signals[i]
+                prev_signal = signals[i-1] if i > 0 else 0
                 
                 # Check Exits
                 exit_candidates = []
                 
-                # 1. Signal Sell
-                if signal == -1:
-                    exit_candidates.append(('signal', 0, -1))
-                
-                # 2. Stop Loss
+                # 0. Pending Signal Exit (From Previous Close) - HIGHEST PRIORITY (Market Open)
+                # If we had a sell signal yesterday, we exit TODAY at Open.
+                if prev_signal == -1:
+                    # Execute Exit at OPEN
+                    exit_price = open_price * (1 - self.slippage)
+                    revenue = self.position * exit_price
+                    exit_commission = revenue * self.fee
+                    total_commission = accumulated_commission + exit_commission
+                    
+                    pnl_gross = (exit_price - avg_entry_price) * self.position
+                    pnl = pnl_gross - total_commission
+                    pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
+                    
+                    self.cash += (revenue - exit_commission)
+                    current_equity = self.cash
+                    
+                    self.trades.append({
+                        'entry_time': current_trade_entry_time,
+                        'exit_time': timestamp,
+                        'side': 'long',
+                        'reason': 'Signal',
+                        'entry_price': avg_entry_price,
+                        'exit_price': exit_price,
+                        'size': self.position,
+                        'pnl_gross': pnl_gross,
+                        'pnl': pnl,
+                        'pnl_pct': pnl_pct,
+                        'commission': total_commission,
+                        'initial_capital': entry_equity,
+                        'final_capital': current_equity
+                    })
+                    
+                    self.position = 0.0
+                    accumulated_commission = 0.0
+                    self.equity_curve.append({'timestamp': timestamp, 'equity': self.cash})
+                    
+                    # We exited at Open. We are Flat for the rest of 'i'.
+                    # Should we check for Buy Signal at 'i'?
+                    # If 'signal[i] == 1', we would buy at 'i+1'. 
+                    # So we can just continue to next iteration 'i' (as Flat).
+                    # But if we don't increment, we process 'i' again as Flat.
+                    # Correct.
+                    continue
+
+                # 1. Stop Loss (Intra-bar)
                 if self.stop_loss_pct:
                     stop_price = avg_entry_price * (1 - self.stop_loss_pct)
                     if low_price < stop_price:
                         exit_candidates.append(('sl', 0, stop_price))
 
-                # 3. Take Profit
+                # 2. Take Profit (Intra-bar)
                 if self.take_profit_pct:
                     tp_price = avg_entry_price * (1 + self.take_profit_pct)
                     if high_price > tp_price:
                         exit_candidates.append(('tp', 0, tp_price))
                 
                 if not exit_candidates:
-                    # Hold
+                    # No SL/TP hit.
+                    # Check current signal for NEXT DAY exit
+                    # If signal == -1, we DO NOTHING now. We wait for next Open (handled by Prev Signal check above)
+                    
+                    # Mark-to-Market Equity Check
+                    equity_val = self.cash + (self.position * close_price)
+                    self.equity_curve.append({'timestamp': timestamp, 'equity': equity_val})
+                    
                     i += 1
                     continue
                 
-                # Sort exits (priority: SL > TP > Signal usually, or Intra-bar assumption)
-                # ... Previous Logic ...
-                # Priority: SL hit? 
-                
+                # Handle SL/TP Execution (Intra-bar)
                 sl_hit = any(x[0] == 'sl' for x in exit_candidates)
                 tp_hit = any(x[0] == 'tp' for x in exit_candidates)
-                sig_hit = any(x[0] == 'signal' for x in exit_candidates)
                 
-                # Determining exit type
-                event_type = 'signal'
-                best_exit_price = 0
+                event_type = 'sl' if sl_hit else 'tp'
                 
+                # Determine Price
                 if sl_hit:
-                    event_type = 'sl'
                     stop_price = avg_entry_price * (1 - self.stop_loss_pct)
+                    best_exit_price = min(open_price, stop_price) # Pessimistic: Gap handling? 
+                    # Realistically: If Open < Stop, we execute at Open (Gap Down)
                     if open_price < stop_price: best_exit_price = open_price
                     else: best_exit_price = stop_price
-                elif tp_hit:
-                    event_type = 'tp'
+                else: # TP
                     tp_price = avg_entry_price * (1 + self.take_profit_pct)
+                    # If Open > TP, we execute at Open (Gap Up)
                     if open_price > tp_price: best_exit_price = open_price
                     else: best_exit_price = tp_price
-                elif sig_hit:
-                    event_type = 'signal'
-                    best_exit_price = close_price
 
                 # Execute Exit
                 raw_exit_price = best_exit_price
-                exit_reason = "Signal"
-                if event_type == 'sl': exit_reason = "SL"
-                if event_type == 'tp': exit_reason = "TP"
+                exit_reason = "SL" if sl_hit else "TP"
                 
                 exit_price = raw_exit_price * (1 - self.slippage)
                 revenue = self.position * exit_price
