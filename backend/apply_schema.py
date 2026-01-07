@@ -23,7 +23,7 @@ try:
     cursor.execute(schema_sql)
     conn.commit()
     
-    print("✅ Schema applied successfully!")
+    print(" Schema applied successfully!")
     
     # Verify tables
     cursor.execute("""
@@ -34,7 +34,7 @@ try:
     """)
     
     tables = cursor.fetchall()
-    print(f"\n✓ Found {len(tables)} tables:")
+    print(f"\n Found {len(tables)} tables:")
     for table in tables:
         print(f"  - {table[0]}")
     
@@ -42,4 +42,4 @@ try:
     conn.close()
     
 except Exception as e:
-    print(f"❌ Error: {e}")
+    print(f" Error: {e}")

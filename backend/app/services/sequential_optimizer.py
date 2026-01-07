@@ -9,6 +9,7 @@ Orchestrates sequential parameter optimization with:
 """
 
 import json
+import logging
 import os
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
@@ -170,16 +171,6 @@ class SequentialOptimizer:
         Returns:
             Tuple of (start_date, end_date) as ISO strings
         """
-    def get_full_history_dates(self, symbol: str) -> Tuple[str, str]:
-        """
-        Auto-detect full available history for a symbol.
-        
-        Args:
-            symbol: Trading symbol
-            
-        Returns:
-            Tuple of (start_date, end_date) as ISO strings
-        """
         # Fix: IncrementalLoader defaults to binance, doesn't take symbol in init
         loader = IncrementalLoader() 
         
@@ -199,6 +190,8 @@ class SequentialOptimizer:
             # Fallback
             start_date = df.index.min().isoformat()
             end_date = df.index.max().isoformat()
+        
+        logging.info(f"Full history period: {start_date} to {end_date} ({len(df)} candles)")
         
         return start_date, end_date
     
@@ -320,6 +313,8 @@ class SequentialOptimizer:
                 "mode": "run",
                 "cash": 10000
             }
+            
+            logging.info(f"Running backtest: {symbol} {test_params.get('timeframe', '?')} from {start_date[:10]} to {end_date[:10]}")
 
             # Run backtest (synchronous)
             backtest_result = self.backtest_service.run_backtest(config)

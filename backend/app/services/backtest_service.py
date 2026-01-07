@@ -610,16 +610,16 @@ class BacktestService:
         opt_results = all_results_data['results']
         opt_results.sort(key=get_pnl, reverse=True)
         
-        print(f"🔍 DEBUG: opt_results length: {len(opt_results)}")
-        print(f"🔍 DEBUG: About to check if opt_results (bool: {bool(opt_results)})")
+        print(f" DEBUG: opt_results length: {len(opt_results)}")
+        print(f" DEBUG: About to check if opt_results (bool: {bool(opt_results)})")
         
         # 6. Re-run Best Result (to get full rich metrics/equity curve for the UI)
         best_result = None
         if opt_results:
             best_scout = opt_results[0]
             
-            print(f"🔍 DEBUG: best_scout keys: {best_scout.keys()}")
-            print(f"🔍 DEBUG: 'error' in best_scout: {'error' in best_scout}")
+            print(f" DEBUG: best_scout keys: {best_scout.keys()}")
+            print(f" DEBUG: 'error' in best_scout: {'error' in best_scout}")
             
             # Safety check: if the best result is actually an error, don't try to re-run
             if 'error' in best_scout:
@@ -655,17 +655,17 @@ class BacktestService:
                     if equity_curve is not None and not equity_curve.empty:
                         full_metrics = calculate_metrics(equity_curve, backtester.trades, config.get('cash', 10000))
                         # Add enhanced
-                        print(f"🔍 DEBUG: About to call _calculate_enhanced_metrics with {len(backtester.trades)} trades")
+                        print(f" DEBUG: About to call _calculate_enhanced_metrics with {len(backtester.trades)} trades")
                         # Call _calculate_enhanced_metrics for the best result
                         try:
                             full_metrics = self._calculate_enhanced_metrics(
                                 equity_curve['equity'], backtester.trades, df_best, config.get('cash', 10000), full_metrics
                             )
-                            log_debug(f"🔍 DEBUG: Best Result Metrics: {full_metrics}")
-                            log_debug(f"🔍 DEBUG: Profit Factor: {full_metrics.get('profit_factor')}")
-                            log_debug(f"🔍 DEBUG: _calculate_enhanced_metrics completed. regime_performance: {full_metrics.get('regime_performance', 'MISSING')}")
+                            log_debug(f" DEBUG: Best Result Metrics: {full_metrics}")
+                            log_debug(f" DEBUG: Profit Factor: {full_metrics.get('profit_factor')}")
+                            log_debug(f" DEBUG: _calculate_enhanced_metrics completed. regime_performance: {full_metrics.get('regime_performance', 'MISSING')}")
                         except Exception as e:
-                            print(f"❌ ERROR in _calculate_enhanced_metrics: {e}")
+                            print(f" ERROR in _calculate_enhanced_metrics: {e}")
                             import traceback
                             traceback.print_exc()
                     

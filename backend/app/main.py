@@ -1,11 +1,34 @@
 # file: backend/app/main.py
 # force reload 14
+import logging
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.api import router
 from app.routes.sequential_optimization import router as sequential_router
 from app.routes.parameter_optimization import router as parameter_router
+
+# Configure logging to file
+log_file = Path(__file__).parent.parent / "full_execution_log.txt"
+
+# Get root logger and add file handler
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+# Create file handler
+file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# Add handler if not already present
+if not any(isinstance(h, logging.FileHandler) for h in root_logger.handlers):
+    root_logger.addHandler(file_handler)
+
+logger = logging.getLogger(__name__)
+logger.info("=" * 80)
+logger.info("Backend starting up - logging to %s", log_file)
+logger.info("=" * 80)
 
 settings = get_settings()
 

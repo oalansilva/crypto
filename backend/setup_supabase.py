@@ -30,23 +30,23 @@ for i, statement in enumerate(statements, 1):
     try:
         # Use Supabase's rpc to execute raw SQL
         result = supabase.rpc('exec_sql', {'query': statement}).execute()
-        print(f"✓ Statement {i}/{len(statements)} executed")
+        print(f" Statement {i}/{len(statements)} executed")
     except Exception as e:
         # Try direct execution via PostgREST
         print(f"⚠ Statement {i}: {str(e)[:100]}")
 
-print("\n✅ Schema setup complete!")
+print("\n Schema setup complete!")
 print("\nVerifying tables...")
 
 # Verify tables exist
 try:
     runs = supabase.table('backtest_runs').select('*').limit(1).execute()
-    print("✓ Table 'backtest_runs' exists")
+    print(" Table 'backtest_runs' exists")
 except Exception as e:
-    print(f"✗ Table 'backtest_runs': {e}")
+    print(f" Table 'backtest_runs': {e}")
 
 try:
     results = supabase.table('backtest_results').select('*').limit(1).execute()
-    print("✓ Table 'backtest_results' exists")
+    print(" Table 'backtest_results' exists")
 except Exception as e:
-    print(f"✗ Table 'backtest_results': {e}")
+    print(f" Table 'backtest_results': {e}")

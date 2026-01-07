@@ -48,16 +48,16 @@ try:
     result = response.json()
     print(f"   Response: {json.dumps(result, indent=2)}")
 except json.JSONDecodeError:
-    print(f"   ❌ Response text (Not JSON): {response.text}")
+    print(f"    Response text (Not JSON): {response.text}")
     exit(1)
 
 run_id = result.get('run_id')
 
 if not run_id:
-    print("   ❌ Failed to start backtest")
+    print("    Failed to start backtest")
     exit(1)
 
-print(f"   ✓ Backtest started with run_id: {run_id}")
+print(f"    Backtest started with run_id: {run_id}")
 
 # 4. Poll Status
 print("\n4. Polling Status...")
@@ -72,17 +72,17 @@ while attempt < max_attempts:
     print(f"   Attempt {attempt + 1}: Status = {status}")
     
     if status == "DONE":
-        print("   ✓ Backtest completed!")
+        print("    Backtest completed!")
         break
     elif status == "FAILED":
-        print(f"   ❌ Backtest failed: {status_data.get('error_message')}")
+        print(f"    Backtest failed: {status_data.get('error_message')}")
         exit(1)
     
     time.sleep(2)
     attempt += 1
 
 if attempt >= max_attempts:
-    print("   ❌ Timeout waiting for backtest")
+    print("    Timeout waiting for backtest")
     exit(1)
 
 # 5. Get Result
@@ -113,5 +113,5 @@ for run in runs:
     print(f"   - {run['id']}: {run['mode']} on {run['symbol']} ({run['status']})")
 
 print("\n" + "=" * 60)
-print("✅ TESTE COMPLETO FINALIZADO COM SUCESSO!")
+print(" TESTE COMPLETO FINALIZADO COM SUCESSO!")
 print("=" * 60)

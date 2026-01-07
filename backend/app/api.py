@@ -286,13 +286,13 @@ async def delete_run(
 @router.get("/strategies/metadata")
 async def get_strategies_metadata():
     """Get metadata for all available pandas-ta indicators"""
-    print("🔍 GET /strategies/metadata called")
+    print(" GET /strategies/metadata called")
     try:
         result = get_all_indicators_metadata()
-        print(f"✅ Returning {len(result)} categories")
+        print(f" Returning {len(result)} categories")
         return result
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f" Error: {e}")
         raise HTTPException(500, f"Error getting metadata: {str(e)}")
 
 @router.get("/indicator/{strategy_name}/schema")
