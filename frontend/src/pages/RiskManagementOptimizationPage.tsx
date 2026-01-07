@@ -227,7 +227,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                     },
                     stop_gain: selectedStopGains // Pass list directly, backend now supports it
                 },
-                ...strategyParams // Include dynamic strategy parameters at top level
+                strategy_params: strategyParams // Pass as explicit dictionary
             };
 
             const response = await fetch('http://127.0.0.1:8000/api/optimize/parameters', {

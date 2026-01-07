@@ -77,62 +77,70 @@ class SequentialOptimizer:
         
         # Stages 2 to N+1: Indicator parameters
         stage_num = 1 + stage_offset
-        for param_name, param_schema in indicator_schema.parameters.items():
-            # Check for custom range override
-            opt_range = param_schema.optimization_range
-            
-            if custom_ranges and len(custom_ranges) > 0:
-                # If custom ranges are provided, ONLY optimize those parameters
-                if param_name not in custom_ranges:
-                    continue
-                
-                custom = custom_ranges[param_name]
-                # Format: {min: x, max: y, step: z}
-                if isinstance(custom, dict) and 'min' in custom:
-                    # Create temporary range object or list of values
-                    values = []
-                    current = float(custom['min'])
-                    end = float(custom['max'])
-                    step = float(custom.get('step', 1.0))
-                    
-                    if step <= 0: step = 1.0 # Prevent infinite loop
-                    
-                    while current <= end + (step * 0.1): # Float tolerance
-                        # Inferred type check from default value
-                        if isinstance(param_schema.default, int):
-                            values.append(int(current))
-                        else:
-                            values.append(round(current, 4))
-                        current += step
-                else:
-                    # Fallback or direct list
-                    values = [custom] if not isinstance(custom, list) else custom
-            
-            elif opt_range:
-                # Use default schema range
-                values = []
-                current = opt_range.min
-                while current <= opt_range.max:
-                    values.append(current)
-                    current += opt_range.step
-            else:
-                continue # No optimization for this param
-
-            if values:
-                stages.append({
-                    "stage_num": stage_num,
-                    "stage_name": param_name.replace("_", " ").title(),
-                    "parameter": param_name,
-                    "values": values,
-                    "locked_params": {},  # Will be filled during execution
-                    "description": param_schema.description,
-                    "market_standard": param_schema.market_standard
-                })
-                stage_num += 1
         
-        # Risk management parameters (stop_loss, take_profit, etc.) are excluded 
-        # from strategy parameter optimization. They are handled in the 
-        # separate Risk Optimization phase.
+        # Helper to process schema parameters
+        def process_schema_params(schema_dict, source_name="Indicator"):
+            nonlocal stage_num
+            for param_name, param_schema in schema_dict.items():
+                # Check for custom range override
+                opt_range = param_schema.optimization_range
+                
+                if custom_ranges and len(custom_ranges) > 0:
+                    # If custom ranges are provided, ONLY optimize those parameters
+                    if param_name not in custom_ranges:
+                        continue
+                    
+                    custom = custom_ranges[param_name]
+                    # Format: {min: x, max: y, step: z}
+                    if isinstance(custom, dict) and 'min' in custom:
+                        # Create temporary range object or list of values
+                        values = []
+                        current = float(custom['min'])
+                        end = float(custom['max'])
+                        step = float(custom.get('step', 1.0))
+                        
+                        if step <= 0: step = 1.0 # Prevent infinite loop
+                        
+                        while current <= end + (step * 0.1): # Float tolerance
+                            # Inferred type check from default value
+                            if param_schema.default is not None and isinstance(param_schema.default, int):
+                                values.append(int(current))
+                            else:
+                                values.append(round(current, 4))
+                            current += step
+                    else:
+                        # Fallback or direct list
+                        values = [custom] if not isinstance(custom, list) else custom
+                
+                elif opt_range:
+                    # Use default schema range
+                    values = []
+                    current = opt_range.min
+                    while current <= opt_range.max:
+                        values.append(current)
+                        current += opt_range.step
+                else:
+                    continue # No optimization for this param
+    
+                if values:
+                    stages.append({
+                        "stage_num": stage_num,
+                        "stage_name": param_name.replace("_", " ").title(),
+                        "parameter": param_name,
+                        "values": values,
+                        "locked_params": {},  # Will be filled during execution
+                        "description": param_schema.description,
+                        "market_standard": param_schema.market_standard
+                    })
+                    stage_num += 1
+
+        # Process Indicator Parameters
+        process_schema_params(indicator_schema.parameters)
+
+        # Process Risk Management Parameters
+        # These are handled sequentially after indicator params
+        from app.schemas.indicator_params import RISK_MANAGEMENT_SCHEMA
+        process_schema_params(RISK_MANAGEMENT_SCHEMA, "Risk")
         
         return stages
     
@@ -286,7 +294,10 @@ class SequentialOptimizer:
                 "until": end_date,
                 "params": {strategy: test_params},
                 "mode": "run",
-                "cash": 10000
+                "cash": 10000,
+                # Fix: Pass risk parameters to BacktestService
+                "stop_pct": test_params.get("stop_loss"),
+                "take_pct": test_params.get("stop_gain")
             }
             
             logging.info(f"Running backtest: {symbol} {test_params.get('timeframe', '?')} from {start_date[:10]} to {end_date[:10]}")
@@ -306,20 +317,26 @@ class SequentialOptimizer:
                 if results_dict:
                     # Take the first result (we only ran one strategy)
                     strat_result = list(results_dict.values())[0]
-                    print(f"DEBUG: strat_result keys: {strat_result.keys() if isinstance(strat_result, dict) else 'Not a dict'}")
                     
                     # Check if there's an error
                     if 'error' in strat_result:
-                        print(f"ERROR: Backtest failed: {strat_result['error']}")
+                        logging.error(f"Backtest failed: {strat_result['error']}")
                         metrics = {"total_pnl": 0, "error": strat_result['error']}
                     else:
                         metrics = strat_result.get("metrics", {})
                         trades_list = strat_result.get("trades", [])  # Extract trades
+                        
+                        # DEBUG METRICS
+                        tr_pct = metrics.get('total_return_pct', 'N/A')
+                        fe = metrics.get('final_equity', 'N/A')
+                        tpnl = metrics.get('total_pnl', 'N/A')
+                        logging.info(f"DEBUG: Test {i+1} ({parameter}={value}) -> Return: {tr_pct}, Equity: {fe}, PnL: {tpnl}")
+                        
                         if not metrics or 'total_pnl' not in metrics:
-                            print(f"WARNING: No valid metrics found, using default")
+                            logging.warning(f"No valid metrics found, using default")
                             metrics = {"total_pnl": 0}
                 else:
-                    print("WARNING: No results in backtest_result")
+                    logging.warning("No results in backtest_result")
                     metrics = {"total_pnl": 0}
             except Exception as e:
                 print(f"ERROR extracting metrics: {e}")

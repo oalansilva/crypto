@@ -44,6 +44,44 @@ class DynamicStrategy:
             self.indicators_config = config.get('indicators', [])
             self.entry_expr = config.get('entry')
             self.exit_expr = config.get('exit')
+            
+            # CRITICAL FIX: Allow top-level params to override indicator config
+            # This is necessary for optimization where params are passed at top level
+            # but the strategy might have been loaded from a JSON file (full format)
+            if self.indicators_config and self.name:
+                top_level_params = {k: v for k, v in config.items() if k not in ['name', 'indicators', 'entry', 'exit']}
+                
+                if top_level_params:
+                    # Update parameters in the indicators list
+                    for ind in self.indicators_config:
+                        # If simple strategy (e.g. RSI), assume params belong to it
+                        # For now, we just update matching keys
+                        for k, v in top_level_params.items():
+                             if k in ind or k in ['length', 'std', 'fast', 'slow', 'signal', 'k', 'd']:
+                                 ind[k] = v
+                                 
+                    # SPECIAL HANDLING for RSI Length update in Entry/Exit Expressions
+                    # If 'length' changed, we must assume column name changed from RSI_14 to RSI_15
+                    if 'length' in top_level_params:
+                        new_length = top_level_params['length']
+                        if isinstance(new_length, float) and new_length.is_integer():
+                            new_length = int(new_length)
+                            
+                        # Try to auto-update RSI expressions if they look standard
+                        # Regex replacement would be safer, but simple replace works for standard names
+                        # We don't know the OLD length easily, so we have to guess or check the expr
+                        # But wait! If we just updated ind['length'], pandas_ta will generate RSI_15.
+                        # So we MUST update entry_expr to reference RSI_15.
+                        
+                        import re
+                        if self.entry_expr and 'RSI_' in self.entry_expr:
+                            self.entry_expr = re.sub(r'RSI_\d+', f'RSI_{new_length}', self.entry_expr)
+                            logger.info(f"Updated RSI entry expression to: {self.entry_expr}")
+                            
+                        if self.exit_expr and 'RSI_' in self.exit_expr:
+                            self.exit_expr = re.sub(r'RSI_\d+', f'RSI_{new_length}', self.exit_expr)
+                            logger.info(f"Updated RSI exit expression to: {self.exit_expr}")
+
     
     def _generate_auto_signals(self, indicator: str, params: dict):
         """Generate default entry/exit signals for common indicators"""
@@ -54,13 +92,15 @@ class DynamicStrategy:
             length = int(length)
         
         # RSI-based signals (simple threshold strategy)
-        # RSI-based signals (simple threshold strategy)
         if indicator == 'rsi':
             col_name = f'RSI_{length}'
             ob = params.get('overbought', 70)
             os_val = params.get('oversold', 30)
-            # Buy in oversold, sell in overbought
-            return f'{col_name} < {os_val}', f'{col_name} > {ob}'
+            # Use Standard TradingView Logic:
+            # Entry: Crossover (RSI crosses Over 30) -> Buy on recovery
+            # Exit: Crossunder (RSI crosses Under 70) -> Sell on correction
+            # Note: We use a special marker 'crossover' to trigger manual handling below
+            return f'crossover({col_name}, {os_val})', f'crossunder({col_name}, {ob})'
         
         # SMA crossover
         elif indicator == 'sma':
@@ -244,13 +284,25 @@ class DynamicStrategy:
         # 2. Evaluate Signals
         signals = pd.Series(0, index=df_sim.index)
         
-        # Special handling for crossover expressions (contains .shift)
-        if self.entry_expr and '.shift' in self.entry_expr:
-            # Manual crossover detection for RSI
-            if 'RSI_14' in df_sim.columns:
-                rsi = df_sim['RSI_14']
-                entries = (rsi > 30) & (rsi.shift(1) <= 30)
-                signals[entries] = 1
+        # Manual Crossover Detection Handling
+        if self.entry_expr and 'crossover(' in self.entry_expr:
+            try:
+                # Parse: crossover(RSI_14, 30)
+                parts = self.entry_expr.replace('crossover(', '').replace(')', '').split(',')
+                col = parts[0].strip()
+                val = float(parts[1].strip())
+                
+                if col in df_sim.columns:
+                    series = df_sim[col]
+                    # Entry: Cross Over (Series > val AND PrevSeries <= val)
+                    entries = (series > val) & (series.shift(1) <= val)
+                    signals[entries] = 1
+                    logger.info(f"Processed crossover entry for {col} > {val}: {entries.sum()} signals")
+                else:
+                    logger.warning(f"Column {col} not found for crossover entry")
+            except Exception as e:
+                logger.error(f"Error processing crossover entry '{self.entry_expr}': {e}")
+                
         elif self.entry_expr:
             try:
                 entries = df_sim.eval(self.entry_expr)
@@ -258,13 +310,25 @@ class DynamicStrategy:
             except Exception as e:
                 logger.error(f"Error evaluating entry '{self.entry_expr}': {e}")
 
-        # Special handling for crossover expressions (contains .shift)
-        if self.exit_expr and '.shift' in self.exit_expr:
-            # Manual crossover detection for RSI
-            if 'RSI_14' in df_sim.columns:
-                rsi = df_sim['RSI_14']
-                exits = (rsi < 70) & (rsi.shift(1) >= 70)
-                signals[exits] = -1
+        # Manual Crossunder Detection Handling
+        if self.exit_expr and 'crossunder(' in self.exit_expr:
+             try:
+                # Parse: crossunder(RSI_14, 70)
+                parts = self.exit_expr.replace('crossunder(', '').replace(')', '').split(',')
+                col = parts[0].strip()
+                val = float(parts[1].strip())
+                
+                if col in df_sim.columns:
+                    series = df_sim[col]
+                    # Exit: Cross Under (Series < val AND PrevSeries >= val)
+                    exits = (series < val) & (series.shift(1) >= val) # Standardized to Crossing UNDER
+                    signals[exits] = -1
+                    logger.info(f"Processed crossunder exit for {col} < {val}: {exits.sum()} signals")
+                else:
+                    logger.warning(f"Column {col} not found for crossunder exit")
+             except Exception as e:
+                logger.error(f"Error processing crossunder exit '{self.exit_expr}': {e}")
+                
         elif self.exit_expr:
             try:
                 exits = df_sim.eval(self.exit_expr)

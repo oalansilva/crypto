@@ -9,6 +9,7 @@ interface ParameterCombination {
         sharpe_ratio: number;
         win_rate: number;
         total_trades: number;
+        [key: string]: any; // Allow other metrics like total_return_pct
     };
     trades?: any[];
 }
@@ -113,10 +114,16 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
 
     // Extract metrics safely
     const getMetrics = (result: ParameterCombination) => {
-        // Calculate return percentage from trades if available
-        let returnPct = extractNumber(result.metrics.total_pnl);
+        let returnPct = 0;
 
-        if (result.trades && result.trades.length > 0) {
+        // Priority 1: Use Total Return Pct from Backend (it's a decimal, so * 100)
+        // Check for total_return_pct or total_pnl_pct (alias)
+        if ('total_return_pct' in result.metrics || 'total_pnl_pct' in result.metrics) {
+            const rawVal = result.metrics.total_return_pct ?? result.metrics.total_pnl_pct;
+            returnPct = extractNumber(rawVal) * 100;
+        }
+        // Priority 2: Recalculate from trades if metric missing
+        else if (result.trades && result.trades.length > 0) {
             const firstTrade = result.trades[0];
             const lastTrade = result.trades[result.trades.length - 1];
 
@@ -125,6 +132,10 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                 const finalCapital = lastTrade.final_capital;
                 returnPct = ((finalCapital - initialCapital) / initialCapital) * 100;
             }
+        }
+        // Priority 3: Fallback to total_pnl (likely absolute value, might look weird as %)
+        else {
+            returnPct = extractNumber(result.metrics.total_pnl);
         }
 
         return {

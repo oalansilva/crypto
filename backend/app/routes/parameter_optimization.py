@@ -44,6 +44,7 @@ class ParameterOptimizationRequest(BaseModel):
     strategy: str
     timeframe: str
     custom_ranges: Optional[Dict[str, Any]] = None
+    strategy_params: Optional[Dict[str, Any]] = None
 
 
 class ParameterCombinationResult(BaseModel):
@@ -80,6 +81,7 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
     start_time = datetime.now()
     log_debug(f" REQUEST RECEIVED: {request.symbol} {request.strategy} {request.timeframe}")
     log_debug(f" Custom Ranges: {request.custom_ranges}")
+    log_debug(f" Strategy Params: {request.strategy_params}")
     log_debug(f" Fixed Timeframe: {request.timeframe}")
 
     # Initialize JobManager and create job for persistence
@@ -89,20 +91,30 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
         "symbol": request.symbol,
         "strategy": request.strategy,
         "timeframe": request.timeframe,
-        "custom_ranges": request.custom_ranges
+        "custom_ranges": request.custom_ranges,
+        "strategy_params": request.strategy_params
     })
     log_debug(f" Created job: {job_id}")
 
     # Build default parameters for the strategy to ensure incomplete stages have values
     strategy_defaults = {}
     schema = get_indicator_schema(request.strategy)
+    
+    # Resolve aliases helper
+    aliases = PARAM_ALIASES.get(request.strategy.lower(), {})
+    
     if schema:
-        # Resolve aliases for defaults
-        aliases = PARAM_ALIASES.get(request.strategy.lower(), {})
         for param_name, param_schema in schema.parameters.items():
             # Apply alias if exists (e.g. period -> length)
             final_name = aliases.get(param_name, param_name)
             strategy_defaults[final_name] = param_schema.default
+            
+    # CRITICAL: Override defaults with user provided fixed parameters
+    if request.strategy_params:
+        # Normalize keys using aliases as well
+        for key, value in request.strategy_params.items():
+            final_key = aliases.get(key, key)
+            strategy_defaults[final_key] = value
             
     # Add fixed timeframe to defaults if present
     if request.timeframe:
@@ -160,6 +172,7 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
                 # Extract the actual parameter value
                 param_value = result.get(stage["parameter"])
                 log_debug(f" DEBUG: Extracted param_value for '{stage['parameter']}': {param_value} (type: {type(param_value).__name__})")
+                log_debug(f" DEBUG: Result Metrics: {result.get('metrics')}")
                 
                 # Start with strategy defaults, then override with locked params, then current test param
                 full_params = strategy_defaults.copy()
