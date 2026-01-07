@@ -58,6 +58,8 @@ export const ParameterOptimizationPage: React.FC = () => {
     const [parameterRanges, setParameterRanges] = useState<Record<string, ParameterRange>>({});
     const [showParameters, setShowParameters] = useState(false);
     const [selectedIndicator, setSelectedIndicator] = useState<IndicatorMetadata | null>(null);
+    const [fee, setFee] = useState(0); // Default 0% (disabled)
+    const [slippage, setSlippage] = useState(0); // Default 0% (disabled)
 
     // Fetch all indicators metadata
     const { data: indicatorsData, isLoading: loadingIndicators } = useQuery({
@@ -172,7 +174,9 @@ export const ParameterOptimizationPage: React.FC = () => {
                     symbol: config.symbol,
                     strategy: config.strategy,
                     timeframe: config.timeframe,
-                    custom_ranges: parameterRanges
+                    custom_ranges: parameterRanges,
+                    fee: fee,
+                    slippage: slippage
                 }),
             });
 
@@ -362,6 +366,34 @@ export const ParameterOptimizationPage: React.FC = () => {
                             )}
                         </div>
                     )}
+
+                    {/* Advanced Options */}
+                    <div className="border-t border-gray-700 pt-6">
+                        <h3 className="text-lg font-semibold text-white mb-4">Advanced Options</h3>
+                        <div className="flex gap-6">
+                            <label className="flex items-center gap-2 text-gray-300 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={fee > 0}
+                                    onChange={(e) => setFee(e.target.checked ? 0.00075 : 0)}
+                                    className="w-4 h-4 rounded border-gray-600 text-teal-500 focus:ring-teal-500"
+                                />
+                                <span>Enable Trading Fees (0.075% - Binance)</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-gray-300 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={slippage > 0}
+                                    onChange={(e) => setSlippage(e.target.checked ? 0.0005 : 0)}
+                                    className="w-4 h-4 rounded border-gray-600 text-teal-500 focus:ring-teal-500"
+                                />
+                                <span>Enable Slippage (0.05%)</span>
+                            </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                            💡 Disable both for TradingView alignment (default)
+                        </p>
+                    </div>
 
                     {/* Start Button */}
                     <button

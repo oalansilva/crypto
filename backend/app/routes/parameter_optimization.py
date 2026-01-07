@@ -45,6 +45,8 @@ class ParameterOptimizationRequest(BaseModel):
     timeframe: str
     custom_ranges: Optional[Dict[str, Any]] = None
     strategy_params: Optional[Dict[str, Any]] = None
+    fee: Optional[float] = 0.00075  # Default 0.075% (Binance standard)
+    slippage: Optional[float] = 0.0005  # Default 0.05%
 
 
 class ParameterCombinationResult(BaseModel):
@@ -135,7 +137,11 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
         
         # Run all stages sequentially
         all_results = []
-        locked_params = {"timeframe": request.timeframe}
+        locked_params = {
+            "timeframe": request.timeframe,
+            "fee": request.fee,
+            "slippage": request.slippage
+        }
         result_index = 0  # Track global result index for database
         
         for i, stage in enumerate(stages):
