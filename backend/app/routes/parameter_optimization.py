@@ -188,10 +188,10 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
                 log_debug(f" DEBUG: full_params after assignment: {full_params}")
 
                 
-                # Sort trades by entry_time (chronological order)
+                # Sort trades by entry_time (descending - newest first)
                 trades = result.get("trades", [])
                 if trades:
-                    trades.sort(key=lambda t: t.get('entry_time', ''))
+                    trades.sort(key=lambda t: t.get('entry_time', ''), reverse=True)
                 
                 result_data = {
                     "params": full_params,
