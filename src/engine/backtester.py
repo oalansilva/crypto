@@ -97,28 +97,30 @@ class Backtester:
                     
                     if next_buy_ptr >= len(buy_indices):
                         break # No more buys
+                if next_buy_ptr < len(buy_indices):
                         
                     next_buy_idx = buy_indices[next_buy_ptr]
                     
-                    # Execution happens at Open of NEXT candle
-                    execution_idx = next_buy_idx + 1
+                    # Execution happens at CLOSE of SAME candle (TradingView Alignment)
+                    execution_idx = next_buy_idx
                     
                     if execution_idx >= n_rows:
-                        # Signal on last candle, cannot enter
-                        break
+                        # Signal on last candle, cannot enter (or enter at close and end?)
+                        # We can enter, but simulation ends.
+                        pass
                     
                     # Jump to execution candle
                     i = execution_idx
                     
-                    # Execute BUY at Open
-                    open_price = opens[i]
+                    # Execute BUY at Close
+                    close_price = closes[i]
                     timestamp = timestamps[i]
                     
                     if self.cash <= 0:
                         break
                     
                     allocated_cash = self.cash * self.position_size_pct
-                    entry_exec_price = open_price * (1 + self.slippage)
+                    entry_exec_price = close_price * (1 + self.slippage)
                     
                     quantity = allocated_cash / (entry_exec_price * (1 + self.fee))
                     
@@ -133,17 +135,22 @@ class Backtester:
                         self.cash -= (quantity * entry_exec_price + commission)
                         self.position += quantity
                         
-                        # Record Equity at Entry
-                        # We are at 'i' (execution day). We hold position.
-                        # Equity will be recorded at the end of this iteration loop (or next?)
-                        # Strictly, if we buy at Open, we are exposed to 'i' close.
-                        # We should let the loop continue to process 'i' as holding.
+                        # Record Equity at Entry (End of Day i)
+                        # We hold position at Close. Value = Cash + Pos * Close.
+                        # Since we just bought at Close, Value ~= Initial Capital - Commission.
+                        equity_val = self.cash + (self.position * close_price)
+                        self.equity_curve.append({'timestamp': timestamp, 'equity': equity_val})
+                        
+                        # We entered at Close of 'i'. 
+                        # We cannot hit SL/TP or Signal Exit on the same bar 'i'.
+                        # Advance to next bar.
+                        i += 1
+                        continue 
                     
-                    # Do NOT increment i here. 
-                    # We want to process candle 'i' in the 'else' block (Checking SL/TP/Close)
-                    # changing state to position > 0 will make next iteration go to 'else'
-                    # But we need to force next iteration on SAME 'i'
-                    continue 
+                    # If we couldn't buy, we must advance 'i' to avoid infinite loop
+                    # If we jumped 'i' to execution_idx, we should continue search from there + 1
+                    i += 1
+                    continue
                 else:
                     break
 
@@ -155,16 +162,83 @@ class Backtester:
                 high_price = highs[i]
                 low_price = lows[i]
                 signal = signals[i]
-                prev_signal = signals[i-1] if i > 0 else 0
                 
                 # Check Exits
                 exit_candidates = []
                 
-                # 0. Pending Signal Exit (From Previous Close) - HIGHEST PRIORITY (Market Open)
-                # If we had a sell signal yesterday, we exit TODAY at Open.
-                if prev_signal == -1:
-                    # Execute Exit at OPEN
-                    exit_price = open_price * (1 - self.slippage)
+                # 1. Stop Loss (Intra-bar)
+                if self.stop_loss_pct:
+                    stop_price = avg_entry_price * (1 - self.stop_loss_pct)
+                    if low_price < stop_price:
+                        exit_candidates.append(('sl', 0, stop_price))
+
+                # 2. Take Profit (Intra-bar)
+                if self.take_profit_pct:
+                    tp_price = avg_entry_price * (1 + self.take_profit_pct)
+                    if high_price > tp_price:
+                        exit_candidates.append(('tp', 0, tp_price))
+                
+                # SL/TP Execution (Highest Priority - Intra-bar)
+                if exit_candidates:
+                    sl_hit = any(x[0] == 'sl' for x in exit_candidates)
+                    
+                    # Determine Price
+                    if sl_hit:
+                        stop_price = avg_entry_price * (1 - self.stop_loss_pct)
+                        best_exit_price = min(open_price, stop_price) # Pessimistic / Gap handling
+                        if open_price < stop_price: best_exit_price = open_price
+                        else: best_exit_price = stop_price
+                        reason = 'Stop Loss'
+                    else: # TP
+                        tp_price = avg_entry_price * (1 + self.take_profit_pct)
+                        if open_price > tp_price: best_exit_price = open_price # Gap Up
+                        else: best_exit_price = tp_price
+                        reason = 'Take Profit'
+
+                    # Execute Exit
+                    exit_price = best_exit_price * (1 - self.slippage)
+                    revenue = self.position * exit_price
+                    exit_commission = revenue * self.fee
+                    total_commission = accumulated_commission + exit_commission
+                    
+                    pnl_gross = (exit_price - avg_entry_price) * self.position
+                    pnl = pnl_gross - total_commission
+                    pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
+                    
+                    self.cash += (revenue - exit_commission)
+                    current_equity = self.cash
+                    
+                    self.trades.append({
+                        'entry_time': current_trade_entry_time,
+                        'exit_time': timestamp,
+                        'side': 'long',
+                        'reason': reason,
+                        'entry_price': avg_entry_price,
+                        'exit_price': exit_price,
+                        'size': self.position,
+                        'pnl_gross': pnl_gross,
+                        'pnl': pnl,
+                        'pnl_pct': pnl_pct,
+                        'commission': total_commission,
+                        'initial_capital': entry_equity,
+                        'final_capital': current_equity
+                    })
+                    
+                    self.position = 0.0
+                    accumulated_commission = 0.0
+                    self.equity_curve.append({'timestamp': timestamp, 'equity': self.cash})
+                    
+                    # We exited intra-bar. 
+                    # If signal[i] == 1 (Buy), should we Re-Enter at Close?
+                    # Simplification: Wait for next bar to look for entries.
+                    i += 1
+                    continue
+                
+                # 3. Signal Exit (At Close)
+                # If no SL/TP, check if we have a Sell Signal on this bar
+                if signal == -1:
+                    # Execute Exit at CLOSE
+                    exit_price = close_price * (1 - self.slippage)
                     revenue = self.position * exit_price
                     exit_commission = revenue * self.fee
                     total_commission = accumulated_commission + exit_commission
@@ -196,58 +270,16 @@ class Backtester:
                     accumulated_commission = 0.0
                     self.equity_curve.append({'timestamp': timestamp, 'equity': self.cash})
                     
-                    # We exited at Open. We are Flat for the rest of 'i'.
-                    # Should we check for Buy Signal at 'i'?
-                    # If 'signal[i] == 1', we would buy at 'i+1'. 
-                    # So we can just continue to next iteration 'i' (as Flat).
-                    # But if we don't increment, we process 'i' again as Flat.
-                    # Correct.
-                    continue
-
-                # 1. Stop Loss (Intra-bar)
-                if self.stop_loss_pct:
-                    stop_price = avg_entry_price * (1 - self.stop_loss_pct)
-                    if low_price < stop_price:
-                        exit_candidates.append(('sl', 0, stop_price))
-
-                # 2. Take Profit (Intra-bar)
-                if self.take_profit_pct:
-                    tp_price = avg_entry_price * (1 + self.take_profit_pct)
-                    if high_price > tp_price:
-                        exit_candidates.append(('tp', 0, tp_price))
-                
-                if not exit_candidates:
-                    # No SL/TP hit.
-                    # Check current signal for NEXT DAY exit
-                    # If signal == -1, we DO NOTHING now. We wait for next Open (handled by Prev Signal check above)
-                    
-                    # Mark-to-Market Equity Check
-                    equity_val = self.cash + (self.position * close_price)
-                    self.equity_curve.append({'timestamp': timestamp, 'equity': equity_val})
-                    
                     i += 1
                     continue
-                
-                # Handle SL/TP Execution (Intra-bar)
-                sl_hit = any(x[0] == 'sl' for x in exit_candidates)
-                tp_hit = any(x[0] == 'tp' for x in exit_candidates)
-                
-                event_type = 'sl' if sl_hit else 'tp'
-                
-                # Determine Price
-                if sl_hit:
-                    stop_price = avg_entry_price * (1 - self.stop_loss_pct)
-                    best_exit_price = min(open_price, stop_price) # Pessimistic: Gap handling? 
-                    # Realistically: If Open < Stop, we execute at Open (Gap Down)
-                    if open_price < stop_price: best_exit_price = open_price
-                    else: best_exit_price = stop_price
-                else: # TP
-                    tp_price = avg_entry_price * (1 + self.take_profit_pct)
-                    # If Open > TP, we execute at Open (Gap Up)
-                    if open_price > tp_price: best_exit_price = open_price
-                    else: best_exit_price = tp_price
 
-                # Execute Exit
+                # No Exit - Hold
+                # Mark-to-Market Equity Check
+                equity_val = self.cash + (self.position * close_price)
+                self.equity_curve.append({'timestamp': timestamp, 'equity': equity_val})
+                
+                i += 1
+                continue
                 raw_exit_price = best_exit_price
                 exit_reason = "SL" if sl_hit else "TP"
                 
