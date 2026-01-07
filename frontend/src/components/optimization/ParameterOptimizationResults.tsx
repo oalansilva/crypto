@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, TrendingDown, Award, ArrowRight, ChevronDown, Trophy, Target } from 'lucide-react';
+import { TrendingUp, Award, ArrowRight, ChevronDown, Trophy, Target } from 'lucide-react';
 
 interface ParameterCombination {
     params: Record<string, any>;
@@ -324,150 +324,129 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                 </div>
 
                 {/* All Results */}
+                {/* All Results Table */}
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700 overflow-hidden">
-                    <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+                    <div className="p-6 border-b border-gray-700">
                         <h2 className="text-xl font-bold text-white">All Results</h2>
                     </div>
 
-                    <div className="divide-y divide-gray-700/50">
-                        {displayedResults.map((result, idx) => {
-                            const metrics = getMetrics(result);
-                            const rank = idx + 2; // +2 because best is #1 and we start from index 1
-                            const isPositive = metrics.pnl >= 0;
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-900/50 text-gray-400 text-sm uppercase tracking-wider">
+                                    <th className="p-4 font-medium border-b border-gray-700">Rank</th>
+                                    <th className="p-4 font-medium border-b border-gray-700 w-1/3">Parameters</th>
+                                    <th className="p-4 font-medium border-b border-gray-700 text-right">Return</th>
+                                    <th className="p-4 font-medium border-b border-gray-700 text-right">Sharpe</th>
+                                    <th className="p-4 font-medium border-b border-gray-700 text-right">Win Rate</th>
+                                    <th className="p-4 font-medium border-b border-gray-700 text-right">Trades</th>
+                                    <th className="p-4 font-medium border-b border-gray-700 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700/50 text-sm">
+                                {displayedResults.map((result, idx) => {
+                                    const metrics = getMetrics(result);
+                                    const rank = idx + 2;
+                                    const isPositive = metrics.pnl >= 0;
+                                    const isExpanded = expandedIndex === idx;
 
-                            return (
-                                <div
-                                    key={idx}
-                                    className="p-6 hover:bg-gray-700/30 transition-colors"
-                                >
-                                    <div className="flex items-start gap-4">
-                                        {/* Rank Badge */}
-                                        <div className="flex-shrink-0 w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                                            <span className="text-gray-300 font-bold">#{rank}</span>
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            {/* Parameters */}
-                                            <div className="font-mono text-sm text-gray-300 mb-3">
-                                                {formatParams(result.params)}
-                                            </div>
-
-                                            {/* Metrics Row */}
-                                            <div className="flex flex-wrap gap-4 text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    {isPositive ? (
-                                                        <TrendingUp className="w-4 h-4 text-green-400" />
-                                                    ) : (
-                                                        <TrendingDown className="w-4 h-4 text-red-400" />
+                                    return (
+                                        <React.Fragment key={idx}>
+                                            <tr className="hover:bg-gray-700/30 transition-colors">
+                                                <td className="p-4">
+                                                    <span className="font-mono text-gray-500 font-bold">#{rank}</span>
+                                                </td>
+                                                <td className="p-4 font-mono text-gray-300">
+                                                    {formatParams(result.params)}
+                                                </td>
+                                                <td className={`p-4 text-right font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {isPositive ? '+' : ''}{metrics.pnl.toFixed(2)}%
+                                                </td>
+                                                <td className="p-4 text-right text-gray-300">
+                                                    {metrics.sharpe.toFixed(2)}
+                                                </td>
+                                                <td className="p-4 text-right text-gray-300">
+                                                    {formatWinRate(metrics.winRate)}
+                                                </td>
+                                                <td className="p-4 text-right text-gray-300">
+                                                    {metrics.trades}
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    {metrics.trades > 0 && (
+                                                        <button
+                                                            onClick={() => setExpandedIndex(isExpanded ? null : idx)}
+                                                            className="p-2 hover:bg-teal-500/10 rounded-lg text-teal-400 transition-colors"
+                                                            title={isExpanded ? "Hide Trades" : "Show Trades"}
+                                                        >
+                                                            <ChevronDown className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                        </button>
                                                     )}
-                                                    <span className="text-gray-400">Return:</span>
-                                                    <span className={`font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {isPositive ? '+' : ''}{metrics.pnl.toFixed(2)}%
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-gray-400">Sharpe:</span>
-                                                    <span className="font-bold text-white">
-                                                        {metrics.sharpe.toFixed(2)}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-gray-400">Win:</span>
-                                                    <span className="font-bold text-white">
-                                                        {formatWinRate(metrics.winRate)}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-gray-400">Trades:</span>
-                                                    <span className="font-bold text-white">
-                                                        {metrics.trades}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Show Trades Button */}
-                                            {metrics.trades > 0 && (
-                                                <button
-                                                    onClick={() => setExpandedIndex(expandedIndex === idx ? null : idx)}
-                                                    className="mt-4 text-sm text-teal-400 hover:text-teal-300 flex items-center gap-1 transition-colors"
-                                                >
-                                                    {expandedIndex === idx ? 'Hide Trades' : 'Show Trades'}
-                                                    <ChevronDown className={`w-4 h-4 transition-transform ${expandedIndex === idx ? 'rotate-180' : ''}`} />
-                                                </button>
-                                            )}
-
-                                            {/* Expanded Trades Table */}
-                                            {expandedIndex === idx && (
-                                                <div className="mt-4 overflow-x-auto bg-gray-900/50 rounded-lg p-4">
-                                                    {result.trades && result.trades.length > 0 ? (
-                                                        <table className="w-full text-sm text-left text-gray-300">
-                                                            <thead className="text-xs uppercase bg-gray-800/50">
-                                                                <tr>
-                                                                    <th className="px-4 py-3">Entry</th>
-                                                                    <th className="px-4 py-3">Exit</th>
-                                                                    <th className="px-4 py-3">Side</th>
-                                                                    <th className="px-4 py-3 text-right">Entry Price</th>
-                                                                    <th className="px-4 py-3 text-right">Exit Price</th>
-                                                                    <th className="px-4 py-3 text-right">Initial Capital</th>
-                                                                    <th className="px-4 py-3 text-right">Final Capital</th>
-                                                                    <th className="px-4 py-3 text-right">P&L</th>
-                                                                    <th className="px-4 py-3 text-right">P&L %</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-gray-700/50">
-                                                                {result.trades.map((trade: any, tradeIdx: number) => (
-                                                                    <tr key={tradeIdx} className="hover:bg-gray-800/30">
-                                                                        <td className="px-4 py-3 whitespace-nowrap text-xs">
-                                                                            {new Date(trade.entry_time).toLocaleDateString()}
-                                                                        </td>
-                                                                        <td className="px-4 py-3 whitespace-nowrap text-xs">
-                                                                            {new Date(trade.exit_time).toLocaleDateString()}
-                                                                        </td>
-                                                                        <td className="px-4 py-3">
-                                                                            <span className={`px-2 py-1 rounded text-xs font-semibold ${trade.side === 'long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                                                {trade.side?.toUpperCase() || 'N/A'}
-                                                                            </span>
-                                                                        </td>
-                                                                        <td className="px-4 py-3 text-right font-mono">
-                                                                            ${trade.entry_price?.toFixed(2) || 'N/A'}
-                                                                        </td>
-                                                                        <td className="px-4 py-3 text-right font-mono">
-                                                                            ${trade.exit_price?.toFixed(2) || 'N/A'}
-                                                                        </td>
-                                                                        <td className="px-4 py-3 text-right font-mono text-gray-400">
-                                                                            ${trade.initial_capital?.toFixed(2) || 'N/A'}
-                                                                        </td>
-                                                                        <td className="px-4 py-3 text-right font-mono text-gray-400">
-                                                                            ${trade.final_capital?.toFixed(2) || 'N/A'}
-                                                                        </td>
-                                                                        <td className={`px-4 py-3 text-right font-semibold ${trade.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                            {trade.pnl >= 0 ? '+' : ''}${trade.pnl?.toFixed(2) || 'N/A'}
-                                                                        </td>
-                                                                        <td className={`px-4 py-3 text-right font-semibold ${trade.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                            {trade.pnl_pct >= 0 ? '+' : ''}{(trade.pnl_pct * 100)?.toFixed(2) || 'N/A'}%
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    ) : (
-                                                        <div className="text-center py-4 text-gray-400">
-                                                            No detailed trades available.
+                                                </td>
+                                            </tr>
+                                            {isExpanded && (
+                                                <tr className="bg-gray-900/30">
+                                                    <td colSpan={7} className="p-4 border-b border-gray-700/50 inset-shadow">
+                                                        <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+                                                            {result.trades && result.trades.length > 0 ? (
+                                                                <div className="overflow-x-auto max-h-96">
+                                                                    <table className="w-full text-xs text-left text-gray-300">
+                                                                        <thead className="bg-gray-800 text-gray-400 uppercase tracking-tight sticky top-0">
+                                                                            <tr>
+                                                                                <th className="px-4 py-2">Entry</th>
+                                                                                <th className="px-4 py-2">Exit</th>
+                                                                                <th className="px-4 py-2">Side</th>
+                                                                                <th className="px-4 py-2 text-right">Price In</th>
+                                                                                <th className="px-4 py-2 text-right">Price Out</th>
+                                                                                <th className="px-4 py-2 text-right">P&L</th>
+                                                                                <th className="px-4 py-2 text-right">P&L %</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-gray-700">
+                                                                            {result.trades.map((trade: any, tIdx: number) => (
+                                                                                <tr key={tIdx} className="hover:bg-gray-800/50">
+                                                                                    <td className="px-4 py-2 whitespace-nowrap text-gray-400">
+                                                                                        {new Date(trade.entry_time).toLocaleString()}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2 whitespace-nowrap text-gray-400">
+                                                                                        {new Date(trade.exit_time).toLocaleString()}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2">
+                                                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${trade.side === 'long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                                            {trade.side}
+                                                                                        </span>
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2 text-right font-mono text-gray-400">
+                                                                                        {trade.entry_price?.toFixed(2)}
+                                                                                    </td>
+                                                                                    <td className="px-4 py-2 text-right font-mono text-gray-400">
+                                                                                        {trade.exit_price?.toFixed(2)}
+                                                                                    </td>
+                                                                                    <td className={`px-4 py-2 text-right font-bold ${trade.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                        {trade.pnl?.toFixed(2)}
+                                                                                    </td>
+                                                                                    <td className={`px-4 py-2 text-right font-bold ${trade.pnl_pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                        {(trade.pnl_pct * 100)?.toFixed(2)}%
+                                                                                    </td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="p-8 text-center text-gray-500 italic">
+                                                                    No trade details available for this result.
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </div>
+                                                    </td>
+                                                </tr>
                                             )}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
-
                 </div>
             </div>
         </div>

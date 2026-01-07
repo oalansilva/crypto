@@ -54,10 +54,13 @@ class DynamicStrategy:
             length = int(length)
         
         # RSI-based signals (simple threshold strategy)
+        # RSI-based signals (simple threshold strategy)
         if indicator == 'rsi':
             col_name = f'RSI_{length}'
-            # Buy in oversold (standard < 30), sell in overbought (standard > 70)
-            return f'{col_name} < 30', f'{col_name} > 70'
+            ob = params.get('overbought', 70)
+            os_val = params.get('oversold', 30)
+            # Buy in oversold, sell in overbought
+            return f'{col_name} < {os_val}', f'{col_name} > {ob}'
         
         # SMA crossover
         elif indicator == 'sma':

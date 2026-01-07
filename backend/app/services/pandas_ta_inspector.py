@@ -80,8 +80,27 @@ def get_all_indicators_metadata():
 
                     # Simplify defaults
                     default = param.default
-                    if default == inspect.Parameter.empty:
-                        default = None
+                    
+                    # Common defaults for technical analysis if not specified or None
+                    STANDARD_DEFAULTS = {
+                        "length": 14,
+                        "fast": 12,
+                        "slow": 26,
+                        "signal": 9,
+                        "std": 2,
+                        "period": 10,
+                        "lookback": 14,
+                        "k": 14,
+                        "d": 3,
+                        "smooth_k": 3,
+                        "lower": 30,
+                        "upper": 70,
+                        "limit": 60,
+                        "offset": 0
+                    }
+
+                    if default == inspect.Parameter.empty or default is None:
+                        default = STANDARD_DEFAULTS.get(param_name, None)
                     elif isinstance(default, (type(None), int, float, str, bool)):
                          pass
                     else:

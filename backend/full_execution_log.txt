@@ -1,0 +1,650 @@
+2026-01-06 23:42:22,510 - app.main - INFO - ================================================================================
+2026-01-06 23:42:22,510 - app.main - INFO - Backend starting up - logging to C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\full_execution_log.txt
+2026-01-06 23:42:22,511 - app.main - INFO - ================================================================================
+2026-01-06 23:42:27,707 - app.main - INFO - ================================================================================
+2026-01-06 23:42:27,708 - app.main - INFO - Backend starting up - logging to C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\full_execution_log.txt
+2026-01-06 23:42:27,708 - app.main - INFO - ================================================================================
+2026-01-06 23:42:54,551 - app.main - INFO - ================================================================================
+2026-01-06 23:42:54,552 - app.main - INFO - Backend starting up - logging to C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\full_execution_log.txt
+2026-01-06 23:42:54,552 - app.main - INFO - ================================================================================
+2026-01-06 23:43:17,312 - app.services.job_manager - INFO - SQLite database initialized at C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\data\jobs\results.db
+2026-01-06 23:43:17,312 - app.services.job_manager - INFO - JobManager initialized. Data dir: C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\data\jobs, DB: C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\data\jobs\results.db
+ REQUEST RECEIVED: BTC/USDT rsi 1h
+ Custom Ranges: {'length': {'min': 7, 'max': 21, 'step': 1}}
+ Fixed Timeframe: 1h
+ Created job: a34b45b8-c301-447c-b218-18520fcb7f2a
+ Strategy Defaults (Base): {'length': 14, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ Running stage 1/3: Length
+ Locked params before stage: {'timeframe': '1h'}
+2026-01-06 23:44:07,611 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-06 23:44:07,711 - src.data.incremental_loader - INFO - Incremental update needed. Downloading from 2026-01-06 21:00:00.001000
+2026-01-06 23:44:07,712 - src.data.incremental_loader - INFO - Starting download loop for BTC/USDT from 2026-01-06 21:00:00.001000
+2026-01-06 23:44:12,283 - root - INFO - Full history period: 2017-08-17T00:00:00+00:00 to 2026-01-07T00:00:00+00:00 (3066 candles)
+2026-01-06 23:44:12,312 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:12,315 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:12,330 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:13,141 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:13,144 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:13,152 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:13,639 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:13,642 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:13,650 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:14,132 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:14,134 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:14,142 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:14,709 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:14,712 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:14,719 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:15,214 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:15,216 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:15,224 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:15,753 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:15,756 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:15,764 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:16,255 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:16,257 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:16,264 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:16,757 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:16,760 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:16,768 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:17,277 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:17,281 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:17,288 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:17,826 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:17,829 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:17,835 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:18,363 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:18,365 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:18,374 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:18,950 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:18,953 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:18,959 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:19,500 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:19,502 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:19,510 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:20,045 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:20,047 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:20,055 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+ Stage 1 complete: length = 13
+ DEBUG: stage_result keys: dict_keys(['stage_num', 'stage_name', 'parameter', 'results', 'best_value', 'best_result'])
+ DEBUG: stage['parameter']: length
+ DEBUG: Number of results: 15
+ DEBUG: Result 0 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 0 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 7 (type: int)
+ DEBUG: full_params after assignment: {'length': 7, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 902 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-17T18:00:00.000000000', 'exit_time': '2017-08-20T08:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4259.098485), 'exit_price': np.float64(4182.637635), 'size': np.float64(2.322113453103184), 'pnl_gross': np.float64(-177.5507684207055), 'pnl': np.float64(-197.15343743250457), 'pnl_pct': np.float64(-0.01795235547364911), 'commission': np.float64(19.60266901179908), 'initial_capital': 10000, 'final_capital': np.float64(9802.846562567494)}
+ DEBUG: Result 1 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 1 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 8 (type: int)
+ DEBUG: full_params after assignment: {'length': 8, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 711 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T17:00:00.000000000', 'exit_time': '2017-08-23T09:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4195.446675), 'exit_price': np.float64(4201.01844), 'size': np.float64(2.3573437243389326), 'pnl_gross': np.float64(13.134565256240574), 'pnl': np.float64(-6.6587890892354515), 'pnl_pct': np.float64(0.00132805048701988), 'commission': np.float64(19.793354345476025), 'initial_capital': 10000, 'final_capital': np.float64(9993.341210910763)}
+ DEBUG: Result 2 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 2 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 9 (type: int)
+ DEBUG: full_params after assignment: {'length': 9, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 601 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T09:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4201.01844), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(195.78637402449837), 'pnl': np.float64(175.81036787025408), 'pnl_pct': np.float64(0.019796177818032612), 'commission': np.float64(19.97600615424428), 'initial_capital': 10000, 'final_capital': np.float64(10175.810367870254)}
+ DEBUG: Result 3 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 3 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 10 (type: int)
+ DEBUG: full_params after assignment: {'length': 10, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 489 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T09:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4201.01844), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(195.78637402449837), 'pnl': np.float64(175.81036787025408), 'pnl_pct': np.float64(0.019796177818032612), 'commission': np.float64(19.97600615424428), 'initial_capital': 10000, 'final_capital': np.float64(10175.810367870254)}
+ DEBUG: Result 4 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 4 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 11 (type: int)
+ DEBUG: full_params after assignment: {'length': 11, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 415 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T10:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4225.905990000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(255.5369443096578), 'pnl': np.float64(235.50118758512835), 'pnl_pct': np.float64(0.025837624369087618), 'commission': np.float64(20.035756724529442), 'initial_capital': 10000, 'final_capital': np.float64(10235.501187585127)}
+ DEBUG: Result 5 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 5 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 12 (type: int)
+ DEBUG: full_params after assignment: {'length': 12, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 355 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T10:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4225.905990000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(255.5369443096578), 'pnl': np.float64(235.50118758512835), 'pnl_pct': np.float64(0.025837624369087618), 'commission': np.float64(20.035756724529442), 'initial_capital': 10000, 'final_capital': np.float64(10235.501187585127)}
+ DEBUG: Result 6 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 6 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 13 (type: int)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 304 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-24T22:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4324.066885), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(491.2037518480172), 'pnl': np.float64(470.9323283159494), 'pnl_pct': np.float64(0.04966615713129951), 'commission': np.float64(20.2714235320678), 'initial_capital': 10000, 'final_capital': np.float64(10470.93232831595)}
+ DEBUG: Result 7 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 7 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 14 (type: int)
+ DEBUG: full_params after assignment: {'length': 14, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 265 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-25T00:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4363.817), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(586.6366908135054), 'pnl': np.float64(566.2698343424721), 'pnl_pct': np.float64(0.05931548762669887), 'commission': np.float64(20.36685647103329), 'initial_capital': 10000, 'final_capital': np.float64(10566.269834342473)}
+ DEBUG: Result 8 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 8 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 15 (type: int)
+ DEBUG: full_params after assignment: {'length': 15, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 227 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-08-25T00:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4363.817), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(837.5402213667397), 'pnl': np.float64(816.9224613651533), 'pnl_pct': np.float64(0.084684622382637), 'commission': np.float64(20.61776000158652), 'initial_capital': 10000, 'final_capital': np.float64(10816.922461365153)}
+ DEBUG: Result 9 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 9 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 16 (type: int)
+ DEBUG: full_params after assignment: {'length': 16, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 198 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-08-29T13:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4577.71), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(1363.357244696103), 'pnl': np.float64(1342.213667671187), 'pnl_pct': np.float64(0.13785056585260594), 'commission': np.float64(21.143577024915885), 'initial_capital': 10000, 'final_capital': np.float64(11342.213667671189)}
+ DEBUG: Result 10 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 10 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 17 (type: int)
+ DEBUG: full_params after assignment: {'length': 17, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 181 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-08-29T13:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4577.71), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(1363.357244696103), 'pnl': np.float64(1342.213667671187), 'pnl_pct': np.float64(0.13785056585260594), 'commission': np.float64(21.143577024915885), 'initial_capital': 10000, 'final_capital': np.float64(11342.213667671189)}
+ DEBUG: Result 11 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 11 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 18 (type: int)
+ DEBUG: full_params after assignment: {'length': 18, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 163 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-08-29T13:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4577.71), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(1363.357244696103), 'pnl': np.float64(1342.213667671187), 'pnl_pct': np.float64(0.13785056585260594), 'commission': np.float64(21.143577024915885), 'initial_capital': 10000, 'final_capital': np.float64(11342.213667671189)}
+ DEBUG: Result 12 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 12 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 19 (type: int)
+ DEBUG: full_params after assignment: {'length': 19, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 151 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-09-18T13:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4087.9550000000004), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(159.3836866055061), 'pnl': np.float64(139.4440831386808), 'pnl_pct': np.float64(0.01611546164566784), 'commission': np.float64(19.93960346682529), 'initial_capital': 10000, 'final_capital': np.float64(10139.444083138682)}
+ DEBUG: Result 13 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 13 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 20 (type: int)
+ DEBUG: full_params after assignment: {'length': 20, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 135 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T21:00:00.000000000', 'exit_time': '2017-09-27T19:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3977.6778449999997), 'exit_price': np.float64(4187.905000000001), 'size': np.float64(2.4864029404849632), 'pnl_gross': np.float64(522.7094163617905), 'pnl': np.float64(502.406487165209), 'pnl_pct': np.float64(0.05285172987658104), 'commission': np.float64(20.302929196581573), 'initial_capital': 10000, 'final_capital': np.float64(10502.40648716521)}
+ DEBUG: Result 14 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 14 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 21 (type: int)
+ DEBUG: full_params after assignment: {'length': 21, 'overbought': 70, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 120 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T21:00:00.000000000', 'exit_time': '2017-09-27T19:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3977.6778449999997), 'exit_price': np.float64(4187.905000000001), 'size': np.float64(2.4864029404849632), 'pnl_gross': np.float64(522.7094163617905), 'pnl': np.float64(502.406487165209), 'pnl_pct': np.float64(0.05285172987658104), 'commission': np.float64(20.302929196581573), 'initial_capital': 10000, 'final_capital': np.float64(10502.40648716521)}
+2026-01-06 23:44:20,817 - app.services.job_manager - INFO - Saved batch of 15 results for job a34b45b8-c301-447c-b218-18520fcb7f2a
+ Saved 15 results to database (total: 15)
+ Running stage 2/3: Overbought
+ Locked params before stage: {'timeframe': '1h', 'length': 13}
+2026-01-06 23:44:20,839 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-06 23:44:20,843 - src.data.incremental_loader - INFO - Incremental update needed. Downloading from 2026-01-06 21:00:00.001000
+2026-01-06 23:44:20,844 - src.data.incremental_loader - INFO - Starting download loop for BTC/USDT from 2026-01-06 21:00:00.001000
+2026-01-06 23:44:25,731 - root - INFO - Full history period: 2017-08-17T00:00:00+00:00 to 2026-01-07T00:00:00+00:00 (3066 candles)
+2026-01-06 23:44:25,773 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:25,777 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:25,787 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:26,304 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:26,309 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:26,322 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:27,437 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:27,445 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:27,466 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:28,377 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:28,385 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:28,405 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:29,568 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:29,580 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:29,603 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:31,458 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:31,473 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:31,505 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:33,157 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:33,166 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:33,188 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:34,733 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:34,742 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:34,769 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:36,582 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:36,600 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:36,629 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:38,312 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:38,426 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:38,510 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:39,436 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:39,439 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:39,449 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:40,112 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:40,117 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:40,126 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:40,800 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:40,803 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:40,813 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:41,845 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:41,850 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:41,861 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:42,561 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:42,566 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:42,576 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:43,287 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:43,292 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:43,303 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+ Stage 2 complete: overbought = 78.0
+ DEBUG: stage_result keys: dict_keys(['stage_num', 'stage_name', 'parameter', 'results', 'best_value', 'best_result'])
+ DEBUG: stage['parameter']: overbought
+ DEBUG: Number of results: 16
+ DEBUG: Result 0 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 0 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 65.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 65.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 382 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T09:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4201.01844), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(195.78637402449837), 'pnl': np.float64(175.81036787025408), 'pnl_pct': np.float64(0.019796177818032612), 'commission': np.float64(19.97600615424428), 'initial_capital': 10000, 'final_capital': np.float64(10175.810367870254)}
+ DEBUG: Result 1 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 1 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 66.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 66.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 369 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T09:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4201.01844), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(195.78637402449837), 'pnl': np.float64(175.81036787025408), 'pnl_pct': np.float64(0.019796177818032612), 'commission': np.float64(19.97600615424428), 'initial_capital': 10000, 'final_capital': np.float64(10175.810367870254)}
+ DEBUG: Result 2 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 2 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 67.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 67.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 351 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T09:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4201.01844), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(195.78637402449837), 'pnl': np.float64(175.81036787025408), 'pnl_pct': np.float64(0.019796177818032612), 'commission': np.float64(19.97600615424428), 'initial_capital': 10000, 'final_capital': np.float64(10175.810367870254)}
+ DEBUG: Result 3 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 3 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 68.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 68.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 331 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T10:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4225.905990000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(255.5369443096578), 'pnl': np.float64(235.50118758512835), 'pnl_pct': np.float64(0.025837624369087618), 'commission': np.float64(20.035756724529442), 'initial_capital': 10000, 'final_capital': np.float64(10235.501187585127)}
+ DEBUG: Result 4 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 4 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 69.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 69.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 321 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-23T11:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4235.871005), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(279.4611686366835), 'pnl': np.float64(259.40148768782706), 'pnl_pct': np.float64(0.028256629273264663), 'commission': np.float64(20.059680948856467), 'initial_capital': 10000, 'final_capital': np.float64(10259.401487687826)}
+ DEBUG: Result 5 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 5 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 70.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 70.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 304 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-24T22:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4324.066885), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(491.2037518480172), 'pnl': np.float64(470.9323283159494), 'pnl_pct': np.float64(0.04966615713129951), 'commission': np.float64(20.2714235320678), 'initial_capital': 10000, 'final_capital': np.float64(10470.93232831595)}
+ DEBUG: Result 6 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 6 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 71.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 71.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 282 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-25T00:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4363.817), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(586.6366908135054), 'pnl': np.float64(566.2698343424721), 'pnl_pct': np.float64(0.05931548762669887), 'commission': np.float64(20.36685647103329), 'initial_capital': 10000, 'final_capital': np.float64(10566.269834342473)}
+ DEBUG: Result 7 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 7 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 72.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 72.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 272 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-25T00:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4363.817), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(586.6366908135054), 'pnl': np.float64(566.2698343424721), 'pnl_pct': np.float64(0.05931548762669887), 'commission': np.float64(20.36685647103329), 'initial_capital': 10000, 'final_capital': np.float64(10566.269834342473)}
+ DEBUG: Result 8 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 8 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 73.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 73.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 252 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-29T13:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4577.71), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1100.155648284327), 'pnl': np.float64(1079.275272855823), 'pnl_pct': np.float64(0.11123795999319305), 'commission': np.float64(20.88037542850411), 'initial_capital': 10000, 'final_capital': np.float64(11079.275272855823)}
+ DEBUG: Result 9 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 9 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 74.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 74.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 238 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-29T13:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4577.71), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1100.155648284327), 'pnl': np.float64(1079.275272855823), 'pnl_pct': np.float64(0.11123795999319305), 'commission': np.float64(20.88037542850411), 'initial_capital': 10000, 'final_capital': np.float64(11079.275272855823)}
+ DEBUG: Result 10 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 10 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 75.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 75.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 228 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-08-29T13:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4577.71), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1100.155648284327), 'pnl': np.float64(1079.275272855823), 'pnl_pct': np.float64(0.11123795999319305), 'commission': np.float64(20.88037542850411), 'initial_capital': 10000, 'final_capital': np.float64(11079.275272855823)}
+ DEBUG: Result 11 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 11 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 76.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 76.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 204 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-08T15:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4587.705), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1124.151861250253), 'pnl': np.float64(1103.2474896087829), 'pnl_pct': np.float64(0.11366424374863668), 'commission': np.float64(20.904371641470036), 'initial_capital': 10000, 'final_capital': np.float64(11103.247489608784)}
+ DEBUG: Result 12 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 12 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 77.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 77.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 176 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+ DEBUG: Result 13 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 13 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 78.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 164 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+ DEBUG: Result 14 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 14 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 79.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 79.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 147 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T19:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4785.096255), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1598.0530711143315), 'pnl': np.float64(1576.6747982629975), 'pnl_pct': np.float64(0.1615809216348935), 'commission': np.float64(21.378272851334117), 'initial_capital': 10000, 'final_capital': np.float64(11576.674798262997)}
+ DEBUG: Result 15 keys: ['overbought', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 15 has parameter 'overbought': True
+ DEBUG: Extracted param_value for 'overbought': 80.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 80.0, 'oversold': 30, 'timeframe': '1h'}
+ DEBUG: result_data has 131 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T20:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4849.544015), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1752.7806523186239), 'pnl': np.float64(1731.2476518860856), 'pnl_pct': np.float64(0.17722559928999418), 'commission': np.float64(21.533000432538408), 'initial_capital': 10000, 'final_capital': np.float64(11731.247651886086)}
+2026-01-06 23:44:44,631 - app.services.job_manager - INFO - Saved batch of 16 results for job a34b45b8-c301-447c-b218-18520fcb7f2a
+ Saved 16 results to database (total: 31)
+ Running stage 3/3: Oversold
+ Locked params before stage: {'timeframe': '1h', 'length': 13, 'overbought': 78.0}
+2026-01-06 23:44:44,661 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-06 23:44:44,666 - src.data.incremental_loader - INFO - Incremental update needed. Downloading from 2026-01-06 21:00:00.001000
+2026-01-06 23:44:44,667 - src.data.incremental_loader - INFO - Starting download loop for BTC/USDT from 2026-01-06 21:00:00.001000
+2026-01-06 23:44:49,920 - root - INFO - Full history period: 2017-08-17T00:00:00+00:00 to 2026-01-07T00:00:00+00:00 (3066 candles)
+2026-01-06 23:44:49,953 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:49,956 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:49,963 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:50,234 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:50,237 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:50,245 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:50,570 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:50,574 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:50,581 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:50,893 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:50,896 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:50,906 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:51,238 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:51,240 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:51,249 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:51,533 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:51,537 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:51,545 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:51,857 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:51,860 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:51,867 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:52,171 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:52,174 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:52,181 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:52,484 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:52,486 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:52,493 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:52,799 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:52,802 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:52,810 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:53,142 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:53,145 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:53,152 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:53,521 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:53,523 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:53,532 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:54,080 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:54,083 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:54,095 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:54,592 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:54,595 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:54,603 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:55,062 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:55,065 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:55,075 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:44:55,550 - root - INFO - Running backtest: BTC/USDT 1h from 2017-08-17 to 2026-01-07
+2026-01-06 23:44:55,553 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1h: data/storage\binance\BTC_USDT_1h.parquet
+2026-01-06 23:44:55,561 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+ Stage 3 complete: oversold = 33.0
+ DEBUG: stage_result keys: dict_keys(['stage_num', 'stage_name', 'parameter', 'results', 'best_value', 'best_result'])
+ DEBUG: stage['parameter']: oversold
+ DEBUG: Number of results: 16
+ DEBUG: Result 0 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 0 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 20.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 20.0, 'timeframe': '1h'}
+ DEBUG: result_data has 84 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-10T06:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3811.9550249999998), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.5944980529013173), 'pnl_gross': np.float64(2505.3899524119724), 'pnl': np.float64(2483.104342679341), 'pnl_pct': np.float64(0.25332276185498825), 'commission': np.float64(22.285609732631755), 'initial_capital': 10000, 'final_capital': np.float64(12483.10434267934)}
+ DEBUG: Result 1 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 1 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 21.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 21.0, 'timeframe': '1h'}
+ DEBUG: result_data has 95 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-10T06:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3811.9550249999998), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.5944980529013173), 'pnl_gross': np.float64(2505.3899524119724), 'pnl': np.float64(2483.104342679341), 'pnl_pct': np.float64(0.25332276185498825), 'commission': np.float64(22.285609732631755), 'initial_capital': 10000, 'final_capital': np.float64(12483.10434267934)}
+ DEBUG: Result 2 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 2 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 22.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 22.0, 'timeframe': '1h'}
+ DEBUG: result_data has 104 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-10T06:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3811.9550249999998), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.5944980529013173), 'pnl_gross': np.float64(2505.3899524119724), 'pnl': np.float64(2483.104342679341), 'pnl_pct': np.float64(0.25332276185498825), 'commission': np.float64(22.285609732631755), 'initial_capital': 10000, 'final_capital': np.float64(12483.10434267934)}
+ DEBUG: Result 3 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 3 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 23.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 23.0, 'timeframe': '1h'}
+ DEBUG: result_data has 117 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T21:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3977.6778449999997), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4864029404849632), 'pnl_gross': np.float64(1988.9536623804756), 'pnl': np.float64(1967.1844889378754), 'pnl_pct': np.float64(0.20110531475180363), 'commission': np.float64(21.769173442600255), 'initial_capital': 10000, 'final_capital': np.float64(11967.184488937875)}
+ DEBUG: Result 4 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 4 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 24.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 24.0, 'timeframe': '1h'}
+ DEBUG: result_data has 124 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T21:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3977.6778449999997), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4864029404849632), 'pnl_gross': np.float64(1988.9536623804756), 'pnl': np.float64(1967.1844889378754), 'pnl_pct': np.float64(0.20110531475180363), 'commission': np.float64(21.769173442600255), 'initial_capital': 10000, 'final_capital': np.float64(11967.184488937875)}
+ DEBUG: Result 5 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 5 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 25.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 25.0, 'timeframe': '1h'}
+ DEBUG: result_data has 127 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(1854.775023508593), 'pnl': np.float64(1833.1400287048646), 'pnl_pct': np.float64(0.18753836348809105), 'commission': np.float64(21.634994803728375), 'initial_capital': 10000, 'final_capital': np.float64(11833.140028704865)}
+ DEBUG: Result 6 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 6 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 26.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 26.0, 'timeframe': '1h'}
+ DEBUG: result_data has 134 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(1854.775023508593), 'pnl': np.float64(1833.1400287048646), 'pnl_pct': np.float64(0.18753836348809105), 'commission': np.float64(21.634994803728375), 'initial_capital': 10000, 'final_capital': np.float64(11833.140028704865)}
+ DEBUG: Result 7 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 7 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 27.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 27.0, 'timeframe': '1h'}
+ DEBUG: result_data has 141 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(1854.775023508593), 'pnl': np.float64(1833.1400287048646), 'pnl_pct': np.float64(0.18753836348809105), 'commission': np.float64(21.634994803728375), 'initial_capital': 10000, 'final_capital': np.float64(11833.140028704865)}
+ DEBUG: Result 8 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 8 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 28.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 28.0, 'timeframe': '1h'}
+ DEBUG: result_data has 147 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T20:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4023.120555), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4583180530889885), 'pnl_gross': np.float64(1854.775023508593), 'pnl': np.float64(1833.1400287048646), 'pnl_pct': np.float64(0.18753836348809105), 'commission': np.float64(21.634994803728375), 'initial_capital': 10000, 'final_capital': np.float64(11833.140028704865)}
+ DEBUG: Result 9 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 9 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 29.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 29.0, 'timeframe': '1h'}
+ DEBUG: result_data has 156 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+ DEBUG: Result 10 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 10 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 30.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 30.0, 'timeframe': '1h'}
+ DEBUG: result_data has 164 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+ DEBUG: Result 11 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 11 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 31.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 31.0, 'timeframe': '1h'}
+ DEBUG: result_data has 173 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+ DEBUG: Result 12 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 12 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 32.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 32.0, 'timeframe': '1h'}
+ DEBUG: result_data has 179 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+ DEBUG: Result 13 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 13 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 33.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 33.0, 'timeframe': '1h'}
+ DEBUG: result_data has 186 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+ DEBUG: Result 14 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 14 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 34.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 34.0, 'timeframe': '1h'}
+ DEBUG: result_data has 190 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+ DEBUG: Result 15 keys: ['oversold', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 15 has parameter 'oversold': True
+ DEBUG: Extracted param_value for 'oversold': 35.0 (type: float)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 78.0, 'oversold': 35.0, 'timeframe': '1h'}
+ DEBUG: result_data has 194 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+2026-01-06 23:44:56,612 - app.services.job_manager - INFO - Saved batch of 16 results for job a34b45b8-c301-447c-b218-18520fcb7f2a
+ Saved 16 results to database (total: 47)
+ Using best result from FINAL STAGE with all optimized params: {'length': 13, 'overbought': 78.0, 'oversold': 33.0, 'timeframe': '1h'}
+ Optimization complete! Tested 47 combinations in 49.0s
+ Job a34b45b8-c301-447c-b218-18520fcb7f2a completed and saved to database
+ DEBUG: Best result has 186 trades
+ DEBUG: Best Result Params: {'length': 13, 'overbought': 78.0, 'oversold': 33.0, 'timeframe': '1h'}
+ DEBUG: Best Result First Trade: {'entry_time': '2017-08-18T18:00:00.000000000', 'exit_time': '2017-10-09T18:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4119.468704999999), 'exit_price': np.float64(4777.610000000001), 'size': np.float64(2.4008217074463474), 'pnl_gross': np.float64(1580.0799076028532), 'pnl': np.float64(1558.7196079150306), 'pnl_pct': np.float64(0.15976363510206623), 'commission': np.float64(21.36029968782264), 'initial_capital': 10000, 'final_capital': np.float64(11558.71960791503)}
+2026-01-06 23:47:47,449 - app.main - INFO - ================================================================================
+2026-01-06 23:47:47,449 - app.main - INFO - Backend starting up - logging to C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\full_execution_log.txt
+2026-01-06 23:47:47,450 - app.main - INFO - ================================================================================
+2026-01-06 23:47:51,601 - app.main - INFO - ================================================================================
+2026-01-06 23:47:51,601 - app.main - INFO - Backend starting up - logging to C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\full_execution_log.txt
+2026-01-06 23:47:51,602 - app.main - INFO - ================================================================================
+2026-01-06 23:48:27,313 - app.main - INFO - ================================================================================
+2026-01-06 23:48:27,314 - app.main - INFO - Backend starting up - logging to C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\full_execution_log.txt
+2026-01-06 23:48:27,314 - app.main - INFO - ================================================================================
+ REQUEST RECEIVED: BTC/USDT rsi 4h
+ Custom Ranges: {'length': {'min': 7, 'max': 21, 'step': 1}}
+ Fixed Timeframe: 4h
+2026-01-06 23:48:45,798 - app.services.job_manager - INFO - SQLite database initialized at C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\data\jobs\results.db
+2026-01-06 23:48:45,799 - app.services.job_manager - INFO - JobManager initialized. Data dir: C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\data\jobs, DB: C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\data\jobs\results.db
+ Created job: 372e0578-f569-490f-8ce4-376ff655153b
+ Strategy Defaults (Base): {'length': 14, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ Running stage 1/1: Length
+ Locked params before stage: {'timeframe': '4h'}
+2026-01-06 23:48:45,835 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-06 23:48:45,909 - src.data.incremental_loader - INFO - Incremental update needed. Downloading from 2026-01-06 21:00:00.001000
+2026-01-06 23:48:45,909 - src.data.incremental_loader - INFO - Starting download loop for BTC/USDT from 2026-01-06 21:00:00.001000
+2026-01-06 23:48:52,117 - root - INFO - Full history period: 2017-08-17T00:00:00+00:00 to 2026-01-07T00:00:00+00:00 (3066 candles)
+2026-01-06 23:48:52,153 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:52,157 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:52,164 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:52,634 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:52,638 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:52,643 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:52,840 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:52,844 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:52,848 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:53,036 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:53,040 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:53,044 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:53,254 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:53,258 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:53,263 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:53,479 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:53,482 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:53,487 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:53,714 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:53,718 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:53,722 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:54,015 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:54,018 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:54,022 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:54,219 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:54,223 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:54,227 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:54,415 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:54,417 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:54,421 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:54,618 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:54,621 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:54,625 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:54,816 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:54,818 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:54,822 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:55,014 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:55,017 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:55,021 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:55,219 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:55,223 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:55,227 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-06 23:48:55,429 - root - INFO - Running backtest: BTC/USDT 4h from 2017-08-17 to 2026-01-07
+2026-01-06 23:48:55,431 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 4h: data/storage\binance\BTC_USDT_4h.parquet
+2026-01-06 23:48:55,435 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+ Stage 1 complete: length = 15
+ DEBUG: stage_result keys: dict_keys(['stage_num', 'stage_name', 'parameter', 'results', 'best_value', 'best_result'])
+ DEBUG: stage['parameter']: length
+ DEBUG: Number of results: 15
+ DEBUG: Result 0 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 0 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 7 (type: int)
+ DEBUG: full_params after assignment: {'length': 7, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 231 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-19T08:00:00.000000000', 'exit_time': '2017-08-23T08:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3959.5788), 'exit_price': np.float64(4235.871005), 'size': np.float64(2.497768169207768), 'pnl_gross': np.float64(690.1138750492278), 'pnl': np.float64(669.6435413939588), 'pnl_pct': np.float64(0.06977818069942192), 'commission': np.float64(20.47033365526901), 'initial_capital': 10000, 'final_capital': np.float64(10669.64354139396)}
+ DEBUG: Result 1 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 1 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 8 (type: int)
+ DEBUG: full_params after assignment: {'length': 8, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 180 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-22T00:00:00.000000000', 'exit_time': '2017-08-23T08:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3864.3211949999995), 'exit_price': np.float64(4235.871005), 'size': np.float64(2.559339503896982), 'pnl_gross': np.float64(950.922106398419), 'pnl': np.float64(930.1909645118009), 'pnl_pct': np.float64(0.09614879075806236), 'commission': np.float64(20.731141886618204), 'initial_capital': 10000, 'final_capital': np.float64(10930.190964511801)}
+ DEBUG: Result 2 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 2 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 9 (type: int)
+ DEBUG: full_params after assignment: {'length': 9, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 155 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-22T00:00:00.000000000', 'exit_time': '2017-08-24T20:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3864.3211949999995), 'exit_price': np.float64(4313.851995000001), 'size': np.float64(2.559339503896982), 'pnl_gross': np.float64(1150.501934658417), 'pnl': np.float64(1129.5712129435387), 'pnl_pct': np.float64(0.11632852894879547), 'commission': np.float64(20.930721714878203), 'initial_capital': 10000, 'final_capital': np.float64(11129.571212943538)}
+ DEBUG: Result 3 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 3 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 10 (type: int)
+ DEBUG: full_params after assignment: {'length': 10, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 133 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-22T00:00:00.000000000', 'exit_time': '2017-08-24T20:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3864.3211949999995), 'exit_price': np.float64(4313.851995000001), 'size': np.float64(2.559339503896982), 'pnl_gross': np.float64(1150.501934658417), 'pnl': np.float64(1129.5712129435387), 'pnl_pct': np.float64(0.11632852894879547), 'commission': np.float64(20.930721714878203), 'initial_capital': 10000, 'final_capital': np.float64(11129.571212943538)}
+ DEBUG: Result 4 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 4 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 11 (type: int)
+ DEBUG: full_params after assignment: {'length': 11, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 119 trades
+ DEBUG: First trade sample: {'entry_time': '2017-08-22T04:00:00.000000000', 'exit_time': '2017-08-25T04:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3799.9790399999997), 'exit_price': np.float64(4326.8355), 'size': np.float64(2.6026748532038986), 'pnl_gross': np.float64(1371.2360596900269), 'pnl': np.float64(1350.084603850117), 'pnl_pct': np.float64(0.13864720159088048), 'commission': np.float64(21.151455839909808), 'initial_capital': 10000, 'final_capital': np.float64(11350.084603850117)}
+ DEBUG: Result 5 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 5 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 12 (type: int)
+ DEBUG: full_params after assignment: {'length': 12, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 106 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-04T12:00:00.000000000', 'exit_time': '2017-09-27T08:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4017.037515), 'exit_price': np.float64(4070.9635000000003), 'size': np.float64(2.4620407086514082), 'pnl_gross': np.float64(132.76797032412597), 'pnl': np.float64(112.85498257358205), 'pnl_pct': np.float64(0.013424316999439401), 'commission': np.float64(19.912987750543913), 'initial_capital': 10000, 'final_capital': np.float64(10112.854982573583)}
+ DEBUG: Result 6 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 6 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 13 (type: int)
+ DEBUG: full_params after assignment: {'length': 13, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 87 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-04T12:00:00.000000000', 'exit_time': '2017-09-27T08:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4017.037515), 'exit_price': np.float64(4070.9635000000003), 'size': np.float64(2.4620407086514082), 'pnl_gross': np.float64(132.76797032412597), 'pnl': np.float64(112.85498257358205), 'pnl_pct': np.float64(0.013424316999439401), 'commission': np.float64(19.912987750543913), 'initial_capital': 10000, 'final_capital': np.float64(10112.854982573583)}
+ DEBUG: Result 7 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 7 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 14 (type: int)
+ DEBUG: full_params after assignment: {'length': 14, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 85 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-04T12:00:00.000000000', 'exit_time': '2017-09-27T12:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4017.037515), 'exit_price': np.float64(4087.9550000000004), 'size': np.float64(2.4620407086514082), 'pnl_gross': np.float64(174.6017350251766), 'pnl': np.float64(154.64691350993164), 'pnl_pct': np.float64(0.017654175430323406), 'commission': np.float64(19.954821515244962), 'initial_capital': 10000, 'final_capital': np.float64(10154.646913509932)}
+ DEBUG: Result 8 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 8 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 15 (type: int)
+ DEBUG: full_params after assignment: {'length': 15, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 77 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-04T12:00:00.000000000', 'exit_time': '2017-09-27T16:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4017.037515), 'exit_price': np.float64(4187.905000000001), 'size': np.float64(2.4620407086514082), 'pnl_gross': np.float64(420.6827038548855), 'pnl': np.float64(400.48180137081084), 'pnl_pct': np.float64(0.042535695611993975), 'commission': np.float64(20.200902484074668), 'initial_capital': 10000, 'final_capital': np.float64(10400.481801370812)}
+ DEBUG: Result 9 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 9 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 16 (type: int)
+ DEBUG: full_params after assignment: {'length': 16, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 66 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-04T12:00:00.000000000', 'exit_time': '2017-09-27T16:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4017.037515), 'exit_price': np.float64(4187.905000000001), 'size': np.float64(2.4620407086514082), 'pnl_gross': np.float64(420.6827038548855), 'pnl': np.float64(400.48180137081084), 'pnl_pct': np.float64(0.042535695611993975), 'commission': np.float64(20.200902484074668), 'initial_capital': 10000, 'final_capital': np.float64(10400.481801370812)}
+ DEBUG: Result 10 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 10 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 17 (type: int)
+ DEBUG: full_params after assignment: {'length': 17, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 51 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-14T16:00:00.000000000', 'exit_time': '2017-09-27T16:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3371.685), 'exit_price': np.float64(4187.905000000001), 'size': np.float64(2.933284067197823), 'pnl_gross': np.float64(2394.205121328209), 'pnl': np.float64(2372.030696426661), 'pnl_pct': np.float64(0.24208074004540778), 'commission': np.float64(22.174424901547994), 'initial_capital': 10000, 'final_capital': np.float64(12372.030696426662)}
+ DEBUG: Result 11 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 11 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 18 (type: int)
+ DEBUG: full_params after assignment: {'length': 18, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 45 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-14T20:00:00.000000000', 'exit_time': '2017-09-28T04:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3190.61451), 'exit_price': np.float64(4243.877), 'size': np.float64(3.0997508032112258), 'pnl_gross': np.float64(3264.851249369757), 'pnl': np.float64(3241.8061783401677), 'pnl_pct': np.float64(0.33011273743627545), 'commission': np.float64(23.04507102958954), 'initial_capital': 10000, 'final_capital': np.float64(13241.806178340168)}
+ DEBUG: Result 12 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 12 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 19 (type: int)
+ DEBUG: full_params after assignment: {'length': 19, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 44 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-14T20:00:00.000000000', 'exit_time': '2017-09-28T04:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3190.61451), 'exit_price': np.float64(4243.877), 'size': np.float64(3.0997508032112258), 'pnl_gross': np.float64(3264.851249369757), 'pnl': np.float64(3241.8061783401677), 'pnl_pct': np.float64(0.33011273743627545), 'commission': np.float64(23.04507102958954), 'initial_capital': 10000, 'final_capital': np.float64(13241.806178340168)}
+ DEBUG: Result 13 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 13 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 20 (type: int)
+ DEBUG: full_params after assignment: {'length': 20, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 40 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-14T20:00:00.000000000', 'exit_time': '2017-10-09T00:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3190.61451), 'exit_price': np.float64(4656.6705), 'size': np.float64(3.0997508032112258), 'pnl_gross': np.float64(4544.40823255513), 'pnl': np.float64(4520.083604542355), 'pnl_pct': np.float64(0.4594901657361297), 'commission': np.float64(24.32462801277491), 'initial_capital': 10000, 'final_capital': np.float64(14520.083604542355)}
+ DEBUG: Result 14 keys: ['length', 'metrics', 'trades', 'test_num', 'total_tests']
+ DEBUG: Result 14 has parameter 'length': True
+ DEBUG: Extracted param_value for 'length': 21 (type: int)
+ DEBUG: full_params after assignment: {'length': 21, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: result_data has 35 trades
+ DEBUG: First trade sample: {'entry_time': '2017-09-14T20:00:00.000000000', 'exit_time': '2017-10-09T00:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(3190.61451), 'exit_price': np.float64(4656.6705), 'size': np.float64(3.0997508032112258), 'pnl_gross': np.float64(4544.40823255513), 'pnl': np.float64(4520.083604542355), 'pnl_pct': np.float64(0.4594901657361297), 'commission': np.float64(24.32462801277491), 'initial_capital': 10000, 'final_capital': np.float64(14520.083604542355)}
+2026-01-06 23:48:55,932 - app.services.job_manager - INFO - Saved batch of 15 results for job 372e0578-f569-490f-8ce4-376ff655153b
+ Saved 15 results to database (total: 15)
+ Using best result from FINAL STAGE with all optimized params: {'length': 15, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ Optimization complete! Tested 15 combinations in 10.1s
+ Job 372e0578-f569-490f-8ce4-376ff655153b completed and saved to database
+ DEBUG: Best result has 77 trades
+ DEBUG: Best Result Params: {'length': 15, 'overbought': 70, 'oversold': 30, 'timeframe': '4h'}
+ DEBUG: Best Result First Trade: {'entry_time': '2017-09-04T12:00:00.000000000', 'exit_time': '2017-09-27T16:00:00.000000000', 'side': 'long', 'reason': 'Signal', 'entry_price': np.float64(4017.037515), 'exit_price': np.float64(4187.905000000001), 'size': np.float64(2.4620407086514082), 'pnl_gross': np.float64(420.6827038548855), 'pnl': np.float64(400.48180137081084), 'pnl_pct': np.float64(0.042535695611993975), 'commission': np.float64(20.200902484074668), 'initial_capital': 10000, 'final_capital': np.float64(10400.481801370812)}

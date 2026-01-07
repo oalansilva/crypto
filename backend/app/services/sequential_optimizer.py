@@ -14,12 +14,10 @@ import os
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
-
 from app.schemas.indicator_params import (
     get_indicator_schema,
     calculate_total_stages,
-    TIMEFRAME_OPTIONS,
-    RISK_MANAGEMENT_SCHEMA
+    TIMEFRAME_OPTIONS
 )
 from app.services.backtest_service import BacktestService
 from src.data.incremental_loader import IncrementalLoader
@@ -83,7 +81,11 @@ class SequentialOptimizer:
             # Check for custom range override
             opt_range = param_schema.optimization_range
             
-            if custom_ranges and param_name in custom_ranges:
+            if custom_ranges and len(custom_ranges) > 0:
+                # If custom ranges are provided, ONLY optimize those parameters
+                if param_name not in custom_ranges:
+                    continue
+                
                 custom = custom_ranges[param_name]
                 # Format: {min: x, max: y, step: z}
                 if isinstance(custom, dict) and 'min' in custom:
@@ -96,7 +98,8 @@ class SequentialOptimizer:
                     if step <= 0: step = 1.0 # Prevent infinite loop
                     
                     while current <= end + (step * 0.1): # Float tolerance
-                        if param_schema.type == "int":
+                        # Inferred type check from default value
+                        if isinstance(param_schema.default, int):
                             values.append(int(current))
                         else:
                             values.append(round(current, 4))
@@ -127,37 +130,9 @@ class SequentialOptimizer:
                 })
                 stage_num += 1
         
-        # Stage N+2: Stop-loss optimization
-        sl_param = RISK_MANAGEMENT_SCHEMA["stop_loss"]
-        sl_range = sl_param.optimization_range
-        sl_values = []
-        current = sl_range.min
-        while current <= sl_range.max:
-            sl_values.append(round(current, 4))
-            current += sl_range.step
-        
-        stages.append({
-            "stage_num": stage_num,
-            "stage_name": "Stop-Loss",
-            "parameter": "stop_loss",
-            "values": sl_values,
-            "locked_params": {},
-            "description": sl_param.description,
-            "market_standard": sl_param.market_standard
-        })
-        stage_num += 1
-        
-        # Stage N+3: Stop-gain optimization
-        sg_param = RISK_MANAGEMENT_SCHEMA["stop_gain"]
-        stages.append({
-            "stage_num": stage_num,
-            "stage_name": "Stop-Gain",
-            "parameter": "stop_gain",
-            "values": sg_param.options,
-            "locked_params": {},
-            "description": sg_param.description,
-            "market_standard": sg_param.market_standard
-        })
+        # Risk management parameters (stop_loss, take_profit, etc.) are excluded 
+        # from strategy parameter optimization. They are handled in the 
+        # separate Risk Optimization phase.
         
         return stages
     

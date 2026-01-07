@@ -39,19 +39,19 @@ class IndicatorSchema(BaseModel):
 MACD_SCHEMA = IndicatorSchema(
     name="MACD",
     parameters={
-        "fast_period": ParameterSchema(
+        "fast": ParameterSchema(
             default=12,
             optimization_range=OptimizationRange(min=6, max=18, step=1),
             market_standard="Most traders use 12. 70% use values between 10-14.",
             description="Fast EMA period for MACD calculation"
         ),
-        "slow_period": ParameterSchema(
+        "slow": ParameterSchema(
             default=26,
             optimization_range=OptimizationRange(min=20, max=32, step=1),
             market_standard="Most traders use 26. Conservative range captures most variations.",
             description="Slow EMA period for MACD calculation"
         ),
-        "signal_period": ParameterSchema(
+        "signal": ParameterSchema(
             default=9,
             optimization_range=OptimizationRange(min=6, max=12, step=1),
             market_standard="Most traders use 9. Range 6-12 covers common variations.",
@@ -65,7 +65,7 @@ MACD_SCHEMA = IndicatorSchema(
 RSI_SCHEMA = IndicatorSchema(
     name="RSI",
     parameters={
-        "period": ParameterSchema(
+        "length": ParameterSchema(
             default=14,
             optimization_range=OptimizationRange(min=10, max=20, step=1),
             market_standard="Most traders use 14. Range 10-20 is commonly tested.",
@@ -91,13 +91,13 @@ RSI_SCHEMA = IndicatorSchema(
 BOLLINGER_SCHEMA = IndicatorSchema(
     name="Bollinger Bands",
     parameters={
-        "period": ParameterSchema(
+        "length": ParameterSchema(
             default=20,
             optimization_range=OptimizationRange(min=15, max=25, step=1),
             market_standard="Most traders use 20. Standard deviation period.",
             description="Moving average period for Bollinger Bands"
         ),
-        "std_dev": ParameterSchema(
+        "std": ParameterSchema(
             default=2.0,
             optimization_range=OptimizationRange(min=1.5, max=3.0, step=0.1),
             market_standard="Most traders use 2.0. Range 1.5-3.0 covers tight to wide bands.",
