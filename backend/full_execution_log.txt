@@ -1,6 +1,0 @@
-2026-01-06 22:55:37,218 - app.main - INFO - ================================================================================
-2026-01-06 22:55:37,218 - app.main - INFO - Backend starting up - logging to C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\full_execution_log.txt
-2026-01-06 22:55:37,219 - app.main - INFO - ================================================================================
-2026-01-06 22:55:41,903 - app.main - INFO - ================================================================================
-2026-01-06 22:55:41,903 - app.main - INFO - Backend starting up - logging to C:\Users\alans.triggo\OneDrive - Corpay\Documentos\projetos\crypto\backend\full_execution_log.txt
-2026-01-06 22:55:41,903 - app.main - INFO - ================================================================================

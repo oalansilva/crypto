@@ -339,6 +339,7 @@ class SequentialOptimizer:
                         metrics = {"total_pnl": 0, "error": strat_result['error']}
                     else:
                         metrics = strat_result.get("metrics", {})
+                        trades_list = strat_result.get("trades", [])  # Extract trades
                         if not metrics or 'total_pnl' not in metrics:
                             print(f"WARNING: No valid metrics found, using default")
                             metrics = {"total_pnl": 0}
@@ -350,10 +351,12 @@ class SequentialOptimizer:
                 import traceback
                 traceback.print_exc()
                 metrics = {"total_pnl": 0}
+                trades_list = []  # No trades on error
 
             result = {
                 parameter: value,
                 "metrics": metrics,
+                "trades": trades_list if 'trades_list' in locals() else [],  # Include trades
                 "test_num": i + 1,
                 "total_tests": len(values)
             }

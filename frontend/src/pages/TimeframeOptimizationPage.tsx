@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Play, TrendingUp, Award } from 'lucide-react';
+import { Play, TrendingUp, Award, ChevronDown, ChevronRight } from 'lucide-react';
 
 const SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT'];
 const TIMEFRAMES = ['5m', '15m', '30m', '1h', '2h', '4h', '1d'];
@@ -18,6 +18,7 @@ interface TimeframeResult {
     max_drawdown: number;
     win_rate: number;
     total_trades: number;
+    trades?: any[];  // Trade details for display
 }
 
 export const TimeframeOptimizationPage: React.FC = () => {
@@ -29,6 +30,7 @@ export const TimeframeOptimizationPage: React.FC = () => {
     const [results, setResults] = useState<TimeframeResult[]>([]);
     const [bestTimeframe, setBestTimeframe] = useState<string | null>(null);
     const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null);
+    const [expandedTimeframe, setExpandedTimeframe] = useState<string | null>(null);
     const [jobId, setJobId] = useState<string | null>(null);
 
     // Fetch indicators
@@ -103,7 +105,8 @@ export const TimeframeOptimizationPage: React.FC = () => {
                     sharpe_ratio: result.metrics?.sharpe_ratio || 0,
                     max_drawdown: result.metrics?.max_drawdown || 0,
                     win_rate: result.metrics?.win_rate || 0,
-                    total_trades: result.metrics?.total_trades || 0
+                    total_trades: result.metrics?.total_trades || 0,
+                    trades: result.trades || []
                 }));
 
                 setResults(mappedResults);
@@ -221,34 +224,88 @@ export const TimeframeOptimizationPage: React.FC = () => {
                                     {results.map((result) => {
                                         const isBest = result.timeframe === bestTimeframe;
                                         const isSelected = result.timeframe === selectedTimeframe;
+                                        const isExpanded = result.timeframe === expandedTimeframe;
+
                                         return (
-                                            <tr
-                                                key={result.timeframe}
-                                                onClick={() => setSelectedTimeframe(result.timeframe)}
-                                                className="border-b transition-colors cursor-pointer hover:bg-[#1A202C]"
-                                                style={{
-                                                    borderColor: '#2A2F3A',
-                                                    backgroundColor: isSelected ? '#14b8a6/20' : (isBest ? '#14b8a6/5' : 'transparent'),
-                                                    borderLeft: isSelected ? '4px solid #14b8a6' : '4px solid transparent'
-                                                }}
-                                            >
-                                                <td className="py-3 px-4 font-mono font-bold" style={{ color: isSelected ? '#14b8a6' : '#E2E8F0' }}>
-                                                    {isBest && <Award className="inline w-4 h-4 mr-2" style={{ color: '#14b8a6' }} />}
-                                                    {result.timeframe} {isSelected && !isBest && <span className="text-xs text-gray-500 ml-2">(Selected)</span>}
-                                                </td>
-                                                <td className="py-3 px-4 text-right font-mono" style={{ color: result.total_return >= 0 ? '#10B981' : '#EF4444' }}>
-                                                    {result.total_return >= 0 ? '+' : ''}{result.total_return.toFixed(2)}%
-                                                </td>
-                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
-                                                    {result.sharpe_ratio.toFixed(2)}
-                                                </td>
-                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
-                                                    {(result.win_rate * 100).toFixed(1)}%
-                                                </td>
-                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
-                                                    {result.total_trades}
-                                                </td>
-                                            </tr>
+                                            <React.Fragment key={result.timeframe}>
+                                                <tr
+                                                    onClick={() => setSelectedTimeframe(result.timeframe)}
+                                                    className="border-b transition-colors cursor-pointer hover:bg-[#1A202C]"
+                                                    style={{
+                                                        borderColor: '#2A2F3A',
+                                                        backgroundColor: isSelected ? '#14b8a6/20' : (isBest ? '#14b8a6/5' : 'transparent'),
+                                                        borderLeft: isSelected ? '4px solid #14b8a6' : '4px solid transparent'
+                                                    }}
+                                                >
+                                                    <td className="py-3 px-4 font-mono font-bold flex items-center gap-2" style={{ color: isSelected ? '#14b8a6' : '#E2E8F0' }}>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setExpandedTimeframe(isExpanded ? null : result.timeframe);
+                                                            }}
+                                                            className="p-1 hover:bg-gray-700 rounded"
+                                                        >
+                                                            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                        </button>
+                                                        {isBest && <Award className="inline w-4 h-4 mr-2" style={{ color: '#14b8a6' }} />}
+                                                        {result.timeframe} {isSelected && !isBest && <span className="text-xs text-gray-500 ml-2">(Selected)</span>}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right font-mono" style={{ color: result.total_return >= 0 ? '#10B981' : '#EF4444' }}>
+                                                        {result.total_return >= 0 ? '+' : ''}{result.total_return.toFixed(2)}%
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right font-mono text-gray-300">
+                                                        {result.sharpe_ratio.toFixed(2)}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right font-mono text-gray-300">
+                                                        {(result.win_rate * 100).toFixed(1)}%
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right font-mono text-gray-300">
+                                                        {result.total_trades}
+                                                    </td>
+                                                </tr>
+                                                {isExpanded && (
+                                                    <tr>
+                                                        <td colSpan={5} className="p-4 bg-[#0e1116] border-b border-[#2A2F3A]">
+                                                            <div className="text-sm font-bold mb-2 text-gray-400">Trades List ({result.trades?.length || 0})</div>
+                                                            <div className="max-h-60 overflow-y-auto">
+                                                                <table className="w-full text-xs">
+                                                                    <thead className="bg-[#1A202C] text-gray-400">
+                                                                        <tr>
+                                                                            <th className="p-2 text-left">Entry Time</th>
+                                                                            <th className="p-2 text-left">Type</th>
+                                                                            <th className="p-2 text-right">Entry Price</th>
+                                                                            <th className="p-2 text-right">Exit Price</th>
+                                                                            <th className="p-2 text-right">PnL</th>
+                                                                            <th className="p-2 text-right">Exit Time</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {result.trades?.map((trade: any, idx: number) => (
+                                                                            <tr key={idx} className="border-b border-[#2A2F3A] hover:bg-[#1A202C]/50">
+                                                                                <td className="p-2 font-mono text-gray-300">{trade.entry_time?.substring(0, 16).replace('T', ' ')}</td>
+                                                                                <td className={`p-2 font-bold ${trade.side === 'buy' || trade.side === 'long' ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                    {(trade.side || 'LONG').toUpperCase()}
+                                                                                </td>
+                                                                                <td className="p-2 text-right font-mono text-gray-300">{trade.entry_price?.toFixed(2)}</td>
+                                                                                <td className="p-2 text-right font-mono text-gray-300">{trade.exit_price?.toFixed(2)}</td>
+                                                                                <td className={`p-2 text-right font-mono font-bold ${(trade.pnl || trade.profit) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                    {(trade.pnl || trade.profit)?.toFixed(2)}%
+                                                                                </td>
+                                                                                <td className="p-2 text-right font-mono text-gray-300">{trade.exit_time?.substring(0, 16).replace('T', ' ')}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                        {(!result.trades || result.trades.length === 0) && (
+                                                                            <tr>
+                                                                                <td colSpan={6} className="p-4 text-center text-gray-500">No trades recorded for this period.</td>
+                                                                            </tr>
+                                                                        )}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
                                         );
                                     })}
                                 </tbody>
