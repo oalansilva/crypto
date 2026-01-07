@@ -160,8 +160,8 @@ export const RiskManagementOptimizationPage: React.FC = () => {
 
     // Stop-Loss configuration
     const [stopLossMin, setStopLossMin] = useState(0.005); // 0.5%
-    const [stopLossMax, setStopLossMax] = useState(0.05);  // 5%
-    const [stopLossStep, setStopLossStep] = useState(0.005); // 0.5%
+    const [stopLossMax, setStopLossMax] = useState(0.13);  // 13%
+    const [stopLossStep, setStopLossStep] = useState(0.002); // 0.2%
 
     // Stop-Gain configuration
     const [selectedStopGains, setSelectedStopGains] = useState<(number | null)[]>([null]);
@@ -249,7 +249,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
             const mappedResults: RiskResult[] = data.results.map((res: any) => ({
                 stop_loss: res.params.stop_loss || res.params.stop_pct || 0,
                 stop_gain: res.params.stop_gain !== undefined ? res.params.stop_gain : (res.params.take_profit || res.params.take_pct || null),
-                total_return: res.metrics.total_return_pct || 0, // Corrected to use percentage
+                total_return: (res.metrics.total_return_pct || 0) * 100, // Backend returns decimal (0.6028), multiply by 100 for percentage (60.28)
                 sharpe_ratio: res.metrics.sharpe_ratio || 0,
                 max_drawdown: res.metrics.max_drawdown || 0,
                 win_rate: res.metrics.win_rate || 0,
@@ -419,7 +419,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                     <label className="block text-sm text-gray-400 mb-1">Min (%)</label>
                                     <input
                                         type="text"
-                                        defaultValue="0.5"
+                                        defaultValue={stopLossMin * 100}
                                         onBlur={(e) => {
                                             const val = e.target.value.replace(',', '.');
                                             const parsed = parseFloat(val);
@@ -437,7 +437,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                     <label className="block text-sm text-gray-400 mb-1">Max (%)</label>
                                     <input
                                         type="text"
-                                        defaultValue="5"
+                                        defaultValue={stopLossMax * 100}
                                         onBlur={(e) => {
                                             const val = e.target.value.replace(',', '.');
                                             const parsed = parseFloat(val);
@@ -455,7 +455,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                     <label className="block text-sm text-gray-400 mb-1">Step (%)</label>
                                     <input
                                         type="text"
-                                        defaultValue="0.5"
+                                        defaultValue={stopLossStep * 100}
                                         onBlur={(e) => {
                                             const val = e.target.value.replace(',', '.');
                                             const parsed = parseFloat(val);
@@ -470,7 +470,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                     />
                                 </div>
                             </div>
-                            <p className="text-xs text-gray-400 mt-2">💡 Most traders use 1-2%. Range 0.5%-5% covers conservative to aggressive.</p>
+                            <p className="text-xs text-gray-400 mt-2">💡 Most traders use 1-2%. Range 0.5%-13% covers conservative to aggressive.</p>
                         </div>
 
                         {/* Stop-Gain Options */}
