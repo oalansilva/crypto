@@ -2,10 +2,10 @@
 
 Write-Host "Iniciando Crypto Backtester..." -ForegroundColor Cyan
 
-# 1. Check if venv exists
-if (-not (Test-Path "venv\Scripts\python.exe")) {
+# 1. Check if .venv exists
+if (-not (Test-Path ".venv\Scripts\python.exe")) {
     Write-Host "Virtual environment nao encontrado!" -ForegroundColor Red
-    Write-Host "Execute: python -m venv venv" -ForegroundColor Yellow
+    Write-Host "Execute: python -m venv .venv" -ForegroundColor Yellow
     exit 1
 }
 
@@ -13,14 +13,14 @@ if (-not (Test-Path "venv\Scripts\python.exe")) {
 if (-not (Test-Path "backend\backtest.db")) {
     Write-Host "Inicializando banco de dados..." -ForegroundColor Yellow
     Set-Location backend
-    ..\venv\Scripts\python init_db.py
+    ..\.venv\Scripts\python init_db.py
     Set-Location ..
     Write-Host "Banco de dados criado!" -ForegroundColor Green
 }
 
 # 3. Start Backend
 Write-Host "Iniciando Backend (porta 8000)..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\backend'; ..\venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\backend'; ..\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
 Start-Sleep -Seconds 3
 
 # 4. Check Backend Health

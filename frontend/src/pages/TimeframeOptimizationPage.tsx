@@ -91,26 +91,27 @@ export const TimeframeOptimizationPage: React.FC = () => {
             });
 
             const data = await response.json();
-            setJobId(data.job_id);
 
-            // Connect to WebSocket for updates
-            const ws = new WebSocket(`ws://localhost:8000/api/optimize/sequential/ws/${data.job_id}`);
+            console.log('Optimization response:', data);
 
-            ws.onmessage = (event) => {
-                const message = JSON.parse(event.data);
+            // Process results directly from HTTP response
+            if (data.all_results && Array.isArray(data.all_results)) {
+                // Map backend response to frontend format
+                const mappedResults = data.all_results.map((result: any) => ({
+                    timeframe: result.timeframe,
+                    total_return: result.metrics?.total_return_pct || 0,
+                    sharpe_ratio: result.metrics?.sharpe_ratio || 0,
+                    max_drawdown: result.metrics?.max_drawdown || 0,
+                    win_rate: result.metrics?.win_rate || 0,
+                    total_trades: result.metrics?.total_trades || 0
+                }));
 
-                if (message.type === 'completed') {
-                    setResults(message.result.all_results || []);
-                    setBestTimeframe(message.result.best_timeframe);
-                    setSelectedTimeframe(message.result.best_timeframe);
-                    setIsOptimizing(false);
-                    ws.close();
-                }
-            };
+                setResults(mappedResults);
+                setBestTimeframe(data.best_timeframe);
+                setSelectedTimeframe(data.best_timeframe);
+            }
 
-            ws.onerror = () => {
-                setIsOptimizing(false);
-            };
+            setIsOptimizing(false);
 
         } catch (error) {
             console.error('Optimization error:', error);

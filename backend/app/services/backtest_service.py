@@ -79,11 +79,11 @@ class BacktestService:
                 return DynamicStrategy(merged_config)
             return DynamicStrategy(name_or_config)
             
-        # String name -> Use GenericStrategy directly
-        from src.strategy.generic import GenericStrategy
+        # String name -> Convert to DynamicStrategy config
+        strategy_config = {"name": name_or_config}
         if params:
-            return GenericStrategy(name_or_config, **params)
-        return GenericStrategy(name_or_config)
+            strategy_config.update(params)
+        return DynamicStrategy(strategy_config)
     
     def run_backtest(self, config: dict, progress_callback=None, job_id: str = None, resume: bool = False) -> dict:
         """

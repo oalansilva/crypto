@@ -37,13 +37,21 @@ class SequentialOptimizer:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.backtest_service = BacktestService()
     
-    def generate_stages(self, strategy: str, symbol: str) -> List[Dict[str, Any]]:
+    def generate_stages(
+        self, 
+        strategy: str, 
+        symbol: str, 
+        fixed_timeframe: Optional[str] = None,
+        custom_ranges: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
         """
         Generate optimization stages dynamically based on indicator schema.
         
         Args:
             strategy: Strategy name (e.g., "macd", "rsi")
             symbol: Trading symbol (e.g., "BTC/USDT")
+            fixed_timeframe: If set, skips timeframe optimization stage
+            custom_ranges: Optional overrides for parameter ranges
             
         Returns:
             List of stage configurations
@@ -54,27 +62,59 @@ class SequentialOptimizer:
         
         stages = []
         
-        # Stage 1: Timeframe optimization
-        stages.append({
-            "stage_num": 1,
-            "stage_name": "Timeframe",
-            "parameter": "timeframe",
-            "values": TIMEFRAME_OPTIONS,
-            "locked_params": {},
-            "description": "Optimize trading timeframe"
-        })
+        # Stage 1: Timeframe optimization (Only if NOT fixed)
+        if not fixed_timeframe:
+            stages.append({
+                "stage_num": 1,
+                "stage_name": "Timeframe",
+                "parameter": "timeframe",
+                "values": TIMEFRAME_OPTIONS,
+                "locked_params": {},
+                "description": "Optimize trading timeframe"
+            })
+            stage_offset = 1
+        else:
+            stage_offset = 0
         
         # Stages 2 to N+1: Indicator parameters
-        stage_num = 2
+        stage_num = 1 + stage_offset
         for param_name, param_schema in indicator_schema.parameters.items():
-            if param_schema.optimization_range:
-                opt_range = param_schema.optimization_range
+            # Check for custom range override
+            opt_range = param_schema.optimization_range
+            
+            if custom_ranges and param_name in custom_ranges:
+                custom = custom_ranges[param_name]
+                # Format: {min: x, max: y, step: z}
+                if isinstance(custom, dict) and 'min' in custom:
+                    # Create temporary range object or list of values
+                    values = []
+                    current = float(custom['min'])
+                    end = float(custom['max'])
+                    step = float(custom.get('step', 1.0))
+                    
+                    if step <= 0: step = 1.0 # Prevent infinite loop
+                    
+                    while current <= end + (step * 0.1): # Float tolerance
+                        if param_schema.type == "int":
+                            values.append(int(current))
+                        else:
+                            values.append(round(current, 4))
+                        current += step
+                else:
+                    # Fallback or direct list
+                    values = [custom] if not isinstance(custom, list) else custom
+            
+            elif opt_range:
+                # Use default schema range
                 values = []
                 current = opt_range.min
                 while current <= opt_range.max:
                     values.append(current)
                     current += opt_range.step
-                
+            else:
+                continue # No optimization for this param
+
+            if values:
                 stages.append({
                     "stage_num": stage_num,
                     "stage_name": param_name.replace("_", " ").title(),
@@ -130,14 +170,35 @@ class SequentialOptimizer:
         Returns:
             Tuple of (start_date, end_date) as ISO strings
         """
-        loader = IncrementalLoader(symbol=symbol, timeframe="1d")
-        df = loader.load()
+    def get_full_history_dates(self, symbol: str) -> Tuple[str, str]:
+        """
+        Auto-detect full available history for a symbol.
+        
+        Args:
+            symbol: Trading symbol
+            
+        Returns:
+            Tuple of (start_date, end_date) as ISO strings
+        """
+        # Fix: IncrementalLoader defaults to binance, doesn't take symbol in init
+        loader = IncrementalLoader() 
+        
+        # Load data ensuring full history (start from 2017)
+        # timeframe="1d" is sufficient for determining range
+        df = loader.fetch_data(symbol=symbol, timeframe="1d", since_str="2017-01-01")
         
         if df.empty:
             raise ValueError(f"No data available for {symbol}")
-        
-        start_date = df.index.min().isoformat()
-        end_date = df.index.max().isoformat()
+            
+        # Ensure index is datetime if it's not already (fetch_data returns default index usually)
+        # fetch_data returns 'timestamp_utc' column
+        if 'timestamp_utc' in df.columns:
+            start_date = df['timestamp_utc'].min().isoformat()
+            end_date = df['timestamp_utc'].max().isoformat()
+        else:
+            # Fallback
+            start_date = df.index.min().isoformat()
+            end_date = df.index.max().isoformat()
         
         return start_date, end_date
     
@@ -247,25 +308,67 @@ class SequentialOptimizer:
             test_params[parameter] = value
             
             # Run backtest with full history
-            backtest_result = await self.backtest_service.run_backtest(
-                symbol=symbol,
-                strategy=strategy,
-                timeframe=test_params.get("timeframe", "1h"),
-                start_date=start_date,
-                end_date=end_date,
-                params=test_params
-            )
+            # Build config for BacktestService
+            config = {
+                "exchange": "binance",
+                "symbol": symbol,
+                "timeframe": test_params.get("timeframe", "1h"),
+                "strategies": [strategy],
+                "since": start_date,
+                "until": end_date,
+                "params": {strategy: test_params},
+                "mode": "run",
+                "cash": 10000
+            }
+
+            # Run backtest (synchronous)
+            backtest_result = self.backtest_service.run_backtest(config)
             
+            # Extract metrics (handle nested structure)
+            # Structure: {'results': {'StrategyName': {'metrics': ...}}}
+            try:
+                # Debug: Print the structure
+                print(f"DEBUG: backtest_result keys: {backtest_result.keys()}")
+                
+                results_dict = backtest_result.get("results", {})
+                print(f"DEBUG: results_dict keys: {results_dict.keys() if results_dict else 'None'}")
+                
+                if results_dict:
+                    # Take the first result (we only ran one strategy)
+                    strat_result = list(results_dict.values())[0]
+                    print(f"DEBUG: strat_result keys: {strat_result.keys() if isinstance(strat_result, dict) else 'Not a dict'}")
+                    
+                    # Check if there's an error
+                    if 'error' in strat_result:
+                        print(f"ERROR: Backtest failed: {strat_result['error']}")
+                        metrics = {"total_pnl": 0, "error": strat_result['error']}
+                    else:
+                        metrics = strat_result.get("metrics", {})
+                        if not metrics or 'total_pnl' not in metrics:
+                            print(f"WARNING: No valid metrics found, using default")
+                            metrics = {"total_pnl": 0}
+                else:
+                    print("WARNING: No results in backtest_result")
+                    metrics = {"total_pnl": 0}
+            except Exception as e:
+                print(f"ERROR extracting metrics: {e}")
+                import traceback
+                traceback.print_exc()
+                metrics = {"total_pnl": 0}
+
             result = {
                 parameter: value,
-                "metrics": backtest_result["metrics"],
+                "metrics": metrics,
                 "test_num": i + 1,
                 "total_tests": len(values)
             }
             results.append(result)
             
             # Track best result
-            if best_result is None or backtest_result["metrics"]["total_pnl"] > best_result["metrics"]["total_pnl"]:
+            current_pnl = metrics.get("total_pnl", float('-inf'))
+            best_pnl = best_result["metrics"].get("total_pnl", float('-inf')) if best_result else float('-inf')
+            
+            if best_result is None or current_pnl > best_pnl:
                 best_result = result
                 best_value = value
             

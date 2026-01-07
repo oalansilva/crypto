@@ -16,6 +16,7 @@ from datetime import datetime
 
 from app.services.sequential_optimizer import SequentialOptimizer
 from app.services.websocket_manager import ws_manager
+from app.schemas.indicator_params import TIMEFRAME_OPTIONS
 
 
 router = APIRouter(prefix="/api/optimize/sequential", tags=["sequential-optimization"])
@@ -27,6 +28,19 @@ class StartOptimizationRequest(BaseModel):
     symbol: str
     strategy: str
     custom_ranges: Optional[Dict[str, Any]] = None  # User can override default ranges
+
+
+class TimeframeOptimizationRequest(BaseModel):
+    """Request model for timeframe optimization only"""
+    symbol: str
+    strategy: str
+
+
+class TimeframeOptimizationResponse(BaseModel):
+    """Response for timeframe optimization"""
+    best_timeframe: str
+    best_pnl: float
+    all_results: List[Dict[str, Any]]
 
 
 class OptimizationJobResponse(BaseModel):
@@ -53,6 +67,51 @@ class CheckpointStateResponse(BaseModel):
 
 
 # Endpoints
+
+@router.post("/timeframe", response_model=TimeframeOptimizationResponse)
+async def optimize_timeframe(request: TimeframeOptimizationRequest):
+    """
+    Run a quick optimization just for timeframe stage.
+    Returns the best timeframe based on PnL.
+    """
+    # Create a temporary job ID for this isolated run
+    job_id = f"timeframe_opt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+    
+    # Manually construct stage config for timeframe
+    stage_config = {
+        "stage_num": 1,
+        "stage_name": "Timeframe",
+        "parameter": "timeframe",
+        "values": TIMEFRAME_OPTIONS,
+        "locked_params": {},
+        "description": "Optimize trading timeframe"
+    }
+    
+    try:
+        # Run timeframe stage
+        result = await optimizer.run_stage(
+            job_id=job_id,
+            stage_config=stage_config,
+            symbol=request.symbol,
+            strategy=request.strategy,
+            locked_params={},
+            start_from_test=0
+        )
+        
+        # Cleanup temporary checkpoint
+        optimizer.delete_checkpoint(job_id)
+        
+        return TimeframeOptimizationResponse(
+            best_timeframe=result["best_value"],
+            best_pnl=result["best_result"]["metrics"]["total_pnl"],
+            all_results=result["results"]
+        )
+        
+    except Exception as e:
+        # Ensure cleanup even on error
+        optimizer.delete_checkpoint(job_id)
+        raise HTTPException(status_code=500, detail=f"Timeframe optimization failed: {str(e)}")
+
 
 @router.post("/start", response_model=OptimizationJobResponse)
 async def start_sequential_optimization(request: StartOptimizationRequest):

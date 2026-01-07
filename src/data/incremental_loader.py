@@ -28,7 +28,7 @@ class IncrementalLoader:
         filename = f"{safe_symbol}_{timeframe}.parquet"
         return os.path.join(self.base_path, filename)
 
-    def fetch_data(self, symbol, timeframe, since_str, until_str=None, limit=1000):
+    def fetch_data(self, symbol, timeframe, since_str, until_str=None, limit=1000, progress_callback=None):
         """
         Smart fetch: Check local Parquet -> Download Delta -> Append -> Return Slice
         """
