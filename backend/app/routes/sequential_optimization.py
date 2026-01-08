@@ -36,6 +36,7 @@ class TimeframeOptimizationRequest(BaseModel):
     strategy: str
     fee: Optional[float] = 0.00075  # Default 0.075% (Binance standard)
     slippage: Optional[float] = 0.0005  # Default 0.05%
+    parameters: Optional[Dict[str, Any]] = {}  # Indicator parameters (length, std, etc.)
 
 
 class TimeframeOptimizationResponse(BaseModel):
@@ -90,10 +91,11 @@ async def optimize_timeframe(request: TimeframeOptimizationRequest):
     }
     
     try:
-        # Prepare config params
+        # Prepare config params - INCLUDE INDICATOR PARAMETERS
         config_params = {
             'fee': request.fee,
-            'slippage': request.slippage
+            'slippage': request.slippage,
+            **request.parameters  # Merge indicator parameters (length, std, etc.)
         }
         
         # Run timeframe stage
