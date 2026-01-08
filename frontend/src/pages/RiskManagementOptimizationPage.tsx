@@ -247,11 +247,20 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                     });
                 }
 
-                setStrategyParams(defaultParams);
+                // If strategyParams is populated (initial load from URL), merge with defaults
+                // If strategyParams is empty (cleared by strategy change), use fresh defaults
+                // This approach works even with StrictMode double-invocation
+                setStrategyParams(prev => {
+                    if (Object.keys(prev).length > 0) {
+                        return { ...defaultParams, ...prev };
+                    }
+                    return defaultParams;
+                });
             })
             .catch(err => {
                 console.error('Failed to fetch strategy schema:', err);
-                setStrategyParams({});
+                // Don't clear params on error if we have some from URL
+                // setStrategyParams({}); 
             });
     }, [selectedIndicator]);
 
