@@ -69,6 +69,24 @@ def get_presets() -> list[PresetResponse]:
                 cash=10000,
                 fill_mode="close"
             )
+        ),
+        PresetResponse(
+            id="link-trend-4h",
+            name="LINK Trend (6 meses, 4h)",
+            description="Estratégia SMA Cross para LINK/USDT no gráfico de 4h",
+            config=BacktestRunCreate(
+                mode="run",
+                exchange="binance",
+                symbol="LINK/USDT",
+                timeframe="4h",
+                since=(now - timedelta(days=180)).strftime("%Y-%m-%d %H:%M:%S"),
+                strategies=["sma_cross"],
+                params={"sma_cross": {"fast": 20, "slow": 50}},
+                fee=0.001,
+                slippage=0.0005,
+                cash=10000,
+                fill_mode="close"
+            )
         )
     ]
     

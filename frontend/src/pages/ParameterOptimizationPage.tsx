@@ -254,6 +254,14 @@ export const ParameterOptimizationPage: React.FC = () => {
                             >
                                 <option value="BTC/USDT">BTC/USDT</option>
                                 <option value="ETH/USDT">ETH/USDT</option>
+                                <option value="BNB/USDT">BNB/USDT</option>
+                                <option value="SOL/USDT">SOL/USDT</option>
+                                <option value="ADA/USDT">ADA/USDT</option>
+                                <option value="LINK/USDT">LINK/USDT</option>
+                                <option value="XMR/USDT">XMR/USDT</option>
+                                <option value="ATOM/USDT">ATOM/USDT</option>
+                                <option value="LTC/USDT">LTC/USDT</option>
+                                <option value="TRX/USDT">TRX/USDT</option>
                             </select>
                         </div>
 

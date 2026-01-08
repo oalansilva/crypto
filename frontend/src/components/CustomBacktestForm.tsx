@@ -51,7 +51,7 @@ const AVAILABLE_STRATEGIES = [
     },
 ]
 
-const SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT']
+const SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT', 'LINK/USDT', 'XMR/USDT', 'ATOM/USDT', 'LTC/USDT', 'TRX/USDT']
 const TIMEFRAMES = ['5m', '15m', '30m', '1h', '2h', '4h', '1d', '3d', '1w']
 
 export function CustomBacktestForm({ onClose, onSuccess }: CustomBacktestFormProps) {
