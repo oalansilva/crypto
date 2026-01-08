@@ -121,6 +121,14 @@ class SequentialOptimizer:
                         current += opt_range.step
                 else:
                     continue # No optimization for this param
+
+                # Ensure stop_loss=0 is always tested for comparison
+                if param_name == 'stop_loss':
+                    # Check if 0 is already in values
+                    has_zero = any(v == 0 or v == 0.0 for v in values)
+                    if not has_zero:
+                        values.append(0.0)
+                        values.sort()
     
                 if values:
                     stages.append({

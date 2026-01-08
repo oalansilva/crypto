@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import asyncio
 import os
+import json
 
 from app.services.sequential_optimizer import SequentialOptimizer
 from app.schemas.indicator_params import get_indicator_schema
@@ -135,6 +136,11 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
             custom_ranges=request.custom_ranges
         )
         
+        # Extract all optimization parameter names from stages
+        # This ensures consistent params dict structure across all stages for deduplication
+        optimization_params = {stage['parameter'] for stage in stages}
+        log_debug(f" Optimization parameters across all stages: {optimization_params}")
+        
         # Run all stages sequentially
         all_results = []
         locked_params = {
@@ -180,9 +186,19 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
                 log_debug(f" DEBUG: Extracted param_value for '{stage['parameter']}': {param_value} (type: {type(param_value).__name__})")
                 log_debug(f" DEBUG: Result Metrics: {result.get('metrics')}")
                 
-                # Start with strategy defaults, then override with locked params, then current test param
+                # Start with strategy defaults
                 full_params = strategy_defaults.copy()
+                
+                # Initialize all optimization parameters with None to ensure consistent structure
+                # This is critical for deduplication to work across stages
+                for opt_param in optimization_params:
+                    if opt_param not in full_params:
+                        full_params[opt_param] = None
+                
+                # Apply locked params from previous stages
                 full_params.update(locked_params)
+                
+                # Set the current test parameter value
                 full_params[stage['parameter']] = param_value
                 
                 log_debug(f" DEBUG: full_params after assignment: {full_params}")
@@ -219,6 +235,28 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
         execution_time = (end_time - start_time).total_seconds()
         
         
+        # Deduplicate results based on parameters
+        # Identical configurations might occur if a subsequent stage re-tests the winning parameter from a previous stage
+        seen_params = set()
+        unique_results = []
+        for res in all_results:
+            try:
+                # Create a hashable representation of params
+                # Sort keys to ensure consistent ordering
+                # Convert values to string to handle 0 vs 0.0 consistency if needed, 
+                # but standard json dump is usually sufficient for exact matches
+                param_key = json.dumps(res['params'], sort_keys=True)
+                
+                if param_key not in seen_params:
+                    seen_params.add(param_key)
+                    unique_results.append(res)
+            except Exception as e:
+                # Fallback in case of serialization error, just keep the result
+                log_debug(f"Warning: Failed to serialize params for deduplication: {e}")
+                unique_results.append(res)
+        
+        all_results = unique_results
+
         # Sort results by Sharpe ratio (descending)
         all_results.sort(key=lambda x: x['metrics'].get('sharpe_ratio', -float('inf')), reverse=True)
 

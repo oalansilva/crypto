@@ -149,7 +149,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
     const [strategyParams, setStrategyParams] = useState<Record<string, string | number>>(() => {
         const params: Record<string, string | number> = {};
         searchParams.forEach((value, key) => {
-            if (!['symbol', 'strategy', 'timeframe', 'stop_loss', 'stop_gain'].includes(key)) {
+            if (!['symbol', 'strategy', 'timeframe', 'stop_loss', 'stop_gain', 'fee', 'slippage'].includes(key)) {
                 // Try to parse as number if possible
                 const numVal = parseFloat(value);
                 params[key] = !isNaN(numVal) ? numVal : value;
@@ -165,6 +165,10 @@ export const RiskManagementOptimizationPage: React.FC = () => {
 
     // Stop-Gain configuration
     const [selectedStopGains, setSelectedStopGains] = useState<(number | null)[]>([null]);
+
+    // Fees and Slippage
+    const [enableFees, setEnableFees] = useState(true);
+    const [enableSlippage, setEnableSlippage] = useState(false);
 
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [results, setResults] = useState<RiskResult[]>([]);
@@ -227,7 +231,9 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                     },
                     stop_gain: selectedStopGains // Pass list directly, backend now supports it
                 },
-                strategy_params: strategyParams // Pass as explicit dictionary
+                strategy_params: strategyParams, // Pass as explicit dictionary
+                fee: enableFees ? 0.00075 : 0,
+                slippage: enableSlippage ? 0.0005 : 0
             };
 
             const response = await fetch('http://127.0.0.1:8000/api/optimize/parameters', {
@@ -471,6 +477,35 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                 </div>
                             </div>
                             <p className="text-xs text-gray-400 mt-2">💡 Most traders use 1-2%. Range 0.5%-13% covers conservative to aggressive.</p>
+                        </div>
+
+                        {/* Fee and Slippage Configuration */}
+                        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-center gap-2 p-3 rounded-md border border-[#2D3748]" style={{ backgroundColor: '#151922' }}>
+                                <input
+                                    type="checkbox"
+                                    id="enableFees"
+                                    checked={enableFees}
+                                    onChange={(e) => setEnableFees(e.target.checked)}
+                                    className="w-4 h-4 rounded text-[#14b8a6] focus:ring-[#14b8a6] bg-[#0B0E14] border-gray-600"
+                                />
+                                <label htmlFor="enableFees" className="text-sm font-medium text-gray-200 cursor-pointer">
+                                    Enable Trading Fees <span className="text-gray-500">(0.075% - Binance)</span>
+                                </label>
+                            </div>
+
+                            <div className="flex items-center gap-2 p-3 rounded-md border border-[#2D3748]" style={{ backgroundColor: '#151922' }}>
+                                <input
+                                    type="checkbox"
+                                    id="enableSlippage"
+                                    checked={enableSlippage}
+                                    onChange={(e) => setEnableSlippage(e.target.checked)}
+                                    className="w-4 h-4 rounded text-[#14b8a6] focus:ring-[#14b8a6] bg-[#0B0E14] border-gray-600"
+                                />
+                                <label htmlFor="enableSlippage" className="text-sm font-medium text-gray-200 cursor-pointer">
+                                    Enable Slippage <span className="text-gray-500">(0.05%)</span>
+                                </label>
+                            </div>
                         </div>
 
                         {/* Stop-Gain Options */}
