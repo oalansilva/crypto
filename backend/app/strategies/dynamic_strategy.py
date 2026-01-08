@@ -145,10 +145,15 @@ class DynamicStrategy:
         
         # Bollinger Bands
         elif indicator == 'bbands':
-            std = params.get('std', 2.0)
+            # Get lower_std and upper_std parameters
+            lower_std = params.get('lower_std', 2.0)
+            upper_std = params.get('upper_std', 2.0)
             if isinstance(length, float) and length.is_integer():
                 length = int(length)
-            return f'close < BBL_{length}_{std}', f'close > BBU_{length}_{std}'
+            # Use backticks to handle decimal points in column names
+            lower_col = f'BBL_{length}_{lower_std}_{upper_std}'
+            upper_col = f'BBU_{length}_{lower_std}_{upper_std}'
+            return f'close < `{lower_col}`', f'close > `{upper_col}`'
         
         # Stochastic
         elif indicator in ['stoch', 'stochf']:
@@ -164,7 +169,8 @@ class DynamicStrategy:
         elif indicator == 'cci':
             if isinstance(length, float) and length.is_integer():
                 length = int(length)
-            return f'CCI_{length}_0.015 < -100', f'CCI_{length}_0.015 > 100'
+            # CCI column name includes decimal constant, use backticks
+            return f'`CCI_{length}_0.015` < -100', f'`CCI_{length}_0.015` > 100'
         
         # Williams %R
         elif indicator == 'willr':
@@ -276,8 +282,9 @@ class DynamicStrategy:
                              upper_band = next((c for c in cols if c.startswith('BBU')), None)
                              
                              if lower_band and upper_band:
-                                 self.entry_expr = f"close < {lower_band}"
-                                 self.exit_expr = f"close > {upper_band}"
+                                 # Use bracket notation to avoid syntax errors with decimal points in column names
+                                 self.entry_expr = f"close < `{lower_band}`"
+                                 self.exit_expr = f"close > `{upper_band}`"
                                  logger.info(f"Updated BBands strategy to: Entry='{self.entry_expr}', Exit='{self.exit_expr}'")
                         
                         # Dynamic MACD Check
