@@ -28,8 +28,8 @@ KNOWN_DEFAULTS = {
     "hma": {"length": 20},
     "wma": {"length": 20},
     
-    # Volatility
-    "bbands": {"length": 20, "std": 2, "lower_std": 2, "upper_std": 2}, # Bollinger Bands with 20 period and 2 std dev
+    # Volatility - UPDATED TO MARKET STANDARDS
+    "bbands": {"length": 20, "std": 2.0, "lower_std": 2.0, "upper_std": 2.0},  # Market standard: 20 period, 2 std dev
     "atr": {"length": 14},
     "kc": {"length": 20, "scalar": 2}
 }
