@@ -48,7 +48,8 @@ KNOWN_DEFAULTS = {
 IGNORED_PARAMS = [
     'offset', 'drift', 'scalar', 'mamode', 'talib', 'tvmode', 
     'use_nans', 'as_mode', 'ddof', 'presma', 'prenan',
-    'adjust', 'sma', 'fillna', 'fill_method'
+    'adjust', 'sma', 'fillna', 'fill_method',
+    'lower_std', 'upper_std'
 ]
 
 def generate_optimization_range(param_name: str, param_type: str, default_value: Any) -> Optional[Dict[str, float]]:

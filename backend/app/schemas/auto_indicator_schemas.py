@@ -129,9 +129,14 @@ def generate_indicator_schema(indicator_name: str) -> Optional[IndicatorSchema]:
         # Build parameters dict
         parameters = {}
         
+        if indicator_name == 'bbands':
+            print(f"DEBUG: Generating schema for BBANDS. SKIP_PARAMS: {SKIP_PARAMS}")
+        
         for param_name, param in sig.parameters.items():
             # Skip unwanted parameters
             if param_name in SKIP_PARAMS:
+                if indicator_name == 'bbands':
+                    print(f"DEBUG: Skipping param {param_name}")
                 continue
             
             # Get default value
