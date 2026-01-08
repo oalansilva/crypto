@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Shield, Award, List, X, ArrowUp, ArrowDown } from 'lucide-react';
@@ -63,6 +63,10 @@ interface RiskResult {
     avg_atr?: number;
     avg_adx?: number;
     alpha?: number;
+    regime_performance?: {
+        bull?: { win_rate?: number; count?: number; pnl?: number };
+        bear?: { win_rate?: number; count?: number; pnl?: number };
+    };
 }
 
 const TradesModal: React.FC<{ result: RiskResult; onClose: () => void }> = ({ result, onClose }) => {
@@ -219,6 +223,37 @@ export const RiskManagementOptimizationPage: React.FC = () => {
         }
     });
 
+    // Fetch strategy schema when selectedIndicator changes
+    useEffect(() => {
+        if (!selectedIndicator) {
+            setStrategyParams({});
+            return;
+        }
+
+        // Fetch strategy schema to get default parameters
+        fetch(`http://127.0.0.1:8000/api/indicator/${selectedIndicator}/schema`)
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to fetch schema');
+                return res.json();
+            })
+            .then(schema => {
+                const defaultParams: Record<string, string | number> = {};
+
+                // API returns 'parameters' object, not 'params' array
+                if (schema.parameters && typeof schema.parameters === 'object') {
+                    Object.entries(schema.parameters).forEach(([paramName, paramData]: [string, any]) => {
+                        defaultParams[paramName] = paramData.default;
+                    });
+                }
+
+                setStrategyParams(defaultParams);
+            })
+            .catch(err => {
+                console.error('Failed to fetch strategy schema:', err);
+                setStrategyParams({});
+            });
+    }, [selectedIndicator]);
+
     const toggleStopGain = (value: number | null) => {
         if (selectedStopGains.includes(value)) {
             setSelectedStopGains(selectedStopGains.filter(v => v !== value));
@@ -294,7 +329,8 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                 // Heavy Metrics (Top 10 only)
                 avg_atr: res.metrics.avg_atr,
                 avg_adx: res.metrics.avg_adx,
-                alpha: res.metrics.alpha
+                alpha: res.metrics.alpha,
+                regime_performance: res.metrics.regime_performance
             }));
 
             // Sort by total return (or sharpe)
@@ -361,7 +397,10 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                             <label className="block text-white font-medium mb-2">Strategy</label>
                             <select
                                 value={selectedIndicator}
-                                onChange={(e) => setSelectedIndicator(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedIndicator(e.target.value);
+                                    setStrategyParams({}); // Clear immediately, useEffect will load new ones
+                                }}
                                 className="w-full px-4 py-3 rounded-md border focus:outline-none focus:ring-1"
                                 style={{
                                     backgroundColor: '#0B0E14',
@@ -613,14 +652,25 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Total Return</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Sharpe</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Sortino</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Calmar</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>CAGR</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Monthly Avg</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Expectancy</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>P. Factor</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max DD</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Avg DD</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>DD Duration</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Recovery</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Win Rate</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Trades</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max Wins</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max Loss</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Trade Conc.</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Avg ATR</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Avg ADX</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Alpha</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>WR Bull</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>WR Bear</th>
                                         <th className="text-center py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Actions</th>
                                     </tr>
                                 </thead>
@@ -666,8 +716,14 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
                                                     {result.sortino_ratio !== undefined ? result.sortino_ratio.toFixed(2) : '-'}
                                                 </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
+                                                    {result.calmar_ratio !== undefined ? result.calmar_ratio.toFixed(2) : '-'}
+                                                </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#A78BFA' }}>
                                                     {result.cagr !== undefined ? `${(result.cagr * 100).toFixed(1)}%` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#60A5FA' }}>
+                                                    {result.monthly_return_avg !== undefined ? `${(result.monthly_return_avg * 100).toFixed(2)}%` : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm font-bold" style={{ color: (result.expectancy || 0) >= 0 ? '#10B981' : '#EF4444' }}>
                                                     {result.expectancy !== undefined ? `$${result.expectancy.toFixed(2)}` : '-'}
@@ -677,6 +733,15 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#EF4444' }}>
                                                     {(result.max_drawdown * 100).toFixed(1)}%
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#F87171' }}>
+                                                    {result.avg_drawdown !== undefined ? `${(result.avg_drawdown * 100).toFixed(1)}%` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#FB923C' }}>
+                                                    {result.max_dd_duration_days !== undefined ? `${result.max_dd_duration_days}d` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#34D399' }}>
+                                                    {result.recovery_factor !== undefined ? result.recovery_factor.toFixed(2) : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
                                                     {(result.win_rate * 100).toFixed(1)}%
@@ -689,6 +754,24 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#EF4444' }}>
                                                     {result.max_consecutive_losses !== undefined ? result.max_consecutive_losses : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#A78BFA' }}>
+                                                    {result.trade_concentration_top_10_pct !== undefined ? `${(result.trade_concentration_top_10_pct * 100).toFixed(1)}%` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#FCD34D' : '#6B7280' }}>
+                                                    {result.avg_atr !== undefined ? result.avg_atr.toFixed(2) : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#FCD34D' : '#6B7280' }}>
+                                                    {result.avg_adx !== undefined ? result.avg_adx.toFixed(2) : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: idx < 10 ? ((result.alpha || 0) >= 0 ? '#10B981' : '#EF4444') : '#6B7280' }}>
+                                                    {result.alpha !== undefined ? `${(result.alpha * 100).toFixed(2)}%` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#10B981' : '#6B7280' }}>
+                                                    {result.regime_performance?.bull?.win_rate !== undefined ? `${result.regime_performance.bull.win_rate.toFixed(1)}%` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#EF4444' : '#6B7280' }}>
+                                                    {result.regime_performance?.bear?.win_rate !== undefined ? `${result.regime_performance.bear.win_rate.toFixed(1)}%` : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-center">
                                                     <button

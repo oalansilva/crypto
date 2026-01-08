@@ -908,6 +908,62 @@ class BacktestService:
             bh_cagr = bh_result.get('cagr', 0) or 0
             heavy['alpha'] = calculate_alpha(strategy_cagr, bh_cagr)
             
+            # Regime Performance Analysis
+            try:
+                from app.metrics.regime import calculate_regime_classification
+                
+                # Check/Calc SMA (200) for Regime
+                if 'SMA_200' not in context_df.columns:
+                    context_df.ta.sma(length=200, append=True)
+                
+                # Regime Classification
+                regime_df = calculate_regime_classification(context_df, sma_period=200)
+                
+                # Segment Trades by Regime
+                if trades and not regime_df.empty:
+                    regime_stats = {}
+                    
+                    # Ensure index is datetime
+                    if not isinstance(regime_df.index, pd.DatetimeIndex):
+                        regime_df.index = pd.to_datetime(regime_df.index)
+                    
+                    for trade in trades:
+                        entry_time = trade.get('entry_time')
+                        if entry_time:
+                            try:
+                                et = pd.to_datetime(entry_time)
+                                # Find nearest regime (asof)
+                                idx = regime_df.index.asof(et)
+                                if pd.notna(idx):
+                                    r = regime_df.loc[idx, 'regime']
+                                    
+                                    if r not in regime_stats:
+                                        regime_stats[r] = {'count': 0, 'wins': 0, 'losses': 0, 'pnl': 0.0}
+                                    
+                                    regime_stats[r]['count'] += 1
+                                    pnl = trade.get('pnl', 0)
+                                    regime_stats[r]['pnl'] += pnl
+                                    if pnl > 0:
+                                        regime_stats[r]['wins'] += 1
+                                    elif pnl < 0:
+                                        regime_stats[r]['losses'] += 1
+                            except:
+                                pass
+                    
+                    # Calc rates
+                    for r, stats in regime_stats.items():
+                        total = stats['count']
+                        if total > 0:
+                            stats['win_rate'] = (stats['wins'] / total) * 100
+                    
+                    heavy['regime_performance'] = regime_stats
+                else:
+                    heavy['regime_performance'] = {}
+                    
+            except Exception as e:
+                logger.warning(f"Error calculating regime performance in heavy metrics: {e}")
+                heavy['regime_performance'] = {}
+            
         except Exception as e:
             logger.warning(f"Error in _calculate_heavy_metrics: {e}")
             # Set defaults to avoid missing keys
@@ -915,6 +971,7 @@ class BacktestService:
             heavy['avg_adx'] = 0
             heavy['benchmark'] = None
             heavy['alpha'] = None
+            heavy['regime_performance'] = {}
             
         return heavy
     
