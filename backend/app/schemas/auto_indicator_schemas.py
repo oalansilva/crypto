@@ -98,6 +98,7 @@ SKIP_PARAMS = {
     'mamode', 'ddof', 'presma', 'prenan',       # Mode/preprocessing
     'scalar', 'tvmode', 'c',                     # Misc technical
     'adjust', 'sma', 'fillna', 'fill_method',   # EMA/SMA preprocessing
+    'lower_std', 'upper_std',                   # Skip redundant BBands params (use std)
 }
 
 
