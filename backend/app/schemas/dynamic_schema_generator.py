@@ -10,28 +10,38 @@ from app.services.pandas_ta_inspector import get_all_indicators_metadata
 
 
 
-# Valid Defaults for common indicators
+# Valid Defaults for common indicators - ALL MARKET STANDARDS
 # We ONLY list parameters here that we explicitly want to support/show defaults for.
 # This also acts as an "AllowList" for noise parameters if they are listed here.
 KNOWN_DEFAULTS = {
-    # Momentum
-    "rsi": {"length": 14}, # Removed scalar/drift to clean UI
-    "rsi_reversal": {"rsi_length": 14, "rsi_u": 70, "rsi_d": 30},
-    "macd": {"fast": 12, "slow": 26, "signal": 9},
-    "stoch": {"k": 14, "d": 3, "smooth_k": 3},
-    "adx": {"length": 14, "lensig": 14}, # Removed scalar
-    "cci": {"length": 14, "c": 0.015},
+    # Momentum Indicators (Market Standards)
+    "rsi": {"length": 14},  # Market standard: 14 periods (most common)
+    "rsi_reversal": {"rsi_length": 14, "rsi_u": 70, "rsi_d": 30},  # Standard RSI thresholds
+    "macd": {"fast": 12, "slow": 26, "signal": 9},  # Market standard: 12/26/9 (Appel's original)
+    "stoch": {"k": 14, "d": 3, "smooth_k": 3},  # Market standard: 14/3/3
+    "adx": {"length": 14, "lensig": 14},  # Market standard: 14 periods (Wilder's original)
+    "cci": {"length": 14, "c": 0.015},  # Market standard: 14 periods, 0.015 constant
+    "mfi": {"length": 14},  # Market standard: 14 periods
+    "willr": {"length": 14},  # Market standard: 14 periods
     
-    # Trend
-    "sma": {"length": 20},
-    "ema": {"length": 20},
-    "hma": {"length": 20},
-    "wma": {"length": 20},
+    # Trend/Moving Average Indicators (Market Standards)
+    "sma": {"length": 20},  # Market standard: 20 for short-term, 50/200 for long-term
+    "ema": {"length": 12},  # Market standard: 12 or 26 (MACD components), 9 for short-term
+    "hma": {"length": 20},  # Market standard: 20 periods
+    "wma": {"length": 20},  # Market standard: 20 periods
+    "dema": {"length": 20},  # Market standard: 20 periods
+    "tema": {"length": 20},  # Market standard: 20 periods
     
-    # Volatility - UPDATED TO MARKET STANDARDS
-    "bbands": {"length": 20, "std": 2.0, "lower_std": 2.0, "upper_std": 2.0},  # Market standard: 20 period, 2 std dev
-    "atr": {"length": 14},
-    "kc": {"length": 20, "scalar": 2}
+    # Volatility Indicators (Market Standards)
+    "bbands": {"length": 20, "std": 2.0, "lower_std": 2.0, "upper_std": 2.0},  # Market standard: 20 period, 2 std dev (Bollinger's original)
+    "atr": {"length": 14},  # Market standard: 14 periods (Wilder's original)
+    "natr": {"length": 14},  # Market standard: 14 periods (normalized ATR)
+    "kc": {"length": 20, "scalar": 2},  # Market standard: 20 period, 2x ATR
+    
+    # Volume Indicators (Market Standards)
+    "obv": {},  # No parameters - cumulative volume
+    "cmf": {"length": 20},  # Market standard: 20 periods
+    "vwap": {}  # No parameters - intraday only
 }
 
 # Parameters to hide by default (Noise) unless explicitly in KNOWN_DEFAULTS

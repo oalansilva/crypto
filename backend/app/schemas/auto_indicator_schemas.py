@@ -46,23 +46,34 @@ DEFAULT_PARAM_RANGES = {
 }
 
 
-# Default values by parameter name
+# Default values by parameter name (ALL MARKET STANDARDS)
 DEFAULT_PARAM_VALUES = {
-    'length': 14,
-    'period': 14,
-    'fast': 12,
-    'slow': 26,
-    'signal': 9,
-    'k': 14,
-    'd': 3,
-    'smooth_k': 3,
-    'std': 2.0,
-    'lower_std': 2.0,
-    'upper_std': 2.0,
-    'overbought': 70,
-    'oversold': 30,
-    'signal_length': 14,
-    'adxr_length': 14,
+    # Length/Period parameters
+    'length': 14,  # Market standard for most oscillators (RSI, ADX, ATR, etc.)
+    'period': 14,  # Same as length
+    
+    # MACD parameters (Appel's original settings)
+    'fast': 12,  # Fast EMA for MACD
+    'slow': 26,  # Slow EMA for MACD
+    'signal': 9,  # Signal line for MACD
+    
+    # Stochastic parameters
+    'k': 14,  # %K period (market standard)
+    'd': 3,  # %D smoothing (market standard)
+    'smooth_k': 3,  # %K smoothing (market standard)
+    
+    # Bollinger Bands parameters (Bollinger's original settings)
+    'std': 2.0,  # Standard deviation multiplier
+    'lower_std': 2.0,  # Lower band std dev
+    'upper_std': 2.0,  # Upper band std dev
+    
+    # RSI/Oscillator thresholds
+    'overbought': 70,  # Standard overbought level
+    'oversold': 30,  # Standard oversold level
+    
+    # ADX parameters
+    'signal_length': 14,  # ADX signal length
+    'adxr_length': 14,  # ADXR length
 }
 
 
