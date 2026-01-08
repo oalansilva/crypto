@@ -203,7 +203,7 @@ class Backtester:
                     
                     pnl_gross = (exit_price - avg_entry_price) * self.position
                     pnl = pnl_gross - total_commission
-                    pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
+                    pnl_pct = pnl / (avg_entry_price * self.position) if (avg_entry_price * self.position) > 0 else 0
                     
                     self.cash += (revenue - exit_commission)
                     current_equity = self.cash
@@ -245,7 +245,7 @@ class Backtester:
                     
                     pnl_gross = (exit_price - avg_entry_price) * self.position
                     pnl = pnl_gross - total_commission
-                    pnl_pct = (exit_price - avg_entry_price) / avg_entry_price if avg_entry_price > 0 else 0
+                    pnl_pct = pnl / (avg_entry_price * self.position) if (avg_entry_price * self.position) > 0 else 0
                     
                     self.cash += (revenue - exit_commission)
                     current_equity = self.cash
