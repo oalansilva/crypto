@@ -140,13 +140,25 @@ def get_indicator_schema(strategy_name: str) -> Optional[IndicatorSchema]:
     """
     Get indicator schema by strategy name.
     
+    First checks manual schemas (MACD, RSI, Bollinger), then falls back to auto-generation
+    for all other pandas-ta indicators.
+    
     Args:
         strategy_name: Name of the strategy (case-insensitive)
         
     Returns:
         IndicatorSchema if found, None otherwise
     """
-    return INDICATOR_SCHEMAS.get(strategy_name.lower())
+    strategy_lower = strategy_name.lower()
+    
+    # Check manual schemas first (these have custom market standards)
+    if strategy_lower in INDICATOR_SCHEMAS:
+        return INDICATOR_SCHEMAS[strategy_lower]
+    
+    # Auto-generate schema for pandas-ta indicators
+    from app.schemas.auto_indicator_schemas import generate_indicator_schema
+    return generate_indicator_schema(strategy_lower)
+
 
 
 def calculate_total_stages(indicator_schema: IndicatorSchema) -> int:
