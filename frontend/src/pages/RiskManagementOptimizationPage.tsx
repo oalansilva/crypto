@@ -45,7 +45,24 @@ interface RiskResult {
     max_drawdown: number;
     win_rate: number;
     total_trades: number;
-    trades?: Trade[]; // Added trades
+    trades?: Trade[];
+    // Enhanced Metrics - Light/Moderate
+    cagr?: number;
+    monthly_return_avg?: number;
+    sortino_ratio?: number;
+    calmar_ratio?: number;
+    avg_drawdown?: number;
+    max_dd_duration_days?: number;
+    recovery_factor?: number;
+    expectancy?: number;
+    max_consecutive_wins?: number;
+    max_consecutive_losses?: number;
+    trade_concentration_top_10_pct?: number;
+    profit_factor?: number;
+    // Heavy Metrics (Top 10 only)
+    avg_atr?: number;
+    avg_adx?: number;
+    alpha?: number;
 }
 
 const TradesModal: React.FC<{ result: RiskResult; onClose: () => void }> = ({ result, onClose }) => {
@@ -255,12 +272,29 @@ export const RiskManagementOptimizationPage: React.FC = () => {
             const mappedResults: RiskResult[] = data.results.map((res: any) => ({
                 stop_loss: res.params.stop_loss || res.params.stop_pct || 0,
                 stop_gain: res.params.stop_gain !== undefined ? res.params.stop_gain : (res.params.take_profit || res.params.take_pct || null),
-                total_return: (res.metrics.total_return_pct || 0) * 100, // Backend returns decimal (0.6028), multiply by 100 for percentage (60.28)
+                total_return: (res.metrics.total_return_pct || 0) * 100,
                 sharpe_ratio: res.metrics.sharpe_ratio || 0,
                 max_drawdown: res.metrics.max_drawdown || 0,
                 win_rate: res.metrics.win_rate || 0,
                 total_trades: res.metrics.total_trades || 0,
-                trades: res.trades || []
+                trades: res.trades || [],
+                // Enhanced Metrics
+                cagr: res.metrics.cagr,
+                monthly_return_avg: res.metrics.monthly_return_avg,
+                sortino_ratio: res.metrics.sortino_ratio,
+                calmar_ratio: res.metrics.calmar_ratio,
+                avg_drawdown: res.metrics.avg_drawdown,
+                max_dd_duration_days: res.metrics.max_dd_duration_days,
+                recovery_factor: res.metrics.recovery_factor,
+                expectancy: res.metrics.expectancy,
+                max_consecutive_wins: res.metrics.max_consecutive_wins,
+                max_consecutive_losses: res.metrics.max_consecutive_losses,
+                trade_concentration_top_10_pct: res.metrics.trade_concentration_top_10_pct,
+                profit_factor: res.metrics.profit_factor,
+                // Heavy Metrics (Top 10 only)
+                avg_atr: res.metrics.avg_atr,
+                avg_adx: res.metrics.avg_adx,
+                alpha: res.metrics.alpha
             }));
 
             // Sort by total return (or sharpe)
@@ -570,53 +604,108 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                             </div>
                         )}
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-lg border border-[#2A2F3A]" style={{ backgroundColor: '#0B0E14' }}>
                             <table className="w-full text-sm">
-                                <thead className="border-b" style={{ borderColor: '#2A2F3A' }}>
-                                    <tr>
-                                        <th className="text-left py-3 px-4 font-semibold text-gray-400">Stop-Loss</th>
-                                        <th className="text-left py-3 px-4 font-semibold text-gray-400">Stop-Gain</th>
-                                        <th className="text-right py-3 px-4 font-semibold text-gray-400">Total Return</th>
-                                        <th className="text-right py-3 px-4 font-semibold text-gray-400">Sharpe Ratio</th>
-                                        <th className="text-right py-3 px-4 font-semibold text-gray-400">Win Rate</th>
-                                        <th className="text-right py-3 px-4 font-semibold text-gray-400">Trades</th>
-                                        <th className="text-center py-3 px-4 font-semibold text-gray-400">Explore</th>
+                                <thead className="sticky top-0 z-10" style={{ backgroundColor: '#1A202C' }}>
+                                    <tr className="border-b-2" style={{ borderColor: '#14b8a6' }}>
+                                        <th className="text-left py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Stop-Loss</th>
+                                        <th className="text-left py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Stop-Gain</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Total Return</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Sharpe</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Sortino</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>CAGR</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Expectancy</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>P. Factor</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max DD</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Win Rate</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Trades</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max Wins</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max Loss</th>
+                                        <th className="text-center py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {results.map((result, idx) => {
                                         const isBest = idx === 0;
+                                        const isEven = idx % 2 === 0;
                                         return (
                                             <tr
                                                 key={idx}
-                                                className="border-b transition-colors"
+                                                className="border-b transition-all duration-200 hover:shadow-lg"
                                                 style={{
                                                     borderColor: '#2A2F3A',
-                                                    backgroundColor: isBest ? '#14b8a6/10' : 'transparent'
+                                                    backgroundColor: isBest
+                                                        ? 'rgba(20, 184, 166, 0.15)'
+                                                        : isEven
+                                                            ? '#0B0E14'
+                                                            : '#151922'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    if (!isBest) {
+                                                        e.currentTarget.style.backgroundColor = '#1A202C';
+                                                    }
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (!isBest) {
+                                                        e.currentTarget.style.backgroundColor = isEven ? '#0B0E14' : '#151922';
+                                                    }
                                                 }}
                                             >
-                                                <td className="py-3 px-4 font-mono" style={{ color: isBest ? '#14b8a6' : '#E2E8F0' }}>
+                                                <td className="py-4 px-4 font-mono text-sm font-semibold" style={{ color: isBest ? '#14b8a6' : '#E2E8F0' }}>
                                                     {(result.stop_loss * 100).toFixed(1)}%
                                                 </td>
-                                                <td className="py-3 px-4 font-mono" style={{ color: isBest ? '#14b8a6' : '#E2E8F0' }}>
+                                                <td className="py-4 px-4 font-mono text-sm" style={{ color: isBest ? '#14b8a6' : '#9CA3AF' }}>
                                                     {result.stop_gain ? `${(result.stop_gain * 100).toFixed(1)}%` : 'None'}
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-mono" style={{ color: result.total_return >= 0 ? '#10B981' : '#EF4444' }}>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-bold" style={{ color: result.total_return >= 0 ? '#10B981' : '#EF4444' }}>
                                                     {result.total_return >= 0 ? '+' : ''}{result.total_return.toFixed(2)}%
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
                                                     {result.sharpe_ratio.toFixed(2)}
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
-                                                    {(result.win_rate).toFixed(1)}%
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
+                                                    {result.sortino_ratio !== undefined ? result.sortino_ratio.toFixed(2) : '-'}
                                                 </td>
-                                                <td className="py-3 px-4 text-right font-mono text-gray-300">
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#A78BFA' }}>
+                                                    {result.cagr !== undefined ? `${(result.cagr * 100).toFixed(1)}%` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-bold" style={{ color: (result.expectancy || 0) >= 0 ? '#10B981' : '#EF4444' }}>
+                                                    {result.expectancy !== undefined ? `$${result.expectancy.toFixed(2)}` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#FCD34D' }}>
+                                                    {result.profit_factor !== undefined ? result.profit_factor.toFixed(2) : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#EF4444' }}>
+                                                    {(result.max_drawdown * 100).toFixed(1)}%
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
+                                                    {(result.win_rate * 100).toFixed(1)}%
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#9CA3AF' }}>
                                                     {result.total_trades}
                                                 </td>
-                                                <td className="py-3 px-4 text-center">
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#10B981' }}>
+                                                    {result.max_consecutive_wins !== undefined ? result.max_consecutive_wins : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#EF4444' }}>
+                                                    {result.max_consecutive_losses !== undefined ? result.max_consecutive_losses : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-center">
                                                     <button
                                                         onClick={() => setSelectedTradeResult(result)}
-                                                        className="p-1.5 hover:bg-[#2A2F3A] rounded transition-colors text-gray-400 hover:text-white"
+                                                        className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
+                                                        style={{
+                                                            backgroundColor: '#2A2F3A',
+                                                            color: '#14b8a6'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.backgroundColor = '#14b8a6';
+                                                            e.currentTarget.style.color = '#0B0E14';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.backgroundColor = '#2A2F3A';
+                                                            e.currentTarget.style.color = '#14b8a6';
+                                                        }}
                                                         title="View Trades"
                                                     >
                                                         <List className="w-5 h-5" />

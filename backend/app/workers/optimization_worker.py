@@ -24,7 +24,11 @@ try:
     from app.strategies.dynamic_strategy import DynamicStrategy
     from src.report.metrics import calculate_metrics
     from app.metrics import (
-        calculate_cagr, calculate_sortino_ratio, calculate_calmar_ratio
+        calculate_cagr, calculate_sortino_ratio, calculate_calmar_ratio,
+        calculate_expectancy, calculate_max_consecutive_wins,
+        calculate_max_consecutive_losses, calculate_trade_concentration,
+        calculate_recovery_factor, calculate_avg_drawdown,
+        calculate_max_dd_duration, calculate_monthly_return
     )
 except ImportError as e:
     logging.error(f"Failed to import modules in worker: {e}")
@@ -165,14 +169,38 @@ def evaluate_combination(config: Dict, combination: Tuple, keys: List[str]) -> D
         else:
             metrics = calculate_metrics(equity_curve, trades, backtester.initial_capital)
             
-            # Enhanced Metrics
-            # We can invoke app.metrics if needed, replicating backtest_service logic
+            # Enhanced Metrics - Level 1 (Light/Moderate)
+            # These are calculated for ALL combinations with minimal performance impact
             try:
-                metrics['cagr'] = calculate_cagr(equity_curve['equity'], len(df_with_signals)) # approx
-                metrics['sortino_ratio'] = calculate_sortino_ratio(equity_curve['equity'])
-                metrics['calmar_ratio'] = calculate_calmar_ratio(equity_curve['equity'])
-            except:
-                pass
+                equity_series = equity_curve['equity']
+                
+                # Performance Metrics
+                metrics['cagr'] = calculate_cagr(equity_series)
+                metrics['monthly_return_avg'] = calculate_monthly_return(equity_series)
+                
+                # Risk-Adjusted Metrics
+                returns = equity_series.pct_change().dropna()
+                metrics['sortino_ratio'] = calculate_sortino_ratio(returns)
+                
+                max_dd = metrics.get('max_drawdown', 0)
+                cagr_val = metrics.get('cagr', 0)
+                metrics['calmar_ratio'] = calculate_calmar_ratio(cagr_val, max_dd)
+                metrics['avg_drawdown'] = calculate_avg_drawdown(equity_series)
+                metrics['max_dd_duration_days'] = calculate_max_dd_duration(equity_series)
+                
+                total_return = (equity_series.iloc[-1] / equity_series.iloc[0]) - 1 if len(equity_series) > 0 else 0
+                metrics['recovery_factor'] = calculate_recovery_factor(total_return, max_dd)
+                
+                # Trade Statistics
+                metrics['expectancy'] = calculate_expectancy(trades)
+                metrics['max_consecutive_wins'] = calculate_max_consecutive_wins(trades)
+                metrics['max_consecutive_losses'] = calculate_max_consecutive_losses(trades)
+                metrics['trade_concentration_top_10_pct'] = calculate_trade_concentration(trades, top_n=10)
+                
+            except Exception as e:
+                logging.warning(f"Error calculating enhanced metrics: {e}")
+                # Don't fail the entire result, just log the error
+
 
         # 6. Format Result
         result = {

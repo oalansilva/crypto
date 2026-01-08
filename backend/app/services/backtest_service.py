@@ -682,6 +682,39 @@ class BacktestService:
                 except Exception as e:
                     logger.error(f"Failed to re-run best result: {e}")
                     best_result = best_scout # Fallback
+        
+        # 7. Calculate Heavy Metrics for Top 10 Results (excluding best, which already has them)
+        # Heavy metrics: ATR, ADX, Regime Performance, Alpha
+        top_n_for_heavy_metrics = 10
+        logger.info(f"Calculating heavy metrics for top {top_n_for_heavy_metrics} results...")
+        
+        for idx in range(1, min(top_n_for_heavy_metrics, len(opt_results))):
+            result = opt_results[idx]
+            
+            if 'error' in result:
+                continue
+                
+            try:
+                # Get params and data
+                params = result.get('params', {})
+                tf = params.get('timeframe', primary_timeframe)
+                df_for_metrics = data_map.get(tf)
+                
+                if df_for_metrics is None or df_for_metrics.empty:
+                    continue
+                
+                # Calculate heavy metrics
+                heavy_metrics = self._calculate_heavy_metrics(
+                    df_for_metrics, 
+                    result.get('metrics', {}),
+                    config.get('cash', 10000)
+                )
+                
+                # Update result metrics
+                result['metrics'].update(heavy_metrics)
+                
+            except Exception as e:
+                logger.warning(f"Failed to calculate heavy metrics for result #{idx+1}: {e}")
 
         # Build final object
         dataset_info = {
@@ -833,6 +866,57 @@ class BacktestService:
             }
         except:
             return {}
+    
+    def _calculate_heavy_metrics(self, df: pd.DataFrame, existing_metrics: dict, initial_capital: float) -> dict:
+        """
+        Calculate computationally expensive metrics (ATR, ADX, Alpha).
+        Only called for top N results to avoid performance impact.
+        Does not require trades list - uses only OHLCV data and existing metrics.
+        
+        Args:
+            df: OHLCV DataFrame
+            existing_metrics: Already calculated metrics (from worker)
+            initial_capital: Initial capital for benchmark calculation
+            
+        Returns:
+            Dict with heavy metrics
+        """
+        heavy = {}
+        
+        try:
+            import pandas_ta as ta
+            context_df = df.copy()
+            
+            # Calculate indicators if needed
+            if not any(c.startswith('ATR') for c in context_df.columns):
+                context_df.ta.atr(length=14, append=True)
+            if not any(c.startswith('ADX') for c in context_df.columns):
+                context_df.ta.adx(length=14, append=True)
+                
+            # Average indicators
+            from app.metrics.indicators import calculate_avg_indicators
+            avg_inds = calculate_avg_indicators(context_df)
+            heavy.update(avg_inds)
+            
+            # Buy & Hold Alpha
+            from app.metrics.benchmark import calculate_buy_and_hold, calculate_alpha
+            prices = df['close']
+            bh_result = calculate_buy_and_hold(prices, initial_capital)
+            heavy['benchmark'] = bh_result
+            
+            strategy_cagr = existing_metrics.get('cagr', 0) or 0
+            bh_cagr = bh_result.get('cagr', 0) or 0
+            heavy['alpha'] = calculate_alpha(strategy_cagr, bh_cagr)
+            
+        except Exception as e:
+            logger.warning(f"Error in _calculate_heavy_metrics: {e}")
+            # Set defaults to avoid missing keys
+            heavy['avg_atr'] = 0
+            heavy['avg_adx'] = 0
+            heavy['benchmark'] = None
+            heavy['alpha'] = None
+            
+        return heavy
     
     def _calculate_enhanced_metrics(
         self,
