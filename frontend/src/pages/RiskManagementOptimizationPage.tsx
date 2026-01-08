@@ -64,8 +64,9 @@ interface RiskResult {
     avg_adx?: number;
     alpha?: number;
     regime_performance?: {
-        bull?: { win_rate?: number; count?: number; pnl?: number };
-        bear?: { win_rate?: number; count?: number; pnl?: number };
+        Bull?: { win_rate?: number; count?: number; pnl?: number };
+        Bear?: { win_rate?: number; count?: number; pnl?: number };
+        Unknown?: { win_rate?: number; count?: number; pnl?: number };
     };
 }
 
@@ -644,7 +645,18 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                         )}
 
                         <div className="overflow-x-auto rounded-lg border border-[#2A2F3A]" style={{ backgroundColor: '#0B0E14' }}>
-                            <table className="w-full text-sm">
+                            <style dangerouslySetInnerHTML={{
+                                __html: `
+                                .results-table th,
+                                .results-table td {
+                                    border-right: 1px solid #2A2F3A !important;
+                                }
+                                .results-table th:last-child,
+                                .results-table td:last-child {
+                                    border-right: none !important;
+                                }
+                            `}} />
+                            <table className="w-full text-sm results-table">
                                 <thead className="sticky top-0 z-10" style={{ backgroundColor: '#1A202C' }}>
                                     <tr className="border-b-2" style={{ borderColor: '#14b8a6' }}>
                                         <th className="text-left py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Stop-Loss</th>
@@ -768,10 +780,10 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                     {result.alpha !== undefined ? `${(result.alpha * 100).toFixed(2)}%` : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#10B981' : '#6B7280' }}>
-                                                    {result.regime_performance?.bull?.win_rate !== undefined ? `${result.regime_performance.bull.win_rate.toFixed(1)}%` : '-'}
+                                                    {result.regime_performance?.Bull?.win_rate !== undefined ? `${result.regime_performance.Bull.win_rate.toFixed(1)}%` : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#EF4444' : '#6B7280' }}>
-                                                    {result.regime_performance?.bear?.win_rate !== undefined ? `${result.regime_performance.bear.win_rate.toFixed(1)}%` : '-'}
+                                                    {result.regime_performance?.Bear?.win_rate !== undefined ? `${result.regime_performance.Bear.win_rate.toFixed(1)}%` : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-center">
                                                     <button
