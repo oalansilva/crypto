@@ -27,6 +27,8 @@ Thumbs.db
 
 # Logs
 *.log
+full_execution_log.txt
+backend_log.txt
 
 # Backend data (checkpoints, jobs, storage)
 backend/data/
