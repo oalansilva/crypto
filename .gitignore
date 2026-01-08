@@ -48,3 +48,14 @@ data/storage/
 **/checkpoints/
 **/cache/
 **/.cache/
+
+# Test and debug scripts (root level)
+test_*.py
+debug_*.py
+reproduction_*.py
+verify_*.py
+fix_*.py
+
+# Job files
+backend/data/jobs/*.json
+backend/data/jobs/results.db

@@ -668,30 +668,30 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                             <table className="w-full text-sm results-table">
                                 <thead className="sticky top-0 z-10" style={{ backgroundColor: '#1A202C' }}>
                                     <tr className="border-b-2" style={{ borderColor: '#14b8a6' }}>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Sharpe</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Trades</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Win Rate</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Total Return</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Expectancy</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max Loss</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Avg ATR</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>WR Bull</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>WR Bear</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Avg ADX</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>P. Factor</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Sortino</th>
+                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max DD</th>
                                         <th className="text-left py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Stop-Loss</th>
                                         <th className="text-left py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Stop-Gain</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Total Return</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Sharpe</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Sortino</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Calmar</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>CAGR</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Monthly Avg</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Expectancy</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>P. Factor</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max DD</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Avg DD</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>DD Duration</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Recovery</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Win Rate</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Trades</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max Wins</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Max Loss</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Trade Conc.</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Avg ATR</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Avg ADX</th>
                                         <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Alpha</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>WR Bull</th>
-                                        <th className="text-right py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>WR Bear</th>
                                         <th className="text-center py-4 px-4 font-bold text-xs uppercase tracking-wider" style={{ color: '#14b8a6' }}>Actions</th>
                                     </tr>
                                 </thead>
@@ -722,20 +722,50 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                     }
                                                 }}
                                             >
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
+                                                    {result.sharpe_ratio.toFixed(2)}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#9CA3AF' }}>
+                                                    {result.total_trades}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
+                                                    {(result.win_rate * 100).toFixed(1)}%
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-bold" style={{ color: result.total_return >= 0 ? '#10B981' : '#EF4444' }}>
+                                                    {result.total_return >= 0 ? '+' : ''}{result.total_return.toFixed(2)}%
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-bold" style={{ color: (result.expectancy || 0) >= 0 ? '#10B981' : '#EF4444' }}>
+                                                    {result.expectancy !== undefined ? `$${result.expectancy.toFixed(2)}` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#EF4444' }}>
+                                                    {result.max_consecutive_losses !== undefined ? result.max_consecutive_losses : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
+                                                    {result.avg_atr !== undefined ? result.avg_atr.toFixed(2) : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#10B981' : '#6B7280' }}>
+                                                    {result.regime_performance?.Bull?.win_rate !== undefined ? `${result.regime_performance.Bull.win_rate.toFixed(1)}%` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#EF4444' : '#6B7280' }}>
+                                                    {result.regime_performance?.Bear?.win_rate !== undefined ? `${result.regime_performance.Bear.win_rate.toFixed(1)}%` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
+                                                    {result.avg_adx !== undefined ? result.avg_adx.toFixed(2) : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#FCD34D' }}>
+                                                    {result.profit_factor !== undefined ? result.profit_factor.toFixed(2) : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
+                                                    {result.sortino_ratio !== undefined ? result.sortino_ratio.toFixed(2) : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#EF4444' }}>
+                                                    {(result.max_drawdown * 100).toFixed(1)}%
+                                                </td>
                                                 <td className="py-4 px-4 font-mono text-sm font-semibold" style={{ color: isBest ? '#14b8a6' : '#E2E8F0' }}>
                                                     {(result.stop_loss * 100).toFixed(1)}%
                                                 </td>
                                                 <td className="py-4 px-4 font-mono text-sm" style={{ color: isBest ? '#14b8a6' : '#9CA3AF' }}>
                                                     {result.stop_gain ? `${(result.stop_gain * 100).toFixed(1)}%` : 'None'}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm font-bold" style={{ color: result.total_return >= 0 ? '#10B981' : '#EF4444' }}>
-                                                    {result.total_return >= 0 ? '+' : ''}{result.total_return.toFixed(2)}%
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
-                                                    {result.sharpe_ratio.toFixed(2)}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
-                                                    {result.sortino_ratio !== undefined ? result.sortino_ratio.toFixed(2) : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
                                                     {result.calmar_ratio !== undefined ? result.calmar_ratio.toFixed(2) : '-'}
@@ -746,15 +776,6 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#60A5FA' }}>
                                                     {result.monthly_return_avg !== undefined ? `${(result.monthly_return_avg * 100).toFixed(2)}%` : '-'}
                                                 </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm font-bold" style={{ color: (result.expectancy || 0) >= 0 ? '#10B981' : '#EF4444' }}>
-                                                    {result.expectancy !== undefined ? `$${result.expectancy.toFixed(2)}` : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#FCD34D' }}>
-                                                    {result.profit_factor !== undefined ? result.profit_factor.toFixed(2) : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#EF4444' }}>
-                                                    {(result.max_drawdown * 100).toFixed(1)}%
-                                                </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#F87171' }}>
                                                     {result.avg_drawdown !== undefined ? `${(result.avg_drawdown * 100).toFixed(1)}%` : '-'}
                                                 </td>
@@ -764,35 +785,14 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#34D399' }}>
                                                     {result.recovery_factor !== undefined ? result.recovery_factor.toFixed(2) : '-'}
                                                 </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#D1D5DB' }}>
-                                                    {(result.win_rate * 100).toFixed(1)}%
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#9CA3AF' }}>
-                                                    {result.total_trades}
-                                                </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#10B981' }}>
                                                     {result.max_consecutive_wins !== undefined ? result.max_consecutive_wins : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: '#EF4444' }}>
-                                                    {result.max_consecutive_losses !== undefined ? result.max_consecutive_losses : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: '#A78BFA' }}>
                                                     {result.trade_concentration_top_10_pct !== undefined ? `${(result.trade_concentration_top_10_pct * 100).toFixed(1)}%` : '-'}
                                                 </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#FCD34D' : '#6B7280' }}>
-                                                    {result.avg_atr !== undefined ? result.avg_atr.toFixed(2) : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#FCD34D' : '#6B7280' }}>
-                                                    {result.avg_adx !== undefined ? result.avg_adx.toFixed(2) : '-'}
-                                                </td>
                                                 <td className="py-4 px-4 text-right font-mono text-sm font-semibold" style={{ color: idx < 10 ? ((result.alpha || 0) >= 0 ? '#10B981' : '#EF4444') : '#6B7280' }}>
                                                     {result.alpha !== undefined ? `${(result.alpha * 100).toFixed(2)}%` : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#10B981' : '#6B7280' }}>
-                                                    {result.regime_performance?.Bull?.win_rate !== undefined ? `${result.regime_performance.Bull.win_rate.toFixed(1)}%` : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono text-sm" style={{ color: idx < 10 ? '#EF4444' : '#6B7280' }}>
-                                                    {result.regime_performance?.Bear?.win_rate !== undefined ? `${result.regime_performance.Bear.win_rate.toFixed(1)}%` : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-center">
                                                     <button
