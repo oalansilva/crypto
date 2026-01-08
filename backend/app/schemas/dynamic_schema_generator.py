@@ -33,7 +33,7 @@ KNOWN_DEFAULTS = {
     "tema": {"length": 20},  # Market standard: 20 periods
     
     # Volatility Indicators (Market Standards)
-    "bbands": {"length": 20, "std": 2.0, "lower_std": 2.0, "upper_std": 2.0},  # Market standard: 20 period, 2 std dev (Bollinger's original)
+    "bbands": {"length": 20, "std": 2.0},  # Market standard: 20 period, 2 std dev (Bollinger's original)
     "atr": {"length": 14},  # Market standard: 14 periods (Wilder's original)
     "natr": {"length": 14},  # Market standard: 14 periods (normalized ATR)
     "kc": {"length": 20, "scalar": 2},  # Market standard: 20 period, 2x ATR

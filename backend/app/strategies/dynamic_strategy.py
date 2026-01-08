@@ -145,9 +145,11 @@ class DynamicStrategy:
         
         # Bollinger Bands
         elif indicator == 'bbands':
-            # Get lower_std and upper_std parameters
-            lower_std = params.get('lower_std', 2.0)
-            upper_std = params.get('upper_std', 2.0)
+            # Get std parameter first
+            std = params.get('std', 2.0)
+            # Use std as fallback for lower/upper if not explicitly provided
+            lower_std = params.get('lower_std', std)
+            upper_std = params.get('upper_std', std)
             if isinstance(length, float) and length.is_integer():
                 length = int(length)
             # Use backticks to handle decimal points in column names

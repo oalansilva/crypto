@@ -64,8 +64,6 @@ DEFAULT_PARAM_VALUES = {
     
     # Bollinger Bands parameters (Bollinger's original settings)
     'std': 2.0,  # Standard deviation multiplier
-    'lower_std': 2.0,  # Lower band std dev
-    'upper_std': 2.0,  # Upper band std dev
     
     # RSI/Oscillator thresholds
     'overbought': 70,  # Standard overbought level
