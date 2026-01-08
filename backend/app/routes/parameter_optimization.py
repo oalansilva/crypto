@@ -143,11 +143,16 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
         
         # Run all stages sequentially
         all_results = []
-        locked_params = {
+        
+        # CRITICAL FIX: Start with strategy defaults (includes indicator params like fast, slow, signal)
+        # Then override with fixed optimization params (timeframe, fee, slippage)
+        # This ensures indicator parameters are passed to every backtest
+        locked_params = strategy_defaults.copy()
+        locked_params.update({
             "timeframe": request.timeframe,
             "fee": request.fee,
             "slippage": request.slippage
-        }
+        })
         result_index = 0  # Track global result index for database
         
         for i, stage in enumerate(stages):

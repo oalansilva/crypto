@@ -26,16 +26,26 @@ class DynamicStrategy:
         self.config = config
         self.name = config.get('name', 'Dynamic')
         
+        # DEBUG: Log initial config
+        logger.info(f"DEBUG __init__: config={config}")
+        logger.info(f"DEBUG __init__: self.name={self.name}")
+        
         # Check if it's simplified format (single indicator)
         if 'indicators' not in config and 'name' in config:
             # Simplified format - convert to full format
             indicator_name = config['name'].lower()
             params = {k: v for k, v in config.items() if k != 'name'}
             
+            # DEBUG: Log params extraction
+            logger.info(f"DEBUG __init__ SIMPLIFIED: indicator_name={indicator_name}, params={params}")
+            
             self.indicators_config = [{
                 "kind": indicator_name,
                 **params
             }]
+            
+            # DEBUG: Log indicators_config
+            logger.info(f"DEBUG __init__ SIMPLIFIED: indicators_config={self.indicators_config}")
             
             # Auto-generate entry/exit based on indicator type
             self.entry_expr, self.exit_expr = self._generate_auto_signals(indicator_name, params)
@@ -48,8 +58,12 @@ class DynamicStrategy:
             # CRITICAL FIX: Allow top-level params to override indicator config
             # This is necessary for optimization where params are passed at top level
             # but the strategy might have been loaded from a JSON file (full format)
+            logger.info(f"DEBUG: indicators_config={self.indicators_config}, name={self.name}")
+            logger.info(f"DEBUG: Full config keys: {config.keys()}")
+            
             if self.indicators_config and self.name:
                 top_level_params = {k: v for k, v in config.items() if k not in ['name', 'indicators', 'entry', 'exit']}
+                logger.info(f"DEBUG: top_level_params={top_level_params}")
                 
                 if top_level_params:
                     # Update parameters in the indicators list
@@ -59,28 +73,31 @@ class DynamicStrategy:
                         for k, v in top_level_params.items():
                              if k in ind or k in ['length', 'std', 'fast', 'slow', 'signal', 'k', 'd']:
                                  ind[k] = v
-                                 
-                    # SPECIAL HANDLING for RSI Length update in Entry/Exit Expressions
-                    # If 'length' changed, we must assume column name changed from RSI_14 to RSI_15
-                    if 'length' in top_level_params:
-                        new_length = top_level_params['length']
-                        if isinstance(new_length, float) and new_length.is_integer():
-                            new_length = int(new_length)
-                            
-                        # Try to auto-update RSI expressions if they look standard
-                        # Regex replacement would be safer, but simple replace works for standard names
-                        # We don't know the OLD length easily, so we have to guess or check the expr
-                        # But wait! If we just updated ind['length'], pandas_ta will generate RSI_15.
-                        # So we MUST update entry_expr to reference RSI_15.
+                    
+                    # GENERIC FIX: Regenerate entry/exit expressions when params change
+                    # This ensures ALL indicators use the correct parameters from optimization
+                    # Assume single indicator strategy (most common case)
+                    if len(self.indicators_config) == 1:
+                        ind = self.indicators_config[0]
+                        indicator_name = ind.get('kind', '').lower()
                         
-                        import re
-                        if self.entry_expr and 'RSI_' in self.entry_expr:
-                            self.entry_expr = re.sub(r'RSI_\d+', f'RSI_{new_length}', self.entry_expr)
-                            logger.info(f"Updated RSI entry expression to: {self.entry_expr}")
+                        if indicator_name:
+                            # Extract params (excluding 'kind')
+                            params = {k: v for k, v in ind.items() if k != 'kind' and v is not None}
                             
-                        if self.exit_expr and 'RSI_' in self.exit_expr:
-                            self.exit_expr = re.sub(r'RSI_\d+', f'RSI_{new_length}', self.exit_expr)
-                            logger.info(f"Updated RSI exit expression to: {self.exit_expr}")
+                            # Regenerate expressions with updated params
+                            new_entry, new_exit = self._generate_auto_signals(indicator_name, params)
+                            
+                            # Update expressions
+                            self.entry_expr = new_entry
+                            self.exit_expr = new_exit
+                            
+                            logger.info(f"Regenerated {indicator_name.upper()} expressions with params {params}")
+                            logger.info(f"  Entry: {self.entry_expr}")
+                            logger.info(f"  Exit: {self.exit_expr}")
+                    else:
+                        # Multi-indicator strategies - log warning for now
+                        logger.warning(f"Multi-indicator strategy detected ({len(self.indicators_config)} indicators). Parameter update may not work correctly.")
 
     
     def _generate_auto_signals(self, indicator: str, params: dict):
@@ -182,6 +199,10 @@ class DynamicStrategy:
                 # Filter out null params and 'kind'
                 params = {k: v for k, v in ind.items() if k != 'kind' and v is not None}
                 
+                # DEBUG: Log MACD parameters
+                if indicator_name == 'macd':
+                    logger.info(f"DEBUG MACD: ind={ind}, params={params}")
+                
                 # Convert float parameters to int if they're whole numbers
                 # This is critical for pandas_ta indicators that use numba
                 converted_params = {}
@@ -190,6 +211,10 @@ class DynamicStrategy:
                         converted_params[k] = int(v)
                     else:
                         converted_params[k] = v
+                
+                # DEBUG: Log converted MACD parameters
+                if indicator_name == 'macd':
+                    logger.info(f"DEBUG MACD: converted_params={converted_params}")
                 
                 # Call the indicator function directly
                 try:
