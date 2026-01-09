@@ -128,11 +128,38 @@ RISK_MANAGEMENT_SCHEMA = {
 TIMEFRAME_OPTIONS = ["5m", "15m", "30m", "1h", "2h", "4h", "1d"]
 
 
+# ESTRATEGIAAXS Schema
+ESTRATEGIAAXS_SCHEMA = IndicatorSchema(
+    name="ESTRATEGIAAXS",
+    parameters={
+        "media_curta": ParameterSchema(
+            default=6,
+            optimization_range=OptimizationRange(min=3, max=15, step=1),
+            market_standard="Most traders use 6-12 for short-term EMA.",
+            description="EMA period for short moving average"
+        ),
+        "media_longa": ParameterSchema(
+            default=38,
+            optimization_range=OptimizationRange(min=25, max=60, step=2),
+            market_standard="Most traders use 30-50 for long-term SMA.",
+            description="SMA period for long moving average"
+        ),
+        "media_inter": ParameterSchema(
+            default=21,
+            optimization_range=OptimizationRange(min=15, max=35, step=1),
+            market_standard="Most traders use 20-30 for intermediate SMA.",
+            description="SMA period for intermediate moving average"
+        )
+    }
+)
+
+
 # Registry of all indicator schemas
 INDICATOR_SCHEMAS: Dict[str, IndicatorSchema] = {
     "macd": MACD_SCHEMA,
     "rsi": RSI_SCHEMA,
     "bollinger": BOLLINGER_SCHEMA,
+    "estrategiaaxs": ESTRATEGIAAXS_SCHEMA,
 }
 
 

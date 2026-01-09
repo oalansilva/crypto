@@ -285,10 +285,39 @@ async def delete_run(
 
 @router.get("/strategies/metadata")
 async def get_strategies_metadata():
-    """Get metadata for all available pandas-ta indicators"""
+    """Get metadata for all available pandas-ta indicators + custom strategies"""
     print(" GET /strategies/metadata called")
     try:
         result = get_all_indicators_metadata()
+        
+        # Add ESTRATEGIAAXS as a custom strategy
+        if 'custom' not in result:
+            result['custom'] = []
+        
+        result['custom'].append({
+            "id": "estrategiaaxs",
+            "name": "ESTRATEGIAAXS",
+            "category": "custom",
+            "description": "Moving Average Crossover Strategy (EMA + SMA)",
+            "params": [
+                {
+                    "name": "media_curta",
+                    "type": "int",
+                    "default": 6
+                },
+                {
+                    "name": "media_longa",
+                    "type": "int",
+                    "default": 38
+                },
+                {
+                    "name": "media_inter",
+                    "type": "int",
+                    "default": 21
+                }
+            ]
+        })
+        
         print(f" Returning {len(result)} categories")
         return result
     except Exception as e:

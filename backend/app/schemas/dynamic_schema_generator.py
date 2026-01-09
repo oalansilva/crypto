@@ -128,6 +128,33 @@ def generate_market_standard(param_name: str, default_value: Any) -> str:
 
 def get_dynamic_indicator_schema(strategy_name: str) -> Optional[Dict[str, Any]]:
     """Generates schema with fallback for known defaults."""
+    # Check if it's ESTRATEGIAAXS first
+    if strategy_name.lower() == 'estrategiaaxs':
+        return {
+            "name": "ESTRATEGIAAXS",
+            "parameters": {
+                "media_curta": {
+                    "default": 6,
+                    "description": "EMA period for short moving average",
+                    "market_standard": "Most traders use 6-12 for short-term EMA.",
+                    "optimization_range": {"min": 3, "max": 15, "step": 1}
+                },
+                "media_longa": {
+                    "default": 38,
+                    "description": "SMA period for long moving average",
+                    "market_standard": "Most traders use 30-50 for long-term SMA.",
+                    "optimization_range": {"min": 25, "max": 60, "step": 2}
+                },
+                "media_inter": {
+                    "default": 21,
+                    "description": "SMA period for intermediate moving average",
+                    "market_standard": "Most traders use 20-30 for intermediate SMA.",
+                    "optimization_range": {"min": 15, "max": 35, "step": 1}
+                }
+            },
+            "risk_management": RISK_MANAGEMENT_SCHEMA
+        }
+    
     # Get all indicators from pandas_ta
     all_indicators = get_all_indicators_metadata()
     

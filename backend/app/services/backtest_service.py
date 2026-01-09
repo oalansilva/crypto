@@ -71,15 +71,37 @@ class BacktestService:
     
     def _get_strategy(self, name_or_config: Union[str, dict], params: Optional[dict] = None):
         """Instantiate strategy with params"""
+        # Import ESTRATEGIAAXS
+        from app.strategies.estrategia_axs import EstrategiaAXS
+        
         if isinstance(name_or_config, dict):
-            # If params are provided (optimization mode), merge them with the config
-            # This replaces range objects with scalar values
+            strategy_name = name_or_config.get('name', '').lower()
+            
+            # Check if it's ESTRATEGIAAXS
+            if strategy_name == 'estrategiaaxs':
+                # If params are provided (optimization mode), merge them
+                if params:
+                    merged_config = {**name_or_config, **params}
+                    return EstrategiaAXS(merged_config)
+                return EstrategiaAXS(name_or_config)
+            
+            # Otherwise use DynamicStrategy
             if params:
                 merged_config = {**name_or_config, **params}
                 return DynamicStrategy(merged_config)
             return DynamicStrategy(name_or_config)
             
-        # String name -> Convert to DynamicStrategy config
+        # String name
+        strategy_name_lower = name_or_config.lower()
+        
+        # Check if it's ESTRATEGIAAXS
+        if strategy_name_lower == 'estrategiaaxs':
+            strategy_config = {"name": name_or_config}
+            if params:
+                strategy_config.update(params)
+            return EstrategiaAXS(strategy_config)
+        
+        # Convert to DynamicStrategy config
         strategy_config = {"name": name_or_config}
         if params:
             strategy_config.update(params)
