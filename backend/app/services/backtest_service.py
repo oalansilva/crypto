@@ -71,8 +71,10 @@ class BacktestService:
     
     def _get_strategy(self, name_or_config: Union[str, dict], params: Optional[dict] = None):
         """Instantiate strategy with params"""
-        # Import CRUZAMENTOMEDIAS
+        # Import custom strategies
         from app.strategies.cruzamento_medias import CruzamentoMedias
+        from app.strategies.ema_rsi_volume import EmaRsiVolumeStrategy
+        from app.strategies.fibonacci_ema import FibonacciEmaStrategy
         
         if isinstance(name_or_config, dict):
             strategy_name = name_or_config.get('name', '').lower()
@@ -84,6 +86,20 @@ class BacktestService:
                     merged_config = {**name_or_config, **params}
                     return CruzamentoMedias(merged_config)
                 return CruzamentoMedias(name_or_config)
+            
+            # Check if it's EMA_RSI_VOLUME
+            if strategy_name == 'emarsivolume':
+                if params:
+                    merged_config = {**name_or_config, **params}
+                    return EmaRsiVolumeStrategy(merged_config)
+                return EmaRsiVolumeStrategy(name_or_config)
+            
+            # Check if it's FIBONACCI_EMA
+            if strategy_name == 'fibonacciema':
+                if params:
+                    merged_config = {**name_or_config, **params}
+                    return FibonacciEmaStrategy(merged_config)
+                return FibonacciEmaStrategy(name_or_config)
             
             # Otherwise use DynamicStrategy
             if params:
@@ -100,6 +116,20 @@ class BacktestService:
             if params:
                 strategy_config.update(params)
             return CruzamentoMedias(strategy_config)
+        
+        # Check if it's EMA_RSI_VOLUME
+        if strategy_name_lower == 'emarsivolume':
+            strategy_config = {"name": name_or_config}
+            if params:
+                strategy_config.update(params)
+            return EmaRsiVolumeStrategy(strategy_config)
+        
+        # Check if it's FIBONACCI_EMA
+        if strategy_name_lower == 'fibonacciema':
+            strategy_config = {"name": name_or_config}
+            if params:
+                strategy_config.update(params)
+            return FibonacciEmaStrategy(strategy_config)
         
         # Convert to DynamicStrategy config
         strategy_config = {"name": name_or_config}

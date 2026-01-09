@@ -154,12 +154,90 @@ CRUZAMENTOMEDIAS_SCHEMA = IndicatorSchema(
 )
 
 
+# EMA RSI VOLUME Schema
+EMA_RSI_VOLUME_SCHEMA = IndicatorSchema(
+    name="EMA_RSI_VOLUME",
+    parameters={
+        "ema_fast": ParameterSchema(
+            default=50,
+            optimization_range=OptimizationRange(min=20, max=100, step=10),
+            market_standard="Most traders use 50 for fast EMA. Range 20-100 covers short to medium-term.",
+            description="Fast EMA period for pullback entries"
+        ),
+        "ema_slow": ParameterSchema(
+            default=200,
+            optimization_range=OptimizationRange(min=100, max=300, step=50),
+            market_standard="Most traders use 200 for trend filter. This is the industry standard.",
+            description="Slow EMA period for trend filter (only trade above this)"
+        ),
+        "rsi_period": ParameterSchema(
+            default=14,
+            optimization_range=OptimizationRange(min=10, max=20, step=2),
+            market_standard="Most traders use 14. Range 10-20 is commonly tested.",
+            description="RSI calculation period"
+        ),
+        "rsi_min": ParameterSchema(
+            default=40,
+            optimization_range=OptimizationRange(min=30, max=45, step=5),
+            market_standard="40 indicates healthy pullback (not oversold). Range 30-45 tested.",
+            description="Minimum RSI for buy signal (pullback zone lower bound)"
+        ),
+        "rsi_max": ParameterSchema(
+            default=50,
+            optimization_range=OptimizationRange(min=45, max=60, step=5),
+            market_standard="50 is neutral momentum. Range 45-60 covers pullback to neutral zone.",
+            description="Maximum RSI for buy signal (pullback zone upper bound)"
+        )
+    }
+)
+
+
+# FIBONACCI EMA Schema
+FIBONACCI_EMA_SCHEMA = IndicatorSchema(
+    name="FIBONACCI_EMA",
+    parameters={
+        "ema_period": ParameterSchema(
+            default=200,
+            optimization_range=OptimizationRange(min=100, max=300, step=50),
+            market_standard="Most traders use 200 for trend filter. This is the industry standard.",
+            description="EMA period for trend filter (only trade above this)"
+        ),
+        "swing_lookback": ParameterSchema(
+            default=20,
+            optimization_range=OptimizationRange(min=10, max=40, step=5),
+            market_standard="20 bars captures meaningful swings without being too sensitive.",
+            description="Bars to look back for swing high/low detection"
+        ),
+        "fib_level_1": ParameterSchema(
+            default=0.5,
+            optimization_range=OptimizationRange(min=0.382, max=0.618, step=0.05),
+            market_standard="0.5 (50%) is a psychological level widely watched by traders.",
+            description="First Fibonacci retracement level"
+        ),
+        "fib_level_2": ParameterSchema(
+            default=0.618,
+            optimization_range=OptimizationRange(min=0.5, max=0.786, step=0.05),
+            market_standard="0.618 (golden ratio) is the institutional favorite for pullback entries.",
+            description="Second Fibonacci retracement level (golden ratio)"
+        ),
+        "level_tolerance": ParameterSchema(
+            default=0.005,
+            optimization_range=OptimizationRange(min=0.001, max=0.01, step=0.001),
+            market_standard="0.5% tolerance balances precision and flexibility for level detection.",
+            description="Tolerance for price touching Fibonacci level (0.005 = 0.5%)"
+        )
+    }
+)
+
+
 # Registry of all indicator schemas
 INDICATOR_SCHEMAS: Dict[str, IndicatorSchema] = {
     "macd": MACD_SCHEMA,
     "rsi": RSI_SCHEMA,
     "bollinger": BOLLINGER_SCHEMA,
     "cruzamentomedias": CRUZAMENTOMEDIAS_SCHEMA,
+    "emarsivolume": EMA_RSI_VOLUME_SCHEMA,
+    "fibonacciema": FIBONACCI_EMA_SCHEMA,
 }
 
 

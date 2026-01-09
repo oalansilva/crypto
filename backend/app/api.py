@@ -318,6 +318,56 @@ async def get_strategies_metadata():
             ]
         })
         
+        # Add EMA_RSI_VOLUME as a custom strategy
+        result['custom'].append({
+            "id": "emarsivolume",
+            "name": "EMA 50/200 + RSI + Volume",
+            "category": "custom",
+            "description": "Most popular BTC strategy: Trend following with EMA 200 filter, EMA 50 entries, and RSI confirmation",
+            "params": [
+                {
+                    "name": "ema_fast",
+                    "type": "int",
+                    "default": 50
+                },
+                {
+                    "name": "ema_slow",
+                    "type": "int",
+                    "default": 200
+                },
+                {
+                    "name": "rsi_period",
+                    "type": "int",
+                    "default": 14
+                },
+                {
+                    "name": "rsi_min",
+                    "type": "int",
+                    "default": 40
+                },
+                {
+                    "name": "rsi_max",
+                    "type": "int",
+                    "default": 50
+                }
+            ]
+        })
+        
+        # Add FIBONACCI_EMA as a custom strategy
+        result['custom'].append({
+            "id": "fibonacciema",
+            "name": "Fibonacci (0.5 / 0.618) + EMA 200",
+            "category": "custom",
+            "description": "Institutional pullback strategy: Fibonacci retracement levels (0.5 and 0.618) with EMA 200 trend filter",
+            "params": [
+                {"name": "ema_period", "type": "int", "default": 200},
+                {"name": "swing_lookback", "type": "int", "default": 20},
+                {"name": "fib_level_1", "type": "float", "default": 0.5},
+                {"name": "fib_level_2", "type": "float", "default": 0.618},
+                {"name": "level_tolerance", "type": "float", "default": 0.005}
+            ]
+        })
+        
         print(f" Returning {len(result)} categories")
         return result
     except Exception as e:

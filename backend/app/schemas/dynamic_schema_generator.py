@@ -155,6 +155,84 @@ def get_dynamic_indicator_schema(strategy_name: str) -> Optional[Dict[str, Any]]
             "risk_management": RISK_MANAGEMENT_SCHEMA
         }
     
+    # Check if it's EMA_RSI_VOLUME
+    if strategy_name.lower() == 'emarsivolume':
+        return {
+            "name": "EMA_RSI_VOLUME",
+            "parameters": {
+                "ema_fast": {
+                    "default": 50,
+                    "description": "Fast EMA period for pullback entries",
+                    "market_standard": "Most traders use 50 for fast EMA. Range 20-100 covers short to medium-term.",
+                    "optimization_range": {"min": 20, "max": 100, "step": 10}
+                },
+                "ema_slow": {
+                    "default": 200,
+                    "description": "Slow EMA period for trend filter (only trade above this)",
+                    "market_standard": "Most traders use 200 for trend filter. This is the industry standard.",
+                    "optimization_range": {"min": 100, "max": 300, "step": 50}
+                },
+                "rsi_period": {
+                    "default": 14,
+                    "description": "RSI calculation period",
+                    "market_standard": "Most traders use 14. Range 10-20 is commonly tested.",
+                    "optimization_range": {"min": 10, "max": 20, "step": 2}
+                },
+                "rsi_min": {
+                    "default": 40,
+                    "description": "Minimum RSI for buy signal (pullback zone lower bound)",
+                    "market_standard": "40 indicates healthy pullback (not oversold). Range 30-45 tested.",
+                    "optimization_range": {"min": 30, "max": 45, "step": 5}
+                },
+                "rsi_max": {
+                    "default": 50,
+                    "description": "Maximum RSI for buy signal (pullback zone upper bound)",
+                    "market_standard": "50 is neutral momentum. Range 45-60 covers pullback to neutral zone.",
+                    "optimization_range": {"min": 45, "max": 60, "step": 5}
+                }
+            },
+            "risk_management": RISK_MANAGEMENT_SCHEMA
+        }
+    
+    # Check if it's FIBONACCI_EMA
+    if strategy_name.lower() == 'fibonacciema':
+        return {
+            "name": "FIBONACCI_EMA",
+            "parameters": {
+                "ema_period": {
+                    "default": 200,
+                    "description": "EMA period for trend filter (only trade above this)",
+                    "market_standard": "Most traders use 200 for trend filter. This is the industry standard.",
+                    "optimization_range": {"min": 100, "max": 300, "step": 50}
+                },
+                "swing_lookback": {
+                    "default": 20,
+                    "description": "Bars to look back for swing high/low detection",
+                    "market_standard": "20 bars captures meaningful swings without being too sensitive.",
+                    "optimization_range": {"min": 10, "max": 40, "step": 5}
+                },
+                "fib_level_1": {
+                    "default": 0.5,
+                    "description": "First Fibonacci retracement level",
+                    "market_standard": "0.5 (50%) is a psychological level widely watched by traders.",
+                    "optimization_range": {"min": 0.382, "max": 0.618, "step": 0.05}
+                },
+                "fib_level_2": {
+                    "default": 0.618,
+                    "description": "Second Fibonacci retracement level (golden ratio)",
+                    "market_standard": "0.618 (golden ratio) is the institutional favorite for pullback entries.",
+                    "optimization_range": {"min": 0.5, "max": 0.786, "step": 0.05}
+                },
+                "level_tolerance": {
+                    "default": 0.005,
+                    "description": "Tolerance for price touching Fibonacci level (0.005 = 0.5%)",
+                    "market_standard": "0.5% tolerance balances precision and flexibility for level detection.",
+                    "optimization_range": {"min": 0.001, "max": 0.01, "step": 0.001}
+                }
+            },
+            "risk_management": RISK_MANAGEMENT_SCHEMA
+        }
+    
     # Get all indicators from pandas_ta
     all_indicators = get_all_indicators_metadata()
     
