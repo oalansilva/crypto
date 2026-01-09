@@ -128,10 +128,10 @@ def generate_market_standard(param_name: str, default_value: Any) -> str:
 
 def get_dynamic_indicator_schema(strategy_name: str) -> Optional[Dict[str, Any]]:
     """Generates schema with fallback for known defaults."""
-    # Check if it's ESTRATEGIAAXS first
-    if strategy_name.lower() == 'estrategiaaxs':
+    # Check if it's CRUZAMENTOMEDIAS first
+    if strategy_name.lower() == 'cruzamentomedias':
         return {
-            "name": "ESTRATEGIAAXS",
+            "name": "CRUZAMENTOMEDIAS",
             "parameters": {
                 "media_curta": {
                     "default": 6,

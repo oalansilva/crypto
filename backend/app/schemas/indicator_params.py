@@ -128,9 +128,9 @@ RISK_MANAGEMENT_SCHEMA = {
 TIMEFRAME_OPTIONS = ["5m", "15m", "30m", "1h", "2h", "4h", "1d"]
 
 
-# ESTRATEGIAAXS Schema
-ESTRATEGIAAXS_SCHEMA = IndicatorSchema(
-    name="ESTRATEGIAAXS",
+# CRUZAMENTOMEDIAS Schema
+CRUZAMENTOMEDIAS_SCHEMA = IndicatorSchema(
+    name="CRUZAMENTOMEDIAS",
     parameters={
         "media_curta": ParameterSchema(
             default=6,
@@ -159,7 +159,7 @@ INDICATOR_SCHEMAS: Dict[str, IndicatorSchema] = {
     "macd": MACD_SCHEMA,
     "rsi": RSI_SCHEMA,
     "bollinger": BOLLINGER_SCHEMA,
-    "estrategiaaxs": ESTRATEGIAAXS_SCHEMA,
+    "cruzamentomedias": CRUZAMENTOMEDIAS_SCHEMA,
 }
 
 

@@ -4,9 +4,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class EstrategiaAXS:
+class CruzamentoMedias:
     """
-    ESTRATEGIAAXS - Moving Average Crossover Strategy
+    CRUZAMENTOMEDIAS - Moving Average Crossover Strategy
     
     Based on Pine Script logic:
     - Uses 3 moving averages: EMA (short), SMA (long), SMA (intermediate)
@@ -16,7 +16,7 @@ class EstrategiaAXS:
     
     def __init__(self, config: dict):
         """
-        Initialize ESTRATEGIAAXS strategy.
+        Initialize CRUZAMENTOMEDIAS strategy.
         
         Args:
             config: Dictionary with parameters:
@@ -25,14 +25,14 @@ class EstrategiaAXS:
                 - media_inter: SMA period (default: 21)
         """
         self.config = config
-        self.name = "ESTRATEGIAAXS"
+        self.name = "CRUZAMENTOMEDIAS"
         
         # Extract parameters with defaults
         self.media_curta = config.get('media_curta', 6)
         self.media_longa = config.get('media_longa', 38)
         self.media_inter = config.get('media_inter', 21)
         
-        logger.info(f"ESTRATEGIAAXS initialized: curta={self.media_curta}, longa={self.media_longa}, inter={self.media_inter}")
+        logger.info(f"CRUZAMENTOMEDIAS initialized: curta={self.media_curta}, longa={self.media_longa}, inter={self.media_inter}")
         
         # Store simulation data for visualization
         self.simulation_data = None
@@ -79,6 +79,6 @@ class EstrategiaAXS:
         # Store simulation data for visualization
         self.simulation_data = df_sim
         
-        logger.info(f"ESTRATEGIAAXS generated {buy_condition.sum()} buy signals and {sell_condition.sum()} sell signals")
+        logger.info(f"CRUZAMENTOMEDIAS generated {buy_condition.sum()} buy signals and {sell_condition.sum()} sell signals")
         
         return signals

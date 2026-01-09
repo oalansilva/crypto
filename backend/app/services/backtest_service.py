@@ -71,19 +71,19 @@ class BacktestService:
     
     def _get_strategy(self, name_or_config: Union[str, dict], params: Optional[dict] = None):
         """Instantiate strategy with params"""
-        # Import ESTRATEGIAAXS
-        from app.strategies.estrategia_axs import EstrategiaAXS
+        # Import CRUZAMENTOMEDIAS
+        from app.strategies.cruzamento_medias import CruzamentoMedias
         
         if isinstance(name_or_config, dict):
             strategy_name = name_or_config.get('name', '').lower()
             
-            # Check if it's ESTRATEGIAAXS
-            if strategy_name == 'estrategiaaxs':
+            # Check if it's CRUZAMENTOMEDIAS
+            if strategy_name == 'cruzamentomedias':
                 # If params are provided (optimization mode), merge them
                 if params:
                     merged_config = {**name_or_config, **params}
-                    return EstrategiaAXS(merged_config)
-                return EstrategiaAXS(name_or_config)
+                    return CruzamentoMedias(merged_config)
+                return CruzamentoMedias(name_or_config)
             
             # Otherwise use DynamicStrategy
             if params:
@@ -94,12 +94,12 @@ class BacktestService:
         # String name
         strategy_name_lower = name_or_config.lower()
         
-        # Check if it's ESTRATEGIAAXS
-        if strategy_name_lower == 'estrategiaaxs':
+        # Check if it's CRUZAMENTOMEDIAS
+        if strategy_name_lower == 'cruzamentomedias':
             strategy_config = {"name": name_or_config}
             if params:
                 strategy_config.update(params)
-            return EstrategiaAXS(strategy_config)
+            return CruzamentoMedias(strategy_config)
         
         # Convert to DynamicStrategy config
         strategy_config = {"name": name_or_config}

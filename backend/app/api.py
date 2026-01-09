@@ -290,13 +290,13 @@ async def get_strategies_metadata():
     try:
         result = get_all_indicators_metadata()
         
-        # Add ESTRATEGIAAXS as a custom strategy
+        # Add CRUZAMENTOMEDIAS as a custom strategy
         if 'custom' not in result:
             result['custom'] = []
         
         result['custom'].append({
-            "id": "estrategiaaxs",
-            "name": "ESTRATEGIAAXS",
+            "id": "cruzamentomedias",
+            "name": "CRUZAMENTOMEDIAS",
             "category": "custom",
             "description": "Moving Average Crossover Strategy (EMA + SMA)",
             "params": [
