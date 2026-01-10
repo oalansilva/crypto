@@ -30,14 +30,27 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
     const navigate = useNavigate();
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+
     // Sort results by total_pnl descending
     const sortedResults = [...results].sort((a, b) =>
         b.metrics.total_pnl - a.metrics.total_pnl
     );
 
-    // Show all results (excluding the best one which is shown in hero card)
-    const displayedResults = sortedResults.slice(1);
+    // Pagination logic
+    const totalResults = sortedResults.length;
+    const totalPages = Math.ceil(totalResults / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const displayedResults = sortedResults.slice(startIndex, endIndex);
     const bestResult = sortedResults[0];
+
+    // Reset to page 1 if current page exceeds total pages
+    if (currentPage > totalPages && totalPages > 0) {
+        setCurrentPage(1);
+    }
 
     // Helper to safely extract numeric values
     const extractNumber = (value: any): number => {
@@ -338,7 +351,56 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                 {/* All Results Table */}
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700 overflow-hidden">
                     <div className="p-6 border-b border-gray-700">
-                        <h2 className="text-xl font-bold text-white">All Results</h2>
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                            <h2 className="text-xl font-bold text-white">All Results</h2>
+
+                            {/* Pagination Controls - Top */}
+                            <div className="flex items-center gap-4 text-sm">
+                                {/* Results Counter */}
+                                <span className="text-gray-400">
+                                    Showing {startIndex + 1}-{Math.min(endIndex, totalResults)} of {totalResults}
+                                </span>
+
+                                {/* Page Size Selector */}
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => {
+                                        setPageSize(Number(e.target.value));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                >
+                                    <option value={10}>10 per page</option>
+                                    <option value={25}>25 per page</option>
+                                    <option value={50}>50 per page</option>
+                                    <option value={100}>100 per page</option>
+                                    <option value={totalResults}>Show All</option>
+                                </select>
+
+                                {/* Page Navigation */}
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                            disabled={currentPage === 1}
+                                            className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
+                                        >
+                                            Previous
+                                        </button>
+                                        <span className="text-gray-400">
+                                            Page {currentPage} of {totalPages}
+                                        </span>
+                                        <button
+                                            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -357,15 +419,18 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                             <tbody className="divide-y divide-gray-700/50 text-sm">
                                 {displayedResults.map((result, idx) => {
                                     const metrics = getMetrics(result);
-                                    const rank = idx + 2;
+                                    const globalRank = startIndex + idx + 1; // Use global rank, not page-local
                                     const isPositive = metrics.pnl >= 0;
                                     const isExpanded = expandedIndex === idx;
 
                                     return (
                                         <React.Fragment key={idx}>
-                                            <tr className="hover:bg-gray-700/30 transition-colors">
+                                            <tr className={`hover:bg-gray-700/30 transition-colors ${globalRank === 1 ? 'bg-teal-500/10' : ''}`}>
                                                 <td className="p-4">
-                                                    <span className="font-mono text-gray-500 font-bold">#{rank}</span>
+                                                    <span className={`font-mono font-bold ${globalRank === 1 ? 'text-teal-400 flex items-center gap-1' : 'text-gray-500'}`}>
+                                                        {globalRank === 1 && <Trophy className="w-3 h-3" />}
+                                                        #{globalRank}
+                                                    </span>
                                                 </td>
                                                 <td className="p-4 font-mono text-gray-300">
                                                     {formatParams(result.params)}
@@ -458,6 +523,29 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination Controls - Bottom */}
+                    {totalPages > 1 && (
+                        <div className="p-4 border-t border-gray-700 flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                disabled={currentPage === 1}
+                                className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <span className="text-gray-400 px-4">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

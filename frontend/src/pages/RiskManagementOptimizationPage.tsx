@@ -293,12 +293,14 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                     },
                     stop_gain: selectedStopGains // Pass list directly, backend now supports it
                 },
-                strategy_params: strategyParams, // Pass as explicit dictionary
+                strategy_params: Object.fromEntries(
+                    Object.entries(strategyParams).filter(([k]) => k !== 'include_chikou')
+                ), // Pass as explicit dictionary, excluding deprecated params
                 fee: enableFees ? 0.00075 : 0,
                 slippage: enableSlippage ? 0.0005 : 0
             };
 
-            const response = await fetch('http://127.0.0.1:8000/api/optimize/parameters', {
+            const response = await fetch('http://127.0.0.1:8000/api/optimize/risk', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -456,39 +458,41 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                 Strategy Parameters
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {Object.entries(strategyParams).map(([key, value]) => (
-                                    <div key={key}>
-                                        <label className="block text-sm text-gray-400 mb-1 capitalize">{key.replace(/_/g, ' ')}</label>
-                                        <input
-                                            type="text"
-                                            value={value}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setStrategyParams(prev => ({
-                                                    ...prev,
-                                                    [key]: val
-                                                }));
-                                            }}
-                                            onBlur={(e) => {
-                                                const val = e.target.value;
-                                                // Try to convert to number on blur if it looks like one
-                                                const numVal = parseFloat(val);
-                                                if (!isNaN(numVal) && val.trim() !== '') {
+                                {Object.entries(strategyParams)
+                                    .filter(([key]) => key !== 'include_chikou') // Explicitly exclude deprecated param
+                                    .map(([key, value]) => (
+                                        <div key={key}>
+                                            <label className="block text-sm text-gray-400 mb-1 capitalize">{key.replace(/_/g, ' ')}</label>
+                                            <input
+                                                type="text"
+                                                value={value}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
                                                     setStrategyParams(prev => ({
                                                         ...prev,
-                                                        [key]: numVal
+                                                        [key]: val
                                                     }));
-                                                }
-                                            }}
-                                            className="w-full px-3 py-2 rounded-md border"
-                                            style={{
-                                                backgroundColor: '#151922',
-                                                borderColor: '#2D3748',
-                                                color: '#E2E8F0'
-                                            }}
-                                        />
-                                    </div>
-                                ))}
+                                                }}
+                                                onBlur={(e) => {
+                                                    const val = e.target.value;
+                                                    // Try to convert to number on blur if it looks like one
+                                                    const numVal = parseFloat(val);
+                                                    if (!isNaN(numVal) && val.trim() !== '') {
+                                                        setStrategyParams(prev => ({
+                                                            ...prev,
+                                                            [key]: numVal
+                                                        }));
+                                                    }
+                                                }}
+                                                className="w-full px-3 py-2 rounded-md border"
+                                                style={{
+                                                    backgroundColor: '#151922',
+                                                    borderColor: '#2D3748',
+                                                    color: '#E2E8F0'
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
                             </div>
                         </div>
                     )}

@@ -128,12 +128,14 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
     try:
         optimizer = SequentialOptimizer()
         
-        # Generate optimization stages
+        # Generate optimization stages for INDICATOR PARAMETERS ONLY
+        # Risk parameters (stop_loss, stop_gain) should use /api/optimize/risk instead
         stages = optimizer.generate_stages(
             strategy=request.strategy,
             symbol=request.symbol,
             fixed_timeframe=request.timeframe,  # Lock timeframe to user selection
-            custom_ranges=request.custom_ranges
+            custom_ranges=request.custom_ranges,
+            include_risk=False  # Always exclude risk - use /api/optimize/risk for that
         )
         
         # Extract all optimization parameter names from stages
@@ -182,14 +184,8 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
             # Collect all test results from this stage
             stage_results_batch = []
             for idx, result in enumerate(stage_result["results"]):
-                log_debug(f" DEBUG: Result {idx} keys: {list(result.keys())}")
-                # Don't print full result to avoid logging candles data
-                log_debug(f" DEBUG: Result {idx} has parameter '{stage['parameter']}': {stage['parameter'] in result}")
-                
                 # Extract the actual parameter value
                 param_value = result.get(stage["parameter"])
-                log_debug(f" DEBUG: Extracted param_value for '{stage['parameter']}': {param_value} (type: {type(param_value).__name__})")
-                log_debug(f" DEBUG: Result Metrics: {result.get('metrics')}")
                 
                 # Start with strategy defaults
                 full_params = strategy_defaults.copy()
@@ -206,9 +202,6 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
                 # Set the current test parameter value
                 full_params[stage['parameter']] = param_value
                 
-                log_debug(f" DEBUG: full_params after assignment: {full_params}")
-
-                
                 # Sort trades by entry_time (descending - newest first)
                 trades = result.get("trades", [])
                 if trades:
@@ -219,12 +212,6 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
                     "metrics": result["metrics"],
                     "trades": trades
                 }
-                
-                # DEBUG: Check if trades are present
-                trades_count = len(result_data["trades"]) if result_data["trades"] else 0
-                log_debug(f" DEBUG: result_data has {trades_count} trades")
-                if trades_count > 0:
-                    log_debug(f" DEBUG: First trade sample: {result_data['trades'][0]}")
                 
                 all_results.append(result_data)
                 stage_results_batch.append(result_data)
@@ -266,7 +253,7 @@ async def optimize_parameters(request: ParameterOptimizationRequest):
         all_results.sort(key=lambda x: x['metrics'].get('sharpe_ratio', -float('inf')), reverse=True)
 
         # Select top N results (return all for now, frontend can paginate)
-        top_results = all_results[:50]  # Limit to top 50 for response size
+        top_results = all_results  # Return ALL results for client-side pagination
 
         # CRITICAL FIX: Find the best result that has ALL optimized parameters (from final stage)
         # locked_params contains all the optimized values after all stages complete

@@ -186,6 +186,26 @@ class DynamicStrategy:
                 length = int(length)
             return f'MFI_{length} < 20', f'MFI_{length} > 80'
         
+        # Ichimoku
+        elif indicator == 'ichimoku':
+            # Use 'or' to handle None values - params.get returns None if key exists with None value
+            tenkan = params.get('tenkan') or 9
+            kijun = params.get('kijun') or 26
+            senkou = params.get('senkou') or 52
+            # Convert to int if whole numbers
+            if isinstance(tenkan, float) and tenkan.is_integer():
+                tenkan = int(tenkan)
+            if isinstance(kijun, float) and kijun.is_integer():
+                kijun = int(kijun)
+            if isinstance(senkou, float) and senkou.is_integer():
+                senkou = int(senkou)
+            # Use Tenkan-sen/Kijun-sen crossover WITH Cloud confirmation (Kumo Breakout)
+            # This ensures 'senkou' parameter affects the strategy (via Span B)
+            # Note: pandas_ta names Span A as ISA_{tenkan} and Span B as ISB_{kijun}
+            long_cond = f"(ITS_{tenkan} > IKS_{kijun}) & (close > ISA_{tenkan}) & (close > ISB_{kijun})"
+            short_cond = f"(ITS_{tenkan} < IKS_{kijun}) & (close < ISA_{tenkan}) & (close < ISB_{kijun})"
+            return long_cond, short_cond
+        
         # Default: price crossover with indicator
         else:
             if isinstance(length, float) and length.is_integer():
@@ -231,7 +251,7 @@ class DynamicStrategy:
                     if indicator_func:
                         # Determine arguments based on indicator type
                         # OHLC indicators
-                        if indicator_name in ['stoch', 'stochf', 'cci', 'willr', 'atr', 'adx', 'supertrend']:
+                        if indicator_name in ['stoch', 'stochf', 'cci', 'willr', 'atr', 'adx', 'supertrend', 'ichimoku']:
                             result = indicator_func(high=df_sim['high'], low=df_sim['low'], close=df_sim['close'], **converted_params)
                         # Volume indicators (some might need it)
                         elif indicator_name in ['obv', 'mfi', 'ad']:
@@ -245,8 +265,23 @@ class DynamicStrategy:
                         else:
                             result = indicator_func(df_sim['close'], **converted_params)
                         
-                        # pandas_ta returns Series or DataFrame
-                        if isinstance(result, pd.DataFrame):
+                        
+                        # Fix for Ichimoku: pandas_ta returns (visible, forward) tuple.
+                        # We only need 'visible' (index 0) which contains aligned data.
+                        # The 'forward' (index 1) contains future cloud projection which overwrites valid data with NaNs.
+                        if indicator_name == 'ichimoku' and isinstance(result, tuple):
+                            result = result[0]
+
+                        # pandas_ta returns Series, DataFrame, or tuple (e.g., Ichimoku)
+                        if isinstance(result, tuple):
+                            # Handle tuple results (e.g., Ichimoku returns 2 DataFrames)
+                            for item in result:
+                                if isinstance(item, pd.DataFrame):
+                                    for col in item.columns:
+                                        df_sim[col] = item[col]
+                                elif isinstance(item, pd.Series):
+                                    df_sim[item.name] = item
+                        elif isinstance(result, pd.DataFrame):
                             # Merge all columns
                             for col in result.columns:
                                 df_sim[col] = result[col]
