@@ -39,11 +39,7 @@ interface IndicatorMetadata {
 const SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT', 'LINK/USDT', 'XMR/USDT', 'ATOM/USDT', 'LTC/USDT', 'TRX/USDT']
 const TIMEFRAMES = ['5m', '15m', '30m', '1h', '2h', '4h', '1d', '3d', '1w']
 
-const PERIOD_PRESETS = [
-    { label: 'Últimos 6 meses', months: 6 },
-    { label: 'Últimos 12 meses', months: 12 },
-    { label: 'Últimos 24 meses', months: 24 }
-]
+
 
 // Mapeamento de ícones por categoria
 const CATEGORY_ICONS: Record<string, any> = {
@@ -159,16 +155,16 @@ export function SimpleBacktestWizard({ onSuccess }: SimpleBacktestWizardProps) {
     // Execution Mode (always optimize - system auto-detects single vs multi)
     const mode = 'optimize'
 
+
     // Step 1: Market Setup
     const [symbol, setSymbol] = useState('BTC/USDT')
     const [selectedTimeframes, setSelectedTimeframes] = useState<string[]>(['1d'])
-    const [periodPreset, setPeriodPreset] = useState(24)
-    const [sinceDate, setSinceDate] = useState(() => {
-        const date = new Date()
-        date.setMonth(date.getMonth() - 24)
-        return date.toISOString().split('T')[0]
-    })
-    const [untilDate, setUntilDate] = useState(() => new Date().toISOString().split('T')[0])
+
+    // Dates are now fixed to last 24 months
+    const now = new Date();
+    const untilDate = now.toISOString().split('T')[0];
+    now.setMonth(now.getMonth() - 24);
+    const sinceDate = now.toISOString().split('T')[0];
 
     // Step 2: Indicator Selection
     const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
@@ -239,13 +235,7 @@ export function SimpleBacktestWizard({ onSuccess }: SimpleBacktestWizardProps) {
         }
     }, [mode, selectedIndicators, indicatorsData])
 
-    const handlePeriodPresetChange = (months: number) => {
-        setPeriodPreset(months)
-        const date = new Date()
-        date.setMonth(date.getMonth() - months)
-        setSinceDate(date.toISOString().split('T')[0])
-        setUntilDate(new Date().toISOString().split('T')[0])
-    }
+
 
     const toggleTimeframe = (tf: string) => {
         setSelectedTimeframes(prev => {
@@ -517,26 +507,6 @@ export function SimpleBacktestWizard({ onSuccess }: SimpleBacktestWizardProps) {
                                 </div>
                             </div>
                         </div>
-
-                        <div>
-                            <label className="block text-xs text-[var(--text-secondary)] mb-2 uppercase font-semibold">Período</label>
-                            <div className="grid grid-cols-3 gap-3 mb-4">
-                                {PERIOD_PRESETS.map(preset => (
-                                    <button
-                                        key={preset.months}
-                                        type="button"
-                                        onClick={() => handlePeriodPresetChange(preset.months)}
-                                        className={`px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${periodPreset === preset.months
-                                            ? 'bg-[var(--accent-primary)]/10 border-[var(--accent-primary)] text-[var(--accent-primary)]'
-                                            : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border-default)]'
-                                            }`}
-                                    >
-                                        {preset.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
 
                     </div>
                 )}
