@@ -169,7 +169,6 @@ export function SimpleBacktestWizard({ onSuccess }: SimpleBacktestWizardProps) {
         return date.toISOString().split('T')[0]
     })
     const [untilDate, setUntilDate] = useState(() => new Date().toISOString().split('T')[0])
-    const [fullPeriod, setFullPeriod] = useState(false)
 
     // Step 2: Indicator Selection
     const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
@@ -354,9 +353,8 @@ export function SimpleBacktestWizard({ onSuccess }: SimpleBacktestWizardProps) {
                 ? selectedTimeframes[0]
                 : selectedTimeframes,
             timeframes: selectedTimeframes,  // Deprecated, kept for backward compatibility
-            full_period: fullPeriod,
-            since: fullPeriod ? null : `${sinceDate} 00:00:00`,
-            until: fullPeriod ? null : (untilDate ? `${untilDate} 23:59:59` : null),
+            since: `${sinceDate} 00:00:00`,
+            until: (untilDate ? `${untilDate} 23:59:59` : null),
             strategies: selectedIndicators.map(name => ({
                 name,
                 ...(strategiesParams[name] || {})
@@ -539,33 +537,7 @@ export function SimpleBacktestWizard({ onSuccess }: SimpleBacktestWizardProps) {
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 my-4">
-                            <input
-                                type="checkbox"
-                                id="fullPeriod"
-                                checked={fullPeriod}
-                                onChange={(e) => setFullPeriod(e.target.checked)}
-                                className="w-4 h-4 rounded border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--accent-primary)] focus:ring-[var(--accent-primary)] focus:ring-offset-0"
-                            />
-                            <label htmlFor="fullPeriod" className="text-sm font-medium text-white cursor-pointer select-none">
-                                Todo o período (Full History)
-                            </label>
-                        </div>
 
-                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${fullPeriod ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <Input
-                                type="date"
-                                label="Data Inicial"
-                                value={sinceDate}
-                                onChange={(e) => setSinceDate(e.target.value)}
-                            />
-                            <Input
-                                type="date"
-                                label="Data Final"
-                                value={untilDate}
-                                onChange={(e) => setUntilDate(e.target.value)}
-                            />
-                        </div>
                     </div>
                 )}
 
