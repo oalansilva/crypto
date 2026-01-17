@@ -53,7 +53,7 @@ export const ParameterOptimizationPage: React.FC = () => {
     const [config, setConfig] = useState({
         symbol: urlSymbol || 'BTC/USDT',
         strategy: urlStrategy || '',
-        timeframe: urlTimeframe || '1h'
+        timeframe: urlTimeframe || '1d'
     });
     const [parameterRanges, setParameterRanges] = useState<Record<string, ParameterRange>>({});
     const [showParameters, setShowParameters] = useState(false);

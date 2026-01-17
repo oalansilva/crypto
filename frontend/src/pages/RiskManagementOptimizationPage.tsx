@@ -829,7 +829,8 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                                 avg_atr: result.avg_atr,
                                                                 win_rate_bull: result.regime_performance?.Bull?.win_rate,
                                                                 win_rate_bear: result.regime_performance?.Bear?.win_rate,
-                                                                avg_adx: result.avg_adx
+                                                                avg_adx: result.avg_adx,
+                                                                trades: result.trades || []
                                                             }}
                                                         />
                                                     </div>

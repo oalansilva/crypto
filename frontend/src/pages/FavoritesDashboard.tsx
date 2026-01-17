@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Bookmark, Play, Trash2, Search } from 'lucide-react';
+import { Bookmark, Play, Trash2, Search, List } from 'lucide-react';
+import TradesViewModal from '../components/TradesViewModal';
 
 interface FavoriteStrategy {
     id: number;
@@ -21,6 +22,11 @@ const FavoritesDashboard: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
+
+    // New state for Trades Modal
+    const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
+    const [selectedTrades, setSelectedTrades] = useState<any[]>([]);
+    const [selectedTradesTitle, setSelectedTradesTitle] = useState('');
 
     // Fetch favorites
     const { data: favorites, isLoading } = useQuery({
@@ -78,6 +84,17 @@ const FavoritesDashboard: React.FC = () => {
             }
             setSelectedIds([...selectedIds, id]);
         }
+    };
+
+    const handleViewTrades = (fav: FavoriteStrategy) => {
+        const trades = fav.metrics?.trades || [];
+        if (!trades || trades.length === 0) {
+            alert('No trades saved for this strategy.');
+            return;
+        }
+        setSelectedTrades(trades);
+        setSelectedTradesTitle(`${fav.strategy_name} - ${fav.symbol} ${fav.timeframe}`);
+        setIsTradesModalOpen(true);
     };
 
     const filteredFavorites = favorites?.filter(fav =>
@@ -252,6 +269,13 @@ const FavoritesDashboard: React.FC = () => {
                                                 </td>
                                                 <td className="p-3 text-center flex items-center justify-center gap-2">
                                                     <button
+                                                        onClick={() => handleViewTrades(fav)}
+                                                        className="p-1.5 hover:bg-cyan-500/20 text-cyan-400 rounded transition-colors"
+                                                        title="View Trades"
+                                                    >
+                                                        <List className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleRun(fav)}
                                                         className="p-1.5 hover:bg-green-500/20 text-green-400 rounded transition-colors"
                                                         title="Run Strategy"
@@ -292,6 +316,7 @@ const FavoritesDashboard: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Compare Modal */}
                 {/* Compare Modal */}
                 {isCompareOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -401,6 +426,13 @@ const FavoritesDashboard: React.FC = () => {
                     </div>
                 )}
 
+                <TradesViewModal
+                    isOpen={isTradesModalOpen}
+                    onClose={() => setIsTradesModalOpen(false)}
+                    trades={selectedTrades}
+                    title={selectedTradesTitle}
+                    subtitle={`Total Trades: ${selectedTrades.length}`}
+                />
             </div>
         </div>
     );

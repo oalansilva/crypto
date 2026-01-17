@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Bookmark, Save, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface SaveFavoriteButtonProps {
     config: {
@@ -14,6 +15,7 @@ interface SaveFavoriteButtonProps {
 }
 
 const SaveFavoriteButton: React.FC<SaveFavoriteButtonProps> = ({ config, metrics, variant = 'button', className = '' }) => {
+    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [name, setName] = useState('');
     const [notes, setNotes] = useState('');
@@ -60,6 +62,7 @@ const SaveFavoriteButton: React.FC<SaveFavoriteButtonProps> = ({ config, metrics
             setTimeout(() => {
                 setIsModalOpen(false);
                 setSaved(false);
+                navigate('/favorites');
             }, 1000); // Close after 1s success feedback
         } catch (err) {
             console.error(err);
