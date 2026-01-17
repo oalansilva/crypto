@@ -89,6 +89,21 @@ export const ParameterOptimizationPage: React.FC = () => {
         }
     });
 
+    // Fetch available symbols from Binance
+    const { data: symbolsData } = useQuery({
+        queryKey: ['binance-symbols'],
+        queryFn: async () => {
+            const response = await fetch('http://localhost:8000/api/exchanges/binance/symbols');
+            if (!response.ok) {
+                throw new Error('Failed to fetch symbols');
+            }
+            const data = await response.json();
+            return data.symbols as string[];
+        },
+        staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
+    });
+
+
     // When strategy changes, fetch its parameter schema and generate suggested ranges
     useEffect(() => {
         console.log('🔍 useEffect triggered:', { strategy: config.strategy, hasIndicatorsData: !!indicatorsData });
@@ -253,16 +268,13 @@ export const ParameterOptimizationPage: React.FC = () => {
                                 onChange={(e) => setConfig({ ...config, symbol: e.target.value })}
                                 className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-teal-500 focus:outline-none"
                             >
-                                <option value="BTC/USDT">BTC/USDT</option>
-                                <option value="ETH/USDT">ETH/USDT</option>
-                                <option value="BNB/USDT">BNB/USDT</option>
-                                <option value="SOL/USDT">SOL/USDT</option>
-                                <option value="ADA/USDT">ADA/USDT</option>
-                                <option value="LINK/USDT">LINK/USDT</option>
-                                <option value="XMR/USDT">XMR/USDT</option>
-                                <option value="ATOM/USDT">ATOM/USDT</option>
-                                <option value="LTC/USDT">LTC/USDT</option>
-                                <option value="TRX/USDT">TRX/USDT</option>
+                                {symbolsData ? (
+                                    symbolsData.map(symbol => (
+                                        <option key={symbol} value={symbol}>{symbol}</option>
+                                    ))
+                                ) : (
+                                    <option value={config.symbol}>{config.symbol}</option>
+                                )}
                             </select>
                         </div>
 

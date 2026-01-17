@@ -83,6 +83,9 @@ export const backtestApi = {
     createOptimize: (data: BacktestRunCreate) =>
         api.post<BacktestRunResponse>('/backtest/optimize', data),
 
+    getBinanceSymbols: () =>
+        api.get<{ symbols: string[], count: number }>('/exchanges/binance/symbols'),
+
     // Get status
     getStatus: (runId: string) =>
         api.get<BacktestStatusResponse>(`/backtest/status/${runId}`),

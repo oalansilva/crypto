@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Play, Shield, Award, List, X, ArrowUp, ArrowDown } from 'lucide-react';
 import SaveFavoriteButton from '../components/SaveFavoriteButton';
 
-const SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT', 'LINK/USDT', 'XMR/USDT', 'ATOM/USDT', 'LTC/USDT', 'TRX/USDT'];
 const TIMEFRAMES = ['5m', '15m', '30m', '1h', '2h', '4h', '1d'];
 const STOP_GAIN_OPTIONS = [
     { value: null, label: 'None' },
@@ -226,6 +225,21 @@ export const RiskManagementOptimizationPage: React.FC = () => {
         }
     });
 
+    // Fetch available symbols from Binance
+    const { data: symbolsData } = useQuery({
+        queryKey: ['binance-symbols'],
+        queryFn: async () => {
+            const response = await fetch('http://localhost:8000/api/exchanges/binance/symbols');
+            if (!response.ok) {
+                throw new Error('Failed to fetch symbols');
+            }
+            const data = await response.json();
+            return data.symbols as string[];
+        },
+        staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
+    });
+
+
     // Fetch strategy schema when selectedIndicator changes
     useEffect(() => {
         if (!selectedIndicator) {
@@ -401,9 +415,13 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                     color: '#E2E8F0'
                                 }}
                             >
-                                {SYMBOLS.map(s => (
-                                    <option key={s} value={s}>{s}</option>
-                                ))}
+                                {symbolsData ? (
+                                    symbolsData.map(s => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))
+                                ) : (
+                                    <option value={symbol}>{symbol}</option>
+                                )}
                             </select>
                         </div>
 

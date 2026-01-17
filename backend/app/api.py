@@ -32,6 +32,20 @@ async def list_presets():
     """Get predefined backtest presets for Playground"""
     return get_presets()
 
+@router.get("/exchanges/binance/symbols")
+async def get_binance_symbols():
+    """Get all available USDT trading pairs from Binance."""
+    from app.services.exchange_service import ExchangeService
+    
+    service = ExchangeService()
+    symbols = service.fetch_binance_symbols()
+    
+    return {
+        "symbols": symbols,
+        "count": len(symbols)
+    }
+
+
 
 
 @router.post("/backtest/optimize", response_model=BacktestRunResponse)
