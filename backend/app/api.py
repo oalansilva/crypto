@@ -32,39 +32,7 @@ async def list_presets():
     """Get predefined backtest presets for Playground"""
     return get_presets()
 
-@router.post("/backtest/run", response_model=BacktestRunResponse)
-async def create_run(
-    request: BacktestRunCreate,
-    repo: RunRepository = Depends(get_repository)
-):
-    """Create and start a single strategy backtest"""
-    # Relaxed check: 'run' mode now supports multiple strategies/timeframes for benchmarking
-    if request.mode != "run":
-        raise HTTPException(400, "Invalid mode for this endpoint")
-    
-    # Create run record
-    run_data = request.model_dump()
-    run_data["status"] = "PENDING"
-    run_data["strategies"] = request.strategies # Ensure JSON
-    run_data["params"] = request.params
-    
-    try:
-        run = repo.create_run(run_data)
-        run_id = UUID(run['id'])
-        
-        # Start background job
-        config = request.model_dump()
-        start_backtest_job(run_id, config)
-        
-        return BacktestRunResponse(
-            run_id=run_id,
-            status="PENDING",
-            message="Backtest started"
-        )
-    except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        raise HTTPException(500, f"Error starting run: {str(e)}")
+
 
 @router.post("/backtest/optimize", response_model=BacktestRunResponse)
 async def create_optimization(

@@ -73,8 +73,7 @@ export const backtestApi = {
     getPresets: () => api.get<PresetResponse[]>('/presets'),
 
     // Create backtest run
-    createRun: (data: BacktestRunCreate) =>
-        api.post<BacktestRunResponse>('/backtest/run', data),
+
 
     // Create comparison backtest
     createCompare: (data: BacktestRunCreate) =>

@@ -97,11 +97,15 @@ const FavoritesDashboard: React.FC = () => {
         setIsTradesModalOpen(true);
     };
 
-    const filteredFavorites = favorites?.filter(fav =>
+    const filteredFavorites = (favorites?.filter(fav =>
         fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
         fav.strategy_name.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+    ) || []).sort((a, b) => {
+        const valA = a.metrics?.total_return_pct ?? a.metrics?.total_return ?? -Infinity;
+        const valB = b.metrics?.total_return_pct ?? b.metrics?.total_return ?? -Infinity;
+        return valB - valA; // Descending
+    });
 
     const selectedStrategies = favorites?.filter(f => selectedIds.includes(f.id)) || [];
 

@@ -7,7 +7,6 @@ import { ParameterOptimizationPage } from './pages/ParameterOptimizationPage'
 import { TimeframeOptimizationPage } from './pages/TimeframeOptimizationPage'
 import { RiskManagementOptimizationPage } from './pages/RiskManagementOptimizationPage'
 import FavoritesDashboard from './pages/FavoritesDashboard'
-import { SimpleBacktestWizard } from './components/SimpleBacktestWizard'
 import {
   Activity,
   TrendingUp,
@@ -270,8 +269,7 @@ function HomePage() {
               </div>
             </div>
 
-            {/* Wizard Component */}
-            <SimpleBacktestWizard onSuccess={handleCustomBacktestSuccess} />
+            {/* Wizard removed as per user request */}
           </div>
         )}
 
