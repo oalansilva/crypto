@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Bookmark, Play, Trash2, Search, List } from 'lucide-react';
+import { Bookmark, Play, Trash2, Search, List, ChevronDown } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
+
+import * as XLSX from 'xlsx';
 
 interface FavoriteStrategy {
     id: number;
@@ -97,17 +99,82 @@ const FavoritesDashboard: React.FC = () => {
         setIsTradesModalOpen(true);
     };
 
-    const filteredFavorites = (favorites?.filter(fav =>
-        fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        fav.strategy_name.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || []).sort((a, b) => {
+    const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
+
+    // ... existing code ...
+
+    // Get unique symbols for filter
+    const uniqueSymbols = React.useMemo(() => {
+        if (!favorites) return [];
+        return Array.from(new Set(favorites.map(f => f.symbol))).sort();
+    }, [favorites]);
+
+    const filteredFavorites = (favorites?.filter(fav => {
+        const matchesSearch = fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            fav.strategy_name.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
+
+        return matchesSearch && matchesSymbol;
+    }) || []).sort((a, b) => {
         const valA = a.metrics?.total_return_pct ?? a.metrics?.total_return ?? -Infinity;
         const valB = b.metrics?.total_return_pct ?? b.metrics?.total_return ?? -Infinity;
         return valB - valA; // Descending
     });
 
     const selectedStrategies = favorites?.filter(f => selectedIds.includes(f.id)) || [];
+
+    const handleExportExcel = () => {
+        if (!favorites || favorites.length === 0) {
+            alert("No data to export.");
+            return;
+        }
+
+        // Prepare data for export
+        const dataToExport = filteredFavorites.map(fav => {
+            const m = fav.metrics || {};
+            // derived
+            const totalReturn = m.total_return_pct ?? m.total_return;
+            const expectancy = m.expectancy ?? (m.total_pnl && m.total_trades ? m.total_pnl / m.total_trades : null);
+            const stopLoss = fav.parameters.stop_loss || null;
+
+            return {
+                Name: fav.name,
+                Symbol: fav.symbol,
+                Strategy: fav.strategy_name,
+                Timeframe: fav.timeframe,
+                Parameters: formatParams(fav.parameters),
+                "Stop Loss": formatPct(stopLoss),
+                Sharpe: formatNum(m.sharpe_ratio),
+                Trades: m.total_trades || m.trades || 0,
+                "Win Rate": formatPct(m.win_rate),
+                "Total Return": formatPct(totalReturn),
+                "Exp/Trade": formatCurrency(expectancy),
+                "Max DD": formatPct(m.max_drawdown),
+                "Profit Factor": formatNum(m.profit_factor),
+                Sortino: formatNum(m.sortino),
+                "Max Loss": m.max_consecutive_losses ?? m.stop_loss_count ?? 0,
+                "Avg ATR": formatNum(m.avg_atr),
+                "WR Bull": formatPct(m.win_rate_bull),
+                "WR Bear": formatPct(m.win_rate_bear),
+                "Avg ADX": formatNum(m.avg_adx),
+                Notes: fav.notes || '',
+                "Created At": new Date(fav.created_at).toLocaleString()
+            };
+        });
+
+        // Create workbook
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Favorites");
+
+        // Generate filename
+        const filename = `Crypto_Backtest_Favorites_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        // Download
+        XLSX.writeFile(wb, filename);
+    };
 
     // Formatters
     const formatParams = (params: Record<string, any>) => {
@@ -142,6 +209,23 @@ const FavoritesDashboard: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        {/* Symbol Filter */}
+                        <div className="relative">
+                            <select
+                                value={selectedSymbol}
+                                onChange={(e) => setSelectedSymbol(e.target.value)}
+                                className="bg-gray-800 border border-gray-700 rounded-lg pl-3 pr-8 py-1.5 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none appearance-none cursor-pointer hover:bg-gray-750"
+                            >
+                                <option value="ALL">All Symbols</option>
+                                {uniqueSymbols.map(sym => (
+                                    <option key={sym} value={sym}>{sym}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                                <ChevronDown className="w-4 h-4 text-gray-400" />
+                            </div>
+                        </div>
+
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                             <input
@@ -152,6 +236,12 @@ const FavoritesDashboard: React.FC = () => {
                                 className="bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-4 py-1.5 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none w-64"
                             />
                         </div>
+                        <button
+                            onClick={handleExportExcel}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                        >
+                            <List className="w-4 h-4" /> Export Excel
+                        </button>
                         <button
                             onClick={() => navigate('/optimize/parameters')}
                             className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-sm font-medium rounded-lg transition-colors"
