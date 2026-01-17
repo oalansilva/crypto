@@ -230,6 +230,32 @@ FIBONACCI_EMA_SCHEMA = IndicatorSchema(
 )
 
 
+# ICHIMOKU Schema
+ICHIMOKU_SCHEMA = IndicatorSchema(
+    name="ICHIMOKU",
+    parameters={
+        "tenkan": ParameterSchema(
+            default=9,
+            optimization_range=OptimizationRange(min=7, max=12, step=1),
+            market_standard="Most traders use 9 (Conversion Line). Range 7-12 covers common variations.",
+            description="Tenkan-sen (Conversion Line) period - short-term trend"
+        ),
+        "kijun": ParameterSchema(
+            default=26,
+            optimization_range=OptimizationRange(min=20, max=32, step=2),
+            market_standard="Most traders use 26 (Base Line). Standard value from Hosoda's original formula.",
+            description="Kijun-sen (Base Line) period - medium-term trend"
+        ),
+        "senkou": ParameterSchema(
+            default=52,
+            optimization_range=OptimizationRange(min=44, max=60, step=4),
+            market_standard="Most traders use 52 (Leading Span B). Represents 2x Kijun period.",
+            description="Senkou Span B period - long-term trend and cloud boundary"
+        )
+    }
+)
+
+
 # Registry of all indicator schemas
 INDICATOR_SCHEMAS: Dict[str, IndicatorSchema] = {
     "macd": MACD_SCHEMA,
@@ -238,6 +264,7 @@ INDICATOR_SCHEMAS: Dict[str, IndicatorSchema] = {
     "cruzamentomedias": CRUZAMENTOMEDIAS_SCHEMA,
     "emarsivolume": EMA_RSI_VOLUME_SCHEMA,
     "fibonacciema": FIBONACCI_EMA_SCHEMA,
+    "ichimoku": ICHIMOKU_SCHEMA,
 }
 
 

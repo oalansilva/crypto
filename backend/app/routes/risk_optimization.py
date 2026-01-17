@@ -119,9 +119,11 @@ async def optimize_risk(request: RiskOptimizationRequest):
                     f"Indicator parameters should be passed in strategy_params."
                 )
         
+        
         # Run all risk stages sequentially
         all_results = []
         result_index = 0
+        seen_combinations = set()  # Track unique parameter combinations
         
         for i, stage in enumerate(stages):
             log_debug(f"   Running stage {i+1}/{len(stages)}: {stage['stage_name']}")
@@ -149,6 +151,20 @@ async def optimize_risk(request: RiskOptimizationRequest):
                 # Build full params
                 full_params = locked_params.copy()
                 full_params[stage['parameter']] = param_value
+                
+                # Create a hashable key for deduplication
+                # Normalize: treat missing parameters as None for comparison
+                param_key = tuple(sorted([
+                    ('stop_loss', full_params.get('stop_loss')),
+                    ('stop_gain', full_params.get('stop_gain'))
+                ]))
+                
+                # Skip if we've already seen this exact combination
+                if param_key in seen_combinations:
+                    log_debug(f"   Skipping duplicate combination: stop_loss={full_params.get('stop_loss')}, stop_gain={full_params.get('stop_gain')}")
+                    continue
+                    
+                seen_combinations.add(param_key)
                 
                 # Sort trades
                 trades = result.get("trades", [])
@@ -187,8 +203,16 @@ async def optimize_risk(request: RiskOptimizationRequest):
             "execution_time_seconds": execution_time
         })
         
+        
         log_debug(f"✅ Risk optimization complete! Tested {len(all_results)} combinations in {execution_time:.1f}s")
         log_debug(f"   Best combination: {best_combination}")
+        
+        # Debug: Check if max_loss is in metrics
+        if all_results and len(all_results) > 0:
+            first_result_metrics = all_results[0].get('metrics', {})
+            log_debug(f"   First result has max_loss: {'max_loss' in first_result_metrics}")
+            if 'max_loss' in first_result_metrics:
+                log_debug(f"   max_loss value: {first_result_metrics['max_loss']}")
         
         return RiskOptimizationResponse(
             results=all_results,  # Return ALL results for client-side pagination

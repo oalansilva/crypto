@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Shield, Award, List, X, ArrowUp, ArrowDown } from 'lucide-react';
+import SaveFavoriteButton from '../components/SaveFavoriteButton';
 
 const SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT', 'LINK/USDT', 'XMR/USDT', 'ATOM/USDT', 'LTC/USDT', 'TRX/USDT'];
 const TIMEFRAMES = ['5m', '15m', '30m', '1h', '2h', '4h', '1d'];
@@ -59,6 +60,7 @@ interface RiskResult {
     max_consecutive_losses?: number;
     trade_concentration_top_10_pct?: number;
     profit_factor?: number;
+    max_loss?: number;
     // Heavy Metrics (Top 10 only)
     avg_atr?: number;
     avg_adx?: number;
@@ -328,6 +330,7 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                 // Enhanced Metrics
                 cagr: res.metrics.cagr,
                 monthly_return_avg: res.metrics.monthly_return_avg,
+                max_loss: res.metrics.max_loss,
                 sortino_ratio: res.metrics.sortino_ratio,
                 calmar_ratio: res.metrics.calmar_ratio,
                 avg_drawdown: res.metrics.avg_drawdown,
@@ -638,25 +641,6 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                     <div className="rounded-xl p-6" style={{ backgroundColor: '#151922', border: '1px solid #2A2F3A' }}>
                         <h2 className="text-xl font-bold mb-4 text-white">Results</h2>
 
-                        {/* Best Configuration Card */}
-                        {bestConfig && (
-                            <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#14b8a6/10', border: '1px solid #14b8a6' }}>
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="text-sm text-gray-400 mb-1">Best Configuration</div>
-                                        <div className="text-2xl font-bold font-mono" style={{ color: '#14b8a6' }}>
-                                            SL {(bestConfig.stop_loss * 100).toFixed(1)}% / TP {bestConfig.stop_gain ? `${(bestConfig.stop_gain * 100).toFixed(1)}%` : 'None'}
-                                        </div>
-                                        <div className="text-sm text-gray-300 mt-1">
-                                            Return: {bestConfig.total_return >= 0 ? '+' : ''}{bestConfig.total_return.toFixed(2)}% |
-                                            Sharpe: {bestConfig.sharpe_ratio.toFixed(2)}
-                                        </div>
-                                    </div>
-                                    <Award className="w-12 h-12" style={{ color: '#14b8a6' }} />
-                                </div>
-                            </div>
-                        )}
-
                         <div className="overflow-x-auto rounded-lg border border-[#2A2F3A]" style={{ backgroundColor: '#0B0E14' }}>
                             <style dangerouslySetInnerHTML={{
                                 __html: `
@@ -799,25 +783,56 @@ export const RiskManagementOptimizationPage: React.FC = () => {
                                                     {result.alpha !== undefined ? `${(result.alpha * 100).toFixed(2)}%` : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 text-center">
-                                                    <button
-                                                        onClick={() => setSelectedTradeResult(result)}
-                                                        className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
-                                                        style={{
-                                                            backgroundColor: '#2A2F3A',
-                                                            color: '#14b8a6'
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.backgroundColor = '#14b8a6';
-                                                            e.currentTarget.style.color = '#0B0E14';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.backgroundColor = '#2A2F3A';
-                                                            e.currentTarget.style.color = '#14b8a6';
-                                                        }}
-                                                        title="View Trades"
-                                                    >
-                                                        <List className="w-5 h-5" />
-                                                    </button>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => setSelectedTradeResult(result)}
+                                                            className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
+                                                            style={{
+                                                                backgroundColor: '#2A2F3A',
+                                                                color: '#14b8a6'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.backgroundColor = '#14b8a6';
+                                                                e.currentTarget.style.color = '#0B0E14';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.backgroundColor = '#2A2F3A';
+                                                                e.currentTarget.style.color = '#14b8a6';
+                                                            }}
+                                                            title="View Trades"
+                                                        >
+                                                            <List className="w-5 h-5" />
+                                                        </button>
+                                                        <SaveFavoriteButton
+                                                            variant="icon"
+                                                            config={{
+                                                                symbol,
+                                                                timeframe: selectedTimeframe,
+                                                                strategy_name: selectedIndicator,
+                                                                parameters: {
+                                                                    ...strategyParams,
+                                                                    stop_loss: result.stop_loss,
+                                                                    stop_gain: result.stop_gain
+                                                                }
+                                                            }}
+                                                            metrics={{
+                                                                total_return_pct: result.total_return,
+                                                                sharpe_ratio: result.sharpe_ratio,
+                                                                win_rate: result.win_rate,
+                                                                total_trades: result.total_trades,
+                                                                max_drawdown: result.max_drawdown,
+                                                                profit_factor: result.profit_factor,
+                                                                expectancy: result.expectancy,
+                                                                sortino: result.sortino_ratio,
+                                                                max_loss: result.max_loss,
+                                                                max_consecutive_losses: result.max_consecutive_losses,
+                                                                avg_atr: result.avg_atr,
+                                                                win_rate_bull: result.regime_performance?.Bull?.win_rate,
+                                                                win_rate_bear: result.regime_performance?.Bear?.win_rate,
+                                                                avg_adx: result.avg_adx
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

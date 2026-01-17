@@ -28,6 +28,7 @@ def calculate_metrics(equity_curve: pd.DataFrame, trades: list, initial_capital=
     # Trade Metrics
     df_trades = pd.DataFrame(trades)
     sharpe = 0.0  # Initialize sharpe here
+    stop_loss_count = 0  # Initialize stop loss count
     
     if not df_trades.empty and 'pnl' in df_trades.columns:
         # PnL only exists for closed trades
@@ -37,6 +38,10 @@ def calculate_metrics(equity_curve: pd.DataFrame, trades: list, initial_capital=
             num_trades = len(closed_trades)
             winners = closed_trades[closed_trades['pnl'] > 0]
             win_rate = len(winners) / num_trades
+            
+            # Count stop losses
+            if 'reason' in closed_trades.columns:
+                stop_loss_count = len(closed_trades[closed_trades['reason'] == 'Stop Loss'])
             
             gross_profit = closed_trades[closed_trades['pnl'] > 0]['pnl'].sum()
             gross_loss = abs(closed_trades[closed_trades['pnl'] < 0]['pnl'].sum())
@@ -85,5 +90,6 @@ def calculate_metrics(equity_curve: pd.DataFrame, trades: list, initial_capital=
         'sharpe': sharpe,
         'sharpe_ratio': sharpe, # Alias for consistency
         'final_equity': final_equity,
-        'duration_days': duration_days
+        'duration_days': duration_days,
+        'stop_loss_count': stop_loss_count  # Quantidade de stops acionados
     }

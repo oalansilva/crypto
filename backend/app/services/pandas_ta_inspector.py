@@ -126,4 +126,34 @@ def get_all_indicators_metadata():
                 print(f"Failed to inspect {name}: {e}")
                 continue
                 
+    # Merge with manual schemas
+    from app.schemas.indicator_params import INDICATOR_SCHEMAS
+    
+    for category in metadata:
+        for indicator in metadata[category]:
+            name = indicator['id'].lower()
+            if name in INDICATOR_SCHEMAS:
+                # Override parameters with manual schema
+                schema = INDICATOR_SCHEMAS[name]
+                manual_params = []
+                for p_name, p_schema in schema.parameters.items():
+                    # Infer type from default value if possible
+                    p_type = "string" 
+                    if isinstance(p_schema.default, int):
+                        p_type = "int"
+                    elif isinstance(p_schema.default, float):
+                        p_type = "float"
+                    elif isinstance(p_schema.default, bool):
+                        p_type = "bool"
+                        
+                    manual_params.append({
+                        "name": p_name,
+                        "type": p_type,
+                        "default": p_schema.default,
+                        "description": p_schema.description
+                    })
+                
+                # Replace the introspected params
+                indicator['params'] = manual_params
+
     return metadata

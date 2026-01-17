@@ -713,9 +713,7 @@ class BacktestService:
                             full_metrics = self._calculate_enhanced_metrics(
                                 equity_curve['equity'], backtester.trades, df_best, config.get('cash', 10000), full_metrics
                             )
-                            log_debug(f" DEBUG: Best Result Metrics: {full_metrics}")
-                            log_debug(f" DEBUG: Profit Factor: {full_metrics.get('profit_factor')}")
-                            log_debug(f" DEBUG: _calculate_enhanced_metrics completed. regime_performance: {full_metrics.get('regime_performance', 'MISSING')}")
+
                         except Exception as e:
                             print(f" ERROR in _calculate_enhanced_metrics: {e}")
                             import traceback
@@ -947,6 +945,19 @@ class BacktestService:
                 
             # Average indicators
             from app.metrics.indicators import calculate_avg_indicators
+            # Ensure ATR and ADX exist for metrics
+            if not any(c.startswith('ATR') for c in context_df.columns):
+                try:
+                    context_df.ta.atr(length=14, append=True)
+                except:
+                    pass
+            
+            if not any(c.startswith('ADX') for c in context_df.columns):
+                try:
+                    context_df.ta.adx(length=14, append=True)
+                except:
+                    pass
+
             avg_inds = calculate_avg_indicators(context_df)
             heavy.update(avg_inds)
             
@@ -1065,6 +1076,17 @@ class BacktestService:
                 enhanced['monthly_return_avg'] = None
             
             # === Risk Metrics ===
+            try:
+                # Max Loss (Largest single trade loss percentage)
+                if trades:
+                    losses = [t.get('pnl_pct', 0) for t in trades if t.get('pnl_pct', 0) < 0]
+                    enhanced['max_loss'] = min(losses) if losses else 0.0
+                else:
+                    enhanced['max_loss'] = 0.0
+            except Exception as e:
+                 logger.warning(f"Error calculating max_loss: {e}")
+                 enhanced['max_loss'] = 0.0
+
             try:
                 enhanced['avg_drawdown'] = calculate_avg_drawdown(equity_curve)
             except Exception as e:

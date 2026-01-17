@@ -1,10 +1,11 @@
 # file: backend/app/models.py
-from sqlalchemy import Column, String, Float, Boolean, JSON, DateTime, Numeric, Text
+from sqlalchemy import Column, String, Float, Boolean, JSON, DateTime, Numeric, Text, Integer
 # from sqlalchemy.dialects.postgresql import UUID, JSONB  <-- Remove Postgres types
 from app.database import Base
 from sqlalchemy import TypeDecorator
 import uuid
 import json
+from datetime import datetime
 
 # Compatibility types for SQLite
 class JSONType(TypeDecorator):
@@ -108,3 +109,24 @@ class BacktestResult(Base):
     result_json = Column(JSONType, nullable=False)
     metrics_summary = Column(JSONType)
     updated_at = Column(DateTime)
+
+
+class FavoriteStrategy(Base):
+    __tablename__ = "favorite_strategies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    
+    # Context
+    symbol = Column(String, nullable=False)
+    timeframe = Column(String, nullable=False)
+    strategy_name = Column(String, nullable=False)
+    
+    # Configuration
+    parameters = Column(JSONType, nullable=False)
+    
+    # Cached Metrics
+    metrics = Column(JSONType, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    notes = Column(String, nullable=True)

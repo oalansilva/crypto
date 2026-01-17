@@ -1,6 +1,6 @@
 # file: backend/init_db.py
 from app.database import engine, Base
-from app.models import BacktestRun, BacktestResult
+from app.models import BacktestRun, BacktestResult, FavoriteStrategy
 
 print("Creating database tables locally (SQLite)...")
 Base.metadata.create_all(bind=engine)

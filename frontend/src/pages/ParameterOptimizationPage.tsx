@@ -229,6 +229,7 @@ export const ParameterOptimizationPage: React.FC = () => {
                 bestCombination={results.best_combination}
                 symbol={config.symbol}
                 strategy={config.strategy}
+                timeframe={config.timeframe}
             />
         );
     }

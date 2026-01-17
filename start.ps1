@@ -10,13 +10,12 @@ if (-not (Test-Path ".venv\Scripts\python.exe")) {
 }
 
 # 2. Init DB if needed
-if (-not (Test-Path "backend\backtest.db")) {
-    Write-Host "Inicializando banco de dados..." -ForegroundColor Yellow
-    Set-Location backend
-    ..\.venv\Scripts\python init_db.py
-    Set-Location ..
-    Write-Host "Banco de dados criado!" -ForegroundColor Green
-}
+# 2. Init DB (Safe to run always, idempotently creates tables)
+Write-Host "Verificando banco de dados..." -ForegroundColor Yellow
+Set-Location backend
+..\.venv\Scripts\python init_db.py
+Set-Location ..
+Write-Host "Banco de dados verificado!" -ForegroundColor Green
 
 # 3. Start Backend
 Write-Host "Iniciando Backend (porta 8000)..." -ForegroundColor Yellow

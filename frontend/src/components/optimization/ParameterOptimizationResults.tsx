@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, Award, ArrowRight, ChevronDown, Trophy, Target } from 'lucide-react';
+import SaveFavoriteButton from '../SaveFavoriteButton';
 
 interface ParameterCombination {
     params: Record<string, any>;
@@ -9,7 +10,7 @@ interface ParameterCombination {
         sharpe_ratio: number;
         win_rate: number;
         total_trades: number;
-        [key: string]: any; // Allow other metrics like total_return_pct
+        [key: string]: any;
     };
     trades?: any[];
 }
@@ -19,13 +20,15 @@ interface ParameterOptimizationResultsProps {
     bestCombination: Record<string, any>;
     symbol: string;
     strategy: string;
+    timeframe: string;
 }
 
 const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> = ({
     results,
     bestCombination,
     symbol,
-    strategy
+    strategy,
+    timeframe
 }) => {
     const navigate = useNavigate();
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
@@ -152,10 +155,22 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
         }
 
         return {
+            ...result.metrics,
             pnl: returnPct,
             sharpe: extractNumber(result.metrics.sharpe_ratio),
             winRate: extractNumber(result.metrics.win_rate),
-            trades: extractNumber(result.metrics.total_trades)
+            trades: extractNumber(result.metrics.total_trades),
+            total_return: returnPct,
+            total_return_pct: returnPct,
+            max_drawdown: extractNumber(result.metrics.max_drawdown),
+            profit_factor: extractNumber(result.metrics.profit_factor),
+            expectancy: extractNumber(result.metrics.expectancy),
+            sortino: extractNumber(result.metrics.sortino_ratio),
+            max_loss: extractNumber(result.metrics.max_loss),
+            avg_atr: extractNumber(result.metrics.avg_atr),
+            win_rate_bull: extractNumber(result.metrics.win_rate_bull),
+            win_rate_bear: extractNumber(result.metrics.win_rate_bear),
+            avg_adx: extractNumber(result.metrics.avg_adx)
         };
     };
 
@@ -345,6 +360,28 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                         Continue to Risk Optimization
                         <ArrowRight className="w-5 h-5" />
                     </button>
+
+                    {/* Save Favorite Button */}
+                    <div className="mt-4 flex justify-center">
+                        <SaveFavoriteButton
+                            config={{
+                                symbol,
+                                timeframe,
+                                strategy_name: strategy,
+                                parameters: bestCombination
+                            }}
+                            metrics={{
+                                ...bestMetrics,
+                                sortino: bestMetrics.sortino,
+                                max_loss: bestMetrics.max_loss,
+                                avg_atr: bestMetrics.avg_atr,
+                                win_rate_bull: bestMetrics.win_rate_bull,
+                                win_rate_bear: bestMetrics.win_rate_bear,
+                                avg_adx: bestMetrics.avg_adx
+                            }}
+                            className="bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 w-full justify-center"
+                        />
+                    </div>
                 </div>
 
                 {/* All Results */}
@@ -457,6 +494,31 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                                                             <ChevronDown className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                                                         </button>
                                                     )}
+
+                                                    <SaveFavoriteButton
+                                                        variant="icon"
+                                                        config={{
+                                                            symbol,
+                                                            timeframe,
+                                                            strategy_name: strategy,
+                                                            parameters: result.params
+                                                        }}
+                                                        metrics={{
+                                                            total_return_pct: metrics.pnl,
+                                                            sharpe_ratio: metrics.sharpe,
+                                                            win_rate: metrics.winRate,
+                                                            total_trades: metrics.trades,
+                                                            max_drawdown: metrics.max_drawdown,
+                                                            profit_factor: metrics.profit_factor,
+                                                            expectancy: metrics.expectancy,
+                                                            sortino: metrics.sortino,
+                                                            max_loss: metrics.max_loss,
+                                                            avg_atr: metrics.avg_atr,
+                                                            win_rate_bull: metrics.win_rate_bull,
+                                                            win_rate_bear: metrics.win_rate_bear,
+                                                            avg_adx: metrics.avg_adx
+                                                        }}
+                                                    />
                                                 </td>
                                             </tr>
                                             {isExpanded && (

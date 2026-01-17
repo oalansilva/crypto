@@ -6,6 +6,7 @@ import { ResultsPage } from './pages/ResultsPage'
 import { ParameterOptimizationPage } from './pages/ParameterOptimizationPage'
 import { TimeframeOptimizationPage } from './pages/TimeframeOptimizationPage'
 import { RiskManagementOptimizationPage } from './pages/RiskManagementOptimizationPage'
+import FavoritesDashboard from './pages/FavoritesDashboard'
 import { SimpleBacktestWizard } from './components/SimpleBacktestWizard'
 import {
   Activity,
@@ -14,7 +15,8 @@ import {
   CheckCircle2,
   Sparkles,
   Pause,
-  Play
+  Play,
+  Bookmark
 } from 'lucide-react'
 
 function HomePage() {
@@ -184,6 +186,15 @@ function HomePage() {
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   History
+                </div>
+              </button>
+              <button
+                onClick={() => navigate('/favorites')}
+                className="px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 text-gray-400 hover:text-white hover:bg-white/5"
+              >
+                <div className="flex items-center gap-2">
+                  <Bookmark className="w-4 h-4" />
+                  Favorites
                 </div>
               </button>
             </div>
@@ -447,6 +458,7 @@ function App() {
         <Route path="/optimize/timeframe" element={<TimeframeOptimizationPage />} />
         <Route path="/optimize/parameters" element={<ParameterOptimizationPage />} />
         <Route path="/optimize/risk" element={<RiskManagementOptimizationPage />} />
+        <Route path="/favorites" element={<FavoritesDashboard />} />
         <Route path="/sequential-optimization" element={<ParameterOptimizationPage />} /> {/* Backward compatibility */}
         <Route path="/results/:runId" element={<ResultsPage />} />
       </Routes>

@@ -1,0 +1,409 @@
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { Bookmark, Play, Trash2, Search } from 'lucide-react';
+
+interface FavoriteStrategy {
+    id: number;
+    name: string;
+    symbol: string;
+    timeframe: string;
+    strategy_name: string;
+    parameters: Record<string, any>;
+    metrics: Record<string, any>;
+    notes?: string;
+    created_at: string;
+}
+
+const FavoritesDashboard: React.FC = () => {
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [isCompareOpen, setIsCompareOpen] = useState(false);
+
+    // Fetch favorites
+    const { data: favorites, isLoading } = useQuery({
+        queryKey: ['favorites'],
+        queryFn: async () => {
+            const res = await fetch('http://localhost:8000/api/favorites/');
+            if (!res.ok) throw new Error('Failed to fetch favorites');
+            const data = await res.json() as FavoriteStrategy[];
+            console.log('📥 Loaded favorites:', data);
+            if (data && data.length > 0) {
+                console.log('   First favorite max_loss:', data[0].metrics?.max_loss);
+            }
+            return data;
+        }
+    });
+
+    // Delete mutation
+    const deleteMutation = useMutation({
+        mutationFn: async (id: number) => {
+            const res = await fetch(`http://localhost:8000/api/favorites/${id}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error('Failed to delete');
+        },
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: ['favorites'] });
+            setSelectedIds(prev => prev.filter(sid => sid !== id));
+        }
+    });
+
+    const handleRun = (fav: FavoriteStrategy) => {
+        const params = new URLSearchParams();
+        params.set('symbol', fav.symbol);
+        params.set('timeframe', fav.timeframe);
+        params.set('strategy', fav.strategy_name);
+        Object.entries(fav.parameters).forEach(([key, value]) => {
+            params.set(key, String(value));
+        });
+        navigate(`/optimize/risk?${params.toString()}`);
+    };
+
+    const handleDelete = (id: number) => {
+        if (confirm('Are you sure you want to delete this strategy?')) {
+            deleteMutation.mutate(id);
+        }
+    };
+
+    const toggleSelection = (id: number) => {
+        if (selectedIds.includes(id)) {
+            setSelectedIds(selectedIds.filter(sid => sid !== id));
+        } else {
+            if (selectedIds.length >= 3) {
+                alert("You can compare up to 3 strategies at a time.");
+                return;
+            }
+            setSelectedIds([...selectedIds, id]);
+        }
+    };
+
+    const filteredFavorites = favorites?.filter(fav =>
+        fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        fav.strategy_name.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
+
+    const selectedStrategies = favorites?.filter(f => selectedIds.includes(f.id)) || [];
+
+    // Formatters
+    const formatParams = (params: Record<string, any>) => {
+        return Object.entries(params)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('&');
+    };
+
+    const formatPct = (val?: number) => {
+        if (val === undefined || val === null) return '-';
+        return val > 1 || val < -1 ? `${val.toFixed(2)}%` : `${(val * 100).toFixed(2)}%`;
+    };
+
+    const formatNum = (val?: number, decimals = 2) => {
+        if (val === undefined || val === null) return '-';
+        return val.toFixed(decimals);
+    };
+
+    const formatCurrency = (val?: number) => {
+        if (val === undefined || val === null) return '-';
+        return `$${val.toFixed(2)}`;
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-900 text-white p-4">
+            <div className="max-w-[1920px] mx-auto">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-3">
+                        <Bookmark className="w-6 h-6 text-purple-500" />
+                        <h1 className="text-2xl font-bold text-gray-100">Favorite Strategies</h1>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-4 py-1.5 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none w-64"
+                            />
+                        </div>
+                        <button
+                            onClick={() => navigate('/optimize/parameters')}
+                            className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-sm font-medium rounded-lg transition-colors"
+                        >
+                            Find New Strategies
+                        </button>
+                    </div>
+                </div>
+
+                {/* Table Container */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden shadow-xl">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead className="bg-gray-900 text-gray-400 font-medium uppercase tracking-wider">
+                                <tr>
+                                    <th className="p-3 border-b border-gray-700 w-10 text-center">
+                                        <input type="checkbox" disabled className="rounded border-gray-600" />
+                                    </th>
+                                    <th className="p-3 border-b border-gray-700 font-bold text-white">Moeda</th>
+                                    <th className="p-3 border-b border-gray-700 font-bold text-white">Indicador</th>
+                                    <th className="p-3 border-b border-gray-700 font-bold text-white">TimeFrame</th>
+                                    <th className="p-3 border-b border-gray-700 font-bold text-white w-96">Parametros</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Stop</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Sharpe</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Trades</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Win Rate</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Retorno Total</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Exp/Trade</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Max DD</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Profit Factor</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Sortino</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Max Loss</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Avg ATR</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">WR Bull</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">WR Bear</th>
+                                    <th className="p-3 border-b border-gray-700 text-right">Avg ADX</th>
+                                    <th className="p-3 border-b border-gray-700 text-left">Notes</th>
+                                    <th className="p-3 border-b border-gray-700 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700">
+                                {isLoading ? (
+                                    <tr><td colSpan={14} className="p-8 text-center text-gray-500">Loading data...</td></tr>
+                                ) : filteredFavorites.length === 0 ? (
+                                    <tr><td colSpan={14} className="p-8 text-center text-gray-500">No favorites found. Save some strategies first!</td></tr>
+                                ) : (
+                                    filteredFavorites.map((fav) => {
+                                        const isSelected = selectedIds.includes(fav.id);
+                                        const m = fav.metrics || {};
+                                        // Try to find derived metrics, fallback to N/A
+                                        const totalReturn = m.total_return_pct ?? m.total_return;
+                                        const expectancy = m.expectancy ?? (m.total_pnl && m.total_trades ? m.total_pnl / m.total_trades : null);
+                                        // Stop loss usually in parameters
+                                        const stopLoss = fav.parameters.stop_loss ? fav.parameters.stop_loss : null;
+
+                                        return (
+                                            <tr
+                                                key={fav.id}
+                                                className={`hover:bg-gray-700/50 transition-colors group ${isSelected ? 'bg-purple-900/20' : ''}`}
+                                            >
+                                                <td className="p-3 border-r border-gray-700/50 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => toggleSelection(fav.id)}
+                                                        className="rounded border-gray-600 text-purple-600 focus:ring-offset-0 focus:ring-1 focus:ring-purple-500 cursor-pointer"
+                                                    />
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 font-bold text-gray-200">{fav.symbol}</td>
+                                                <td className="p-3 border-r border-gray-700/50 text-blue-300">{fav.strategy_name}</td>
+                                                <td className="p-3 border-r border-gray-700/50 text-center bg-gray-800/30">{fav.timeframe}</td>
+                                                <td className="p-3 border-r border-gray-700/50 font-mono text-gray-400 truncate max-w-xs" title={formatParams(fav.parameters)}>
+                                                    {formatParams(fav.parameters)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-gray-300">
+                                                    {formatPct(stopLoss)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                    {formatNum(m.sharpe_ratio)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                    {m.total_trades || m.trades || 0}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                    {formatPct(m.win_rate)}
+                                                </td>
+                                                <td className={`p-3 border-r border-gray-700/50 text-right font-mono font-bold ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {formatPct(totalReturn)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-gray-300">
+                                                    {formatCurrency(expectancy)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-red-300">
+                                                    {formatPct(m.max_drawdown)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                    {formatNum(m.profit_factor)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                    {formatNum(m.sortino)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-red-300">
+                                                    {m.max_consecutive_losses ?? m.stop_loss_count ?? 0}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                    {formatNum(m.avg_atr)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-green-300">
+                                                    {formatPct(m.win_rate_bull)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-red-300">
+                                                    {formatPct(m.win_rate_bear)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                    {formatNum(m.avg_adx)}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-700/50 text-left text-gray-400 text-sm max-w-[200px] truncate" title={fav.notes || ''}>
+                                                    {fav.notes || '-'}
+                                                </td>
+                                                <td className="p-3 text-center flex items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => handleRun(fav)}
+                                                        className="p-1.5 hover:bg-green-500/20 text-green-400 rounded transition-colors"
+                                                        title="Run Strategy"
+                                                    >
+                                                        <Play className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(fav.id)}
+                                                        className="p-1.5 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="p-2 bg-gray-900 border-t border-gray-700 text-xs text-gray-500 flex justify-between items-center">
+                        <div>
+                            {filteredFavorites.length} strategies loaded
+                        </div>
+                        {selectedIds.length > 0 && (
+                            <div className="flex items-center gap-4">
+                                <span className="text-purple-400">{selectedIds.length} selected</span>
+                                <button
+                                    onClick={() => setIsCompareOpen(true)}
+                                    disabled={selectedIds.length < 2}
+                                    className="px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-xs font-bold transition-all"
+                                >
+                                    Compare Selected
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Compare Modal */}
+                {isCompareOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl">
+                            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+                                <h2 className="text-2xl font-bold text-white">Strategy Comparison</h2>
+                                <button onClick={() => setIsCompareOpen(false)} className="text-gray-400 hover:text-white">
+                                    Close
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-auto p-6">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr>
+                                            <th className="p-4 bg-gray-800 text-gray-400 font-medium border-b border-gray-700 sticky top-0 left-0 z-10 w-48">Metric</th>
+                                            {selectedStrategies.map(s => (
+                                                <th key={s.id} className="p-4 bg-gray-800 text-white font-bold border-b border-gray-700 sticky top-0 min-w-[200px]">
+                                                    {s.name}
+                                                    <div className="text-xs text-gray-500 font-normal mt-1">{s.symbol} • {s.timeframe}</div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-800">
+                                        <tr className="bg-gray-800/20">
+                                            <td className="p-4 font-bold text-gray-300">Total Return</td>
+                                            {selectedStrategies.map(s => {
+                                                const val = s.metrics.total_return || s.metrics.total_return_pct || 0;
+                                                return (
+                                                    <td key={s.id} className={`p-4 font-bold text-lg ${val >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {formatPct(val)}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Sharpe Ratio</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-white font-mono">{formatNum(s.metrics.sharpe_ratio)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Win Rate</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-white font-mono">{formatPct(s.metrics.win_rate)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Max Drawdown</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-rose-400 font-mono">{formatPct(s.metrics.max_drawdown)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Profit Factor</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-white font-mono">{formatNum(s.metrics.profit_factor)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Sortino Ratio</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-white font-mono">{formatNum(s.metrics.sortino || s.metrics.sortino_ratio)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Max Loss</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-red-400 font-mono">{s.metrics.max_consecutive_losses ?? s.metrics.stop_loss_count ?? 0}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Avg ATR</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-white font-mono">{formatNum(s.metrics.avg_atr)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Win Rate Bull</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-green-300 font-mono">{formatPct(s.metrics.win_rate_bull)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Win Rate Bear</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-red-300 font-mono">{formatPct(s.metrics.win_rate_bear)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Avg ADX</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-white font-mono">{formatNum(s.metrics.avg_adx)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Total Trades</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-white font-mono">{s.metrics.total_trades || s.metrics.trades || 0}</td>
+                                            ))}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </div>
+        </div>
+    );
+};
+
+export default FavoritesDashboard;

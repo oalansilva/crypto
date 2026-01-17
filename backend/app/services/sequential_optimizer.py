@@ -41,7 +41,8 @@ class SequentialOptimizer:
         strategy: str, 
         symbol: str, 
         fixed_timeframe: Optional[str] = None,
-        custom_ranges: Optional[Dict[str, Any]] = None
+        custom_ranges: Optional[Dict[str, Any]] = None,
+        include_risk: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Generate optimization stages dynamically based on indicator schema.
@@ -51,6 +52,7 @@ class SequentialOptimizer:
             symbol: Trading symbol (e.g., "BTC/USDT")
             fixed_timeframe: If set, skips timeframe optimization stage
             custom_ranges: Optional overrides for parameter ranges
+            include_risk: If True, includes Risk Management parameters (stop_loss, stop_gain)
             
         Returns:
             List of stage configurations
@@ -145,10 +147,10 @@ class SequentialOptimizer:
         # Process Indicator Parameters
         process_schema_params(indicator_schema.parameters)
 
-        # Process Risk Management Parameters
-        # These are handled sequentially after indicator params
-        from app.schemas.indicator_params import RISK_MANAGEMENT_SCHEMA
-        process_schema_params(RISK_MANAGEMENT_SCHEMA, "Risk")
+        # Process Risk Management Parameters (ONLY if include_risk=True)
+        if include_risk:
+            from app.schemas.indicator_params import RISK_MANAGEMENT_SCHEMA
+            process_schema_params(RISK_MANAGEMENT_SCHEMA, "Risk")
         
         return stages
     

@@ -61,7 +61,7 @@ class FibonacciEmaStrategy:
     
     def _detect_swings(self, df: pd.DataFrame) -> tuple:
         """
-        Detect swing highs and swing lows using rolling window.
+        Detect swing highs and swing lows using vectorized rolling window operations.
         
         A swing high is a local maximum where the price is higher than
         all bars in the lookback window before and after it.
@@ -76,38 +76,19 @@ class FibonacciEmaStrategy:
             tuple: (swing_highs_series, swing_lows_series, swing_high_prices, swing_low_prices)
         """
         lookback = self.swing_lookback
+        window_size = lookback * 2 + 1  # Total window: lookback before + current + lookback after
         
-        # Initialize series
-        swing_highs = pd.Series(False, index=df.index)
-        swing_lows = pd.Series(False, index=df.index)
-        swing_high_prices = pd.Series(np.nan, index=df.index)
-        swing_low_prices = pd.Series(np.nan, index=df.index)
+        # Vectorized swing high detection
+        # A swing high is where the high equals the rolling max over the centered window
+        rolling_max = df['high'].rolling(window=window_size, center=True, min_periods=window_size).max()
+        swing_highs = (df['high'] == rolling_max) & (df['high'].notna())
+        swing_high_prices = df['high'].where(swing_highs, np.nan)
         
-        # Detect swing highs (local maxima)
-        for i in range(lookback, len(df) - lookback):
-            current_high = df['high'].iloc[i]
-            
-            # Check if current is higher than all bars in lookback window (before and after)
-            window_before = df['high'].iloc[i-lookback:i]
-            window_after = df['high'].iloc[i+1:i+lookback+1]
-            
-            if len(window_before) > 0 and len(window_after) > 0:
-                if (current_high > window_before.max()) and (current_high > window_after.max()):
-                    swing_highs.iloc[i] = True
-                    swing_high_prices.iloc[i] = current_high
-        
-        # Detect swing lows (local minima)
-        for i in range(lookback, len(df) - lookback):
-            current_low = df['low'].iloc[i]
-            
-            # Check if current is lower than all bars in lookback window (before and after)
-            window_before = df['low'].iloc[i-lookback:i]
-            window_after = df['low'].iloc[i+1:i+lookback+1]
-            
-            if len(window_before) > 0 and len(window_after) > 0:
-                if (current_low < window_before.min()) and (current_low < window_after.min()):
-                    swing_lows.iloc[i] = True
-                    swing_low_prices.iloc[i] = current_low
+        # Vectorized swing low detection
+        # A swing low is where the low equals the rolling min over the centered window
+        rolling_min = df['low'].rolling(window=window_size, center=True, min_periods=window_size).min()
+        swing_lows = (df['low'] == rolling_min) & (df['low'].notna())
+        swing_low_prices = df['low'].where(swing_lows, np.nan)
         
         return swing_highs, swing_lows, swing_high_prices, swing_low_prices
     
@@ -208,78 +189,59 @@ class FibonacciEmaStrategy:
         df_sim['current_swing_high'] = np.nan
         df_sim['current_swing_low'] = np.nan
         
-        # Track most recent swing high and low for Fibonacci calculation
-        last_swing_high = None
-        last_swing_low = None
+        # Vectorized: Forward fill swing high and low prices to get "last known" values
+        df_sim['current_swing_high'] = swing_high_prices.ffill()
+        df_sim['current_swing_low'] = swing_low_prices.ffill()
         
-        # Calculate Fibonacci levels dynamically as swings are detected
-        for i in range(len(df_sim)):
-            # Update last swing high if new one detected
-            if swing_highs.iloc[i]:
-                last_swing_high = swing_high_prices.iloc[i]
-            
-            # Update last swing low if new one detected
-            if swing_lows.iloc[i]:
-                last_swing_low = swing_low_prices.iloc[i]
-            
-            # Calculate Fibonacci levels if we have both swing high and low
-            if last_swing_high is not None and last_swing_low is not None and last_swing_high > last_swing_low:
-                fib_levels = self._calculate_fibonacci_levels(last_swing_high, last_swing_low)
-                df_sim.loc[df_sim.index[i], 'fib_level_1'] = fib_levels['fib_level_1']
-                df_sim.loc[df_sim.index[i], 'fib_level_2'] = fib_levels['fib_level_2']
-                df_sim.loc[df_sim.index[i], 'current_swing_high'] = last_swing_high
-                df_sim.loc[df_sim.index[i], 'current_swing_low'] = last_swing_low
+        # Vectorized: Calculate Fibonacci levels for all rows at once
+        # Only calculate where we have both swing high and low, and high > low
+        valid_swings = (df_sim['current_swing_high'].notna() & 
+                       df_sim['current_swing_low'].notna() & 
+                       (df_sim['current_swing_high'] > df_sim['current_swing_low']))
         
-        # Forward fill Fibonacci levels (they remain valid until new swing)
-        df_sim['fib_level_1'] = df_sim['fib_level_1'].ffill()
-        df_sim['fib_level_2'] = df_sim['fib_level_2'].ffill()
-        df_sim['current_swing_high'] = df_sim['current_swing_high'].ffill()
-        df_sim['current_swing_low'] = df_sim['current_swing_low'].ffill()
+        price_range = df_sim['current_swing_high'] - df_sim['current_swing_low']
+        df_sim.loc[valid_swings, 'fib_level_1'] = df_sim.loc[valid_swings, 'current_swing_low'] + (price_range[valid_swings] * self.fib_level_1)
+        df_sim.loc[valid_swings, 'fib_level_2'] = df_sim.loc[valid_swings, 'current_swing_low'] + (price_range[valid_swings] * self.fib_level_2)
         
         # Initialize signals
         signals = pd.Series(0, index=df_sim.index)
         
-        # Generate buy signals
-        for i in range(1, len(df_sim)):
-            current_price = df_sim['close'].iloc[i]
-            ema_value = df_sim['ema'].iloc[i]
-            fib_1 = df_sim['fib_level_1'].iloc[i]
-            fib_2 = df_sim['fib_level_2'].iloc[i]
-            
-            # Skip if EMA not calculated yet or no Fibonacci levels
-            if pd.isna(ema_value) or pd.isna(fib_1):
-                continue
-            
-            # Trend filter: Only buy if price above EMA 200
-            if current_price > ema_value:
-                # Check if price is at Fibonacci level 1 or 2
-                at_fib_1 = self._is_at_fib_level(current_price, fib_1)
-                at_fib_2 = self._is_at_fib_level(current_price, fib_2)
-                
-                if at_fib_1 or at_fib_2:
-                    # Check for bounce confirmation
-                    if self._detect_bounce(df_sim, i):
-                        signals.iloc[i] = 1
+        # Vectorized: Calculate bounce detection for all rows
+        # Bounce = bullish candle OR upward momentum
+        bullish_candle = df_sim['close'] > df_sim['open']
+        upward_momentum = df_sim['close'] > df_sim['close'].shift(1)
+        bounce_detected = bullish_candle | upward_momentum
         
-        # Generate sell signals
-        for i in range(1, len(df_sim)):
-            current_price = df_sim['close'].iloc[i]
-            prev_price = df_sim['close'].iloc[i-1]
-            ema_value = df_sim['ema'].iloc[i]
-            prev_ema = df_sim['ema'].iloc[i-1]
-            swing_high = df_sim['current_swing_high'].iloc[i]
-            
-            # Skip if EMA not calculated yet
-            if pd.isna(ema_value) or pd.isna(prev_ema):
-                continue
-            
-            # Sell Signal 1: Price crosses below EMA 200 (trend reversal)
-            if prev_price >= prev_ema and current_price < ema_value:
-                signals.iloc[i] = -1
-            
-            # Sell Signal 2: Price reaches swing high (take profit)
-            elif not pd.isna(swing_high) and current_price >= swing_high:
-                signals.iloc[i] = -1
+        # Vectorized: Check if price is at Fibonacci levels
+        # Calculate percentage difference from fib levels
+        diff_fib1_pct = (df_sim['close'] - df_sim['fib_level_1']).abs() / df_sim['close']
+        diff_fib2_pct = (df_sim['close'] - df_sim['fib_level_2']).abs() / df_sim['close']
+        
+        at_fib_1 = (diff_fib1_pct <= self.level_tolerance) & df_sim['fib_level_1'].notna()
+        at_fib_2 = (diff_fib2_pct <= self.level_tolerance) & df_sim['fib_level_2'].notna()
+        at_fib_level = at_fib_1 | at_fib_2
+        
+        # Vectorized: Generate buy signals
+        # Conditions: price > EMA AND at fib level AND bounce detected
+        buy_conditions = (
+            (df_sim['close'] > df_sim['ema']) &  # Trend filter
+            df_sim['ema'].notna() &  # EMA calculated
+            at_fib_level &  # At Fibonacci level
+            bounce_detected  # Bounce confirmation
+        )
+        signals[buy_conditions] = 1
+        
+        # Vectorized: Generate sell signals
+        # Sell Signal 1: Price crosses below EMA 200
+        prev_price = df_sim['close'].shift(1)
+        prev_ema = df_sim['ema'].shift(1)
+        cross_below_ema = (prev_price >= prev_ema) & (df_sim['close'] < df_sim['ema']) & df_sim['ema'].notna()
+        
+        # Sell Signal 2: Price reaches swing high (take profit)
+        at_swing_high = (df_sim['close'] >= df_sim['current_swing_high']) & df_sim['current_swing_high'].notna()
+        
+        sell_conditions = cross_below_ema | at_swing_high
+        signals[sell_conditions] = -1
         
         # Store simulation data for visualization
         self.simulation_data = df_sim
