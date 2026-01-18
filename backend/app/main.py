@@ -10,6 +10,7 @@ from app.routes.sequential_optimization import router as sequential_router
 from app.routes.parameter_optimization import router as parameter_router
 from app.routes.risk_optimization import router as risk_router
 from app.routes.favorites import router as favorites_router
+from app.routes.combo_routes import router as combo_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -54,6 +55,7 @@ app.include_router(sequential_router)  # Sequential optimization routes (WebSock
 app.include_router(parameter_router)  # Parameter optimization routes (simplified)
 app.include_router(risk_router)  # Risk management optimization routes
 app.include_router(favorites_router)  # Favorites management routes
+app.include_router(combo_router)  # Combo strategies routes (isolated)
 
 @app.get("/")
 async def root():

@@ -10,6 +10,10 @@ import FavoritesDashboard from './pages/FavoritesDashboard'
 import { AutoBacktestPage } from './pages/AutoBacktestPage'
 import { AutoBacktestResultsPage } from './pages/AutoBacktestResultsPage'
 import { AutoBacktestHistoryPage } from './pages/AutoBacktestHistoryPage'
+import { ComboSelectPage } from './pages/ComboSelectPage'
+import { ComboConfigurePage } from './pages/ComboConfigurePage'
+import { ComboResultsPage } from './pages/ComboResultsPage'
+import { ComboOptimizePage } from './pages/ComboOptimizePage'
 import {
   Activity,
   TrendingUp,
@@ -215,6 +219,45 @@ function HomePage() {
               <p className="text-gray-400 text-lg">
                 Configure your parameters and start testing your strategy
               </p>
+            </div>
+
+            {/* Combo Strategies Card */}
+            <div className="mb-8">
+              <div className="glass-strong rounded-2xl p-6 border border-white/10 hover:border-emerald-500/30 transition-all duration-300 group">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg blur opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="relative bg-gradient-to-br from-emerald-500 to-teal-600 p-2 rounded-lg">
+                          <Sparkles className="w-5 h-5 text-white" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                          Combo Strategies
+                          <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] uppercase tracking-wider rounded border border-emerald-500/30 font-bold">
+                            Novo
+                          </span>
+                        </h3>
+                        <p className="text-sm text-gray-400 mt-0.5">
+                          Combine múltiplos indicadores em uma estratégia
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-gray-300 text-sm mb-4">
+                      Crie estratégias poderosas combinando vários indicadores (EMA, RSI, MACD, Bollinger, etc.) com lógica customizada. Escolha entre templates prontos ou crie o seu próprio.
+                    </p>
+                    <button
+                      onClick={() => navigate('/combo/select')}
+                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 inline-flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 group-hover:shadow-emerald-500/50 group-hover:scale-[1.02]"
+                    >
+                      <Sparkles className="w-5 h-5" />
+                      Explorar Combo Strategies
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Sequential Optimization Card */}
@@ -502,6 +545,9 @@ function App() {
         <Route path="/backtest/auto" element={<AutoBacktestPage />} />
         <Route path="/backtest/auto/results/:runId" element={<AutoBacktestResultsPage />} />
         <Route path="/backtest/auto/history" element={<AutoBacktestHistoryPage />} />
+        <Route path="/combo/select" element={<ComboSelectPage />} />
+        <Route path="/combo/configure" element={<ComboConfigurePage />} />
+        <Route path="/combo/results" element={<ComboResultsPage />} />
         <Route path="/sequential-optimization" element={<ParameterOptimizationPage />} /> {/* Backward compatibility */}
         <Route path="/results/:runId" element={<ResultsPage />} />
       </Routes>
