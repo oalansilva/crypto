@@ -8,7 +8,7 @@ def calculate_metrics(equity_curve: pd.DataFrame, trades: list, initial_capital=
     # Equity Curve Metrics
     equity_series = equity_curve['equity']
     final_equity = equity_series.iloc[-1]
-    total_return_pct = (final_equity - initial_capital) / initial_capital
+    total_return_pct = ((final_equity - initial_capital) / initial_capital) * 100
     
     # Drawdown
     rolling_max = equity_series.cummax()

@@ -73,7 +73,12 @@ class AutoBacktestService:
             stage3_result = self._execute_stage_3(run, stage1_result, stage2_result)
             run.stage_3_result = stage3_result
             self.db.commit()
-            self._log(run.run_id, f"Stage 3 completed - Stop: {stage3_result.get('stop_loss')}%, Take: {stage3_result.get('take_profit')}%")
+            stop = stage3_result.get('best_risk', {}).get('stop_loss')
+            take = stage3_result.get('best_risk', {}).get('take_profit')
+            # Format explicitly
+            stop_display = f"{stop*100:.1f}" if stop is not None else "None"
+            take_display = f"{take*100:.1f}" if take is not None else "None"
+            self._log(run.run_id, f"Stage 3 completed - Stop: {stop_display}%, Take: {take_display}%")
             
             # Stage 4: Save favorite
             favorite_id = self._save_favorite(run, stage1_result, stage2_result, stage3_result)

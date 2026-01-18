@@ -1,0 +1,934 @@
+🎯 RISK OPTIMIZATION REQUEST: BTC/USDT macd 1d
+   Strategy Params (Fixed): {'fast': 16, 'slow': 26, 'signal': 14}
+   Custom Ranges: {'stop_loss': {'min': 0.005, 'max': 0.13, 'step': 0.002}, 'stop_gain': [None]}
+   Created job: 5cd04f3f-91bf-495c-adc8-b11c8649519c
+   Locked params: {'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0}
+   Generated 2 risk optimization stages
+   Running stage 1/2: Stop Loss
+2026-01-18 00:17:48,611 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:48,617 - src.data.incremental_loader - INFO - Incremental update needed. Downloading from 2026-01-17 21:00:00.001000
+2026-01-18 00:17:48,618 - src.data.incremental_loader - INFO - Starting download loop for BTC/USDT from 2026-01-17 21:00:00.001000
+2026-01-18 00:17:55,044 - root - INFO - Full history period: 2017-08-17T00:00:00+00:00 to 2026-01-18T00:00:00+00:00 (3077 candles)
+2026-01-18 00:17:55,081 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:55,084 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:55,088 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:55,107 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.0}
+2026-01-18 00:17:55,107 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:55,107 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.0}
+2026-01-18 00:17:55,108 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.0}]
+2026-01-18 00:17:55,108 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.0}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.0}
+2026-01-18 00:17:55,109 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0}
+2026-01-18 00:17:55,119 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:55,123 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.0}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.0}
+2026-01-18 00:17:55,123 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0}
+2026-01-18 00:17:55,131 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:55,223 - root - INFO - DEBUG: Test 1 (stop_loss=0.0) -> Return: 46.5423840664316, Equity: 475423.840664316, PnL: 465423.840664316
+2026-01-18 00:17:55,235 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:55,239 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:55,243 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:55,264 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.005}
+2026-01-18 00:17:55,264 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:55,265 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.005}
+2026-01-18 00:17:55,265 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.005}]
+2026-01-18 00:17:55,266 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.005}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.005}
+2026-01-18 00:17:55,266 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.005}
+2026-01-18 00:17:55,275 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:55,280 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.005}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.005}
+2026-01-18 00:17:55,281 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.005}
+2026-01-18 00:17:55,289 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:55,490 - root - INFO - DEBUG: Test 2 (stop_loss=0.005) -> Return: -0.4584703651186756, Equity: 5415.296348813244, PnL: -4584.703651186756
+2026-01-18 00:17:55,531 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:55,534 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:55,538 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:55,561 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.007}
+2026-01-18 00:17:55,562 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:55,562 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.007}
+2026-01-18 00:17:55,563 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.007}]
+2026-01-18 00:17:55,563 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.007}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.007}
+2026-01-18 00:17:55,563 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.007}
+2026-01-18 00:17:55,573 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:55,578 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.007}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.007}
+2026-01-18 00:17:55,579 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.007}
+2026-01-18 00:17:55,589 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:55,785 - root - INFO - DEBUG: Test 3 (stop_loss=0.007) -> Return: 1.9293063060066047, Equity: 29293.063060066048, PnL: 19293.063060066048
+2026-01-18 00:17:55,867 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:55,871 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:55,877 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:55,903 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.009}
+2026-01-18 00:17:55,903 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:55,904 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.009}
+2026-01-18 00:17:55,904 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.009}]
+2026-01-18 00:17:55,905 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.009}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.009}
+2026-01-18 00:17:55,905 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.009}
+2026-01-18 00:17:55,915 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:55,922 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.009}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.009}
+2026-01-18 00:17:55,922 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.009}
+2026-01-18 00:17:55,934 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:56,143 - root - INFO - DEBUG: Test 4 (stop_loss=0.009) -> Return: 1.3088839586539411, Equity: 23088.839586539412, PnL: 13088.839586539412
+2026-01-18 00:17:56,269 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:56,278 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:56,285 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:56,320 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.011}
+2026-01-18 00:17:56,321 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:56,321 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.011}
+2026-01-18 00:17:56,322 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.011}]
+2026-01-18 00:17:56,323 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.011}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.011}
+2026-01-18 00:17:56,323 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.011}
+2026-01-18 00:17:56,339 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:56,350 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.011}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.011}
+2026-01-18 00:17:56,350 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.011}
+2026-01-18 00:17:56,373 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:56,663 - root - INFO - DEBUG: Test 5 (stop_loss=0.011) -> Return: 8.658276035089495, Equity: 96582.76035089494, PnL: 86582.76035089494
+2026-01-18 00:17:56,869 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:56,877 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:56,886 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:56,946 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.013}
+2026-01-18 00:17:56,947 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:56,947 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.013}
+2026-01-18 00:17:56,948 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.013}]
+2026-01-18 00:17:56,949 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.013}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.013}
+2026-01-18 00:17:56,949 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.013}
+2026-01-18 00:17:56,971 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:56,982 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.013}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.013}
+2026-01-18 00:17:56,983 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.013}
+2026-01-18 00:17:57,005 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:57,366 - root - INFO - DEBUG: Test 6 (stop_loss=0.013) -> Return: 11.559417550785295, Equity: 125594.17550785295, PnL: 115594.17550785295
+2026-01-18 00:17:57,617 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:57,629 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:57,640 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:57,691 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.015}
+2026-01-18 00:17:57,692 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:57,693 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.015}
+2026-01-18 00:17:57,693 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.015}]
+2026-01-18 00:17:57,694 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.015}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.015}
+2026-01-18 00:17:57,694 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.015}
+2026-01-18 00:17:57,718 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:57,728 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.015}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.015}
+2026-01-18 00:17:57,729 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.015}
+2026-01-18 00:17:57,746 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:58,008 - root - INFO - DEBUG: Test 7 (stop_loss=0.015) -> Return: 14.798065992647654, Equity: 157980.65992647654, PnL: 147980.65992647654
+2026-01-18 00:17:58,292 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:58,300 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:58,308 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:58,348 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.017}
+2026-01-18 00:17:58,348 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:58,349 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.017}
+2026-01-18 00:17:58,349 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.017}]
+2026-01-18 00:17:58,350 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.017}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.017}
+2026-01-18 00:17:58,351 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.017}
+2026-01-18 00:17:58,379 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:58,395 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.017}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.017}
+2026-01-18 00:17:58,396 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.017}
+2026-01-18 00:17:58,419 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:58,888 - root - INFO - DEBUG: Test 8 (stop_loss=0.017) -> Return: 18.60268803357194, Equity: 196026.8803357194, PnL: 186026.8803357194
+2026-01-18 00:17:59,437 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:17:59,449 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:17:59,463 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:17:59,533 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.019}
+2026-01-18 00:17:59,534 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:17:59,535 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.019}
+2026-01-18 00:17:59,535 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.019}]
+2026-01-18 00:17:59,536 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.019}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.019}
+2026-01-18 00:17:59,537 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.019}
+2026-01-18 00:17:59,578 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:17:59,600 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.019}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.019}
+2026-01-18 00:17:59,601 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.019}
+2026-01-18 00:17:59,634 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:00,403 - root - INFO - DEBUG: Test 9 (stop_loss=0.019) -> Return: 25.473290801162296, Equity: 264732.90801162296, PnL: 254732.90801162296
+2026-01-18 00:18:01,147 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:01,159 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:01,170 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:01,255 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.021}
+2026-01-18 00:18:01,256 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:01,257 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.021}
+2026-01-18 00:18:01,258 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.021}]
+2026-01-18 00:18:01,259 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.021}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.021}
+2026-01-18 00:18:01,259 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.021}
+2026-01-18 00:18:01,291 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:01,313 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.021}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.021}
+2026-01-18 00:18:01,315 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.021}
+2026-01-18 00:18:01,348 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:01,780 - root - INFO - DEBUG: Test 10 (stop_loss=0.021) -> Return: 21.16281559471573, Equity: 221628.1559471573, PnL: 211628.1559471573
+2026-01-18 00:18:02,262 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:02,270 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:02,281 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:02,339 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.023}
+2026-01-18 00:18:02,340 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:02,341 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.023}
+2026-01-18 00:18:02,342 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.023}]
+2026-01-18 00:18:02,343 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.023}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.023}
+2026-01-18 00:18:02,343 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.023}
+2026-01-18 00:18:02,374 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:02,398 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.023}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.023}
+2026-01-18 00:18:02,399 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.023}
+2026-01-18 00:18:02,433 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:02,804 - root - INFO - DEBUG: Test 11 (stop_loss=0.023) -> Return: 18.814417473119867, Equity: 198144.17473119867, PnL: 188144.17473119867
+2026-01-18 00:18:03,200 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:03,208 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:03,217 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:03,287 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.025}
+2026-01-18 00:18:03,288 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:03,288 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.025}
+2026-01-18 00:18:03,289 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.025}]
+2026-01-18 00:18:03,290 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.025}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.025}
+2026-01-18 00:18:03,291 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.025}
+2026-01-18 00:18:03,312 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:03,322 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.025}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.025}
+2026-01-18 00:18:03,323 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.025}
+2026-01-18 00:18:03,347 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:03,609 - root - INFO - DEBUG: Test 12 (stop_loss=0.025) -> Return: 28.465754667160013, Equity: 294657.54667160014, PnL: 284657.54667160014
+2026-01-18 00:18:04,079 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:04,088 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:04,100 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:04,162 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.027}
+2026-01-18 00:18:04,162 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:04,163 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.027}
+2026-01-18 00:18:04,164 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.027}]
+2026-01-18 00:18:04,165 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.027}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.027}
+2026-01-18 00:18:04,165 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.027}
+2026-01-18 00:18:04,184 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:04,196 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.027}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.027}
+2026-01-18 00:18:04,197 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.027}
+2026-01-18 00:18:04,217 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:04,499 - root - INFO - DEBUG: Test 13 (stop_loss=0.027) -> Return: 28.951787735667487, Equity: 299517.8773566749, PnL: 289517.8773566749
+2026-01-18 00:18:04,976 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:04,983 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:04,991 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:05,030 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.029}
+2026-01-18 00:18:05,031 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:05,031 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.029}
+2026-01-18 00:18:05,032 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.029}]
+2026-01-18 00:18:05,033 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.029}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.029}
+2026-01-18 00:18:05,034 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.029}
+2026-01-18 00:18:05,054 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:05,065 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.029}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.029}
+2026-01-18 00:18:05,066 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.029}
+2026-01-18 00:18:05,085 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:05,318 - root - INFO - DEBUG: Test 14 (stop_loss=0.029) -> Return: 22.20461945976223, Equity: 232046.19459762232, PnL: 222046.19459762232
+2026-01-18 00:18:05,724 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:05,731 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:05,738 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:05,776 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.031}
+2026-01-18 00:18:05,777 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:05,777 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.031}
+2026-01-18 00:18:05,778 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.031}]
+2026-01-18 00:18:05,779 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.031}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.031}
+2026-01-18 00:18:05,779 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.031}
+2026-01-18 00:18:05,798 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:05,808 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.031}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.031}
+2026-01-18 00:18:05,808 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.031}
+2026-01-18 00:18:05,831 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:06,073 - root - INFO - DEBUG: Test 15 (stop_loss=0.031) -> Return: 32.516623571755254, Equity: 335166.23571755254, PnL: 325166.23571755254
+2026-01-18 00:18:06,573 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:06,582 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:06,591 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:06,635 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.033}
+2026-01-18 00:18:06,636 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:06,636 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.033}
+2026-01-18 00:18:06,637 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.033}]
+2026-01-18 00:18:06,638 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.033}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.033}
+2026-01-18 00:18:06,638 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.033}
+2026-01-18 00:18:06,656 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:06,667 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.033}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.033}
+2026-01-18 00:18:06,668 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.033}
+2026-01-18 00:18:06,687 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:06,903 - root - INFO - DEBUG: Test 16 (stop_loss=0.033) -> Return: 30.627209708401, Equity: 316272.09708401, PnL: 306272.09708401
+2026-01-18 00:18:07,880 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:07,897 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:07,922 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:08,053 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.035}
+2026-01-18 00:18:08,055 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:08,055 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.035}
+2026-01-18 00:18:08,056 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.035}]
+2026-01-18 00:18:08,057 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.035}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.035}
+2026-01-18 00:18:08,059 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.035}
+2026-01-18 00:18:08,138 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:08,161 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.035}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.035}
+2026-01-18 00:18:08,162 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.035}
+2026-01-18 00:18:08,203 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:08,720 - root - INFO - DEBUG: Test 17 (stop_loss=0.035) -> Return: 26.69039376874125, Equity: 276903.9376874125, PnL: 266903.9376874125
+2026-01-18 00:18:09,541 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:09,551 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:09,561 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:09,616 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.037}
+2026-01-18 00:18:09,617 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:09,618 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.037}
+2026-01-18 00:18:09,618 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.037}]
+2026-01-18 00:18:09,619 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.037}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.037}
+2026-01-18 00:18:09,620 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.037}
+2026-01-18 00:18:09,648 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:09,663 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.037}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.037}
+2026-01-18 00:18:09,664 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.037}
+2026-01-18 00:18:09,696 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:09,999 - root - INFO - DEBUG: Test 18 (stop_loss=0.037) -> Return: 23.745714662528076, Equity: 247457.14662528076, PnL: 237457.14662528076
+2026-01-18 00:18:10,802 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:10,818 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:10,833 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:10,918 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.039}
+2026-01-18 00:18:10,919 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:10,920 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.039}
+2026-01-18 00:18:10,920 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.039}]
+2026-01-18 00:18:10,921 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.039}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.039}
+2026-01-18 00:18:10,922 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.039}
+2026-01-18 00:18:10,967 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:10,988 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.039}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.039}
+2026-01-18 00:18:10,989 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.039}
+2026-01-18 00:18:11,019 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:11,320 - root - INFO - DEBUG: Test 19 (stop_loss=0.039) -> Return: 24.426782713570198, Equity: 254267.82713570198, PnL: 244267.82713570198
+2026-01-18 00:18:11,934 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:11,941 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:11,952 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:12,004 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.041}
+2026-01-18 00:18:12,005 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:12,005 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.041}
+2026-01-18 00:18:12,006 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.041}]
+2026-01-18 00:18:12,007 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.041}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.041}
+2026-01-18 00:18:12,007 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.041}
+2026-01-18 00:18:12,033 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:12,046 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.041}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.041}
+2026-01-18 00:18:12,047 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.041}
+2026-01-18 00:18:12,069 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:12,297 - root - INFO - DEBUG: Test 20 (stop_loss=0.041) -> Return: 27.52816561507203, Equity: 285281.6561507203, PnL: 275281.6561507203
+2026-01-18 00:18:12,909 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:12,918 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:12,927 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:12,986 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.043}
+2026-01-18 00:18:12,987 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:12,988 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.043}
+2026-01-18 00:18:12,988 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.043}]
+2026-01-18 00:18:12,989 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.043}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.043}
+2026-01-18 00:18:12,990 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.043}
+2026-01-18 00:18:13,015 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:13,024 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.043}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.043}
+2026-01-18 00:18:13,025 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.043}
+2026-01-18 00:18:13,053 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:13,320 - root - INFO - DEBUG: Test 21 (stop_loss=0.043) -> Return: 23.765563654557084, Equity: 247655.63654557083, PnL: 237655.63654557083
+2026-01-18 00:18:14,193 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:14,202 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:14,210 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:14,257 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.045}
+2026-01-18 00:18:14,258 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:14,259 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.045}
+2026-01-18 00:18:14,259 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.045}]
+2026-01-18 00:18:14,260 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.045}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.045}
+2026-01-18 00:18:14,261 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.045}
+2026-01-18 00:18:14,284 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:14,298 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.045}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.045}
+2026-01-18 00:18:14,299 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.045}
+2026-01-18 00:18:14,324 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:14,650 - root - INFO - DEBUG: Test 22 (stop_loss=0.045) -> Return: 30.69550564341071, Equity: 316955.0564341071, PnL: 306955.0564341071
+2026-01-18 00:18:15,497 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:15,508 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:15,517 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:15,565 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.047}
+2026-01-18 00:18:15,566 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:15,567 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.047}
+2026-01-18 00:18:15,567 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.047}]
+2026-01-18 00:18:15,568 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.047}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.047}
+2026-01-18 00:18:15,568 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.047}
+2026-01-18 00:18:15,591 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:15,603 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.047}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.047}
+2026-01-18 00:18:15,604 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.047}
+2026-01-18 00:18:15,627 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:15,846 - root - INFO - DEBUG: Test 23 (stop_loss=0.047) -> Return: 30.17688225001449, Equity: 311768.8225001449, PnL: 301768.8225001449
+2026-01-18 00:18:16,334 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:16,352 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:16,361 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:16,410 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.049}
+2026-01-18 00:18:16,411 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:16,411 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.049}
+2026-01-18 00:18:16,412 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.049}]
+2026-01-18 00:18:16,414 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.049}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.049}
+2026-01-18 00:18:16,414 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.049}
+2026-01-18 00:18:16,439 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:16,452 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.049}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.049}
+2026-01-18 00:18:16,453 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.049}
+2026-01-18 00:18:16,472 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:16,653 - root - INFO - DEBUG: Test 24 (stop_loss=0.049) -> Return: 40.034148532187686, Equity: 410341.4853218768, PnL: 400341.4853218768
+2026-01-18 00:18:17,279 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:17,285 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:17,292 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:17,329 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.051}
+2026-01-18 00:18:17,330 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:17,330 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.051}
+2026-01-18 00:18:17,331 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.051}]
+2026-01-18 00:18:17,331 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.051}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.051}
+2026-01-18 00:18:17,332 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.051}
+2026-01-18 00:18:17,348 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:17,357 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.051}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.051}
+2026-01-18 00:18:17,358 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.051}
+2026-01-18 00:18:17,376 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:17,586 - root - INFO - DEBUG: Test 25 (stop_loss=0.051) -> Return: 45.54978490421913, Equity: 465497.8490421913, PnL: 455497.8490421913
+2026-01-18 00:18:18,060 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:18,066 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:18,072 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:18,106 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.053}
+2026-01-18 00:18:18,107 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:18,108 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.053}
+2026-01-18 00:18:18,108 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.053}]
+2026-01-18 00:18:18,109 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.053}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.053}
+2026-01-18 00:18:18,110 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.053}
+2026-01-18 00:18:18,124 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:18,132 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.053}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.053}
+2026-01-18 00:18:18,133 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.053}
+2026-01-18 00:18:18,149 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:18,329 - root - INFO - DEBUG: Test 26 (stop_loss=0.053) -> Return: 44.186985639842305, Equity: 451869.856398423, PnL: 441869.856398423
+2026-01-18 00:18:18,879 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:18,885 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:18,892 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:18,937 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.055}
+2026-01-18 00:18:18,937 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:18,938 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.055}
+2026-01-18 00:18:18,939 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.055}]
+2026-01-18 00:18:18,940 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.055}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.055}
+2026-01-18 00:18:18,941 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.055}
+2026-01-18 00:18:18,968 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:18,978 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.055}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.055}
+2026-01-18 00:18:18,979 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.055}
+2026-01-18 00:18:18,994 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:19,164 - root - INFO - DEBUG: Test 27 (stop_loss=0.055) -> Return: 39.101070578300714, Equity: 401010.70578300714, PnL: 391010.70578300714
+2026-01-18 00:18:19,678 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:19,682 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:19,688 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:19,717 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.057}
+2026-01-18 00:18:19,718 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:19,719 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.057}
+2026-01-18 00:18:19,719 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.057}]
+2026-01-18 00:18:19,720 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.057}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.057}
+2026-01-18 00:18:19,720 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.057}
+2026-01-18 00:18:19,734 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:19,741 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.057}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.057}
+2026-01-18 00:18:19,741 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.057}
+2026-01-18 00:18:19,754 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:19,902 - root - INFO - DEBUG: Test 28 (stop_loss=0.057) -> Return: 46.522848449488265, Equity: 475228.48449488264, PnL: 465228.48449488264
+2026-01-18 00:18:20,424 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:20,430 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:20,436 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:20,466 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.059}
+2026-01-18 00:18:20,466 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:20,467 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.059}
+2026-01-18 00:18:20,467 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.059}]
+2026-01-18 00:18:20,468 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.059}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.059}
+2026-01-18 00:18:20,468 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.059}
+2026-01-18 00:18:20,486 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:20,494 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.059}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.059}
+2026-01-18 00:18:20,495 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.059}
+2026-01-18 00:18:20,510 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:20,704 - root - INFO - DEBUG: Test 29 (stop_loss=0.059) -> Return: 47.560153808820026, Equity: 485601.53808820026, PnL: 475601.53808820026
+2026-01-18 00:18:21,311 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:21,317 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:21,325 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:21,366 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.061}
+2026-01-18 00:18:21,367 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:21,367 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.061}
+2026-01-18 00:18:21,368 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.061}]
+2026-01-18 00:18:21,369 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.061}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.061}
+2026-01-18 00:18:21,369 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.061}
+2026-01-18 00:18:21,387 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:21,397 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.061}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.061}
+2026-01-18 00:18:21,397 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.061}
+2026-01-18 00:18:21,415 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:21,608 - root - INFO - DEBUG: Test 30 (stop_loss=0.061) -> Return: 44.769712572140975, Equity: 457697.12572140974, PnL: 447697.12572140974
+2026-01-18 00:18:22,317 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:22,324 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:22,334 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:22,374 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.063}
+2026-01-18 00:18:22,375 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:22,376 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.063}
+2026-01-18 00:18:22,376 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.063}]
+2026-01-18 00:18:22,377 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.063}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.063}
+2026-01-18 00:18:22,378 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.063}
+2026-01-18 00:18:22,397 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:22,407 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.063}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.063}
+2026-01-18 00:18:22,408 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.063}
+2026-01-18 00:18:22,430 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:22,673 - root - INFO - DEBUG: Test 31 (stop_loss=0.063) -> Return: 41.0797311723587, Equity: 420797.311723587, PnL: 410797.311723587
+2026-01-18 00:18:23,624 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:23,633 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:23,643 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:23,704 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.065}
+2026-01-18 00:18:23,705 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:23,705 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.065}
+2026-01-18 00:18:23,706 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.065}]
+2026-01-18 00:18:23,707 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.065}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.065}
+2026-01-18 00:18:23,708 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.065}
+2026-01-18 00:18:23,749 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:23,770 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.065}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.065}
+2026-01-18 00:18:23,774 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.065}
+2026-01-18 00:18:23,810 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:24,235 - root - INFO - DEBUG: Test 32 (stop_loss=0.065) -> Return: 44.341768760329245, Equity: 453417.68760329246, PnL: 443417.68760329246
+2026-01-18 00:18:26,213 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:26,259 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:26,286 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:26,466 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.067}
+2026-01-18 00:18:26,477 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:26,483 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.067}
+2026-01-18 00:18:26,497 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.067}]
+2026-01-18 00:18:26,505 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.067}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.067}
+2026-01-18 00:18:26,515 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.067}
+2026-01-18 00:18:26,631 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:26,654 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.067}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.067}
+2026-01-18 00:18:26,664 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.067}
+2026-01-18 00:18:26,709 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:27,339 - root - INFO - DEBUG: Test 33 (stop_loss=0.067) -> Return: 46.69507028348808, Equity: 476950.7028348808, PnL: 466950.7028348808
+2026-01-18 00:18:28,421 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:28,434 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:28,447 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:28,541 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.069}
+2026-01-18 00:18:28,543 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:28,545 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.069}
+2026-01-18 00:18:28,545 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.069}]
+2026-01-18 00:18:28,547 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.069}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.069}
+2026-01-18 00:18:28,547 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.069}
+2026-01-18 00:18:28,603 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:28,624 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.069}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.069}
+2026-01-18 00:18:28,625 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.069}
+2026-01-18 00:18:28,661 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:29,029 - root - INFO - DEBUG: Test 34 (stop_loss=0.069) -> Return: 44.00979489456466, Equity: 450097.94894564664, PnL: 440097.94894564664
+2026-01-18 00:18:30,370 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:30,384 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:30,396 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:30,464 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.071}
+2026-01-18 00:18:30,465 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:30,466 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.071}
+2026-01-18 00:18:30,467 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.071}]
+2026-01-18 00:18:30,468 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.071}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.071}
+2026-01-18 00:18:30,469 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.071}
+2026-01-18 00:18:30,510 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:30,526 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.071}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.071}
+2026-01-18 00:18:30,527 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.071}
+2026-01-18 00:18:30,558 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:30,961 - root - INFO - DEBUG: Test 35 (stop_loss=0.071) -> Return: 43.47883883489236, Equity: 444788.3883489236, PnL: 434788.3883489236
+2026-01-18 00:18:33,272 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:33,284 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:33,297 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:33,617 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.073}
+2026-01-18 00:18:33,619 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:33,620 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.073}
+2026-01-18 00:18:33,620 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.073}]
+2026-01-18 00:18:33,622 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.073}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.073}
+2026-01-18 00:18:33,622 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.073}
+2026-01-18 00:18:33,645 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:33,660 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.073}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.073}
+2026-01-18 00:18:33,661 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.073}
+2026-01-18 00:18:33,686 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:33,960 - root - INFO - DEBUG: Test 36 (stop_loss=0.073) -> Return: 42.43701237081636, Equity: 434370.1237081636, PnL: 424370.1237081636
+2026-01-18 00:18:34,689 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:34,694 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:34,704 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:34,747 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.075}
+2026-01-18 00:18:34,748 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:34,749 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.075}
+2026-01-18 00:18:34,749 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.075}]
+2026-01-18 00:18:34,750 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.075}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.075}
+2026-01-18 00:18:34,751 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.075}
+2026-01-18 00:18:34,771 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:34,786 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.075}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.075}
+2026-01-18 00:18:34,787 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.075}
+2026-01-18 00:18:34,808 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:35,064 - root - INFO - DEBUG: Test 37 (stop_loss=0.075) -> Return: 48.597598134583855, Equity: 495975.9813458385, PnL: 485975.9813458385
+2026-01-18 00:18:35,927 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:35,934 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:35,943 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:35,991 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.077}
+2026-01-18 00:18:35,992 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:35,992 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.077}
+2026-01-18 00:18:35,993 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.077}]
+2026-01-18 00:18:35,994 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.077}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.077}
+2026-01-18 00:18:35,994 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.077}
+2026-01-18 00:18:36,018 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:36,029 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.077}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.077}
+2026-01-18 00:18:36,030 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.077}
+2026-01-18 00:18:36,064 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:36,389 - root - INFO - DEBUG: Test 38 (stop_loss=0.077) -> Return: 44.31649161159404, Equity: 453164.9161159404, PnL: 443164.9161159404
+2026-01-18 00:18:37,505 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:37,519 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:37,531 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:37,605 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.079}
+2026-01-18 00:18:37,607 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:37,607 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.079}
+2026-01-18 00:18:37,608 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.079}]
+2026-01-18 00:18:37,610 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.079}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.079}
+2026-01-18 00:18:37,611 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.079}
+2026-01-18 00:18:37,677 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:37,712 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.079}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.079}
+2026-01-18 00:18:37,714 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.079}
+2026-01-18 00:18:37,786 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:38,251 - root - INFO - DEBUG: Test 39 (stop_loss=0.079) -> Return: 49.63924536444413, Equity: 506392.45364444127, PnL: 496392.45364444127
+2026-01-18 00:18:39,532 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:39,550 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:39,565 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:39,664 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.081}
+2026-01-18 00:18:39,667 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:39,672 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.081}
+2026-01-18 00:18:39,673 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.081}]
+2026-01-18 00:18:39,674 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.081}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.081}
+2026-01-18 00:18:39,675 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.081}
+2026-01-18 00:18:39,722 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:39,746 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.081}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.081}
+2026-01-18 00:18:39,746 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.081}
+2026-01-18 00:18:39,800 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:40,270 - root - INFO - DEBUG: Test 40 (stop_loss=0.081) -> Return: 46.1705021467516, Equity: 471705.021467516, PnL: 461705.021467516
+2026-01-18 00:18:41,881 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:41,890 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:41,903 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:41,962 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.083}
+2026-01-18 00:18:41,963 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:41,964 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.083}
+2026-01-18 00:18:41,965 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.083}]
+2026-01-18 00:18:41,966 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.083}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.083}
+2026-01-18 00:18:41,966 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.083}
+2026-01-18 00:18:41,999 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:42,017 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.083}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.083}
+2026-01-18 00:18:42,018 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.083}
+2026-01-18 00:18:42,045 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:42,341 - root - INFO - DEBUG: Test 41 (stop_loss=0.083) -> Return: 47.03099127995121, Equity: 480309.9127995121, PnL: 470309.9127995121
+2026-01-18 00:18:43,391 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:43,411 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:43,425 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:43,495 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.085}
+2026-01-18 00:18:43,496 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:43,497 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.085}
+2026-01-18 00:18:43,498 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.085}]
+2026-01-18 00:18:43,499 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.085}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.085}
+2026-01-18 00:18:43,499 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.085}
+2026-01-18 00:18:43,528 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:43,543 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.085}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.085}
+2026-01-18 00:18:43,544 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.085}
+2026-01-18 00:18:43,567 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:43,886 - root - INFO - DEBUG: Test 42 (stop_loss=0.085) -> Return: 47.439489872613834, Equity: 484394.89872613834, PnL: 474394.89872613834
+2026-01-18 00:18:44,542 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:44,546 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:44,550 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:44,577 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.087}
+2026-01-18 00:18:44,577 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:44,578 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.087}
+2026-01-18 00:18:44,578 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.087}]
+2026-01-18 00:18:44,578 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.087}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.087}
+2026-01-18 00:18:44,578 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.087}
+2026-01-18 00:18:44,590 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:44,596 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.087}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.087}
+2026-01-18 00:18:44,596 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.087}
+2026-01-18 00:18:44,607 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:44,722 - root - INFO - DEBUG: Test 43 (stop_loss=0.087) -> Return: 47.8880755818328, Equity: 488880.755818328, PnL: 478880.755818328
+2026-01-18 00:18:45,228 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:45,231 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:45,235 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:45,256 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.089}
+2026-01-18 00:18:45,257 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:45,257 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.089}
+2026-01-18 00:18:45,257 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.089}]
+2026-01-18 00:18:45,258 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.089}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.089}
+2026-01-18 00:18:45,258 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.089}
+2026-01-18 00:18:45,269 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:45,274 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.089}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.089}
+2026-01-18 00:18:45,275 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.089}
+2026-01-18 00:18:45,285 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:45,387 - root - INFO - DEBUG: Test 44 (stop_loss=0.089) -> Return: 48.62363464261868, Equity: 496236.34642618685, PnL: 486236.34642618685
+2026-01-18 00:18:45,867 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:45,870 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:45,873 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:45,896 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}
+2026-01-18 00:18:45,896 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:45,897 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}
+2026-01-18 00:18:45,897 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}]
+2026-01-18 00:18:45,897 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}
+2026-01-18 00:18:45,898 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.091}
+2026-01-18 00:18:45,906 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:45,911 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}
+2026-01-18 00:18:45,912 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.091}
+2026-01-18 00:18:45,922 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:46,033 - root - INFO - DEBUG: Test 45 (stop_loss=0.091) -> Return: 62.3848253643768, Equity: 633848.253643768, PnL: 623848.253643768
+2026-01-18 00:18:46,524 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:46,527 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:46,532 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:46,554 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.093}
+2026-01-18 00:18:46,554 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:46,554 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.093}
+2026-01-18 00:18:46,554 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.093}]
+2026-01-18 00:18:46,555 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.093}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.093}
+2026-01-18 00:18:46,555 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.093}
+2026-01-18 00:18:46,565 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:46,571 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.093}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.093}
+2026-01-18 00:18:46,571 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.093}
+2026-01-18 00:18:46,582 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:46,681 - root - INFO - DEBUG: Test 46 (stop_loss=0.093) -> Return: 59.418827880509895, Equity: 604188.278805099, PnL: 594188.278805099
+2026-01-18 00:18:47,220 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:47,225 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:47,230 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:47,257 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.095}
+2026-01-18 00:18:47,258 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:47,258 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.095}
+2026-01-18 00:18:47,258 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.095}]
+2026-01-18 00:18:47,259 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.095}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.095}
+2026-01-18 00:18:47,259 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.095}
+2026-01-18 00:18:47,274 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:47,281 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.095}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.095}
+2026-01-18 00:18:47,281 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.095}
+2026-01-18 00:18:47,295 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:47,449 - root - INFO - DEBUG: Test 47 (stop_loss=0.095) -> Return: 58.57272520343183, Equity: 595727.2520343183, PnL: 585727.2520343183
+2026-01-18 00:18:48,198 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:48,203 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:48,209 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:48,241 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.097}
+2026-01-18 00:18:48,242 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:48,243 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.097}
+2026-01-18 00:18:48,243 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.097}]
+2026-01-18 00:18:48,244 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.097}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.097}
+2026-01-18 00:18:48,244 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.097}
+2026-01-18 00:18:48,258 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:48,266 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.097}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.097}
+2026-01-18 00:18:48,267 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.097}
+2026-01-18 00:18:48,281 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:48,428 - root - INFO - DEBUG: Test 48 (stop_loss=0.097) -> Return: 56.724913756442106, Equity: 577249.137564421, PnL: 567249.137564421
+2026-01-18 00:18:49,042 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:49,048 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:49,054 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:49,093 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.099}
+2026-01-18 00:18:49,094 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:49,095 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.099}
+2026-01-18 00:18:49,095 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.099}]
+2026-01-18 00:18:49,096 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.099}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.099}
+2026-01-18 00:18:49,097 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.099}
+2026-01-18 00:18:49,112 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:49,122 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.099}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.099}
+2026-01-18 00:18:49,123 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.099}
+2026-01-18 00:18:49,145 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:49,366 - root - INFO - DEBUG: Test 49 (stop_loss=0.099) -> Return: 54.24817274881418, Equity: 552481.7274881417, PnL: 542481.7274881417
+2026-01-18 00:18:50,220 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:50,225 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:50,232 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:50,271 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.101}
+2026-01-18 00:18:50,271 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:50,272 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.101}
+2026-01-18 00:18:50,273 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.101}]
+2026-01-18 00:18:50,274 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.101}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.101}
+2026-01-18 00:18:50,275 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.101}
+2026-01-18 00:18:50,295 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:50,306 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.101}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.101}
+2026-01-18 00:18:50,306 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.101}
+2026-01-18 00:18:50,329 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:50,496 - root - INFO - DEBUG: Test 50 (stop_loss=0.101) -> Return: 54.36313196195066, Equity: 553631.3196195066, PnL: 543631.3196195066
+2026-01-18 00:18:51,109 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:51,114 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:51,120 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:51,148 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.103}
+2026-01-18 00:18:51,149 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:51,149 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.103}
+2026-01-18 00:18:51,149 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.103}]
+2026-01-18 00:18:51,150 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.103}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.103}
+2026-01-18 00:18:51,150 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.103}
+2026-01-18 00:18:51,162 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:51,169 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.103}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.103}
+2026-01-18 00:18:51,169 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.103}
+2026-01-18 00:18:51,182 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:51,309 - root - INFO - DEBUG: Test 51 (stop_loss=0.103) -> Return: 52.09429412537334, Equity: 530942.9412537334, PnL: 520942.94125373336
+2026-01-18 00:18:51,890 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:51,894 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:51,899 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:51,923 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.105}
+2026-01-18 00:18:51,924 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:51,925 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.105}
+2026-01-18 00:18:51,925 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.105}]
+2026-01-18 00:18:51,926 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.105}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.105}
+2026-01-18 00:18:51,926 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.105}
+2026-01-18 00:18:51,939 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:51,947 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.105}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.105}
+2026-01-18 00:18:51,948 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.105}
+2026-01-18 00:18:51,958 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:52,090 - root - INFO - DEBUG: Test 52 (stop_loss=0.105) -> Return: 49.913733028816026, Equity: 509137.33028816024, PnL: 499137.33028816024
+2026-01-18 00:18:52,757 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:52,765 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:52,773 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:52,818 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.107}
+2026-01-18 00:18:52,818 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:52,819 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.107}
+2026-01-18 00:18:52,819 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.107}]
+2026-01-18 00:18:52,820 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.107}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.107}
+2026-01-18 00:18:52,821 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.107}
+2026-01-18 00:18:52,841 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:52,854 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.107}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.107}
+2026-01-18 00:18:52,855 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.107}
+2026-01-18 00:18:52,877 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:53,063 - root - INFO - DEBUG: Test 53 (stop_loss=0.107) -> Return: 47.818197734138, Equity: 488181.97734138, PnL: 478181.97734138
+2026-01-18 00:18:53,750 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:53,754 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:53,759 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:53,785 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.109}
+2026-01-18 00:18:53,785 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:53,786 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.109}
+2026-01-18 00:18:53,786 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.109}]
+2026-01-18 00:18:53,787 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.109}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.109}
+2026-01-18 00:18:53,787 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.109}
+2026-01-18 00:18:53,801 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:53,808 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.109}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.109}
+2026-01-18 00:18:53,809 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.109}
+2026-01-18 00:18:53,820 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:53,942 - root - INFO - DEBUG: Test 54 (stop_loss=0.109) -> Return: 43.744618679788275, Equity: 447446.1867978828, PnL: 437446.1867978828
+2026-01-18 00:18:54,498 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:54,502 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:54,506 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:54,530 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.111}
+2026-01-18 00:18:54,530 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:54,531 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.111}
+2026-01-18 00:18:54,531 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.111}]
+2026-01-18 00:18:54,532 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.111}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.111}
+2026-01-18 00:18:54,532 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.111}
+2026-01-18 00:18:54,542 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:54,549 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.111}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.111}
+2026-01-18 00:18:54,550 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.111}
+2026-01-18 00:18:54,561 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:54,704 - root - INFO - DEBUG: Test 55 (stop_loss=0.111) -> Return: 41.89498284420642, Equity: 428949.8284420642, PnL: 418949.8284420642
+2026-01-18 00:18:55,717 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:55,724 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:55,731 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:55,767 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.113}
+2026-01-18 00:18:55,768 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:55,768 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.113}
+2026-01-18 00:18:55,769 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.113}]
+2026-01-18 00:18:55,770 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.113}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.113}
+2026-01-18 00:18:55,770 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.113}
+2026-01-18 00:18:55,787 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:55,796 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.113}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.113}
+2026-01-18 00:18:55,797 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.113}
+2026-01-18 00:18:55,816 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:55,978 - root - INFO - DEBUG: Test 56 (stop_loss=0.113) -> Return: 40.11794087097233, Equity: 411179.4087097233, PnL: 401179.4087097233
+2026-01-18 00:18:56,625 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:56,628 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:56,632 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:56,652 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.115}
+2026-01-18 00:18:56,652 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:56,652 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.115}
+2026-01-18 00:18:56,653 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.115}]
+2026-01-18 00:18:56,653 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.115}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.115}
+2026-01-18 00:18:56,654 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.115}
+2026-01-18 00:18:56,663 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:56,668 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.115}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.115}
+2026-01-18 00:18:56,669 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.115}
+2026-01-18 00:18:56,678 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:56,788 - root - INFO - DEBUG: Test 57 (stop_loss=0.115) -> Return: 42.05368272135027, Equity: 430536.8272135027, PnL: 420536.8272135027
+2026-01-18 00:18:57,364 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:57,367 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:57,371 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:57,393 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.117}
+2026-01-18 00:18:57,394 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:57,394 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.117}
+2026-01-18 00:18:57,394 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.117}]
+2026-01-18 00:18:57,395 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.117}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.117}
+2026-01-18 00:18:57,395 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.117}
+2026-01-18 00:18:57,406 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:57,411 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.117}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.117}
+2026-01-18 00:18:57,412 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.117}
+2026-01-18 00:18:57,422 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:57,526 - root - INFO - DEBUG: Test 58 (stop_loss=0.117) -> Return: 45.07457080526099, Equity: 460745.7080526099, PnL: 450745.7080526099
+2026-01-18 00:18:58,056 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:58,060 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:58,064 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:58,087 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.119}
+2026-01-18 00:18:58,088 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:58,088 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.119}
+2026-01-18 00:18:58,088 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.119}]
+2026-01-18 00:18:58,089 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.119}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.119}
+2026-01-18 00:18:58,089 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.119}
+2026-01-18 00:18:58,099 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:58,104 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.119}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.119}
+2026-01-18 00:18:58,105 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.119}
+2026-01-18 00:18:58,113 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:58,216 - root - INFO - DEBUG: Test 59 (stop_loss=0.119) -> Return: 43.45119352367731, Equity: 444511.9352367731, PnL: 434511.9352367731
+2026-01-18 00:18:58,738 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:58,741 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:58,745 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:58,767 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.121}
+2026-01-18 00:18:58,768 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:58,768 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.121}
+2026-01-18 00:18:58,769 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.121}]
+2026-01-18 00:18:58,769 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.121}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.121}
+2026-01-18 00:18:58,769 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.121}
+2026-01-18 00:18:58,780 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:58,786 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.121}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.121}
+2026-01-18 00:18:58,786 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.121}
+2026-01-18 00:18:58,796 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:58,904 - root - INFO - DEBUG: Test 60 (stop_loss=0.121) -> Return: 42.85863838268468, Equity: 438586.3838268468, PnL: 428586.3838268468
+2026-01-18 00:18:59,448 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:18:59,451 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:18:59,455 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:18:59,477 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.123}
+2026-01-18 00:18:59,477 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:18:59,478 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.123}
+2026-01-18 00:18:59,478 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.123}]
+2026-01-18 00:18:59,478 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.123}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.123}
+2026-01-18 00:18:59,479 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.123}
+2026-01-18 00:18:59,489 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:59,494 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.123}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.123}
+2026-01-18 00:18:59,494 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.123}
+2026-01-18 00:18:59,503 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:18:59,606 - root - INFO - DEBUG: Test 61 (stop_loss=0.123) -> Return: 41.4018801335098, Equity: 424018.801335098, PnL: 414018.801335098
+2026-01-18 00:19:00,182 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:19:00,186 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:19:00,190 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:19:00,216 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.125}
+2026-01-18 00:19:00,216 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:19:00,217 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.125}
+2026-01-18 00:19:00,218 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.125}]
+2026-01-18 00:19:00,218 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.125}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.125}
+2026-01-18 00:19:00,219 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.125}
+2026-01-18 00:19:00,234 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:19:00,245 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.125}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.125}
+2026-01-18 00:19:00,245 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.125}
+2026-01-18 00:19:00,261 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:19:00,438 - root - INFO - DEBUG: Test 62 (stop_loss=0.125) -> Return: 40.41293907702431, Equity: 414129.39077024313, PnL: 404129.39077024313
+2026-01-18 00:19:01,201 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:19:01,205 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:19:01,210 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:19:01,237 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.127}
+2026-01-18 00:19:01,238 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:19:01,238 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.127}
+2026-01-18 00:19:01,239 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.127}]
+2026-01-18 00:19:01,239 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.127}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.127}
+2026-01-18 00:19:01,240 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.127}
+2026-01-18 00:19:01,250 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:19:01,257 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.127}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.127}
+2026-01-18 00:19:01,258 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.127}
+2026-01-18 00:19:01,269 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:19:01,382 - root - INFO - DEBUG: Test 63 (stop_loss=0.127) -> Return: 39.12195429043074, Equity: 401219.5429043074, PnL: 391219.5429043074
+2026-01-18 00:19:01,984 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:19:01,988 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:19:01,992 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:19:02,014 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.129}
+2026-01-18 00:19:02,015 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:19:02,015 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.129}
+2026-01-18 00:19:02,015 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.129}]
+2026-01-18 00:19:02,016 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.129}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.129}
+2026-01-18 00:19:02,016 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.129}
+2026-01-18 00:19:02,026 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:19:02,031 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.129}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.129}
+2026-01-18 00:19:02,032 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.129}
+2026-01-18 00:19:02,041 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:19:02,145 - root - INFO - DEBUG: Test 64 (stop_loss=0.129) -> Return: 37.86842299678899, Equity: 388684.2299678899, PnL: 378684.2299678899
+   Stage 1 complete: stop_loss = 0.091
+2026-01-18 00:19:02,804 - app.services.job_manager - INFO - Saved batch of 64 results for job 5cd04f3f-91bf-495c-adc8-b11c8649519c
+   Saved 64 results (total: 64)
+   Running stage 2/2: Stop Gain
+2026-01-18 00:19:02,827 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:19:02,831 - src.data.incremental_loader - INFO - Incremental update needed. Downloading from 2026-01-17 21:00:00.001000
+2026-01-18 00:19:02,832 - src.data.incremental_loader - INFO - Starting download loop for BTC/USDT from 2026-01-17 21:00:00.001000
+2026-01-18 00:19:08,153 - root - INFO - Full history period: 2017-08-17T00:00:00+00:00 to 2026-01-18T00:00:00+00:00 (3077 candles)
+2026-01-18 00:19:08,185 - root - INFO - Running backtest: BTC/USDT 1d from 2017-08-17 to 2026-01-18
+2026-01-18 00:19:08,188 - src.data.incremental_loader - INFO - Local cache found for BTC/USDT 1d: data/storage\binance\BTC_USDT_1d.parquet
+2026-01-18 00:19:08,191 - src.data.incremental_loader - INFO - Local data covers request. No network fetch needed.
+2026-01-18 00:19:08,207 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: config={'name': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091, 'stop_gain': None}
+2026-01-18 00:19:08,208 - app.strategies.dynamic_strategy - INFO - DEBUG __init__: self.name=macd
+2026-01-18 00:19:08,208 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicator_name=macd, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091, 'stop_gain': None}
+2026-01-18 00:19:08,209 - app.strategies.dynamic_strategy - INFO - DEBUG __init__ SIMPLIFIED: indicators_config=[{'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091, 'stop_gain': None}]
+2026-01-18 00:19:08,209 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091, 'stop_gain': None}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}
+2026-01-18 00:19:08,209 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.091}
+2026-01-18 00:19:08,216 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:19:08,219 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: ind={'kind': 'macd', 'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091, 'stop_gain': None}, params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}
+2026-01-18 00:19:08,220 - app.strategies.dynamic_strategy - INFO - DEBUG MACD: converted_params={'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0, 'stop_loss': 0.091}
+2026-01-18 00:19:08,226 - app.strategies.dynamic_strategy - INFO - Updated MACD strategy to: Entry='MACD_16_26_14 > MACDs_16_26_14', Exit='MACD_16_26_14 < MACDs_16_26_14'
+2026-01-18 00:19:08,300 - root - INFO - DEBUG: Test 1 (stop_gain=None) -> Return: 62.3848253643768, Equity: 633848.253643768, PnL: 623848.253643768
+   Skipping duplicate combination: stop_loss=0.091, stop_gain=None
+✅ Risk optimization complete! Tested 64 combinations in 79.7s
+   Best combination: {'fast': 16, 'slow': 26, 'signal': 14, 'timeframe': '1d', 'fee': 0.00075, 'slippage': 0.0, 'stop_loss': 0.091}
+   First result has max_loss: True
+   max_loss value: -0.027462012500000146
