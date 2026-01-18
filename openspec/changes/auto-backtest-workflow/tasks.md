@@ -1,0 +1,44 @@
+# Tasks: Auto End-to-End Backtest
+
+- [x] Backend: Create minimal `AutoBacktestService` orchestrator
+  - [x] Call existing `/optimize/sequential/timeframe` → Extract best timeframe
+  - [x] Call existing `/backtest/optimize` with best timeframe → Extract best params
+  - [x] Call existing `/optimize/sequential/risk` with best params → Extract best stop/take
+  - [x] Call existing `/favorites` to save final configuration
+- [x] Backend: Implement detailed logging for each stage:
+  - [x] Append logs to `backend/full_execution_log.txt` (same format as existing system)
+  - [x] Log format: `[TIMESTAMP] AUTO_BACKTEST - Stage X: [message]`
+  - [x] Include: stage start/end, results summary, selected values
+- [x] Backend: Implement auto-save to favorites with note
+- [x] Backend: Implement error handling for each stage
+  - [x] Catch and log stage failures
+  - [x] Return clear error messages
+  - [x] Save partial logs on failure
+- [/] Backend: Implement cancellation support
+  - [x] Endpoint: `DELETE /api/backtest/auto/:runId`
+  - [ ] Gracefully terminate running processes (TODO)
+- [ ] Backend: Implement input validation
+  - [ ] Check symbol data availability
+  - [ ] Validate strategy compatibility
+- [x] Backend: Store execution history in database
+  - [x] Table: auto_backtest_runs (id, timestamp, symbol, strategy, status, result_data)
+- [x] API: Create endpoint `POST /api/backtest/auto`
+  - [x] Request: `{ symbol, strategy }`
+  - [x] Response: `{ run_id, status, stages: [...] }`
+- [x] API: Create endpoint `GET /api/backtest/auto/history`
+- [x] API: Create endpoint `GET /api/backtest/auto/:runId`
+- [x] API: Create endpoint `DELETE /api/backtest/auto/:runId` (cancel)
+- [x] Frontend: Create `AutoBacktestPage.tsx` (input form)
+  - [x] Add input validation before submit
+- [x] Frontend: Create `AutoBacktestResultsPage.tsx` (real-time progress display)
+  - [x] Stage progress bar component
+  - [x] Expandable stage cards (Stage 1, 2, 3)
+  - [x] Real-time data table updates via polling
+  - [x] Final result highlight card
+  - [x] Cancel button
+  - [x] Error display component
+- [x] Frontend: Create `AutoBacktestHistoryPage.tsx`
+  - [x] List past executions with filters
+  - [x] "View Results" navigation
+- [x] Frontend: Add "Auto Backtest" card to main page
+- [ ] Verification: Run full auto-backtest for BTC/USDT + RSI and verify favorite is saved

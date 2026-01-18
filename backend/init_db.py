@@ -1,7 +1,7 @@
 # file: backend/init_db.py
-from app.database import engine, Base
-from app.models import BacktestRun, BacktestResult, FavoriteStrategy
+from app.database import Base, engine
+from app.models import BacktestRun, BacktestResult, FavoriteStrategy, AutoBacktestRun
 
-print("Creating database tables locally (SQLite)...")
+print("✅ Criando tabelas no banco de dados...")
 Base.metadata.create_all(bind=engine)
-print(" Tables created in backtest.db")
+print("✅ Banco de dados inicializado!")

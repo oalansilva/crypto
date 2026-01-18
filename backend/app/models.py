@@ -130,3 +130,26 @@ class FavoriteStrategy(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
     notes = Column(String, nullable=True)
+
+
+class AutoBacktestRun(Base):
+    """Model for Auto Backtest execution history"""
+    __tablename__ = "auto_backtest_runs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String, unique=True, index=True, nullable=False)
+    symbol = Column(String, nullable=False)
+    strategy = Column(String, nullable=False)
+    status = Column(String, default='PENDING', nullable=False)
+    
+    # Stage results stored as JSON
+    stage_1_result = Column(JSONType, nullable=True)
+    stage_2_result = Column(JSONType, nullable=True)
+    stage_3_result = Column(JSONType, nullable=True)
+    
+    favorite_id = Column(Integer, nullable=True)
+    error_message = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)

@@ -100,6 +100,7 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
+    const [selectedIndicator, setSelectedIndicator] = useState<string>('ALL');
 
     // ... existing code ...
 
@@ -109,14 +110,21 @@ const FavoritesDashboard: React.FC = () => {
         return Array.from(new Set(favorites.map(f => f.symbol))).sort();
     }, [favorites]);
 
+    // Get unique indicators (strategies) for filter
+    const uniqueIndicators = React.useMemo(() => {
+        if (!favorites) return [];
+        return Array.from(new Set(favorites.map(f => f.strategy_name))).sort();
+    }, [favorites]);
+
     const filteredFavorites = (favorites?.filter(fav => {
         const matchesSearch = fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
             fav.strategy_name.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
+        const matchesIndicator = selectedIndicator === 'ALL' || fav.strategy_name === selectedIndicator;
 
-        return matchesSearch && matchesSymbol;
+        return matchesSearch && matchesSymbol && matchesIndicator;
     }) || []).sort((a, b) => {
         const valA = a.metrics?.total_return_pct ?? a.metrics?.total_return ?? -Infinity;
         const valB = b.metrics?.total_return_pct ?? b.metrics?.total_return ?? -Infinity;
@@ -219,6 +227,23 @@ const FavoritesDashboard: React.FC = () => {
                                 <option value="ALL">All Symbols</option>
                                 {uniqueSymbols.map(sym => (
                                     <option key={sym} value={sym}>{sym}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                                <ChevronDown className="w-4 h-4 text-gray-400" />
+                            </div>
+                        </div>
+
+                        {/* Indicator Filter */}
+                        <div className="relative">
+                            <select
+                                value={selectedIndicator}
+                                onChange={(e) => setSelectedIndicator(e.target.value)}
+                                className="bg-gray-800 border border-gray-700 rounded-lg pl-3 pr-8 py-1.5 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none appearance-none cursor-pointer hover:bg-gray-750"
+                            >
+                                <option value="ALL">All Strategies</option>
+                                {uniqueIndicators.map(ind => (
+                                    <option key={ind} value={ind}>{ind}</option>
                                 ))}
                             </select>
                             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">

@@ -1,5 +1,5 @@
 # file: backend/app/api.py
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from uuid import UUID
 from typing import List
 from sqlalchemy.orm import Session
@@ -370,4 +370,141 @@ async def get_indicator_schema_endpoint(strategy_name: str):
             detail=f"Indicator '{strategy_name}' not found in pandas_ta library"
         )
     
+    
     return schema
+
+
+# ===== AUTO BACKTEST ENDPOINTS =====
+
+@router.post("/backtest/auto")
+async def start_auto_backtest(
+    symbol: str,
+    strategy: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    Start auto end-to-end backtest workflow
+    Executes: Timeframe Optimization → Parameters → Risk → Save Favorite
+    """
+    try:
+        from app.services.auto_backtest_service import AutoBacktestService
+        from app.schemas.auto_backtest import AutoBacktestResponse, StageResult
+        
+        service = AutoBacktestService(db)
+        
+        # Create run record
+        run = service.create_run(symbol, strategy)
+        
+        # Execute workflow in background
+        background_tasks.add_task(service.execute_workflow, run)
+        
+        # Return initial status
+        return AutoBacktestResponse(
+            run_id=run.run_id,
+            symbol=run.symbol,
+            strategy=run.strategy,
+            status=run.status,  # It's already a string
+            stages=[],
+            created_at=run.created_at,
+            updated_at=run.updated_at
+        )
+        
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(500, f"Auto backtest failed: {str(e)}")
+
+
+@router.get("/backtest/auto/history")
+async def get_auto_backtest_history(
+    db: Session = Depends(get_db)
+):
+    """Get list of all auto backtest runs"""
+    from app.models import AutoBacktestRun
+    from app.schemas.auto_backtest import AutoBacktestHistoryItem
+    
+    runs = db.query(AutoBacktestRun).order_by(AutoBacktestRun.created_at.desc()).limit(50).all()
+    
+    return [
+        AutoBacktestHistoryItem(
+            run_id=run.run_id,
+            symbol=run.symbol,
+            strategy=run.strategy,
+            status=run.status,
+            created_at=run.created_at,
+            completed_at=run.completed_at,
+            favorite_id=run.favorite_id
+        )
+        for run in runs
+    ]
+
+
+@router.get("/backtest/auto/{run_id}")
+async def get_auto_backtest_status(
+    run_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get status and results of an auto backtest run"""
+    from app.models import AutoBacktestRun
+    from app.schemas.auto_backtest import AutoBacktestResponse, StageResult
+    
+    run = db.query(AutoBacktestRun).filter(AutoBacktestRun.run_id == run_id).first()
+    if not run:
+        raise HTTPException(404, f"Run {run_id} not found")
+    
+    stages = []
+    if run.stage_1_result:
+        stages.append(StageResult(
+            stage_number=1,
+            stage_name="Timeframe Optimization",
+            status="COMPLETED",
+            result=run.stage_1_result
+        ))
+    if run.stage_2_result:
+        stages.append(StageResult(
+            stage_number=2,
+            stage_name="Parameter Optimization",
+            status="COMPLETED",
+            result=run.stage_2_result
+        ))
+    if run.stage_3_result:
+        stages.append(StageResult(
+            stage_number=3,
+            stage_name="Risk Optimization",
+            status="COMPLETED",
+            result=run.stage_3_result
+        ))
+    
+    return AutoBacktestResponse(
+        run_id=run.run_id,
+        status=run.status,
+        symbol=run.symbol,
+        strategy=run.strategy,
+        stages=stages,
+        favorite_id=run.favorite_id,
+        created_at=run.created_at,
+        completed_at=run.completed_at
+    )
+
+
+
+@router.delete("/backtest/auto/{run_id}")
+async def cancel_auto_backtest(
+    run_id: str,
+    db: Session = Depends(get_db)
+):
+    """Cancel a running auto backtest"""
+    from app.models import AutoBacktestRun
+    
+    run = db.query(AutoBacktestRun).filter(AutoBacktestRun.run_id == run_id).first()
+    if not run:
+        raise HTTPException(404, f"Run {run_id} not found")
+    
+    if run.status != 'RUNNING':
+        raise HTTPException(400, f"Cannot cancel run with status {run.status}")
+    
+    run.status = 'CANCELLED'
+    db.commit()
+    
+    return {"message": f"Run {run_id} cancelled", "status": "CANCELLED"}

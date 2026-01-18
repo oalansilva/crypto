@@ -7,6 +7,9 @@ import { ParameterOptimizationPage } from './pages/ParameterOptimizationPage'
 import { TimeframeOptimizationPage } from './pages/TimeframeOptimizationPage'
 import { RiskManagementOptimizationPage } from './pages/RiskManagementOptimizationPage'
 import FavoritesDashboard from './pages/FavoritesDashboard'
+import { AutoBacktestPage } from './pages/AutoBacktestPage'
+import { AutoBacktestResultsPage } from './pages/AutoBacktestResultsPage'
+import { AutoBacktestHistoryPage } from './pages/AutoBacktestHistoryPage'
 import {
   Activity,
   TrendingUp,
@@ -269,6 +272,45 @@ function HomePage() {
               </div>
             </div>
 
+            {/* Auto Backtest Card */}
+            <div className="mb-8">
+              <div className="glass-strong rounded-2xl p-6 border border-white/10 hover:border-teal-500/30 transition-all duration-300 group">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg blur opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="relative bg-gradient-to-br from-teal-500 to-cyan-600 p-2 rounded-lg">
+                          <Sparkles className="w-5 h-5 text-white" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                          Auto Backtest End-to-End
+                          <span className="px-2 py-0.5 bg-teal-500/20 text-teal-400 text-[10px] uppercase tracking-wider rounded border border-teal-500/30 font-bold">
+                            Novo
+                          </span>
+                        </h3>
+                        <p className="text-sm text-gray-400 mt-0.5">
+                          Otimização completa em um clique
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-gray-300 text-sm mb-4">
+                      Executa automaticamente: Otimização de Timeframe → Parâmetros → Stop/Take → Salva nos Favoritos. Apenas selecione símbolo e estratégia.
+                    </p>
+                    <button
+                      onClick={() => navigate('/backtest/auto')}
+                      className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 inline-flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 group-hover:shadow-teal-500/50 group-hover:scale-[1.02]"
+                    >
+                      <Sparkles className="w-5 h-5" />
+                      Iniciar Auto Backtest
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Wizard removed as per user request */}
           </div>
         )}
@@ -457,6 +499,9 @@ function App() {
         <Route path="/optimize/parameters" element={<ParameterOptimizationPage />} />
         <Route path="/optimize/risk" element={<RiskManagementOptimizationPage />} />
         <Route path="/favorites" element={<FavoritesDashboard />} />
+        <Route path="/backtest/auto" element={<AutoBacktestPage />} />
+        <Route path="/backtest/auto/results/:runId" element={<AutoBacktestResultsPage />} />
+        <Route path="/backtest/auto/history" element={<AutoBacktestHistoryPage />} />
         <Route path="/sequential-optimization" element={<ParameterOptimizationPage />} /> {/* Backward compatibility */}
         <Route path="/results/:runId" element={<ResultsPage />} />
       </Routes>

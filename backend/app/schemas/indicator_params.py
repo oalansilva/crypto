@@ -53,8 +53,8 @@ MACD_SCHEMA = IndicatorSchema(
         ),
         "signal": ParameterSchema(
             default=9,
-            optimization_range=OptimizationRange(min=6, max=12, step=1),
-            market_standard="Most traders use 9. Range 6-12 covers common variations.",
+            optimization_range=OptimizationRange(min=6, max=16, step=1),
+            market_standard="Most traders use 9. Range 6-16 covers common variations.",
             description="Signal line period for MACD"
         )
     }
