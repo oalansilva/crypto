@@ -101,7 +101,7 @@ export function ComboSelectPage() {
                             </div>
                             <div>
                                 <h2 className="text-2xl font-bold text-white">Pre-built Templates</h2>
-                                <p className="text-sm text-gray-400">Professional strategies ready to use</p>
+                                <p className="text-sm text-gray-400">6 professional strategies (database-driven)</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -141,7 +141,7 @@ export function ComboSelectPage() {
                             </div>
                             <div>
                                 <h2 className="text-2xl font-bold text-white">Example Templates</h2>
-                                <p className="text-sm text-gray-400">Learn from these examples</p>
+                                <p className="text-sm text-gray-400">4 learning examples (database-driven)</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
