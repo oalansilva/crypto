@@ -215,7 +215,20 @@ class ComboStrategy:
             try:
                 current_price = df.iloc[i]['close']
                 
-                # Apply pending signals first (from previous candle's confirmation)
+                # CRITICAL: Check stop loss FIRST before any other signals
+                # This ensures stop loss has priority over pending exit signals
+                if in_position and entry_price is not None:
+                    current_pnl = (current_price - entry_price) / entry_price
+                    
+                    if current_pnl <= -self.stop_loss:
+                        # Stop loss hit - immediate sell signal (no confirmation needed)
+                        df.loc[df.index[i], 'signal'] = -1
+                        in_position = False
+                        entry_price = None
+                        pending_exit = False  # Cancel any pending exit
+                        continue
+                
+                # Apply pending signals (from previous candle's confirmation)
                 if pending_entry and not in_position:
                     df.loc[df.index[i], 'signal'] = 1
                     in_position = True
@@ -229,17 +242,6 @@ class ComboStrategy:
                     entry_price = None
                     pending_exit = False
                     continue  # Don't check other conditions this candle
-                
-                # Check stop loss if in position
-                if in_position and entry_price is not None:
-                    current_pnl = (current_price - entry_price) / entry_price
-                    
-                    if current_pnl <= -self.stop_loss:
-                        # Stop loss hit - immediate sell signal (no confirmation needed)
-                        df.loc[df.index[i], 'signal'] = -1
-                        in_position = False
-                        entry_price = None
-                        continue
                 
                 # Check for crossovers/conditions on current candle
                 # If detected, set pending flag for NEXT candle
