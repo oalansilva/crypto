@@ -232,10 +232,10 @@ export function ComboResultsPage() {
                                 <tbody className="divide-y divide-white/5">
                                     {result.trades.map((trade, i) => (
                                         <tr key={i} className="hover:bg-white/5 transition-colors">
-                                            <td className="px-6 py-4 text-sm text-gray-300">{new Date(trade.entry_time).toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-300">{new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}</td>
                                             <td className="px-6 py-4 text-sm text-white font-mono">${trade.entry_price.toFixed(2)}</td>
                                             <td className="px-6 py-4 text-sm text-gray-300">
-                                                {trade.exit_time ? new Date(trade.exit_time).toLocaleString() : '-'}
+                                                {trade.exit_time ? new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' }) : '-'}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-white font-mono">
                                                 {trade.exit_price ? `$${trade.exit_price.toFixed(2)}` : '-'}

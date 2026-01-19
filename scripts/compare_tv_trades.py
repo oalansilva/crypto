@@ -22,11 +22,15 @@ def compare_with_tradingview():
         "stop_loss": 0.019  # 1.9%
     }
     
+    # Binance Fee: 0.075% per operation
+    TRADING_FEE = 0.00075
+    
     print("=== Parâmetros Otimizados ===")
     print(f"EMA Short: {params['ema_short']}")
     print(f"SMA Medium: {params['sma_medium']}")
     print(f"SMA Long: {params['sma_long']}")
     print(f"Stop Loss: {params['stop_loss']*100:.1f}%")
+    print(f"Trading Fee: {TRADING_FEE*100:.3f}% per op")
     
     strategy = service.create_strategy("multi_ma_crossover", parameters=params)
     df_signals = strategy.generate_signals(df.copy())
@@ -47,7 +51,10 @@ def compare_with_tradingview():
                 # Stop loss hit intra-candle
                 position['exit_time'] = idx
                 position['exit_price'] = stop_price  # Exit at stop price
-                position['profit'] = -params['stop_loss']
+                
+                # Calculate Net Profit with Fees
+                position['profit'] = ((stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
+                
                 trades.append(position)
                 position = None
                 continue
@@ -61,7 +68,12 @@ def compare_with_tradingview():
             # Only process normal exit if stop loss wasn't hit
             position['exit_time'] = idx
             position['exit_price'] = row['close']
-            position['profit'] = (position['exit_price'] - position['entry_price']) / position['entry_price']
+            
+            # Calculate Net Profit with Fees
+            exit_price = row['close']
+            entry_price = position['entry_price']
+            position['profit'] = ((exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
+            
             trades.append(position)
             position = None
     

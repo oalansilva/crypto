@@ -18,8 +18,77 @@ from app.services.combo_service import ComboService
 from app.services.backtest_service import BacktestService
 from src.data.incremental_loader import IncrementalLoader
 
+# -----------------------------------------------------------------------------
+# SHARED LOGIC HELPER
+# -----------------------------------------------------------------------------
+def extract_trades_from_signals(df_with_signals, stop_loss: float):
+    """
+    Extract trades from signals with consistent logic:
+    - Intra-candle Stop Loss (Low vs Stop Price)
+    - Binance Fees (0.075% per op)
+    - Exit at exact Stop Price if triggered
+    """
+    TRADING_FEE = 0.00075
+    trades = []
+    position = None
+    
+    # Pre-calculate stop loss threshold to avoid repeated float casting
+    stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
+    
+    for idx, row in df_with_signals.iterrows():
+        # Check stop loss if we have an open position
+        if position is not None and stop_loss_pct > 0:
+            current_low = float(row['low'])
+            entry_price = position['entry_price']
+            
+            # Intra-candle stop check
+            # We use (Low - Entry) / Entry for quick check
+            # Or simpler: Low <= Entry * (1 - Stop)
+            exact_stop_price = entry_price * (1 - stop_loss_pct)
+            
+            if current_low <= exact_stop_price:
+                # Stop loss triggered
+                # Keep UTC timezone to match TradingView
+                position['exit_time'] = idx.isoformat()
+                position['exit_price'] = exact_stop_price
+                
+                # Calculate Net Profit with Fees
+                # ((Exit*(1-fee)) - (Entry*(1+fee))) / (Entry*(1+fee))
+                position['profit'] = ((exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
+                
+                position['exit_reason'] = 'stop_loss'
+                trades.append(position)
+                position = None
+                continue  # Skip signal check for this candle
 
+        # Check signals
+        if row['signal'] == 1 and position is None:
+            # Keep UTC timezone to match TradingView
+            position = {
+                'entry_time': idx.isoformat(),
+                'entry_price': float(row['open']), # Execute at OPEN
+                'type': 'long'
+            }
+        elif row['signal'] == -1 and position is not None:
+            # Normal exit (Signal) - execute at OPEN
+            exit_price = float(row['open'])
+            entry_price = position['entry_price']
+            
+            position['exit_time'] = idx.isoformat()
+            position['exit_price'] = exit_price
+            
+            # Calculate Net Profit with Fees
+            position['profit'] = ((exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
+            
+            position['exit_reason'] = 'signal'
+            trades.append(position)
+            position = None
+            
+    return trades
 
+# -----------------------------------------------------------------------------
+# WORKER FUNCTION (Top-level for ProcessPoolExecutor)
+# -----------------------------------------------------------------------------
 def _worker_run_backtest(args):
     """
     Worker function to run a single backtest in a separate process.
@@ -110,48 +179,8 @@ def _worker_run_backtest(args):
         # Generate signals
         df_with_signals = strategy.generate_signals(df.copy())
         
-        # Extract trades from signals WITH STOP LOSS
-        trades = []
-        position = None
-        
-        for idx, row in df_with_signals.iterrows():
-            # Check stop loss if we have an open position
-            if position is not None:
-                # Calculate current profit/loss based on LOW (intra-candle stop)
-                # We use LOW because a wick can trigger stop loss even if close is higher
-                current_low = row['low']
-                entry_price = position['entry_price']
-                low_pnl = (current_low - entry_price) / entry_price
-                
-                # Check if stop loss hit
-                if low_pnl <= -stop_loss:
-                    # Stop loss triggered
-                    position['exit_time'] = idx
-                    # EXIT AT STOP PRICE (not close price)
-                    # This simulates a Stop Market order executing at the trigger price
-                    stop_price = entry_price * (1 - stop_loss)
-                    position['exit_price'] = stop_price 
-                    position['profit'] = -stop_loss # Exact loss matching the stop %
-                    position['exit_reason'] = 'stop_loss'
-                    trades.append(position)
-                    position = None
-                    continue  # Skip signal check for this candle
-            
-            if row['signal'] == 1 and position is None:
-                # Buy signal
-                position = {
-                    'entry_time': idx,
-                    'entry_price': row['close'],
-                    'type': 'long'
-                }
-            elif row['signal'] == -1 and position is not None:
-                # Sell signal (normal exit)
-                position['exit_time'] = idx
-                position['exit_price'] = row['close']
-                position['profit'] = (position['exit_price'] - position['entry_price']) / position['entry_price']
-                position['exit_reason'] = 'signal'
-                trades.append(position)
-                position = None
+        # Extract trades from signals WITH STOP LOSS using shared helper
+        trades = extract_trades_from_signals(df_with_signals, stop_loss)
         
         # Calculate metrics
         metrics = {
@@ -544,22 +573,12 @@ class ComboOptimizer:
             df_with_signals = strategy.generate_signals(df_final.copy())
             
             # Extract trades
-            trades = []
-            position = None
+            # Extract trades with exact logic matching worker (Stop Loss + Fees)
+            stop_loss = best_params.get('stop_loss', 0.0)
+            trades = extract_trades_from_signals(df_with_signals, stop_loss)
             
-            for idx, row in df_with_signals.iterrows():
-                if row['signal'] == 1 and position is None:
-                    position = {
-                        'entry_time': str(idx),
-                        'entry_price': float(row['close']),
-                        'type': 'long'
-                    }
-                elif row['signal'] == -1 and position is not None:
-                    position['exit_time'] = str(idx)
-                    position['exit_price'] = float(row['close'])
-                    position['profit'] = (position['exit_price'] - position['entry_price']) / position['entry_price']
-                    trades.append(position)
-                    position = None
+            # Prepare candles data
+            candles = []
             
             # Prepare candles data
             candles = []

@@ -235,7 +235,8 @@ class ComboStrategy:
                 if pending_entry and not in_position:
                     df.loc[df.index[i], 'signal'] = 1
                     in_position = True
-                    entry_price = current_price
+                    # Execute at OPEN of the candle (first moment available)
+                    entry_price = df.iloc[i]['open']
                     pending_entry = False
                     continue  # Don't check other conditions this candle
                 
@@ -243,6 +244,7 @@ class ComboStrategy:
                     df.loc[df.index[i], 'signal'] = -1
                     in_position = False
                     entry_price = None
+                    # Execute at OPEN of the candle
                     pending_exit = False
                     continue  # Don't check other conditions this candle
                 

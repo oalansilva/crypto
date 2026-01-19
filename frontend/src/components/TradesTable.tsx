@@ -1,6 +1,6 @@
 // src/components/TradesTable.tsx
 import { useState } from 'react'
-import { TrendingUp, TrendingDown, Filter, ArrowUpDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react'
 
 interface Trade {
     entry_time: string
@@ -111,19 +111,25 @@ export function TradesTable({ trades, strategyName, color }: TradesTableProps) {
                                     </span>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-300">
-                                    {new Date(trade.entry_time).toLocaleString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
+                                    {new Date(trade.entry_time).toLocaleString('pt-BR', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
                                         hour: '2-digit',
-                                        minute: '2-digit'
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        timeZone: 'UTC'
                                     })}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-300">
-                                    {new Date(trade.exit_time).toLocaleString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
+                                    {new Date(trade.exit_time).toLocaleString('pt-BR', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
                                         hour: '2-digit',
-                                        minute: '2-digit'
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        timeZone: 'UTC'
                                     })}
                                 </td>
                                 <td className="px-4 py-3 text-right text-sm text-white font-mono">
