@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Layers, Sparkles, ArrowRight, Info } from 'lucide-react'
+import { Layers, Sparkles, ArrowRight, Database } from 'lucide-react'
 
 interface Template {
     name: string
@@ -18,6 +18,11 @@ export function ComboSelectPage() {
     const [templates, setTemplates] = useState<TemplateList | null>(null)
     const [loading, setLoading] = useState(true)
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+
+    // Combine all templates into a single array
+    const allTemplates = templates
+        ? [...templates.prebuilt, ...templates.examples, ...templates.custom]
+        : []
 
     useEffect(() => {
         fetchTemplates()
@@ -77,7 +82,7 @@ export function ComboSelectPage() {
                             </div>
                             <div>
                                 <h1 className="text-3xl font-bold gradient-text">Combo Strategies</h1>
-                                <p className="text-sm text-gray-400 mt-0.5">Select a template to get started</p>
+                                <p className="text-sm text-gray-400 mt-0.5">All strategies are database-driven</p>
                             </div>
                         </div>
                         <button
@@ -93,84 +98,52 @@ export function ComboSelectPage() {
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-6xl mx-auto space-y-8">
-                    {/* Pre-built Templates */}
+                    {/* Unified Templates Section */}
                     <section>
                         <div className="flex items-center gap-3 mb-6">
                             <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-2 rounded-lg">
-                                <Sparkles className="w-5 h-5 text-white" />
+                                <Database className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-bold text-white">Pre-built Templates</h2>
-                                <p className="text-sm text-gray-400">6 professional strategies (database-driven)</p>
+                                <h2 className="text-2xl font-bold text-white">Available Templates</h2>
+                                <p className="text-sm text-gray-400">{allTemplates.length} strategies stored in database</p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {templates?.prebuilt.map((template) => (
-                                <button
-                                    key={`prebuilt-${template.name}`}
-                                    onClick={() => handleSelectTemplate(template.name)}
-                                    className={`glass-strong rounded-xl p-6 border transition-all duration-300 text-left group hover:scale-[1.02] ${selectedTemplate === template.name
-                                        ? 'border-blue-500 bg-blue-500/10'
-                                        : 'border-white/10 hover:border-blue-500/50'
-                                        }`}
-                                >
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="bg-blue-500/20 p-2 rounded-lg">
-                                            <Layers className="w-5 h-5 text-blue-400" />
-                                        </div>
-                                        {selectedTemplate === template.name && (
-                                            <div className="bg-blue-500 rounded-full p-1">
-                                                <ArrowRight className="w-4 h-4 text-white" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
-                                        {template.name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                                    </h3>
-                                    <p className="text-sm text-gray-400 line-clamp-2">{template.description}</p>
-                                </button>
-                            ))}
-                        </div>
-                    </section>
 
-                    {/* Example Templates */}
-                    <section>
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="bg-gradient-to-r from-teal-500 to-cyan-500 p-2 rounded-lg">
-                                <Info className="w-5 h-5 text-white" />
+                        {allTemplates.length === 0 ? (
+                            <div className="glass-strong rounded-xl p-12 text-center">
+                                <Database className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                                <p className="text-gray-400">No templates available</p>
                             </div>
-                            <div>
-                                <h2 className="text-2xl font-bold text-white">Example Templates</h2>
-                                <p className="text-sm text-gray-400">4 learning examples (database-driven)</p>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {templates?.examples.map((template) => (
-                                <button
-                                    key={`example-${template.name}`}
-                                    onClick={() => handleSelectTemplate(template.name)}
-                                    className={`glass-strong rounded-xl p-6 border transition-all duration-300 text-left group hover:scale-[1.02] ${selectedTemplate === template.name
-                                        ? 'border-teal-500 bg-teal-500/10'
-                                        : 'border-white/10 hover:border-teal-500/50'
-                                        }`}
-                                >
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="bg-teal-500/20 p-2 rounded-lg">
-                                            <Info className="w-5 h-5 text-teal-400" />
-                                        </div>
-                                        {selectedTemplate === template.name && (
-                                            <div className="bg-teal-500 rounded-full p-1">
-                                                <ArrowRight className="w-4 h-4 text-white" />
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {allTemplates.map((template) => (
+                                    <button
+                                        key={template.name}
+                                        onClick={() => handleSelectTemplate(template.name)}
+                                        className={`glass-strong rounded-xl p-6 border transition-all duration-300 text-left group hover:scale-[1.02] ${selectedTemplate === template.name
+                                            ? 'border-blue-500 bg-blue-500/10'
+                                            : 'border-white/10 hover:border-blue-500/50'
+                                            }`}
+                                    >
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="bg-blue-500/20 p-2 rounded-lg">
+                                                <Layers className="w-5 h-5 text-blue-400" />
                                             </div>
-                                        )}
-                                    </div>
-                                    <h3 className="text-lg font-bold text-white mb-2 group-hover:text-teal-400 transition-colors">
-                                        {template.name}
-                                    </h3>
-                                    <p className="text-sm text-gray-400 line-clamp-2">{template.description}</p>
-                                </button>
-                            ))}
-                        </div>
+                                            {selectedTemplate === template.name && (
+                                                <div className="bg-blue-500 rounded-full p-1">
+                                                    <ArrowRight className="w-4 h-4 text-white" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
+                                            {template.name.replace(/^Example: /, '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                        </h3>
+                                        <p className="text-sm text-gray-400 line-clamp-2">{template.description}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </section>
 
                     {/* Continue Button */}
@@ -180,7 +153,7 @@ export function ComboSelectPage() {
                                 onClick={handleContinue}
                                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center gap-3 shadow-lg shadow-blue-500/50 hover:scale-105"
                             >
-                                Continue with {selectedTemplate.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                Continue with {selectedTemplate.replace(/^Example: /, '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                                 <ArrowRight className="w-5 h-5" />
                             </button>
                         </div>
