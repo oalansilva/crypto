@@ -68,15 +68,11 @@ class ComboOptimizer:
             })
             stage_num += 1
             
-        # Check if strategy class has explicit optimization schema
-        schema = None
-        if template_name in self.combo_service.PREBUILT_TEMPLATES:
-            cls = self.combo_service.PREBUILT_TEMPLATES[template_name]
-            if hasattr(cls, 'get_optimization_schema'):
-                schema = cls.get_optimization_schema()
+        # Get optimization schema from database (if available)
+        schema = metadata.get('optimization_schema')
                 
         if schema:
-            # Use explicit schema from class
+            # Use explicit schema from database
             for param_name, config in schema.items():
                 # Check for custom range override
                 if custom_ranges and param_name in custom_ranges:
@@ -104,7 +100,7 @@ class ComboOptimizer:
                 stage_num += 1
                 
         else:
-            # Fallback: Infer from indicators metadata (Legacy behavior)
+            # Fallback: Infer from indicators metadata (Legacy behavior for templates without schema)
             # Stages 2 to N: Indicator parameters
             for indicator in metadata['indicators']:
                 ind_type = indicator['type']

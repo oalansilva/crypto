@@ -2,7 +2,7 @@
 Combo Strategy Service
 
 Handles combo strategy instantiation, backtesting, and optimization.
-Isolated from existing BacktestService.
+All strategies are now loaded from database - no hard-coded Python classes.
 """
 
 import sqlite3
@@ -10,29 +10,11 @@ import json
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from app.strategies.combos import (
-    ComboStrategy,
-    MultiMaCrossoverCombo,
-    EmaRsiCombo,
-    EmaMacdVolumeCombo,
-    BollingerRsiAdxCombo,
-    VolumeAtrBreakoutCombo,
-    EmaRsiFibonacciCombo
-)
+from app.strategies.combos import ComboStrategy
 
 
 class ComboService:
-    """Service for managing combo strategies."""
-    
-    # Map template names to classes
-    PREBUILT_TEMPLATES = {
-        "multi_ma_crossover": MultiMaCrossoverCombo,
-        "ema_rsi": EmaRsiCombo,
-        "ema_macd_volume": EmaMacdVolumeCombo,
-        "bollinger_rsi_adx": BollingerRsiAdxCombo,
-        "volume_atr_breakout": VolumeAtrBreakoutCombo,
-        "ema_rsi_fibonacci": EmaRsiFibonacciCombo
-    }
+    """Service for managing combo strategies (database-driven)."""
     
     def __init__(self, db_path: str = None):
         if db_path is None:
@@ -44,7 +26,7 @@ class ComboService:
     
     def list_templates(self) -> Dict[str, List[Dict[str, str]]]:
         """
-        List all available combo templates.
+        List all available combo templates from database.
         
         Returns:
             Dict with prebuilt, examples, and custom templates
@@ -52,10 +34,15 @@ class ComboService:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Get pre-built templates
+        # Get pre-built templates from database
+        cursor.execute("""
+            SELECT name, description
+            FROM combo_templates
+            WHERE is_prebuilt = 1
+        """)
         prebuilt = [
-            {"name": name, "description": cls.__doc__ or ""}
-            for name, cls in self.PREBUILT_TEMPLATES.items()
+            {"name": row[0], "description": row[1] or ""}
+            for row in cursor.fetchall()
         ]
         
         # Get example templates from database
@@ -90,7 +77,7 @@ class ComboService:
     
     def get_template_metadata(self, template_name: str) -> Optional[Dict[str, Any]]:
         """
-        Get metadata for a specific template.
+        Get metadata for a specific template from database.
         
         Args:
             template_name: Name of the template
@@ -98,28 +85,11 @@ class ComboService:
         Returns:
             Template metadata or None if not found
         """
-        # Check if it's a pre-built template
-        if template_name in self.PREBUILT_TEMPLATES:
-            cls = self.PREBUILT_TEMPLATES[template_name]
-            # Create instance with defaults to get metadata
-            instance = cls()
-            
-            return {
-                "name": template_name,
-                "description": cls.__doc__ or "",
-                "is_prebuilt": True,
-                "indicators": instance.indicators,
-                "entry_logic": instance.entry_logic,
-                "exit_logic": instance.exit_logic,
-                "stop_loss": instance.stop_loss
-            }
-        
-        # Check database for example/custom templates
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT name, description, is_example, is_prebuilt, template_data
+            SELECT name, description, is_example, is_prebuilt, template_data, optimization_schema
             FROM combo_templates
             WHERE name = ?
         """, (template_name,))
@@ -129,11 +99,14 @@ class ComboService:
         
         if row:
             template_data = json.loads(row[4])
+            optimization_schema = json.loads(row[5]) if row[5] else None
+            
             return {
                 "name": row[0],
                 "description": row[1] or "",
                 "is_example": bool(row[2]),
                 "is_prebuilt": bool(row[3]),
+                "optimization_schema": optimization_schema,
                 **template_data
             }
         
@@ -145,33 +118,48 @@ class ComboService:
         parameters: Optional[Dict[str, Any]] = None
     ) -> ComboStrategy:
         """
-        Create a combo strategy instance.
+        Create a combo strategy instance from database configuration.
         
         Args:
             template_name: Name of the template
-            parameters: Custom parameter values
+            parameters: Optional parameter overrides
         
         Returns:
             ComboStrategy instance
         """
-        parameters = parameters or {}
-        
-        # Check if it's a pre-built template
-        if template_name in self.PREBUILT_TEMPLATES:
-            cls = self.PREBUILT_TEMPLATES[template_name]
-            return cls(**parameters)
-        
-        # Load from database
+        # Load template metadata from database
         metadata = self.get_template_metadata(template_name)
         if not metadata:
             raise ValueError(f"Template '{template_name}' not found")
         
+        # Extract template data
+        indicators = metadata["indicators"]
+        entry_logic = metadata["entry_logic"]
+        exit_logic = metadata["exit_logic"]
+        stop_loss = metadata.get("stop_loss", 0.015)
+        
+        # Handle stop_loss if it's a dict with 'default' key
+        if isinstance(stop_loss, dict):
+            stop_loss = stop_loss.get("default", 0.015)
+        
+        # Apply parameter overrides if provided
+        if parameters:
+            # Update indicator parameters
+            for indicator in indicators:
+                param_name = indicator.get("alias") or indicator["type"]
+                if param_name in parameters:
+                    indicator["params"].update(parameters[param_name])
+            
+            # Update stop_loss if provided
+            if "stop_loss" in parameters:
+                stop_loss = parameters["stop_loss"]
+        
         # Create ComboStrategy from metadata
         return ComboStrategy(
-            indicators=metadata["indicators"],
-            entry_logic=metadata["entry_logic"],
-            exit_logic=metadata["exit_logic"],
-            stop_loss=metadata.get("stop_loss", {}).get("default", 0.015)
+            indicators=indicators,
+            entry_logic=entry_logic,
+            exit_logic=exit_logic,
+            stop_loss=stop_loss
         )
     
     def save_custom_template(

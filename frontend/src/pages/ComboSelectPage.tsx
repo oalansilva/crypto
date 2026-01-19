@@ -107,11 +107,11 @@ export function ComboSelectPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {templates?.prebuilt.map((template) => (
                                 <button
-                                    key={template.name}
+                                    key={`prebuilt-${template.name}`}
                                     onClick={() => handleSelectTemplate(template.name)}
                                     className={`glass-strong rounded-xl p-6 border transition-all duration-300 text-left group hover:scale-[1.02] ${selectedTemplate === template.name
-                                            ? 'border-blue-500 bg-blue-500/10'
-                                            : 'border-white/10 hover:border-blue-500/50'
+                                        ? 'border-blue-500 bg-blue-500/10'
+                                        : 'border-white/10 hover:border-blue-500/50'
                                         }`}
                                 >
                                     <div className="flex items-start justify-between mb-3">
@@ -147,11 +147,11 @@ export function ComboSelectPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {templates?.examples.map((template) => (
                                 <button
-                                    key={template.name}
+                                    key={`example-${template.name}`}
                                     onClick={() => handleSelectTemplate(template.name)}
                                     className={`glass-strong rounded-xl p-6 border transition-all duration-300 text-left group hover:scale-[1.02] ${selectedTemplate === template.name
-                                            ? 'border-teal-500 bg-teal-500/10'
-                                            : 'border-white/10 hover:border-teal-500/50'
+                                        ? 'border-teal-500 bg-teal-500/10'
+                                        : 'border-white/10 hover:border-teal-500/50'
                                         }`}
                                 >
                                     <div className="flex items-start justify-between mb-3">
