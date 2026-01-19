@@ -5,6 +5,7 @@ Isolated endpoints for combo strategies.
 Does not modify existing routes.
 """
 
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any, List
 import pandas as pd
@@ -19,44 +20,37 @@ from app.schemas.combo_params import (
     ComboTemplateMetadata
 )
 from app.services.combo_service import ComboService
-from app.services.sequential_optimizer import SequentialOptimizer
 from src.data.incremental_loader import IncrementalLoader
+from app.services.combo_optimizer import ComboOptimizer
+
+# Setup Logger
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/api/combos", tags=["combos"])
 
 
 @router.get("/templates", response_model=TemplateListResponse)
-async def list_templates():
-    """
-    List all available combo templates.
-    
-    Returns:
-        - prebuilt: Pre-configured templates
-        - examples: Example templates
-        - custom: User-created templates
-    """
-    service = ComboService()
-    templates = service.list_templates()
-    
-    return TemplateListResponse(**templates)
+async def list_combo_templates():
+    """List all available combo strategy templates."""
+    try:
+        service = ComboService()
+        templates = service.list_templates()
+        logger.info(f"Listed templates: {len(templates.get('prebuilt', [])) + len(templates.get('examples', [])) + len(templates.get('custom', []))} total")
+        return TemplateListResponse(**templates)
+    except Exception as e:
+        logger.error(f"Error listing templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/meta/{template_name}")
+@router.get("/meta/{template_name}", response_model=ComboTemplateMetadata)
 async def get_template_metadata(template_name: str):
-    """
-    Get metadata for a specific combo template.
-    
-    Args:
-        template_name: Name of the template
-    
-    Returns:
-        Template metadata including indicators, logic, and parameters
-    """
+    """Get metadata for a specific template."""
     service = ComboService()
     metadata = service.get_template_metadata(template_name)
     
     if not metadata:
+        logger.warning(f"Template not found: {template_name}")
         raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found")
     
     return metadata
@@ -74,12 +68,15 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         Backtest results with metrics, trades, and indicator data
     """
     try:
+        logger.info(f"Starting combo backtest for template: {request.template_name} on {request.symbol} {request.timeframe}")
+        
         # Create strategy instance
         service = ComboService()
         strategy = service.create_strategy(
             template_name=request.template_name,
             parameters=request.parameters
         )
+        logger.info(f"Strategy instance created for {request.template_name}")
         
         # Load data
         loader = IncrementalLoader()
@@ -89,9 +86,12 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             since_str=request.start_date or "2017-01-01",
             until_str=request.end_date
         )
+        logger.info(f"Data loaded: {len(df)} candles from {df.index[0]} to {df.index[-1]}")
         
         # Generate signals
         df_with_signals = strategy.generate_signals(df)
+        signals_count = len(df_with_signals[df_with_signals['signal'] != 0])
+        logger.info(f"Signals generated: {signals_count} signals found")
         
         # Calculate metrics (simplified - reuse existing backtest logic)
         trades = []
@@ -127,6 +127,7 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         # Calculate basic metrics
         total_trades = len([t for t in trades if 'exit_price' in t])
         winning_trades = len([t for t in trades if t.get('profit', 0) > 0])
+        logger.info(f"Backtest execution complete: {total_trades} trades, {winning_trades} wins")
         
         metrics = {
             "total_trades": total_trades,

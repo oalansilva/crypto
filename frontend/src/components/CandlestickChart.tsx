@@ -113,51 +113,10 @@ export function CandlestickChart({ candles, markers, indicators, strategyName, c
             },
         })
 
-        // Add indicators lines
-        if (indicators && indicators.length > 0) {
-            const indicatorColors = ['#fbbf24', '#3b82f6', '#8b5cf6', '#ec4899'] // Amber, Blue, Violet, Pink
+        // Indicators lines removed as per user request to keep chart clean
+        // Only showing candles and order markers
 
-            indicators.forEach((ind, index) => {
-                const isOscillator = ind.name.includes('RSI')
-
-                const lineSeries = chart.addLineSeries({
-                    color: ind.color || indicatorColors[index % indicatorColors.length],
-                    lineWidth: 2,
-                    title: ind.name,
-                    priceScaleId: isOscillator ? 'oscillator' : 'right', // Separate scale for indicators like RSI
-                })
-
-                if (isOscillator) {
-                    chart.priceScale('oscillator').applyOptions({
-                        scaleMargins: {
-                            top: 0.75, // Position at bottom 25%
-                            bottom: 0,
-                        },
-                    })
-                }
-
-                // Ensure time is correct format
-                const rawLineData = ind.data.map(d => ({
-                    time: (typeof d.time === 'number' ? d.time : (new Date(d.time).getTime() / 1000)) as any,
-                    value: d.value
-                }))
-
-                // Remove duplicates and sort indicators
-                const uniqueLineData = rawLineData.reduce((acc, item) => {
-                    const existing = acc.find(i => i.time === item.time)
-                    if (!existing) {
-                        acc.push(item)
-                    }
-                    return acc
-                }, [] as typeof rawLineData)
-
-                const sortedLineData = uniqueLineData.sort((a, b) => a.time - b.time)
-
-                lineSeries.setData(sortedLineData)
-            })
-        }
-
-        // Fit content
+        // Fit content with better spacing
         chart.timeScale().fitContent()
 
         // Handle resize
@@ -192,21 +151,7 @@ export function CandlestickChart({ candles, markers, indicators, strategyName, c
                 </div>
             </div>
 
-            {/* Indicator Legend */}
-            {indicators && indicators.length > 0 && (
-                <div className="flex items-center gap-4 mb-4 p-3 glass rounded-xl border border-white/5">
-                    <span className="text-sm text-gray-400 font-semibold">Indicadores:</span>
-                    {indicators.map((ind, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <div
-                                className="w-3 h-3 rounded-sm"
-                                style={{ backgroundColor: ind.color || '#ff9800' }}
-                            />
-                            <span className="text-sm font-medium text-white">{ind.name}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {/* Indicator Legend - Removed as lines are hidden */}
 
             <div ref={chartContainerRef} className="w-full" />
         </div>

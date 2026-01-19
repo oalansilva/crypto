@@ -143,7 +143,11 @@ class IncrementalLoader:
         if until_dt:
             mask &= (df_final['timestamp_utc'] <= until_dt)
             
-        return df_final.loc[mask].copy()
+        df_result = df_final.loc[mask].copy()
+        if not df_result.empty:
+            df_result.set_index('timestamp_utc', inplace=True)
+            
+        return df_result
 
     def _download_loop(self, symbol, timeframe, since_ts, until_ts, limit):
         all_ohlcv = []
