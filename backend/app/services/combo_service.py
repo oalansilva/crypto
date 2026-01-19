@@ -149,15 +149,59 @@ class ComboService:
         
         # Apply parameter overrides if provided
         if parameters:
-            # Update indicator parameters
-            for indicator in indicators:
-                param_name = indicator.get("alias") or indicator["type"]
-                if param_name in parameters:
-                    indicator["params"].update(parameters[param_name])
+            # We need the same robust logic here as in _worker_run_backtest to handle flat params
+            # like 'sma_short' -> alias 'short', param 'length'
+            import copy
+            indicators = copy.deepcopy(indicators)
             
-            # Update stop_loss if provided
-            if "stop_loss" in parameters:
-                stop_loss = parameters["stop_loss"]
+            for param_key, param_value in parameters.items():
+                if param_key == "stop_loss":
+                    stop_loss = param_value
+                    continue
+                
+                if param_key == "timeframe":
+                    continue
+                    
+                matched = False
+                for indicator in indicators:
+                    alias = indicator.get("alias", "")
+                    type_ = indicator.get("type", "")
+                    
+                    # 1. Try "alias_param" format
+                    if alias and param_key.startswith(f"{alias}_"):
+                        target_field = param_key[len(alias)+1:]
+                        if "params" not in indicator: indicator["params"] = {}
+                        indicator["params"][target_field] = param_value
+                        matched = True
+                        break
+                    
+                    # 2. Try "type_alias" format (e.g., "sma_short")
+                    if alias and type_ and param_key == f"{type_}_{alias}":
+                        if "params" not in indicator: indicator["params"] = {}
+                        if "length" in indicator["params"]:
+                            indicator["params"]["length"] = param_value
+                        elif "period" in indicator["params"]:
+                            indicator["params"]["period"] = param_value
+                        else:
+                            indicator["params"]["length"] = param_value
+                        matched = True
+                        break
+
+                    # 3. Try exact alias match
+                    if alias and param_key == alias:
+                        if "params" not in indicator: indicator["params"] = {}
+                        if "length" in indicator["params"]:
+                            indicator["params"]["length"] = param_value
+                        elif "period" in indicator["params"]:
+                            indicator["params"]["period"] = param_value
+                        else:
+                            indicator["params"]["length"] = param_value
+                        matched = True
+                        break
+                        
+                if not matched:
+                    # Fallback for standard/nested params if passed directly
+                    pass
         
         # Create ComboStrategy from metadata
         return ComboStrategy(

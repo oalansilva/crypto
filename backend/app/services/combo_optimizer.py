@@ -110,11 +110,29 @@ def _worker_run_backtest(args):
         # Generate signals
         df_with_signals = strategy.generate_signals(df.copy())
         
-        # Extract trades from signals
+        # Extract trades from signals WITH STOP LOSS
         trades = []
         position = None
         
         for idx, row in df_with_signals.iterrows():
+            # Check stop loss if we have an open position
+            if position is not None:
+                # Calculate current profit/loss
+                current_price = row['close']
+                entry_price = position['entry_price']
+                current_pnl = (current_price - entry_price) / entry_price
+                
+                # Check if stop loss hit
+                if current_pnl <= -stop_loss:
+                    # Stop loss triggered
+                    position['exit_time'] = idx
+                    position['exit_price'] = current_price
+                    position['profit'] = current_pnl
+                    position['exit_reason'] = 'stop_loss'
+                    trades.append(position)
+                    position = None
+                    continue  # Skip signal check for this candle
+            
             if row['signal'] == 1 and position is None:
                 # Buy signal
                 position = {
@@ -123,10 +141,11 @@ def _worker_run_backtest(args):
                     'type': 'long'
                 }
             elif row['signal'] == -1 and position is not None:
-                # Sell signal
+                # Sell signal (normal exit)
                 position['exit_time'] = idx
                 position['exit_price'] = row['close']
                 position['profit'] = (position['exit_price'] - position['entry_price']) / position['entry_price']
+                position['exit_reason'] = 'signal'
                 trades.append(position)
                 position = None
         
@@ -153,8 +172,19 @@ def _worker_run_backtest(args):
             std_dev = np.std(returns)
             metrics['sharpe_ratio'] = np.mean(returns) / std_dev if std_dev > 0 else 0
         
+        # Construct full effective parameters for logging
+        full_params = {}
+        for ind in indicators:
+            p_prefix = ind.get("alias") or ind.get("type")
+            for pk, pv in ind.get("params", {}).items():
+                full_params[f"{p_prefix}_{pk}"] = pv
+        
+        full_params['stop_loss'] = stop_loss
+
         return {
             'value': value,
+            'params': params,  # Input overrides
+            'full_params': full_params, # Complete effective state
             'metrics': metrics,
             'trades_count': len(trades),
             'success': True
@@ -352,131 +382,140 @@ class ComboOptimizer:
         max_workers = max(1, (os.cpu_count() or 2) - 1)
         
         # Run optimization stages
-        for stage in stages:
-            stage_param = stage['parameter']
-            stage_values = stage['values']
+        # Run optimization stages with Iterative Refinement
+        max_rounds = 5
+        round_num = 1
+        converged = False
+        
+        while not converged and round_num <= max_rounds:
+            logging.info(f"--- STARTING ROUND {round_num} OF REFINE ---")
+            params_at_start = best_params.copy()
             
-            logging.info(f"Stage {stage['stage_num']}: Optimizing {stage_param} ({len(stage_values)} tests) with {max_workers} workers")
-            
-            start_time = time.time()
-            stage_best_value = None
-            stage_best_sharpe = float('-inf')
-            
-            # Prepare arguments for parallel execution
-            worker_args = []
-            for value in stage_values:
-                # Build parameters for this test
-                test_params = best_params.copy()
+            for stage in stages:
+                stage_param = stage['parameter']
+                stage_values = stage['values']
                 
-                # Handle timeframe parameter logic in main process if possible, 
-                # but since we pass DF, we can't easily change timeframe in worker for same DF.
-                # NOTE: Parallelizing timeframe optimization is tricky because DF changes.
-                # For now, let's keep timeframe optimization sequential or assume fixed DF for other params.
+                logging.info(f"Round {round_num} - Stage {stage['stage_num']}: Optimizing {stage_param} ({len(stage_values)} tests) with {max_workers} workers")
+                
+                start_time = time.time()
+                stage_best_value = None
+                stage_best_sharpe = float('-inf')
+                
+                # Prepare arguments for parallel execution
+                worker_args = []
+                for value in stage_values:
+                    # Build parameters for this test
+                    test_params = best_params.copy()
+                    
+                    if stage_param == 'timeframe':
+                        # Timeframe optimization changes the DATA itself. 
+                        # Complex to parallelize efficiently without reloading data in every worker.
+                        # Separate logic.
+                        continue
+                    else:
+                        test_params[stage_param] = value
+                        worker_args.append((template_metadata, test_params, df, stage_param, value))
                 
                 if stage_param == 'timeframe':
-                    # Timeframe optimization changes the DATA itself. 
-                    # Complex to parallelize efficiently without reloading data in every worker.
-                    # Fallback to sequential for timeframe stage
-                    continue
-                else:
-                    test_params[stage_param] = value
-                    worker_args.append((template_metadata, test_params, df, stage_param, value))
-            
-            if stage_param == 'timeframe':
-                # Sequential fallback for timeframe
-                for value in stage_values:
-                    # ... (existing sequential logic for timeframe) ...
-                     # Reload data with new timeframe
-                    sub_df = self.loader.fetch_data(
-                        symbol=symbol,
-                        timeframe=value,
-                        since_str=start_date,
-                        until_str=end_date
-                    )
-                     # Run single test (simplified sequential)
-                    logging.info(f"  Testing {stage_param}={value}")
-                    # ... execute ...
-                    # Should replicate worker logic but sequentially
-                    # For brevity, reusing worker function logic here would be clean but dataframe differs.
-                    # Synchronous execution for timeframe
-                    worker_args = (template_metadata, test_params, sub_df, stage_param, value)
-                    res = _worker_run_backtest(worker_args)
-                    
-                    value = res['value']
-                    if res['success']:
-                        metrics = res['metrics']
-                        trades_count = res['trades_count']
-                        sharpe = metrics['sharpe_ratio']
+                    # Sequential fallback for timeframe
+                    for value in stage_values:
+                        # Reload data with new timeframe
+                        sub_df = self.loader.fetch_data(
+                            symbol=symbol,
+                            timeframe=value,
+                            since_str=start_date,
+                            until_str=end_date
+                        )
+                         # Synchronous execution for timeframe
+                        worker_args_tf = (template_metadata, test_params, sub_df, stage_param, value)
+                        res = _worker_run_backtest(worker_args_tf)
                         
-                        logging.info(f"  Tested {stage_param}={value} -> Sharpe: {sharpe:.3f}, Trades: {trades_count}")
-                        
-                        if sharpe > stage_best_sharpe:
-                            stage_best_sharpe = sharpe
-                            stage_best_value = value
-                            best_metrics = metrics
-                    else:
-                        logging.error(f"  Failed {stage_param}={value}: {res.get('error')}")
-            
-            else:
-                # Parallel execution for indicator parameters
-                with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-                    results = list(executor.map(_worker_run_backtest, worker_args))
+                        value_res = res['value']
+                        if res['success']:
+                            metrics = res['metrics']
+                            trades_count = res['trades_count']
+                            sharpe = metrics['sharpe_ratio']
+                            
+                            logging.info(f"  Tested {stage_param}={value_res} -> Sharpe: {sharpe:.3f}, Trades: {trades_count}")
+                            
+                            if sharpe > stage_best_sharpe:
+                                stage_best_sharpe = sharpe
+                                stage_best_value = value_res
+                                best_metrics = metrics
+                        else:
+                            logging.error(f"  Failed {stage_param}={value_res}: {res.get('error')}")
                 
-                # Process results with Weighted Composite Score
-                # Collect all valid results first
-                valid_results = []
-                for res in results:
-                    if res['success']:
-                        valid_results.append(res)
-                    else:
-                        logging.error(f"  Failed {stage_param}={res['value']}: {res.get('error')}")
-
-                if valid_results:
-                    # Calculate min/max for normalization
-                    sharpes = [r['metrics']['sharpe_ratio'] for r in valid_results]
-                    returns = [r['metrics']['total_return'] for r in valid_results]
+                else:
+                    # Parallel execution for indicator parameters
+                    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+                        results = list(executor.map(_worker_run_backtest, worker_args))
                     
-                    min_sharpe, max_sharpe = min(sharpes), max(sharpes)
-                    min_return, max_return = min(returns), max(returns)
-                    
-                    range_sharpe = max_sharpe - min_sharpe
-                    range_return = max_return - min_return
-                    
-                    best_score = float('-inf')
+                    # Process results with Weighted Composite Score
+                    valid_results = []
+                    for res in results:
+                        if res['success']:
+                            valid_results.append(res)
+                        else:
+                            logging.error(f"  Failed {stage_param}={res['value']}: {res.get('error')}")
 
-                    for res in valid_results:
-                        metrics = res['metrics']
-                        sharpe = metrics['sharpe_ratio']
-                        total_return = metrics['total_return']
+                    if valid_results:
+                        # Calculate min/max for normalization
+                        sharpes = [r['metrics']['sharpe_ratio'] for r in valid_results]
+                        returns = [r['metrics']['total_return'] for r in valid_results]
                         
-                        # Normalize inputs (0 to 1 scale)
-                        # Handle division by zero if all values are identical
-                        norm_sharpe = (sharpe - min_sharpe) / range_sharpe if range_sharpe > 0 else 0
-                        norm_return = (total_return - min_return) / range_return if range_return > 0 else 0
+                        min_sharpe, max_sharpe = min(sharpes), max(sharpes)
+                        min_return, max_return = min(returns), max(returns)
                         
-                        # Weighted Score: 70% Sharpe, 30% Total Return
-                        # If values are identical, score will be 0, which is fine
-                        score = (0.7 * norm_sharpe) + (0.3 * norm_return)
+                        range_sharpe = max_sharpe - min_sharpe
+                        range_return = max_return - min_return
                         
-                        # Tie-breaker: If scores exact, prefer higher Sharpe
-                        if score > best_score:
-                            best_score = score
-                            stage_best_value = res['value']
-                            best_metrics = metrics
-                            stage_best_sharpe = sharpe # Still track for logging
+                        best_score = float('-inf')
 
-                        logging.info(f"  Tested {stage_param}={res['value']} -> Sharpe: {sharpe:.3f}, Return: {total_return:.3f} (Score: {score:.3f})")
+                        for res in valid_results:
+                            metrics = res['metrics']
+                            sharpe = metrics['sharpe_ratio']
+                            total_return = metrics['total_return']
+                            
+                            # Normalize inputs (0 to 1 scale)
+                            norm_sharpe = (sharpe - min_sharpe) / range_sharpe if range_sharpe > 0 else 0
+                            norm_return = (total_return - min_return) / range_return if range_return > 0 else 0
+                            
+                            # Weighted Score: 70% Sharpe, 30% Total Return
+                            score = (0.7 * norm_sharpe) + (0.3 * norm_return)
+                            
+                            # Tie-breaker: If scores exact, prefer higher Sharpe
+                            if score > best_score:
+                                best_score = score
+                                stage_best_value = res['value']
+                                best_metrics = metrics
+                                stage_best_sharpe = sharpe # Still track for logging
 
-            # Update best params for next stage
-            if stage_best_value is not None:
-                best_params[stage_param] = stage_best_value
-                logging.info(f"Stage {stage['stage_num']} complete: {stage_param}={stage_best_value} (Sharpe: {stage_best_sharpe:.3f})")
+                            # Format full params for logging
+                            full_params_str = str(res.get('full_params', {}))
+                            
+                            logging.info(f"  Tested {stage_param}={res['value']} | State={full_params_str} -> Sharpe: {sharpe:.3f}, Return: {total_return:.3f} (Score: {score:.3f})")
+
+                # Update best params for next stage (immediate update for greedy refinement within round)
+                if stage_best_value is not None:
+                    best_params[stage_param] = stage_best_value
+                    logging.info(f"Round {round_num} - Stage {stage['stage_num']} complete: {stage_param}={stage_best_value} (Sharpe: {stage_best_sharpe:.3f})")
+                else:
+                    logging.warning(f"Round {round_num} - Stage {stage['stage_num']} failed to find improvements.")
+                    if stage_values and stage_param not in best_params:
+                        best_params[stage_param] = stage_values[0]
+
+                logging.info(f"Stage time: {time.time() - start_time:.2f}s")
+            
+            # End of Round Analysis
+            if best_params == params_at_start:
+                converged = True
+                logging.info(f"--- CONVERGENCE ACHIEVED IN ROUND {round_num} ---")
             else:
-                logging.warning(f"Stage {stage['stage_num']} failed to find improvements. Keeping default/first.")
-                if stage_values:
-                    best_params[stage_param] = stage_values[0]
-
-            logging.info(f"Stage time: {time.time() - start_time:.2f}s")
+                logging.info(f"--- ROUND {round_num} COMPLETE: Parameters changed. Refining... ---")
+                round_num += 1
+                
+        if not converged:
+             logging.warning(f"Optimization stopped after max rounds ({max_rounds}) without full convergence.")
 
 
         # Run final backtest with best parameters to get complete data
