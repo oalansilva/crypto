@@ -154,8 +154,12 @@ async def run_combo_backtest(request: ComboBacktestRequest):
                     df_with_signals.index = pd.to_datetime(df_with_signals.index)
                 except:
                     pass
+            
+            # Remove duplicate timestamps and sort by time
+            df_clean = df_with_signals[~df_with_signals.index.duplicated(keep='first')]
+            df_clean = df_clean.sort_index()
 
-            for idx, row in df_with_signals.iterrows():
+            for idx, row in df_clean.iterrows():
                 candles.append({
                     "timestamp_utc": idx.isoformat() if hasattr(idx, 'isoformat') else str(idx),
                     "open": float(row['open']),
