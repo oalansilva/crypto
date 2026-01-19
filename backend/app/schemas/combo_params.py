@@ -25,6 +25,7 @@ class ComboTemplateMetadata(BaseModel):
     entry_logic: str
     exit_logic: str
     stop_loss: Dict[str, Any] = Field(default_factory=lambda: {"default": 0.015})
+    optimization_schema: Optional[Dict[str, Any]] = Field(None, description="Optimization ranges for parameters")
 
 
 class ComboBacktestRequest(BaseModel):
@@ -68,9 +69,15 @@ class ComboOptimizationResponse(BaseModel):
     job_id: str
     template_name: str
     symbol: str
+    timeframe: str
     stages: List[Dict[str, Any]]
     best_parameters: Dict[str, Any]
     best_metrics: Dict[str, Any]
+    # Complete backtest data for visualization
+    trades: List[Dict[str, Any]] = Field(default_factory=list)
+    candles: List[Dict[str, Any]] = Field(default_factory=list)
+    indicator_data: Dict[str, List[Optional[float]]] = Field(default_factory=dict)
+    parameters: Dict[str, Any] = Field(default_factory=dict)  # Alias for best_parameters
 
 
 class TemplateListResponse(BaseModel):

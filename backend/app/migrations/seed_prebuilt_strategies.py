@@ -36,10 +36,10 @@ def seed_prebuilt_strategies(db_path: str = None):
                 "stop_loss": 0.015
             },
             "optimization_schema": {
-                "sma_short": {"min": 5, "max": 15, "step": 1, "default": 9},
-                "sma_medium": {"min": 15, "max": 30, "step": 1, "default": 21},
-                "sma_long": {"min": 30, "max": 100, "step": 5, "default": 50},
-                "stop_loss": {"min": 0.005, "max": 0.03, "step": 0.005, "default": 0.015}
+                "sma_short": {"min": 3, "max": 20, "step": 1, "default": 9},
+                "sma_medium": {"min": 10, "max": 40, "step": 1, "default": 21},
+                "sma_long": {"min": 20, "max": 100, "step": 1, "default": 50},
+                "stop_loss": {"min": 0.005, "max": 0.13, "step": 0.002, "default": 0.015}
             }
         },
         {

@@ -50,7 +50,14 @@ export function ComboResultsPage() {
         )
     }
 
-    const { metrics } = result
+    // Handle both backtest and optimization results
+    // Optimization results have best_metrics, backtest results have metrics
+    const metrics = result.metrics || (result as any).best_metrics || {
+        total_trades: 0,
+        win_rate: 0,
+        total_return: 0,
+        avg_profit: 0
+    }
 
     // Prepare Chart Data
     const markers = result.trades.flatMap(curr => {

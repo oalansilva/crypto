@@ -33,11 +33,16 @@ class IncrementalLoader:
         Smart fetch: Check local Parquet -> Download Delta -> Append -> Return Slice
         """
         # Parse Dates (Ensure UTC)
-        since_dt = pd.to_datetime(since_str).tz_localize('UTC') if pd.to_datetime(since_str).tz is None else pd.to_datetime(since_str)
-        if until_str:
-            until_dt = pd.to_datetime(until_str).tz_localize('UTC') if pd.to_datetime(until_str).tz is None else pd.to_datetime(until_str)
+        # Handle None values - default to full history
+        if since_str is None:
+            since_dt = pd.Timestamp('2017-01-01', tz='UTC')
         else:
+            since_dt = pd.to_datetime(since_str).tz_localize('UTC') if pd.to_datetime(since_str).tz is None else pd.to_datetime(since_str)
+        
+        if until_str is None:
             until_dt = pd.Timestamp.now(tz='UTC')
+        else:
+            until_dt = pd.to_datetime(until_str).tz_localize('UTC') if pd.to_datetime(until_str).tz is None else pd.to_datetime(until_str)
         
         # Parquet Path
         parquet_path = self._get_parquet_path(symbol, timeframe)

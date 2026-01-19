@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
     Settings, Play, TrendingUp, Activity,
     ArrowLeft, Search, CheckCircle, BarChart3,
@@ -11,12 +11,13 @@ const TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
 
 export function ComboOptimizePage() {
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
 
     // State
     const [templates, setTemplates] = useState<any[]>([])
-    const [selectedTemplate, setSelectedTemplate] = useState<string>('')
-    const [symbol, setSymbol] = useState('BTC/USDT')
-    const [timeframe, setTimeframe] = useState('1h')
+    const [selectedTemplate, setSelectedTemplate] = useState<string>(searchParams.get('template') || '')
+    const [symbol, setSymbol] = useState(searchParams.get('symbol') || 'BTC/USDT')
+    const [timeframe, setTimeframe] = useState(searchParams.get('timeframe') || '1h')
     const [isOptimizing, setIsOptimizing] = useState(false)
     const [params, setParams] = useState<any[]>([])
     const [results, setResults] = useState<any>(null)

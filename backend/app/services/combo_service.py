@@ -101,6 +101,11 @@ class ComboService:
             template_data = json.loads(row[4])
             optimization_schema = json.loads(row[5]) if row[5] else None
             
+            # Normalize stop_loss to always be a dict for Pydantic validation
+            stop_loss = template_data.get("stop_loss", 0.015)
+            if not isinstance(stop_loss, dict):
+                template_data["stop_loss"] = {"default": stop_loss}
+            
             return {
                 "name": row[0],
                 "description": row[1] or "",

@@ -1,0 +1,6 @@
+- [ ] Refactor `ComboOptimizer` to extract `_worker_run_backtest` as a top-level, pure function (no DB dependency).
+- [ ] Implement `ProcessPoolExecutor` logic in `ComboOptimizer.run_optimization` to execute backtests in parallel.
+- [ ] Ensure correct handling of `timeframe` optimization (which might remain sequential or require careful data handling).
+- [ ] Add logging to indicate parallel execution status (e.g., "Running with X workers").
+- [ ] Verify that results match sequential execution (consistency check).
+- [ ] Verify performance improvement (benchmark).

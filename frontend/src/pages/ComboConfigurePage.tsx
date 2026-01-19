@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Play, Settings, TrendingUp, Calendar, DollarSign } from 'lucide-react'
+import { Settings, TrendingUp, Calendar, DollarSign, Sliders } from 'lucide-react'
 
 interface TemplateMetadata {
     name: string
@@ -24,12 +24,11 @@ export function ComboConfigurePage() {
     const [loading, setLoading] = useState(true)
     const [running, setRunning] = useState(false)
 
-    // Backtest parameters
+    // Optimization parameters
+    const [params, setParams] = useState<any[]>([])
     const [symbol, setSymbol] = useState('BTC/USDT')
-    const [timeframe, setTimeframe] = useState('1h')
-    const [startDate, setStartDate] = useState('2024-01-01')
-    const [endDate, setEndDate] = useState('2024-12-31')
-    const [parameters, setParameters] = useState<Record<string, any>>({})
+    const [timeframe, setTimeframe] = useState('1d')
+    const [logs, setLogs] = useState<string[]>([])
 
     useEffect(() => {
         if (templateName) {
@@ -43,15 +42,49 @@ export function ComboConfigurePage() {
             const data = await response.json()
             setMetadata(data)
 
-            // Initialize parameters with defaults
-            const defaultParams: Record<string, any> = {}
-            data.indicators.forEach((ind: any) => {
-                Object.entries(ind.params).forEach(([key, value]) => {
-                    const paramKey = ind.alias ? `${ind.alias}_${key}` : `${ind.type}_${key}`
-                    defaultParams[paramKey] = value
+            // Extract params for optimization from optimization_schema (if available) or indicators
+            const optParams: any[] = []
+
+            // Check if template has optimization_schema in database
+            if (data.optimization_schema && Object.keys(data.optimization_schema).length > 0) {
+                // Use optimization schema from database
+                Object.entries(data.optimization_schema).forEach(([paramName, config]: [string, any]) => {
+                    // Determine group from parameter name (e.g., "sma_short" -> "short")
+                    const parts = paramName.split('_')
+                    const group = parts.length > 1 ? parts[parts.length - 1] : paramName
+
+                    optParams.push({
+                        name: paramName,
+                        group: group,
+                        min: config.min,
+                        max: config.max,
+                        step: config.step || 1
+                    })
                 })
-            })
-            setParameters(defaultParams)
+            } else {
+                // Fallback: Extract from indicators metadata (old behavior)
+                const addParam = (name: string, defaultVal: number, group: string) => {
+                    optParams.push({
+                        name,
+                        group,
+                        min: Math.floor(defaultVal * 0.5) || 1,
+                        max: Math.ceil(defaultVal * 1.5) || 10,
+                        step: 1
+                    })
+                }
+
+                // Process indicators
+                data.indicators.forEach((ind: any) => {
+                    const alias = ind.alias || ind.type
+                    Object.entries(ind.params).forEach(([key, val]) => {
+                        if (typeof val === 'number') {
+                            addParam(`${alias}_${key}`, val as number, alias)
+                        }
+                    })
+                })
+            }
+
+            setParams(optParams)
         } catch (error) {
             console.error('Failed to fetch metadata:', error)
         } finally {
@@ -59,32 +92,42 @@ export function ComboConfigurePage() {
         }
     }
 
-    const handleRunBacktest = async () => {
+    const handleRunOptimization = async () => {
         setRunning(true)
         try {
-            const response = await fetch('http://localhost:8000/api/combos/backtest', {
+            // Build custom ranges
+            const custom_ranges: Record<string, any> = {}
+            params.forEach(p => {
+                custom_ranges[p.name] = {
+                    min: p.min,
+                    max: p.max,
+                    step: p.step
+                }
+            })
+
+            const response = await fetch('http://localhost:8000/api/combos/optimize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     template_name: templateName,
                     symbol,
                     timeframe,
-                    start_date: startDate,
-                    end_date: endDate,
-                    parameters
+                    start_date: null, // Use all available data
+                    end_date: null,
+                    custom_ranges
                 })
             })
 
             if (response.ok) {
                 const result = await response.json()
                 // Navigate to results page with data
-                navigate('/combo/results', { state: { result } })
+                navigate('/combo/results', { state: { result, isOptimization: true } })
             } else {
-                alert('Backtest failed. Check console for details.')
+                alert('Optimization failed. Check console for details.')
             }
         } catch (error) {
-            console.error('Backtest error:', error)
-            alert('Failed to run backtest')
+            console.error('Optimization error:', error)
+            alert('Failed to run optimization')
         } finally {
             setRunning(false)
         }
@@ -184,11 +227,11 @@ export function ComboConfigurePage() {
                         </div>
                     </div>
 
-                    {/* Backtest Configuration */}
+                    {/* Configuration */}
                     <div className="glass-strong rounded-2xl p-6 border border-white/10">
                         <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                             <TrendingUp className="w-5 h-5" />
-                            Backtest Configuration
+                            Configuration
                         </h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -228,53 +271,96 @@ export function ComboConfigurePage() {
                                     <option value="1d">1 day</option>
                                 </select>
                             </div>
+                        </div>
 
-                            {/* Start Date */}
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                                    <Calendar className="w-4 h-4 inline mr-1" />
-                                    Start Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-
-                            {/* End Date */}
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                                    <Calendar className="w-4 h-4 inline mr-1" />
-                                    End Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
+                        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                            <p className="text-sm text-blue-300 flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                Will use all available historical data for this symbol
+                            </p>
                         </div>
                     </div>
+
+                    {/* Parameter Optimization Ranges */}
+                    {params.length > 0 && (
+                        <div className="glass-strong rounded-2xl p-6 border border-white/10">
+                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <Sliders className="w-5 h-5" />
+                                Parameter Optimization Ranges
+                            </h2>
+
+                            <div className="space-y-4">
+                                {params.map((param, idx) => (
+                                    <div key={idx} className="bg-white/5 rounded-lg p-4">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-sm font-medium text-purple-300">{param.name}</span>
+                                            <span className="text-xs text-gray-500 bg-black/30 px-2 py-1 rounded">
+                                                {param.group}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div>
+                                                <label className="text-xs text-gray-400 block mb-1">Min</label>
+                                                <input
+                                                    type="number"
+                                                    value={param.min}
+                                                    onChange={(e) => {
+                                                        const newParams = [...params]
+                                                        newParams[idx].min = parseFloat(e.target.value)
+                                                        setParams(newParams)
+                                                    }}
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400 block mb-1">Max</label>
+                                                <input
+                                                    type="number"
+                                                    value={param.max}
+                                                    onChange={(e) => {
+                                                        const newParams = [...params]
+                                                        newParams[idx].max = parseFloat(e.target.value)
+                                                        setParams(newParams)
+                                                    }}
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400 block mb-1">Step</label>
+                                                <input
+                                                    type="number"
+                                                    value={param.step}
+                                                    onChange={(e) => {
+                                                        const newParams = [...params]
+                                                        newParams[idx].step = parseFloat(e.target.value)
+                                                        setParams(newParams)
+                                                    }}
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Run Button */}
                     <div className="flex justify-center">
                         <button
-                            onClick={handleRunBacktest}
+                            onClick={handleRunOptimization}
                             disabled={running}
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center gap-3 shadow-lg shadow-blue-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-12 rounded-xl transition-all duration-300 flex items-center gap-3 shadow-lg shadow-purple-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
                         >
                             {running ? (
                                 <>
                                     <Settings className="w-5 h-5 animate-spin" />
-                                    Running Backtest...
+                                    Running Optimization...
                                 </>
                             ) : (
                                 <>
-                                    <Play className="w-5 h-5" />
-                                    Run Backtest
+                                    <Sliders className="w-5 h-5" />
+                                    Run Optimization
                                 </>
                             )}
                         </button>

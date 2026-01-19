@@ -199,6 +199,9 @@ async def run_combo_optimization(request: ComboOptimizationRequest):
     try:
         from app.services.combo_optimizer import ComboOptimizer
         
+        logger.info(f"Starting combo optimization for {request.template_name} on {request.symbol} {request.timeframe}")
+        logger.info(f"Custom ranges: {request.custom_ranges}")
+        
         optimizer = ComboOptimizer()
         
         # Run optimization
@@ -211,17 +214,15 @@ async def run_combo_optimization(request: ComboOptimizationRequest):
             custom_ranges=request.custom_ranges
         )
         
-        return ComboOptimizationResponse(
-            job_id=result['job_id'],
-            template_name=result['template_name'],
-            symbol=result['symbol'],
-            stages=result['stages'],
-            best_parameters=result['best_parameters'],
-            best_metrics=result['best_metrics']
-        )
+        # Return complete result with all fields
+        return ComboOptimizationResponse(**result)
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Combo optimization failed: {str(e)}")
+        logger.error(f"Traceback: {error_details}")
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n\n{error_details}")
 
 
 @router.post("/templates")

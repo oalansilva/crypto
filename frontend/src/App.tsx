@@ -547,6 +547,7 @@ function App() {
         <Route path="/backtest/auto/history" element={<AutoBacktestHistoryPage />} />
         <Route path="/combo/select" element={<ComboSelectPage />} />
         <Route path="/combo/configure" element={<ComboConfigurePage />} />
+        <Route path="/combo/optimize" element={<ComboOptimizePage />} />
         <Route path="/combo/results" element={<ComboResultsPage />} />
         <Route path="/sequential-optimization" element={<ParameterOptimizationPage />} /> {/* Backward compatibility */}
         <Route path="/results/:runId" element={<ResultsPage />} />
