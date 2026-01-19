@@ -117,17 +117,21 @@ def _worker_run_backtest(args):
         for idx, row in df_with_signals.iterrows():
             # Check stop loss if we have an open position
             if position is not None:
-                # Calculate current profit/loss
-                current_price = row['close']
+                # Calculate current profit/loss based on LOW (intra-candle stop)
+                # We use LOW because a wick can trigger stop loss even if close is higher
+                current_low = row['low']
                 entry_price = position['entry_price']
-                current_pnl = (current_price - entry_price) / entry_price
+                low_pnl = (current_low - entry_price) / entry_price
                 
                 # Check if stop loss hit
-                if current_pnl <= -stop_loss:
+                if low_pnl <= -stop_loss:
                     # Stop loss triggered
                     position['exit_time'] = idx
-                    position['exit_price'] = current_price
-                    position['profit'] = current_pnl
+                    # EXIT AT STOP PRICE (not close price)
+                    # This simulates a Stop Market order executing at the trigger price
+                    stop_price = entry_price * (1 - stop_loss)
+                    position['exit_price'] = stop_price 
+                    position['profit'] = -stop_loss # Exact loss matching the stop %
                     position['exit_reason'] = 'stop_loss'
                     trades.append(position)
                     position = None

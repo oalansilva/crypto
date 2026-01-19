@@ -36,12 +36,29 @@ def compare_with_tradingview():
     position = None
     
     for idx, row in df_signals.iterrows():
+        # Check stop loss if we have an open position
+        if position is not None:
+            # Check intra-candle stop loss using LOW
+            current_low = row['low']
+            entry_price = position['entry_price']
+            stop_price = entry_price * (1 - params['stop_loss'])
+            
+            if current_low <= stop_price:
+                # Stop loss hit intra-candle
+                position['exit_time'] = idx
+                position['exit_price'] = stop_price  # Exit at stop price
+                position['profit'] = -params['stop_loss']
+                trades.append(position)
+                position = None
+                continue
+        
         if row['signal'] == 1 and position is None:
             position = {
                 'entry_time': idx,
                 'entry_price': row['close']
             }
         elif row['signal'] == -1 and position is not None:
+            # Only process normal exit if stop loss wasn't hit
             position['exit_time'] = idx
             position['exit_price'] = row['close']
             position['profit'] = (position['exit_price'] - position['entry_price']) / position['entry_price']

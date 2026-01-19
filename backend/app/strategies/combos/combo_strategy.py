@@ -218,9 +218,12 @@ class ComboStrategy:
                 # CRITICAL: Check stop loss FIRST before any other signals
                 # This ensures stop loss has priority over pending exit signals
                 if in_position and entry_price is not None:
-                    current_pnl = (current_price - entry_price) / entry_price
+                    # Check if LOW dropped below stop price (intra-candle stop)
+                    # We use LOW because a wick can trigger stop loss even if close is higher
+                    current_low = df.iloc[i]['low']
+                    low_pnl = (current_low - entry_price) / entry_price
                     
-                    if current_pnl <= -self.stop_loss:
+                    if low_pnl <= -self.stop_loss:
                         # Stop loss hit - immediate sell signal (no confirmation needed)
                         df.loc[df.index[i], 'signal'] = -1
                         in_position = False
