@@ -181,7 +181,11 @@ class ComboStrategy:
     
     def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Generate buy/sell signals based on entry/exit logic.
+        Generate buy/sell signals based on entry/exit logic AND stop loss.
+        
+        CRITICAL: Signals are generated AFTER candle close confirmation (TradingView style).
+        - Crossover detected on day N → Signal applied on day N+1
+        - This ensures we only trade on confirmed crossovers after candle close
         
         Args:
             df: DataFrame with OHLCV data
@@ -194,27 +198,61 @@ class ComboStrategy:
             df['signal'] = 0
             return df
 
-        # Use empty check
-        if df.empty:
-            df['signal'] = 0
-            return df
-
         # Calculate indicators
         df = self.calculate_indicators(df)
         
         # Initialize signal column
         df['signal'] = 0
         
-        # Evaluate logic for each row
+        # Track position state for stop loss simulation
+        in_position = False
+        entry_price = None
+        pending_entry = False  # Flag for confirmed entry on next candle
+        pending_exit = False   # Flag for confirmed exit on next candle
+        
+        # Evaluate logic for each row WITH stop loss simulation and confirmed signals
         for i in range(len(df)):
             try:
-                # Check entry logic
-                if self._evaluate_logic(df, self.entry_logic, i):
-                    df.loc[df.index[i], 'signal'] = 1
+                current_price = df.iloc[i]['close']
                 
-                # Check exit logic
-                elif self._evaluate_logic(df, self.exit_logic, i):
+                # Apply pending signals first (from previous candle's confirmation)
+                if pending_entry and not in_position:
+                    df.loc[df.index[i], 'signal'] = 1
+                    in_position = True
+                    entry_price = current_price
+                    pending_entry = False
+                    continue  # Don't check other conditions this candle
+                
+                if pending_exit and in_position:
                     df.loc[df.index[i], 'signal'] = -1
+                    in_position = False
+                    entry_price = None
+                    pending_exit = False
+                    continue  # Don't check other conditions this candle
+                
+                # Check stop loss if in position
+                if in_position and entry_price is not None:
+                    current_pnl = (current_price - entry_price) / entry_price
+                    
+                    if current_pnl <= -self.stop_loss:
+                        # Stop loss hit - immediate sell signal (no confirmation needed)
+                        df.loc[df.index[i], 'signal'] = -1
+                        in_position = False
+                        entry_price = None
+                        continue
+                
+                # Check for crossovers/conditions on current candle
+                # If detected, set pending flag for NEXT candle
+                if i > 0:  # Need previous candle for crossover detection
+                    # Check entry logic (only if not in position)
+                    if not in_position and self._evaluate_logic(df, self.entry_logic, i):
+                        # Crossover detected - set pending entry for next candle
+                        pending_entry = True
+                    
+                    # Check exit logic (only if in position)
+                    elif in_position and self._evaluate_logic(df, self.exit_logic, i):
+                        # Exit condition detected - set pending exit for next candle
+                        pending_exit = True
             
             except Exception as e:
                 # Log error but continue
