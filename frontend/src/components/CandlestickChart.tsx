@@ -137,12 +137,23 @@ export function CandlestickChart({ candles, markers, indicators, strategyName, c
                 }
 
                 // Ensure time is correct format
-                const lineData = ind.data.map(d => ({
+                const rawLineData = ind.data.map(d => ({
                     time: (typeof d.time === 'number' ? d.time : (new Date(d.time).getTime() / 1000)) as any,
                     value: d.value
                 }))
 
-                lineSeries.setData(lineData)
+                // Remove duplicates and sort indicators
+                const uniqueLineData = rawLineData.reduce((acc, item) => {
+                    const existing = acc.find(i => i.time === item.time)
+                    if (!existing) {
+                        acc.push(item)
+                    }
+                    return acc
+                }, [] as typeof rawLineData)
+
+                const sortedLineData = uniqueLineData.sort((a, b) => a.time - b.time)
+
+                lineSeries.setData(sortedLineData)
             })
         }
 
