@@ -81,7 +81,18 @@ export function CandlestickChart({ candles, markers, indicators, strategyName, c
             close: candle.close,
         }))
 
-        candlestickSeries.setData(candleData)
+        // Remove duplicates and sort by time
+        const uniqueCandles = candleData.reduce((acc, candle) => {
+            const existing = acc.find(c => c.time === candle.time)
+            if (!existing) {
+                acc.push(candle)
+            }
+            return acc
+        }, [] as typeof candleData)
+
+        const sortedCandles = uniqueCandles.sort((a, b) => a.time - b.time)
+
+        candlestickSeries.setData(sortedCandles)
 
         // Add markers if available
         if (markers && markers.length > 0) {
