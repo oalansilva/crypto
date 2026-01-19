@@ -4,13 +4,19 @@
 
 Combo Strategies allow you to combine multiple technical indicators into a single trading strategy with custom entry and exit logic. This powerful feature enables you to create sophisticated trading systems without writing code.
 
+**Architecture**: All combo strategies are stored in the database as JSON configurations. This means:
+- ✅ No code deployment needed for new strategies
+- ✅ Easy customization and sharing
+- ✅ Version control via database backups
+- ✅ Runtime configuration without server restarts
+
 ## Quick Start
 
 ### 1. Select a Template
 
 Navigate to **Combo Strategies** from the homepage and choose from:
 
-- **Pre-built Templates**: 6 professionally designed strategies ready to use
+- **Pre-built Templates**: 6 professionally designed strategies (stored in database)
 - **Example Templates**: 4 sample strategies for learning
 - **Custom Templates**: Your saved custom strategies
 
@@ -246,8 +252,9 @@ Begin with 2-3 indicators. Complex strategies aren't always better.
 
 For issues or questions:
 - Check API documentation at `/docs`
-- Review template source code in `backend/app/strategies/combos/`
+- Review database schema in `backend/app/migrations/`
 - Consult the technical documentation
+- All strategies are stored in `combo_templates` database table
 
 ---
 
