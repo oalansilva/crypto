@@ -791,12 +791,27 @@ class ComboOptimizer:
                 
                 else:
                     # Parallel execution for indicator parameters
+                    total_tests = len(worker_args)
+                    logging.info(f"  Starting parallel execution of {total_tests} tests...")
+                    
                     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
                         results = list(executor.map(_worker_run_backtest, worker_args))
                     
                     # Process results with Weighted Composite Score
                     valid_results = []
+                    test_num = 0
+                    progress_interval = max(50, total_tests // 10)  # Every 10% or 50 tests
+                    
                     for res in results:
+                        test_num += 1
+                        
+                        # Progress logging
+                        if test_num % progress_interval == 0 or test_num == total_tests:
+                            progress_pct = (test_num / total_tests) * 100
+                            elapsed = time.time() - start_time
+                            eta = (elapsed / test_num) * (total_tests - test_num) if test_num > 0 else 0
+                            logging.info(f"  Progress: {test_num}/{total_tests} ({progress_pct:.1f}%) - Elapsed: {elapsed:.1f}s - ETA: {eta:.1f}s")
+                        
                         if res['success']:
                             valid_results.append(res)
                         else:
@@ -814,6 +829,7 @@ class ComboOptimizer:
                         range_return = max_return - min_return
                         
                         best_score = float('-inf')
+                        new_best_found = False
 
                         for res in valid_results:
                             metrics = res['metrics']
@@ -833,11 +849,21 @@ class ComboOptimizer:
                                 stage_best_value = res['value']
                                 best_metrics = metrics
                                 stage_best_sharpe = sharpe # Still track for logging
+                                new_best_found = True
+                                
+                                # NEW BEST indicator
+                                logging.info(f"  🌟 NEW BEST: {stage_param}={res['value']} -> Sharpe: {sharpe:.3f}, Return: {total_return:.3f} (Score: {score:.3f})")
 
                             # Format full params for logging
                             full_params_str = str(res.get('full_params', {}))
                             
                             logging.info(f"  Tested {stage_param}={res['value']} | State={full_params_str} -> Sharpe: {sharpe:.3f}, Return: {total_return:.3f} (Score: {score:.3f})")
+
+                        # Summary of stage results
+                        if new_best_found:
+                            logging.info(f"  ✓ Stage complete: Found improvement with Sharpe {stage_best_sharpe:.3f}")
+                        else:
+                            logging.info(f"  ✓ Stage complete: No improvement found")
 
                 # Update best params for next stage (immediate update for greedy refinement within round)
                 if stage_best_value is not None:
@@ -868,6 +894,23 @@ class ComboOptimizer:
         if not converged:
              logging.warning(f"Optimization stopped after max rounds ({max_rounds}) without full convergence.")
 
+        # COMPLETION SUMMARY
+        total_optimization_time = time.time() - start_time if 'start_time' in locals() else 0
+        logging.info("=" * 80)
+        logging.info("🎯 OPTIMIZATION COMPLETE")
+        logging.info("=" * 80)
+        logging.info(f"Rounds completed: {round_num}/{max_rounds}")
+        logging.info(f"Total execution time: {total_optimization_time:.1f}s ({total_optimization_time/60:.1f} minutes)")
+        logging.info(f"Convergence: {'Yes' if converged else 'No'}")
+        logging.info(f"\nFinal Configuration:")
+        for param, value in best_params.items():
+            logging.info(f"  {param}: {value}")
+        if best_metrics:
+            logging.info(f"\nFinal Metrics:")
+            logging.info(f"  Sharpe Ratio: {best_metrics.get('sharpe_ratio', 0):.3f}")
+            logging.info(f"  Total Return: {best_metrics.get('total_return', 0):.3f}")
+            logging.info(f"  Max Drawdown: {best_metrics.get('max_drawdown', 0):.3f}")
+        logging.info("=" * 80)
 
         # Run final backtest with best parameters to get complete data
         logging.info(f"Running final backtest with best parameters: {best_params}")

@@ -17,17 +17,17 @@
 - [x] If Grid Search is inactive, keep `max_rounds = 5` (normal refinement)
 - [x] Add logging: "Grid Search detected - running single round (no refinement)"
 
-## Phase 3: Stage Execution Logic ✅ CORE COMPLETE
+## Phase 3: Stage Execution Logic ✅ COMPLETED
 - [x] Update `run_optimization()` to detect joint optimization stages (`grid_mode == True`)
 - [x] Implement cartesian product iterator using `itertools.product()`
 - [x] Modify worker args building to handle joint combinations
 - [x] Update parallel execution to distribute grid combinations across workers
-- [ ] Add cancellation check inside grid loop (`check_cancel_status`) (GAP: Cancellation)
-- [ ] Ensure result storage saves full param combinations
-- [ ] Add detailed logging for stage transitions (INFO level)
-- [ ] Add progress logging for Grid Search (every 10% or 50 tests)
-- [ ] Add "NEW BEST" indicator when better result found
-- [ ] Add completion summary with total tests, time, and final config
+- [x] Add cancellation check inside grid loop (`check_cancel_status`) (GAP: Cancellation)
+- [x] Ensure result storage saves full param combinations
+- [x] Add detailed logging for stage transitions (INFO level)
+- [x] Add progress logging for Grid Search (every 10% or 50 tests)
+- [x] Add "NEW BEST" indicator when better result found
+- [x] Add completion summary with total tests, time, and final config
 
 ## Phase 4: Database & Migration (GAP 1 & 4)
 - [ ] Store `correlated_groups` in existing `optimization_schema` JSON field
