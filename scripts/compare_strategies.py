@@ -1,125 +1,131 @@
 
+import asyncio
 import sys
 import os
-import logging
-import pandas as pd
 from datetime import datetime
+import pandas as pd
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# Add backend to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../backend'))
+# Add backend directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 from app.services.backtest_service import BacktestService
-from app.services.deep_backtest import simulate_execution_with_15m
-from src.data.incremental_loader import IncrementalLoader
 
-def run_deep_comparison():
-    # 1. Load Data ONCE
-    symbol = "BTC/USDT"
-    logger.info(f"Loading data for {symbol}...")
-    
-    loader = IncrementalLoader()
-    # Load Daily for Signals
-    df_daily = loader.fetch_data(symbol, "1d", since_str="2017-01-01")
-    # Load 15m for Deep Validation (Intraday moves)
-    df_15m = loader.fetch_data(symbol, "15m", since_str="2017-01-01")
-    
-    # 2. Define Strategies
-    configs = [
-        # Name, Parameters
-        ("Nova", {"media_curta": 7, "media_inter": 21, "media_longa": 44, "stop_loss_pct": 0.015}),
-        ("Antiga", {"media_curta": 3, "media_inter": 32, "media_longa": 37, "stop_loss_pct": 0.027}),
-        ("Nova Deep", {"media_curta": 19, "media_inter": 21, "media_longa": 35, "stop_loss_pct": 0.043})
-    ]
-    
+async def run_comparison():
     service = BacktestService()
-    
-    results = []
-    
-    print(f"\n--- Running DEEP Backtest Comparison (15m granularity) ---")
-    
-    for name, params in configs:
-        logger.info(f"Processing {name}...")
-        
-        # A. Run Standard Backtest to get Daily Signals
-        config = {
-            "exchange": "binance",
-            "symbol": symbol,
-            "timeframe": "1d", 
-            "strategies": [{"name": "CRUZAMENTOMEDIAS", **params}],
-            "stop_pct": params['stop_loss_pct']
-        }
-        
-        # We need the DATAFRAME with signals, but run_backtest returns metrics.
-        # So we instantiate strategy and generate signals manually.
-        strategy = service._get_strategy("CRUZAMENTOMEDIAS", params)
-        signals = strategy.generate_signals(df_daily)
-        
-        # Attach signals to a dataframe for the deep backtester
-        df_with_signals = df_daily.copy()
-        df_with_signals['signal'] = signals
-        
-        # B. Run Deep Backtest (Vectorized Check)
-        # simulate_execution expects: df_daily_signals, df_15m, stop_loss
-        
-        start_time = datetime.now()
-        deep_trades = simulate_execution_with_15m(
-            df_daily_signals=df_with_signals,
-            df_15m=df_15m,
-            stop_loss=params['stop_loss_pct']
-        )
-        duration = (datetime.now() - start_time).total_seconds()
-        
-        # Calculate Metrics from Deep Trades
-        total_pnl = sum(t['profit'] for t in deep_trades)
-        wins = [t for t in deep_trades if t['profit'] > 0]
-        losses = [t for t in deep_trades if t['profit'] <= 0]
-        
-        win_rate = (len(wins) / len(deep_trades) * 100) if deep_trades else 0
-        
-        # Calculate Drawdown (approximate from trade sequence)
-        equity = 1.0
-        peak = 1.0
-        max_dd = 0.0
-        
-        # Sort trades by entry time
-        deep_trades.sort(key=lambda x: x['entry_time'])
-        
-        for t in deep_trades:
-            equity *= (1 + t['profit'])
-            if equity > peak:
-                peak = equity
-            dd = (equity - peak) / peak
-            if dd < max_dd:
-                max_dd = dd
-                
-        results.append({
-            "Name": name,
-            "Trades": len(deep_trades),
-            "Return %": (equity - 1) * 100,
-            "Win Rate %": win_rate,
-            "Max DD %": max_dd * 100,
-            "Stop Loss": f"{params['stop_loss_pct']*100}%"
-        })
 
-    # Print Results
-    print("\n{:<15} {:<10} {:<15} {:<15} {:<15} {:<10}".format(
-        "Name", "Stop Loss", "Return %", "Max DD %", "Win Rate %", "Trades"
-    ))
-    print("-" * 85)
+    # Common settings
+    exchange = "binance"
+    symbol = "BTC/USDT"
+    timeframe = "1d"
+    start_date_str = "2017-01-01 00:00:00"
+    end_date_str = "2026-01-20 00:00:00"
+    initial_capital = 10000.0
     
-    for r in results:
-        print("{:<15} {:<10} {:<15.2f} {:<15.2f} {:<15.2f} {:<10}".format(
-            r["Name"],
-            r["Stop Loss"],
-            r["Return %"],
-            r["Max DD %"],
-            r["Win Rate %"],
-            r["Trades"]
-        ))
+    # Configuration 1: Antiga (User Provided)
+    config_antiga = {
+        "exchange": exchange,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "since": start_date_str,
+        "until": end_date_str,
+        "cash": initial_capital,
+        "strategies": [
+            {
+                "name": "cruzamentomedias",
+                "media_curta": 3,
+                "media_longa": 37,
+                "media_inter": 32,
+                "stop_loss": 0.027
+            }
+        ]
+    }
+    
+    # Configuration 2: Nova (User Provided)
+    config_nova = {
+        "exchange": exchange,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "since": start_date_str,
+        "until": end_date_str,
+        "cash": initial_capital,
+        "strategies": [
+            {
+                "name": "cruzamentomedias",
+                "ema_short": 15,
+                "sma_medium": 37,
+                "sma_long": 42,
+                "stop_loss": 0.065
+            }
+        ]
+    }
+
+    # Configuration 3: Nova 2 (User Provided)
+    config_nova2 = {
+        "exchange": exchange,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "since": start_date_str,
+        "until": end_date_str,
+        "cash": initial_capital,
+        "strategies": [
+            {
+                "name": "cruzamentomedias",
+                "ema_short": 13,
+                "sma_medium": 39,
+                "sma_long": 38,
+                "stop_loss": 0.067
+            }
+        ]
+    }
+    
+    print("=== Running Backtest for Configuration: Antiga ===")
+    result_antiga_dict = service.run_backtest(config_antiga)
+    
+    print("\n=== Running Backtest for Configuration: Nova ===")
+    result_nova_dict = service.run_backtest(config_nova)
+
+    print("\n=== Running Backtest for Configuration: Nova 2 ===")
+    result_nova2_dict = service.run_backtest(config_nova2)
+
+    # Collect Results
+    results = [
+        ("Antiga", result_antiga_dict),
+        ("Nova", result_nova_dict),
+        ("Nova 2", result_nova2_dict)
+    ]
+
+    print("\n" + "="*60)
+    print(f"{'STRATEGY':<15} | {'PnL ($)':<15} | {'WIN RATE':<10} | {'TRADES':<8} | {'PROFIT FACTOR':<15}")
+    print("-" * 75)
+
+    for name, res_dict in results:
+        results_map = res_dict.get('results', {})
+        # Handle case sensitivity
+        res = results_map.get('cruzamentomedias') or results_map.get('CRUZAMENTOMEDIAS')
+        
+        if res:
+            metrics = res.get('metrics', {})
+            pnl = metrics.get('total_pnl', 0)
+            win_rate = metrics.get('win_rate', 0) * 100
+            trades = metrics.get('total_trades', 0)
+            pf = metrics.get('profit_factor', 0)
+            
+            print(f"{name:<15} | ${pnl:,.2f}      | {win_rate:5.2f}%    | {trades:<8} | {pf:.3f}")
+        else:
+            print(f"{name:<15} | ERROR: No Results")
+    print("="*60 + "\n")
+
+def print_metrics(name, result_data):
+    metrics = result_data.get('metrics', {})
+    print(f"\n--- Results for {name} ---")
+    print(f"Total Return: {metrics.get('total_return_percentage', 0):.2f}%")
+    print(f"Total PnL: ${metrics.get('total_pnl', 0):.2f}")
+    print(f"Max Drawdown: {metrics.get('max_drawdown_percentage', 0):.2f}%")
+    print(f"Total Trades: {metrics.get('total_trades', 0)}")
+    win_rate = metrics.get('win_rate', 0)
+    if win_rate is None: win_rate = 0
+    print(f"Win Rate: {win_rate * 100:.2f}%")
+    print(f"Profit Factor: {metrics.get('profit_factor', 0):.3f}")
 
 if __name__ == "__main__":
-    run_deep_comparison()
+    asyncio.run(run_comparison())

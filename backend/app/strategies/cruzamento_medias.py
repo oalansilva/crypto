@@ -27,10 +27,10 @@ class CruzamentoMedias:
         self.config = config
         self.name = "CRUZAMENTOMEDIAS"
         
-        # Extract parameters with defaults
-        self.media_curta = config.get('media_curta', 6)
-        self.media_longa = config.get('media_longa', 38)
-        self.media_inter = config.get('media_inter', 21)
+        # Extract parameters with defaults (supporting English aliases from Frontend)
+        self.media_curta = config.get('media_curta') or config.get('sma_short') or config.get('ema_short') or 6
+        self.media_longa = config.get('media_longa') or config.get('sma_long') or 38
+        self.media_inter = config.get('media_inter') or config.get('sma_medium') or 21
         
         logger.info(f"CRUZAMENTOMEDIAS initialized: curta={self.media_curta}, longa={self.media_longa}, inter={self.media_inter}")
         

@@ -93,7 +93,7 @@ def compare_results(trades_a, trades_b):
     return True
 
 def run_benchmark():
-    df_daily, df_15m = generate_synthetic_data(days=365)
+    df_daily, df_15m = generate_synthetic_data(days=3000)
     stop_loss = 0.02 # 2%
     
     try:

@@ -19,6 +19,7 @@ import logging
 import itertools  # For Grid Search cartesian product
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+import pandas as pd
 
 from app.services.sequential_optimizer import SequentialOptimizer
 from app.services.combo_service import ComboService
@@ -100,7 +101,8 @@ def extract_trades_with_mode(
     deep_backtest: bool = False,
     symbol: str = None,
     since_str: str = None,
-    until_str: str = None
+    until_str: str = None,
+    df_15m_cache: Optional[pd.DataFrame] = None
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
@@ -122,27 +124,32 @@ def extract_trades_with_mode(
     
     # Deep Backtesting mode: fetch 15m data and simulate execution
     logger = logging.getLogger(__name__)
-    logger.info(f"Deep Backtesting enabled for {symbol}")
+    # logger.info(f"Deep Backtesting enabled for {symbol}") # Too noisy for grid search
     
     if not symbol or not since_str:
         logger.warning("Deep Backtesting requires symbol and date range. Falling back to fast mode.")
         return extract_trades_from_signals(df_with_signals, stop_loss)
     
     try:
-        # Fetch 15m data
-        loader = IncrementalLoader()
-        df_15m = loader.fetch_intraday_data(
-            symbol=symbol,
-            timeframe='15m',
-            since_str=since_str,
-            until_str=until_str
-        )
+        if df_15m_cache is not None:
+            df_15m = df_15m_cache
+        else:
+            # Fetch 15m data
+            loader = IncrementalLoader()
+            df_15m = loader.fetch_intraday_data(
+                symbol=symbol,
+                timeframe='15m',
+                since_str=since_str,
+                until_str=until_str
+            )
         
         if df_15m.empty:
-            logger.warning("No 15m data available. Falling back to fast mode.")
+            if df_15m_cache is None: # Only warn if we tried to fetch it
+                logger.warning("No 15m data available. Falling back to fast mode.")
             return extract_trades_from_signals(df_with_signals, stop_loss)
         
-        logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
+        if df_15m_cache is None:
+            logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
         
         # Run deep backtest simulation
         trades = simulate_execution_with_15m(
@@ -160,13 +167,8 @@ def extract_trades_with_mode(
 # -----------------------------------------------------------------------------
 # WORKER FUNCTION (Top-level for ProcessPoolExecutor)
 # -----------------------------------------------------------------------------
-def _worker_run_backtest(args):
-    """
-    Worker function to run a single backtest in a separate process.
-    Must be top-level to be picklable.
-    """
-    template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str = args
-    
+def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_str, until_str, df_15m_cache=None):
+    """Core backtest logic shared by single and batch workers."""
     try:
         # Reconstruct strategy logic locally to avoid DB connection in worker
         indicators = template_data["indicators"]
@@ -179,7 +181,6 @@ def _worker_run_backtest(args):
             stop_loss = stop_loss.get("default", 0.015)
             
         # Apply parameter overrides
-        # Deep copy indicators to avoid modifying shared state (though processes duplicate memory anyway)
         import copy
         indicators = copy.deepcopy(indicators)
         
@@ -189,11 +190,9 @@ def _worker_run_backtest(args):
                     stop_loss = param_value
                     continue
                 
-                # Check for timeframe (handled outside, but ignore if present)
                 if param_key == "timeframe":
                     continue
 
-                # Find matching indicator for this parameter
                 matched = False
                 for indicator in indicators:
                     alias = indicator.get("alias", "")
@@ -233,11 +232,6 @@ def _worker_run_backtest(args):
                         matched = True
                         break
 
-                if not matched:
-                    # Fallback: simple containment if unique?
-                    # or just log warning (cannot log easily in worker)
-                    pass
-
         # Create strategy instance
         from app.strategies.combos import ComboStrategy
         strategy = ComboStrategy(
@@ -249,6 +243,8 @@ def _worker_run_backtest(args):
         
         # Generate signals
         df_with_signals = strategy.generate_signals(df.copy())
+
+
         
         # Extract trades from signals WITH STOP LOSS using Deep or Fast mode
         trades = extract_trades_with_mode(
@@ -257,8 +253,11 @@ def _worker_run_backtest(args):
             deep_backtest=deep_backtest,
             symbol=symbol,
             since_str=since_str,
-            until_str=until_str
+            until_str=until_str,
+            df_15m_cache=df_15m_cache
         )
+
+
         
         # Calculate metrics
         metrics = {
@@ -291,22 +290,122 @@ def _worker_run_backtest(args):
                 full_params[f"{p_prefix}_{pk}"] = pv
         
         full_params['stop_loss'] = stop_loss
+        
+        return metrics, full_params
+        
+    except Exception as e:
+        # Return empty metrics on failure
+        return {
+            'total_trades': 0,
+            'win_rate': 0,
+            'total_return': 0,
+            'avg_profit': 0,
+            'sharpe_ratio': 0,
+            'error': str(e)
+        }, params
 
+def _worker_run_backtest(args):
+    """Legacy worker for single execution (Sequential Mode)."""
+    template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str = args
+    # Silence loggers
+    logging.getLogger('src.data.incremental_loader').setLevel(logging.WARNING)
+    logging.getLogger('app.services.deep_backtest').setLevel(logging.WARNING)
+    logging.getLogger('app.services.combo_optimizer').setLevel(logging.WARNING)
+    
+    metrics, full_params = _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_str, until_str)
+
+    if 'error' in metrics:
+        return {
+            'value': value,
+            'error': metrics['error'],
+            'success': False
+        }
+    else:
         return {
             'value': value,
             'params': params,  # Input overrides
             'full_params': full_params, # Complete effective state
             'metrics': metrics,
-            'trades_count': len(trades),
+            'trades_count': metrics['total_trades'],
             'success': True
         }
         
-    except Exception as e:
-        return {
-            'value': value,
-            'error': str(e),
-            'success': False
-        }
+
+
+
+def _worker_run_batch(batch_args):
+    """
+    Optimized worker for Grid Search BATCH execution.
+    Loads 15m data ONCE per batch to eliminate redundant I/O.
+    """
+    if not batch_args:
+        return []
+
+    # Silence loggers
+    logging.getLogger('src.data.incremental_loader').setLevel(logging.WARNING)
+    logging.getLogger('app.services.deep_backtest').setLevel(logging.WARNING)
+    logging.getLogger('app.services.combo_optimizer').setLevel(logging.WARNING)
+
+    results = []
+    
+    # 1. Initialize Optimization Cache (Load 15m data once)
+    df_15m_cache = None
+    first_arg = batch_args[0]
+    # unpacking args structure: 
+    # template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str
+    deep_backtest = first_arg[5]
+    symbol = first_arg[6]
+    since_str = first_arg[7]
+    until_str = first_arg[8]
+    
+    if deep_backtest:
+        try:
+            loader = IncrementalLoader()
+            df_15m_cache = loader.fetch_intraday_data(
+                symbol=symbol,
+                timeframe='15m',
+                since_str=since_str,
+                until_str=until_str
+            )
+
+
+        except Exception as e:
+            # proceed without cache
+            pass
+
+    # 2. Iterate through batch
+    for args in batch_args:
+        template_data, params, df, stage_param, value, deep_backtest, _, _, _ = args
+        
+        metrics, full_params = _run_backtest_logic(
+            template_data, 
+            params, 
+            df, 
+            deep_backtest, 
+            symbol, 
+            since_str, 
+            until_str,
+            df_15m_cache # Pass the cached data
+        )
+        
+        # Wrap result to match single worker structure
+        if 'error' in metrics:
+            results.append({
+                'value': value,
+                'error': metrics['error'],
+                'success': False
+            })
+        else:
+            results.append({
+                'value': value,
+                'params': params,
+                'full_params': full_params,
+                'metrics': metrics,
+                'trades_count': metrics['total_trades'],
+                'success': True
+            })
+        
+    return results
 
 
 class ComboOptimizer:
@@ -358,6 +457,15 @@ class ComboOptimizer:
         correlated_groups = optimization_schema.get('correlated_groups', [])
         parameters = optimization_schema.get('parameters', {})
         
+        # Fallback for Flat Schema (historical data support)
+        if not parameters and optimization_schema and not optimization_schema.get('correlated_groups'):
+            # Heuristic: If values are dicts with 'min'/'max', assume flat parameters
+            first_key = next(iter(optimization_schema), None)
+            if first_key:
+                first_val = optimization_schema[first_key]
+                if isinstance(first_val, dict) and ('min' in first_val or 'start' in first_val):
+                     parameters = optimization_schema
+        
         # Track which parameters have been added to stages
         processed_params = set()
         
@@ -389,8 +497,46 @@ class ComboOptimizer:
                     )
                 
                 value_lists.append(values)
+        # PHASE 1: Create Grid Search stages for correlated groups
+        for group in correlated_groups:
+            # Generate value lists for each parameter in the group
+            value_lists = []
+            param_names = []
+            adaptive_meta = {}
+            
+            for param_name in group:
+                if param_name not in parameters:
+                    continue  # Skip if parameter not found (validation should have caught this)
+                
+                config = parameters[param_name]
+                
+                # Check for custom range override
+                if custom_ranges and param_name in custom_ranges:
+                    custom = custom_ranges[param_name]
+                    p_min = custom.get('min', config.get('min'))
+                    p_max = custom.get('max', config.get('max'))
+                    target_step = custom.get('step', config.get('step'))
+                else:
+                    p_min = config.get('min')
+                    p_max = config.get('max')
+                    target_step = config.get('step')
+
+                # Calculate Coarse Step for Round 1
+                coarse_step = self._calculate_coarse_step(p_min, p_max, target_step)
+                
+                values = self._generate_range_values(p_min, p_max, coarse_step)
+                
+                value_lists.append(values)
                 param_names.append(param_name)
                 processed_params.add(param_name)
+                
+                # Store metadata for adaptive refinement
+                adaptive_meta[param_name] = {
+                    'target_step': target_step,
+                    'current_step': coarse_step,
+                    'min': p_min,
+                    'max': p_max
+                }
             
             # Create Grid Search stage
             if param_names:
@@ -401,7 +547,8 @@ class ComboOptimizer:
                     "values": value_lists,  # List of value lists
                     "locked_params": {},
                     "grid_mode": True,  # Flag for Grid Search
-                    "description": f"Joint optimization of {', '.join(param_names)}"
+                    "description": f"Joint optimization of {', '.join(param_names)}",
+                    "adaptive_meta": adaptive_meta
                 }
                 
                 # Calculate and log grid size
@@ -420,29 +567,36 @@ class ComboOptimizer:
             # Check for custom range override
             if custom_ranges and param_name in custom_ranges:
                 custom = custom_ranges[param_name]
-                values = self._generate_range_values(
-                    custom.get('min', config.get('min')),
-                    custom.get('max', config.get('max')),
-                    custom.get('step', config.get('step'))
-                )
+                p_min = custom.get('min', config.get('min'))
+                p_max = custom.get('max', config.get('max'))
+                target_step = custom.get('step', config.get('step'))
             else:
-                # Get default value if present
-                default_val = config.get('default')
-                
-                values = self._generate_range_values(
-                    config.get('min'),
-                    config.get('max'),
-                    config.get('step')
-                )
+                p_min = config.get('min')
+                p_max = config.get('max')
+                target_step = config.get('step')
+            
+            # Coarse Step for Round 1
+            coarse_step = self._calculate_coarse_step(p_min, p_max, target_step)
+            values = self._generate_range_values(p_min, p_max, coarse_step)
+            
+            adaptive_meta = {
+                param_name: {
+                    'target_step': target_step,
+                    'current_step': coarse_step,
+                    'min': p_min,
+                    'max': p_max
+                }
+            }
             
             stages.append({
                 "stage_num": stage_num,
-                "stage_name": f"Optimize {param_name}",
-                "parameter": param_name,  # Single parameter (Sequential mode)
-                "values": values,
+                "stage_name": f"Grid Search: {param_name}",
+                "parameter": [param_name],  # List for Grid
+                "values": [values],      # List of lists for Grid
                 "locked_params": {},
-                "grid_mode": False,  # Flag for Sequential
-                "description": f"Optimize {param_name}"
+                "grid_mode": True,       # Explicit Grid Mode
+                "description": f"Grid Search verification of {param_name}",
+                "adaptive_meta": adaptive_meta
             })
             stage_num += 1
         
@@ -451,6 +605,12 @@ class ComboOptimizer:
             logging.warning(f"No optimization_schema found for {template_name} - using legacy stage generation")
             
             # Legacy: Infer from indicators metadata
+            # Legacy: Infer from indicators metadata
+            
+            # Step 1: Collect indicator parameters for Grid Search
+            grid_param_names = []
+            grid_value_lists = []
+            
             for indicator in metadata.get('indicators', []):
                 ind_type = indicator['type']
                 ind_alias = indicator.get('alias', ind_type)
@@ -463,7 +623,7 @@ class ComboOptimizer:
                     # Create full parameter name (e.g., "ema_fast_length")
                     full_param_name = f"{ind_alias}_{param_name}"
                     
-                    # Check if custom range is provided
+                    # Determine range values
                     if custom_ranges and full_param_name in custom_ranges:
                         custom = custom_ranges[full_param_name]
                         values = self._generate_range_values(
@@ -486,16 +646,55 @@ class ComboOptimizer:
                         step = max(1, int((max_val - min_val) / 10))
                         values = self._generate_range_values(min_val, max_val, step)
                     
-                    stages.append({
-                        "stage_num": stage_num,
-                        "stage_name": f"{ind_alias.upper()} {param_name}",
-                        "parameter": full_param_name,
-                        "values": values,
-                        "locked_params": {},
-                        "grid_mode": False,
-                        "description": f"Optimize {ind_alias} {param_name}"
-                    })
-                    stage_num += 1
+                    grid_param_names.append(full_param_name)
+                    grid_value_lists.append(values)
+            
+            # Create Grid Search Stage (Stage 1)
+            if grid_param_names:
+                stage = {
+                    "stage_num": stage_num,
+                    "stage_name": f"Grid Search: {', '.join(grid_param_names)}",
+                    "parameter": grid_param_names,
+                    "values": grid_value_lists,
+                    "locked_params": {},
+                    "grid_mode": True,
+                    "description": f"Joint optimization of {', '.join(grid_param_names)}"
+                }
+                
+                # Check grid size safety
+                grid_size = self._calculate_grid_size(stage)
+                logging.info(f"Implicit Grid Stage generated with {grid_size} combinations")
+                
+                stages.append(stage)
+                stage_num += 1
+
+            # Step 2: Check for orphan parameters in custom_ranges (e.g. stop_loss)
+            if custom_ranges:
+                existing_params = set(grid_param_names) # Use list of names from grid
+                for s in stages: # Also check other stages if any
+                     if isinstance(s['parameter'], list):
+                         existing_params.update(s['parameter'])
+                     else:
+                         existing_params.add(s['parameter'])
+
+                for param, range_config in custom_ranges.items():
+                    if param not in existing_params:
+                        values = self._generate_range_values(
+                            range_config.get('min'),
+                            range_config.get('max'),
+                            range_config.get('step')
+                        )
+                        # Force Grid Mode for orphans too (1D Grid), as requested
+                        stages.append({
+                            "stage_num": stage_num,
+                            "stage_name": f"Grid Search: {param}",
+                            "parameter": [param], # List for Grid
+                            "values": [values],   # List of lists for Grid
+                            "locked_params": {},
+                            "grid_mode": True,    # Explicit Grid Mode
+                            "description": f"Grid Search verification of {param}"
+                        })
+                        stage_num += 1
         
         logging.info(f"Generated {len(stages)} stages for {template_name}")
         return stages
@@ -545,6 +744,126 @@ class ComboOptimizer:
                     )
                 all_correlated_params.add(param)
     
+    def _calculate_coarse_step(self, start: Any, end: Any, target_step: Any = None) -> Any:
+        """
+        Calculate a coarse step for Round 1 to cover the range efficiently.
+        Heuristic: Try to cover range in ~4-6 distinct values.
+        """
+        try:
+            # Check if all inputs are effectively integers
+            is_int = (isinstance(start, int) or float(start).is_integer()) and \
+                     (isinstance(end, int) or float(end).is_integer()) and \
+                     (target_step is None or isinstance(target_step, int) or float(target_step).is_integer())
+            
+            val_range = float(end) - float(start)
+            
+            if is_int:
+                val_range = int(val_range)
+                if val_range <= 5: return 1 # Small range, just do step 1
+                
+                # Target ~4 steps (Range/4)
+                # Ensure step is at least 1
+                coarse = max(1, int(val_range // 4))
+                
+                # Make coarse step cleaner (e.g. 5, 10, etc) if possible, but raw division is fine for now
+                return coarse
+            
+            # Float/Decimal logic
+            # If target_step provided, jump 5x target
+            if target_step:
+                # e.g. Target 0.01 -> Coarse 0.05
+                # e.g. Target 1 -> Coarse 5
+                # But maximize with range/4 to mostly ensure we don't have 100 steps
+                return max(float(target_step) * 5, val_range / 4.0)
+            
+            # No target step, guess based on range magnitude
+            if val_range < 0.1: return val_range / 4.0  # e.g. 0.08 -> 0.02
+            if val_range < 1.0: return 0.1
+            if val_range < 10.0: return 1.0
+            return 5.0
+            
+        except Exception:
+            # Fallback to safe default
+            return 1 if isinstance(start, int) else 0.1
+
+    def _refine_stage_values(self, stage: Dict, best_params: Dict) -> None:
+        """
+        Refine the search grid for the next round based on best results.
+        Updates stage['values'] in-place.
+        """
+        adaptive_meta = stage.get('adaptive_meta')
+        if not adaptive_meta: return
+
+        new_value_lists = []
+        param_names = stage['parameter'] # List for grid
+        
+        # Iterate over parameters in this stage
+        for i, param_name in enumerate(param_names):
+            meta = adaptive_meta.get(param_name)
+            if not meta:
+                # Should not happen if structured correctly, but fallback
+                new_value_lists.append(stage['values'][i])
+                continue
+                
+            best_val = best_params.get(param_name)
+            if best_val is None:
+                # Fallback
+                new_value_lists.append(stage['values'][i])
+                continue
+
+            current_step = meta['current_step']
+            target_step = meta.get('target_step')
+            
+            # --- CALCULATE NEW STEP ---
+            # Heuristic: Halve the step until we hit target
+            
+            is_int = (isinstance(best_val, int) or float(best_val).is_integer()) and \
+                     (target_step is None or isinstance(target_step, int) or float(target_step).is_integer())
+            
+            if is_int:
+                # Integer refinement (e.g. 5 -> 2 -> 1)
+                current_step_int = int(current_step)
+                if current_step_int > 1:
+                    new_step = max(1, int(current_step_int // 2)) 
+                    # Prefer simple steps: 5->2, 4->2, 3->1, 2->1
+                else:
+                    new_step = 1
+            else:
+                # Float refinement
+                if target_step:
+                     new_step = max(float(target_step), float(current_step) / 2.0)
+                else:
+                     new_step = float(current_step) / 2.0
+            
+            # Update meta for next round
+            meta['current_step'] = new_step
+            
+            # --- CALCULATE NEW RANGE ---
+            # Smart Bounds: [Best - OldStep, Best + OldStep]
+            # This covers the "neighbors" we just tested
+            
+            global_min = meta.get('min')
+            global_max = meta.get('max')
+            
+            range_min = best_val - current_step
+            range_max = best_val + current_step
+            
+            # Clamp to globals if exist
+            if global_min is not None: range_min = max(range_min, global_min)
+            if global_max is not None: range_max = min(range_max, global_max)
+            
+            # Generate new values
+            new_vals = self._generate_range_values(range_min, range_max, new_step)
+            
+            # Deduplicate and Sort
+            new_vals = sorted(list(set(new_vals)))
+            new_value_lists.append(new_vals)
+            
+            logging.info(f"    Refining {param_name}: Best={best_val}, Step {current_step}->{new_step}, Range [{range_min}, {range_max}]")
+
+        # Update stage values
+        stage['values'] = new_value_lists
+
     def _generate_range_values(self, start: Any, end: Any, step: Any) -> List[Any]:
         """
         Generate inclusive range supporting floats and integers.
@@ -687,16 +1006,23 @@ class ComboOptimizer:
         # Use max_workers = CPU count - 1 to leave one for the OS/Backend
         max_workers = max(1, (os.cpu_count() or 2) - 1)
         
-        # PHASE 2: Detect Grid Search and disable refinement
-        # Grid Search already finds global maximum, no need for iterative refinement
+        # PHASE 2: Detect Grid Search and allow refinement
+        # Grid Search finds the best "coarse" region, then we refine it.
         has_grid_search = any(stage.get('grid_mode', False) for stage in stages)
+        has_adaptive = any(stage.get('adaptive_meta') for stage in stages)
         
         if has_grid_search:
-            max_rounds = 1
-            logging.info("=" * 60)
-            logging.info("Grid Search detected - running single round (no refinement)")
-            logging.info("Grid Search guarantees global maximum within search space")
-            logging.info("=" * 60)
+            if has_adaptive:
+                max_rounds = 4
+                logging.info("=" * 60)
+                logging.info("Adaptive Grid Search detected - 4 Rounds (Coarse -> Fine)")
+                logging.info("=" * 60)
+            else:
+                max_rounds = 1
+                logging.info("=" * 60)
+                logging.info("Grid Search detected - running single round (no refinement)")
+                logging.info("Grid Search guarantees global maximum within search space")
+                logging.info("=" * 60)
         else:
             max_rounds = 5
             logging.info("Sequential optimization - using iterative refinement (5 rounds)")
@@ -706,6 +1032,15 @@ class ComboOptimizer:
         
         while not converged and round_num <= max_rounds:
             logging.info(f"--- STARTING ROUND {round_num} OF REFINE ---")
+
+            # Refine stages for rounds > 1 (Adaptive Zoom)
+            if round_num > 1:
+                 # Check if we should refine based on adaptive meta
+                 logging.info(f"Refining search grid around best result: {best_params}")
+                 for stage in stages:
+                     if stage.get('adaptive_meta'):
+                         self._refine_stage_values(stage, best_params)
+            
             params_at_start = best_params.copy()
             
             for stage in stages:
@@ -800,8 +1135,40 @@ class ComboOptimizer:
                     total_tests = len(worker_args)
                     logging.info(f"  Starting parallel execution of {total_tests} tests...")
                     
+                    results = []
+                    
+                    # BATCH PROCESSING OPTIMIZATION
+                    # Group tasks into batches to reduce I/O and Process overhead
+                    BATCH_SIZE = 200 # 200 tests per worker task
+                    worker_batches = [worker_args[i:i + BATCH_SIZE] for i in range(0, len(worker_args), BATCH_SIZE)]
+                    
+                    logging.info(f"  Optimized: {len(worker_batches)} batches of up to {BATCH_SIZE} tests")
+
                     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-                        results = list(executor.map(_worker_run_backtest, worker_args))
+                        # Submit batches
+                        futures = [executor.submit(_worker_run_batch, batch) for batch in worker_batches]
+                        
+                        completed_tests = 0
+                        
+                        # Process as batches complete
+                        for i, future in enumerate(concurrent.futures.as_completed(futures), 1):
+                            try:
+                                batch_results = future.result()
+                                results.extend(batch_results)
+                                completed_tests += len(batch_results)
+                                
+                                # Log progress
+                                elapsed = time.time() - start_time
+                                avg_time_per_test = elapsed / completed_tests if completed_tests > 0 else 0
+                                remaining = (total_tests - completed_tests) * avg_time_per_test
+                                
+                                logging.info(f"  Progress: {completed_tests}/{total_tests} ({completed_tests/total_tests:.1%}) - Elapsed: {elapsed:.1f}s - ETA: {remaining:.1f}s")
+
+                            except Exception as exc:
+                                logging.error(f"  Worker Batch exception: {exc}")
+                    
+                    # Sort results to maintain deterministic order if needed (though scoring handles it)
+                    # results.sort(key=lambda x: x.get('value', 0) if isinstance(x.get('value'), (int, float)) else str(x.get('value')))
                     
                     # Process results with Weighted Composite Score
                     valid_results = []

@@ -47,12 +47,26 @@ export function ComboConfigurePage() {
             const optParams: any[] = []
 
             // Check if template has optimization_schema in database
+            // Check if template has optimization_schema in database
             if (data.optimization_schema && Object.keys(data.optimization_schema).length > 0) {
                 // Use optimization schema from database
-                Object.entries(data.optimization_schema).forEach(([paramName, config]: [string, any]) => {
+                // Handle both Flat (legacy) and Nested (new) schema structures
+                let schemaSource = data.optimization_schema;
+                if (data.optimization_schema.parameters) {
+                    schemaSource = data.optimization_schema.parameters;
+                }
+
+                Object.entries(schemaSource).forEach(([paramName, config]: [string, any]) => {
+                    // Skip non-parameter keys if any (like correlated_groups if mixed in flat schema)
+                    if (paramName === 'correlated_groups' || paramName === 'parameters') return;
+
                     // Determine group from parameter name (e.g., "sma_short" -> "short")
                     const parts = paramName.split('_')
                     const group = parts.length > 1 ? parts[parts.length - 1] : paramName
+
+                    // Ensure config has min/max (it might be a raw value in some weird legacy cases, but assuming dict)
+                    // If config is null/undefined or not an object, skip
+                    if (!config || typeof config !== 'object') return;
 
                     optParams.push({
                         name: paramName,
@@ -328,7 +342,7 @@ export function ComboConfigurePage() {
                                                 {param.group}
                                             </span>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-3">
+                                        <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="text-xs text-gray-400 block mb-1">Min</label>
                                                 <input
@@ -350,19 +364,6 @@ export function ComboConfigurePage() {
                                                     onChange={(e) => {
                                                         const newParams = [...params]
                                                         newParams[idx].max = parseFloat(e.target.value)
-                                                        setParams(newParams)
-                                                    }}
-                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-gray-400 block mb-1">Step</label>
-                                                <input
-                                                    type="number"
-                                                    value={param.step}
-                                                    onChange={(e) => {
-                                                        const newParams = [...params]
-                                                        newParams[idx].step = parseFloat(e.target.value)
                                                         setParams(newParams)
                                                     }}
                                                     className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"

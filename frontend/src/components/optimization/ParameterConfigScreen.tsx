@@ -206,7 +206,7 @@ const ParameterConfigScreen: React.FC<ParameterConfigScreenProps> = ({
                                 </div>
 
                                 {schema.optimization_range && paramRanges[paramName] && (
-                                    <div className="grid grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm text-gray-400 mb-1">Min</label>
                                             <input
@@ -222,16 +222,6 @@ const ParameterConfigScreen: React.FC<ParameterConfigScreenProps> = ({
                                                 type="number"
                                                 value={paramRanges[paramName].max}
                                                 onChange={(e) => handleParamRangeChange(paramName, 'max', parseFloat(e.target.value))}
-                                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm text-gray-400 mb-1">Step</label>
-                                            <input
-                                                type="number"
-                                                value={paramRanges[paramName].step}
-                                                onChange={(e) => handleParamRangeChange(paramName, 'step', parseFloat(e.target.value))}
-                                                step="0.1"
                                                 className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
                                             />
                                         </div>
@@ -256,7 +246,7 @@ const ParameterConfigScreen: React.FC<ParameterConfigScreenProps> = ({
                     {/* Stop-Loss */}
                     <div className="bg-gray-900/50 rounded-lg p-4 mb-4">
                         <h3 className="text-lg font-medium text-white mb-3">Stop-Loss (Range)</h3>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm text-gray-400 mb-1">Min (%)</label>
                                 <input
@@ -273,16 +263,6 @@ const ParameterConfigScreen: React.FC<ParameterConfigScreenProps> = ({
                                     type="number"
                                     value={stopLossRange.max}
                                     onChange={(e) => setStopLossRange(prev => ({ ...prev, max: parseFloat(e.target.value) }))}
-                                    step="0.1"
-                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Step (%)</label>
-                                <input
-                                    type="number"
-                                    value={stopLossRange.step}
-                                    onChange={(e) => setStopLossRange(prev => ({ ...prev, step: parseFloat(e.target.value) }))}
                                     step="0.1"
                                     className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
                                 />

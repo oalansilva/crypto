@@ -146,38 +146,38 @@ class ComboStrategy:
         
         return df
     
-    def _evaluate_logic(self, df: pd.DataFrame, logic: str, row_idx: int) -> bool:
+    def _evaluate_logic_vectorized(self, df: pd.DataFrame, logic: str) -> pd.Series:
         """
-        Evaluate entry/exit logic for a specific row.
+        Evaluate entry/exit logic for the ENTIRE dataframe at once.
         
         Args:
             df: DataFrame with indicators
-            logic: Logic expression to evaluate (must use & and | instead of and/or)
-            row_idx: Row index to evaluate
+            logic: Logic expression to evaluate
         
         Returns:
-            True if logic evaluates to True, False otherwise
+            Boolean Series where True means logic condition is met
         """
         try:
-            # Create local context with helper functions
+            # Create local context with vectorized helper functions
             local_context = HELPER_FUNCTIONS.copy()
             
-            # Add all dataframe columns as Series up to current row
+            # Add all dataframe columns to context (Vectors/Series)
             for col in df.columns:
-                if row_idx < len(df):
-                    local_context[col] = df[col].iloc[:row_idx+1]
+                local_context[col] = df[col]
             
-            # Evaluate the logic
+            # Evaluate the logic globally (fast!)
             result = eval(logic, {"__builtins__": {}}, local_context)
             
-            # If result is a Series, get the last value
             if isinstance(result, pd.Series):
-                return bool(result.iloc[-1]) if len(result) > 0 else False
+                return result.fillna(False).astype(bool)
             
-            return bool(result)
+            # If result is scalar (e.g. "True"), broadcast to Series
+            return pd.Series([bool(result)] * len(df), index=df.index)
         
         except Exception as e:
-            raise RuntimeError(f"Error evaluating logic '{logic}': {str(e)}")
+            # Fallback or strict error
+            raise RuntimeError(f"Error evaluating vectorized logic '{logic}': {str(e)}")
+
     
     def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -204,68 +204,89 @@ class ComboStrategy:
         # Initialize signal column
         df['signal'] = 0
         
-        # Track position state for stop loss simulation
+        # ---------------------------------------------------------------------
+        # OPTIMIZATION: Vectorized Logic Evaluation
+        # ---------------------------------------------------------------------
+        # Pre-calculate entry and exit masks for the whole dataframe
+        # This replaces the O(N^2) row-by-row slicing loop.
+        try:
+            entry_mask = self._evaluate_logic_vectorized(df, self.entry_logic)
+            exit_mask = self._evaluate_logic_vectorized(df, self.exit_logic)
+        except Exception as e:
+            print(f"Error in vectorized logic: {e}")
+            return df
+
+        # Optimization: Early exit if no entries
+        if not entry_mask.any():
+            return df
+
+        # Iteration is still needed for state management (In Position, Stop Loss),
+        # but now we strictly check boolean flags (O(1)) instead of evaluating logic.
+        
         in_position = False
         entry_price = None
-        pending_entry = False  # Flag for confirmed entry on next candle
-        pending_exit = False   # Flag for confirmed exit on next candle
+        pending_entry = False
+        pending_exit = False
         
-        # Evaluate logic for each row WITH stop loss simulation and confirmed signals
+        # Pre-convert columns to Numpy arrays for max speed in the loop
+        # (Pandas .iloc is slow inside loops)
+        close_arr = df['close'].values
+        open_arr = df['open'].values
+        low_arr = df['low'].values
+        
+        entry_bits = entry_mask.values
+        exit_bits = exit_mask.values
+        
+        # Output signal arrays
+        signals = np.zeros(len(df), dtype=int)
+        
+        stop_loss_decimal = self.stop_loss
+        
         for i in range(len(df)):
-            try:
-                current_price = df.iloc[i]['close']
+            # Apply confirmed signals from Previous Candle
+            if pending_entry and not in_position:
+                signals[i] = 1
+                in_position = True
+                entry_price = float(open_arr[i])
+                pending_entry = False
+                continue
+            
+            if pending_exit and in_position:
+                signals[i] = -1
+                in_position = False
+                entry_price = None
+                pending_exit = False
+                continue
+
+            # Intra-candle Stop Loss Check (Priority)
+            if in_position and entry_price is not None:
+                current_low = float(low_arr[i])
+                low_pnl = (current_low - entry_price) / entry_price
                 
-                # CRITICAL: Check stop loss FIRST before any other signals
-                # This ensures stop loss has priority over pending exit signals
-                if in_position and entry_price is not None:
-                    # Check if LOW dropped below stop price (intra-candle stop)
-                    # We use LOW because a wick can trigger stop loss even if close is higher
-                    current_low = df.iloc[i]['low']
-                    low_pnl = (current_low - entry_price) / entry_price
-                    
-                    if low_pnl <= -self.stop_loss:
-                        # Stop loss hit - immediate sell signal (no confirmation needed)
-                        df.loc[df.index[i], 'signal'] = -1
-                        in_position = False
-                        entry_price = None
-                        pending_exit = False  # Cancel any pending exit
-                        continue
-                
-                # Apply pending signals (from previous candle's confirmation)
-                if pending_entry and not in_position:
-                    df.loc[df.index[i], 'signal'] = 1
-                    in_position = True
-                    # Execute at OPEN of the candle (first moment available)
-                    entry_price = df.iloc[i]['open']
-                    pending_entry = False
-                    continue  # Don't check other conditions this candle
-                
-                if pending_exit and in_position:
-                    df.loc[df.index[i], 'signal'] = -1
+                if low_pnl <= -stop_loss_decimal:
+                    signals[i] = -1
                     in_position = False
                     entry_price = None
-                    # Execute at OPEN of the candle
                     pending_exit = False
-                    continue  # Don't check other conditions this candle
-                
-                # Check for crossovers/conditions on current candle
-                # If detected, set pending flag for NEXT candle
-                if i > 0:  # Need previous candle for crossover detection
-                    # Check entry logic (only if not in position)
-                    if not in_position and self._evaluate_logic(df, self.entry_logic, i):
-                        # Crossover detected - set pending entry for next candle
-                        pending_entry = True
-                    
-                    # Check exit logic (only if in position)
-                    elif in_position and self._evaluate_logic(df, self.exit_logic, i):
-                        # Exit condition detected - set pending exit for next candle
-                        pending_exit = True
+                    continue
+
+            # Logic Check for Signal Confirmation (happens at close)
+            # If logic is True at index i (Close of candle i), 
+            # we set pending flag for index i+1 (Open of candle i+1)
             
-            except Exception as e:
-                # Log error but continue
-                print(f"Warning: Error at row {i}: {str(e)}")
-                continue
+            if i > 0: # Logic usually requires lookback (shift)
+                # Entry Logic
+                if not in_position:
+                    if entry_bits[i]:
+                        pending_entry = True
+                
+                # Exit Logic
+                elif in_position:
+                    if exit_bits[i]:
+                        pending_exit = True
         
+        # Write back results
+        df['signal'] = signals
         return df
     
     def get_indicator_columns(self) -> List[str]:

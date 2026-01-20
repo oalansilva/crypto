@@ -21,12 +21,13 @@ def crossover(series_a: pd.Series, series_b: pd.Series) -> bool:
         True if series_a crossed above series_b in the last candle
     """
     if len(series_a) < 2 or len(series_b) < 2:
-        return False
+        return pd.Series([False] * len(series_a), index=series_a.index)
     
-    current = series_a.iloc[-1] > series_b.iloc[-1]
-    previous = series_a.iloc[-2] <= series_b.iloc[-2]
+    # Vectorized check
+    current = series_a > series_b
+    previous = series_a.shift(1) <= series_b.shift(1)
     
-    return current and previous
+    return current & previous
 
 
 def crossunder(series_a: pd.Series, series_b: pd.Series) -> bool:
@@ -41,12 +42,13 @@ def crossunder(series_a: pd.Series, series_b: pd.Series) -> bool:
         True if series_a crossed below series_b in the last candle
     """
     if len(series_a) < 2 or len(series_b) < 2:
-        return False
+        return pd.Series([False] * len(series_a), index=series_a.index)
     
-    current = series_a.iloc[-1] < series_b.iloc[-1]
-    previous = series_a.iloc[-2] >= series_b.iloc[-2]
+    # Vectorized check
+    current = series_a < series_b
+    previous = series_a.shift(1) >= series_b.shift(1)
     
-    return current and previous
+    return current & previous
 
 
 def above(series_a: pd.Series, series_b: pd.Series, periods: int = 1) -> bool:
@@ -62,9 +64,12 @@ def above(series_a: pd.Series, series_b: pd.Series, periods: int = 1) -> bool:
         True if series_a has been above series_b for the last N periods
     """
     if len(series_a) < periods or len(series_b) < periods:
-        return False
+        return pd.Series([False] * len(series_a), index=series_a.index)
     
-    return all(series_a.iloc[-periods:] > series_b.iloc[-periods:])
+    # Vectorized check using rolling min (if min > 0, then all were True)
+    # (a > b) gives boolean series (0/1). Rolling min of 1s is 1.
+    condition = (series_a > series_b).astype(int)
+    return condition.rolling(window=periods).min() == 1
 
 
 def below(series_a: pd.Series, series_b: pd.Series, periods: int = 1) -> bool:
@@ -80,9 +85,11 @@ def below(series_a: pd.Series, series_b: pd.Series, periods: int = 1) -> bool:
         True if series_a has been below series_b for the last N periods
     """
     if len(series_a) < periods or len(series_b) < periods:
-        return False
+        return pd.Series([False] * len(series_a), index=series_a.index)
     
-    return all(series_a.iloc[-periods:] < series_b.iloc[-periods:])
+    # Vectorized check
+    condition = (series_a < series_b).astype(int)
+    return condition.rolling(window=periods).min() == 1
 
 
 # Export helper functions for use in logic evaluation

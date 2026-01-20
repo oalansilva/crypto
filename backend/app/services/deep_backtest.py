@@ -7,6 +7,7 @@ daily OHLC data.
 """
 
 import pandas as pd
+import numpy as np
 import logging
 from typing import Dict, List, Optional
 
@@ -40,23 +41,29 @@ def simulate_execution_with_15m(
     Returns:
         List of trade dictionaries with accurate entry/exit times and prices
     """
+
     trades = []
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
     
-    logger.info(f"Starting Deep Backtest simulation with {len(df_daily_signals)} daily signals and {len(df_15m)} 15m candles")
+    # logger.info(f"Starting Deep Backtest simulation with {len(df_daily_signals)} daily signals and {len(df_15m)} 15m candles")
     
-    # Pre-calculate entry and exit signals from daily dataframe
-    # This avoids iterating row-by-row for the whole dataframe
+    # -------------------------------------------------------------------------
+    # OPTIMIZATION: Convert 15m data to Numpy arrays for O(1) access
+    # -------------------------------------------------------------------------
+    if df_15m.empty:
+        times_15m = np.array([])
+        lows_15m = np.array([])
+    else:
+        times_15m = df_15m.index # Keep as Index for robust searchsorted
+        lows_15m = df_15m['low'].values # float array
+        
+    # Pre-calculate entry signals
     entry_signals = df_daily_signals[df_daily_signals['signal'] == 1]
     
-    # We will iterate through valid entry signals
-    # For each entry, we find the next exit signal
-    # Then we check intraday data between those two points
-    
-    daily_idx_list = df_daily_signals.index
-    
-    # Convert index to native datetime for faster comparisons if needed, 
-    # but pandas handles tz-aware well usually.
+    # Pre-calculate ALL exit signals (signal == -1) to avoid repeated filtering
+    exit_signals = df_daily_signals[df_daily_signals['signal'] == -1]
+    exit_times = exit_signals.index
+    exit_prices = exit_signals['open'].values # Exit executes at OPEN
     
     last_exit_time = None
     
@@ -69,64 +76,49 @@ def simulate_execution_with_15m(
         exact_stop_price = entry_price * (1 - stop_loss_pct)
         
         # 2. Find the NEXT exit signal after this entry
-        # We look for signal == -1 that is strictly after entry_time
-        # Use simple boolean masking on the daily dataframe slice
-        future_signals = df_daily_signals.loc[entry_time:]
-        # shift(0) is just the slice. We need the first -1
+        # Use searchsorted on the pre-fetched exit_times (O(log M))
+        # strictly greater than entry_time
+        next_exit_idx = exit_times.searchsorted(entry_time, side='right')
         
-        # Optimization: argmax/idxmax on boolean mask is fast
-        # valid_exits mask: (signal == -1) & (index > entry_time)
-        # Note: loc[entry_time:] includes entry_time, so we must be careful if signal could switch on same candle (unlikely for daily logic)
-        
-        # Let's get the standard "signal exit" from daily data
-        signal_exit_candidates = future_signals[
-            (future_signals['signal'] == -1) & 
-            (future_signals.index > entry_time)
-        ]
-        
-        if signal_exit_candidates.empty:
-            # Position held until end of data
-            signal_exit_time = df_daily_signals.index[-1] + pd.Timedelta(days=1) # hypothetical end
-            signal_exit_price = float(df_daily_signals.iloc[-1]['close']) # Approximation for end of data
-            reason_end = "end_of_period"
-        else:
-            signal_exit_time = signal_exit_candidates.index[0]
-            signal_exit_price = float(signal_exit_candidates.iloc[0]['open'])
+        if next_exit_idx < len(exit_times):
+            signal_exit_time = exit_times[next_exit_idx]
+            signal_exit_price = float(exit_prices[next_exit_idx])
             reason_end = "signal"
-
-        # 3. Vectorized Intraday Check
-        # We need to check if LOW <= STOP_PRICE at any time between Entry and Signal Exit
-        
-        # Slice 15m data ONCE
-        # range: [Entry Time, Signal Exit Time) 
-        # (Exit executes at OPEN of signal_exit_time, so we check up to that moment, 
-        # but arguably the stop could hit ON the signal candle before open? 
-        # Standard backtesting usually assumes Signal Exit happens at Open, so intraday checks run up to that timestamp)
-        
-        mask_intraday = (df_15m.index >= entry_time) & (df_15m.index < signal_exit_time)
-        chunk_15m = df_15m.loc[mask_intraday]
-        
-        if chunk_15m.empty:
-            # No intraday data, fallback to signal exit
-            final_exit_time = signal_exit_time
-            final_exit_price = signal_exit_price
-            exit_reason = reason_end if reason_end != "end_of_period" else "force_close"
         else:
-             # Check for Stop Loss Hit
-            if stop_loss_pct > 0:
-                # Boolean mask of hits
-                hit_mask = chunk_15m['low'] <= exact_stop_price
+            # Position held until end of data
+            signal_exit_time = df_daily_signals.index[-1] + pd.Timedelta(days=1)
+            signal_exit_price = float(df_daily_signals.iloc[-1]['close'])
+            reason_end = "end_of_period"
+
+        # 3. Vectorized Intraday Check (Numpy)
+        # Find range in 15m data: [Entry Time, Signal Exit Time)
+        
+        if len(times_15m) > 0:
+            # Use searchsorted to find indices (O(log N))
+            start_idx = times_15m.searchsorted(entry_time)
+            end_idx = times_15m.searchsorted(signal_exit_time)
+            
+            # Slice numpy array (O(1) view)
+            chunk_lows = lows_15m[start_idx:end_idx]
+            
+            # Check for Stop Loss Hit
+            if stop_loss_pct > 0 and chunk_lows.size > 0:
+                # Find indices where low <= stop_price
+                hit_indices = np.where(chunk_lows <= exact_stop_price)[0]
                 
-                if hit_mask.any():
+                if hit_indices.size > 0:
                     # Stop was hit!
-                    # Get the timestamp of the FIRST hit
-                    first_hit_time = hit_mask.idxmax()
+                    hit_offset = hit_indices[0]
+                    first_hit_time = times_15m[start_idx + hit_offset]
                     
-                    final_exit_time = first_hit_time
+                    # Convert numpy datetime64 back to Timestamp for consistency
+                    final_exit_time = pd.Timestamp(first_hit_time)
+                    if final_exit_time.tz is None and entry_time.tz is not None:
+                         final_exit_time = final_exit_time.tz_localize(entry_time.tz)
+
                     final_exit_price = exact_stop_price
                     exit_reason = "stop_loss"
                 else:
-                    # No stop hit, exit at signal
                     final_exit_time = signal_exit_time
                     final_exit_price = signal_exit_price
                     exit_reason = reason_end
@@ -134,9 +126,13 @@ def simulate_execution_with_15m(
                 final_exit_time = signal_exit_time
                 final_exit_price = signal_exit_price
                 exit_reason = reason_end
+        else:
+             # No 15m data
+            final_exit_time = signal_exit_time
+            final_exit_price = signal_exit_price
+            exit_reason = reason_end
 
         # 4. Record Trade
-        # Update last_exit_time to prevent overlapping trades
         last_exit_time = final_exit_time
         
         # Calculate profit
@@ -145,21 +141,16 @@ def simulate_execution_with_15m(
             (entry_price * (1 + TRADING_FEE))
         ) / (entry_price * (1 + TRADING_FEE))
         
-        # Ensure isoformat for JSON serialization
-        # entry_time is Timestamp, final_exit_time is Timestamp
-        
-        trade = {
+        trades.append({
             'entry_time': entry_time.isoformat(),
             'entry_price': entry_price,
             'type': 'long',
             'exit_time': final_exit_time.isoformat(),
             'exit_price': float(final_exit_price),
             'profit': profit,
-            'exit_reason': "stop_loss_15m" if exit_reason == "stop_loss" else "signal_15m" # Match old naming convention
-        }
-        
-        trades.append(trade)
+            'exit_reason': "stop_loss_15m" if exit_reason == "stop_loss" else "signal_15m"
+        })
 
-    logger.info(f"Deep Backtest complete: {len(trades)} trades extracted")
+    # logger.info(f"Deep Backtest complete: {len(trades)} trades extracted")
     return trades
 
