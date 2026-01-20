@@ -29,13 +29,13 @@
 - [x] Add "NEW BEST" indicator when better result found
 - [x] Add completion summary with total tests, time, and final config
 
-## Phase 4: Database & Migration (GAP 1 & 4)
-- [ ] Store `correlated_groups` in existing `optimization_schema` JSON field
-- [ ] Create SQL migration script for CRUZAMENTOMEDIAS template
-- [ ] Add correlation metadata to other prebuilt templates (RSI, MACD, etc.)
-- [ ] Implement backward compatibility: fallback to Sequential if no metadata
-- [ ] Create documentation: `docs/adding_correlation_metadata.md`
-- [ ] Validate grid size doesn't exceed 1000 combinations
+## Phase 4: Database & Migration ✅ COMPLETED
+- [x] Store `correlated_groups` in existing `optimization_schema` JSON field
+- [x] Create SQL migration script for CRUZAMENTOMEDIAS template
+- [x] Add correlation metadata to other prebuilt templates (RSI, MACD, etc.)
+- [x] Implement backward compatibility: fallback to Sequential if no metadata
+- [x] Create documentation: `docs/adding_correlation_metadata.md`
+- [x] Validate grid size doesn't exceed 1000 combinations
 
 ## Phase 5: Validation & Testing
 - [ ] Create test case comparing Sequential vs Grid on CRUZAMENTOMEDIAS
