@@ -327,6 +327,7 @@ class ComboOptimizer:
     ) -> List[Dict[str, Any]]:
         """
         Generate optimization stages for a combo strategy.
+        Supports Grid Search for correlated parameters.
         
         Args:
             template_name: Name of combo template
@@ -340,56 +341,111 @@ class ComboOptimizer:
         # Get template metadata
         metadata = self.combo_service.get_template_metadata(template_name)
         
+        # Validate correlation metadata if present
+        self._validate_correlation_metadata(metadata)
+        
         stages = []
         stage_num = 1
         
-        # Stage 1: Timeframe optimization (if not fixed)
-        if not fixed_timeframe:
-            stages.append({
-                "stage_num": stage_num,
-                "stage_name": "Timeframe",
-                "parameter": "timeframe",
-                "values": ["1m", "5m", "15m", "30m", "1h", "4h", "1d"],
-                "locked_params": {},
-                "description": "Optimize trading timeframe"
-            })
-            stage_num += 1
-            
         # Get optimization schema from database (if available)
-        schema = metadata.get('optimization_schema')
+        optimization_schema = metadata.get('optimization_schema', {})
+        correlated_groups = optimization_schema.get('correlated_groups', [])
+        parameters = optimization_schema.get('parameters', {})
+        
+        # Track which parameters have been added to stages
+        processed_params = set()
+        
+        # PHASE 1: Create Grid Search stages for correlated groups
+        for group in correlated_groups:
+            # Generate value lists for each parameter in the group
+            value_lists = []
+            param_names = []
+            
+            for param_name in group:
+                if param_name not in parameters:
+                    continue  # Skip if parameter not found (validation should have caught this)
                 
-        if schema:
-            # Use explicit schema from database
-            for param_name, config in schema.items():
+                config = parameters[param_name]
+                
                 # Check for custom range override
                 if custom_ranges and param_name in custom_ranges:
                     custom = custom_ranges[param_name]
-                    values = self._generate_values_from_range(
-                        custom.get('min', config['min']),
-                        custom.get('max', config['max']),
-                        custom.get('step', config['step'])
+                    values = self._generate_range_values(
+                        custom.get('min', config.get('min')),
+                        custom.get('max', config.get('max')),
+                        custom.get('step', config.get('step'))
                     )
                 else:
-                    values = self._generate_values_from_range(
-                        config['min'],
-                        config['max'],
-                        config['step']
+                    values = self._generate_range_values(
+                        config.get('min'),
+                        config.get('max'),
+                        config.get('step')
                     )
                 
-                stages.append({
+                value_lists.append(values)
+                param_names.append(param_name)
+                processed_params.add(param_name)
+            
+            # Create Grid Search stage
+            if param_names:
+                stage = {
                     "stage_num": stage_num,
-                    "stage_name": f"Optimize {param_name}",
-                    "parameter": param_name,
-                    "values": values,
+                    "stage_name": f"Grid Search: {', '.join(param_names)}",
+                    "parameter": param_names,  # List of parameters (Grid mode)
+                    "values": value_lists,  # List of value lists
                     "locked_params": {},
-                    "description": f"Optimize {param_name}"
-                })
-                stage_num += 1
+                    "grid_mode": True,  # Flag for Grid Search
+                    "description": f"Joint optimization of {', '.join(param_names)}"
+                }
                 
-        else:
-            # Fallback: Infer from indicators metadata (Legacy behavior for templates without schema)
-            # Stages 2 to N: Indicator parameters
-            for indicator in metadata['indicators']:
+                # Calculate and log grid size
+                grid_size = self._calculate_grid_size(stage)
+                logging.info(f"Stage {stage_num}: Grid Search with {grid_size} combinations")
+                
+                stages.append(stage)
+                stage_num += 1
+        
+        # PHASE 2: Create Sequential stages for independent parameters
+        for param_name, config in parameters.items():
+            # Skip if already processed in a correlated group
+            if param_name in processed_params:
+                continue
+            
+            # Check for custom range override
+            if custom_ranges and param_name in custom_ranges:
+                custom = custom_ranges[param_name]
+                values = self._generate_range_values(
+                    custom.get('min', config.get('min')),
+                    custom.get('max', config.get('max')),
+                    custom.get('step', config.get('step'))
+                )
+            else:
+                # Get default value if present
+                default_val = config.get('default')
+                
+                values = self._generate_range_values(
+                    config.get('min'),
+                    config.get('max'),
+                    config.get('step')
+                )
+            
+            stages.append({
+                "stage_num": stage_num,
+                "stage_name": f"Optimize {param_name}",
+                "parameter": param_name,  # Single parameter (Sequential mode)
+                "values": values,
+                "locked_params": {},
+                "grid_mode": False,  # Flag for Sequential
+                "description": f"Optimize {param_name}"
+            })
+            stage_num += 1
+        
+        # FALLBACK: If no optimization_schema, use legacy behavior
+        if not parameters:
+            logging.warning(f"No optimization_schema found for {template_name} - using legacy stage generation")
+            
+            # Legacy: Infer from indicators metadata
+            for indicator in metadata.get('indicators', []):
                 ind_type = indicator['type']
                 ind_alias = indicator.get('alias', ind_type)
                 ind_params = indicator.get('params', {})
@@ -404,7 +460,7 @@ class ComboOptimizer:
                     # Check if custom range is provided
                     if custom_ranges and full_param_name in custom_ranges:
                         custom = custom_ranges[full_param_name]
-                        values = self._generate_values_from_range(
+                        values = self._generate_range_values(
                             custom.get('min', param_value),
                             custom.get('max', param_value * 2),
                             custom.get('step', 1)
@@ -412,7 +468,7 @@ class ComboOptimizer:
                     elif param_name in opt_range:
                         # Use optimization range from template
                         range_config = opt_range[param_name]
-                        values = self._generate_values_from_range(
+                        values = self._generate_range_values(
                             range_config.get('min', param_value),
                             range_config.get('max', param_value * 2),
                             range_config.get('step', 1)
@@ -422,7 +478,7 @@ class ComboOptimizer:
                         min_val = max(1, int(param_value * 0.5))
                         max_val = int(param_value * 1.5)
                         step = max(1, int((max_val - min_val) / 10))
-                        values = self._generate_values_from_range(min_val, max_val, step)
+                        values = self._generate_range_values(min_val, max_val, step)
                     
                     stages.append({
                         "stage_num": stage_num,
@@ -430,10 +486,12 @@ class ComboOptimizer:
                         "parameter": full_param_name,
                         "values": values,
                         "locked_params": {},
+                        "grid_mode": False,
                         "description": f"Optimize {ind_alias} {param_name}"
                     })
                     stage_num += 1
         
+        logging.info(f"Generated {len(stages)} stages for {template_name}")
         return stages
     
     def _generate_values_from_range(self, min_val: float, max_val: float, step: float) -> List[float]:

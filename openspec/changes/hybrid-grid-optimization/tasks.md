@@ -7,9 +7,9 @@
 - [x] Create `_calculate_grid_size()` method to validate grid dimensions
 - [x] Create `_generate_range_values()` helper (GAP: Floats + Inclusive Max)
 - [x] Add grid size warning (log if > 1000 combinations)
-- [ ] Modify `generate_stages()` to create joint stages using `_generate_range_values`
-- [ ] Implement stage ordering: Grids → Sequential (Timeframe is user-selected, not optimized)
-- [ ] Update stage schema to support `parameter: List[str]`, `values: List[List[Any]]`, and `grid_mode: bool`
+- [x] Modify `generate_stages()` to create joint stages using `_generate_range_values`
+- [x] Implement stage ordering: Grids → Sequential (Timeframe is user-selected, not optimized)
+- [x] Update stage schema to support `parameter: List[str]`, `values: List[List[Any]]`, and `grid_mode: bool`
 
 ## Phase 2: Iterative Refinement Integration
 - [ ] Detect if any stage has `grid_mode == True`
