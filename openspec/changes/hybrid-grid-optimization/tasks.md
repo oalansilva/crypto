@@ -62,9 +62,9 @@
 - [x] Test grid size warning (configure ranges that exceed 1000)
 - [x] Benchmark performance (should complete in <10 minutes for ~400 tests with parallelization)
 ## Phase 6: Documentation
-- [ ] Update `combo_optimizer.py` docstrings
-- [ ] Create `docs/adding_correlation_metadata.md` (migration guide)
-- [ ] Document Grid Search behavior (single round)
-- [ ] Document grid size limits and recommendations
-- [ ] Document stage execution order (Grids → Sequential, Timeframe user-selected)
-- [ ] Document UI considerations (Phase 2 future enhancement) (GAP 5)
+- [x] Update `combo_optimizer.py` docstrings
+- [x] Create `docs/adding_correlation_metadata.md` (migration guide)
+- [x] Document Grid Search behavior (single round)
+- [x] Document grid size limits and recommendations
+- [x] Document stage execution order (Grids → Sequential, Timeframe user-selected)
+- [x] Document UI considerations (Phase 2 future enhancement) (GAP 5)

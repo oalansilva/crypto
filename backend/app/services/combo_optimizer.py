@@ -1,8 +1,14 @@
 """
 Combo Strategy Optimizer
 
-Adapts SequentialOptimizer for combo strategies with multiple indicators.
-Handles parameter naming, stage generation, and optimization execution.
+Hybrid Grid Optimization Strategy:
+Combines Grid Search for correlated parameters with Sequential Optimization for independent ones.
+
+Features:
+- Hybrid Stage Generation: Automatically identifies correlated groups (e.g., [media_curta, media_inter, media_longa]) and generates joint Grid Search stages.
+- Single Round Execution: Disables iterative refinement (max_rounds=1) when Grid Search is active to avoid local maximum traps.
+- Parallel Execution: Uses ProcessPoolExecutor for both Sequential (single parameter) and Grid (multi-parameter) tests.
+- Deep Backtesting: Integrated simulation for precision testing using 15m intraday data.
 """
 
 import json
