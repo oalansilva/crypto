@@ -217,43 +217,51 @@ WHERE name = 'CRUZAMENTOMEDIAS';
 
 ### 5. UI Considerations
 
-**Decision: Admin-Only Configuration** (Phase 1)
+**Decision: No UI Changes Required** ✅
 
 **Rationale:**
-- Defining correlations requires deep understanding of strategy logic
-- Most users will use prebuilt templates (already configured)
-- Custom templates can start with Sequential (safe default)
+- Grid Search is **transparent** to the user
+- Existing UI already provides all necessary controls:
+  - Template selection
+  - Symbol and Timeframe
+  - Parameter ranges (Min, Max, Step)
+  - Deep Backtest toggle
+- Correlation metadata is defined **in the template** (database-level)
+- User experience remains identical
 
-**Implementation:**
-- **Phase 1 (This Feature):** No UI changes
-  - Prebuilt templates configured via SQL
-  - Custom templates use Sequential by default
-  - Advanced users can edit database directly
-
-- **Phase 2 (Future Enhancement):** Add UI
-  - "Advanced" section in template editor
-  - Checkbox: "Enable Grid Search for correlated parameters"
-  - Multi-select: "Select parameters to optimize together"
-  - Validation: Show estimated grid size
-
-**Example Future UI:**
+**Current UI (No Changes):**
 ```
 ┌─────────────────────────────────────────┐
-│ Template: My Custom Strategy           │
+│ Configure Backtest                      │
 ├─────────────────────────────────────────┤
-│ Parameters:                             │
-│ ☑ rsi_period (14)                       │
-│ ☑ rsi_oversold (30)                     │
-│ ☑ rsi_overbought (70)                   │
-│ ☐ stop_loss (1.5%)                      │
+│ Template: CRUZAMENTOMEDIAS             │
+│ Symbol: BTC/USDT                        │
+│ Timeframe: 1d                           │
+│ Deep Backtest: ☑ ENABLED                │
 │                                         │
-│ ☑ Enable Grid Search                    │
-│   Selected: rsi_period, rsi_oversold,   │
-│             rsi_overbought              │
-│   Grid Size: 125 combinations           │
-│   Est. Time: ~4 minutes                 │
+│ Parameter Optimization Ranges:          │
+│ media_shortshort                        │
+│   Min: 3    Max: 15    Step: 2          │
+│ media_mediummedium                      │
+│   Min: 15   Max: 35    Step: 4          │
+│ media_longlong                          │
+│   Min: 25   Max: 60    Step: 5          │
+│ stop_lossloss                           │
+│   Min: 0.005 Max: 0.13 Step: 0.002      │
+│                                         │
+│ [Run Optimization]                      │
 └─────────────────────────────────────────┘
 ```
+
+**What Changes Behind the Scenes:**
+- **Before:** Sequential optimization (tests params one-by-one)
+- **After:** Hybrid Grid (tests correlated params together)
+- **User sees:** Same UI, better results (finds "Antiga" automatically)
+
+**Future Enhancement (Phase 2 - Optional):**
+- Add "Advanced" section to let users define custom correlation groups
+- Only needed for custom templates
+- Prebuilt templates already configured
 
 ### 6. Default Parameter Handling
 
@@ -451,8 +459,9 @@ ERROR: Validation failed - aborting optimization
 
 ## User Impact
 
-- **Automatic**: No UI changes required; optimizer becomes smarter
-- **Faster Discovery**: Finds superior strategies automatically
+- **Zero UI Changes**: Existing interface works as-is, no learning curve
+- **Automatic Improvement**: Optimizer becomes smarter without user action
+- **Faster Discovery**: Finds superior strategies like "Antiga" automatically
 - **Confidence**: Users can trust optimization results are truly optimal
 - **Same Performance**: Parallel execution keeps optimization fast (~5-10 minutes)
 - **Works for all strategies**: RSI, MACD, BBands, custom strategies, etc.
