@@ -28,6 +28,7 @@ export function ComboConfigurePage() {
     const [params, setParams] = useState<any[]>([])
     const [symbol, setSymbol] = useState('BTC/USDT')
     const [timeframe, setTimeframe] = useState('1d')
+    const [deepBacktest, setDeepBacktest] = useState(true)
     const [logs, setLogs] = useState<string[]>([])
 
     useEffect(() => {
@@ -272,6 +273,35 @@ export function ComboConfigurePage() {
                                 </select>
                             </div>
                         </div>
+
+                        {/* Deep Backtest Toggle */}
+                        <div className="mt-6">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    checked={deepBacktest}
+                                    onChange={(e) => setDeepBacktest(e.target.checked)}
+                                    className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 checked:bg-blue-500 checked:border-blue-500 cursor-pointer transition-all"
+                                />
+                                <div className="flex-1">
+                                    <span className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">
+                                        Deep Backtest (15m Precision)
+                                    </span>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Simulates execution using 15-minute candles for realistic stop/target validation
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+
+                        {/* Warning for tight stops without Deep Backtest */}
+                        {!deepBacktest && metadata && metadata.stop_loss < 0.02 && (
+                            <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                                <p className="text-sm text-yellow-300 flex items-center gap-2">
+                                    ⚠️ Tight stops may produce unrealistic results without Deep Backtesting
+                                </p>
+                            </div>
+                        )}
 
                         <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                             <p className="text-sm text-blue-300 flex items-center gap-2">

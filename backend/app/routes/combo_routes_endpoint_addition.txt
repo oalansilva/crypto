@@ -1,0 +1,34 @@
+
+
+@router.get("/data/15m-availability")
+async def check_15m_availability(
+    symbol: str = "BTC/USDT",
+    since: str = None
+):
+    """
+    Check if 15m intraday data is available for Deep Backtesting.
+    
+    Args:
+        symbol: Trading pair (default: BTC/USDT)
+        since: Optional start date to check coverage (YYYY-MM-DD)
+        
+    Returns:
+        Availability status and data coverage information
+    """
+    try:
+        loader = IncrementalLoader()
+        availability = loader.check_intraday_availability(
+            symbol=symbol,
+            timeframe='15m',
+            since_str=since
+        )
+        
+        return {
+            "symbol": symbol,
+            "timeframe": "15m",
+            **availability
+        }
+    
+    except Exception as e:
+        logger.error(f"Error checking 15m availability: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

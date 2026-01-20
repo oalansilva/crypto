@@ -37,6 +37,7 @@ class ComboBacktestRequest(BaseModel):
     end_date: Optional[str] = Field(None, description="End date (YYYY-MM-DD)")
     parameters: Dict[str, Any] = Field(default_factory=dict, description="Custom parameter values")
     stop_loss: Optional[float] = Field(None, description="Stop loss percentage")
+    deep_backtest: bool = Field(True, description="Enable Deep Backtesting with 15m intraday precision (default: True for 1D strategies)")
 
 
 class ComboBacktestResponse(BaseModel):
@@ -49,6 +50,7 @@ class ComboBacktestResponse(BaseModel):
     trades: List[Dict[str, Any]]
     indicator_data: Dict[str, List[Optional[float]]]  # Allow None for NaN values
     candles: List[Dict[str, Any]] = Field(default_factory=list, description="OHLCV data for chart")
+    execution_mode: str = Field(default="fast_1d", description="Execution mode: 'fast_1d' or 'deep_15m'")
 
 
 class ComboOptimizationRequest(BaseModel):
@@ -58,6 +60,10 @@ class ComboOptimizationRequest(BaseModel):
     timeframe: str = Field(default="1h")
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    deep_backtest: bool = Field(
+        default=True,
+        description="Use Deep Backtesting (15m precision) for realistic stop-loss simulation"
+    )
     custom_ranges: Optional[Dict[str, Dict[str, Any]]] = Field(
         None,
         description="Custom optimization ranges for parameters"

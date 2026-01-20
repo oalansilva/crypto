@@ -148,11 +148,106 @@ class IncrementalLoader:
         if until_dt:
             mask &= (df_final['timestamp_utc'] <= until_dt)
             
-        df_result = df_final.loc[mask].copy()
-        if not df_result.empty:
-            df_result.set_index('timestamp_utc', inplace=True)
+        df_slice = df_final[mask].copy()
+        
+        # Set index to timestamp_utc for easier time-based operations
+        if 'timestamp_utc' in df_slice.columns:
+            df_slice.set_index('timestamp_utc', inplace=True)
+        
+        logger.info(f"Returning {len(df_slice)} rows for {symbol} {timeframe} from {since_dt} to {until_dt}")
+        return df_slice
+    
+    def fetch_intraday_data(self, symbol, timeframe='15m', since_str=None, until_str=None):
+        """
+        Fetch intraday data (15m by default) for Deep Backtesting.
+        This is a convenience wrapper around fetch_data with specific handling for intraday timeframes.
+        
+        Args:
+            symbol: Trading pair (e.g., 'BTC/USDT')
+            timeframe: Intraday timeframe (default: '15m', also supports '1h', '5m')
+            since_str: Start date (ISO format)
+            until_str: End date (ISO format)
             
-        return df_result
+        Returns:
+            DataFrame with OHLCV data indexed by timestamp_utc
+        """
+        # Validate timeframe is intraday
+        valid_intraday_tf = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h']
+        if timeframe not in valid_intraday_tf:
+            raise ValueError(f"Invalid intraday timeframe: {timeframe}. Must be one of {valid_intraday_tf}")
+        
+        logger.info(f"Fetching intraday data ({timeframe}) for {symbol}")
+        
+        # Use the standard fetch_data method (it already handles caching and incremental updates)
+        return self.fetch_data(symbol, timeframe, since_str, until_str)
+    
+    def check_intraday_availability(self, symbol, timeframe='15m', since_str=None):
+        """
+        Check if intraday data is available in cache for the requested period.
+        
+        Args:
+            symbol: Trading pair
+            timeframe: Intraday timeframe
+            since_str: Start date to check
+            
+        Returns:
+            dict with 'available' (bool), 'coverage' (dict with start/end dates), 'reason' (str if not available)
+        """
+        parquet_path = self._get_parquet_path(symbol, timeframe)
+        
+        if not os.path.exists(parquet_path):
+            return {
+                'available': False,
+                'reason': f'No cached {timeframe} data found for {symbol}',
+                'coverage': None
+            }
+        
+        try:
+            df = pd.read_parquet(parquet_path)
+            if df.empty:
+                return {
+                    'available': False,
+                    'reason': 'Cache file exists but is empty',
+                    'coverage': None
+                }
+            
+            # Get coverage dates
+            if 'timestamp_utc' in df.columns:
+                start_date = df['timestamp_utc'].min()
+                end_date = df['timestamp_utc'].max()
+            else:
+                # Fallback to timestamp column
+                start_date = pd.to_datetime(df['timestamp'].min(), unit='ms', utc=True)
+                end_date = pd.to_datetime(df['timestamp'].max(), unit='ms', utc=True)
+            
+            # Check if requested since_str is covered
+            if since_str:
+                since_dt = pd.to_datetime(since_str).tz_localize('UTC') if pd.to_datetime(since_str).tz is None else pd.to_datetime(since_str)
+                if start_date > since_dt:
+                    return {
+                        'available': False,
+                        'reason': f'Cached data starts at {start_date.date()}, but requested from {since_dt.date()}',
+                        'coverage': {
+                            'start': start_date.isoformat(),
+                            'end': end_date.isoformat()
+                        }
+                    }
+            
+            return {
+                'available': True,
+                'coverage': {
+                    'start': start_date.isoformat(),
+                    'end': end_date.isoformat()
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking intraday availability: {e}")
+            return {
+                'available': False,
+                'reason': f'Error reading cache: {str(e)}',
+                'coverage': None
+            }
 
     def _download_loop(self, symbol, timeframe, since_ts, until_ts, limit):
         all_ohlcv = []

@@ -6,6 +6,7 @@ interface BacktestResult {
     template_name: string
     symbol: string
     timeframe: string
+    execution_mode?: string
     parameters: Record<string, any>
     metrics: {
         total_trades: number
@@ -126,7 +127,19 @@ export function ComboResultsPage() {
                                 </div>
                             </div>
                             <div>
-                                <h1 className="text-3xl font-bold gradient-text">Backtest Results</h1>
+                                <div className="flex items-center gap-3">
+                                    <h1 className="text-3xl font-bold gradient-text">Backtest Results</h1>
+                                    {result.execution_mode === 'deep_15m' && (
+                                        <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-semibold border border-blue-500/30">
+                                            Deep (15m)
+                                        </span>
+                                    )}
+                                    {result.execution_mode === 'fast_1d' && (
+                                        <span className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded-lg text-xs font-semibold border border-gray-500/30">
+                                            Fast (1d)
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-sm text-gray-400 mt-0.5">{result.template_name} - {result.symbol} {result.timeframe}</p>
                             </div>
                         </div>

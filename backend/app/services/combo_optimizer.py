@@ -17,6 +17,7 @@ from app.services.sequential_optimizer import SequentialOptimizer
 from app.services.combo_service import ComboService
 from app.services.backtest_service import BacktestService
 from src.data.incremental_loader import IncrementalLoader
+from app.services.deep_backtest import simulate_execution_with_15m
 
 # -----------------------------------------------------------------------------
 # SHARED LOGIC HELPER
@@ -86,6 +87,69 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
             
     return trades
 
+def extract_trades_with_mode(
+    df_with_signals,
+    stop_loss: float,
+    deep_backtest: bool = False,
+    symbol: str = None,
+    since_str: str = None,
+    until_str: str = None
+):
+    """
+    Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
+    
+    Args:
+        df_with_signals: DataFrame with daily signals
+        stop_loss: Stop loss percentage
+        deep_backtest: If True, use 15m intraday simulation
+        symbol: Trading pair (required for deep backtest)
+        since_str: Start date (required for deep backtest)
+        until_str: End date (required for deep backtest)
+        
+    Returns:
+        List of trades
+    """
+    if not deep_backtest:
+        # Fast mode: use existing daily-only logic
+        return extract_trades_from_signals(df_with_signals, stop_loss)
+    
+    # Deep Backtesting mode: fetch 15m data and simulate execution
+    logger = logging.getLogger(__name__)
+    logger.info(f"Deep Backtesting enabled for {symbol}")
+    
+    if not symbol or not since_str:
+        logger.warning("Deep Backtesting requires symbol and date range. Falling back to fast mode.")
+        return extract_trades_from_signals(df_with_signals, stop_loss)
+    
+    try:
+        # Fetch 15m data
+        loader = IncrementalLoader()
+        df_15m = loader.fetch_intraday_data(
+            symbol=symbol,
+            timeframe='15m',
+            since_str=since_str,
+            until_str=until_str
+        )
+        
+        if df_15m.empty:
+            logger.warning("No 15m data available. Falling back to fast mode.")
+            return extract_trades_from_signals(df_with_signals, stop_loss)
+        
+        logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
+        
+        # Run deep backtest simulation
+        trades = simulate_execution_with_15m(
+            df_daily_signals=df_with_signals,
+            df_15m=df_15m,
+            stop_loss=stop_loss
+        )
+        
+        return trades
+        
+    except Exception as e:
+        logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
+        return extract_trades_from_signals(df_with_signals, stop_loss)
+
 # -----------------------------------------------------------------------------
 # WORKER FUNCTION (Top-level for ProcessPoolExecutor)
 # -----------------------------------------------------------------------------
@@ -94,7 +158,7 @@ def _worker_run_backtest(args):
     Worker function to run a single backtest in a separate process.
     Must be top-level to be picklable.
     """
-    template_data, params, df, stage_param, value = args
+    template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str = args
     
     try:
         # Reconstruct strategy logic locally to avoid DB connection in worker
@@ -179,8 +243,15 @@ def _worker_run_backtest(args):
         # Generate signals
         df_with_signals = strategy.generate_signals(df.copy())
         
-        # Extract trades from signals WITH STOP LOSS using shared helper
-        trades = extract_trades_from_signals(df_with_signals, stop_loss)
+        # Extract trades from signals WITH STOP LOSS using Deep or Fast mode
+        trades = extract_trades_with_mode(
+            df_with_signals, 
+            stop_loss,
+            deep_backtest=deep_backtest,
+            symbol=symbol,
+            since_str=since_str,
+            until_str=until_str
+        )
         
         # Calculate metrics
         metrics = {
@@ -383,6 +454,7 @@ class ComboOptimizer:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         custom_ranges: Optional[Dict[str, Any]] = None,
+        deep_backtest: bool = True,  # Default to Deep Backtesting
         job_id: Optional[str] = None
     ) -> Dict[str, Any]:
         
@@ -397,6 +469,14 @@ class ComboOptimizer:
         
         # Get template metadata ONCE for workers
         template_metadata = self.combo_service.get_template_metadata(template_name)
+        
+        # Ensure we have date ranges for Deep Backtesting
+        # If not provided, use full period (2017-present for comprehensive testing)
+        if not start_date:
+            start_date = "2017-01-01"  # Full crypto history (works for most major assets)
+        if not end_date:
+            from datetime import datetime
+            end_date = datetime.now().strftime("%Y-%m-%d")
         
         # Load data
         df = self.loader.fetch_data(
@@ -447,7 +527,7 @@ class ComboOptimizer:
                         continue
                     else:
                         test_params[stage_param] = value
-                        worker_args.append((template_metadata, test_params, df, stage_param, value))
+                        worker_args.append((template_metadata, test_params, df, stage_param, value, deep_backtest, symbol, start_date, end_date))
                 
                 if stage_param == 'timeframe':
                     # Sequential fallback for timeframe
@@ -460,7 +540,7 @@ class ComboOptimizer:
                             until_str=end_date
                         )
                          # Synchronous execution for timeframe
-                        worker_args_tf = (template_metadata, test_params, sub_df, stage_param, value)
+                        worker_args_tf = (template_metadata, test_params, sub_df, stage_param, value, deep_backtest, symbol, start_date, end_date)
                         res = _worker_run_backtest(worker_args_tf)
                         
                         value_res = res['value']
@@ -619,3 +699,4 @@ class ComboOptimizer:
             "indicator_data": indicator_data,
             "parameters": best_params  # For compatibility with ComboResultsPage
         }
+

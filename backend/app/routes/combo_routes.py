@@ -93,39 +93,24 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         signals_count = len(df_with_signals[df_with_signals['signal'] != 0])
         logger.info(f"Signals generated: {signals_count} signals found")
         
-        # Calculate metrics (simplified - reuse existing backtest logic)
-        trades = []
-        in_position = False
-        entry_price = 0
+        # Extract trades using proper logic (with stop loss and deep backtest support)
+        from app.services.combo_optimizer import extract_trades_with_mode
         
-        for i in range(len(df_with_signals)):
-            signal = df_with_signals['signal'].iloc[i]
-            
-            if signal == 1 and not in_position:
-                # Buy signal
-                entry_price = df_with_signals['close'].iloc[i]
-                in_position = True
-                trades.append({
-                    "entry_time": str(df_with_signals.index[i]),
-                    "entry_price": float(entry_price),
-                    "type": "buy"
-                })
-            
-            elif signal == -1 and in_position:
-                # Sell signal
-                exit_price = df_with_signals['close'].iloc[i]
-                profit = (exit_price - entry_price) / entry_price
-                
-                trades[-1].update({
-                    "exit_time": str(df_with_signals.index[i]),
-                    "exit_price": float(exit_price),
-                    "profit": float(profit)
-                })
-                
-                in_position = False
+        stop_loss = request.stop_loss or request.parameters.get('stop_loss', 0.015)
+        
+        trades = extract_trades_with_mode(
+            df_with_signals=df_with_signals,
+            stop_loss=stop_loss,
+            deep_backtest=request.deep_backtest,
+            symbol=request.symbol,
+            since_str=request.start_date or "2017-01-01",
+            until_str=request.end_date
+        )
+        
+        logger.info(f"Extracted {len(trades)} trades (Deep Backtest: {request.deep_backtest})")
         
         # Calculate basic metrics
-        total_trades = len([t for t in trades if 'exit_price' in t])
+        total_trades = len(trades)
         winning_trades = len([t for t in trades if t.get('profit', 0) > 0])
         logger.info(f"Backtest execution complete: {total_trades} trades, {winning_trades} wins")
         
@@ -178,7 +163,8 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             metrics=metrics,
             trades=trades,
             indicator_data=indicator_data,
-            candles=candles
+            candles=candles,
+            execution_mode="deep_15m" if request.deep_backtest else "fast_1d"
         )
     
     except Exception as e:
@@ -211,7 +197,8 @@ async def run_combo_optimization(request: ComboOptimizationRequest):
             timeframe=request.timeframe,
             start_date=request.start_date,
             end_date=request.end_date,
-            custom_ranges=request.custom_ranges
+            custom_ranges=request.custom_ranges,
+            deep_backtest=request.deep_backtest
         )
         
         # Return complete result with all fields
@@ -274,3 +261,11 @@ async def delete_custom_template(template_id: int):
         )
     
     return {"message": "Template deleted successfully"}
+
+
+@router.get("/data/15m-availability")
+async def check_15m_availability(symbol: str = "BTC/USDT", since: str = None):
+    loader = IncrementalLoader()
+    availability = loader.check_intraday_availability(symbol=symbol, timeframe='15m', since_str=since)
+    return {"symbol": symbol, "timeframe": "15m", **availability}
+
