@@ -10,6 +10,7 @@ import concurrent.futures
 import os
 import time
 import logging
+import itertools  # For Grid Search cartesian product
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
@@ -444,6 +445,134 @@ class ComboOptimizer:
             current += step
         return values
     
+    # -------------------------------------------------------------------------
+    # GRID SEARCH HELPER METHODS (Phase 1)
+    # -------------------------------------------------------------------------
+    
+    def _validate_correlation_metadata(self, template_metadata: Dict[str, Any]) -> None:
+        """
+        Validate correlated_groups against available parameters.
+        
+        Raises:
+            ValueError: If validation fails
+        """
+        optimization_schema = template_metadata.get("optimization_schema", {})
+        correlated_groups = optimization_schema.get("correlated_groups", [])
+        parameters = optimization_schema.get("parameters", {})
+        
+        if not correlated_groups:
+            return  # No validation needed (backward compatible)
+        
+        all_correlated_params = set()
+        
+        for group in correlated_groups:
+            for param in group:
+                # Check if parameter exists
+                if param not in parameters:
+                    raise ValueError(
+                        f"Invalid correlated_groups: parameter '{param}' not found in parameters. "
+                        f"Available: {list(parameters.keys())}"
+                    )
+                
+                # Check for duplicates
+                if param in all_correlated_params:
+                    raise ValueError(
+                        f"Invalid correlated_groups: parameter '{param}' appears in multiple groups"
+                    )
+                all_correlated_params.add(param)
+    
+    def _generate_range_values(self, start: Any, end: Any, step: Any) -> List[Any]:
+        """
+        Generate inclusive range supporting floats and integers.
+        
+        Args:
+            start: Start value
+            end: End value (inclusive)
+            step: Step size
+            
+        Returns:
+            List of values from start to end (inclusive)
+            
+        Examples:
+            _generate_range_values(10, 20, 5) -> [10, 15, 20]
+            _generate_range_values(0.1, 0.3, 0.1) -> [0.1, 0.2, 0.3]
+        """
+        values = []
+        current = start
+        
+        # Use small epsilon for float comparison
+        epsilon = step / 1000.0 if isinstance(step, float) else 0
+        
+        while current <= end + epsilon:
+            # Round floats to avoid precision issues (e.g., 0.30000000004)
+            if isinstance(current, float):
+                # Determine decimal places from step
+                if step >= 1:
+                    decimal_places = 0
+                elif step >= 0.1:
+                    decimal_places = 1
+                elif step >= 0.01:
+                    decimal_places = 2
+                elif step >= 0.001:
+                    decimal_places = 3
+                else:
+                    decimal_places = 4
+                current = round(current, decimal_places)
+            
+            values.append(current)
+            current += step
+        
+        return values
+    
+    def _calculate_grid_size(self, stage: Dict[str, Any]) -> int:
+        """
+        Calculate total grid size for a stage.
+        
+        Args:
+            stage: Stage configuration
+            
+        Returns:
+            Total number of combinations
+        """
+        if not stage.get('grid_mode'):
+            return len(stage.get('values', []))
+        
+        # Calculate product of all value list sizes
+        grid_size = 1
+        for value_list in stage['values']:
+            grid_size *= len(value_list)
+        
+        # Validate against limit
+        MAX_GRID_SIZE = 1000
+        if grid_size > MAX_GRID_SIZE:
+            logging.warning(
+                f"Grid size ({grid_size:,}) exceeds recommended limit ({MAX_GRID_SIZE:,}). "
+                f"Estimated time: ~{grid_size * 2 / 3600:.1f} hours. "
+                f"Consider increasing step size or reducing range."
+            )
+        
+        return grid_size
+    
+    def _is_correlated_group(self, template_metadata: Dict[str, Any], param_names: List[str]) -> bool:
+        """
+        Check if given parameters form a correlated group.
+        
+        Args:
+            template_metadata: Template metadata
+            param_names: List of parameter names to check
+            
+        Returns:
+            True if params are in a correlated group
+        """
+        optimization_schema = template_metadata.get("optimization_schema", {})
+        correlated_groups = optimization_schema.get("correlated_groups", [])
+        
+        param_set = set(param_names)
+        for group in correlated_groups:
+            if set(group) == param_set:
+                return True
+        
+        return False
 
 
     def run_optimization(
