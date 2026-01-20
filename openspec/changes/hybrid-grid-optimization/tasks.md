@@ -57,10 +57,10 @@
 - [x] Document stage execution order (Grids → Sequential, Timeframe user-selected)
 - [x] Document UI considerations (Phase 2 future enhancement) (GAP 5)
 
-- [ ] Verify normal strategies still use 5 rounds (max_rounds=5 when no Grid)
-- [ ] Verify Deep Backtest remains active (no regression)
-- [ ] Test grid size warning (configure ranges that exceed 1000)
-- [ ] Benchmark performance (should complete in <10 minutes for ~400 tests with parallelization)
+- [x] Verify normal strategies still use 5 rounds (max_rounds=5 when no Grid)
+- [x] Verify Deep Backtest remains active (no regression)
+- [x] Test grid size warning (configure ranges that exceed 1000)
+- [x] Benchmark performance (should complete in <10 minutes for ~400 tests with parallelization)
 ## Phase 6: Documentation
 - [ ] Update `combo_optimizer.py` docstrings
 - [ ] Create `docs/adding_correlation_metadata.md` (migration guide)
