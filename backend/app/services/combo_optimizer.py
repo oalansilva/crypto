@@ -896,10 +896,12 @@ class ComboOptimizer:
 
         # COMPLETION SUMMARY
         total_optimization_time = time.time() - start_time if 'start_time' in locals() else 0
+        rounds_display = round_num if converged else round_num - 1
+        
         logging.info("=" * 80)
         logging.info("🎯 OPTIMIZATION COMPLETE")
         logging.info("=" * 80)
-        logging.info(f"Rounds completed: {round_num}/{max_rounds}")
+        logging.info(f"Rounds completed: {rounds_display}/{max_rounds}")
         logging.info(f"Total execution time: {total_optimization_time:.1f}s ({total_optimization_time/60:.1f} minutes)")
         logging.info(f"Convergence: {'Yes' if converged else 'No'}")
         logging.info(f"\nFinal Configuration:")

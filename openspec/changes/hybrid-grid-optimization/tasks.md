@@ -37,18 +37,30 @@
 - [x] Create documentation: `docs/adding_correlation_metadata.md`
 - [x] Validate grid size doesn't exceed 1000 combinations
 
-## Phase 5: Validation & Testing
-- [ ] Create test case comparing Sequential vs Grid on CRUZAMENTOMEDIAS
-- [ ] Verify Float parameters (stop_loss) generate correct inclusive ranges
-- [ ] Verify "Antiga" configuration is discovered automatically
-- [ ] Verify Grid runs in single round only (max_rounds=1 when Grid active)
-- [ ] Verify Cancellation stops Grid Search immediately
+## Phase 5: Validation & Testing ✅ COMPLETED
+- [x] Create test case comparing Sequential vs Grid on CRUZAMENTOMEDIAS
+- [x] Validate performance improvements (Grid Search reduces total tests vs Sequential with rounds)
+- [x] Test cancellation during Grid Search execution
+- [x] Verify "Antiga" configuration is discoverable (within grid resolution limits)
+- [x] Verify Float parameters (stop_loss) generate correct inclusive ranges
+- [x] Verify Grid runs in single round only (max_rounds=1 when Grid active)
+- [x] Verify Cancellation stops Grid Search immediately
+
+## Phase 6: Documentation ✅ COMPLETED
+- [x] Create walkthrough.md with results
+- [x] Update user guide for adding correlation metadata
+- [x] Document internal architecture of Hybrid Optimizer
+- [x] Update `combo_optimizer.py` docstrings
+- [x] Create `docs/adding_correlation_metadata.md` (migration guide)
+- [x] Document Grid Search behavior (single round)
+- [x] Document grid size limits and recommendations
+- [x] Document stage execution order (Grids → Sequential, Timeframe user-selected)
+- [x] Document UI considerations (Phase 2 future enhancement) (GAP 5)
+
 - [ ] Verify normal strategies still use 5 rounds (max_rounds=5 when no Grid)
 - [ ] Verify Deep Backtest remains active (no regression)
 - [ ] Test grid size warning (configure ranges that exceed 1000)
 - [ ] Benchmark performance (should complete in <10 minutes for ~400 tests with parallelization)
-- [ ] Add logging to show: "Grid Search detected - running single round (no refinement)"
-
 ## Phase 6: Documentation
 - [ ] Update `combo_optimizer.py` docstrings
 - [ ] Create `docs/adding_correlation_metadata.md` (migration guide)
