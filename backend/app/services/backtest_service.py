@@ -316,7 +316,14 @@ class BacktestService:
                     # Indicators extraction (simplified)
                     indicators = []
                     if hasattr(backtester, 'simulation_data') and backtester.simulation_data is not None:
-                        sim_data = backtester.simulation_data
+                        sim_data = backtester.simulation_data.copy()
+                        # Ensure timestamp_utc exists
+                        if 'timestamp_utc' not in sim_data.columns:
+                            if isinstance(sim_data.index, pd.DatetimeIndex):
+                                sim_data['timestamp_utc'] = sim_data.index
+                            elif 'timestamp' in sim_data.columns:
+                                sim_data['timestamp_utc'] = sim_data['timestamp']
+
                         exclude_cols = ['timestamp_utc', 'open', 'high', 'low', 'close', 'volume', 'signal']
                         indicator_cols = [c for c in sim_data.columns if c not in exclude_cols]
                         

@@ -23,20 +23,20 @@ PARAM_ALIASES = {
     'bbands': {'period': 'length', 'bb_period': 'length', 'std': 'std', 'bb_std': 'std'},
 }
 
+
+import logging
+
+# Configure logger
+logger = logging.getLogger(__name__)
+
 def log_debug(message: str):
-    """Helper to log to file and console simultaneously"""
-    print(message)
-    try:
-        # Determine path to backend/full_execution_log.txt
-        # __file__ is app/routes/parameter_optimization.py
-        # We want to go up to backend/
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        log_path = os.path.join(base_dir, "full_execution_log.txt")
-        
-        with open(log_path, "a", encoding="utf-8") as f:
-            f.write(f"{message}\n")
-    except Exception as e:
-        print(f" Failed to write to log file: {e}")
+    """
+    Helper to log to file and console simultaneously using standard logging.
+    Standard logging keeps file handle open, avoiding repeated disk I/O overhead.
+    """
+    # The root logger in main.py is already configured to write to full_execution_log.txt
+    logger.info(message)
+
 
 
 class ParameterOptimizationRequest(BaseModel):
