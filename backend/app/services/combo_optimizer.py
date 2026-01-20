@@ -705,27 +705,60 @@ class ComboOptimizer:
             for stage in stages:
                 stage_param = stage['parameter']
                 stage_values = stage['values']
+                is_grid_mode = stage.get('grid_mode', False)
                 
-                logging.info(f"Round {round_num} - Stage {stage['stage_num']}: Optimizing {stage_param} ({len(stage_values)} tests) with {max_workers} workers")
+                # Log stage start
+                if is_grid_mode:
+                    # Calculate grid size for logging
+                    grid_size = 1
+                    for value_list in stage_values:
+                        grid_size *= len(value_list)
+                    logging.info(f"Round {round_num} - Stage {stage['stage_num']}: Grid Search {stage_param} ({grid_size} combinations) with {max_workers} workers")
+                else:
+                    logging.info(f"Round {round_num} - Stage {stage['stage_num']}: Optimizing {stage_param} ({len(stage_values)} tests) with {max_workers} workers")
                 
                 start_time = time.time()
                 stage_best_value = None
                 stage_best_sharpe = float('-inf')
                 
-                # Prepare arguments for parallel execution
+                # PHASE 3: Prepare arguments for parallel execution
                 worker_args = []
-                for value in stage_values:
-                    # Build parameters for this test
-                    test_params = best_params.copy()
+                
+                if is_grid_mode:
+                    # Grid Search: Generate all combinations using itertools.product
+                    param_names = stage_param  # List of parameter names
+                    value_lists = stage_values  # List of value lists
                     
-                    if stage_param == 'timeframe':
-                        # Timeframe optimization changes the DATA itself. 
-                        # Complex to parallelize efficiently without reloading data in every worker.
-                        # Separate logic.
-                        continue
-                    else:
-                        test_params[stage_param] = value
-                        worker_args.append((template_metadata, test_params, df, stage_param, value, deep_backtest, symbol, start_date, end_date))
+                    # Generate cartesian product
+                    for combo in itertools.product(*value_lists):
+                        # Build parameters for this combination
+                        test_params = best_params.copy()
+                        
+                        # Set all parameters in the combination
+                        for param_name, param_value in zip(param_names, combo):
+                            test_params[param_name] = param_value
+                        
+                        # Worker args: (metadata, params, df, param_name, value, deep_backtest, symbol, start, end)
+                        # For Grid mode, we pass the full combo as "value" for logging
+                        combo_dict = dict(zip(param_names, combo))
+                        worker_args.append((template_metadata, test_params, df, param_names, combo_dict, deep_backtest, symbol, start_date, end_date))
+                    
+                    logging.info(f"  Generated {len(worker_args)} Grid combinations")
+                
+                else:
+                    # Sequential: Test single parameter
+                    for value in stage_values:
+                        # Build parameters for this test
+                        test_params = best_params.copy()
+                        
+                        if stage_param == 'timeframe':
+                            # Timeframe optimization changes the DATA itself. 
+                            # Complex to parallelize efficiently without reloading data in every worker.
+                            # Separate logic.
+                            continue
+                        else:
+                            test_params[stage_param] = value
+                            worker_args.append((template_metadata, test_params, df, stage_param, value, deep_backtest, symbol, start_date, end_date))
                 
                 if stage_param == 'timeframe':
                     # Sequential fallback for timeframe
@@ -808,11 +841,18 @@ class ComboOptimizer:
 
                 # Update best params for next stage (immediate update for greedy refinement within round)
                 if stage_best_value is not None:
-                    best_params[stage_param] = stage_best_value
-                    logging.info(f"Round {round_num} - Stage {stage['stage_num']} complete: {stage_param}={stage_best_value} (Sharpe: {stage_best_sharpe:.3f})")
+                    if is_grid_mode:
+                        # Grid mode: Update all parameters in the combination
+                        best_params.update(stage_best_value)
+                        param_str = ", ".join([f"{k}={v}" for k, v in stage_best_value.items()])
+                        logging.info(f"Round {round_num} - Stage {stage['stage_num']} complete: {param_str} (Sharpe: {stage_best_sharpe:.3f})")
+                    else:
+                        # Sequential mode: Update single parameter
+                        best_params[stage_param] = stage_best_value
+                        logging.info(f"Round {round_num} - Stage {stage['stage_num']} complete: {stage_param}={stage_best_value} (Sharpe: {stage_best_sharpe:.3f})")
                 else:
                     logging.warning(f"Round {round_num} - Stage {stage['stage_num']} failed to find improvements.")
-                    if stage_values and stage_param not in best_params:
+                    if not is_grid_mode and stage_values and stage_param not in best_params:
                         best_params[stage_param] = stage_values[0]
 
                 logging.info(f"Stage time: {time.time() - start_time:.2f}s")
