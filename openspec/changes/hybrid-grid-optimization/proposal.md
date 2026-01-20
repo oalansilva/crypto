@@ -255,6 +255,74 @@ WHERE name = 'CRUZAMENTOMEDIAS';
 └─────────────────────────────────────────┘
 ```
 
+### 6. Default Parameter Handling
+
+**Requirement:** Independent parameters (e.g., `stop_loss`) must use sensible defaults during Grid Search stages.
+
+**Problem:**
+- Grid Search tests correlated params (MAs) in Stage 2
+- But `stop_loss` is optimized later in Stage 3
+- What value should be used for `stop_loss` during Stage 2?
+
+**Solution: Template-Defined Defaults**
+
+Each template defines a `default` value for independent parameters:
+
+```json
+{
+  "optimization_schema": {
+    "correlated_groups": [
+      ["media_curta", "media_inter", "media_longa"]
+    ],
+    "parameters": {
+      "media_curta": {"min": 3, "max": 15, "step": 2},
+      "media_inter": {"min": 15, "max": 35, "step": 4},
+      "media_longa": {"min": 25, "max": 60, "step": 5},
+      "stop_loss": {
+        "min": 0.005,
+        "max": 0.13,
+        "step": 0.002,
+        "default": 0.03  // ← 3.0% usado durante Grid Search
+      }
+    }
+  }
+}
+```
+
+**Execution Flow:**
+```python
+# Stage 2: MA Grid Search (336 tests)
+for combo in grid_combinations:
+    params = {
+        'media_curta': combo[0],
+        'media_inter': combo[1],
+        'media_longa': combo[2],
+        'stop_loss': 0.03  # ← Default from template
+    }
+    run_backtest(params)
+
+# Stage 3: Stop Loss Optimization (63 tests)
+# Uses best MA combo from Stage 2, varies stop_loss
+for stop_value in stop_loss_range:
+    params = {
+        'media_curta': 3,   # ← Locked from Stage 2
+        'media_inter': 32,  # ← Locked from Stage 2
+        'media_longa': 37,  # ← Locked from Stage 2
+        'stop_loss': stop_value  # ← Now being optimized
+    }
+    run_backtest(params)
+```
+
+**Benefits:**
+- **Realistic:** Tests always use stop protection (never runs without stop)
+- **Configurable:** Each template defines appropriate default for its asset class
+- **Fair Comparison:** All MA combos tested with same stop_loss baseline
+
+**Default Values by Asset Class:**
+- **Crypto (BTC, ETH):** 3.0% (higher volatility)
+- **Forex:** 1.5% (lower volatility)
+- **Stocks:** 2.0% (moderate volatility)
+
 ### 9. Logging & Observability
 
 **Requirement:** Users must be able to track optimization progress in real-time with detailed logs.
