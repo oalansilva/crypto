@@ -8,7 +8,7 @@
 - [ ] Create `_generate_range_values()` helper (GAP: Floats + Inclusive Max)
 - [ ] Add grid size warning (log if > 1000 combinations)
 - [ ] Modify `generate_stages()` to create joint stages using `_generate_range_values`
-- [ ] Implement stage ordering: Timeframe → Grids → Sequential (GAP 3)
+- [ ] Implement stage ordering: Grids → Sequential (Timeframe is user-selected, not optimized)
 - [ ] Update stage schema to support `parameter: List[str]`, `values: List[List[Any]]`, and `grid_mode: bool`
 
 ## Phase 2: Iterative Refinement Integration
@@ -54,5 +54,5 @@
 - [ ] Create `docs/adding_correlation_metadata.md` (migration guide)
 - [ ] Document Grid Search behavior (single round)
 - [ ] Document grid size limits and recommendations
-- [ ] Document stage execution order (Timeframe → Grids → Sequential)
+- [ ] Document stage execution order (Grids → Sequential, Timeframe user-selected)
 - [ ] Document UI considerations (Phase 2 future enhancement) (GAP 5)

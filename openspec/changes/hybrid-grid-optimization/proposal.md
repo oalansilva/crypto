@@ -150,27 +150,26 @@ def _validate_correlation_metadata(self, template_metadata):
 ### 3. Stage Execution Order
 
 **Defined Order:**
-1. **Timeframe** (if not fixed) - Sequential
-2. **All Grid Search stages** (correlated groups) - Parallel within each grid
-3. **All Sequential stages** (independent params) - Sequential
+1. **All Grid Search stages** (correlated groups) - Parallel within each grid
+2. **All Sequential stages** (independent params) - Sequential
 
 **Rationale:**
-- Timeframe first (changes data, must be locked early)
-- All Grids next (find optimal combinations for strategy logic)
+- Timeframe is **user-selected** (fixed, not optimized)
+- All Grids first (find optimal combinations for strategy logic)
 - Sequential last (fine-tune risk params with optimal strategy)
 
 **Example:**
 ```python
-# CRUZAMENTOMEDIAS execution order:
-Stage 1: Timeframe [7 tests] - Sequential
-Stage 2: MA Grid [336 tests] - Grid Search (parallel)
-Stage 3: Stop Loss [63 tests] - Sequential
+# CRUZAMENTOMEDIAS execution order (Timeframe=1d fixed by user):
+Stage 1: MA Grid [336 tests] - Grid Search (parallel)
+Stage 2: Stop Loss [63 tests] - Sequential
+Total: 399 tests
 
-# BBANDS_ATR execution order:
-Stage 1: Timeframe [7 tests] - Sequential
-Stage 2: BBands Grid [20 tests] - Grid Search (parallel)
-Stage 3: ATR Grid [15 tests] - Grid Search (parallel)
-Stage 4: Stop Loss [63 tests] - Sequential
+# BBANDS_ATR execution order (Timeframe=1d fixed by user):
+Stage 1: BBands Grid [20 tests] - Grid Search (parallel)
+Stage 2: ATR Grid [15 tests] - Grid Search (parallel)
+Stage 3: Stop Loss [63 tests] - Sequential
+Total: 98 tests
 ```
 
 ### 4. Backward Compatibility & Migration

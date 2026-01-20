@@ -53,11 +53,10 @@ Grid Search SHALL disable Iterative Refinement to avoid redundant testing.
 
 **Example:**
 ```
-Round 1 (ONLY round):
-  Stage 1: Timeframe [7 tests]
-  Stage 2: MA Grid [336 tests] → Best: (3, 32, 37)
-  Stage 3: Stop Loss [63 tests] → Best: 2.7%
-  Total: 406 tests in ~5-10 minutes
+Round 1 (ONLY round) - Timeframe=1d (user-selected):
+  Stage 1: MA Grid [336 tests] → Best: (3, 32, 37)
+  Stage 2: Stop Loss [63 tests] → Best: 2.7%
+  Total: 399 tests in ~5-10 minutes
 
 Rounds 2-5: SKIPPED (Grid already found global max)
 ```
