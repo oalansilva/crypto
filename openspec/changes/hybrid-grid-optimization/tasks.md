@@ -11,11 +11,11 @@
 - [x] Implement stage ordering: Grids → Sequential (Timeframe is user-selected, not optimized)
 - [x] Update stage schema to support `parameter: List[str]`, `values: List[List[Any]]`, and `grid_mode: bool`
 
-## Phase 2: Iterative Refinement Integration
-- [ ] Detect if any stage has `grid_mode == True`
-- [ ] If Grid Search is active, set `max_rounds = 1` (disable refinement)
-- [ ] If Grid Search is inactive, keep `max_rounds = 5` (normal refinement)
-- [ ] Add logging: "Grid Search detected - running single round (no refinement)"
+## Phase 2: Iterative Refinement Integration ✅ COMPLETED
+- [x] Detect if any stage has `grid_mode == True`
+- [x] If Grid Search is active, set `max_rounds = 1` (disable refinement)
+- [x] If Grid Search is inactive, keep `max_rounds = 5` (normal refinement)
+- [x] Add logging: "Grid Search detected - running single round (no refinement)"
 
 ## Phase 3: Stage Execution Logic
 - [ ] Update `run_optimization()` to detect joint optimization stages (`grid_mode == True`)

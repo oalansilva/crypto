@@ -681,9 +681,20 @@ class ComboOptimizer:
         # Use max_workers = CPU count - 1 to leave one for the OS/Backend
         max_workers = max(1, (os.cpu_count() or 2) - 1)
         
-        # Run optimization stages
-        # Run optimization stages with Iterative Refinement
-        max_rounds = 5
+        # PHASE 2: Detect Grid Search and disable refinement
+        # Grid Search already finds global maximum, no need for iterative refinement
+        has_grid_search = any(stage.get('grid_mode', False) for stage in stages)
+        
+        if has_grid_search:
+            max_rounds = 1
+            logging.info("=" * 60)
+            logging.info("Grid Search detected - running single round (no refinement)")
+            logging.info("Grid Search guarantees global maximum within search space")
+            logging.info("=" * 60)
+        else:
+            max_rounds = 5
+            logging.info("Sequential optimization - using iterative refinement (5 rounds)")
+        
         round_num = 1
         converged = False
         
