@@ -337,9 +337,8 @@ export function ComboConfigurePage() {
                                 {params.map((param, idx) => (
                                     <div key={idx} className="bg-white/5 rounded-lg p-4">
                                         <div className="flex justify-between items-center mb-3">
-                                            <span className="text-sm font-medium text-purple-300">{param.name}</span>
-                                            <span className="text-xs text-gray-500 bg-black/30 px-2 py-1 rounded">
-                                                {param.group}
+                                            <span className="text-sm font-medium text-purple-300 capitalize">
+                                                {param.name.replace(/_/g, ' ')}
                                             </span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
