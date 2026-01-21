@@ -98,16 +98,20 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         
         stop_loss = request.stop_loss or request.parameters.get('stop_loss', 0.015)
         
+        # FORCE DEEP BACKTEST = TRUE
+        force_deep = True
+        logger.info(f"Enforcing Deep Backtest: {force_deep} (User requested: {request.deep_backtest})")
+        
         trades = extract_trades_with_mode(
             df_with_signals=df_with_signals,
             stop_loss=stop_loss,
-            deep_backtest=request.deep_backtest,
+            deep_backtest=force_deep,
             symbol=request.symbol,
             since_str=request.start_date or "2017-01-01",
             until_str=request.end_date
         )
         
-        logger.info(f"Extracted {len(trades)} trades (Deep Backtest: {request.deep_backtest})")
+        logger.info(f"Extracted {len(trades)} trades (Deep Backtest: {force_deep})")
         
         # Calculate basic metrics
         total_trades = len(trades)
@@ -198,7 +202,7 @@ async def run_combo_optimization(request: ComboOptimizationRequest):
             start_date=request.start_date,
             end_date=request.end_date,
             custom_ranges=request.custom_ranges,
-            deep_backtest=request.deep_backtest
+            deep_backtest=True  # FORCE DEEP BACKTEST
         )
         
         # Return complete result with all fields

@@ -27,34 +27,32 @@ async def compare_strategies():
     # Note: Antiga parameters must be mapped to template structure (indicators list)
     # The 'multi_ma_crossover' template expects specific indicator configurations.
     
-    # Strategy 1: Antiga (EMA 3, SMA 37, SMA 32, Stop 2.7%)
-    # Template uses aliases: 'short', 'medium', 'long'
+    # Strategy 1: User Set A
     antiga_params = {
-        "short": 3,       # media_curta
-        "long": 37,       # media_longa
-        "medium": 32,     # media_inter
-        "stop_loss": 0.027
-    }
-
-    # Strategy 2: Nova (EMA 20, SMA 40, SMA 38, Stop 6.5%)
-    # Using standardized aliases: 'short', 'medium', 'long'
-    nova_params = {
         "short": 20,      # ema_short
         "long": 40,       # sma_long
         "medium": 38,     # sma_medium
-        "stop_loss": 0.065
+        "stop_loss": 0.068
+    }
+
+    # Strategy 2: User Set B
+    nova_params = {
+        "short": 15,      # ema_short
+        "long": 47,       # sma_long
+        "medium": 33,     # sma_medium
+        "stop_loss": 0.069
     }
 
     strategies = [
-        ("ANTIGA", antiga_params),
-        ("NOVA", nova_params)
+        ("STRATEGY_A", antiga_params),
+        ("STRATEGY_B", nova_params)
     ]
     
     # 2. Load Data (Once)
     symbol = "BTC/USDT"
     timeframe = "1d"
-    # ALIGNED START DATE: Matches User's TradingView Chart Start for consistent EMA calculation
-    start_date = "2017-10-01"
+    # Full history as usually requested for comparisons
+    start_date = "2017-01-01"
     end_date = "2026-01-01"
     
     print(f"\nLoading Data for {symbol} {timeframe}...")
@@ -99,7 +97,7 @@ async def compare_strategies():
             trades = extract_trades_with_mode(
                 df_with_signals=df_signals,
                 stop_loss=stop_loss,
-                deep_backtest=False, # 1D Fast Mode for now (unless user requested deep)
+                deep_backtest=True, # Enforcing Deep Backtest as requested
                 symbol=symbol,
                 since_str=start_date,
                 until_str=end_date

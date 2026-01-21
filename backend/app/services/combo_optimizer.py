@@ -118,11 +118,11 @@ def extract_trades_with_mode(
     Returns:
         List of trades
     """
-    # FIX: Shift signals by 1 to avoid look-ahead bias.
-    # Signals are generated at Close, so execution must happen at Open of the NEXT candle.
-    # We do this on a copy to avoid side effects on the original DF.
+    # FIX: DO NOT Shift signals manually here.
+    # ComboStrategy already places the signal on the execution candle (Day+1).
+    # If we shift again, we create a double lag (Day+2).
     df_exec = df_with_signals.copy()
-    df_exec['signal'] = df_exec['signal'].shift(1).fillna(0)
+    # df_exec['signal'] = df_exec['signal'].shift(1).fillna(0) # REMOVED REDUNDANT SHIFT
     
     if not deep_backtest:
         # Fast mode: use existing daily-only logic
@@ -279,8 +279,18 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             winning_trades = sum(1 for t in trades if t['profit'] > 0)
             metrics['total_trades'] = total_trades
             metrics['win_rate'] = winning_trades / total_trades
-            metrics['total_return'] = sum(t['profit'] for t in trades)
-            metrics['avg_profit'] = metrics['total_return'] / total_trades
+            
+            # Change to Compounded Return
+            # metrics['total_return'] = sum(t['profit'] for t in trades) # OLD: Simple Sum
+            
+            # NEW: Compound Return
+            # Start with 1.0 (100% capital), multiply by (1 + profit) for each trade, subtract 1.0 at end
+            compounded_capital = 1.0
+            for t in trades:
+                compounded_capital *= (1.0 + t['profit'])
+            metrics['total_return'] = (compounded_capital - 1.0) * 100.0 # Convert to percentage (e.g. 1.5 -> 150%)
+            
+            metrics['avg_profit'] = (metrics['total_return'] / total_trades) if total_trades > 0 else 0
             
             # Simple Sharpe approximation
             returns = [t['profit'] for t in trades]

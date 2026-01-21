@@ -1,6 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3 } from 'lucide-react'
+import { useState } from 'react'
+import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Star } from 'lucide-react'
 import { CandlestickChart } from '../components/CandlestickChart'
+import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 
 interface BacktestResult {
     template_name: string
@@ -37,6 +39,24 @@ export function ComboResultsPage() {
     const location = useLocation()
     const navigate = useNavigate()
     const result = location.state?.result as BacktestResult
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [saveSuccess, setSaveSuccess] = useState(false)
+
+    const handleSaveFavorite = async (data: any) => {
+        const response = await fetch('http://localhost:8000/api/favorites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+
+        if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.detail || 'Erro ao salvar favorito')
+        }
+
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 3000)
+    }
 
     if (!result) {
         return (
@@ -143,12 +163,26 @@ export function ComboResultsPage() {
                                 <p className="text-sm text-gray-400 mt-0.5">{result.template_name} - {result.symbol} {result.timeframe}</p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => navigate('/combo/select')}
-                            className="text-gray-400 hover:text-white transition-colors"
-                        >
-                            ← New Backtest
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {saveSuccess && (
+                                <span className="text-sm text-green-400 font-medium animate-fade-in">
+                                    ✓ Salvo nos favoritos!
+                                </span>
+                            )}
+                            <button
+                                onClick={() => setIsModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-lg hover:shadow-blue-500/50"
+                            >
+                                <Star className="w-4 h-4" />
+                                Salvar nos Favoritos
+                            </button>
+                            <button
+                                onClick={() => navigate('/combo/select')}
+                                className="text-gray-400 hover:text-white transition-colors"
+                            >
+                                ← New Backtest
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -322,6 +356,14 @@ export function ComboResultsPage() {
                     </div>
                 </div>
             </main>
+
+            {/* Save Favorite Modal */}
+            <SaveFavoriteModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                backtestResult={result}
+                onSave={handleSaveFavorite}
+            />
         </div>
     )
 }
