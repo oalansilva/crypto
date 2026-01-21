@@ -25,34 +25,36 @@ def run_comparison():
     
     symbol = "BTC/USDT"
     timeframe = "1d" 
-    start_date = "2023-01-01"
-    end_date = "2024-12-31" # 2 years of data
+    start_date = "2017-01-01"
+    from datetime import datetime
+    end_date = datetime.now().strftime("%Y-%m-%d")
     
     print(f"\nFetching Data for {symbol} {timeframe} ({start_date} to {end_date})...")
     df = loader.fetch_data(symbol, timeframe, start_date, end_date)
     
-    # 1. Configuration: Antiga
-    # media_curta=3 -> ema_short=3
-    # media_inter=32 -> sma_medium=32
-    # media_longa=37 -> sma_long=37
-    # stop_loss=0.027
-    antiga_params = {
+    # 1. Configuration: Antiga Coarse Neighbor (What the Grid SEES)
+    # Grid Step 5.
+    # Closest to 3, 32, 37, 0.027 are:
+    # 3 (Exact)
+    # 30 (32 rounded to 5 step from 10: 10,15,20,25,30,35)
+    # 35 (37 rounded to 5 step from 20: 20,25,30,35,40)
+    # 0.025 (0.027 rounded to 0.0025 step? No, step 0.005. 0.005, 0.01... 0.025, 0.030)
+    antiga_coarse = {
         'ema_short': 3,
-        'sma_medium': 32,
-        'sma_long': 37,
-        'stop_loss': 0.027
+        'sma_medium': 30,
+        'sma_long': 35,
+        'stop_loss': 0.025
     }
     
-    # 2. Configuration: Nova
-    # {'ema_short': 19, 'sma_medium': 26, 'sma_long': 60, 'stop_loss': 0.04}
-    nova_params = {
-        'ema_short': 19,
-        'sma_medium': 26, 
-        'sma_long': 60, 
-        'stop_loss': 0.04
+    # 2. Configuration: Nova Winner (From Log - Round 1 Best)
+    nova_coarse = {
+        'ema_short': 8,
+        'sma_medium': 40, 
+        'sma_long': 25, 
+        'stop_loss': 0.03
     }
     
-    configs = [("ANTIGA", antiga_params), ("NOVA", nova_params)]
+    configs = [("ANTIGA (Coarse View)", antiga_coarse), ("NOVA (Coarse View)", nova_coarse)]
     
     template_name = "multi_ma_crossover"
     template_metadata = combo_service.get_template_metadata(template_name)

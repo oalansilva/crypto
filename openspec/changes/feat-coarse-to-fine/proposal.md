@@ -92,9 +92,10 @@ A proposta de "Zoom" tem um risco: Se a grade inicial for muito larga, podemos c
 
 1.  **Multi-Foco (Top 3 Candidatos):**
     *   Não dar zoom apenas no resultado #1.
-    *   Pegar os **Top 3 resultados distantes entre si** da Rodada 1.
-    *   Rodar o processo de refinamento para cada um desses 3 "candidatos".
+    *   Pegar os **Top 10 resultados distantes entre si** da Rodada 1.
+    *   Rodar o processo de refinamento para cada um desses 10 "candidatos".
     *   *Por que?* Isso previne que a gente ignore uma estratégia excelente só porque a grade inicial não caiu exatamente nela.
+    *   *Nota:* Utilizamos um filtro de diversidade (`min_dist=0.5`) para garantir que os candidatos sejam estruturalmente diferentes, evitando redundância. Se houver menos de 10 candidatos distintos, o sistema processará apenas os disponíveis (ex: 6).
 
 2.  **Limites Inteligentes (Smart Bounds):**
     *   Em vez de reduzir arbitrariamente para "50%" ou "25%".

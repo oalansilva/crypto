@@ -157,6 +157,44 @@ export function ComboResultsPage() {
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-7xl mx-auto space-y-8">
 
+                    {/* Configuration Info */}
+                    <div className="glass-strong rounded-2xl p-6 border border-white/10">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="bg-emerald-500/20 p-2.5 rounded-lg border border-emerald-500/30">
+                                <Activity className="w-6 h-6 text-emerald-400" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-white leading-none">Winning Configuration</h2>
+                                <p className="text-sm text-emerald-400 mt-1 font-medium">Os parâmetros campeões escolhidos pelo algoritmo</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            {Object.entries(result.parameters).map(([key, value]) => {
+                                // Skip internal keys if any
+                                if (key.startsWith('_')) return null;
+
+                                const isPercentage = key.includes('stop_loss') || key.includes('take_profit') || key.includes('pct');
+                                const formattedValue = isPercentage && typeof value === 'number'
+                                    ? `${(value * 100).toFixed(2)}%`
+                                    : value;
+
+                                return (
+                                    <div key={key} className="bg-white/5 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors group">
+                                        <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
+                                            {key.replace(/_/g, ' ')}
+                                        </p>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-xl font-bold text-white font-mono">
+                                                {formattedValue}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
                     {/* CHART VISUALIZATION */}
                     {(result.candles && result.candles.length > 0) ? (
                         <CandlestickChart
@@ -269,12 +307,14 @@ export function ComboResultsPage() {
                         </div>
                     </div>
 
+
+
                     {/* Indicator Info */}
                     <div className="glass-strong rounded-2xl p-6 border border-white/10">
-                        <h2 className="text-xl font-bold text-white mb-4">Indicators Used</h2>
+                        <h2 className="text-xl font-bold text-white mb-4 opacity-80">Indicators Used</h2>
                         <div className="flex flex-wrap gap-2">
                             {Object.keys(result.indicator_data).map((indicator) => (
-                                <span key={indicator} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm border border-blue-500/30">
+                                <span key={indicator} className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-sm border border-blue-500/20 opacity-70 hover:opacity-100 transition-opacity">
                                     {indicator}
                                 </span>
                             ))}

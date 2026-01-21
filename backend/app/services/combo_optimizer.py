@@ -118,9 +118,15 @@ def extract_trades_with_mode(
     Returns:
         List of trades
     """
+    # FIX: Shift signals by 1 to avoid look-ahead bias.
+    # Signals are generated at Close, so execution must happen at Open of the NEXT candle.
+    # We do this on a copy to avoid side effects on the original DF.
+    df_exec = df_with_signals.copy()
+    df_exec['signal'] = df_exec['signal'].shift(1).fillna(0)
+    
     if not deep_backtest:
         # Fast mode: use existing daily-only logic
-        return extract_trades_from_signals(df_with_signals, stop_loss)
+        return extract_trades_from_signals(df_exec, stop_loss)
     
     # Deep Backtesting mode: fetch 15m data and simulate execution
     logger = logging.getLogger(__name__)
@@ -128,7 +134,7 @@ def extract_trades_with_mode(
     
     if not symbol or not since_str:
         logger.warning("Deep Backtesting requires symbol and date range. Falling back to fast mode.")
-        return extract_trades_from_signals(df_with_signals, stop_loss)
+        return extract_trades_from_signals(df_exec, stop_loss)
     
     try:
         if df_15m_cache is not None:
@@ -146,14 +152,14 @@ def extract_trades_with_mode(
         if df_15m.empty:
             if df_15m_cache is None: # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
-            return extract_trades_from_signals(df_with_signals, stop_loss)
+            return extract_trades_from_signals(df_exec, stop_loss)
         
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
         
         # Run deep backtest simulation
         trades = simulate_execution_with_15m(
-            df_daily_signals=df_with_signals,
+            df_daily_signals=df_exec,
             df_15m=df_15m,
             stop_loss=stop_loss
         )
@@ -162,7 +168,7 @@ def extract_trades_with_mode(
         
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
-        return extract_trades_from_signals(df_with_signals, stop_loss)
+        return extract_trades_from_signals(df_exec, stop_loss)
 
 # -----------------------------------------------------------------------------
 # WORKER FUNCTION (Top-level for ProcessPoolExecutor)
@@ -765,13 +771,13 @@ class ComboOptimizer:
                 val_range = int(val_range)
                 if val_range <= 5: return 1 
                 
-                # Integer Logic: Strictly respect Target Step * 5 (Round 1)
-                # If target_step provided (usually 1 for periods), use 5x.
+                # Integer Logic: Strictly respect Target Step * 4 (Round 1) - USER REQUEST CHANGE 5->4
+                # If target_step provided (usually 1 for periods), use 4x.
                 if target_step:
-                     return int(target_step) * 5
+                     return int(target_step) * 4
                 
-                # Fallback if no target step: Just use 5 as default coarse step
-                return 5
+                # Fallback if no target step: Just use 4 as default coarse step
+                return 4
             
             # Float/Decimal logic
             # If target_step provided, jump 5x target (Generic Round 1 Logic)
@@ -848,15 +854,20 @@ class ComboOptimizer:
             
             # Update meta for next round
             meta['current_step'] = new_step
-            
+
             # --- CALCULATE NEW RANGE ---
             # Radius = Previous Step size (roughly).
             if target_step:
                 tgt = float(target_step)
-                if round_num == 2: prev_mult = 5.0
+                
+                # Determine Previous Multiplier based on Type
+                round1_mult = 4.0 if is_int else 5.0 # Integers start at 4x now, Decimals keep 5x (0.5%)
+
+                if round_num == 2: prev_mult = round1_mult
                 elif round_num == 3: prev_mult = 3.0
                 elif round_num == 4: prev_mult = 2.0
-                else: prev_mult = 5.0
+                else: prev_mult = round1_mult
+                
                 radius_step = tgt * prev_mult
             else:
                 radius_step = current_step
@@ -976,10 +987,10 @@ class ComboOptimizer:
 
 
 
-    def _select_top_candidates(self, candidates: List[Dict], top_k: int = 3) -> List[Dict]:
+    def _select_top_candidates(self, candidates: List[Dict], top_k: int = 3, min_dist: float = 0.5) -> List[Dict]:
         """
         Select Top K DISTINCT candidates based on Euclidean distance of parameters.
-        Prevents selecting 3 neighbors in the same local maximum.
+        Prevents selecting neighbors in the same local maximum.
         """
         if not candidates:
             return []
@@ -997,7 +1008,7 @@ class ComboOptimizer:
             for k in keys:
                 v1 = p1.get(k, 0)
                 v2 = p2.get(k, 0)
-                # Simple distance (could be normalized by range but raw is ok for coarse filter)
+                # Simple Euclidean distance
                 if isinstance(v1, (int, float)) and isinstance(v2, (int, float)):
                     dist += (v1 - v2) ** 2
             return dist ** 0.5
@@ -1011,9 +1022,12 @@ class ComboOptimizer:
             is_distinct = True
             for sel in selected:
                 dist = calc_distance(cand['params'], sel['params'])
-                # Threshold: arbitrary, say > 0 (just not identical). 
-                # Ideally we'd want > step_size, but for now strict equality check is implicit in distance > 0
-                if dist == 0: 
+                
+                # STRICT FILTER: min_dist default 0.5.
+                # Integer params usually change by 1.0 or more.
+                # If dist < 0.5, it implies only Stop Loss changed (e.g. 0.01 change).
+                # We want structural diversity (Moving Averages must differ).
+                if dist < min_dist: 
                     is_distinct = False
                     break
             
@@ -1058,6 +1072,42 @@ class ComboOptimizer:
                 value_lists = stage_values
                 for combo in itertools.product(*value_lists):
                     test_params = best_params.copy()
+                    
+                    # --- HEURISTIC FILTER: Multi MA Logic ---
+                    # Optimization: Skip combinations where Short >= Inter or Inter >= Long
+                    # This dramatically reduces search space for "Cruzamento Medias" strategy.
+                    
+                    # 1. Identify params by common aliases
+                    p_short = None
+                    p_inter = None
+                    p_long = None
+                    
+                    # Map loop values to temp dict for checking
+                    # If param not in loop (grid), check best_params (fixed context)
+                    current_combo = dict(zip(param_names, combo))
+                    full_context = {**best_params, **current_combo}
+                    
+                    for k, v in full_context.items():
+                        k_lower = k.lower()
+                        # Check aliases (suffix match to handle prefixes like 'ema_short')
+                        if k_lower.endswith('media_curta') or k_lower.endswith('ema_short') or k_lower.endswith('sma_short'):
+                             p_short = v
+                        elif k_lower.endswith('media_inter') or k_lower.endswith('sma_medium'):
+                             p_inter = v
+                        elif k_lower.endswith('media_longa') or k_lower.endswith('sma_long'):
+                             p_long = v
+                    
+                    # 2. Check Logical Constraint if all 3 are present
+                    if p_short is not None and p_inter is not None and p_long is not None:
+                        # Ensure values are comparable numbers
+                        try:
+                            if not (float(p_short) < float(p_inter) < float(p_long)):
+                                continue # SKIP INVALID COMBINATION
+                        except (ValueError, TypeError):
+                            pass # customized params might be non-numeric, ignore filter
+                            
+                    # ----------------------------------------
+
                     for pname, pval in zip(param_names, combo):
                         test_params[pname] = pval
                     combo_dict = dict(zip(param_names, combo))
@@ -1289,9 +1339,9 @@ class ComboOptimizer:
                 
                 # SELECTION LOGIC (End of Round)
                 if round_num < max_rounds:
-                    # Select Top 3 Distinct Candidates for next round
-                    # If Round 1 produced 10 candidates, we pick top 3 distinct ones here.
-                    candidates = self._select_top_candidates(next_round_candidates, top_k=3)
+                    # Select Top 10 Distinct Candidates for next round - USER REQUEST CHANGE 3 -> 10
+                    # If Round 1 produced 20 candidates, we pick top 10 distinct ones here.
+                    candidates = self._select_top_candidates(next_round_candidates, top_k=10)
                     logging.info(f"Selected {len(candidates)} candidates for Round {round_num + 1}")
                 else:
                     # Final round - collect all results
