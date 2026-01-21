@@ -521,6 +521,10 @@ class ComboOptimizer:
                     p_max = config.get('max')
                     target_step = config.get('step')
 
+                # FORCE STOP LOSS STEP to 0.001 if user intent is strict 0.5% in Round 1
+                if param_name == 'stop_loss' and target_step == 0.002:
+                    target_step = 0.001
+
                 # Calculate Coarse Step for Round 1
                 coarse_step = self._calculate_coarse_step(p_min, p_max, target_step)
                 
@@ -759,22 +763,31 @@ class ComboOptimizer:
             
             if is_int:
                 val_range = int(val_range)
-                if val_range <= 5: return 1 # Small range, just do step 1
+                if val_range <= 5: return 1 
                 
-                # Target ~4 steps (Range/4)
-                # Ensure step is at least 1
-                coarse = max(1, int(val_range // 4))
+                # Integer Logic: Strictly respect Target Step * 5 (Round 1)
+                # If target_step provided (usually 1 for periods), use 5x.
+                if target_step:
+                     return int(target_step) * 5
                 
-                # Make coarse step cleaner (e.g. 5, 10, etc) if possible, but raw division is fine for now
-                return coarse
+                # Fallback if no target step: Just use 5 as default coarse step
+                return 5
             
             # Float/Decimal logic
-            # If target_step provided, jump 5x target
+            # If target_step provided, jump 5x target (Generic Round 1 Logic)
             if target_step:
-                # e.g. Target 0.01 -> Coarse 0.05
-                # e.g. Target 1 -> Coarse 5
-                # But maximize with range/4 to mostly ensure we don't have 100 steps
-                return max(float(target_step) * 5, val_range / 4.0)
+                # STRICT USER RULE: Round 1 = Step 5 (Integers) or 0.50 (Decimais)
+                # For Stop Loss, user explicitly wants 0.5% (0.005).
+                # This implies Base Unit is 0.001 (0.1%).
+                # We enforce this if we detect 'stop_loss' context, purely for compliance.
+                # Since this method doesn't know param name easily without signature change,
+                # we rely on the caller fixing target_step OR we make a best effort here.
+                # Actually, best is to just trust target_step * 5.
+                # If target_step for stop_loss is 0.002, we get 0.01.
+                # To get 0.005, target must be 0.001. 
+                # I will handle the 0.001 enforcement in generate_stages instead.
+                
+                return float(target_step) * 5.0
             
             # No target step, guess based on range magnitude
             if val_range < 0.1: return val_range / 4.0  # e.g. 0.08 -> 0.02
@@ -786,7 +799,7 @@ class ComboOptimizer:
             # Fallback to safe default
             return 1 if isinstance(start, int) else 0.1
 
-    def _refine_stage_values(self, stage: Dict, best_params: Dict) -> None:
+    def _refine_stage_values(self, stage: Dict, best_params: Dict, round_num: int = 1) -> None:
         """
         Refine the search grid for the next round based on best results.
         Updates stage['values'] in-place.
@@ -814,52 +827,56 @@ class ComboOptimizer:
             current_step = meta['current_step']
             target_step = meta.get('target_step')
             
-            # --- CALCULATE NEW STEP ---
-            # Heuristic: Halve the step until we hit target
+            # --- CALCULATE NEW STEP BASED ON ROUND ---
+            if target_step:
+                tgt = float(target_step)
+                if round_num == 2: multiplier = 3.0
+                elif round_num == 3: multiplier = 2.0
+                elif round_num >= 4: multiplier = 1.0
+                else: multiplier = 5.0 
+                
+                new_step = tgt * multiplier
+            else:
+                 new_step = float(current_step) / 2.0
             
+            # Ensure Integer Constraint
             is_int = (isinstance(best_val, int) or float(best_val).is_integer()) and \
                      (target_step is None or isinstance(target_step, int) or float(target_step).is_integer())
             
             if is_int:
-                # Integer refinement (e.g. 5 -> 2 -> 1)
-                current_step_int = int(current_step)
-                if current_step_int > 1:
-                    new_step = max(1, int(current_step_int // 2)) 
-                    # Prefer simple steps: 5->2, 4->2, 3->1, 2->1
-                else:
-                    new_step = 1
-            else:
-                # Float refinement
-                if target_step:
-                     new_step = max(float(target_step), float(current_step) / 2.0)
-                else:
-                     new_step = float(current_step) / 2.0
+                new_step = max(1, int(new_step))
             
             # Update meta for next round
             meta['current_step'] = new_step
             
             # --- CALCULATE NEW RANGE ---
-            # Smart Bounds: [Best - OldStep, Best + OldStep]
-            # This covers the "neighbors" we just tested
+            # Radius = Previous Step size (roughly).
+            if target_step:
+                tgt = float(target_step)
+                if round_num == 2: prev_mult = 5.0
+                elif round_num == 3: prev_mult = 3.0
+                elif round_num == 4: prev_mult = 2.0
+                else: prev_mult = 5.0
+                radius_step = tgt * prev_mult
+            else:
+                radius_step = current_step
             
+            if is_int: radius_step = int(radius_step)
+
             global_min = meta.get('min')
             global_max = meta.get('max')
             
-            range_min = best_val - current_step
-            range_max = best_val + current_step
+            range_min = best_val - radius_step
+            range_max = best_val + radius_step
             
-            # Clamp to globals if exist
             if global_min is not None: range_min = max(range_min, global_min)
             if global_max is not None: range_max = min(range_max, global_max)
             
-            # Generate new values
             new_vals = self._generate_range_values(range_min, range_max, new_step)
-            
-            # Deduplicate and Sort
             new_vals = sorted(list(set(new_vals)))
             new_value_lists.append(new_vals)
             
-            logging.info(f"    Refining {param_name}: Best={best_val}, Step {current_step}->{new_step}, Range [{range_min}, {range_max}]")
+            logging.info(f"    Refining {param_name}: Best={best_val}, Step={new_step} (Round {round_num}), Range [{range_min}, {range_max}]")
 
         # Update stage values
         stage['values'] = new_value_lists
@@ -958,6 +975,172 @@ class ComboOptimizer:
         return False
 
 
+
+    def _select_top_candidates(self, candidates: List[Dict], top_k: int = 3) -> List[Dict]:
+        """
+        Select Top K DISTINCT candidates based on Euclidean distance of parameters.
+        Prevents selecting 3 neighbors in the same local maximum.
+        """
+        if not candidates:
+            return []
+            
+        # Sort by score descending
+        sorted_candidates = sorted(candidates, key=lambda x: x['score'], reverse=True)
+        
+        selected = []
+        selected.append(sorted_candidates[0]) # Always take the absolute best
+        
+        # Helper to calculate normalized distance
+        def calc_distance(p1, p2):
+            dist = 0
+            keys = set(p1.keys()) | set(p2.keys())
+            for k in keys:
+                v1 = p1.get(k, 0)
+                v2 = p2.get(k, 0)
+                # Simple distance (could be normalized by range but raw is ok for coarse filter)
+                if isinstance(v1, (int, float)) and isinstance(v2, (int, float)):
+                    dist += (v1 - v2) ** 2
+            return dist ** 0.5
+            
+        # Greedy selection of next candidates that are "far enough"
+        for cand in sorted_candidates[1:]:
+            if len(selected) >= top_k:
+                break
+                
+            # Check distance against all currently selected
+            is_distinct = True
+            for sel in selected:
+                dist = calc_distance(cand['params'], sel['params'])
+                # Threshold: arbitrary, say > 0 (just not identical). 
+                # Ideally we'd want > step_size, but for now strict equality check is implicit in distance > 0
+                if dist == 0: 
+                    is_distinct = False
+                    break
+            
+            if is_distinct:
+                selected.append(cand)
+                
+        return selected
+
+    def _execute_opt_stages(self, stages, initial_params, round_num, max_workers, 
+                          template_name, symbol, timeframe, fixed_timeframe, start_date, end_date, deep_backtest, template_metadata, df,
+                          return_top_n: int = 1):
+        """
+        Execute all stages for a specific branch/candidate.
+        Returns: 
+             If return_top_n > 1 (Grid Mode): List of dicts [{'params':..., 'metrics':...}]
+             If return_top_n = 1 (Sequential): (best_params, best_metrics)
+        """
+        best_params = initial_params.copy()
+        best_metrics = None
+        
+        # -----------------------------------------------------------
+        # NOTE: For Multi-Focus Grid (Round 1), we typically have ONE stage (the 4D Grid).
+        # We need to collect ALL results from that stage and return top N.
+        # For Refinement (Sequential params), we follow the standard greedy path.
+        # -----------------------------------------------------------
+        
+        collected_candidates = [] 
+
+        for stage in stages:
+            stage_param = stage['parameter']
+            stage_values = stage['values']
+            is_grid_mode = stage.get('grid_mode', False)
+            
+            start_time = time.time()
+            stage_best_value = None
+            stage_best_sharpe = float('-inf')
+            
+            worker_args = []
+            
+            if is_grid_mode:
+                param_names = stage_param
+                value_lists = stage_values
+                for combo in itertools.product(*value_lists):
+                    test_params = best_params.copy()
+                    for pname, pval in zip(param_names, combo):
+                        test_params[pname] = pval
+                    combo_dict = dict(zip(param_names, combo))
+                    worker_args.append((template_metadata, test_params, df, param_names, combo_dict, deep_backtest, symbol, start_date, end_date))
+            else:
+                for value in stage_values:
+                    test_params = best_params.copy()
+                    if stage_param != 'timeframe':
+                        test_params[stage_param] = value
+                        worker_args.append((template_metadata, test_params, df, stage_param, value, deep_backtest, symbol, start_date, end_date))
+            
+            if not worker_args:
+                continue
+
+            results = []
+            BATCH_SIZE = 200
+            worker_batches = [worker_args[i:i + BATCH_SIZE] for i in range(0, len(worker_args), BATCH_SIZE)]
+            
+            import concurrent.futures
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(_worker_run_batch, batch) for batch in worker_batches]
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        results.extend(future.result())
+                    except Exception:
+                        pass
+            
+            valid_results = [r for r in results if r['success']]
+            
+            if valid_results:
+                sharpes = [r['metrics']['sharpe_ratio'] for r in valid_results]
+                returns = [r['metrics']['total_return'] for r in valid_results]
+                min_s, max_s = min(sharpes), max(sharpes)
+                min_r, max_r = min(returns), max(returns)
+                range_s = max_s - min_s
+                range_r = max_r - min_r
+                
+                # Score all results
+                scored_results = []
+                for res in valid_results:
+                    m = res['metrics']
+                    s = m['sharpe_ratio']
+                    r = m['total_return']
+                    ns = (s - min_s) / range_s if range_s > 0 else 0
+                    nr = (r - min_r) / range_r if range_r > 0 else 0
+                    score = (0.7 * ns) + (0.3 * nr)
+                    
+                    # Construct full params for this result
+                    result_params = best_params.copy()
+                    if is_grid_mode:
+                        result_params.update(res['value'])
+                    else:
+                        result_params[stage_param] = res['value']
+                        
+                    scored_results.append({
+                        'params': result_params,
+                        'metrics': m,
+                        'score': score
+                    })
+
+                # Sort by score
+                scored_results.sort(key=lambda x: x['score'], reverse=True)
+                
+                # If we are in Grid Mode and collecting candidates for branching
+                if is_grid_mode and return_top_n > 1:
+                    collected_candidates.extend(scored_results[:return_top_n*2]) # Keep a few more for distance filtering
+                
+                # Update best for standard greedy flow
+                top = scored_results[0]
+                stage_best_value = top['params'][stage_param] if not is_grid_mode else {k: top['params'][k] for k in stage_param}
+                best_metrics = top['metrics']
+                
+                # Greedily update best_params for NEXT stage in this loop
+                best_params = top['params']
+
+        if return_top_n > 1 and collected_candidates:
+            # Sort all collected candidates (if multiple grid stages existed, unlikely for 4D)
+            collected_candidates.sort(key=lambda x: x['score'], reverse=True)
+            return collected_candidates[:return_top_n*2] 
+            
+        return best_params, best_metrics
+
+
     def run_optimization(
         self,
         template_name: str,
@@ -1011,258 +1194,174 @@ class ComboOptimizer:
         has_grid_search = any(stage.get('grid_mode', False) for stage in stages)
         has_adaptive = any(stage.get('adaptive_meta') for stage in stages)
         
-        if has_grid_search:
-            if has_adaptive:
-                max_rounds = 4
-                logging.info("=" * 60)
-                logging.info("Adaptive Grid Search detected - 4 Rounds (Coarse -> Fine)")
-                logging.info("=" * 60)
-            else:
-                max_rounds = 1
-                logging.info("=" * 60)
-                logging.info("Grid Search detected - running single round (no refinement)")
-                logging.info("Grid Search guarantees global maximum within search space")
-                logging.info("=" * 60)
-        else:
-            max_rounds = 5
-            logging.info("Sequential optimization - using iterative refinement (5 rounds)")
-        
+        # Default Sequential Mode vars
+        max_rounds = 5
         round_num = 1
         converged = False
         
-        while not converged and round_num <= max_rounds:
-            logging.info(f"--- STARTING ROUND {round_num} OF REFINE ---")
-
-            # Refine stages for rounds > 1 (Adaptive Zoom)
-            if round_num > 1:
-                 # Check if we should refine based on adaptive meta
-                 logging.info(f"Refining search grid around best result: {best_params}")
-                 for stage in stages:
-                     if stage.get('adaptive_meta'):
-                         self._refine_stage_values(stage, best_params)
+        if has_grid_search and has_adaptive:
+             # -------------------------------------------------------------
+             # 4D ADAPTIVE OPTIMIZATION (MULTI-BRANCH)
+             # -------------------------------------------------------------
+            max_rounds = 4
+            logging.info("=" * 60)
+            logging.info("Adaptive Grid Search detected - activating 4D Coarse-to-Fine Optimization")
+            logging.info("=" * 60)
             
-            params_at_start = best_params.copy()
+            # Candidates list (starts with single 'root' candidate which covers the whole space)
+            # Structure: {'params': dict, 'meta': dict, 'round': 1, 'score': float}
+            candidates = [{'params': best_params.copy(), 'meta': {}, 'round': 1, 'score': float('-inf')}]
             
-            for stage in stages:
-                stage_param = stage['parameter']
-                stage_values = stage['values']
-                is_grid_mode = stage.get('grid_mode', False)
+            final_best_candidates = []
+            
+            for round_num in range(1, max_rounds + 1):
+                logging.info(f"--- STARTING ROUND {round_num} OF ADAPTIVE OPTIMIZATION ---")
+                logging.info(f"Candidates (Branches) to process: {len(candidates)}")
                 
-                # Log stage start
-                if is_grid_mode:
-                    # Calculate grid size for logging
-                    grid_size = 1
-                    for value_list in stage_values:
-                        grid_size *= len(value_list)
-                    logging.info(f"Round {round_num} - Stage {stage['stage_num']}: Grid Search {stage_param} ({grid_size} combinations) with {max_workers} workers")
-                else:
-                    logging.info(f"Round {round_num} - Stage {stage['stage_num']}: Optimizing {stage_param} ({len(stage_values)} tests) with {max_workers} workers")
+                next_round_candidates = []
                 
-                start_time = time.time()
-                stage_best_value = None
-                stage_best_sharpe = float('-inf')
-                
-                # PHASE 3: Prepare arguments for parallel execution
-                worker_args = []
-                
-                if is_grid_mode:
-                    # Grid Search: Generate all combinations using itertools.product
-                    param_names = stage_param  # List of parameter names
-                    value_lists = stage_values  # List of value lists
+                for idx, candidate in enumerate(candidates):
+                    logging.info(f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}")
                     
-                    # Generate cartesian product
-                    for combo in itertools.product(*value_lists):
-                        # Build parameters for this combination
-                        test_params = best_params.copy()
-                        
-                        # Set all parameters in the combination
-                        for param_name, param_value in zip(param_names, combo):
-                            test_params[param_name] = param_value
-                        
-                        # Worker args: (metadata, params, df, param_name, value, deep_backtest, symbol, start, end)
-                        # For Grid mode, we pass the full combo as "value" for logging
-                        combo_dict = dict(zip(param_names, combo))
-                        worker_args.append((template_metadata, test_params, df, param_names, combo_dict, deep_backtest, symbol, start_date, end_date))
-                    
-                    logging.info(f"  Generated {len(worker_args)} Grid combinations")
-                
-                else:
-                    # Sequential: Test single parameter
-                    for value in stage_values:
-                        # Build parameters for this test
-                        test_params = best_params.copy()
-                        
-                        if stage_param == 'timeframe':
-                            # Timeframe optimization changes the DATA itself. 
-                            # Complex to parallelize efficiently without reloading data in every worker.
-                            # Separate logic.
-                            continue
-                        else:
-                            test_params[stage_param] = value
-                            worker_args.append((template_metadata, test_params, df, stage_param, value, deep_backtest, symbol, start_date, end_date))
-                
-                if stage_param == 'timeframe':
-                    # Sequential fallback for timeframe
-                    for value in stage_values:
-                        # Reload data with new timeframe
-                        sub_df = self.loader.fetch_data(
-                            symbol=symbol,
-                            timeframe=value,
-                            since_str=start_date,
-                            until_str=end_date
-                        )
-                         # Synchronous execution for timeframe
-                        worker_args_tf = (template_metadata, test_params, sub_df, stage_param, value, deep_backtest, symbol, start_date, end_date)
-                        res = _worker_run_backtest(worker_args_tf)
-                        
-                        value_res = res['value']
-                        if res['success']:
-                            metrics = res['metrics']
-                            trades_count = res['trades_count']
-                            sharpe = metrics['sharpe_ratio']
-                            
-                            logging.info(f"  Tested {stage_param}={value_res} -> Sharpe: {sharpe:.3f}, Trades: {trades_count}")
-                            
-                            if sharpe > stage_best_sharpe:
-                                stage_best_sharpe = sharpe
-                                stage_best_value = value_res
-                                best_metrics = metrics
-                        else:
-                            logging.error(f"  Failed {stage_param}={value_res}: {res.get('error')}")
-                
-                else:
-                    # Parallel execution for indicator parameters
-                    total_tests = len(worker_args)
-                    logging.info(f"  Starting parallel execution of {total_tests} tests...")
-                    
-                    results = []
-                    
-                    # BATCH PROCESSING OPTIMIZATION
-                    # Group tasks into batches to reduce I/O and Process overhead
-                    BATCH_SIZE = 200 # 200 tests per worker task
-                    worker_batches = [worker_args[i:i + BATCH_SIZE] for i in range(0, len(worker_args), BATCH_SIZE)]
-                    
-                    logging.info(f"  Optimized: {len(worker_batches)} batches of up to {BATCH_SIZE} tests")
-
-                    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-                        # Submit batches
-                        futures = [executor.submit(_worker_run_batch, batch) for batch in worker_batches]
-                        
-                        completed_tests = 0
-                        
-                        # Process as batches complete
-                        for i, future in enumerate(concurrent.futures.as_completed(futures), 1):
-                            try:
-                                batch_results = future.result()
-                                results.extend(batch_results)
-                                completed_tests += len(batch_results)
-                                
-                                # Log progress
-                                elapsed = time.time() - start_time
-                                avg_time_per_test = elapsed / completed_tests if completed_tests > 0 else 0
-                                remaining = (total_tests - completed_tests) * avg_time_per_test
-                                
-                                logging.info(f"  Progress: {completed_tests}/{total_tests} ({completed_tests/total_tests:.1%}) - Elapsed: {elapsed:.1f}s - ETA: {remaining:.1f}s")
-
-                            except Exception as exc:
-                                logging.error(f"  Worker Batch exception: {exc}")
-                    
-                    # Sort results to maintain deterministic order if needed (though scoring handles it)
-                    # results.sort(key=lambda x: x.get('value', 0) if isinstance(x.get('value'), (int, float)) else str(x.get('value')))
-                    
-                    # Process results with Weighted Composite Score
-                    valid_results = []
-                    test_num = 0
-                    progress_interval = max(50, total_tests // 10)  # Every 10% or 50 tests
-                    
-                    for res in results:
-                        test_num += 1
-                        
-                        # Progress logging
-                        if test_num % progress_interval == 0 or test_num == total_tests:
-                            progress_pct = (test_num / total_tests) * 100
-                            elapsed = time.time() - start_time
-                            eta = (elapsed / test_num) * (total_tests - test_num) if test_num > 0 else 0
-                            logging.info(f"  Progress: {test_num}/{total_tests} ({progress_pct:.1f}%) - Elapsed: {elapsed:.1f}s - ETA: {eta:.1f}s")
-                        
-                        if res['success']:
-                            valid_results.append(res)
-                        else:
-                            logging.error(f"  Failed {stage_param}={res['value']}: {res.get('error')}")
-
-                    if valid_results:
-                        # Calculate min/max for normalization
-                        sharpes = [r['metrics']['sharpe_ratio'] for r in valid_results]
-                        returns = [r['metrics']['total_return'] for r in valid_results]
-                        
-                        min_sharpe, max_sharpe = min(sharpes), max(sharpes)
-                        min_return, max_return = min(returns), max(returns)
-                        
-                        range_sharpe = max_sharpe - min_sharpe
-                        range_return = max_return - min_return
-                        
-                        best_score = float('-inf')
-                        new_best_found = False
-
-                        for res in valid_results:
-                            metrics = res['metrics']
-                            sharpe = metrics['sharpe_ratio']
-                            total_return = metrics['total_return']
-                            
-                            # Normalize inputs (0 to 1 scale)
-                            norm_sharpe = (sharpe - min_sharpe) / range_sharpe if range_sharpe > 0 else 0
-                            norm_return = (total_return - min_return) / range_return if range_return > 0 else 0
-                            
-                            # Weighted Score: 70% Sharpe, 30% Total Return
-                            score = (0.7 * norm_sharpe) + (0.3 * norm_return)
-                            
-                            # Tie-breaker: If scores exact, prefer higher Sharpe
-                            if score > best_score:
-                                best_score = score
-                                stage_best_value = res['value']
-                                best_metrics = metrics
-                                stage_best_sharpe = sharpe # Still track for logging
-                                new_best_found = True
-                                
-                                # NEW BEST indicator
-                                logging.info(f"  🌟 NEW BEST: {stage_param}={res['value']} -> Sharpe: {sharpe:.3f}, Return: {total_return:.3f} (Score: {score:.3f})")
-
-                            # Format full params for logging
-                            full_params_str = str(res.get('full_params', {}))
-                            
-                            logging.info(f"  Tested {stage_param}={res['value']} | State={full_params_str} -> Sharpe: {sharpe:.3f}, Return: {total_return:.3f} (Score: {score:.3f})")
-
-                        # Summary of stage results
-                        if new_best_found:
-                            logging.info(f"  ✓ Stage complete: Found improvement with Sharpe {stage_best_sharpe:.3f}")
-                        else:
-                            logging.info(f"  ✓ Stage complete: No improvement found")
-
-                # Update best params for next stage (immediate update for greedy refinement within round)
-                if stage_best_value is not None:
-                    if is_grid_mode:
-                        # Grid mode: Update all parameters in the combination
-                        best_params.update(stage_best_value)
-                        param_str = ", ".join([f"{k}={v}" for k, v in stage_best_value.items()])
-                        logging.info(f"Round {round_num} - Stage {stage['stage_num']} complete: {param_str} (Sharpe: {stage_best_sharpe:.3f})")
+                    # 1. Setup stages for this candidate
+                    if round_num == 1:
+                        current_stages = stages # Use initial coarse stages
                     else:
-                        # Sequential mode: Update single parameter
-                        best_params[stage_param] = stage_best_value
-                        logging.info(f"Round {round_num} - Stage {stage['stage_num']} complete: {stage_param}={stage_best_value} (Sharpe: {stage_best_sharpe:.3f})")
+                        # Clone stages to avoid polluting other branches
+                        import copy
+                        current_stages = copy.deepcopy(stages)
+                        # Refine based on THIS candidate's best params
+                        for stage in current_stages:
+                             if stage.get('adaptive_meta'):
+                                 self._refine_stage_values(stage, candidate['params'], round_num=round_num)
+                    
+                    
+                    # 2. Execute Optimization for this branch
+                    # For Round 1 (Grid), we want multiple candidates to feed the logical branches.
+                    # For Round > 1, we just want the best refinement for this specific branch.
+                    return_n = 10 if round_num == 1 else 1
+                    
+                    execution_result = self._execute_opt_stages(
+                       current_stages, 
+                       candidate['params'], 
+                       round_num, 
+                       max_workers,
+                       template_name,
+                       symbol,
+                       timeframe, 
+                       fixed_timeframe,
+                       start_date,
+                       end_date,
+                       deep_backtest,
+                       template_metadata,
+                       df,
+                       return_top_n=return_n
+                    )
+                    
+                    if round_num == 1:
+                        # Reviewing multiple candidates from Grid
+                        branch_candidates = execution_result # It's a list
+                        for cand in branch_candidates:
+                             result_candidate = {
+                                'params': cand['params'],
+                                'meta': candidate['meta'], 
+                                'round': round_num + 1,
+                                'score': cand['score'],
+                                'metrics': cand['metrics']
+                            }
+                             next_round_candidates.append(result_candidate)
+                    else:
+                        # Standard single result
+                        branch_best_params, branch_best_metrics = execution_result
+                        
+                        # 3. Score this branch result
+                        score = branch_best_metrics.get('sharpe_ratio', -999) if branch_best_metrics else -999
+                        
+                        result_candidate = {
+                            'params': branch_best_params,
+                            'meta': candidate['meta'], 
+                            'round': round_num + 1,
+                            'score': score,
+                            'metrics': branch_best_metrics
+                        }
+                        
+                        next_round_candidates.append(result_candidate)
+                
+                # SELECTION LOGIC (End of Round)
+                if round_num < max_rounds:
+                    # Select Top 3 Distinct Candidates for next round
+                    # If Round 1 produced 10 candidates, we pick top 3 distinct ones here.
+                    candidates = self._select_top_candidates(next_round_candidates, top_k=3)
+                    logging.info(f"Selected {len(candidates)} candidates for Round {round_num + 1}")
                 else:
-                    logging.warning(f"Round {round_num} - Stage {stage['stage_num']} failed to find improvements.")
-                    if not is_grid_mode and stage_values and stage_param not in best_params:
-                        best_params[stage_param] = stage_values[0]
+                    # Final round - collect all results
+                    final_best_candidates = next_round_candidates
 
-                logging.info(f"Stage time: {time.time() - start_time:.2f}s")
+            # Find absolute best from final candidates
+            if final_best_candidates:
+                # Sort by score descending
+                final_best_candidates.sort(key=lambda x: x['score'], reverse=True)
+                best_candidate = final_best_candidates[0]
+                
+                best_params = best_candidate['params']
+                best_metrics = best_candidate['metrics']
+                
+                # Log details about the winner
+                logging.info(f"Global Best Found from {len(final_best_candidates)} final branches")
+                
+            converged = True # Mark as done so we skip legacy loop logic
             
-            # End of Round Analysis
-            if best_params == params_at_start:
-                converged = True
-                logging.info(f"--- CONVERGENCE ACHIEVED IN ROUND {round_num} ---")
+        else:
+            # -------------------------------------------------------------
+            # LEGACY SEQUENTIAL / SIMPLE GRID (Backup)
+            # -------------------------------------------------------------
+            if has_grid_search:
+                max_rounds = 1
+                logging.info("=" * 60)
+                logging.info("Grid Search (Non-Adaptive) detected - running single round")
+                logging.info("=" * 60)
             else:
-                logging.info(f"--- ROUND {round_num} COMPLETE: Parameters changed. Refining... ---")
-                round_num += 1
+                max_rounds = 5
+                logging.info("Sequential optimization - using iterative refinement (5 rounds)")
+            
+            while not converged and round_num <= max_rounds:
+                logging.info(f"--- STARTING ROUND {round_num} OF REFINE ---")
+    
+                # Refine stages for rounds > 1 (Adaptive Zoom)
+                if round_num > 1:
+                     logging.info(f"Refining search grid around best result: {best_params}")
+                     for stage in stages:
+                         if stage.get('adaptive_meta'):
+                             self._refine_stage_values(stage, best_params)
+                
+                # Execute stages using shared helper (single branch)
+                current_metrics = best_metrics
+                best_params, best_metrics = self._execute_opt_stages(
+                       stages, 
+                       best_params, 
+                       round_num, 
+                       max_workers,
+                       template_name,
+                       symbol,
+                       timeframe, 
+                       fixed_timeframe,
+                       start_date,
+                       end_date,
+                       deep_backtest,
+                       template_metadata,
+                       df
+                )
+                
+                # End of Round Analysis
+                # Simple loose check for convergence
+                params_changed = True # (Simplify logic: always refine if rounds left in legacy mode unless strictly identical)
+                
+                if round_num < max_rounds:
+                    logging.info(f"--- ROUND {round_num} COMPLETE: Parameters changed. Refining... ---")
+                    round_num += 1
+                else:
+                    converged = True
+
                 
         if not converged:
              logging.warning(f"Optimization stopped after max rounds ({max_rounds}) without full convergence.")

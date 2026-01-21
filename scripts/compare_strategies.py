@@ -1,131 +1,118 @@
 
-import asyncio
 import sys
 import os
-from datetime import datetime
+import logging
+from pathlib import Path
 import pandas as pd
 
-# Add backend directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
+# Add backend to path
+sys.path.append(str(Path(__file__).parent.parent / "backend"))
 
+from app.services.combo_service import ComboService
 from app.services.backtest_service import BacktestService
+from src.data.incremental_loader import IncrementalLoader
+from app.services.combo_optimizer import ComboOptimizer
 
-async def run_comparison():
-    service = BacktestService()
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    # Common settings
-    exchange = "binance"
+def run_comparison():
+    print("Initializing Services...")
+    # Initialize real services to get accurate backtest logic
+    optimizer = ComboOptimizer() 
+    loader = IncrementalLoader()
+    combo_service = ComboService()
+    
     symbol = "BTC/USDT"
-    timeframe = "1d"
-    start_date_str = "2017-01-01 00:00:00"
-    end_date_str = "2026-01-20 00:00:00"
-    initial_capital = 10000.0
+    timeframe = "1d" 
+    start_date = "2023-01-01"
+    end_date = "2024-12-31" # 2 years of data
     
-    # Configuration 1: Antiga (User Provided)
-    config_antiga = {
-        "exchange": exchange,
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "since": start_date_str,
-        "until": end_date_str,
-        "cash": initial_capital,
-        "strategies": [
-            {
-                "name": "cruzamentomedias",
-                "media_curta": 3,
-                "media_longa": 37,
-                "media_inter": 32,
-                "stop_loss": 0.027
-            }
-        ]
+    print(f"\nFetching Data for {symbol} {timeframe} ({start_date} to {end_date})...")
+    df = loader.fetch_data(symbol, timeframe, start_date, end_date)
+    
+    # 1. Configuration: Antiga
+    # media_curta=3 -> ema_short=3
+    # media_inter=32 -> sma_medium=32
+    # media_longa=37 -> sma_long=37
+    # stop_loss=0.027
+    antiga_params = {
+        'ema_short': 3,
+        'sma_medium': 32,
+        'sma_long': 37,
+        'stop_loss': 0.027
     }
     
-    # Configuration 2: Nova (User Provided)
-    config_nova = {
-        "exchange": exchange,
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "since": start_date_str,
-        "until": end_date_str,
-        "cash": initial_capital,
-        "strategies": [
-            {
-                "name": "cruzamentomedias",
-                "ema_short": 15,
-                "sma_medium": 37,
-                "sma_long": 42,
-                "stop_loss": 0.065
-            }
-        ]
-    }
-
-    # Configuration 3: Nova 2 (User Provided)
-    config_nova2 = {
-        "exchange": exchange,
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "since": start_date_str,
-        "until": end_date_str,
-        "cash": initial_capital,
-        "strategies": [
-            {
-                "name": "cruzamentomedias",
-                "ema_short": 13,
-                "sma_medium": 39,
-                "sma_long": 38,
-                "stop_loss": 0.067
-            }
-        ]
+    # 2. Configuration: Nova
+    # {'ema_short': 19, 'sma_medium': 26, 'sma_long': 60, 'stop_loss': 0.04}
+    nova_params = {
+        'ema_short': 19,
+        'sma_medium': 26, 
+        'sma_long': 60, 
+        'stop_loss': 0.04
     }
     
-    print("=== Running Backtest for Configuration: Antiga ===")
-    result_antiga_dict = service.run_backtest(config_antiga)
+    configs = [("ANTIGA", antiga_params), ("NOVA", nova_params)]
     
-    print("\n=== Running Backtest for Configuration: Nova ===")
-    result_nova_dict = service.run_backtest(config_nova)
-
-    print("\n=== Running Backtest for Configuration: Nova 2 ===")
-    result_nova2_dict = service.run_backtest(config_nova2)
-
-    # Collect Results
-    results = [
-        ("Antiga", result_antiga_dict),
-        ("Nova", result_nova_dict),
-        ("Nova 2", result_nova2_dict)
-    ]
-
-    print("\n" + "="*60)
-    print(f"{'STRATEGY':<15} | {'PnL ($)':<15} | {'WIN RATE':<10} | {'TRADES':<8} | {'PROFIT FACTOR':<15}")
-    print("-" * 75)
-
-    for name, res_dict in results:
-        results_map = res_dict.get('results', {})
-        # Handle case sensitivity
-        res = results_map.get('cruzamentomedias') or results_map.get('CRUZAMENTOMEDIAS')
+    template_name = "multi_ma_crossover"
+    template_metadata = combo_service.get_template_metadata(template_name)
+    
+    print("\n--- RUNNING COMPARISON ---")
+    
+    for name, params in configs:
+        print(f"\nTesting {name} with params: {params}")
         
-        if res:
-            metrics = res.get('metrics', {})
-            pnl = metrics.get('total_pnl', 0)
-            win_rate = metrics.get('win_rate', 0) * 100
-            trades = metrics.get('total_trades', 0)
-            pf = metrics.get('profit_factor', 0)
+        # We can use the helper method _execute_opt_stages logic, but simplified,
+        # or better: instantiate the strategy and run generate_signals + extract_trades directly
+        # to ensure we use the exact same logic as the optimizer worker.
+        
+        # Reusing the logic from verify script / worker
+        # 1. Create Strategy
+        strategy = combo_service.create_strategy(template_name, params)
+        
+        # 2. Generate Signals
+        df_signals = strategy.generate_signals(df.copy())
+        
+        # 3. Extract Trades (Deep Backtest Logic)
+        # We need to simulate 15m execution if we were doing daily, but here we ARE on 15m.
+        # Wait, usually we optimize on 1H or 4H or Daily and use 15m for Deep.
+        # Here I loaded 15m directly. 
+        # If I load 15m directly, `extract_trades_from_signals` is sufficient 
+        # because the signals are already on 15m resolution.
+        # Does 'Antiga' rely on 1D signals refined by 15? Or native 15m?
+        # The user didn't specify timeframe for Antiga, but usually these are Swing strategies.
+        # Let's assume standard behavior: The signals are generated on `timeframe` (15m in this script).
+        
+        from app.services.combo_optimizer import extract_trades_from_signals
+        trades = extract_trades_from_signals(df_signals, params['stop_loss'])
+        
+        # 4. Metrics
+        total_trades = len(trades)
+        if total_trades > 0:
+            returns = [t['profit'] for t in trades]
+            total_return = sum(returns) * 100 # percentage
+            win_rate = len([t for t in trades if t['profit'] > 0]) / total_trades
             
-            print(f"{name:<15} | ${pnl:,.2f}      | {win_rate:5.2f}%    | {trades:<8} | {pf:.3f}")
+            import numpy as np
+            std_dev = np.std(returns)
+            sharpe = np.mean(returns) / std_dev if std_dev > 0 else 0
+            
+            # Drawdown
+            cumulative = np.cumsum(returns)
+            peak = np.maximum.accumulate(cumulative)
+            drawdown = (cumulative - peak)
+            max_drawdown = np.min(drawdown) * 100
+            
+            avg_profit = (total_return / total_trades)
         else:
-            print(f"{name:<15} | ERROR: No Results")
-    print("="*60 + "\n")
+            total_return, win_rate, sharpe, max_drawdown, avg_profit = 0,0,0,0,0
 
-def print_metrics(name, result_data):
-    metrics = result_data.get('metrics', {})
-    print(f"\n--- Results for {name} ---")
-    print(f"Total Return: {metrics.get('total_return_percentage', 0):.2f}%")
-    print(f"Total PnL: ${metrics.get('total_pnl', 0):.2f}")
-    print(f"Max Drawdown: {metrics.get('max_drawdown_percentage', 0):.2f}%")
-    print(f"Total Trades: {metrics.get('total_trades', 0)}")
-    win_rate = metrics.get('win_rate', 0)
-    if win_rate is None: win_rate = 0
-    print(f"Win Rate: {win_rate * 100:.2f}%")
-    print(f"Profit Factor: {metrics.get('profit_factor', 0):.3f}")
+        print(f"  > Total Trades: {total_trades}")
+        print(f"  > Sharpe Ratio: {sharpe:.4f}")
+        print(f"  > Total Return: {total_return:.2f}%")
+        print(f"  > Win Rate:     {win_rate*100:.1f}%")
+        print(f"  > Max Drawdown: {max_drawdown:.2f}%")
+        print(f"  > Avg Profit:   {avg_profit:.2f}%")
 
 if __name__ == "__main__":
-    asyncio.run(run_comparison())
+    run_comparison()
