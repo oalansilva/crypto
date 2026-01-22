@@ -1627,6 +1627,10 @@ class ComboOptimizer:
                         mask_bear = df_final['close'] < df_final[sma_col]
                         df_final.loc[mask_bull, 'regime'] = 'Bull'
                         df_final.loc[mask_bear, 'regime'] = 'Bear'
+                        
+                        # Log regime distribution for debugging
+                        regime_counts = df_final['regime'].value_counts()
+                        logging.info(f"Regime distribution using {sma_col}: {regime_counts.to_dict()}")
                 except Exception as e:
                     logging.warning(f"Failed to enrich final DF with regime: {e}")
             
@@ -1644,8 +1648,14 @@ class ComboOptimizer:
             stop_loss = best_params.get('stop_loss', 0.0)
             trades = extract_trades_from_signals(df_with_signals, stop_loss)
             
+            
             # Post-Process Heavy Metrics (Only for best result)
             try:
+                logging.info(f"Calculating heavy metrics for {len(trades)} trades")
+                logging.info(f"Regime column present in df_with_signals: {'regime' in df_with_signals.columns}")
+                if 'regime' in df_with_signals.columns:
+                    logging.info(f"Regime values in signals df: {df_with_signals['regime'].value_counts().to_dict()}")
+                
                 heavy = _calculate_heavy_metrics(df_with_signals, trades)
                 if best_metrics:
                     best_metrics.update(heavy)
