@@ -341,7 +341,7 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
         optimizer = ComboOptimizer()
         
         # Run optimization
-        result = optimizer.optimize(
+        result = optimizer.run_optimization(
             template_name=request.template_name,
             symbol=request.symbol,
             timeframe=request.timeframe,

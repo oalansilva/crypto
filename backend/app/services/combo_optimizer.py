@@ -271,7 +271,13 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             'win_rate': 0,
             'total_return': 0,
             'avg_profit': 0,
-            'sharpe_ratio': 0
+            'sharpe_ratio': 0,
+            'profit_factor': 0,
+            'sortino_ratio': 0,
+            'max_loss': 0,
+            'expectancy': 0,
+            'max_consecutive_losses': 0,
+            'max_drawdown': 0
         }
 
         if len(trades) > 0:
@@ -280,24 +286,75 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             metrics['total_trades'] = total_trades
             metrics['win_rate'] = winning_trades / total_trades
             
-            # Change to Compounded Return
-            # metrics['total_return'] = sum(t['profit'] for t in trades) # OLD: Simple Sum
-            
-            # NEW: Compound Return
-            # Start with 1.0 (100% capital), multiply by (1 + profit) for each trade, subtract 1.0 at end
+            # Compounded Return
             compounded_capital = 1.0
             for t in trades:
                 compounded_capital *= (1.0 + t['profit'])
-            metrics['total_return'] = (compounded_capital - 1.0) * 100.0 # Convert to percentage (e.g. 1.5 -> 150%)
+            metrics['total_return'] = (compounded_capital - 1.0) * 100.0
             
             metrics['avg_profit'] = (metrics['total_return'] / total_trades) if total_trades > 0 else 0
             
-            # Simple Sharpe approximation
+            # Sharpe Ratio
             returns = [t['profit'] for t in trades]
             import numpy as np
             std_dev = np.std(returns)
             metrics['sharpe_ratio'] = np.mean(returns) / std_dev if std_dev > 0 else 0
-        
+            
+            # Profit Factor
+            gross_profit = sum([t['profit'] for t in trades if t['profit'] > 0])
+            gross_loss = abs(sum([t['profit'] for t in trades if t['profit'] < 0]))
+            metrics['profit_factor'] = gross_profit / gross_loss if gross_loss > 0 else (999 if gross_profit > 0 else 0)
+            
+            # Sortino Ratio (downside deviation)
+            downside_returns = [r for r in returns if r < 0]
+            if len(downside_returns) > 1:
+                downside_std = np.std(downside_returns)
+                metrics['sortino_ratio'] = np.mean(returns) / downside_std if downside_std > 0 else 0
+            else:
+                metrics['sortino_ratio'] = metrics['sharpe_ratio']  # Fallback to Sharpe if no downside
+            
+            # Max Loss (worst single trade)
+            metrics['max_loss'] = min(returns) if returns else 0
+            
+            # Expectancy (average profit per trade in dollars, assuming $10k capital)
+            # Convert from percentage to dollar value
+            ASSUMED_CAPITAL = 10000
+            expectancy_pct = np.mean(returns) if returns else 0
+            metrics['expectancy'] = expectancy_pct * ASSUMED_CAPITAL
+            
+            # Max Consecutive Losses
+            consecutive_losses = 0
+            max_consecutive = 0
+            for t in trades:
+                if t['profit'] < 0:
+                    consecutive_losses += 1
+                    max_consecutive = max(max_consecutive, consecutive_losses)
+                else:
+                    consecutive_losses = 0
+            metrics['max_consecutive_losses'] = max_consecutive
+            
+            # Max Drawdown (from equity curve)
+            equity = 1.0
+            peak = 1.0
+            max_dd = 0
+            for t in trades:
+                equity *= (1.0 + t['profit'])
+                if equity > peak:
+                    peak = equity
+                drawdown = (peak - equity) / peak
+                max_dd = max(max_dd, drawdown)
+            metrics['max_drawdown'] = max_dd * 100.0  # Convert to percentage
+            
+            # --- Regime Metrics (Simplified/Moved) ---
+            # Heavy calculation (Win Rate Bull/Bear) removed from inner loop for performance.
+            # Avg ATR/ADX is fast (vectorized mostly), so we keep if cols exist (simple mean).
+            
+            atr_col = next((c for c in df.columns if c.startswith('ATR')), None)
+            adx_col = next((c for c in df.columns if c.startswith('ADX')), None)
+            
+            metrics['avg_atr'] = df[atr_col].mean() if atr_col else 0
+            metrics['avg_adx'] = df[adx_col].mean() if adx_col else 0
+
         # Construct full effective parameters for logging
         full_params = {}
         for ind in indicators:
@@ -1058,13 +1115,40 @@ class ComboOptimizer:
         best_params = initial_params.copy()
         best_metrics = None
         
+        # Enrich DF with Regime/Context Metrics (if not present) to enable Worker Logic
+        if df is not None and not df.empty and 'regime' not in df.columns:
+            try:
+                import pandas_ta as ta
+                import numpy as np
+                df = df.copy()
+                
+                # Check/Calc SMA (200) for Regime
+                if 'SMA_200' not in df.columns:
+                    df.ta.sma(length=200, append=True)
+                
+                # ATR/ADX for Avg Metrics
+                if not any(c.startswith('ATR') for c in df.columns):
+                    df.ta.atr(length=14, append=True)
+                if not any(c.startswith('ADX') for c in df.columns):
+                    df.ta.adx(length=14, append=True)
+
+                # Regime Classification
+                sma_col = 'SMA_200'
+                if sma_col in df.columns:
+                    conditions = [(df['close'] > df[sma_col]), (df['close'] < df[sma_col])]
+                    choices = ['Bull', 'Bear']
+                    df['regime'] = np.select(conditions, choices, default='Unknown')
+            except Exception as e:
+                logging.warning(f"Failed to enrich DF with regime metrics: {e}")
+        
         # -----------------------------------------------------------
         # NOTE: For Multi-Focus Grid (Round 1), we typically have ONE stage (the 4D Grid).
         # We need to collect ALL results from that stage and return top N.
         # For Refinement (Sequential params), we follow the standard greedy path.
         # -----------------------------------------------------------
         
-        collected_candidates = [] 
+        collected_candidates = []
+        total_combinations_tested = 0  # Track total across all stages 
 
         for stage in stages:
             stage_param = stage['parameter']
@@ -1131,6 +1215,12 @@ class ComboOptimizer:
             
             if not worker_args:
                 continue
+            
+            # Log combinations count for this stage
+            combinations_count = len(worker_args)
+            stage_name = f"Round {round_num} - Stage: {stage_param if not is_grid_mode else 'Grid(' + ','.join(stage_param) + ')'}"
+            logging.info(f"🔢 {stage_name}: Testing {combinations_count} combinations")
+            total_combinations_tested += combinations_count
 
             results = []
             BATCH_SIZE = 200
@@ -1193,6 +1283,9 @@ class ComboOptimizer:
                 # Greedily update best_params for NEXT stage in this loop
                 best_params = top['params']
 
+        # Log total combinations tested
+        logging.info(f"📊 Total combinations tested in this execution: {total_combinations_tested}")
+        
         if return_top_n > 1 and collected_candidates:
             # Sort all collected candidates (if multiple grid stages existed, unlikely for 4D)
             collected_candidates.sort(key=lambda x: x['score'], reverse=True)
@@ -1201,7 +1294,7 @@ class ComboOptimizer:
         return best_params, best_metrics
 
 
-    def optimize(
+    def run_optimization(
         self,
         template_name: str,
         symbol: str,
@@ -1458,6 +1551,28 @@ class ComboOptimizer:
                 until_str=end_date
             )
             
+            # Enrich df_final with regime for heavy metrics calculation
+            if 'regime' not in df_final.columns:
+                try:
+                    import pandas_ta as ta
+                    import numpy as np
+                    
+                    if 'SMA_200' not in df_final.columns:
+                        df_final.ta.sma(length=200, append=True)
+                    
+                    if not any(c.startswith('ATR') for c in df_final.columns):
+                        df_final.ta.atr(length=14, append=True)
+                    if not any(c.startswith('ADX') for c in df_final.columns):
+                        df_final.ta.adx(length=14, append=True)
+                    
+                    sma_col = 'SMA_200'
+                    if sma_col in df_final.columns:
+                        conditions = [(df_final['close'] > df_final[sma_col]), (df_final['close'] < df_final[sma_col])]
+                        choices = ['Bull', 'Bear']
+                        df_final['regime'] = np.select(conditions, choices, default='Unknown')
+                except Exception as e:
+                    logging.warning(f"Failed to enrich final DF with regime: {e}")
+            
             # Create strategy with best parameters
             strategy = self.combo_service.create_strategy(
                 template_name=template_name,
@@ -1471,6 +1586,17 @@ class ComboOptimizer:
             # Extract trades with exact logic matching worker (Stop Loss + Fees)
             stop_loss = best_params.get('stop_loss', 0.0)
             trades = extract_trades_from_signals(df_with_signals, stop_loss)
+            
+            # Post-Process Heavy Metrics (Only for best result)
+            try:
+                heavy = _calculate_heavy_metrics(df_with_signals, trades)
+                if best_metrics:
+                    best_metrics.update(heavy)
+                    logging.info(f"Heavy metrics calculated: {heavy}")
+            except Exception as e:
+                logging.error(f"Failed to calculate heavy metrics: {e}")
+                import traceback
+                traceback.print_exc()
             
             # Prepare candles data
             candles = []
@@ -1487,11 +1613,16 @@ class ComboOptimizer:
                     'volume': float(row['volume'])
                 })
             
-            # Extract indicator data
+            # Extract indicator data (only numeric columns)
             indicator_data = {}
+            excluded_cols = ['open', 'high', 'low', 'close', 'volume', 'signal', 'regime']
             for col in df_with_signals.columns:
-                if col not in ['open', 'high', 'low', 'close', 'volume', 'signal']:
-                    indicator_data[col] = df_with_signals[col].fillna(0).tolist()
+                if col not in excluded_cols:
+                    # Only include numeric columns
+                    try:
+                        indicator_data[col] = df_with_signals[col].fillna(0).tolist()
+                    except:
+                        pass  # Skip non-numeric columns
             
         except Exception as e:
             logging.error(f"Final backtest failed: {e}")
@@ -1514,3 +1645,34 @@ class ComboOptimizer:
             "indicator_data": indicator_data,
             "parameters": best_params  # For compatibility with ComboResultsPage
         }
+
+
+
+def _calculate_heavy_metrics(df, trades):
+    metrics = {}
+    try:
+        if 'regime' in df.columns and trades:
+            bull_wins = 0; bull_count = 0
+            bear_wins = 0; bear_count = 0
+            import pandas as pd
+            for t in trades:
+                et = t.get('entry_time')
+                if et:
+                    try:
+                        if isinstance(et, str): et = pd.to_datetime(et)
+                        idx_match = df.index.asof(et)
+                        if idx_match is not None:
+                            r_val = df.loc[idx_match]['regime']
+                            if isinstance(r_val, pd.Series): r_val = r_val.iloc[0]
+                            is_win = t.get('profit', 0) > 0
+                            if r_val == 'Bull':
+                                bull_count += 1
+                                if is_win: bull_wins += 1
+                            elif r_val == 'Bear':
+                                bear_count += 1
+                                if is_win: bear_wins += 1
+                    except Exception: pass
+            metrics['win_rate_bull'] = (bull_wins / bull_count) if bull_count > 0 else 0
+            metrics['win_rate_bear'] = (bear_wins / bear_count) if bear_count > 0 else 0
+    except Exception as e: pass
+    return metrics
