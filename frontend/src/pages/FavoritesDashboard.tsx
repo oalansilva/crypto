@@ -366,10 +366,10 @@ const FavoritesDashboard: React.FC = () => {
                                                     {formatNum(m.profit_factor)}
                                                 </td>
                                                 <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
-                                                    {formatNum(m.sortino)}
+                                                    {formatNum(m.sortino_ratio ?? m.sortino)}
                                                 </td>
                                                 <td className="p-3 border-r border-gray-700/50 text-right font-mono text-red-300">
-                                                    {m.max_consecutive_losses ?? m.stop_loss_count ?? 0}
+                                                    {formatPct(m.max_loss)}
                                                 </td>
                                                 <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
                                                     {formatNum(m.avg_atr)}
@@ -499,13 +499,19 @@ const FavoritesDashboard: React.FC = () => {
                                         <tr>
                                             <td className="p-4 text-gray-400">Sortino Ratio</td>
                                             {selectedStrategies.map(s => (
-                                                <td key={s.id} className="p-4 text-white font-mono">{formatNum(s.metrics.sortino || s.metrics.sortino_ratio)}</td>
+                                                <td key={s.id} className="p-4 text-white font-mono">{formatNum(s.metrics.sortino_ratio ?? s.metrics.sortino)}</td>
                                             ))}
                                         </tr>
                                         <tr>
                                             <td className="p-4 text-gray-400">Max Loss</td>
                                             {selectedStrategies.map(s => (
-                                                <td key={s.id} className="p-4 text-red-400 font-mono">{s.metrics.max_consecutive_losses ?? s.metrics.stop_loss_count ?? 0}</td>
+                                                <td key={s.id} className="p-4 text-red-500 font-mono">{formatPct(s.metrics.max_loss)}</td>
+                                            ))}
+                                        </tr>
+                                        <tr>
+                                            <td className="p-4 text-gray-400">Max Cons. Losses</td>
+                                            {selectedStrategies.map(s => (
+                                                <td key={s.id} className="p-4 text-orange-400 font-mono">{s.metrics.max_consecutive_losses ?? 0}</td>
                                             ))}
                                         </tr>
                                         <tr>
