@@ -141,6 +141,12 @@ class ComboStrategy:
             except Exception as e:
                 raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
         
+        # Ensure all columns are numeric to prevent NoneType errors in eval evaluation
+        # This handles cases where pandas-ta might return object types with None
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
         # Cache the result
         self._indicator_cache['calculated'] = df.copy()
         

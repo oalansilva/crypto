@@ -101,6 +101,6 @@ class CloneTemplateRequest(BaseModel):
 
 class TemplateListResponse(BaseModel):
     """Response listing available combo templates."""
-    prebuilt: List[Dict[str, str]]
-    examples: List[Dict[str, str]]
-    custom: List[Dict[str, str]]
+    prebuilt: List[Dict[str, Any]]
+    examples: List[Dict[str, Any]]
+    custom: List[Dict[str, Any]]

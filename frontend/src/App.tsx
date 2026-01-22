@@ -14,6 +14,7 @@ import { ComboSelectPage } from './pages/ComboSelectPage'
 import { ComboConfigurePage } from './pages/ComboConfigurePage'
 import { ComboResultsPage } from './pages/ComboResultsPage'
 import { ComboOptimizePage } from './pages/ComboOptimizePage'
+import { ComboEditPage } from './pages/ComboEditPage'
 import {
   Activity,
   TrendingUp,
@@ -546,6 +547,7 @@ function App() {
         <Route path="/backtest/auto/results/:runId" element={<AutoBacktestResultsPage />} />
         <Route path="/backtest/auto/history" element={<AutoBacktestHistoryPage />} />
         <Route path="/combo/select" element={<ComboSelectPage />} />
+        <Route path="/combo/edit/:templateName" element={<ComboEditPage />} />
         <Route path="/combo/configure" element={<ComboConfigurePage />} />
         <Route path="/combo/optimize" element={<ComboOptimizePage />} />
         <Route path="/combo/results" element={<ComboResultsPage />} />

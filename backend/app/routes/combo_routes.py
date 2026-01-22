@@ -8,6 +8,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from typing import Optional
 import pandas as pd
+import numpy as np
 from datetime import datetime
 
 from app.schemas.combo_params import (
@@ -149,6 +150,36 @@ async def clone_template(template_name: str, request: CloneTemplateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.delete("/meta/{template_name}")
+async def delete_template(template_name: str):
+    """
+    Delete a custom combo template.
+    
+    Args:
+        template_name: Name of the template to delete
+    
+    Returns:
+        Success message
+    
+    Raises:
+        404: If template not found or not deletable
+    """
+    try:
+        service = ComboService()
+        success = service.delete_template_by_name(template_name)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found or cannot be deleted")
+            
+        return {"message": f"Template '{template_name}' deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting template '{template_name}': {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/backtest", response_model=ComboBacktestResponse)
 async def run_combo_backtest(request: ComboBacktestRequest):
     """
@@ -173,11 +204,11 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         
         # Load market data
         loader = IncrementalLoader()
-        df = loader.load_data(
+        df = loader.fetch_data(
             symbol=request.symbol,
             timeframe=request.timeframe,
-            start_date=request.start_date,
-            end_date=request.end_date
+            since_str=request.start_date,
+            until_str=request.end_date
         )
         logger.info(f"Loaded {len(df)} candles for {request.symbol} {request.timeframe}")
         
@@ -189,25 +220,43 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         logger.info(f"Generated signals for {len(df_with_signals)} candles")
         
         # Execute backtest
-        from src.backtest.backtester import Backtester
-        backtester = Backtester(initial_capital=10000)
+        from src.engine.backtester import Backtester
         
-        # Override stop_loss if provided in request
-        if request.stop_loss is not None:
-            strategy.stop_loss = request.stop_loss
+        # Override stop_loss if provided in request, otherwise use strategy's default
+        stop_loss_pct = request.stop_loss if request.stop_loss is not None else strategy.stop_loss
         
-        trades = backtester.run(
-            df_with_signals,
-            stop_loss=strategy.stop_loss,
-            deep_backtest=request.deep_backtest,
-            symbol=request.symbol,
-            timeframe=request.timeframe
+        backtester = Backtester(
+            initial_capital=10000,
+            stop_loss_pct=stop_loss_pct
         )
+        
+        # Backtester run expects df and strategy
+        # It handles signal generation internally, so we can pass raw df or df_with_signals
+        df_results = backtester.run(
+            df,
+            strategy=strategy
+        )
+        
+        trades = backtester.trades
         logger.info(f"Backtest complete: {len(trades)} trades executed")
         
         # Calculate metrics
         total_trades = len(trades)
         winning_trades = sum(1 for t in trades if t.get('profit', 0) > 0)
+        
+        # Convert timestamps and numpy types in trades to string/native (JSON serialization)
+        for t in trades:
+            if 'entry_time' in t and hasattr(t['entry_time'], 'isoformat'):
+                t['entry_time'] = t['entry_time'].isoformat()
+            if 'exit_time' in t and hasattr(t['exit_time'], 'isoformat'):
+                t['exit_time'] = t['exit_time'].isoformat()
+            
+            # Convert numpy types
+            for k, v in t.items():
+                if isinstance(v, (np.integer, np.int64)):
+                    t[k] = int(v)
+                elif isinstance(v, (np.floating, np.float64)):
+                    t[k] = float(v)
         
         metrics = {
             "total_trades": total_trades,
@@ -250,13 +299,20 @@ async def run_combo_backtest(request: ComboBacktestRequest):
                     "volume": float(row['volume'])
                 })
         
-        return ComboBacktestResponse(
+        response = ComboBacktestResponse(
+            template_name=request.template_name,
+            symbol=request.symbol,
+            timeframe=request.timeframe,
             metrics=metrics,
             trades=trades,
             candles=candles,
             indicator_data=indicator_data,
-            parameters=request.parameters
+            parameters=request.parameters,
+            execution_mode="fast_1d"
         )
+        logger.info("Response object created successfully")
+        from fastapi.encoders import jsonable_encoder
+        return jsonable_encoder(response)
         
     except HTTPException:
         raise

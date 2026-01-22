@@ -24,7 +24,7 @@ class ComboService:
             db_path = str(project_root / "data" / "crypto_backtest.db")
         self.db_path = db_path
     
-    def list_templates(self) -> Dict[str, List[Dict[str, str]]]:
+    def list_templates(self) -> Dict[str, List[Dict[str, Any]]]:
         """
         List all available combo templates from database.
         
@@ -36,34 +36,34 @@ class ComboService:
         
         # Get pre-built templates from database
         cursor.execute("""
-            SELECT name, description
+            SELECT name, description, is_readonly
             FROM combo_templates
             WHERE is_prebuilt = 1
         """)
         prebuilt = [
-            {"name": row[0], "description": row[1] or ""}
+            {"name": row[0], "description": row[1] or "", "is_readonly": bool(row[2])}
             for row in cursor.fetchall()
         ]
         
         # Get example templates from database
         cursor.execute("""
-            SELECT name, description
+            SELECT name, description, is_readonly
             FROM combo_templates
             WHERE is_example = 1
         """)
         examples = [
-            {"name": row[0], "description": row[1] or ""}
+            {"name": row[0], "description": row[1] or "", "is_readonly": bool(row[2])}
             for row in cursor.fetchall()
         ]
         
         # Get custom templates from database
         cursor.execute("""
-            SELECT name, description
+            SELECT name, description, is_readonly
             FROM combo_templates
             WHERE is_example = 0 AND is_prebuilt = 0
         """)
         custom = [
-            {"name": row[0], "description": row[1] or ""}
+            {"name": row[0], "description": row[1] or "", "is_readonly": bool(row[2])}
             for row in cursor.fetchall()
         ]
         
@@ -279,6 +279,31 @@ class ComboService:
             DELETE FROM combo_templates
             WHERE id = ? AND is_example = 0 AND is_prebuilt = 0
         """, (template_id,))
+        
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        
+        return deleted
+    
+    def delete_template_by_name(self, template_name: str) -> bool:
+        """
+        Delete a custom template from database by name.
+        
+        Args:
+            template_name: Name of the template to delete
+        
+        Returns:
+            True if deletion was successful
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Only allow deleting custom templates (not prebuilt or examples)
+        cursor.execute("""
+            DELETE FROM combo_templates
+            WHERE name = ? AND is_example = 0 AND is_prebuilt = 0
+        """, (template_name,))
         
         deleted = cursor.rowcount > 0
         conn.commit()
