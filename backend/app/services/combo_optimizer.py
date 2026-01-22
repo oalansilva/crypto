@@ -1660,8 +1660,20 @@ def _calculate_heavy_metrics(df, trades):
                 if et:
                     try:
                         if isinstance(et, str): et = pd.to_datetime(et)
+                        
+                        # Normalize Timezone to match DataFrame index
+                        # If Index is Aware but ET is Naive -> Localize to UTC (assumption)
+                        if df.index.tz is not None and et.tz is None:
+                            et = et.tz_localize('UTC')
+                        # If Index is Naive but ET is Aware -> Convert ET to Naive
+                        elif df.index.tz is None and et.tz is not None:
+                            et = et.tz_convert(None)
+                            
                         idx_match = df.index.asof(et)
                         if idx_match is not None:
+                            # Verify if match is "close enough" (optional, but asof finds PREVIOUS)
+                            # Logic assumes daily/intraday continuity.
+                            
                             r_val = df.loc[idx_match]['regime']
                             if isinstance(r_val, pd.Series): r_val = r_val.iloc[0]
                             is_win = t.get('profit', 0) > 0
