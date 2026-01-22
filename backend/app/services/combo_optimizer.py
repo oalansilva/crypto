@@ -342,58 +342,16 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                 max_dd = max(max_dd, drawdown)
             metrics['max_drawdown'] = max_dd * 100.0  # Convert to percentage
             
-            # --- Regime & Avg Metrics ---
-            try:
-                # 1. Avg Indicators
-                atr_col = next((c for c in df.columns if c.startswith('ATR')), None)
-                adx_col = next((c for c in df.columns if c.startswith('ADX')), None)
-                
-                metrics['avg_atr'] = df[atr_col].mean() if atr_col else 0
-                metrics['avg_adx'] = df[adx_col].mean() if adx_col else 0
-                    
-                # 2. Bull/Bear Win Rates
-                if 'regime' in df.columns:
-                     bull_wins = 0
-                     bull_count = 0
-                     bear_wins = 0
-                     bear_count = 0
-                     
-                     import pandas as pd
-                     
-                     for t in trades:
-                         et = t.get('entry_time')
-                         if et:
-                             try:
-                                 if isinstance(et, str):
-                                     et = pd.to_datetime(et)
-                                 
-                                 # Use asof to find nearest valid index in the past
-                                 # Using index.asof() requires sorted index
-                                 idx_match = df.index.asof(et)
-                                 
-                                 if idx_match is not None:
-                                     # Handle potential duplicate index or Series return
-                                     r_val = df.loc[idx_match]['regime']
-                                     # If duplicate, take first
-                                     if isinstance(r_val, pd.Series):
-                                         r_val = r_val.iloc[0]
-                                         
-                                     is_win = t['profit'] > 0
-                                     
-                                     if r_val == 'Bull':
-                                         bull_count += 1
-                                         if is_win: bull_wins += 1
-                                     elif r_val == 'Bear':
-                                         bear_count += 1
-                                         if is_win: bear_wins += 1
-                             except Exception:
-                                 pass
-                     
-                     metrics['win_rate_bull'] = (bull_wins / bull_count) if bull_count > 0 else 0
-                     metrics['win_rate_bear'] = (bear_wins / bear_count) if bear_count > 0 else 0
-            except Exception as e:
-                pass
-        
+            # --- Regime Metrics (Simplified/Moved) ---
+            # Heavy calculation (Win Rate Bull/Bear) removed from inner loop for performance.
+            # Avg ATR/ADX is fast (vectorized mostly), so we keep if cols exist (simple mean).
+            
+            atr_col = next((c for c in df.columns if c.startswith('ATR')), None)
+            adx_col = next((c for c in df.columns if c.startswith('ADX')), None)
+            
+            metrics['avg_atr'] = df[atr_col].mean() if atr_col else 0
+            metrics['avg_adx'] = df[adx_col].mean() if adx_col else 0
+
         # Construct full effective parameters for logging
         full_params = {}
         for ind in indicators:
@@ -1594,6 +1552,14 @@ class ComboOptimizer:
             stop_loss = best_params.get('stop_loss', 0.0)
             trades = extract_trades_from_signals(df_with_signals, stop_loss)
             
+            # Post-Process Heavy Metrics (Only for best result)
+            try:
+                heavy = _calculate_heavy_metrics(df_with_signals, trades)
+                if best_metrics:
+                    best_metrics.update(heavy)
+            except Exception as e:
+                pass
+            
             # Prepare candles data
             candles = []
             
@@ -1637,3 +1603,33 @@ class ComboOptimizer:
             "parameters": best_params  # For compatibility with ComboResultsPage
         }
 
+
+
+def _calculate_heavy_metrics(df, trades):
+    metrics = {}
+    try:
+        if 'regime' in df.columns and trades:
+            bull_wins = 0; bull_count = 0
+            bear_wins = 0; bear_count = 0
+            import pandas as pd
+            for t in trades:
+                et = t.get('entry_time')
+                if et:
+                    try:
+                        if isinstance(et, str): et = pd.to_datetime(et)
+                        idx_match = df.index.asof(et)
+                        if idx_match is not None:
+                            r_val = df.loc[idx_match]['regime']
+                            if isinstance(r_val, pd.Series): r_val = r_val.iloc[0]
+                            is_win = t.get('profit', 0) > 0
+                            if r_val == 'Bull':
+                                bull_count += 1
+                                if is_win: bull_wins += 1
+                            elif r_val == 'Bear':
+                                bear_count += 1
+                                if is_win: bear_wins += 1
+                    except Exception: pass
+            metrics['win_rate_bull'] = (bull_wins / bull_count) if bull_count > 0 else 0
+            metrics['win_rate_bear'] = (bear_wins / bear_count) if bear_count > 0 else 0
+    except Exception as e: pass
+    return metrics
