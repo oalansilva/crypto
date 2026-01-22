@@ -1228,14 +1228,61 @@ class ComboOptimizer:
             BATCH_SIZE = 200
             worker_batches = [worker_args[i:i + BATCH_SIZE] for i in range(0, len(worker_args), BATCH_SIZE)]
             
+            total_batches = len(worker_batches)
+            logging.info(f"📦 Dividido em {total_batches} batches de até {BATCH_SIZE} combinações cada")
+            logging.info(f"⚙️  Usando {max_workers} workers em paralelo")
+            
             import concurrent.futures
+            import time
+            
+            start_time = time.time()
+            completed_batches = 0
+            processed_combinations = 0
+            
             with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(_worker_run_batch, batch) for batch in worker_batches]
+                futures = {executor.submit(_worker_run_batch, batch): i for i, batch in enumerate(worker_batches)}
+                
                 for future in concurrent.futures.as_completed(futures):
+                    batch_idx = futures[future]
                     try:
-                        results.extend(future.result())
-                    except Exception:
+                        batch_results = future.result()
+                        results.extend(batch_results)
+                        
+                        # Update progress
+                        completed_batches += 1
+                        processed_combinations += len(worker_batches[batch_idx])
+                        
+                        # Calculate progress metrics
+                        progress_pct = (completed_batches / total_batches) * 100
+                        elapsed_time = time.time() - start_time
+                        
+                        # Estimate time remaining
+                        if completed_batches > 0:
+                            avg_time_per_batch = elapsed_time / completed_batches
+                            remaining_batches = total_batches - completed_batches
+                            estimated_remaining = avg_time_per_batch * remaining_batches
+                            
+                            # Format time
+                            elapsed_min = int(elapsed_time / 60)
+                            elapsed_sec = int(elapsed_time % 60)
+                            remaining_min = int(estimated_remaining / 60)
+                            remaining_sec = int(estimated_remaining % 60)
+                            
+                            logging.info(
+                                f"✅ Batch {completed_batches}/{total_batches} completo "
+                                f"({progress_pct:.1f}%) | "
+                                f"Processadas: {processed_combinations:,}/{combinations_count:,} | "
+                                f"Tempo: {elapsed_min}m{elapsed_sec}s | "
+                                f"Restante: ~{remaining_min}m{remaining_sec}s"
+                            )
+                    except Exception as e:
+                        logging.warning(f"⚠️ Batch {batch_idx} falhou: {e}")
                         pass
+            
+            total_time = time.time() - start_time
+            total_min = int(total_time / 60)
+            total_sec = int(total_time % 60)
+            logging.info(f"🏁 Stage completo em {total_min}m{total_sec}s | Total processado: {processed_combinations:,} combinações")
             
             valid_results = [r for r in results if r['success']]
             
