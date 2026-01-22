@@ -1613,11 +1613,16 @@ class ComboOptimizer:
                     'volume': float(row['volume'])
                 })
             
-            # Extract indicator data
+            # Extract indicator data (only numeric columns)
             indicator_data = {}
+            excluded_cols = ['open', 'high', 'low', 'close', 'volume', 'signal', 'regime']
             for col in df_with_signals.columns:
-                if col not in ['open', 'high', 'low', 'close', 'volume', 'signal']:
-                    indicator_data[col] = df_with_signals[col].fillna(0).tolist()
+                if col not in excluded_cols:
+                    # Only include numeric columns
+                    try:
+                        indicator_data[col] = df_with_signals[col].fillna(0).tolist()
+                    except:
+                        pass  # Skip non-numeric columns
             
         except Exception as e:
             logging.error(f"Final backtest failed: {e}")
