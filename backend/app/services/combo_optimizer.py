@@ -271,7 +271,13 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             'win_rate': 0,
             'total_return': 0,
             'avg_profit': 0,
-            'sharpe_ratio': 0
+            'sharpe_ratio': 0,
+            'profit_factor': 0,
+            'sortino_ratio': 0,
+            'max_loss': 0,
+            'expectancy': 0,
+            'max_consecutive_losses': 0,
+            'max_drawdown': 0
         }
 
         if len(trades) > 0:
@@ -280,23 +286,61 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             metrics['total_trades'] = total_trades
             metrics['win_rate'] = winning_trades / total_trades
             
-            # Change to Compounded Return
-            # metrics['total_return'] = sum(t['profit'] for t in trades) # OLD: Simple Sum
-            
-            # NEW: Compound Return
-            # Start with 1.0 (100% capital), multiply by (1 + profit) for each trade, subtract 1.0 at end
+            # Compounded Return
             compounded_capital = 1.0
             for t in trades:
                 compounded_capital *= (1.0 + t['profit'])
-            metrics['total_return'] = (compounded_capital - 1.0) * 100.0 # Convert to percentage (e.g. 1.5 -> 150%)
+            metrics['total_return'] = (compounded_capital - 1.0) * 100.0
             
             metrics['avg_profit'] = (metrics['total_return'] / total_trades) if total_trades > 0 else 0
             
-            # Simple Sharpe approximation
+            # Sharpe Ratio
             returns = [t['profit'] for t in trades]
             import numpy as np
             std_dev = np.std(returns)
             metrics['sharpe_ratio'] = np.mean(returns) / std_dev if std_dev > 0 else 0
+            
+            # Profit Factor
+            gross_profit = sum([t['profit'] for t in trades if t['profit'] > 0])
+            gross_loss = abs(sum([t['profit'] for t in trades if t['profit'] < 0]))
+            metrics['profit_factor'] = gross_profit / gross_loss if gross_loss > 0 else (999 if gross_profit > 0 else 0)
+            
+            # Sortino Ratio (downside deviation)
+            downside_returns = [r for r in returns if r < 0]
+            if len(downside_returns) > 1:
+                downside_std = np.std(downside_returns)
+                metrics['sortino_ratio'] = np.mean(returns) / downside_std if downside_std > 0 else 0
+            else:
+                metrics['sortino_ratio'] = metrics['sharpe_ratio']  # Fallback to Sharpe if no downside
+            
+            # Max Loss (worst single trade)
+            metrics['max_loss'] = min(returns) if returns else 0
+            
+            # Expectancy (average profit per trade)
+            metrics['expectancy'] = np.mean(returns) if returns else 0
+            
+            # Max Consecutive Losses
+            consecutive_losses = 0
+            max_consecutive = 0
+            for t in trades:
+                if t['profit'] < 0:
+                    consecutive_losses += 1
+                    max_consecutive = max(max_consecutive, consecutive_losses)
+                else:
+                    consecutive_losses = 0
+            metrics['max_consecutive_losses'] = max_consecutive
+            
+            # Max Drawdown (from equity curve)
+            equity = 1.0
+            peak = 1.0
+            max_dd = 0
+            for t in trades:
+                equity *= (1.0 + t['profit'])
+                if equity > peak:
+                    peak = equity
+                drawdown = (peak - equity) / peak
+                max_dd = max(max_dd, drawdown)
+            metrics['max_drawdown'] = max_dd * 100.0  # Convert to percentage
         
         # Construct full effective parameters for logging
         full_params = {}
