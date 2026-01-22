@@ -277,34 +277,34 @@ const FavoritesDashboard: React.FC = () => {
                 </div>
 
                 {/* Table Container */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden shadow-xl">
+                <div className="bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-xl ring-1 ring-gray-700">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse text-xs">
-                            <thead className="bg-gray-900 text-gray-400 font-medium uppercase tracking-wider">
+                        <table className="w-full text-left border-collapse text-sm"> {/* Changed text-xs to text-sm */}
+                            <thead className="bg-gray-900/95 text-gray-300 font-bold uppercase tracking-wider backdrop-blur-sm sticky top-0 z-10">
                                 <tr>
-                                    <th className="p-3 border-b border-gray-700 w-10 text-center">
-                                        <input type="checkbox" disabled className="rounded border-gray-600" />
+                                    <th className="p-3 border-b-2 border-gray-600 w-10 text-center bg-gray-900">
+                                        <input type="checkbox" disabled className="rounded border-gray-500 bg-gray-800" />
                                     </th>
-                                    <th className="p-3 border-b border-gray-700 font-bold text-white">Moeda</th>
-                                    <th className="p-3 border-b border-gray-700 font-bold text-white">Indicador</th>
-                                    <th className="p-3 border-b border-gray-700 font-bold text-white">TimeFrame</th>
-                                    <th className="p-3 border-b border-gray-700 font-bold text-white w-96">Parametros</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Stop</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Sharpe</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Trades</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Win Rate</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Retorno Total</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Exp/Trade</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Max DD</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Profit Factor</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Sortino</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Max Loss</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Avg ATR</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">WR Bull</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">WR Bear</th>
-                                    <th className="p-3 border-b border-gray-700 text-right">Avg ADX</th>
-                                    <th className="p-3 border-b border-gray-700 text-left">Notes</th>
-                                    <th className="p-3 border-b border-gray-700 text-center">Actions</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 font-bold text-white bg-gray-900">Moeda</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 font-bold text-white bg-gray-900">Indicador</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 font-bold text-white bg-gray-900">TimeFrame</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 font-bold text-white w-96 bg-gray-900">Parametros</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Stop</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Sharpe</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Trades</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Win Rate</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Retorno Total</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Exp/Trade</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Max DD</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Profit Factor</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Sortino</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Max Loss</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Avg ATR</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">WR Bull</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">WR Bear</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-right text-gray-200 bg-gray-900">Avg ADX</th>
+                                    <th className="p-3 border-b-2 border-gray-600 border-r border-gray-700 text-left text-gray-200 bg-gray-900">Notes</th>
+                                    <th className="p-3 border-b-2 border-gray-600 text-center text-gray-200 bg-gray-900">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
@@ -313,7 +313,7 @@ const FavoritesDashboard: React.FC = () => {
                                 ) : filteredFavorites.length === 0 ? (
                                     <tr><td colSpan={14} className="p-8 text-center text-gray-500">No favorites found. Save some strategies first!</td></tr>
                                 ) : (
-                                    filteredFavorites.map((fav) => {
+                                    filteredFavorites.map((fav, index) => {
                                         const isSelected = selectedIds.includes(fav.id);
                                         const m = fav.metrics || {};
                                         // Try to find derived metrics, fallback to N/A
@@ -325,88 +325,92 @@ const FavoritesDashboard: React.FC = () => {
                                         return (
                                             <tr
                                                 key={fav.id}
-                                                className={`hover:bg-gray-700/50 transition-colors group ${isSelected ? 'bg-purple-900/20' : ''}`}
+                                                className={`
+                                                    group transition-colors
+                                                    ${isSelected ? 'bg-purple-900/30' : (index % 2 === 0 ? 'bg-gray-800/40' : 'bg-transparent')}
+                                                    hover:bg-gray-700
+                                                `}
                                             >
-                                                <td className="p-3 border-r border-gray-700/50 text-center">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-center">
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         onChange={() => toggleSelection(fav.id)}
-                                                        className="rounded border-gray-600 text-purple-600 focus:ring-offset-0 focus:ring-1 focus:ring-purple-500 cursor-pointer"
+                                                        className="rounded border-gray-500 bg-gray-700 text-purple-500 focus:ring-offset-0 focus:ring-1 focus:ring-purple-500 cursor-pointer"
                                                     />
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 font-bold text-gray-200">{fav.symbol}</td>
-                                                <td className="p-3 border-r border-gray-700/50 text-blue-300">{fav.strategy_name}</td>
-                                                <td className="p-3 border-r border-gray-700/50 text-center bg-gray-800/30">{fav.timeframe}</td>
-                                                <td className="p-3 border-r border-gray-700/50 font-mono text-gray-400 truncate max-w-xs" title={formatParams(fav.parameters)}>
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 font-bold text-gray-100">{fav.symbol}</td>
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-blue-300 font-medium">{fav.strategy_name}</td>
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-center bg-gray-800/20 text-gray-200">{fav.timeframe}</td>
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 font-mono text-gray-300 truncate max-w-xs text-xs" title={formatParams(fav.parameters)}>
                                                     {formatParams(fav.parameters)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-gray-300">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-gray-200">
                                                     {formatPct(stopLoss)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-white font-bold">
                                                     {formatNum(m.sharpe_ratio)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-gray-200">
                                                     {m.total_trades || m.trades || 0}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-white">
                                                     {formatPct(m.win_rate)}
                                                 </td>
-                                                <td className={`p-3 border-r border-gray-700/50 text-right font-mono font-bold ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                <td className={`p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono font-bold ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                                     {formatPct(totalReturn)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-gray-300">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-gray-200">
                                                     {formatCurrency(expectancy)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-red-300">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-red-300">
                                                     {formatPct(m.max_drawdown)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-white">
                                                     {formatNum(m.profit_factor)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-white">
                                                     {formatNum(m.sortino_ratio ?? m.sortino)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-red-300">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-red-300">
                                                     {formatPct(m.max_loss)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-gray-300">
                                                     {formatNum(m.avg_atr)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-green-300">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-green-300">
                                                     {formatPct(m.win_rate_bull)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-red-300">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-red-300">
                                                     {formatPct(m.win_rate_bear)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-right font-mono text-white">
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-right font-mono text-gray-300">
                                                     {formatNum(m.avg_adx)}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-700/50 text-left text-gray-400 text-sm max-w-[200px] truncate" title={fav.notes || ''}>
+                                                <td className="p-3 border-r border-gray-600 border-b border-gray-700 text-left text-gray-400 text-sm max-w-[200px] truncate" title={fav.notes || ''}>
                                                     {fav.notes || '-'}
                                                 </td>
-                                                <td className="p-3 text-center flex items-center justify-center gap-2">
+                                                <td className="p-3 border-b border-gray-700 text-center flex items-center justify-center gap-2">
                                                     <button
                                                         onClick={() => handleViewTrades(fav)}
-                                                        className="p-1.5 hover:bg-cyan-500/20 text-cyan-400 rounded transition-colors"
+                                                        className="p-1.5 hover:bg-cyan-500/20 text-cyan-400 rounded transition-colors ring-1 ring-transparent hover:ring-cyan-500/50"
                                                         title="View Trades"
                                                     >
-                                                        <List className="w-3.5 h-3.5" />
+                                                        <List className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleRun(fav)}
-                                                        className="p-1.5 hover:bg-green-500/20 text-green-400 rounded transition-colors"
+                                                        className="p-1.5 hover:bg-green-500/20 text-green-400 rounded transition-colors ring-1 ring-transparent hover:ring-green-500/50"
                                                         title="Run Strategy"
                                                     >
-                                                        <Play className="w-3.5 h-3.5" />
+                                                        <Play className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(fav.id)}
-                                                        className="p-1.5 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                                                        className="p-1.5 hover:bg-red-500/20 text-red-400 rounded transition-colors ring-1 ring-transparent hover:ring-red-500/50"
                                                         title="Delete"
                                                     >
-                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </td>
                                             </tr>
