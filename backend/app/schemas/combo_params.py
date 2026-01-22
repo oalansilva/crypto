@@ -21,6 +21,7 @@ class ComboTemplateMetadata(BaseModel):
     description: Optional[str] = None
     is_example: bool = False
     is_prebuilt: bool = False
+    is_readonly: bool = False
     indicators: List[IndicatorConfig]
     entry_logic: str
     exit_logic: str
@@ -84,6 +85,18 @@ class ComboOptimizationResponse(BaseModel):
     candles: List[Dict[str, Any]] = Field(default_factory=list)
     indicator_data: Dict[str, List[Optional[float]]] = Field(default_factory=dict)
     parameters: Dict[str, Any] = Field(default_factory=dict)  # Alias for best_parameters
+
+
+class UpdateTemplateRequest(BaseModel):
+    """Request to update a combo template."""
+    description: Optional[str] = Field(None, description="Template description")
+    optimization_schema: Optional[Dict[str, Any]] = Field(None, description="Optimization ranges for parameters")
+    template_data: Optional[Dict[str, Any]] = Field(None, description="Full template data (for advanced editing)")
+
+
+class CloneTemplateRequest(BaseModel):
+    """Request to clone a combo template."""
+    new_name: str = Field(..., description="Name for the cloned template", min_length=3, max_length=100)
 
 
 class TemplateListResponse(BaseModel):

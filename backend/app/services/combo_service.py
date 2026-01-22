@@ -89,7 +89,7 @@ class ComboService:
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT name, description, is_example, is_prebuilt, template_data, optimization_schema
+           SELECT name, description, is_example, is_prebuilt, template_data, optimization_schema, is_readonly
             FROM combo_templates
             WHERE name = ?
         """, (template_name,))
@@ -111,6 +111,7 @@ class ComboService:
                 "description": row[1] or "",
                 "is_example": bool(row[2]),
                 "is_prebuilt": bool(row[3]),
+                "is_readonly": bool(row[6]),
                 "optimization_schema": optimization_schema,
                 **template_data
             }
@@ -149,61 +150,19 @@ class ComboService:
         
         # Apply parameter overrides if provided
         if parameters:
-            # We need the same robust logic here as in _worker_run_backtest to handle flat params
-            # like 'sma_short' -> alias 'short', param 'length'
-            import copy
-            indicators = copy.deepcopy(indicators)
+            # Update indicator parameters
+            for ind in indicators:
+                alias = ind.get("alias") or ind["type"]
+                for key in list(ind["params"].keys()):
+                    param_name = f"{alias}_{key}"
+                    if param_name in parameters:
+                        ind["params"][key] = parameters[param_name]
             
-            for param_key, param_value in parameters.items():
-                if param_key == "stop_loss":
-                    stop_loss = param_value
-                    continue
-                
-                if param_key == "timeframe":
-                    continue
-                    
-                matched = False
-                for indicator in indicators:
-                    alias = indicator.get("alias", "")
-                    type_ = indicator.get("type", "")
-                    
-                    # 1. Try "alias_param" format
-                    if alias and param_key.startswith(f"{alias}_"):
-                        target_field = param_key[len(alias)+1:]
-                        if "params" not in indicator: indicator["params"] = {}
-                        indicator["params"][target_field] = param_value
-                        matched = True
-                        break
-                    
-                    # 2. Try "type_alias" format (e.g., "sma_short")
-                    if alias and type_ and param_key == f"{type_}_{alias}":
-                        if "params" not in indicator: indicator["params"] = {}
-                        if "length" in indicator["params"]:
-                            indicator["params"]["length"] = param_value
-                        elif "period" in indicator["params"]:
-                            indicator["params"]["period"] = param_value
-                        else:
-                            indicator["params"]["length"] = param_value
-                        matched = True
-                        break
-
-                    # 3. Try exact alias match
-                    if alias and param_key == alias:
-                        if "params" not in indicator: indicator["params"] = {}
-                        if "length" in indicator["params"]:
-                            indicator["params"]["length"] = param_value
-                        elif "period" in indicator["params"]:
-                            indicator["params"]["period"] = param_value
-                        else:
-                            indicator["params"]["length"] = param_value
-                        matched = True
-                        break
-                        
-                if not matched:
-                    # Fallback for standard/nested params if passed directly
-                    pass
+            # Override stop_loss if provided
+            if "stop_loss" in parameters:
+                stop_loss = parameters["stop_loss"]
         
-        # Create ComboStrategy from metadata
+        # Create and return strategy instance
         return ComboStrategy(
             indicators=indicators,
             entry_logic=entry_logic,
@@ -211,32 +170,39 @@ class ComboService:
             stop_loss=stop_loss
         )
     
-    def save_custom_template(
+    def save_template(
         self,
         name: str,
         description: str,
         indicators: List[Dict[str, Any]],
         entry_logic: str,
         exit_logic: str,
-        stop_loss: Dict[str, Any]
+        stop_loss: float = 0.015,
+        is_example: bool = False,
+        is_prebuilt: bool = False,
+        optimization_schema: Optional[Dict[str, Any]] = None
     ) -> int:
         """
-        Save a custom template to the database.
+        Save a new combo template to database.
         
         Args:
             name: Template name
             description: Template description
-            indicators: List of indicator configs
-            entry_logic: Entry logic expression
-            exit_logic: Exit logic expression
-            stop_loss: Stop loss configuration
+            indicators: List of indicator configurations
+            entry_logic: Entry condition logic string
+            exit_logic: Exit condition logic string
+            stop_loss: Default stop loss percentage
+            is_example: Whether this is an example template
+            is_prebuilt: Whether this is a pre-built template
+            optimization_schema: Optional optimization ranges
         
         Returns:
-            Template ID
+            ID of the saved template
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
+        # Build template data JSON
         template_data = {
             "indicators": indicators,
             "entry_logic": entry_logic,
@@ -244,10 +210,20 @@ class ComboService:
             "stop_loss": stop_loss
         }
         
+        # Insert template
         cursor.execute("""
-            INSERT INTO combo_templates (name, description, is_example, is_prebuilt, template_data)
-            VALUES (?, ?, 0, 0, ?)
-        """, (name, description, json.dumps(template_data)))
+            INSERT INTO combo_templates (
+                name, description, is_example, is_prebuilt,
+                template_data, optimization_schema
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            name,
+            description,
+            is_example,
+            is_prebuilt,
+            json.dumps(template_data),
+            json.dumps(optimization_schema) if optimization_schema else None
+        ))
         
         template_id = cursor.lastrowid
         conn.commit()
@@ -255,15 +231,45 @@ class ComboService:
         
         return template_id
     
-    def delete_custom_template(self, template_id: int) -> bool:
+    def update_template_schema(
+        self,
+        template_name: str,
+        optimization_schema: Dict[str, Any]
+    ) -> bool:
         """
-        Delete a custom template.
+        Update the optimization schema for a template.
         
         Args:
-            template_id: Template ID
+            template_name: Name of the template
+            optimization_schema: New optimization schema
         
         Returns:
-            True if deleted, False otherwise
+            True if update was successful
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE combo_templates
+            SET optimization_schema = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE name = ?
+        """, (json.dumps(optimization_schema), template_name))
+        
+        success = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        
+        return success
+    
+    def delete_template(self, template_id: int) -> bool:
+        """
+        Delete a custom template from database.
+        
+        Args:
+            template_id: ID of the template to delete
+        
+        Returns:
+            True if deletion was successful
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -279,3 +285,170 @@ class ComboService:
         conn.close()
         
         return deleted
+    
+    def update_template(
+        self,
+        template_name: str,
+        description: Optional[str] = None,
+        optimization_schema: Optional[Dict[str, Any]] = None,
+        template_data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Update a combo template's metadata and optimization schema.
+        
+        Args:
+            template_name: Name of the template to update
+            description: New description (optional)
+            optimization_schema: New optimization schema (optional)
+            template_data: Full template data for advanced editing (optional)
+        
+        Returns:
+            True if update was successful, False otherwise
+        
+        Raises:
+            ValueError: If template is read-only or doesn't exist
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Check if template exists and is not read-only
+        cursor.execute("""
+            SELECT is_readonly, template_data, optimization_schema
+            FROM combo_templates
+            WHERE name = ?
+        """, (template_name,))
+        
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            raise ValueError(f"Template '{template_name}' not found")
+        
+        if row[0]:  # is_readonly
+            conn.close()
+            raise ValueError(f"Template '{template_name}' is read-only. Clone it to make changes.")
+        
+        # Build update query dynamically based on what's provided
+        updates = []
+        params = []
+        
+        if description is not None:
+            updates.append("description = ?")
+            params.append(description)
+        
+        if optimization_schema is not None:
+            # Validate optimization schema
+            self._validate_optimization_schema(optimization_schema)
+            updates.append("optimization_schema = ?")
+            params.append(json.dumps(optimization_schema))
+        
+        if template_data is not None:
+            # Merge with existing template_data if only partial update
+            existing_data = json.loads(row[1])
+            merged_data = {**existing_data, **template_data}
+            updates.append("template_data = ?")
+            params.append(json.dumps(merged_data))
+        
+        if not updates:
+            conn.close()
+            return True  # Nothing to update
+        
+        # Add updated_at timestamp
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(template_name)
+        
+        query = f"UPDATE combo_templates SET {', '.join(updates)} WHERE name = ?"
+        cursor.execute(query, params)
+        
+        success = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        
+        return success
+    
+    def clone_template(self, template_name: str, new_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Clone an existing template with a new name.
+        
+        Args:
+            template_name: Name of the template to clone
+            new_name: Name for the cloned template
+        
+        Returns:
+            Metadata of the cloned template, or None if failed
+        
+        Raises:
+            ValueError: If source template doesn't exist or new name already exists
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Check if source template exists
+        cursor.execute("""
+            SELECT description, template_data, optimization_schema
+            FROM combo_templates
+            WHERE name = ?
+        """, (template_name,))
+        
+        source = cursor.fetchone()
+        if not source:
+            conn.close()
+            raise ValueError(f"Source template '{template_name}' not found")
+        
+        # Check if new name already exists
+        cursor.execute("SELECT 1 FROM combo_templates WHERE name = ?", (new_name,))
+        if cursor.fetchone():
+            conn.close()
+            raise ValueError(f"Template '{new_name}' already exists")
+        
+        # Insert cloned template (always as custom, editable template)
+        cursor.execute("""
+            INSERT INTO combo_templates (
+                name, description, is_example, is_prebuilt, is_readonly,
+                template_data, optimization_schema
+            ) VALUES (?, ?, 0, 0, 0, ?, ?)
+        """, (new_name, source[0], source[1], source[2]))
+        
+        conn.commit()
+        conn.close()
+        
+        # Return metadata of cloned template
+        return self.get_template_metadata(new_name)
+    
+    def _validate_optimization_schema(self, schema: Dict[str, Any]) -> None:
+        """
+        Validate optimization schema structure and values.
+        
+        Args:
+            schema: Optimization schema to validate
+        
+        Raises:
+            ValueError: If schema is invalid
+        """
+        # Handle both flat and nested schema formats
+        params = schema.get('parameters', schema)
+        
+        for param_name, config in params.items():
+            if param_name in ['parameters', 'correlated_groups']:
+                continue  # Skip metadata keys
+            
+            if not isinstance(config, dict):
+                continue
+            
+            min_val = config.get('min')
+            max_val = config.get('max')
+            step_val = config.get('step')
+            
+            # Validate min < max
+            if min_val is not None and max_val is not None:
+                if min_val >= max_val:
+                    raise ValueError(f"Parameter '{param_name}': min ({min_val}) must be less than max ({max_val})")
+            
+            # Validate step > 0
+            if step_val is not None:
+                if step_val <= 0:
+                    raise ValueError(f"Parameter '{param_name}': step ({step_val}) must be greater than 0")
+                
+                # Validate step <= (max - min)
+                if min_val is not None and max_val is not None:
+                    if step_val > (max_val - min_val):
+                        raise ValueError(f"Parameter '{param_name}': step ({step_val}) must be <= (max - min) = {max_val - min_val}")
