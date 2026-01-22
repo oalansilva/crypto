@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Settings, TrendingUp, Calendar, DollarSign, Sliders } from 'lucide-react'
 
 interface TemplateMetadata {
@@ -30,6 +31,20 @@ export function ComboConfigurePage() {
     const [timeframe, setTimeframe] = useState('1d')
     const [deepBacktest, setDeepBacktest] = useState(true)
     const [logs, setLogs] = useState<string[]>([])
+
+    // Fetch available symbols from Binance
+    const { data: symbolsData } = useQuery({
+        queryKey: ['binance-symbols'],
+        queryFn: async () => {
+            const response = await fetch('http://localhost:8000/api/exchanges/binance/symbols');
+            if (!response.ok) {
+                throw new Error('Failed to fetch symbols');
+            }
+            const data = await response.json();
+            return data.symbols as string[];
+        },
+        staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
+    });
 
     useEffect(() => {
         if (templateName) {
@@ -250,7 +265,6 @@ export function ComboConfigurePage() {
                         </h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Symbol */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-300 mb-2">
                                     <DollarSign className="w-4 h-4 inline mr-1" />
@@ -261,10 +275,13 @@ export function ComboConfigurePage() {
                                     onChange={(e) => setSymbol(e.target.value)}
                                     className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none"
                                 >
-                                    <option value="BTC/USDT">BTC/USDT</option>
-                                    <option value="ETH/USDT">ETH/USDT</option>
-                                    <option value="BNB/USDT">BNB/USDT</option>
-                                    <option value="SOL/USDT">SOL/USDT</option>
+                                    {symbolsData ? (
+                                        symbolsData.map(s => (
+                                            <option key={s} value={s}>{s}</option>
+                                        ))
+                                    ) : (
+                                        <option value={symbol}>{symbol}</option>
+                                    )}
                                 </select>
                             </div>
 
