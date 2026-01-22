@@ -15,6 +15,8 @@ interface BacktestResult {
         win_rate: number
         total_return: number
         avg_profit: number
+        sharpe_ratio?: number
+        max_drawdown?: number
     }
     trades: Array<{
         entry_time: string
@@ -43,19 +45,32 @@ export function ComboResultsPage() {
     const [saveSuccess, setSaveSuccess] = useState(false)
 
     const handleSaveFavorite = async (data: any) => {
-        const response = await fetch('http://localhost:8000/api/favorites', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
+        console.log('📤 handleSaveFavorite chamado com:', data)
 
-        if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.detail || 'Erro ao salvar favorito')
+        try {
+            const response = await fetch('http://localhost:8000/api/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+
+            console.log('📡 Response status:', response.status)
+
+            if (!response.ok) {
+                const error = await response.json()
+                console.error('❌ Erro da API:', error)
+                throw new Error(error.detail || 'Erro ao salvar favorito')
+            }
+
+            const result = await response.json()
+            console.log('✅ Favorito salvo com sucesso:', result)
+
+            setSaveSuccess(true)
+            setTimeout(() => setSaveSuccess(false), 3000)
+        } catch (err) {
+            console.error('❌ Erro ao salvar favorito:', err)
+            throw err
         }
-
-        setSaveSuccess(true)
-        setTimeout(() => setSaveSuccess(false), 3000)
     }
 
     if (!result) {
@@ -361,7 +376,13 @@ export function ComboResultsPage() {
             <SaveFavoriteModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                backtestResult={result}
+                backtestResult={{
+                    template_name: result.template_name,
+                    symbol: result.symbol,
+                    timeframe: result.timeframe,
+                    parameters: result.parameters || (result as any).best_parameters || {},
+                    metrics: metrics
+                }}
                 onSave={handleSaveFavorite}
             />
         </div>
