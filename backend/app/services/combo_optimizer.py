@@ -341,6 +341,58 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                 drawdown = (peak - equity) / peak
                 max_dd = max(max_dd, drawdown)
             metrics['max_drawdown'] = max_dd * 100.0  # Convert to percentage
+            
+            # --- Regime & Avg Metrics ---
+            try:
+                # 1. Avg Indicators
+                atr_col = next((c for c in df.columns if c.startswith('ATR')), None)
+                adx_col = next((c for c in df.columns if c.startswith('ADX')), None)
+                
+                metrics['avg_atr'] = df[atr_col].mean() if atr_col else 0
+                metrics['avg_adx'] = df[adx_col].mean() if adx_col else 0
+                    
+                # 2. Bull/Bear Win Rates
+                if 'regime' in df.columns:
+                     bull_wins = 0
+                     bull_count = 0
+                     bear_wins = 0
+                     bear_count = 0
+                     
+                     import pandas as pd
+                     
+                     for t in trades:
+                         et = t.get('entry_time')
+                         if et:
+                             try:
+                                 if isinstance(et, str):
+                                     et = pd.to_datetime(et)
+                                 
+                                 # Use asof to find nearest valid index in the past
+                                 # Using index.asof() requires sorted index
+                                 idx_match = df.index.asof(et)
+                                 
+                                 if idx_match is not None:
+                                     # Handle potential duplicate index or Series return
+                                     r_val = df.loc[idx_match]['regime']
+                                     # If duplicate, take first
+                                     if isinstance(r_val, pd.Series):
+                                         r_val = r_val.iloc[0]
+                                         
+                                     is_win = t['profit'] > 0
+                                     
+                                     if r_val == 'Bull':
+                                         bull_count += 1
+                                         if is_win: bull_wins += 1
+                                     elif r_val == 'Bear':
+                                         bear_count += 1
+                                         if is_win: bear_wins += 1
+                             except Exception:
+                                 pass
+                     
+                     metrics['win_rate_bull'] = (bull_wins / bull_count) if bull_count > 0 else 0
+                     metrics['win_rate_bear'] = (bear_wins / bear_count) if bear_count > 0 else 0
+            except Exception as e:
+                pass
         
         # Construct full effective parameters for logging
         full_params = {}
@@ -1101,6 +1153,32 @@ class ComboOptimizer:
         """
         best_params = initial_params.copy()
         best_metrics = None
+        
+        # Enrich DF with Regime/Context Metrics (if not present) to enable Worker Logic
+        if df is not None and not df.empty and 'regime' not in df.columns:
+            try:
+                import pandas_ta as ta
+                import numpy as np
+                df = df.copy()
+                
+                # Check/Calc SMA (200) for Regime
+                if 'SMA_200' not in df.columns:
+                    df.ta.sma(length=200, append=True)
+                
+                # ATR/ADX for Avg Metrics
+                if not any(c.startswith('ATR') for c in df.columns):
+                    df.ta.atr(length=14, append=True)
+                if not any(c.startswith('ADX') for c in df.columns):
+                    df.ta.adx(length=14, append=True)
+
+                # Regime Classification
+                sma_col = 'SMA_200'
+                if sma_col in df.columns:
+                    conditions = [(df['close'] > df[sma_col]), (df['close'] < df[sma_col])]
+                    choices = ['Bull', 'Bear']
+                    df['regime'] = np.select(conditions, choices, default='Unknown')
+            except Exception as e:
+                logging.warning(f"Failed to enrich DF with regime metrics: {e}")
         
         # -----------------------------------------------------------
         # NOTE: For Multi-Focus Grid (Round 1), we typically have ONE stage (the 4D Grid).
