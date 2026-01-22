@@ -1122,9 +1122,9 @@ class ComboOptimizer:
                 import numpy as np
                 df = df.copy()
                 
-                # Check/Calc SMA (200) for Regime
-                if 'SMA_200' not in df.columns:
-                    df.ta.sma(length=200, append=True)
+                # Use SMA_50 for Regime (better coverage than SMA_200)
+                if 'SMA_50' not in df.columns:
+                    df.ta.sma(length=50, append=True)
                 
                 # ATR/ADX for Avg Metrics
                 if not any(c.startswith('ATR') for c in df.columns):
@@ -1132,12 +1132,14 @@ class ComboOptimizer:
                 if not any(c.startswith('ADX') for c in df.columns):
                     df.ta.adx(length=14, append=True)
 
-                # Regime Classification
-                sma_col = 'SMA_200'
+                # Regime Classification with NaN handling
+                sma_col = 'SMA_50'
                 if sma_col in df.columns:
-                    conditions = [(df['close'] > df[sma_col]), (df['close'] < df[sma_col])]
-                    choices = ['Bull', 'Bear']
-                    df['regime'] = np.select(conditions, choices, default='Unknown')
+                    df['regime'] = 'Unknown'
+                    mask_bull = df['close'] > df[sma_col]
+                    mask_bear = df['close'] < df[sma_col]
+                    df.loc[mask_bull, 'regime'] = 'Bull'
+                    df.loc[mask_bear, 'regime'] = 'Bear'
             except Exception as e:
                 logging.warning(f"Failed to enrich DF with regime metrics: {e}")
         
@@ -1565,11 +1567,18 @@ class ComboOptimizer:
                     if not any(c.startswith('ADX') for c in df_final.columns):
                         df_final.ta.adx(length=14, append=True)
                     
-                    sma_col = 'SMA_200'
+                    # Use SMA_50 as fallback for better coverage (SMA_200 has too many NaN)
+                    if 'SMA_50' not in df_final.columns:
+                        df_final.ta.sma(length=50, append=True)
+                    
+                    sma_col = 'SMA_50' if 'SMA_50' in df_final.columns else 'SMA_200'
                     if sma_col in df_final.columns:
-                        conditions = [(df_final['close'] > df_final[sma_col]), (df_final['close'] < df_final[sma_col])]
-                        choices = ['Bull', 'Bear']
-                        df_final['regime'] = np.select(conditions, choices, default='Unknown')
+                        # Create regime with proper NaN handling
+                        df_final['regime'] = 'Unknown'
+                        mask_bull = df_final['close'] > df_final[sma_col]
+                        mask_bear = df_final['close'] < df_final[sma_col]
+                        df_final.loc[mask_bull, 'regime'] = 'Bull'
+                        df_final.loc[mask_bear, 'regime'] = 'Bear'
                 except Exception as e:
                     logging.warning(f"Failed to enrich final DF with regime: {e}")
             
