@@ -143,7 +143,10 @@ class ComboStrategy:
         
         # Ensure all columns are numeric to prevent NoneType errors in eval evaluation
         # This handles cases where pandas-ta might return object types with None
+        # IMPORTANT: Skip 'regime' column as it contains categorical strings
         for col in df.columns:
+            if col == 'regime':  # Preserve regime column
+                continue
             if df[col].dtype == 'object':
                 df[col] = pd.to_numeric(df[col], errors='coerce')
 
