@@ -316,8 +316,11 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             # Max Loss (worst single trade)
             metrics['max_loss'] = min(returns) if returns else 0
             
-            # Expectancy (average profit per trade)
-            metrics['expectancy'] = np.mean(returns) if returns else 0
+            # Expectancy (average profit per trade in dollars, assuming $10k capital)
+            # Convert from percentage to dollar value
+            ASSUMED_CAPITAL = 10000
+            expectancy_pct = np.mean(returns) if returns else 0
+            metrics['expectancy'] = expectancy_pct * ASSUMED_CAPITAL
             
             # Max Consecutive Losses
             consecutive_losses = 0
@@ -1538,6 +1541,28 @@ class ComboOptimizer:
                 until_str=end_date
             )
             
+            # Enrich df_final with regime for heavy metrics calculation
+            if 'regime' not in df_final.columns:
+                try:
+                    import pandas_ta as ta
+                    import numpy as np
+                    
+                    if 'SMA_200' not in df_final.columns:
+                        df_final.ta.sma(length=200, append=True)
+                    
+                    if not any(c.startswith('ATR') for c in df_final.columns):
+                        df_final.ta.atr(length=14, append=True)
+                    if not any(c.startswith('ADX') for c in df_final.columns):
+                        df_final.ta.adx(length=14, append=True)
+                    
+                    sma_col = 'SMA_200'
+                    if sma_col in df_final.columns:
+                        conditions = [(df_final['close'] > df_final[sma_col]), (df_final['close'] < df_final[sma_col])]
+                        choices = ['Bull', 'Bear']
+                        df_final['regime'] = np.select(conditions, choices, default='Unknown')
+                except Exception as e:
+                    logging.warning(f"Failed to enrich final DF with regime: {e}")
+            
             # Create strategy with best parameters
             strategy = self.combo_service.create_strategy(
                 template_name=template_name,
@@ -1557,8 +1582,11 @@ class ComboOptimizer:
                 heavy = _calculate_heavy_metrics(df_with_signals, trades)
                 if best_metrics:
                     best_metrics.update(heavy)
+                    logging.info(f"Heavy metrics calculated: {heavy}")
             except Exception as e:
-                pass
+                logging.error(f"Failed to calculate heavy metrics: {e}")
+                import traceback
+                traceback.print_exc()
             
             # Prepare candles data
             candles = []
