@@ -1147,7 +1147,8 @@ class ComboOptimizer:
         # For Refinement (Sequential params), we follow the standard greedy path.
         # -----------------------------------------------------------
         
-        collected_candidates = [] 
+        collected_candidates = []
+        total_combinations_tested = 0  # Track total across all stages 
 
         for stage in stages:
             stage_param = stage['parameter']
@@ -1214,6 +1215,12 @@ class ComboOptimizer:
             
             if not worker_args:
                 continue
+            
+            # Log combinations count for this stage
+            combinations_count = len(worker_args)
+            stage_name = f"Round {round_num} - Stage: {stage_param if not is_grid_mode else 'Grid(' + ','.join(stage_param) + ')'}"
+            logging.info(f"🔢 {stage_name}: Testing {combinations_count} combinations")
+            total_combinations_tested += combinations_count
 
             results = []
             BATCH_SIZE = 200
@@ -1276,6 +1283,9 @@ class ComboOptimizer:
                 # Greedily update best_params for NEXT stage in this loop
                 best_params = top['params']
 
+        # Log total combinations tested
+        logging.info(f"📊 Total combinations tested in this execution: {total_combinations_tested}")
+        
         if return_top_n > 1 and collected_candidates:
             # Sort all collected candidates (if multiple grid stages existed, unlikely for 4D)
             collected_candidates.sort(key=lambda x: x['score'], reverse=True)
