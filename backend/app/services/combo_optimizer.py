@@ -1115,6 +1115,8 @@ class ComboOptimizer:
         best_params = initial_params.copy()
         best_metrics = None
         
+        import time  # Import at function level to avoid UnboundLocalError
+        
         # Enrich DF with Regime/Context Metrics (if not present) to enable Worker Logic
         if df is not None and not df.empty and 'regime' not in df.columns:
             try:
@@ -1233,7 +1235,6 @@ class ComboOptimizer:
             logging.info(f"⚙️  Usando {max_workers} workers em paralelo")
             
             import concurrent.futures
-            import time
             
             start_time = time.time()
             completed_batches = 0
