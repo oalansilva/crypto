@@ -381,7 +381,35 @@ export function ComboResultsPage() {
                     symbol: result.symbol,
                     timeframe: result.timeframe,
                     parameters: result.parameters || (result as any).best_parameters || {},
-                    metrics: metrics
+                    metrics: metrics,
+                    trades: (() => {
+                        // Sort trades by entry time to ensure correct chronological order for balance calculation
+                        const sortedTrades = [...result.trades].sort((a, b) =>
+                            new Date(a.entry_time).getTime() - new Date(b.entry_time).getTime()
+                        );
+
+                        let currentBalance = 100; // Requirement: Start with $100
+
+                        return sortedTrades.map(t => {
+                            const initial_capital = currentBalance;
+                            // profit is percentage (e.g., 0.05 for 5%)
+                            const profitPct = t.profit || 0;
+                            const profitAmount = initial_capital * profitPct;
+                            const final_capital = initial_capital + profitAmount;
+
+                            // Update balance for next trade
+                            currentBalance = final_capital;
+
+                            return {
+                                ...t,
+                                pnl_pct: profitPct,
+                                initial_capital: initial_capital,
+                                final_capital: final_capital,
+                                pnl: profitAmount, // PnL in dollars
+                                direction: t.type === 'short' ? 'Short' : 'Long'
+                            };
+                        });
+                    })()
                 }}
                 onSave={handleSaveFavorite}
             />

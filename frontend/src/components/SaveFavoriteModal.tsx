@@ -16,6 +16,7 @@ interface SaveFavoriteModalProps {
             max_drawdown?: number
             sharpe_ratio?: number
         }
+        trades?: Array<any>
     }
     onSave: (data: {
         name: string
@@ -61,7 +62,10 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                 timeframe: backtestResult.timeframe,
                 strategy_name: backtestResult.template_name,
                 parameters: backtestResult.parameters,
-                metrics: backtestResult.metrics, // Salva TODAS as métricas
+                metrics: {
+                    ...backtestResult.metrics,
+                    trades: backtestResult.trades // Include trades in metrics
+                },
                 notes: notes.trim() || undefined
             })
             onClose()
