@@ -7,58 +7,46 @@ export default {
     theme: {
         extend: {
             colors: {
+                // "Industrial" Palette - Carbon & Safety Orange
                 primary: {
-                    50: '#eff6ff',
-                    100: '#dbeafe',
-                    200: '#bfdbfe',
-                    300: '#93c5fd',
-                    400: '#60a5fa',
-                    500: '#3b82f6',
-                    600: '#2563eb',
-                    700: '#1d4ed8',
-                    800: '#1e40af',
-                    900: '#1e3a8a',
+                    DEFAULT: '#ff5500', // Safety Orange
+                    50: '#fff7ed',
+                    100: '#ffedd5',
+                    200: '#fed7aa',
+                    300: '#fdba74',
+                    400: '#fb923c',
+                    500: '#f97316',
+                    600: '#ff5500', // Main Safety Orange
+                    700: '#c2410c',
+                    800: '#9a3412',
+                    900: '#111111', // Deep Carbon
+                    950: '#0a0a0a', // Almost Black
                 },
-                purple: {
-                    400: '#a78bfa',
-                    500: '#8b5cf6',
-                    600: '#7c3aed',
-                },
-                pink: {
-                    400: '#f472b6',
-                    500: '#ec4899',
-                    600: '#db2777',
-                },
+                industrial: {
+                    50: '#f9f9f9',
+                    100: '#f0f0f0',
+                    200: '#e0e0e0',
+                    300: '#cccccc',
+                    400: '#a3a3a3',
+                    500: '#737373',
+                    600: '#525252',
+                    700: '#404040',
+                    800: '#262626',
+                    900: '#171717', // Structural Heavy Grey
+                }
             },
             animation: {
-                'gradient': 'gradient 8s linear infinite',
-                'float': 'float 6s ease-in-out infinite',
-                'glow': 'glow 2s ease-in-out infinite',
+                'scan': 'scan 4s linear infinite',
             },
             keyframes: {
-                gradient: {
-                    '0%, 100%': {
-                        'background-size': '200% 200%',
-                        'background-position': 'left center'
-                    },
-                    '50%': {
-                        'background-size': '200% 200%',
-                        'background-position': 'right center'
-                    },
-                },
-                float: {
-                    '0%, 100%': { transform: 'translateY(0px)' },
-                    '50%': { transform: 'translateY(-20px)' },
-                },
-                glow: {
-                    '0%, 100%': { opacity: '1' },
-                    '50%': { opacity: '0.5' },
+                scan: {
+                    '0%': { backgroundPosition: '0% 50%' },
+                    '100%': { backgroundPosition: '100% 50%' },
                 },
             },
             boxShadow: {
-                'glow-blue': '0 0 20px rgba(96, 165, 250, 0.5)',
-                'glow-purple': '0 0 20px rgba(167, 139, 250, 0.5)',
-                'glow-pink': '0 0 20px rgba(236, 72, 153, 0.5)',
+                'hard': '4px 4px 0px 0px rgba(255, 85, 0, 0.4)', // Hard shadow, zero blur
+                'hard-sm': '2px 2px 0px 0px rgba(255, 85, 0, 0.4)',
             },
         },
     },

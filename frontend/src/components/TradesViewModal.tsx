@@ -32,69 +32,77 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({ isOpen, onClose, trad
     const sortedTrades = [...(trades || [])].sort((a, b) => new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime());
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-[#151922] border border-[#2A2F3A] rounded-xl w-full max-w-5xl max-h-[80vh] flex flex-col shadow-2xl">
-                <div className="flex items-center justify-between p-6 border-b border-[#2A2F3A]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-[#0f1410] border border-white/10 rounded-2xl w-full max-w-5xl max-h-[80vh] flex flex-col shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/5 rounded-t-2xl">
                     <div>
-                        <h2 className="text-xl font-bold text-white mb-1">{title}</h2>
+                        <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
+                            <div className="p-1.5 bg-blue-500/20 rounded-lg">
+                                <ArrowUp className="w-4 h-4 text-blue-400" />
+                            </div>
+                            {title}
+                        </h2>
                         {subtitle && (
-                            <div className="text-sm text-gray-400 font-mono">
+                            <div className="text-sm text-gray-400 pl-10">
                                 {subtitle}
                             </div>
                         )}
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-[#2A2F3A] rounded-full transition-colors">
-                        <X className="w-6 h-6 text-gray-400" />
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+                    >
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-auto p-6">
+                <div className="flex-1 overflow-auto bg-[#0a0f0a]">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-400 uppercase bg-[#0B0E14] sticky top-0">
+                        <thead className="text-gray-400 font-semibold bg-white/5 border-b border-white/5 sticky top-0">
                             <tr>
-                                <th className="px-4 py-3 rounded-tl-lg">Entry Time</th>
-                                <th className="px-4 py-3 text-right">Init. Bal.</th>
-                                <th className="px-4 py-3 text-right">Final Bal.</th>
-                                <th className="px-4 py-3">Type</th>
-                                <th className="px-4 py-3 text-right">Entry Price</th>
-                                <th className="px-4 py-3 text-right">Exit Price</th>
-                                <th className="px-4 py-3 text-right">PnL</th>
-                                <th className="px-4 py-3 text-right rounded-tr-lg">Return %</th>
+                                <th className="px-6 py-4 border-r border-white/5">Entry Time</th>
+                                <th className="px-6 py-4 text-right border-r border-white/5">Init. Bal.</th>
+                                <th className="px-6 py-4 text-right border-r border-white/5">Final Bal.</th>
+                                <th className="px-6 py-4 border-r border-white/5">Type</th>
+                                <th className="px-6 py-4 text-right border-r border-white/5">Entry Price</th>
+                                <th className="px-6 py-4 text-right border-r border-white/5">Exit Price</th>
+                                <th className="px-6 py-4 text-right border-r border-white/5">PnL</th>
+                                <th className="px-6 py-4 text-right">Return %</th>
                             </tr>
                         </thead>
                         <tbody>
                             {sortedTrades.map((trade, idx) => {
                                 const isWin = trade.pnl > 0;
                                 return (
-                                    <tr key={idx} className="border-b border-[#2A2F3A] hover:bg-[#1A202C]">
-                                        <td className="px-4 py-3 text-gray-300 font-mono">
+                                    <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                        <td className="px-6 py-3 text-gray-300 border-r border-white/5">
                                             {new Date(trade.entry_time).toLocaleString()}
                                             <div className="text-xs text-gray-500 mt-1">
                                                 Exited: {trade.exit_time ? new Date(trade.exit_time).toLocaleString() : 'Open'}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-right text-gray-300 font-mono">
+                                        <td className="px-6 py-3 text-right text-gray-300 border-r border-white/5 font-mono">
                                             ${trade.initial_capital?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-gray-300 font-mono">
+                                        <td className="px-6 py-3 text-right text-gray-300 border-r border-white/5 font-mono">
                                             ${trade.final_capital?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${trade.direction === 'Long' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                                        <td className="px-6 py-3 border-r border-white/5">
+                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium ${trade.direction === 'Long' ? 'bg-green-500/10 text-green-400 ring-1 ring-green-500/20' : 'bg-red-500/10 text-red-400 ring-1 ring-red-500/20'}`}>
                                                 {trade.direction === 'Long' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
                                                 {trade.direction}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-right font-mono text-gray-300">
+                                        <td className="px-6 py-3 text-right text-gray-300 border-r border-white/5 font-mono">
                                             ${trade.entry_price?.toFixed(2)}
                                         </td>
-                                        <td className="px-4 py-3 text-right font-mono text-gray-300">
+                                        <td className="px-6 py-3 text-right text-gray-300 border-r border-white/5 font-mono">
                                             ${trade.exit_price?.toFixed(2)}
                                         </td>
-                                        <td className="px-4 py-3 text-right font-mono font-bold" style={{ color: isWin ? '#10B981' : '#EF4444' }}>
+                                        <td className={`px-6 py-3 text-right font-semibold border-r border-white/5 font-mono ${isWin ? 'text-green-400' : 'text-red-400'}`}>
                                             {trade.pnl > 0 ? '+' : ''}{trade.pnl?.toFixed(2)}
                                         </td>
-                                        <td className="px-4 py-3 text-right font-mono" style={{ color: isWin ? '#10B981' : '#EF4444' }}>
+                                        <td className={`px-6 py-3 text-right font-semibold font-mono ${isWin ? 'text-green-400' : 'text-red-400'}`}>
                                             {trade.pnl_pct ? (trade.pnl_pct * 100).toFixed(2) + '%' : '-'}
                                         </td>
                                     </tr>
