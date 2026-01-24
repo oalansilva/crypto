@@ -243,9 +243,9 @@ const FavoritesDashboard: React.FC = () => {
                                             onChange={(e) => setSelectedSymbol(e.target.value)}
                                             className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
                                         >
-                                            <option value="ALL">Symbol: All</option>
+                                            <option value="ALL" className="bg-gray-900">Symbol: All</option>
                                             {uniqueSymbols.map(sym => (
-                                                <option key={sym} value={sym}>{sym}</option>
+                                                <option key={sym} value={sym} className="bg-gray-900">{sym}</option>
                                             ))}
                                         </select>
                                         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
@@ -257,9 +257,9 @@ const FavoritesDashboard: React.FC = () => {
                                             onChange={(e) => setSelectedIndicator(e.target.value)}
                                             className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
                                         >
-                                            <option value="ALL">Strategy: All</option>
+                                            <option value="ALL" className="bg-gray-900">Strategy: All</option>
                                             {uniqueIndicators.map(ind => (
-                                                <option key={ind} value={ind}>{ind}</option>
+                                                <option key={ind} value={ind} className="bg-gray-900">{ind}</option>
                                             ))}
                                         </select>
                                         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />

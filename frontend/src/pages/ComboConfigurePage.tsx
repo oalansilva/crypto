@@ -277,10 +277,10 @@ export function ComboConfigurePage() {
                                 >
                                     {symbolsData ? (
                                         symbolsData.map(s => (
-                                            <option key={s} value={s}>{s}</option>
+                                            <option key={s} value={s} className="bg-gray-900 text-white">{s}</option>
                                         ))
                                     ) : (
-                                        <option value={symbol}>{symbol}</option>
+                                        <option value={symbol} className="bg-gray-900 text-white">{symbol}</option>
                                     )}
                                 </select>
                             </div>
@@ -295,12 +295,12 @@ export function ComboConfigurePage() {
                                     onChange={(e) => setTimeframe(e.target.value)}
                                     className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none"
                                 >
-                                    <option value="1m">1 minute</option>
-                                    <option value="5m">5 minutes</option>
-                                    <option value="15m">15 minutes</option>
-                                    <option value="1h">1 hour</option>
-                                    <option value="4h">4 hours</option>
-                                    <option value="1d">1 day</option>
+                                    <option value="1m" className="bg-gray-900 text-white">1 minute</option>
+                                    <option value="5m" className="bg-gray-900 text-white">5 minutes</option>
+                                    <option value="15m" className="bg-gray-900 text-white">15 minutes</option>
+                                    <option value="1h" className="bg-gray-900 text-white">1 hour</option>
+                                    <option value="4h" className="bg-gray-900 text-white">4 hours</option>
+                                    <option value="1d" className="bg-gray-900 text-white">1 day</option>
                                 </select>
                             </div>
                         </div>

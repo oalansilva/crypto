@@ -407,11 +407,11 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                                     }}
                                     className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                                 >
-                                    <option value={10}>10 per page</option>
-                                    <option value={25}>25 per page</option>
-                                    <option value={50}>50 per page</option>
-                                    <option value={100}>100 per page</option>
-                                    <option value={totalResults}>Show All</option>
+                                    <option value={10} className="bg-gray-700 text-white">10 per page</option>
+                                    <option value={25} className="bg-gray-700 text-white">25 per page</option>
+                                    <option value={50} className="bg-gray-700 text-white">50 per page</option>
+                                    <option value={100} className="bg-gray-700 text-white">100 per page</option>
+                                    <option value={totalResults} className="bg-gray-700 text-white">Show All</option>
                                 </select>
 
                                 {/* Page Navigation */}

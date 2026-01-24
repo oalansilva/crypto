@@ -177,10 +177,10 @@ export const TimeframeOptimizationPage: React.FC = () => {
                             >
                                 {symbolsData ? (
                                     symbolsData.map(s => (
-                                        <option key={s} value={s}>{s}</option>
+                                        <option key={s} value={s} style={{ backgroundColor: '#0B0E14', color: '#E2E8F0' }}>{s}</option>
                                     ))
                                 ) : (
-                                    <option value={symbol}>{symbol}</option>
+                                    <option value={symbol} style={{ backgroundColor: '#0B0E14', color: '#E2E8F0' }}>{symbol}</option>
                                 )}
                             </select>
                         </div>
@@ -199,9 +199,9 @@ export const TimeframeOptimizationPage: React.FC = () => {
                                 }}
                                 disabled={loadingIndicators}
                             >
-                                <option value="">Select an indicator</option>
+                                <option value="" style={{ backgroundColor: '#0B0E14', color: '#E2E8F0' }}>Select an indicator</option>
                                 {indicators?.map(ind => (
-                                    <option key={ind.name} value={ind.name}>
+                                    <option key={ind.name} value={ind.name} style={{ backgroundColor: '#0B0E14', color: '#E2E8F0' }}>
                                         {ind.name.toUpperCase()}
                                     </option>
                                 ))}
