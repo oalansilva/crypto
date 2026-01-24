@@ -24,7 +24,7 @@ def seed_prebuilt_strategies(db_path: str = None):
     strategies = [
         {
             "name": "multi_ma_crossover",
-            "description": "Triple Moving Average Crossover Strategy - Classic trend following with three timeframes",
+            "description": "Triple Moving Average Crossover Strategy - Classic trend following with three averages",
             "template_data": {
                 "indicators": [
                     {"type": "sma", "alias": "short", "params": {"length": 9}},

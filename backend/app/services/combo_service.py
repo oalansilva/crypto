@@ -153,10 +153,22 @@ class ComboService:
             # Update indicator parameters
             for ind in indicators:
                 alias = ind.get("alias") or ind["type"]
+                ind_type = ind.get("type", "").lower()
+                
                 for key in list(ind["params"].keys()):
-                    param_name = f"{alias}_{key}"
-                    if param_name in parameters:
-                        ind["params"][key] = parameters[param_name]
+                    # 1. Standard "alias_key" format (e.g. "short_length")
+                    param_name_std = f"{alias}_{key}"
+                    
+                    # 2. Optimization "type_alias" format (e.g. "sma_short" implies length/period)
+                    # This is how strategies like multi_ma_crossover are defined in seed
+                    param_name_opt = f"{ind_type}_{alias}"
+                    
+                    if param_name_std in parameters:
+                        ind["params"][key] = parameters[param_name_std]
+                    
+                    # Special handling for common main parameters (length, period) keys matching optimization schema keys
+                    elif key in ["length", "period"] and param_name_opt in parameters:
+                         ind["params"][key] = parameters[param_name_opt]
             
             # Override stop_loss if provided
             if "stop_loss" in parameters:
