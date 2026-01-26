@@ -7,6 +7,7 @@ import { ParameterOptimizationPage } from './pages/ParameterOptimizationPage'
 import { TimeframeOptimizationPage } from './pages/TimeframeOptimizationPage'
 import { RiskManagementOptimizationPage } from './pages/RiskManagementOptimizationPage'
 import FavoritesDashboard from './pages/FavoritesDashboard'
+import { MonitorPage } from './pages/MonitorPage'
 import { AutoBacktestPage } from './pages/AutoBacktestPage'
 import { AutoBacktestResultsPage } from './pages/AutoBacktestResultsPage'
 import { AutoBacktestHistoryPage } from './pages/AutoBacktestHistoryPage'
@@ -25,6 +26,7 @@ import {
   Play,
   Bookmark
 } from 'lucide-react'
+import { Toaster } from "@/components/ui/toaster"
 
 function HomePage() {
   const [activeTab, setActiveTab] = useState<'playground' | 'history'>('playground')
@@ -202,6 +204,15 @@ function HomePage() {
                 <div className="flex items-center gap-2">
                   <Bookmark className="w-4 h-4" />
                   Favorites
+                </div>
+              </button>
+              <button
+                onClick={() => navigate('/monitor')}
+                className="px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 text-gray-400 hover:text-white hover:bg-white/5"
+              >
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4" />
+                  Monitor
                 </div>
               </button>
             </div>
@@ -543,6 +554,7 @@ function App() {
         <Route path="/optimize/parameters" element={<ParameterOptimizationPage />} />
         <Route path="/optimize/risk" element={<RiskManagementOptimizationPage />} />
         <Route path="/favorites" element={<FavoritesDashboard />} />
+        <Route path="/monitor" element={<MonitorPage />} />
         <Route path="/backtest/auto" element={<AutoBacktestPage />} />
         <Route path="/backtest/auto/results/:runId" element={<AutoBacktestResultsPage />} />
         <Route path="/backtest/auto/history" element={<AutoBacktestHistoryPage />} />
@@ -554,6 +566,7 @@ function App() {
         <Route path="/sequential-optimization" element={<ParameterOptimizationPage />} /> {/* Backward compatibility */}
         <Route path="/results/:runId" element={<ResultsPage />} />
       </Routes>
+      <Toaster />
     </BrowserRouter>
   )
 }

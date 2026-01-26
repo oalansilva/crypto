@@ -18,10 +18,9 @@ class ComboService:
     
     def __init__(self, db_path: str = None):
         if db_path is None:
-            # Get absolute path to database
-            from pathlib import Path
-            project_root = Path(__file__).parent.parent.parent
-            db_path = str(project_root / "data" / "crypto_backtest.db")
+            # Use the canonical DB path from app.database
+            from app.database import DB_PATH
+            db_path = str(DB_PATH)
         self.db_path = db_path
     
     def list_templates(self) -> Dict[str, List[Dict[str, Any]]]:

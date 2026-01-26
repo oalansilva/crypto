@@ -153,3 +153,22 @@ class AutoBacktestRun(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+
+class ComboTemplate(Base):
+    __tablename__ = "combo_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(String, nullable=True)
+    
+    # Flags
+    is_prebuilt = Column(Boolean, default=False)
+    is_example = Column(Boolean, default=False)
+    is_readonly = Column(Boolean, default=False)
+    
+    # Data (JSON)
+    template_data = Column(JSONType, nullable=False)
+    optimization_schema = Column(JSONType, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

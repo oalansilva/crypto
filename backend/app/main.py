@@ -11,6 +11,7 @@ from app.routes.parameter_optimization import router as parameter_router
 from app.routes.risk_optimization import router as risk_router
 from app.routes.favorites import router as favorites_router
 from app.routes.combo_routes import router as combo_router
+from app.routes.opportunity_routes import router as opportunity_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -33,11 +34,29 @@ logger.info("=" * 80)
 logger.info("Backend starting up - logging to %s", log_file)
 logger.info("=" * 80)
 
+from contextlib import asynccontextmanager
+from app.database import Base, engine
+# Import models to register them with Base
+import app.models
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize DB
+    logger.info("Initializing Database Tables...")
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database initialized successfully.")
+    except Exception as e:
+        logger.error(f"Error initializing database: {e}")
+    yield
+    # Cleanup if needed
+
 settings = get_settings()
 
 app = FastAPI(
     title=settings.api_title,
-    version=settings.api_version
+    version=settings.api_version,
+    lifespan=lifespan
 )
 
 # CORS - Allow all origins in development
@@ -56,6 +75,7 @@ app.include_router(parameter_router)  # Parameter optimization routes (simplifie
 app.include_router(risk_router)  # Risk management optimization routes
 app.include_router(favorites_router)  # Favorites management routes
 app.include_router(combo_router)  # Combo strategies routes (isolated)
+app.include_router(opportunity_router) # Opportunity Monitor routes
 
 @app.get("/")
 async def root():

@@ -17,11 +17,15 @@ settings = get_settings()
 
 # For now, let's default to SQLite for stable local development
 # This bypasses connection issues with remote Supabase
-DB_URL = os.getenv("DATABASE_URL", "sqlite:///./backtest.db")
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = BASE_DIR / "backtest.db"
+# Use absolute path for SQLite
+DB_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH}")
 
 # Force SQLite if DATABASE_URL not explicitly set
 if "DATABASE_URL" not in os.environ:
-    DB_URL = "sqlite:///./backtest.db"
+    DB_URL = f"sqlite:///{DB_PATH}"
 
 if "postgres" in DB_URL or "postgresql" in DB_URL:
     engine = create_engine(DB_URL)
