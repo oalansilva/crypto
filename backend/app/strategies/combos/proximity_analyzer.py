@@ -103,6 +103,14 @@ class ProximityAnalyzer:
         
         conditions = self._extract_comparisons(entry_logic)
         
+        # Debug: Log all extracted conditions for entry_logic with crossovers
+        if 'crossover' in entry_logic.lower():
+            import logging
+            debug_logger = logging.getLogger(__name__)
+            debug_logger.info(f"ProximityAnalyzer - Extracted {len(conditions)} conditions from entry_logic: {entry_logic}")
+            for i, cond in enumerate(conditions):
+                debug_logger.info(f"  Condition {i+1}: {cond}")
+        
         min_distance = float('inf')
         nearest_condition = None
         
@@ -115,50 +123,81 @@ class ProximityAnalyzer:
                 val_right = float(last_row[right]) if right in last_row else float(right)
                 
                 # Check if this specific condition is met
-                is_met = self._check_condition(val_left, op, val_right)
+                # For CROSS_UP/CROSS_DOWN, we need to check if the crossover already happened
+                if op == 'CROSS_UP':
+                    # Crossover happened if: prev_left <= prev_right AND curr_left > curr_right
+                    if len(df) >= 2:
+                        prev_row = df.iloc[-2]
+                        try:
+                            prev_left = float(prev_row[left]) if left in prev_row else float(left)
+                            prev_right = float(prev_row[right]) if right in prev_row else float(right)
+                            is_met = (prev_left <= prev_right) and (val_left > val_right)
+                        except:
+                            is_met = False
+                    else:
+                        is_met = False
+                elif op == 'CROSS_DOWN':
+                    # Crossunder happened if: prev_left >= prev_right AND curr_left < curr_right
+                    if len(df) >= 2:
+                        prev_row = df.iloc[-2]
+                        try:
+                            prev_left = float(prev_row[left]) if left in prev_row else float(left)
+                            prev_right = float(prev_row[right]) if right in prev_row else float(right)
+                            is_met = (prev_left >= prev_right) and (val_left < val_right)
+                        except:
+                            is_met = False
+                    else:
+                        is_met = False
+                else:
+                    is_met = self._check_condition(val_left, op, val_right)
+                
+                # Debug logging for crossovers involving short (both long and medium)
+                if 'short' in str(left).lower() and (op == 'CROSS_UP' or op == 'CROSS_DOWN'):
+                    import logging
+                    debug_logger = logging.getLogger(__name__)
+                    debug_logger.info(f"ProximityAnalyzer - Condition: {left} {op} {right}, values: {val_left:.4f} vs {val_right:.4f}, is_met={is_met}")
                 
                 if not is_met:
-                    # Directional Validation for CrossOver
-                    # If waiting for CROSS_UP (Left crosses over Right), we must be BELOW Right currently.
-                    # If Left > Right, we are technically "past" the cross (or crossed down and valid? no crossover implies low->high).
-                    # Actually, if Left > Right, we are NOT approaching a crossover, we are diverging or holding.
-                    if op == 'CROSS_UP' and val_left > val_right:
-                             # Calculate spread/distance for context
-                             if val_right == 0: dist = 0.0
-                             else: dist = abs(val_left - val_right) / abs(val_right)
-                             
-                             return {
-                                'status': 'HOLDING',
-                                'badge': 'info',
-                                'message': f"In Uptrend ({left}: {val_left:.4f} > {right}: {val_right:.4f})",
-                                'distance': round(dist * 100, 2),
-                                'details': 'Trend Active'
-                             }
-
-                    if op == 'CROSS_DOWN' and val_left < val_right:
-                        # ACTIVE DOWNTREND (Held Short or Past Exit)
-                        # If checking Exit Proximity, "Past Exit" means we are safe below ??
-                        # Actually, if Exit is CROSS_DOWN (Price crosses below MA),
-                        # and we are BELOW (Left < Right), then signal triggers or triggered.
-                        # Holding state for SHORT is fine.
-                        if 'HOLDING' not in str(nearest_condition):
-                             if val_right == 0: dist = 0.0
-                             else: dist = abs(val_left - val_right) / abs(val_right)
-                             
-                             return {
-                                'status': 'HOLDING',
-                                'badge': 'info',
-                                'message': f"In Downtrend ({left}: {val_left:.4f} < {right}: {val_right:.4f})",
-                                'distance': round(dist * 100, 2),
-                                'details': 'Trend Active'
-                             }
-
                     # Calculate distance
-                    # Dist = abs(Left - Right) / Right
-                    if val_right == 0:
-                        dist = 0 
+                    # For CROSS_UP: distance is how much left needs to rise to cross right
+                    # For CROSS_DOWN: distance is how much left needs to fall to cross right
+                    # For regular comparisons: percentage difference
+                    if op == 'CROSS_UP':
+                        # For crossover UP: left must go from current to above right
+                        # Distance = (right - left) / right (how much left needs to rise as % of right)
+                        if val_right == 0:
+                            dist = float('inf')  # Invalid condition, skip
+                            continue
+                        elif val_left >= val_right:
+                            # Already above - this crossover condition is already met
+                            # Skip this condition, don't count it in distance calculation
+                            # (but continue checking other conditions like CROSS_UP medium)
+                            # Debug log for skipping
+                            if 'short' in str(left).lower():
+                                import logging
+                                debug_logger = logging.getLogger(__name__)
+                                debug_logger.info(f"ProximityAnalyzer - Skipping {left} {op} {right} (already above: {val_left:.4f} >= {val_right:.4f}), continuing to check other conditions")
+                            continue
+                        else:
+                            # Calculate how much left needs to rise as percentage of right
+                            dist = (val_right - val_left) / abs(val_right)
+                    elif op == 'CROSS_DOWN':
+                        # For crossunder DOWN: left must go from current to below right
+                        # Distance = (left - right) / right (how much left needs to fall as % of right)
+                        if val_right == 0:
+                            dist = 0
+                        elif val_left <= val_right:
+                            # Already below, distance is 0
+                            dist = 0
+                        else:
+                            # Calculate how much left needs to fall as percentage of right
+                            dist = (val_left - val_right) / abs(val_right)
                     else:
-                        dist = abs(val_left - val_right) / abs(val_right)
+                        # Standard comparison: percentage difference
+                        if val_right == 0:
+                            dist = 0 
+                        else:
+                            dist = abs(val_left - val_right) / abs(val_right)
                     
                     if dist < min_distance:
                         min_distance = dist

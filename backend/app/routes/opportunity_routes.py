@@ -14,6 +14,10 @@ class OpportunityResponse(BaseModel):
     timeframe: str
     template_name: str
     name: str # user custom name
+    is_holding: bool
+    distance_to_next_status: float | None
+    next_status_label: str  # "entry" or "exit"
+    # Legacy fields (kept for backward compatibility)
     status: str
     badge: str
     message: str
