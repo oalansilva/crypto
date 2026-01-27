@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Star, Download } from 'lucide-react'
 import { CandlestickChart } from '../components/CandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
@@ -174,14 +174,43 @@ export function ComboResultsPage() {
         )
     }
 
-    // Handle both backtest and optimization results
-    // Optimization results have best_metrics, backtest results have metrics
-    const metrics = result.metrics || (result as any).best_metrics || {
+    // Métricas derivadas dos MESMOS trades exibidos na tabela (fechados, ordenados)
+    // Garante que Win Rate e Total Return batam com a List of trades / Cumulative P&L
+    const closedTrades = useMemo(() => {
+        return [...(result.trades || [])]
+            .filter((t: any) => t.exit_time && t.exit_price)
+            .sort((a: any, b: any) => new Date(a.entry_time).getTime() - new Date(b.entry_time).getTime())
+    }, [result.trades])
+
+    const derivedMetrics = useMemo(() => {
+        if (closedTrades.length === 0) return null
+        const initialCapital = 100
+        let equity = initialCapital
+        let wins = 0
+        for (const t of closedTrades) {
+            const p = (t as any).profit ?? 0
+            if (p > 0) wins++
+            equity *= 1 + p
+        }
+        const totalReturnPct = (equity / initialCapital - 1) * 100
+        return {
+            total_trades: closedTrades.length,
+            win_rate: wins / closedTrades.length,
+            total_return: totalReturnPct / 100,
+            avg_profit: totalReturnPct / 100 / closedTrades.length
+        }
+    }, [closedTrades])
+
+    // Usar métricas derivadas quando há trades; senão fallback para backend
+    const baseMetrics = result.metrics || (result as any).best_metrics || {
         total_trades: 0,
         win_rate: 0,
         total_return: 0,
         avg_profit: 0
     }
+    const metrics = derivedMetrics
+        ? { ...baseMetrics, ...derivedMetrics }
+        : baseMetrics
 
     // Prepare Chart Data
     const markers = result.trades.flatMap(curr => {
@@ -401,79 +430,210 @@ export function ComboResultsPage() {
                         </div>
                     </div>
 
-                    {/* Trades Table */}
-                    <div className="glass-strong rounded-2xl overflow-hidden border border-white/10">
-                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-white">Trade History</h2>
-                            <button
-                                onClick={handleExportTrades}
-                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors shadow-lg hover:shadow-emerald-500/50"
-                            >
-                                <Download className="w-4 h-4" />
-                                Exportar para Excel
-                            </button>
+                    {/* Trades Table - TradingView Style */}
+                    <div className="bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                            <div className="flex items-center gap-4">
+                                <button className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">
+                                    Metrics
+                                </button>
+                                <button className="px-3 py-1.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded border-b-2 border-b-blue-600">
+                                    List of trades
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                    </svg>
+                                </button>
+                                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                </button>
+                                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+                                    <Download className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={handleExportTrades}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-medium transition-colors"
+                                >
+                                    Exportar para Excel
+                                </button>
+                            </div>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-white/10">
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Entry Time</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Entry Price</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Exit Time</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Exit Price</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Signal</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Profit</th>
+                        <div className="overflow-x-auto bg-white">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            Trade # <span className="text-gray-400">↓</span>
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date and time</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Signal</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Position size</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Net P&L</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Favorable excursion</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Adverse excursion</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cumulative P&L</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {result.trades.map((trade, i) => {
-                                        // Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
-                                        let signalType = (trade as any).signal_type || '';
-                                        if (!signalType) {
-                                            const exitReason = (trade as any).exit_reason || '';
-                                            if (exitReason && exitReason.toLowerCase().includes('stop')) {
-                                                signalType = 'Stop';
-                                            } else if (exitReason) {
-                                                signalType = 'Close entry(s) order...';
-                                            } else {
-                                                signalType = (trade as any).entry_signal_type || 'Comprar';
+                                <tbody className="divide-y divide-gray-100">
+                                    {(() => {
+                                        // Preparar trades com cálculos
+                                        const initialCapital = 100;
+                                        
+                                        // Primeiro, ordenar trades cronologicamente (mais antigos primeiro) para calcular cumulative
+                                        const sortedTrades = [...result.trades]
+                                            .filter(t => t.exit_time && t.exit_price)
+                                            .sort((a, b) => new Date(a.entry_time).getTime() - new Date(b.entry_time).getTime());
+                                        
+                                        // Calcular cumulative P&L do mais antigo para o mais recente
+                                        let runningEquity = initialCapital;
+                                        const tradesWithCumulative = sortedTrades.map((trade, idx) => {
+                                            // Determinar Signal Type
+                                            let signalType = (trade as any).signal_type || '';
+                                            if (!signalType) {
+                                                const exitReason = (trade as any).exit_reason || '';
+                                                if (exitReason && exitReason.toLowerCase().includes('stop')) {
+                                                    signalType = 'Stop';
+                                                } else if (exitReason) {
+                                                    signalType = 'Close entry(s) order...';
+                                                } else {
+                                                    signalType = (trade as any).entry_signal_type || 'Comprar';
+                                                }
                                             }
-                                        }
+                                            
+                                            // Calcular Position size baseado no equity atual (antes do trade)
+                                            // Position size = quanto do ativo podemos comprar com o equity atual
+                                            const positionSize = runningEquity / trade.entry_price;
+                                            const positionValueUSD = runningEquity; // Valor em USD investido
+                                            
+                                            // Calcular Net P&L
+                                            const profitPct = trade.profit || 0;
+                                            const netPnlUSD = runningEquity * profitPct;
+                                            const netPnlPct = profitPct * 100;
+                                            
+                                            // Calcular Favorable/Adverse excursion usando candles
+                                            let favorableExcursionUSD = 0;
+                                            let favorableExcursionPct = 0;
+                                            let adverseExcursionUSD = 0;
+                                            let adverseExcursionPct = 0;
+                                            
+                                            if (result.candles && trade.entry_time && trade.exit_time) {
+                                                const entryDate = new Date(trade.entry_time);
+                                                const exitDate = new Date(trade.exit_time);
+                                                
+                                                const relevantCandles = result.candles.filter(c => {
+                                                    const candleDate = new Date(c.timestamp_utc);
+                                                    return candleDate >= entryDate && candleDate <= exitDate;
+                                                });
+                                                
+                                                if (relevantCandles.length > 0) {
+                                                    // Favorable: máximo high durante o trade
+                                                    const maxHigh = Math.max(...relevantCandles.map(c => c.high));
+                                                    favorableExcursionUSD = (maxHigh - trade.entry_price) * positionSize;
+                                                    favorableExcursionPct = ((maxHigh - trade.entry_price) / trade.entry_price) * 100;
+                                                    
+                                                    // Adverse: mínimo low durante o trade
+                                                    const minLow = Math.min(...relevantCandles.map(c => c.low));
+                                                    adverseExcursionUSD = (trade.entry_price - minLow) * positionSize;
+                                                    adverseExcursionPct = ((trade.entry_price - minLow) / trade.entry_price) * 100;
+                                                }
+                                            }
+                                            
+                                            // Atualizar equity para próximo trade (compounding)
+                                            runningEquity *= (1 + profitPct);
+                                            
+                                            return {
+                                                ...trade,
+                                                tradeNum: sortedTrades.length - idx, // Número do trade (mais recente = maior número)
+                                                signalType,
+                                                positionSize,
+                                                positionValueUSD,
+                                                netPnlUSD,
+                                                netPnlPct,
+                                                favorableExcursionUSD,
+                                                favorableExcursionPct,
+                                                adverseExcursionUSD,
+                                                adverseExcursionPct,
+                                                cumulativeEquity: runningEquity,
+                                                cumulativePnlUSD: runningEquity - initialCapital,
+                                                cumulativePnlPct: ((runningEquity / initialCapital) - 1) * 100
+                                            };
+                                        });
                                         
-                                        // Determinar cor do badge baseado no tipo de sinal
-                                        const getSignalColor = (signal: string) => {
-                                            if (signal === 'Stop') return 'bg-red-500/20 text-red-400 border-red-500/30';
-                                            if (signal === 'Comprar') return 'bg-green-500/20 text-green-400 border-green-500/30';
-                                            return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-                                        };
-                                        
-                                        return (
-                                            <tr key={i} className="hover:bg-white/5 transition-colors">
-                                                <td className="px-6 py-4 text-sm text-gray-300">{new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}</td>
-                                                <td className="px-6 py-4 text-sm text-white font-mono">${trade.entry_price.toFixed(2)}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-300">
-                                                    {trade.exit_time ? new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' }) : '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-white font-mono">
-                                                    {trade.exit_price ? `$${trade.exit_price.toFixed(2)}` : '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm">
-                                                    <span className={`px-2 py-1 rounded text-xs font-medium border ${getSignalColor(signalType)}`}>
-                                                        {signalType}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm">
-                                                    {trade.profit !== undefined ? (
-                                                        <span className={`font-bold ${trade.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                            {trade.profit >= 0 ? '+' : ''}{(trade.profit * 100).toFixed(2)}%
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-gray-500">Open</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                        // Reverter para mostrar mais recentes primeiro (estilo TradingView)
+                                        return tradesWithCumulative.reverse().flatMap((trade) => {
+                                            // Formatar data no estilo TradingView: "Mês DD, YYYY"
+                                            const formatDate = (dateStr: string) => {
+                                                const date = new Date(dateStr);
+                                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                                return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+                                            };
+                                            
+                                            // Formatar preço com vírgulas e USDT
+                                            const formatPrice = (price: number) => {
+                                                return `${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+                                            };
+                                            
+                                            // Formatar USD e %
+                                            const formatPnl = (usd: number, pct: number, isPositive: boolean) => {
+                                                const color = isPositive ? 'text-green-600' : 'text-red-600';
+                                                return (
+                                                    <div>
+                                                        <span className={color}>{isPositive ? '+' : ''}{usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                                                        <span className={`ml-2 ${color}`}>, {isPositive ? '+' : ''}{pct.toFixed(2)}%</span>
+                                                    </div>
+                                                );
+                                            };
+                                            
+                                            return [
+                                                // Linha de Entry
+                                                <tr key={`${trade.tradeNum}-entry`} className="hover:bg-gray-50">
+                                                    <td rowSpan={2} className="px-4 py-3 text-center border-r border-gray-200">
+                                                        <div className="font-medium text-gray-900">{trade.tradeNum}</div>
+                                                        <div className="text-xs text-gray-500">Long</div>
+                                                    </td>
+                                                    <td className="px-4 py-2 text-gray-700">Entry</td>
+                                                    <td className="px-4 py-2 text-gray-700">{formatDate(trade.entry_time)}</td>
+                                                    <td className="px-4 py-2 text-gray-700">Comprar</td>
+                                                    <td className="px-4 py-2 text-gray-900 font-medium">{formatPrice(trade.entry_price)}</td>
+                                                    <td className="px-4 py-2 text-gray-700">
+                                                        <div>{trade.positionSize.toFixed(2)}</div>
+                                                        <div className="text-xs text-gray-500">{(trade.positionValueUSD / 1000).toFixed(2)} K USD</div>
+                                                    </td>
+                                                    <td colSpan={4} className="px-4 py-2"></td>
+                                                </tr>,
+                                                // Linha de Exit
+                                                <tr key={`${trade.tradeNum}-exit`} className="hover:bg-gray-50 border-b border-gray-200">
+                                                    <td className="px-4 py-2 text-gray-700">Exit</td>
+                                                    <td className="px-4 py-2 text-gray-700">{formatDate(trade.exit_time!)}</td>
+                                                    <td className="px-4 py-2 text-gray-700">{trade.signalType}</td>
+                                                    <td className="px-4 py-2 text-gray-900 font-medium">{formatPrice(trade.exit_price!)}</td>
+                                                    <td className="px-4 py-2"></td>
+                                                    <td className="px-4 py-2">
+                                                        {formatPnl(trade.netPnlUSD, trade.netPnlPct, trade.netPnlUSD >= 0)}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-gray-700">
+                                                        <div>{trade.favorableExcursionUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                                                        <div className="text-xs text-gray-500">, {trade.favorableExcursionPct.toFixed(2)}%</div>
+                                                    </td>
+                                                    <td className="px-4 py-2 text-red-600">
+                                                        <div>-{trade.adverseExcursionUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                                                        <div className="text-xs">, -{trade.adverseExcursionPct.toFixed(2)}%</div>
+                                                    </td>
+                                                    <td className="px-4 py-2 text-gray-700">
+                                                        <div>{trade.cumulativePnlUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                                                        <div className="text-xs text-gray-500">, {trade.cumulativePnlPct.toFixed(2)}%</div>
+                                                    </td>
+                                                </tr>
+                                            ];
+                                        });
+                                    })()}
                                 </tbody>
                             </table>
                         </div>

@@ -298,104 +298,12 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
 
 
         
-        # Calculate metrics
-        metrics = {
-            'total_trades': 0,
-            'win_rate': 0,
-            'total_return': 0,
-            'avg_profit': 0,
-            'sharpe_ratio': 0,
-            'profit_factor': 0,
-            'sortino_ratio': 0,
-            'max_loss': 0,
-            'expectancy': 0,
-            'max_consecutive_losses': 0,
-            'max_drawdown': 0
-        }
+        # Métricas via fonte única (_metrics_from_trades) – scoring e exibição consistentes
+        metrics = _metrics_from_trades(trades, initial_capital)
 
         if len(trades) > 0:
-            total_trades = len(trades)
-            winning_trades = sum(1 for t in trades if t['profit'] > 0)
-            metrics['total_trades'] = total_trades
-            metrics['win_rate'] = winning_trades / total_trades
-            
-            # Simple Return (TradingView-style): baseado em PnL total sem reinvestimento
-            # TradingView calcula retorno simples somando PnL de cada trade (posição fixa)
-            # Cada trade usa o mesmo capital inicial (não reinveste)
-            total_pnl_usd = sum([
-                initial_capital * t['profit'] 
-                for t in trades
-            ])
-            # Return simples: (PnL total / capital inicial) * 100
-            metrics['total_return'] = (total_pnl_usd / initial_capital) * 100.0
-            
-            metrics['avg_profit'] = (metrics['total_return'] / total_trades) if total_trades > 0 else 0
-            
-            # Sharpe Ratio
-            returns = [t['profit'] for t in trades]
-            import numpy as np
-            std_dev = np.std(returns)
-            metrics['sharpe_ratio'] = np.mean(returns) / std_dev if std_dev > 0 else 0
-            
-            # Profit Factor (TradingView-style): usando PnL absoluto em USD
-            # Calcular PnL absoluto por trade baseado no capital inicial
-            gross_profit_usd = sum([
-                initial_capital * t['profit'] 
-                for t in trades if t['profit'] > 0
-            ])
-            gross_loss_usd = abs(sum([
-                initial_capital * t['profit'] 
-                for t in trades if t['profit'] < 0
-            ]))
-            metrics['profit_factor'] = gross_profit_usd / gross_loss_usd if gross_loss_usd > 0 else (999 if gross_profit_usd > 0 else 0)
-            
-            # Sortino Ratio (downside deviation)
-            downside_returns = [r for r in returns if r < 0]
-            if len(downside_returns) > 1:
-                downside_std = np.std(downside_returns)
-                metrics['sortino_ratio'] = np.mean(returns) / downside_std if downside_std > 0 else 0
-            else:
-                metrics['sortino_ratio'] = metrics['sharpe_ratio']  # Fallback to Sharpe if no downside
-            
-            # Max Loss (worst single trade)
-            metrics['max_loss'] = min(returns) if returns else 0
-            
-            # Expectancy (average profit per trade in dollars, assuming $10k capital)
-            # Convert from percentage to dollar value
-            ASSUMED_CAPITAL = 10000
-            expectancy_pct = np.mean(returns) if returns else 0
-            metrics['expectancy'] = expectancy_pct * ASSUMED_CAPITAL
-            
-            # Max Consecutive Losses
-            consecutive_losses = 0
-            max_consecutive = 0
-            for t in trades:
-                if t['profit'] < 0:
-                    consecutive_losses += 1
-                    max_consecutive = max(max_consecutive, consecutive_losses)
-                else:
-                    consecutive_losses = 0
-            metrics['max_consecutive_losses'] = max_consecutive
-            
-            # Max Drawdown (from equity curve)
-            equity = 1.0
-            peak = 1.0
-            max_dd = 0
-            for t in trades:
-                equity *= (1.0 + t['profit'])
-                if equity > peak:
-                    peak = equity
-                drawdown = (peak - equity) / peak
-                max_dd = max(max_dd, drawdown)
-            metrics['max_drawdown'] = max_dd * 100.0  # Convert to percentage
-            
-            # --- Regime Metrics (Simplified/Moved) ---
-            # Heavy calculation (Win Rate Bull/Bear) removed from inner loop for performance.
-            # Avg ATR/ADX is fast (vectorized mostly), so we keep if cols exist (simple mean).
-            
             atr_col = next((c for c in df.columns if c.startswith('ATR')), None)
             adx_col = next((c for c in df.columns if c.startswith('ADX')), None)
-            
             metrics['avg_atr'] = df[atr_col].mean() if atr_col else 0
             metrics['avg_adx'] = df[adx_col].mean() if adx_col else 0
 
@@ -1613,25 +1521,8 @@ class ComboOptimizer:
         if not converged:
              logging.warning(f"Optimization stopped after max rounds ({max_rounds}) without full convergence.")
 
-        # COMPLETION SUMMARY
         total_optimization_time = time.time() - start_time if 'start_time' in locals() else 0
         rounds_display = round_num if converged else round_num - 1
-        
-        logging.info("=" * 80)
-        logging.info("🎯 OPTIMIZATION COMPLETE")
-        logging.info("=" * 80)
-        logging.info(f"Rounds completed: {rounds_display}/{max_rounds}")
-        logging.info(f"Total execution time: {total_optimization_time:.1f}s ({total_optimization_time/60:.1f} minutes)")
-        logging.info(f"Convergence: {'Yes' if converged else 'No'}")
-        logging.info(f"\nFinal Configuration:")
-        for param, value in best_params.items():
-            logging.info(f"  {param}: {value}")
-        if best_metrics:
-            logging.info(f"\nFinal Metrics:")
-            logging.info(f"  Sharpe Ratio: {best_metrics.get('sharpe_ratio', 0):.3f}")
-            logging.info(f"  Total Return: {best_metrics.get('total_return', 0):.3f}")
-            logging.info(f"  Max Drawdown: {best_metrics.get('max_drawdown', 0):.3f}")
-        logging.info("=" * 80)
 
         # Run final backtest with best parameters to get complete data
         logging.info(f"Running final backtest with best parameters: {best_params}")
@@ -1692,6 +1583,11 @@ class ComboOptimizer:
             stop_loss = best_params.get('stop_loss', 0.0)
             trades = extract_trades_from_signals(df_with_signals, stop_loss)
             
+            # Recompute core metrics from final backtest trades (same set as returned to frontend)
+            # Fixes Total Return / Win Rate mismatch vs. "List of trades" / Cumulative P&L
+            core_from_final = _metrics_from_trades(trades, initial_capital=100)
+            if best_metrics is not None:
+                best_metrics.update(core_from_final)
             
             # Post-Process Heavy Metrics (Only for best result)
             try:
@@ -1741,6 +1637,26 @@ class ComboOptimizer:
             candles = []
             indicator_data = {}
         
+        # COMPLETION SUMMARY (after final backtest so metrics match returned trades)
+        logging.info("=" * 80)
+        logging.info("🎯 OPTIMIZATION COMPLETE")
+        logging.info("=" * 80)
+        logging.info(f"Rounds completed: {rounds_display}/{max_rounds}")
+        logging.info(f"Total execution time: {total_optimization_time:.1f}s ({total_optimization_time/60:.1f} minutes)")
+        logging.info(f"Convergence: {'Yes' if converged else 'No'}")
+        logging.info(f"\nFinal Configuration:")
+        for param, value in best_params.items():
+            logging.info(f"  {param}: {value}")
+        if best_metrics:
+            tr_pct = best_metrics.get('total_return_pct')
+            if tr_pct is None:
+                tr_pct = (best_metrics.get('total_return') or 0) * 100.0
+            logging.info(f"\nFinal Metrics:")
+            logging.info(f"  Sharpe Ratio: {best_metrics.get('sharpe_ratio', 0):.3f}")
+            logging.info(f"  Total Return: {tr_pct:.2f}%")
+            logging.info(f"  Max Drawdown: {best_metrics.get('max_drawdown', 0):.3f}")
+        logging.info("=" * 80)
+
         return {
             "job_id": job_id or "combo_opt_" + str(hash(template_name + symbol)),
             "template_name": template_name,
@@ -1757,6 +1673,137 @@ class ComboOptimizer:
             "parameters": best_params  # For compatibility with ComboResultsPage
         }
 
+
+
+def _metrics_from_trades(trades: list, initial_capital: float = 100) -> dict:
+    """
+    Single source of truth for all metrics derived from a trade list.
+    Used by _run_backtest_logic (optimization scoring) and final backtest.
+    Ensures Sharpe, Total Return, Win Rate, etc. are always computed the same way.
+    """
+    import numpy as np
+
+    out = {
+        'total_trades': 0,
+        'win_rate': 0.0,
+        'total_return': 0.0,
+        'total_return_pct': 0.0,
+        'avg_profit': 0.0,
+        'sharpe_ratio': 0.0,
+        'sortino_ratio': 0.0,
+        'profit_factor': 0.0,
+        'max_loss': 0.0,
+        'max_consecutive_losses': 0,
+        'max_drawdown': 0.0,
+        'expectancy': 0.0,
+    }
+    if not trades:
+        return out
+
+    # Ordenar por entry_time (mesma ordem do frontend / Cumulative P&L)
+    def _ts(t):
+        et = t.get('entry_time')
+        if et is None:
+            return 0
+        try:
+            return pd.Timestamp(et).timestamp()
+        except Exception:
+            return 0
+
+    sorted_trades = sorted(trades, key=_ts)
+
+    # Coletar returns válidos; ignorar apenas trades com profit None
+    # profit é decimal: 0.05 = 5%, 1.66 = 166% (ganhos >100% são válidos em crypto)
+    returns = []
+    for t in sorted_trades:
+        p = t.get('profit')
+        if p is None:
+            continue
+        p = float(p)
+        # Só rejeitar valores impossíveis: perda >100% (< -1) ou suspeitos (> 1000%)
+        if p < -1.0 or p > 10.0:
+            logging.getLogger(__name__).warning(
+                f"Profit fora do range plausível [-1, 10]: {p}. Trade ignorado no cálculo."
+            )
+            continue
+        returns.append(p)
+
+    n = len(returns)
+    if n == 0:
+        out['total_trades'] = len(trades)
+        return out
+
+    wins = sum(1 for r in returns if r > 0)
+    out['total_trades'] = n
+    out['win_rate'] = wins / n
+
+    # Compounding (equity curve)
+    cap = float(initial_capital)
+    equity_curve = [cap]
+    for r in returns:
+        cap *= 1.0 + r
+        equity_curve.append(cap)
+
+    total_return_pct = (cap / initial_capital - 1) * 100.0
+    total_return = total_return_pct / 100.0
+    out['total_return'] = total_return
+    out['total_return_pct'] = total_return_pct
+    out['avg_profit'] = (total_return / n) if n else 0
+
+    # Sharpe
+    arr = np.array(returns)
+    std_dev = np.std(arr)
+    out['sharpe_ratio'] = (np.mean(arr) / std_dev) if std_dev > 0 else 0.0
+
+    # Sortino (downside deviation)
+    neg = arr[arr < 0]
+    if len(neg) > 1:
+        down_std = np.std(neg)
+        out['sortino_ratio'] = (np.mean(arr) / down_std) if down_std > 0 else out['sharpe_ratio']
+    else:
+        out['sortino_ratio'] = out['sharpe_ratio']
+
+    # Profit factor (USD com compounding)
+    cap2 = float(initial_capital)
+    gross_profit_usd = 0.0
+    gross_loss_usd = 0.0
+    for r in returns:
+        pnl = cap2 * r
+        if r > 0:
+            gross_profit_usd += pnl
+        else:
+            gross_loss_usd += abs(pnl)
+        cap2 *= 1.0 + r
+    out['profit_factor'] = (
+        gross_profit_usd / gross_loss_usd if gross_loss_usd > 0
+        else (999.0 if gross_profit_usd > 0 else 0.0)
+    )
+
+    out['max_loss'] = float(np.min(arr))
+    out['expectancy'] = float(np.mean(arr)) * 10000.0  # $10k assumed
+
+    # Max consecutive losses
+    streak = 0
+    max_streak = 0
+    for r in returns:
+        if r < 0:
+            streak += 1
+            max_streak = max(max_streak, streak)
+        else:
+            streak = 0
+    out['max_consecutive_losses'] = max_streak
+
+    # Max drawdown (equity curve já em valor absoluto)
+    peak = float(initial_capital)
+    max_dd = 0.0
+    for eq in equity_curve:
+        if eq > peak:
+            peak = eq
+        dd = (peak - eq) / peak if peak > 0 else 0
+        max_dd = max(max_dd, dd)
+    out['max_drawdown'] = max_dd * 100.0
+
+    return out
 
 
 def _calculate_heavy_metrics(df, trades):

@@ -35,16 +35,19 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    // total_return é decimal (0.2939 = 29.39%); total_return_pct já é % (2939.86)
+    const totalReturnPct = backtestResult?.metrics?.total_return_pct ?? ((backtestResult?.metrics?.total_return ?? 0) * 100)
+
     // Auto-generate name when modal opens
     useEffect(() => {
         if (isOpen && backtestResult && backtestResult.metrics) {
-            const roi = backtestResult.metrics.total_return?.toFixed(0) || '0'
+            const roi = totalReturnPct.toFixed(1)
             const autoName = `${backtestResult.symbol} ${backtestResult.timeframe} - ${backtestResult.template_name} - ${roi}% ROI`
             setName(autoName)
             setNotes('')
             setError(null)
         }
-    }, [isOpen, backtestResult])
+    }, [isOpen, backtestResult, totalReturnPct])
 
     const handleSave = async () => {
         if (!name.trim()) {
@@ -131,7 +134,7 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                             <div>
                                 <p className="text-xs text-gray-400 mb-1">Retorno Total</p>
                                 <p className="text-lg font-semibold text-green-400">
-                                    {backtestResult.metrics?.total_return?.toFixed(2) || '0.00'}%
+                                    {totalReturnPct.toFixed(2)}%
                                 </p>
                             </div>
                             <div>

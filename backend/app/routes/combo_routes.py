@@ -340,46 +340,47 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         total_trades = len(trades_for_metrics)
         winning_trades = sum(1 for t in trades_for_metrics if t.get('profit', 0) > 0)
         
-        # Simple Return (TradingView-style): baseado em PnL total sem reinvestimento
-        # TradingView calcula retorno simples somando PnL de cada trade (posição fixa)
-        # Cada trade usa o mesmo capital inicial (não reinveste)
-        total_pnl_usd = sum([
-            initial_capital * t.get('profit', 0) 
-            for t in trades_for_metrics if t.get('profit') is not None
-        ])
-        # Return simples: (PnL total / capital inicial) * 100
-        total_return_pct = (total_pnl_usd / initial_capital) * 100.0
+        # Compounded Return (TradingView-style): baseado em equity final vs inicial
+        # TradingView usa COMPOUNDING - cada trade reinveste o capital (equity cresce)
+        # Calcular equity curve com compounding
+        equity = float(initial_capital)
+        for t in trades_for_metrics:
+            profit_pct = t.get('profit', 0) if t.get('profit') is not None else 0
+            equity *= (1.0 + profit_pct)
+        # Return: (equity_final / equity_inicial - 1) * 100
+        total_return_pct = (equity / initial_capital - 1) * 100.0
         
-        # Max Drawdown from cumulative PnL (TradingView-style)
-        # Calcular drawdown baseado em PnL acumulado (não reinveste)
+        # Max Drawdown from equity curve (TradingView-style com compounding)
+        # Calcular drawdown baseado em equity curve (com reinvestimento)
         max_drawdown_pct = 0.0
         if len(trades_for_metrics) > 0:
-            cumulative_pnl = 0.0
-            peak_pnl = 0.0
+            equity_dd = float(initial_capital)
+            peak_equity = float(initial_capital)
             max_dd = 0.0
             for t in trades_for_metrics:
-                trade_pnl = initial_capital * t.get('profit', 0)
-                cumulative_pnl += trade_pnl
-                if cumulative_pnl > peak_pnl:
-                    peak_pnl = cumulative_pnl
-                # Drawdown = (peak - current) / (initial_capital + peak)
-                # Ou simplesmente: drawdown relativo ao capital inicial
-                if peak_pnl > 0:
-                    drawdown = (peak_pnl - cumulative_pnl) / (initial_capital + peak_pnl)
-                else:
-                    drawdown = abs(cumulative_pnl) / initial_capital if cumulative_pnl < 0 else 0
+                equity_dd *= (1.0 + t.get('profit', 0))
+                if equity_dd > peak_equity:
+                    peak_equity = equity_dd
+                drawdown = (peak_equity - equity_dd) / peak_equity
                 max_dd = max(max_dd, drawdown)
             max_drawdown_pct = max_dd * 100.0  # Convert to percentage
         
-        # Profit Factor (TradingView-style): usando PnL absoluto em USD
-        gross_profit_usd = sum([
-            initial_capital * t.get('profit', 0) 
-            for t in trades_for_metrics if t.get('profit', 0) > 0
-        ])
-        gross_loss_usd = abs(sum([
-            initial_capital * t.get('profit', 0) 
-            for t in trades_for_metrics if t.get('profit', 0) < 0
-        ]))
+        # Profit Factor (TradingView-style): usando PnL absoluto em USD com compounding
+        # Calcular PnL absoluto por trade baseado no capital ATUAL (que cresce com cada trade)
+        equity_current = float(initial_capital)
+        gross_profit_usd = 0.0
+        gross_loss_usd = 0.0
+        
+        for t in trades_for_metrics:
+            profit_pct = t.get('profit', 0) if t.get('profit') is not None else 0
+            trade_pnl_usd = equity_current * profit_pct
+            if profit_pct > 0:
+                gross_profit_usd += trade_pnl_usd
+            else:
+                gross_loss_usd += abs(trade_pnl_usd)
+            # Atualizar equity para próximo trade (compounding)
+            equity_current *= (1.0 + profit_pct)
+        
         profit_factor = gross_profit_usd / gross_loss_usd if gross_loss_usd > 0 else (999 if gross_profit_usd > 0 else 0)
         
         metrics = {
