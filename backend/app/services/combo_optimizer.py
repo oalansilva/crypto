@@ -33,14 +33,17 @@ from app.services.deep_backtest import simulate_execution_with_15m
 def extract_trades_from_signals(df_with_signals, stop_loss: float):
     """
     Extract trades from signals with consistent logic:
-    - Execute at CLOSE of candle where signal appears (standard behavior)
+    - Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
+    - ComboStrategy: logic confirmed at CLOSE of candle i → signal on candle i+1 → execute at OPEN of candle i+1
+    - This matches: "utilizo os valores fechado para os sinais entrar(comprar ou vender) no proximo dia"
     - Intra-candle Stop Loss (Low vs Stop Price) - checked before signal processing
     - Binance Fees (0.075% per op) - applied on both entry and exit
     - Exit at exact Stop Price if triggered
     
     IMPORTANT: 
-    - Signal at CLOSE of candle i means execute at CLOSE of candle i (same candle)
-    - Stop loss is checked first (intra-candle) before processing signals
+    - All signal entry/exit executions use OPEN price of the candle where signal appears (next day)
+    - Stop loss detection uses intraday low price (for daily) or 15m data (for deep backtest)
+    - Stop loss can execute immediately (simulating real broker behavior)
     - All trades use fee of 0.075% (Binance spot fee)
     """
     TRADING_FEE = 0.00075  # Binance spot fee: 0.075%
@@ -76,19 +79,22 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
                 continue  # Skip signal check for this candle
 
         # Check signals
-        # Signal at CLOSE of candle i means execute at CLOSE of candle i (same candle)
-        # This is the standard behavior: see signal, execute at close of same candle
+        # IMPORTANT: Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
+        # ComboStrategy places signal on candle i+1 after logic confirmed at CLOSE of candle i
+        # We execute at OPEN of the same candle where signal appears (i+1)
         if row['signal'] == 1 and position is None:
-            # Entry signal: Execute at CLOSE of current candle
+            # Entry signal: Execute at OPEN of current candle (where signal appears)
+            # Signal was detected at CLOSE of previous candle, now execute at OPEN of this candle
             # Keep UTC timezone to match TradingView
             position = {
                 'entry_time': idx.isoformat(),
-                'entry_price': float(row['close']),  # Execute at CLOSE
+                'entry_price': float(row['open']),  # Execute at OPEN of next day
                 'type': 'long'
             }
         elif row['signal'] == -1 and position is not None:
-            # Exit signal: Execute at CLOSE of current candle
-            exit_price = float(row['close'])
+            # Exit signal: Execute at OPEN of current candle (where signal appears)
+            # Signal was detected at CLOSE of previous candle, now execute at OPEN of this candle
+            exit_price = float(row['open'])  # Execute at OPEN of next day
             entry_price = position['entry_price']
             
             position['exit_time'] = idx.isoformat()

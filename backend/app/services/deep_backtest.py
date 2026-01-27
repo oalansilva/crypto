@@ -63,7 +63,8 @@ def simulate_execution_with_15m(
     # Pre-calculate ALL exit signals (signal == -1) to avoid repeated filtering
     exit_signals = df_daily_signals[df_daily_signals['signal'] == -1]
     exit_times = exit_signals.index
-    exit_prices = exit_signals['open'].values # Exit executes at OPEN
+    # Exit executes at OPEN of daily candle (signal detected at CLOSE of previous candle → execute at OPEN of next day)
+    exit_prices = exit_signals['open'].values
     
     last_exit_time = None
     
@@ -72,6 +73,8 @@ def simulate_execution_with_15m(
         if last_exit_time is not None and entry_time < last_exit_time:
             continue
             
+        # Entry executes at OPEN of daily candle (signal detected at CLOSE of previous candle → execute at OPEN of next day)
+        # Note: 15m data is used ONLY for stop loss detection (can execute immediately), not for signal execution
         entry_price = float(entry_row['open'])
         exact_stop_price = entry_price * (1 - stop_loss_pct)
         
@@ -90,7 +93,10 @@ def simulate_execution_with_15m(
             signal_exit_price = float(df_daily_signals.iloc[-1]['close'])
             reason_end = "end_of_period"
 
-        # 3. Vectorized Intraday Check (Numpy)
+        # 3. Vectorized Intraday Check (Numpy) - ONLY for stop loss detection
+        # 15m data is used to detect if stop loss was hit during the day
+        # Stop loss can execute immediately when detected (simulating real broker behavior)
+        # Entry/exit signals execute at OPEN of daily candles (next day after signal detection)
         # Find range in 15m data: [Entry Time, Signal Exit Time)
         
         if len(times_15m) > 0:

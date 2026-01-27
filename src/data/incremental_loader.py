@@ -60,19 +60,36 @@ class IncrementalLoader:
                 if not df_local.empty:
                      # timestamp_utc is likely the index or column
                      if 'timestamp' in df_local.columns:
-                         last_ts = df_local['timestamp'].max()
+                         last_ts_val = df_local['timestamp'].max()
+                         # Ensure last_ts is a valid integer, not None or NaN
+                         if pd.notna(last_ts_val):
+                             last_ts = int(last_ts_val)
+                         else:
+                             last_ts = None
+                     elif 'timestamp_utc' in df_local.columns:
+                         # Try timestamp_utc column
+                         last_ts_dt = df_local['timestamp_utc'].max()
+                         if pd.notna(last_ts_dt):
+                             # Convert datetime to timestamp in milliseconds
+                             if isinstance(last_ts_dt, pd.Timestamp):
+                                 last_ts = int(last_ts_dt.timestamp() * 1000)
+                             else:
+                                 last_ts = None
+                         else:
+                             last_ts = None
                      else:
                          # try index if datetime
-                         pass
+                         last_ts = None
             except Exception as e:
                 logger.error(f"Error reading local parquet: {e}. Will redownload.")
                 df_local = pd.DataFrame() # Corrupt?
+                last_ts = None
         
         # 2. Determine Download Range
         # Default: Download from requested 'since'
         fetch_since_ts = int(since_dt.timestamp() * 1000)
         
-        if not df_local.empty and last_ts is not None:
+        if not df_local.empty and last_ts is not None and isinstance(last_ts, (int, float)):
             # We have data up to last_ts.
             # If our stored data covers up to 'now' (approx), we might not need to download much.
             
@@ -85,7 +102,8 @@ class IncrementalLoader:
             # Safest is last_ts + 1ms (CCXT handles overlap usually exclusive/inclusive depending on exchange, 
             # but standard is inclusive. So +1ms avoids dup of last candle).
             
-            if last_ts < int(until_dt.timestamp() * 1000):
+            until_ts_int = int(until_dt.timestamp() * 1000)
+            if last_ts < until_ts_int:
                  fetch_since_ts = int(last_ts) + 1
                  logger.info(f"Incremental update needed. Downloading from {datetime.fromtimestamp(fetch_since_ts/1000)}")
             else:
@@ -253,9 +271,23 @@ class IncrementalLoader:
         all_ohlcv = []
         current_since = since_ts
         
-        logger.info(f"Starting download loop for {symbol} from {datetime.fromtimestamp(current_since/1000)}")
+        # Ensure both timestamps are valid integers
+        if since_ts is None or until_ts is None:
+            logger.error(f"Invalid timestamps: since_ts={since_ts}, until_ts={until_ts}")
+            return pd.DataFrame()
         
-        while current_since < until_ts:
+        try:
+            since_ts_int = int(since_ts)
+            until_ts_int = int(until_ts)
+        except (TypeError, ValueError) as e:
+            logger.error(f"Type error in download loop: {e}, since_ts={since_ts} ({type(since_ts)}), until_ts={until_ts} ({type(until_ts)})")
+            return pd.DataFrame()
+        
+        logger.info(f"Starting download loop for {symbol} from {datetime.fromtimestamp(since_ts_int/1000)}")
+        
+        current_since = since_ts_int
+        
+        while current_since < until_ts_int:
             try:
                 ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, since=current_since, limit=limit)
                 if not ohlcv:
@@ -263,11 +295,27 @@ class IncrementalLoader:
                 
                 last_candle_ts = ohlcv[-1][0]
                 
+                # Ensure last_candle_ts is valid
+                if last_candle_ts is None:
+                    logger.error("Invalid last_candle_ts: None")
+                    break
+                
+                try:
+                    last_candle_ts_int = int(last_candle_ts)
+                except (TypeError, ValueError):
+                    logger.error(f"Invalid last_candle_ts type: {last_candle_ts} ({type(last_candle_ts)})")
+                    break
+                
                 for candle in ohlcv:
-                    if candle[0] < until_ts:
-                        all_ohlcv.append(candle)
+                    candle_ts = candle[0] if candle and len(candle) > 0 else None
+                    if candle_ts is not None:
+                        try:
+                            if int(candle_ts) < until_ts_int:
+                                all_ohlcv.append(candle)
+                        except (TypeError, ValueError):
+                            continue
                         
-                next_since = last_candle_ts + 1
+                next_since = last_candle_ts_int + 1
                 if next_since <= current_since:
                     break
                 current_since = next_since
@@ -277,6 +325,8 @@ class IncrementalLoader:
                     
             except Exception as e:
                 logger.error(f"Download error: {e}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
                 time.sleep(5)
                 continue
                 

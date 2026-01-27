@@ -29,6 +29,9 @@ const FavoritesDashboard: React.FC = () => {
     const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
     const [selectedTrades, setSelectedTrades] = useState<any[]>([]);
     const [selectedTradesTitle, setSelectedTradesTitle] = useState('');
+    const [selectedTradesSymbol, setSelectedTradesSymbol] = useState('');
+    const [selectedTradesTemplate, setSelectedTradesTemplate] = useState('');
+    const [selectedTradesTimeframe, setSelectedTradesTimeframe] = useState('');
 
     // Fetch favorites
     const { data: favorites, isLoading } = useQuery({
@@ -96,6 +99,9 @@ const FavoritesDashboard: React.FC = () => {
         }
         setSelectedTrades(trades);
         setSelectedTradesTitle(`${fav.strategy_name} - ${fav.symbol} ${fav.timeframe}`);
+        setSelectedTradesSymbol(fav.symbol);
+        setSelectedTradesTemplate(fav.strategy_name);
+        setSelectedTradesTimeframe(fav.timeframe);
         setIsTradesModalOpen(true);
     };
 
@@ -605,6 +611,9 @@ const FavoritesDashboard: React.FC = () => {
                     trades={selectedTrades}
                     title={selectedTradesTitle}
                     subtitle={`Total Trades: ${selectedTrades.length}`}
+                    symbol={selectedTradesSymbol}
+                    templateName={selectedTradesTemplate}
+                    timeframe={selectedTradesTimeframe}
                 />
             </div>
         </div>

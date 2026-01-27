@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Star } from 'lucide-react'
+import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Star, Download } from 'lucide-react'
 import { CandlestickChart } from '../components/CandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 
@@ -70,6 +70,80 @@ export function ComboResultsPage() {
         } catch (err) {
             console.error('❌ Erro ao salvar favorito:', err)
             throw err
+        }
+    }
+
+    const handleExportTrades = async () => {
+        try {
+            // Filter only closed trades (with exit_time) for export
+            // This ensures consistency with metrics calculation
+            const closedTrades = result.trades.filter(t => t.exit_time && t.exit_price);
+            
+            console.log(`📊 Exportando trades: ${closedTrades.length} fechados de ${result.trades.length} total`);
+            
+            // Prepare trades data with all necessary fields
+            const tradesData = closedTrades.map(trade => {
+                // Calculate P&L in USD if not present
+                let pnl = trade.pnl;
+                if (pnl === undefined && trade.profit !== undefined) {
+                    // If we have profit percentage, we need initial capital to calculate P&L
+                    // For now, we'll use a default or calculate from entry price
+                    const initialCapital = 100; // Default starting capital
+                    pnl = initialCapital * trade.profit;
+                }
+                
+                return {
+                    entry_time: trade.entry_time,
+                    entry_price: trade.entry_price,
+                    exit_time: trade.exit_time || '',
+                    exit_price: trade.exit_price || 0,
+                    type: trade.type || 'long',
+                    profit: trade.profit || 0,
+                    pnl: pnl || 0,
+                    initial_capital: trade.initial_capital || 100,
+                    final_capital: trade.final_capital || (100 + (pnl || 0))
+                };
+            });
+
+            const response = await fetch('http://localhost:8000/api/combos/export-trades', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trades: tradesData,
+                    symbol: result.symbol,
+                    template_name: result.template_name,
+                    timeframe: result.timeframe
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao exportar trades');
+            }
+
+            // Get the blob and create download link
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Extract filename from Content-Disposition header or use default
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `${result.template_name}_${result.symbol.replace('/', '_')}_${result.timeframe}_trades.xlsx`;
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+            
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('❌ Erro ao exportar trades:', err);
+            alert('Erro ao exportar trades para Excel. Tente novamente.');
         }
     }
 
@@ -315,8 +389,15 @@ export function ComboResultsPage() {
 
                     {/* Trades Table */}
                     <div className="glass-strong rounded-2xl overflow-hidden border border-white/10">
-                        <div className="p-6 border-b border-white/10">
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
                             <h2 className="text-xl font-bold text-white">Trade History</h2>
+                            <button
+                                onClick={handleExportTrades}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors shadow-lg hover:shadow-emerald-500/50"
+                            >
+                                <Download className="w-4 h-4" />
+                                Exportar para Excel
+                            </button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, Download } from 'lucide-react';
 
 interface Trade {
     entry_time: string;
@@ -23,13 +23,82 @@ interface TradesViewModalProps {
     trades: Trade[];
     title?: string;
     subtitle?: string;
+    symbol?: string;
+    templateName?: string;
+    timeframe?: string;
 }
 
-const TradesViewModal: React.FC<TradesViewModalProps> = ({ isOpen, onClose, trades, title = 'Trade History', subtitle }) => {
+const TradesViewModal: React.FC<TradesViewModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    trades, 
+    title = 'Trade History', 
+    subtitle,
+    symbol = '',
+    templateName = '',
+    timeframe = ''
+}) => {
     if (!isOpen) return null;
 
     // Sort trades by entry time (newest first)
     const sortedTrades = [...(trades || [])].sort((a, b) => new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime());
+
+    const handleExportTrades = async () => {
+        try {
+            // Prepare trades data for export
+            const tradesData = sortedTrades.map(trade => ({
+                entry_time: trade.entry_time,
+                entry_price: trade.entry_price,
+                exit_time: trade.exit_time || '',
+                exit_price: trade.exit_price || 0,
+                type: trade.type || trade.direction?.toLowerCase() || 'long',
+                profit: trade.pnl_pct || (trade.pnl && trade.initial_capital ? trade.pnl / trade.initial_capital : 0),
+                pnl: trade.pnl || 0,
+                initial_capital: trade.initial_capital || 100,
+                final_capital: trade.final_capital || (trade.initial_capital ? trade.initial_capital + (trade.pnl || 0) : 100)
+            }));
+
+            const response = await fetch('http://localhost:8000/api/combos/export-trades', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trades: tradesData,
+                    symbol: symbol || 'UNKNOWN',
+                    template_name: templateName || 'strategy',
+                    timeframe: timeframe || '1d'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao exportar trades');
+            }
+
+            // Get the blob and create download link
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Extract filename from Content-Disposition header or use default
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `${templateName || 'strategy'}_${(symbol || 'UNKNOWN').replace('/', '_')}_${timeframe || '1d'}_trades.xlsx`;
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+            
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('❌ Erro ao exportar trades:', err);
+            alert('Erro ao exportar trades para Excel. Tente novamente.');
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -48,12 +117,23 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({ isOpen, onClose, trad
                             </div>
                         )}
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {trades && trades.length > 0 && (
+                            <button
+                                onClick={handleExportTrades}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors shadow-lg hover:shadow-emerald-500/50"
+                            >
+                                <Download className="w-4 h-4" />
+                                Exportar para Excel
+                            </button>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-auto bg-[#0a0f0a]">

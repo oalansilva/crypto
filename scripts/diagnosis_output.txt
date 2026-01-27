@@ -1,0 +1,32 @@
+﻿.\.venv\Scripts\python.exe : 2026-01-26 22:40:30,316 - INFO - 
+================================================================================
+No C:\Users\alans.triggo\AppData\Local\Temp\ps-script-ad1d721f-8b06-4405-a90e-2e7b38b807ac.ps1:87 caractere:28
++ ... crypto_ant; .\.venv\Scripts\python.exe scripts\diagnose_metrics_discr ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-01-26 22:4...===============:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-01-26 22:40:30,316 - INFO - BacktestService initialized - logging to: 
+C:\projetos\crypto_ant\scripts\..\backend\logs\backtest_debug.log
+2026-01-26 22:40:34,517 - INFO - Local cache found for ETH/USDT 1d: data/storage\binance\ETH_USDT_1d.parquet
+2026-01-26 22:40:34,596 - INFO - Local data covers request. No network fetch needed.
+2026-01-26 22:40:34,598 - INFO - Returning 3086 rows for ETH/USDT 1d from 2017-01-01 00:00:00+00:00 to 2026-01-27 
+00:00:00+00:00
+
+================================================================================
+DIAGNËSTICO: ETH/USDT 1d - multi ma crossover
+================================================================================
+
+[OK] Dados carregados: 3086 candles
+Traceback (most recent call last):
+  File "C:\projetos\crypto_ant\scripts\diagnose_metrics_discrepancy.py", line 175, in <module>
+    diagnose_strategy()
+    ~~~~~~~~~~~~~~~~~^^
+  File "C:\projetos\crypto_ant\scripts\diagnose_metrics_discrepancy.py", line 42, in diagnose_strategy
+    strategy = service.create_strategy(
+        template_name=template_name,
+        parameters=parameters
+    )
+  File "C:\projetos\crypto_ant\scripts\..\backend\app\services\combo_service.py", line 138, in create_strategy
+    raise ValueError(f"Template '{template_name}' not found")
+ValueError: Template 'multi ma crossover' not found
