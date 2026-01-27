@@ -6,10 +6,12 @@ Endpoints for combo strategy templates, backtesting, and optimization.
 
 import logging
 from fastapi import APIRouter, HTTPException
-from typing import Optional
+from fastapi.responses import StreamingResponse
+from typing import Optional, List, Dict, Any
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import io
 
 from app.schemas.combo_params import (
     ComboBacktestRequest,
@@ -27,6 +29,91 @@ from app.services.combo_optimizer import ComboOptimizer
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
+
+
+@router.post("/export-trades")
+async def export_trades_to_excel(request: Dict[str, Any]):
+    """
+    Export trades to Excel file.
+    
+    Args:
+        request: Dict with 'trades', 'symbol', 'template_name', 'timeframe'
+    
+    Returns:
+        Excel file as streaming response
+    """
+    try:
+        trades = request.get('trades', [])
+        symbol = request.get('symbol', 'UNKNOWN')
+        template_name = request.get('template_name', 'strategy')
+        timeframe = request.get('timeframe', '1d')
+        
+        # Prepare data for Excel
+        excel_data = []
+        for trade in trades:
+            # Calculate P&L in USD
+            pnl_usd = trade.get('pnl', None)
+            if pnl_usd is None:
+                # If P&L not provided, calculate from profit percentage and initial capital
+                profit_pct = trade.get('profit', 0) if trade.get('profit') is not None else 0
+                initial_capital = trade.get('initial_capital', 100) if trade.get('initial_capital') is not None else 100
+                pnl_usd = initial_capital * profit_pct
+            
+            # Calculate Return %
+            return_pct = (trade.get('profit', 0) * 100) if trade.get('profit') is not None else 0
+            
+            excel_data.append({
+                'Entry Time': trade.get('entry_time', ''),
+                'Entry Price': trade.get('entry_price', 0),
+                'Exit Time': trade.get('exit_time', '') if trade.get('exit_time') else '',
+                'Exit Price': trade.get('exit_price', 0) if trade.get('exit_price') else '',
+                'Trade Type': trade.get('type', 'Long').upper() if trade.get('type') else 'LONG',
+                'P&L (USD)': round(pnl_usd, 2),
+                'Return %': round(return_pct, 2),
+                'Initial Capital': trade.get('initial_capital', 100) if trade.get('initial_capital') is not None else 100,
+                'Final Capital': trade.get('final_capital', 0) if trade.get('final_capital') is not None else (100 + pnl_usd),
+            })
+        
+        # Create DataFrame
+        df = pd.DataFrame(excel_data)
+        
+        # Create Excel file in memory
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Trades')
+            
+            # Get the workbook and worksheet
+            workbook = writer.book
+            worksheet = writer.sheets['Trades']
+            
+            # Auto-adjust column widths
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Generate filename
+        safe_symbol = symbol.replace('/', '_')
+        safe_template = template_name.replace(' ', '_')
+        filename = f"{safe_template}_{safe_symbol}_{timeframe}_trades.xlsx"
+        
+        return StreamingResponse(
+            io.BytesIO(output.read()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        logger.error(f"Error exporting trades to Excel: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error exporting trades: {str(e)}")
 
 
 @router.get("/templates", response_model=TemplateListResponse)
@@ -219,50 +306,53 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         df_with_signals = strategy.generate_signals(df)
         logger.info(f"Generated signals for {len(df_with_signals)} candles")
         
-        # Execute backtest
-        from src.engine.backtester import Backtester
+        # Use unified trade extraction logic (same as optimizer)
+        from app.services.combo_optimizer import extract_trades_from_signals
         
         # Override stop_loss if provided in request, otherwise use strategy's default
         stop_loss_pct = request.stop_loss if request.stop_loss is not None else strategy.stop_loss
         
-        backtester = Backtester(
-            initial_capital=10000,
-            stop_loss_pct=stop_loss_pct
-        )
+        # Extract trades using unified logic (executes at CLOSE, includes stop loss, uses 0.075% fee)
+        trades = extract_trades_from_signals(df_with_signals, stop_loss_pct)
         
-        # Backtester run expects df and strategy
-        # It handles signal generation internally, so we can pass raw df or df_with_signals
-        df_results = backtester.run(
-            df,
-            strategy=strategy
-        )
+        logger.info(f"Backtest complete: {len(trades)} trades extracted")
         
-        trades = backtester.trades
-        logger.info(f"Backtest complete: {len(trades)} trades executed")
+        # All trades from extract_trades_from_signals are closed (have exit_time)
+        trades_for_metrics = trades
         
-        # Calculate metrics
-        total_trades = len(trades)
-        winning_trades = sum(1 for t in trades if t.get('profit', 0) > 0)
+        # Calculate metrics using same logic as combo_optimizer
+        total_trades = len(trades_for_metrics)
+        winning_trades = sum(1 for t in trades_for_metrics if t.get('profit', 0) > 0)
         
-        # Convert timestamps and numpy types in trades to string/native (JSON serialization)
-        for t in trades:
-            if 'entry_time' in t and hasattr(t['entry_time'], 'isoformat'):
-                t['entry_time'] = t['entry_time'].isoformat()
-            if 'exit_time' in t and hasattr(t['exit_time'], 'isoformat'):
-                t['exit_time'] = t['exit_time'].isoformat()
-            
-            # Convert numpy types
-            for k, v in t.items():
-                if isinstance(v, (np.integer, np.int64)):
-                    t[k] = int(v)
-                elif isinstance(v, (np.floating, np.float64)):
-                    t[k] = float(v)
+        # Compounded Return (same as combo_optimizer)
+        compounded_capital = 1.0
+        for t in trades_for_metrics:
+            profit_pct = t.get('profit', 0) if t.get('profit') is not None else 0
+            compounded_capital *= (1.0 + profit_pct)
+        total_return_pct = (compounded_capital - 1.0) * 100.0
+        
+        # Max Drawdown from equity curve built from trades
+        max_drawdown_pct = 0.0
+        if len(trades_for_metrics) > 0:
+            equity = 1.0
+            peak = 1.0
+            max_dd = 0.0
+            for t in trades_for_metrics:
+                equity *= (1.0 + t.get('profit', 0))
+                if equity > peak:
+                    peak = equity
+                drawdown = (peak - equity) / peak
+                max_dd = max(max_dd, drawdown)
+            max_drawdown_pct = max_dd * 100.0  # Convert to percentage
         
         metrics = {
             "total_trades": total_trades,
             "win_rate": winning_trades / total_trades if total_trades > 0 else 0,
-            "total_return": sum([t.get('profit', 0) for t in trades]),
-            "avg_profit": sum([t.get('profit', 0) for t in trades]) / total_trades if total_trades > 0 else 0
+            "total_return": total_return_pct / 100.0,  # Store as decimal (0.4653 for 46.53%)
+            "total_return_pct": total_return_pct,  # Also store as percentage for compatibility
+            "avg_profit": total_return_pct / total_trades if total_trades > 0 else 0,
+            "max_drawdown": max_drawdown_pct / 100.0,  # Store as decimal
+            "max_drawdown_pct": max_drawdown_pct  # Also store as percentage
         }
         
         # Get indicator data for chart

@@ -33,11 +33,17 @@ from app.services.deep_backtest import simulate_execution_with_15m
 def extract_trades_from_signals(df_with_signals, stop_loss: float):
     """
     Extract trades from signals with consistent logic:
-    - Intra-candle Stop Loss (Low vs Stop Price)
-    - Binance Fees (0.075% per op)
+    - Execute at CLOSE of candle where signal appears (standard behavior)
+    - Intra-candle Stop Loss (Low vs Stop Price) - checked before signal processing
+    - Binance Fees (0.075% per op) - applied on both entry and exit
     - Exit at exact Stop Price if triggered
+    
+    IMPORTANT: 
+    - Signal at CLOSE of candle i means execute at CLOSE of candle i (same candle)
+    - Stop loss is checked first (intra-candle) before processing signals
+    - All trades use fee of 0.075% (Binance spot fee)
     """
-    TRADING_FEE = 0.00075
+    TRADING_FEE = 0.00075  # Binance spot fee: 0.075%
     trades = []
     position = None
     
@@ -51,8 +57,7 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
             entry_price = position['entry_price']
             
             # Intra-candle stop check
-            # We use (Low - Entry) / Entry for quick check
-            # Or simpler: Low <= Entry * (1 - Stop)
+            # Stop loss is triggered if low price reaches or goes below stop price
             exact_stop_price = entry_price * (1 - stop_loss_pct)
             
             if current_low <= exact_stop_price:
@@ -71,16 +76,19 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
                 continue  # Skip signal check for this candle
 
         # Check signals
+        # Signal at CLOSE of candle i means execute at CLOSE of candle i (same candle)
+        # This is the standard behavior: see signal, execute at close of same candle
         if row['signal'] == 1 and position is None:
+            # Entry signal: Execute at CLOSE of current candle
             # Keep UTC timezone to match TradingView
             position = {
                 'entry_time': idx.isoformat(),
-                'entry_price': float(row['open']), # Execute at OPEN
+                'entry_price': float(row['close']),  # Execute at CLOSE
                 'type': 'long'
             }
         elif row['signal'] == -1 and position is not None:
-            # Normal exit (Signal) - execute at OPEN
-            exit_price = float(row['open'])
+            # Exit signal: Execute at CLOSE of current candle
+            exit_price = float(row['close'])
             entry_price = position['entry_price']
             
             position['exit_time'] = idx.isoformat()
