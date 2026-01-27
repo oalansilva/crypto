@@ -28,6 +28,22 @@ from src.data.incremental_loader import IncrementalLoader
 from app.services.deep_backtest import simulate_execution_with_15m
 
 # -----------------------------------------------------------------------------
+# WORKER LOGGING (ProcessPoolExecutor workers run in separate processes)
+# -----------------------------------------------------------------------------
+def _init_worker_logging():
+    """Configura logging nos workers para gravar em full_execution_log.txt (mesmo arquivo do main)."""
+    log_file = Path(__file__).resolve().parents[2] / "full_execution_log.txt"
+    root = logging.getLogger()
+    for h in root.handlers:
+        if isinstance(h, logging.FileHandler) and (getattr(h, "baseFilename", "") or "").endswith("full_execution_log.txt"):
+            return
+    fh = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    root.addHandler(fh)
+
+
+# -----------------------------------------------------------------------------
 # SHARED LOGIC HELPER
 # -----------------------------------------------------------------------------
 def extract_trades_from_signals(df_with_signals, stop_loss: float):
@@ -296,10 +312,16 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             df_15m_cache=df_15m_cache
         )
 
+        # Construct full effective parameters (médias, stop) para log de "profit fora do range"
+        full_params = {}
+        for ind in indicators:
+            p_prefix = ind.get("alias") or ind.get("type")
+            for pk, pv in ind.get("params", {}).items():
+                full_params[f"{p_prefix}_{pk}"] = pv
+        full_params["stop_loss"] = stop_loss
 
-        
         # Métricas via fonte única (_metrics_from_trades) – scoring e exibição consistentes
-        metrics = _metrics_from_trades(trades, initial_capital)
+        metrics = _metrics_from_trades(trades, initial_capital, context_params=full_params)
 
         if len(trades) > 0:
             atr_col = next((c for c in df.columns if c.startswith('ATR')), None)
@@ -307,15 +329,6 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             metrics['avg_atr'] = df[atr_col].mean() if atr_col else 0
             metrics['avg_adx'] = df[adx_col].mean() if adx_col else 0
 
-        # Construct full effective parameters for logging
-        full_params = {}
-        for ind in indicators:
-            p_prefix = ind.get("alias") or ind.get("type")
-            for pk, pv in ind.get("params", {}).items():
-                full_params[f"{p_prefix}_{pk}"] = pv
-        
-        full_params['stop_loss'] = stop_loss
-        
         return metrics, full_params
         
     except Exception as e:
@@ -1192,7 +1205,7 @@ class ComboOptimizer:
             completed_batches = 0
             processed_combinations = 0
             
-            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers, initializer=_init_worker_logging) as executor:
                 futures = {executor.submit(_worker_run_batch, batch): i for i, batch in enumerate(worker_batches)}
                 
                 for future in concurrent.futures.as_completed(futures):
@@ -1585,7 +1598,7 @@ class ComboOptimizer:
             
             # Recompute core metrics from final backtest trades (same set as returned to frontend)
             # Fixes Total Return / Win Rate mismatch vs. "List of trades" / Cumulative P&L
-            core_from_final = _metrics_from_trades(trades, initial_capital=100)
+            core_from_final = _metrics_from_trades(trades, initial_capital=100, context_params=best_params)
             if best_metrics is not None:
                 best_metrics.update(core_from_final)
             
@@ -1675,11 +1688,12 @@ class ComboOptimizer:
 
 
 
-def _metrics_from_trades(trades: list, initial_capital: float = 100) -> dict:
+def _metrics_from_trades(trades: list, initial_capital: float = 100, context_params: Optional[Dict[str, Any]] = None) -> dict:
     """
     Single source of truth for all metrics derived from a trade list.
     Used by _run_backtest_logic (optimization scoring) and final backtest.
     Ensures Sharpe, Total Return, Win Rate, etc. are always computed the same way.
+    context_params: opcional; se fornecido, é logado nos warnings "profit fora do range" (médias, stop, etc.).
     """
     import numpy as np
 
@@ -1713,20 +1727,13 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100) -> dict:
     sorted_trades = sorted(trades, key=_ts)
 
     # Coletar returns válidos; ignorar apenas trades com profit None
-    # profit é decimal: 0.05 = 5%, 1.66 = 166% (ganhos >100% são válidos em crypto)
+    # profit é decimal: 0.05 = 5%, 1.66 = 166%, 16.32 = 1632% — ganhos >100% são válidos (ex.: TradingView)
     returns = []
     for t in sorted_trades:
         p = t.get('profit')
         if p is None:
             continue
-        p = float(p)
-        # Só rejeitar valores impossíveis: perda >100% (< -1) ou suspeitos (> 1000%)
-        if p < -1.0 or p > 10.0:
-            logging.getLogger(__name__).warning(
-                f"Profit fora do range plausível [-1, 10]: {p}. Trade ignorado no cálculo."
-            )
-            continue
-        returns.append(p)
+        returns.append(float(p))
 
     n = len(returns)
     if n == 0:

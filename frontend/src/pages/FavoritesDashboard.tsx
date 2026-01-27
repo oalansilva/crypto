@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Play, Trash2, Search, List, ChevronDown, Activity, BarChart3 } from 'lucide-react';
+import { Trash2, Search, List, ChevronDown, Activity, BarChart3 } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
 
 import * as XLSX from 'xlsx';
@@ -64,17 +64,6 @@ const FavoritesDashboard: React.FC = () => {
             setSelectedIds(prev => prev.filter(sid => sid !== id));
         }
     });
-
-    const handleRun = (fav: FavoriteStrategy) => {
-        const params = new URLSearchParams();
-        params.set('symbol', fav.symbol);
-        params.set('timeframe', fav.timeframe);
-        params.set('strategy', fav.strategy_name);
-        Object.entries(fav.parameters).forEach(([key, value]) => {
-            params.set(key, String(value));
-        });
-        navigate(`/optimize/risk?${params.toString()}`);
-    };
 
     const handleViewResults = async (fav: FavoriteStrategy) => {
         setLoadingBacktestId(fav.id);
@@ -483,13 +472,6 @@ const FavoritesDashboard: React.FC = () => {
                                                             ) : (
                                                                 <BarChart3 className="w-4 h-4" />
                                                             )}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleRun(fav)}
-                                                            className="p-1.5 hover:bg-blue-500/20 rounded-lg text-blue-400 hover:text-blue-300 transition-colors"
-                                                            title="Run Strategy"
-                                                        >
-                                                            <Play className="w-4 h-4" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(fav.id)}
