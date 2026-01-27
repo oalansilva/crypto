@@ -37,7 +37,7 @@ class OpportunityService:
         
         # Query existing favorite_strategies table
         cursor.execute("""
-            SELECT id, name, symbol, timeframe, strategy_name, parameters
+            SELECT id, name, symbol, timeframe, strategy_name, parameters, notes
             FROM favorite_strategies
         """)
         rows = cursor.fetchall()
@@ -49,9 +49,14 @@ class OpportunityService:
             if isinstance(r['parameters'], str):
                 try:
                     r['parameters'] = json.loads(r['parameters'])
-                except:
+                except Exception as e:
+                    logger.warning(f"Failed to parse parameters JSON for favorite {r.get('id')}: {e}")
                     r['parameters'] = {}
             favorites.append(r)
+        
+        logger.info(f"Loaded {len(favorites)} favorite strategies from database")
+        for fav in favorites:
+            logger.debug(f"  - ID {fav['id']}: {fav['symbol']} {fav['timeframe']} - {fav['strategy_name']}")
             
         conn.close()
         return favorites
@@ -68,8 +73,13 @@ class OpportunityService:
         favorites = self.get_favorites()
         opportunities = []
         
+        logger.info(f"Processing {len(favorites)} favorite strategies")
+        
         # Cache for data to avoid refetching same symbol/timeframe
         data_cache = {}
+        
+        # Track skipped strategies for debugging
+        skipped_strategies = []
 
         for fav in favorites:
             try:
@@ -77,6 +87,8 @@ class OpportunityService:
                 tf = fav['timeframe']
                 template_name = fav['strategy_name']
                 params = fav['parameters']
+                
+                logger.debug(f"Processing strategy {fav['id']}: {symbol} {tf} - {template_name}")
                 
                 # 1. Fetch Data (1D usually)
                 # 1. Fetch Data (1D usually)
@@ -97,13 +109,28 @@ class OpportunityService:
                 df = data_cache[cache_key].copy()
                 
                 if df.empty:
+                    logger.warning(f"Strategy {fav['id']} ({symbol} {tf}): No data available (df.empty)")
+                    logger.warning(f"  This may indicate: 1) Symbol not available on exchange, 2) Cache file is empty/corrupt, 3) Network/API issue")
+                    skipped_strategies.append({
+                        'id': fav['id'],
+                        'symbol': symbol,
+                        'timeframe': tf,
+                        'reason': 'No data available (df.empty) - Check if symbol is valid or cache needs refresh'
+                    })
                     continue
 
                 # 2. Get Template Metadata from Database (entry_logic and exit_logic)
                 # This dynamically loads the buy/sell rules from combo_templates table
                 meta = self.combo_service.get_template_metadata(template_name)
                 if not meta:
-                    logger.warning(f"Template {template_name} not found for favorite {fav['id']}")
+                    logger.warning(f"Strategy {fav['id']} ({symbol} {tf}): Template '{template_name}' not found")
+                    skipped_strategies.append({
+                        'id': fav['id'],
+                        'symbol': symbol,
+                        'timeframe': tf,
+                        'template_name': template_name,
+                        'reason': f"Template '{template_name}' not found"
+                    })
                     continue
                 
                 # Metadata is already flattened (contains indicators, entry_logic, exit_logic from DB)
@@ -527,6 +554,7 @@ class OpportunityService:
                     'timeframe': tf,
                     'template_name': template_name,
                     'name': fav['name'], # User custom name
+                    'notes': fav.get('notes'),
                     'is_holding': is_holding,
                     'distance_to_next_status': final_distance,
                     'next_status_label': next_status_label,
@@ -540,7 +568,15 @@ class OpportunityService:
                 })
                 
             except Exception as e:
-                logger.error(f"Error analyzing favorite {fav['id']}: {e}")
+                import traceback
+                logger.error(f"Error analyzing favorite {fav.get('id', 'unknown')} ({fav.get('symbol', 'unknown')} {fav.get('timeframe', 'unknown')}): {e}")
+                logger.error(traceback.format_exc())
+                skipped_strategies.append({
+                    'id': fav.get('id', 'unknown'),
+                    'symbol': fav.get('symbol', 'unknown'),
+                    'timeframe': fav.get('timeframe', 'unknown'),
+                    'reason': f"Exception: {str(e)}"
+                })
                 continue
 
         # Sort by distance to next status (closest first)
@@ -549,5 +585,12 @@ class OpportunityService:
             0 if x['is_holding'] else 1,  # Holding first
             x['distance_to_next_status'] if x['distance_to_next_status'] is not None else 999
         ))
+        
+        # Log summary
+        logger.info(f"Successfully processed {len(opportunities)} strategies out of {len(favorites)} favorites")
+        if skipped_strategies:
+            logger.warning(f"Skipped {len(skipped_strategies)} strategies:")
+            for skipped in skipped_strategies:
+                logger.warning(f"  - ID {skipped['id']}: {skipped.get('symbol', 'unknown')} {skipped.get('timeframe', 'unknown')} - {skipped['reason']}")
         
         return opportunities

@@ -180,6 +180,13 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                             <span className="font-medium text-gray-800 dark:text-gray-200 break-words">{statusMessage}</span>
                         </div>
                     </div>
+
+                    {opportunity.notes && (
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-sm border border-slate-200 dark:border-slate-600">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Notes</span>
+                            <p className="mt-1 font-medium text-slate-700 dark:text-slate-200 break-words">{opportunity.notes}</p>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

@@ -28,9 +28,12 @@ class IncrementalLoader:
         filename = f"{safe_symbol}_{timeframe}.parquet"
         return os.path.join(self.base_path, filename)
 
-    def fetch_data(self, symbol, timeframe, since_str, until_str=None, limit=1000, progress_callback=None):
+    def fetch_data(self, symbol, timeframe, since_str, until_str=None, limit=1000, progress_callback=None, _retry_count=0):
         """
         Smart fetch: Check local Parquet -> Download Delta -> Append -> Return Slice
+        
+        Args:
+            _retry_count: Internal parameter to prevent infinite recursion (max 1 retry)
         """
         # Parse Dates (Ensure UTC)
         # Handle None values - default to full history
@@ -153,7 +156,21 @@ class IncrementalLoader:
              df_final = df_local
              
         if df_final.empty:
-            logger.warning("No data available.")
+            # If we have a cache file but it's empty, try to force a full re-download (only once to prevent infinite recursion)
+            if os.path.exists(parquet_path) and _retry_count == 0:
+                logger.warning(f"Cache file exists for {symbol} {timeframe} but is empty. Attempting full re-download...")
+                try:
+                    os.remove(parquet_path)
+                    logger.info(f"Deleted empty cache file. Retrying download for {symbol} {timeframe}...")
+                    # Retry with fresh download from inception (with retry flag to prevent infinite loop)
+                    return self.fetch_data(symbol, timeframe, since_str, until_str, limit, progress_callback, _retry_count=1)
+                except Exception as e:
+                    logger.error(f"Error removing cache file: {e}")
+            else:
+                if _retry_count > 0:
+                    logger.error(f"Still no data after retry for {symbol} {timeframe}. This may indicate the symbol is not available on the exchange or the timeframe is invalid.")
+                else:
+                    logger.warning(f"No data available for {symbol} {timeframe} and no cache file exists.")
             return df_final
             
         # 5. Return Requested Slice
@@ -171,6 +188,74 @@ class IncrementalLoader:
         # Set index to timestamp_utc for easier time-based operations
         if 'timestamp_utc' in df_slice.columns:
             df_slice.set_index('timestamp_utc', inplace=True)
+        
+        # If we have no data in the requested range, check if cache has usable data
+        if df_slice.empty and os.path.exists(parquet_path) and _retry_count == 0:
+            logger.warning(f"No data in requested range for {symbol} {timeframe}. Checking cache...")
+            try:
+                df_check = pd.read_parquet(parquet_path)
+                if df_check.empty:
+                    logger.warning(f"Cache file for {symbol} {timeframe} is empty. Attempting full re-download...")
+                    # Delete the empty/corrupt cache file
+                    os.remove(parquet_path)
+                    # Retry with fresh download from inception (with retry flag to prevent infinite loop)
+                    return self.fetch_data(symbol, timeframe, since_str, until_str, limit, progress_callback, _retry_count=1)
+                else:
+                    # Cache has data but not in the requested range
+                    if 'timestamp_utc' in df_check.columns:
+                        cache_start = df_check['timestamp_utc'].min()
+                        cache_end = df_check['timestamp_utc'].max()
+                        logger.warning(f"Cache for {symbol} {timeframe} has data from {cache_start} to {cache_end}, but requested range is {since_dt} to {until_dt}")
+                        
+                        # If cache has recent data (within last 600 days), use it even if it doesn't cover the exact requested period
+                        # This is useful for indicators that need historical data but can work with available data
+                        days_diff = (until_dt - cache_end).days
+                        if days_diff < 600 and len(df_check) > 100:  # Has reasonable amount of data
+                            logger.info(f"Using available cache data (ends {days_diff} days before requested end date). This should be sufficient for indicator calculations.")
+                            # Return all available cache data
+                            df_check.set_index('timestamp_utc', inplace=True)
+                            logger.info(f"Returning {len(df_check)} rows from cache for {symbol} {timeframe} (using available data)")
+                            return df_check
+                        else:
+                            # Cache is too old or insufficient, try to download missing data
+                            logger.info(f"Cache data is too old ({days_diff} days) or insufficient ({len(df_check)} rows). Attempting to download missing data...")
+                            # Try to download from cache_end to until_dt
+                            try:
+                                cache_end_ts = int(cache_end.timestamp() * 1000)
+                                until_ts_int = int(until_dt.timestamp() * 1000)
+                                df_new = self._download_loop(symbol, timeframe, cache_end_ts + 1, until_ts_int, limit)
+                                if not df_new.empty:
+                                    # Merge new data with cache
+                                    df_check_reset = df_check.reset_index()
+                                    df_combined = pd.concat([df_check_reset, df_new])
+                                    df_combined.drop_duplicates(subset=['timestamp'], keep='last', inplace=True)
+                                    df_combined.sort_values('timestamp', inplace=True)
+                                    df_combined.to_parquet(parquet_path, index=False)
+                                    df_combined.set_index('timestamp_utc', inplace=True)
+                                    logger.info(f"Successfully downloaded and merged new data. Returning {len(df_combined)} rows for {symbol} {timeframe}")
+                                    return df_combined
+                                else:
+                                    # Download failed, but use available cache data if it's recent enough
+                                    if days_diff < 600 and len(df_check) > 100:
+                                        logger.warning(f"Download failed, but using available cache data (ends {days_diff} days before requested)")
+                                        df_check.set_index('timestamp_utc', inplace=True)
+                                        return df_check
+                            except Exception as download_error:
+                                logger.error(f"Error downloading missing data: {download_error}")
+                                # Fallback: use available cache if reasonable
+                                if days_diff < 600 and len(df_check) > 100:
+                                    logger.warning(f"Using available cache data despite download error")
+                                    df_check.set_index('timestamp_utc', inplace=True)
+                                    return df_check
+                    else:
+                        logger.warning(f"Cache for {symbol} {timeframe} exists but timestamp_utc column not found")
+            except Exception as e:
+                logger.error(f"Error checking cache file: {e}. Attempting full re-download...")
+                try:
+                    os.remove(parquet_path)
+                    return self.fetch_data(symbol, timeframe, since_str, until_str, limit, progress_callback, _retry_count=1)
+                except:
+                    pass
         
         logger.info(f"Returning {len(df_slice)} rows for {symbol} {timeframe} from {since_dt} to {until_dt}")
         return df_slice

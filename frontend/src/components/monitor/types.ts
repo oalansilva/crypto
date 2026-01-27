@@ -4,6 +4,7 @@ export interface Opportunity {
     timeframe: string;
     template_name: string;
     name: string;
+    notes?: string;
     // Simplified model
     is_holding: boolean;
     distance_to_next_status: number | null;
