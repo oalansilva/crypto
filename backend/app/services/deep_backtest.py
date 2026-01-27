@@ -27,7 +27,13 @@ def simulate_execution_with_15m(
     This function implements "Deep Backtesting" by:
     1. Generating signals on daily (1D) candles
     2. Simulating execution using 15m candles to determine exact exit timing
-    3. Checking stop/target/reversal candle-by-candle in chronological order
+    3. Checking stop loss FIRST, then exit signals (stop loss has priority)
+    
+    CRITICAL PRIORITY RULES:
+    - STOP LOSS ALWAYS has priority over exit signals
+    - Stop loss is checked FIRST in the period between entry and exit signal
+    - If stop loss is triggered, exit immediately at stop price
+    - Exit signals are only used if stop loss was not triggered
     
     OPTIMIZATION NOTE:
     Uses vectorized operations for finding intraday stop losses to avoid
@@ -78,7 +84,11 @@ def simulate_execution_with_15m(
         entry_price = float(entry_row['open'])
         exact_stop_price = entry_price * (1 - stop_loss_pct)
         
-        # 2. Find the NEXT exit signal after this entry
+        # PRIORIDADE: Stop loss is checked FIRST, before exit signals
+        # We need to find the exit signal to know the maximum period to check for stop loss
+        # But stop loss will ALWAYS take priority if triggered
+        
+        # 2. Find the NEXT exit signal after this entry (to know maximum period to check stop loss)
         # Use searchsorted on the pre-fetched exit_times (O(log M))
         # strictly greater than entry_time
         next_exit_idx = exit_times.searchsorted(entry_time, side='right')
@@ -93,11 +103,13 @@ def simulate_execution_with_15m(
             signal_exit_price = float(df_daily_signals.iloc[-1]['close'])
             reason_end = "end_of_period"
 
-        # 3. Vectorized Intraday Check (Numpy) - ONLY for stop loss detection
+        # 3. PRIORIDADE 1: Vectorized Intraday Check (Numpy) - STOP LOSS DETECTION
+        # Stop loss is checked FIRST and has priority over exit signals
         # 15m data is used to detect if stop loss was hit during the day
         # Stop loss can execute immediately when detected (simulating real broker behavior)
         # Entry/exit signals execute at OPEN of daily candles (next day after signal detection)
         # Find range in 15m data: [Entry Time, Signal Exit Time)
+        # If stop loss is hit, it takes priority and we exit immediately
         
         if len(times_15m) > 0:
             # Use searchsorted to find indices (O(log N))
@@ -107,13 +119,15 @@ def simulate_execution_with_15m(
             # Slice numpy array (O(1) view)
             chunk_lows = lows_15m[start_idx:end_idx]
             
-            # Check for Stop Loss Hit
+            # Check for Stop Loss Hit - PRIORITY CHECK
+            # Stop loss is checked FIRST and has priority over exit signals
             if stop_loss_pct > 0 and chunk_lows.size > 0:
                 # Find indices where low <= stop_price
                 hit_indices = np.where(chunk_lows <= exact_stop_price)[0]
                 
                 if hit_indices.size > 0:
-                    # Stop was hit!
+                    # STOP LOSS WAS HIT - EXIT IMMEDIATELY
+                    # Stop loss has priority over exit signals
                     hit_offset = hit_indices[0]
                     first_hit_time = times_15m[start_idx + hit_offset]
                     
@@ -123,17 +137,22 @@ def simulate_execution_with_15m(
                          final_exit_time = final_exit_time.tz_localize(entry_time.tz)
 
                     final_exit_price = exact_stop_price
-                    exit_reason = "stop_loss"
+                    exit_reason = "stop_loss"  # Stop loss takes priority
                 else:
+                    # PRIORIDADE 2: No stop loss hit, use exit signal
+                    # Stop loss was not triggered, so we can use the exit signal
                     final_exit_time = signal_exit_time
                     final_exit_price = signal_exit_price
                     exit_reason = reason_end
             else:
+                # No stop loss configured or no 15m data in range
+                # PRIORIDADE 2: Use exit signal
                 final_exit_time = signal_exit_time
                 final_exit_price = signal_exit_price
                 exit_reason = reason_end
         else:
-             # No 15m data
+             # No 15m data available
+             # PRIORIDADE 2: Use exit signal (cannot check stop loss without 15m data)
             final_exit_time = signal_exit_time
             final_exit_price = signal_exit_price
             exit_reason = reason_end
@@ -147,6 +166,12 @@ def simulate_execution_with_15m(
             (entry_price * (1 + TRADING_FEE))
         ) / (entry_price * (1 + TRADING_FEE))
         
+        # Determinar signal_type baseado no exit_reason
+        if exit_reason == "stop_loss":
+            signal_type = "Stop"
+        else:
+            signal_type = "Close entry(s) order..."
+        
         trades.append({
             'entry_time': entry_time.isoformat(),
             'entry_price': entry_price,
@@ -154,7 +179,9 @@ def simulate_execution_with_15m(
             'exit_time': final_exit_time.isoformat(),
             'exit_price': float(final_exit_price),
             'profit': profit,
-            'exit_reason': "stop_loss_15m" if exit_reason == "stop_loss" else "signal_15m"
+            'exit_reason': "stop_loss_15m" if exit_reason == "stop_loss" else "signal_15m",
+            'signal_type': signal_type,  # Tipo de sinal para Tradeview
+            'entry_signal_type': 'Comprar'  # Tipo de sinal de entrada para Tradeview
         })
 
     # logger.info(f"Deep Backtest complete: {len(trades)} trades extracted")

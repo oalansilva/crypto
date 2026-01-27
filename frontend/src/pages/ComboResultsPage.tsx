@@ -92,12 +92,26 @@ export function ComboResultsPage() {
                     pnl = initialCapital * trade.profit;
                 }
                 
+                // Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
+                let signalType = (trade as any).signal_type || '';
+                if (!signalType) {
+                    const exitReason = (trade as any).exit_reason || '';
+                    if (exitReason && exitReason.toLowerCase().includes('stop')) {
+                        signalType = 'Stop';
+                    } else if (exitReason) {
+                        signalType = 'Close entry(s) order...';
+                    } else {
+                        signalType = (trade as any).entry_signal_type || 'Comprar';
+                    }
+                }
+                
                 return {
                     entry_time: trade.entry_time,
                     entry_price: trade.entry_price,
                     exit_time: trade.exit_time || '',
                     exit_price: trade.exit_price || 0,
                     type: trade.type || 'long',
+                    signal_type: signalType,  // Incluir signal_type para exportação
                     profit: trade.profit || 0,
                     pnl: pnl || 0,
                     initial_capital: trade.initial_capital || 100,
@@ -407,31 +421,59 @@ export function ComboResultsPage() {
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Entry Price</th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Exit Time</th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Exit Price</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Signal</th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase">Profit</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
-                                    {result.trades.map((trade, i) => (
-                                        <tr key={i} className="hover:bg-white/5 transition-colors">
-                                            <td className="px-6 py-4 text-sm text-gray-300">{new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}</td>
-                                            <td className="px-6 py-4 text-sm text-white font-mono">${trade.entry_price.toFixed(2)}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-300">
-                                                {trade.exit_time ? new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' }) : '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-white font-mono">
-                                                {trade.exit_price ? `$${trade.exit_price.toFixed(2)}` : '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm">
-                                                {trade.profit !== undefined ? (
-                                                    <span className={`font-bold ${trade.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                        {trade.profit >= 0 ? '+' : ''}{(trade.profit * 100).toFixed(2)}%
+                                    {result.trades.map((trade, i) => {
+                                        // Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
+                                        let signalType = (trade as any).signal_type || '';
+                                        if (!signalType) {
+                                            const exitReason = (trade as any).exit_reason || '';
+                                            if (exitReason && exitReason.toLowerCase().includes('stop')) {
+                                                signalType = 'Stop';
+                                            } else if (exitReason) {
+                                                signalType = 'Close entry(s) order...';
+                                            } else {
+                                                signalType = (trade as any).entry_signal_type || 'Comprar';
+                                            }
+                                        }
+                                        
+                                        // Determinar cor do badge baseado no tipo de sinal
+                                        const getSignalColor = (signal: string) => {
+                                            if (signal === 'Stop') return 'bg-red-500/20 text-red-400 border-red-500/30';
+                                            if (signal === 'Comprar') return 'bg-green-500/20 text-green-400 border-green-500/30';
+                                            return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                                        };
+                                        
+                                        return (
+                                            <tr key={i} className="hover:bg-white/5 transition-colors">
+                                                <td className="px-6 py-4 text-sm text-gray-300">{new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}</td>
+                                                <td className="px-6 py-4 text-sm text-white font-mono">${trade.entry_price.toFixed(2)}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-300">
+                                                    {trade.exit_time ? new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' }) : '-'}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-white font-mono">
+                                                    {trade.exit_price ? `$${trade.exit_price.toFixed(2)}` : '-'}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    <span className={`px-2 py-1 rounded text-xs font-medium border ${getSignalColor(signalType)}`}>
+                                                        {signalType}
                                                     </span>
-                                                ) : (
-                                                    <span className="text-gray-500">Open</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    {trade.profit !== undefined ? (
+                                                        <span className={`font-bold ${trade.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                            {trade.profit >= 0 ? '+' : ''}{(trade.profit * 100).toFixed(2)}%
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-500">Open</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

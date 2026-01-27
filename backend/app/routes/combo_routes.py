@@ -62,12 +62,26 @@ async def export_trades_to_excel(request: Dict[str, Any]):
             # Calculate Return %
             return_pct = (trade.get('profit', 0) * 100) if trade.get('profit') is not None else 0
             
+            # Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
+            signal_type = trade.get('signal_type', '')
+            if not signal_type:
+                # Se não tiver signal_type, tentar inferir do exit_reason
+                exit_reason = trade.get('exit_reason', '')
+                if 'stop' in str(exit_reason).lower():
+                    signal_type = 'Stop'
+                elif exit_reason:
+                    signal_type = 'Close entry(s) order...'
+                else:
+                    # Se for entrada, usar entry_signal_type
+                    signal_type = trade.get('entry_signal_type', 'Comprar')
+            
             excel_data.append({
                 'Entry Time': trade.get('entry_time', ''),
                 'Entry Price': trade.get('entry_price', 0),
                 'Exit Time': trade.get('exit_time', '') if trade.get('exit_time') else '',
                 'Exit Price': trade.get('exit_price', 0) if trade.get('exit_price') else '',
                 'Trade Type': trade.get('type', 'Long').upper() if trade.get('type') else 'LONG',
+                'Signal': signal_type,  # Tipo de sinal (Stop/Comprar/Close entry(s) order...)
                 'P&L (USD)': round(pnl_usd, 2),
                 'Return %': round(return_pct, 2),
                 'Initial Capital': trade.get('initial_capital', 100) if trade.get('initial_capital') is not None else 100,

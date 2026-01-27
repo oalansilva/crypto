@@ -15,6 +15,8 @@ interface Trade {
     final_capital?: number;
     entry_reason?: string;
     exit_reason?: string;
+    signal_type?: string;
+    entry_signal_type?: string;
 }
 
 interface TradesViewModalProps {
@@ -46,17 +48,33 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({
     const handleExportTrades = async () => {
         try {
             // Prepare trades data for export
-            const tradesData = sortedTrades.map(trade => ({
-                entry_time: trade.entry_time,
-                entry_price: trade.entry_price,
-                exit_time: trade.exit_time || '',
-                exit_price: trade.exit_price || 0,
-                type: trade.type || trade.direction?.toLowerCase() || 'long',
-                profit: trade.pnl_pct || (trade.pnl && trade.initial_capital ? trade.pnl / trade.initial_capital : 0),
-                pnl: trade.pnl || 0,
-                initial_capital: trade.initial_capital || 100,
-                final_capital: trade.final_capital || (trade.initial_capital ? trade.initial_capital + (trade.pnl || 0) : 100)
-            }));
+            const tradesData = sortedTrades.map(trade => {
+                // Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
+                let signalType = trade.signal_type || '';
+                if (!signalType) {
+                    const exitReason = trade.exit_reason || '';
+                    if (exitReason && exitReason.toLowerCase().includes('stop')) {
+                        signalType = 'Stop';
+                    } else if (exitReason) {
+                        signalType = 'Close entry(s) order...';
+                    } else {
+                        signalType = trade.entry_signal_type || 'Comprar';
+                    }
+                }
+                
+                return {
+                    entry_time: trade.entry_time,
+                    entry_price: trade.entry_price,
+                    exit_time: trade.exit_time || '',
+                    exit_price: trade.exit_price || 0,
+                    type: trade.type || trade.direction?.toLowerCase() || 'long',
+                    signal_type: signalType,  // Incluir signal_type para exportação
+                    profit: trade.pnl_pct || (trade.pnl && trade.initial_capital ? trade.pnl / trade.initial_capital : 0),
+                    pnl: trade.pnl || 0,
+                    initial_capital: trade.initial_capital || 100,
+                    final_capital: trade.final_capital || (trade.initial_capital ? trade.initial_capital + (trade.pnl || 0) : 100)
+                };
+            });
 
             const response = await fetch('http://localhost:8000/api/combos/export-trades', {
                 method: 'POST',
@@ -146,6 +164,7 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({
                                 <th className="px-6 py-4 border-r border-white/5">Type</th>
                                 <th className="px-6 py-4 text-right border-r border-white/5">Entry Price</th>
                                 <th className="px-6 py-4 text-right border-r border-white/5">Exit Price</th>
+                                <th className="px-6 py-4 border-r border-white/5">Signal</th>
                                 <th className="px-6 py-4 text-right border-r border-white/5">PnL</th>
                                 <th className="px-6 py-4 text-right">Return %</th>
                             </tr>
@@ -153,6 +172,27 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({
                         <tbody>
                             {sortedTrades.map((trade, idx) => {
                                 const isWin = trade.pnl > 0;
+                                
+                                // Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
+                                let signalType = trade.signal_type || '';
+                                if (!signalType) {
+                                    const exitReason = trade.exit_reason || '';
+                                    if (exitReason && exitReason.toLowerCase().includes('stop')) {
+                                        signalType = 'Stop';
+                                    } else if (exitReason) {
+                                        signalType = 'Close entry(s) order...';
+                                    } else {
+                                        signalType = trade.entry_signal_type || 'Comprar';
+                                    }
+                                }
+                                
+                                // Determinar cor do badge baseado no tipo de sinal
+                                const getSignalColor = (signal: string) => {
+                                    if (signal === 'Stop') return 'bg-red-500/10 text-red-400 ring-1 ring-red-500/20';
+                                    if (signal === 'Comprar') return 'bg-green-500/10 text-green-400 ring-1 ring-green-500/20';
+                                    return 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20';
+                                };
+                                
                                 return (
                                     <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-3 text-gray-300 border-r border-white/5">
@@ -179,6 +219,11 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({
                                         <td className="px-6 py-3 text-right text-gray-300 border-r border-white/5 font-mono">
                                             ${trade.exit_price?.toFixed(2)}
                                         </td>
+                                        <td className="px-6 py-3 border-r border-white/5">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${getSignalColor(signalType)}`}>
+                                                {signalType}
+                                            </span>
+                                        </td>
                                         <td className={`px-6 py-3 text-right font-semibold border-r border-white/5 font-mono ${isWin ? 'text-green-400' : 'text-red-400'}`}>
                                             {trade.pnl > 0 ? '+' : ''}{trade.pnl?.toFixed(2)}
                                         </td>
@@ -190,7 +235,7 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({
                             })}
                             {(!trades || trades.length === 0) && (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                                         No trades recorded for this configuration.
                                     </td>
                                 </tr>

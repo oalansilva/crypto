@@ -36,9 +36,15 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
     - Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
     - ComboStrategy: logic confirmed at CLOSE of candle i → signal on candle i+1 → execute at OPEN of candle i+1
     - This matches: "utilizo os valores fechado para os sinais entrar(comprar ou vender) no proximo dia"
-    - Intra-candle Stop Loss (Low vs Stop Price) - checked before signal processing
+    - Intra-candle Stop Loss (Low vs Stop Price) - checked BEFORE signal processing
     - Binance Fees (0.075% per op) - applied on both entry and exit
     - Exit at exact Stop Price if triggered
+    
+    CRITICAL PRIORITY RULES:
+    - STOP LOSS ALWAYS has priority over exit signals
+    - Stop loss is checked FIRST on each candle before checking exit signals
+    - If stop loss is triggered, exit immediately and skip exit signal check
+    - Exit signals are only processed if stop loss was not triggered
     
     IMPORTANT: 
     - All signal entry/exit executions use OPEN price of the candle where signal appears (next day)
@@ -54,7 +60,9 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
     
     for idx, row in df_with_signals.iterrows():
-        # Check stop loss if we have an open position
+        # PRIORIDADE 1: Check stop loss FIRST if we have an open position
+        # Stop loss ALWAYS has priority over exit signals
+        # This ensures stop loss is checked before any exit signal processing
         if position is not None and stop_loss_pct > 0:
             current_low = float(row['low'])
             entry_price = position['entry_price']
@@ -64,7 +72,8 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
             exact_stop_price = entry_price * (1 - stop_loss_pct)
             
             if current_low <= exact_stop_price:
-                # Stop loss triggered
+                # Stop loss triggered - EXIT IMMEDIATELY
+                # Stop loss has priority over all exit signals
                 # Keep UTC timezone to match TradingView
                 position['exit_time'] = idx.isoformat()
                 position['exit_price'] = exact_stop_price
@@ -74,11 +83,13 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
                 position['profit'] = ((exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
                 
                 position['exit_reason'] = 'stop_loss'
+                position['signal_type'] = 'Stop'  # Tipo de sinal para Tradeview
                 trades.append(position)
                 position = None
-                continue  # Skip signal check for this candle
+                continue  # CRITICAL: Skip signal check for this candle - stop loss has priority
 
-        # Check signals
+        # PRIORIDADE 2: Check signals ONLY if stop loss was not triggered
+        # Exit signals are only processed if stop loss was not hit
         # IMPORTANT: Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
         # ComboStrategy places signal on candle i+1 after logic confirmed at CLOSE of candle i
         # We execute at OPEN of the same candle where signal appears (i+1)
@@ -89,7 +100,8 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
             position = {
                 'entry_time': idx.isoformat(),
                 'entry_price': float(row['open']),  # Execute at OPEN of next day
-                'type': 'long'
+                'type': 'long',
+                'entry_signal_type': 'Comprar'  # Tipo de sinal de entrada para Tradeview
             }
         elif row['signal'] == -1 and position is not None:
             # Exit signal: Execute at OPEN of current candle (where signal appears)
@@ -104,6 +116,7 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float):
             position['profit'] = ((exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
             
             position['exit_reason'] = 'signal'
+            position['signal_type'] = 'Close entry(s) order...'  # Tipo de sinal de saída para Tradeview
             trades.append(position)
             position = None
             
