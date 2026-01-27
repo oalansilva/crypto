@@ -200,8 +200,14 @@ def extract_trades_with_mode(
 # -----------------------------------------------------------------------------
 # WORKER FUNCTION (Top-level for ProcessPoolExecutor)
 # -----------------------------------------------------------------------------
-def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_str, until_str, df_15m_cache=None):
-    """Core backtest logic shared by single and batch workers."""
+def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_str, until_str, df_15m_cache=None, initial_capital=100):
+    """
+    Core backtest logic shared by single and batch workers.
+    
+    Args:
+        initial_capital: Capital inicial em USD para cálculo de métricas (padrão: $100)
+                        Usado para calcular Return e Profit Factor no estilo TradingView
+    """
     try:
         # Reconstruct strategy logic locally to avoid DB connection in worker
         indicators = template_data["indicators"]
@@ -313,11 +319,15 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             metrics['total_trades'] = total_trades
             metrics['win_rate'] = winning_trades / total_trades
             
-            # Compounded Return
-            compounded_capital = 1.0
-            for t in trades:
-                compounded_capital *= (1.0 + t['profit'])
-            metrics['total_return'] = (compounded_capital - 1.0) * 100.0
+            # Simple Return (TradingView-style): baseado em PnL total sem reinvestimento
+            # TradingView calcula retorno simples somando PnL de cada trade (posição fixa)
+            # Cada trade usa o mesmo capital inicial (não reinveste)
+            total_pnl_usd = sum([
+                initial_capital * t['profit'] 
+                for t in trades
+            ])
+            # Return simples: (PnL total / capital inicial) * 100
+            metrics['total_return'] = (total_pnl_usd / initial_capital) * 100.0
             
             metrics['avg_profit'] = (metrics['total_return'] / total_trades) if total_trades > 0 else 0
             
@@ -327,10 +337,17 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             std_dev = np.std(returns)
             metrics['sharpe_ratio'] = np.mean(returns) / std_dev if std_dev > 0 else 0
             
-            # Profit Factor
-            gross_profit = sum([t['profit'] for t in trades if t['profit'] > 0])
-            gross_loss = abs(sum([t['profit'] for t in trades if t['profit'] < 0]))
-            metrics['profit_factor'] = gross_profit / gross_loss if gross_loss > 0 else (999 if gross_profit > 0 else 0)
+            # Profit Factor (TradingView-style): usando PnL absoluto em USD
+            # Calcular PnL absoluto por trade baseado no capital inicial
+            gross_profit_usd = sum([
+                initial_capital * t['profit'] 
+                for t in trades if t['profit'] > 0
+            ])
+            gross_loss_usd = abs(sum([
+                initial_capital * t['profit'] 
+                for t in trades if t['profit'] < 0
+            ]))
+            metrics['profit_factor'] = gross_profit_usd / gross_loss_usd if gross_loss_usd > 0 else (999 if gross_profit_usd > 0 else 0)
             
             # Sortino Ratio (downside deviation)
             downside_returns = [r for r in returns if r < 0]

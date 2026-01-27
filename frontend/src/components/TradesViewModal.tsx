@@ -196,9 +196,9 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({
                                 return (
                                     <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-3 text-gray-300 border-r border-white/5">
-                                            {new Date(trade.entry_time).toLocaleString()}
+                                            {new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}
                                             <div className="text-xs text-gray-500 mt-1">
-                                                Exited: {trade.exit_time ? new Date(trade.exit_time).toLocaleString() : 'Open'}
+                                                Exited: {trade.exit_time ? new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' }) : 'Open'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-3 text-right text-gray-300 border-r border-white/5 font-mono">

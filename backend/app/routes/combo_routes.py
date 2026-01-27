@@ -334,30 +334,53 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         # All trades from extract_trades_from_signals are closed (have exit_time)
         trades_for_metrics = trades
         
-        # Calculate metrics using same logic as combo_optimizer
+        # Calculate metrics using same logic as combo_optimizer (TradingView-style)
+        initial_capital = request.initial_capital if hasattr(request, 'initial_capital') and request.initial_capital is not None else 100
+        
         total_trades = len(trades_for_metrics)
         winning_trades = sum(1 for t in trades_for_metrics if t.get('profit', 0) > 0)
         
-        # Compounded Return (same as combo_optimizer)
-        compounded_capital = 1.0
-        for t in trades_for_metrics:
-            profit_pct = t.get('profit', 0) if t.get('profit') is not None else 0
-            compounded_capital *= (1.0 + profit_pct)
-        total_return_pct = (compounded_capital - 1.0) * 100.0
+        # Simple Return (TradingView-style): baseado em PnL total sem reinvestimento
+        # TradingView calcula retorno simples somando PnL de cada trade (posição fixa)
+        # Cada trade usa o mesmo capital inicial (não reinveste)
+        total_pnl_usd = sum([
+            initial_capital * t.get('profit', 0) 
+            for t in trades_for_metrics if t.get('profit') is not None
+        ])
+        # Return simples: (PnL total / capital inicial) * 100
+        total_return_pct = (total_pnl_usd / initial_capital) * 100.0
         
-        # Max Drawdown from equity curve built from trades
+        # Max Drawdown from cumulative PnL (TradingView-style)
+        # Calcular drawdown baseado em PnL acumulado (não reinveste)
         max_drawdown_pct = 0.0
         if len(trades_for_metrics) > 0:
-            equity = 1.0
-            peak = 1.0
+            cumulative_pnl = 0.0
+            peak_pnl = 0.0
             max_dd = 0.0
             for t in trades_for_metrics:
-                equity *= (1.0 + t.get('profit', 0))
-                if equity > peak:
-                    peak = equity
-                drawdown = (peak - equity) / peak
+                trade_pnl = initial_capital * t.get('profit', 0)
+                cumulative_pnl += trade_pnl
+                if cumulative_pnl > peak_pnl:
+                    peak_pnl = cumulative_pnl
+                # Drawdown = (peak - current) / (initial_capital + peak)
+                # Ou simplesmente: drawdown relativo ao capital inicial
+                if peak_pnl > 0:
+                    drawdown = (peak_pnl - cumulative_pnl) / (initial_capital + peak_pnl)
+                else:
+                    drawdown = abs(cumulative_pnl) / initial_capital if cumulative_pnl < 0 else 0
                 max_dd = max(max_dd, drawdown)
             max_drawdown_pct = max_dd * 100.0  # Convert to percentage
+        
+        # Profit Factor (TradingView-style): usando PnL absoluto em USD
+        gross_profit_usd = sum([
+            initial_capital * t.get('profit', 0) 
+            for t in trades_for_metrics if t.get('profit', 0) > 0
+        ])
+        gross_loss_usd = abs(sum([
+            initial_capital * t.get('profit', 0) 
+            for t in trades_for_metrics if t.get('profit', 0) < 0
+        ]))
+        profit_factor = gross_profit_usd / gross_loss_usd if gross_loss_usd > 0 else (999 if gross_profit_usd > 0 else 0)
         
         metrics = {
             "total_trades": total_trades,
@@ -366,7 +389,8 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             "total_return_pct": total_return_pct,  # Also store as percentage for compatibility
             "avg_profit": total_return_pct / total_trades if total_trades > 0 else 0,
             "max_drawdown": max_drawdown_pct / 100.0,  # Store as decimal
-            "max_drawdown_pct": max_drawdown_pct  # Also store as percentage
+            "max_drawdown_pct": max_drawdown_pct,  # Also store as percentage
+            "profit_factor": profit_factor  # TradingView-style (USD-based)
         }
         
         # Get indicator data for chart

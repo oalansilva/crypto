@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Play, Trash2, Search, List, ChevronDown, Activity } from 'lucide-react';
+import { Play, Trash2, Search, List, ChevronDown, Activity, BarChart3 } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
 
 import * as XLSX from 'xlsx';
@@ -32,6 +32,9 @@ const FavoritesDashboard: React.FC = () => {
     const [selectedTradesSymbol, setSelectedTradesSymbol] = useState('');
     const [selectedTradesTemplate, setSelectedTradesTemplate] = useState('');
     const [selectedTradesTimeframe, setSelectedTradesTimeframe] = useState('');
+    
+    // State for loading backtest
+    const [loadingBacktestId, setLoadingBacktestId] = useState<number | null>(null);
 
     // Fetch favorites
     const { data: favorites, isLoading } = useQuery({
@@ -71,6 +74,44 @@ const FavoritesDashboard: React.FC = () => {
             params.set(key, String(value));
         });
         navigate(`/optimize/risk?${params.toString()}`);
+    };
+
+    const handleViewResults = async (fav: FavoriteStrategy) => {
+        setLoadingBacktestId(fav.id);
+        try {
+            // Executar backtest com os parâmetros do favorito
+            const response = await fetch('http://localhost:8000/api/combos/backtest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    template_name: fav.strategy_name,
+                    symbol: fav.symbol,
+                    timeframe: fav.timeframe,
+                    parameters: fav.parameters,
+                    stop_loss: fav.parameters.stop_loss || null,
+                    start_date: null, // Usar todos os dados disponíveis
+                    end_date: null,
+                    deep_backtest: true,
+                    initial_capital: 100
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                alert(`Erro ao executar backtest: ${error.detail || 'Erro desconhecido'}`);
+                return;
+            }
+
+            const result = await response.json();
+            
+            // Navegar para a tela de resultados com os dados
+            navigate('/combo/results', { state: { result, isOptimization: false } });
+        } catch (error) {
+            console.error('Erro ao executar backtest:', error);
+            alert('Erro ao executar backtest. Verifique o console para mais detalhes.');
+        } finally {
+            setLoadingBacktestId(null);
+        }
     };
 
     const handleDelete = (id: number) => {
@@ -430,6 +471,18 @@ const FavoritesDashboard: React.FC = () => {
                                                             title="View Trades"
                                                         >
                                                             <List className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleViewResults(fav)}
+                                                            disabled={loadingBacktestId === fav.id}
+                                                            className="p-1.5 hover:bg-green-500/20 rounded-lg text-green-400 hover:text-green-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="View Results"
+                                                        >
+                                                            {loadingBacktestId === fav.id ? (
+                                                                <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
+                                                            ) : (
+                                                                <BarChart3 className="w-4 h-4" />
+                                                            )}
                                                         </button>
                                                         <button
                                                             onClick={() => handleRun(fav)}

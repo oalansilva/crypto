@@ -39,6 +39,7 @@ class ComboBacktestRequest(BaseModel):
     parameters: Dict[str, Any] = Field(default_factory=dict, description="Custom parameter values")
     stop_loss: Optional[float] = Field(None, description="Stop loss percentage")
     deep_backtest: bool = Field(True, description="Enable Deep Backtesting with 15m intraday precision (default: True for 1D strategies)")
+    initial_capital: float = Field(100, description="Initial capital in USD for metrics calculation (default: $100, TradingView-style)")
 
 
 class ComboBacktestResponse(BaseModel):
@@ -69,6 +70,7 @@ class ComboOptimizationRequest(BaseModel):
         None,
         description="Custom optimization ranges for parameters"
     )
+    initial_capital: float = Field(100, description="Initial capital in USD for metrics calculation (default: $100, TradingView-style)")
 
 
 class ComboOptimizationResponse(BaseModel):

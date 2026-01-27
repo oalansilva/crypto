@@ -109,9 +109,9 @@ const TradesModal: React.FC<{ result: RiskResult; onClose: () => void }> = ({ re
                                 return (
                                     <tr key={idx} className="border-b border-[#2A2F3A] hover:bg-[#1A202C]">
                                         <td className="px-4 py-3 text-gray-300 font-mono">
-                                            {new Date(trade.entry_time).toLocaleString()}
+                                            {new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}
                                             <div className="text-xs text-gray-500 mt-1">
-                                                Exited: {trade.exit_time ? new Date(trade.exit_time).toLocaleString() : 'Open'}
+                                                Exited: {trade.exit_time ? new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' }) : 'Open'}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-right text-gray-300 font-mono">

@@ -333,7 +333,7 @@ export const TimeframeOptimizationPage: React.FC = () => {
                                                                     <tbody>
                                                                         {result.trades?.sort((a: any, b: any) => new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime()).map((trade: any, idx: number) => (
                                                                             <tr key={idx} className="border-b border-[#2A2F3A] hover:bg-[#1A202C]/50">
-                                                                                <td className="p-2 font-mono text-gray-300">{trade.entry_time?.substring(0, 16).replace('T', ' ')}</td>
+                                                                                <td className="p-2 font-mono text-gray-300">{trade.entry_time ? new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' }) : '-'}</td>
                                                                                 <td className={`p-2 font-bold ${trade.side === 'buy' || trade.side === 'long' ? 'text-green-500' : 'text-red-500'}`}>
                                                                                     {(trade.side || 'LONG').toUpperCase()}
                                                                                 </td>
@@ -354,7 +354,7 @@ export const TimeframeOptimizationPage: React.FC = () => {
                                                                                         {trade.reason || 'N/A'}
                                                                                     </span>
                                                                                 </td>
-                                                                                <td className="p-2 text-right font-mono text-gray-300">{trade.exit_time?.substring(0, 16).replace('T', ' ')}</td>
+                                                                                <td className="p-2 text-right font-mono text-gray-300">{trade.exit_time ? new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' }) : '-'}</td>
                                                                             </tr>
                                                                         ))}
                                                                         {(!result.trades || result.trades.length === 0) && (

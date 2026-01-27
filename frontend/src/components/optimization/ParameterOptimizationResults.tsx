@@ -311,10 +311,10 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                                         {bestResult.trades.map((trade: any, tradeIdx: number) => (
                                             <tr key={tradeIdx} className="hover:bg-gray-800/30">
                                                 <td className="px-4 py-3 whitespace-nowrap text-xs">
-                                                    {new Date(trade.entry_time).toLocaleString()}
+                                                    {new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap text-xs">
-                                                    {new Date(trade.exit_time).toLocaleString()}
+                                                    {new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${trade.side === 'long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
@@ -543,10 +543,10 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
                                                                             {result.trades.map((trade: any, tIdx: number) => (
                                                                                 <tr key={tIdx} className="hover:bg-gray-800/50">
                                                                                     <td className="px-4 py-2 whitespace-nowrap text-gray-400">
-                                                                                        {new Date(trade.entry_time).toLocaleString()}
+                                                                                        {new Date(trade.entry_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}
                                                                                     </td>
                                                                                     <td className="px-4 py-2 whitespace-nowrap text-gray-400">
-                                                                                        {new Date(trade.exit_time).toLocaleString()}
+                                                                                        {new Date(trade.exit_time).toLocaleString('pt-BR', { timeZone: 'UTC' })}
                                                                                     </td>
                                                                                     <td className="px-4 py-2">
                                                                                         <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${trade.side === 'long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
