@@ -35,6 +35,12 @@ class IncrementalLoader:
         Args:
             _retry_count: Internal parameter to prevent infinite recursion (max 1 retry)
         """
+        # Normalize limit: some callers may explicitly pass None
+        # Ensure we always use a positive integer to avoid TypeError in len(ohlcv) < limit
+        if not isinstance(limit, int) or limit <= 0:
+            logger.warning(f"Received invalid limit={limit} for fetch_data({symbol}, {timeframe}). "
+                           f"Defaulting to 1000.")
+            limit = 1000
         # Parse Dates (Ensure UTC)
         # Handle None values - default to full history
         if since_str is None:
@@ -368,7 +374,14 @@ class IncrementalLoader:
             logger.error(f"Type error in download loop: {e}, since_ts={since_ts} ({type(since_ts)}), until_ts={until_ts} ({type(until_ts)})")
             return pd.DataFrame()
         
-        logger.info(f"Starting download loop for {symbol} from {datetime.fromtimestamp(since_ts_int/1000)}")
+        # Safety: normalize limit inside download loop as well
+        if not isinstance(limit, int) or limit <= 0:
+            logger.warning(f"_download_loop received invalid limit={limit} for {symbol} {timeframe}. "
+                           f"Using default 1000.")
+            limit = 1000
+        
+        logger.info(f"Starting download loop for {symbol} from {datetime.fromtimestamp(since_ts_int/1000)} "
+                    f"with limit={limit}")
         
         current_since = since_ts_int
         

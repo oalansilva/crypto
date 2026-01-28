@@ -40,6 +40,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
         last_price 
     } = opportunity;
 
+    // Local state para edição de notas diretamente do monitor
+    const [isEditingNotes, setIsEditingNotes] = React.useState(false);
+    const [notesValue, setNotesValue] = React.useState(opportunity.notes || '');
+    const [isSavingNotes, setIsSavingNotes] = React.useState(false);
+
     const formattedPrice = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
@@ -210,12 +215,78 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                         </div>
                     </div>
 
-                    {opportunity.notes && (
-                        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-sm border border-slate-200 dark:border-slate-600">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Notes</span>
-                            <p className="mt-1 font-medium text-slate-700 dark:text-slate-200 break-words">{opportunity.notes}</p>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-sm border border-slate-200 dark:border-slate-600">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                Notes
+                            </span>
+                            {!isEditingNotes && (
+                                <button
+                                    type="button"
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                    onClick={() => setIsEditingNotes(true)}
+                                >
+                                    Editar
+                                </button>
+                            )}
                         </div>
-                    )}
+
+                        {isEditingNotes ? (
+                            <div className="mt-2 space-y-2">
+                                <textarea
+                                    className="w-full min-h-[60px] text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                    value={notesValue}
+                                    onChange={(e) => setNotesValue(e.target.value)}
+                                    placeholder="Adicione comentários sobre esta estratégia..."
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        className="px-2 py-1 text-xs rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                                        onClick={() => {
+                                            setNotesValue(opportunity.notes || '');
+                                            setIsEditingNotes(false);
+                                        }}
+                                        disabled={isSavingNotes}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        onClick={async () => {
+                                            try {
+                                                setIsSavingNotes(true);
+                                                const res = await fetch(`http://localhost:8000/api/favorites/${opportunity.id}`, {
+                                                    method: 'PATCH',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ notes: notesValue }),
+                                                });
+                                                if (!res.ok) {
+                                                    // fallback simples; o MonitorPage já tem toast para erros de load
+                                                    alert('Erro ao salvar notas da estratégia.');
+                                                    return;
+                                                }
+                                                setIsEditingNotes(false);
+                                            } catch (err) {
+                                                console.error('Erro ao salvar notas:', err);
+                                                alert('Erro ao salvar notas da estratégia.');
+                                            } finally {
+                                                setIsSavingNotes(false);
+                                            }
+                                        }}
+                                        disabled={isSavingNotes}
+                                    >
+                                        {isSavingNotes ? 'Salvando...' : 'Salvar'}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="mt-1 font-medium text-slate-700 dark:text-slate-200 break-words text-xs whitespace-pre-wrap">
+                                {notesValue || 'Sem comentários.'}
+                            </p>
+                        )}
+                    </div>
                 </div>
             </CardContent>
         </Card>

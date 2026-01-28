@@ -53,23 +53,33 @@ export const MonitorPage: React.FC = () => {
         return o.tier === parseInt(tierFilter);
     };
 
-    // Sort opportunities by distance (closest first) or symbol; optionally by tier
+    // Sort opportunities by distance (closest first) or symbol
+    // Regra desejada:
+    // - HOLD sempre primeiro
+    // - Depois, independente do tier, os mais próximos (menor distância) vêm primeiro
+    // - Tier serve apenas como filtro visual/por dropdown, não como prioridade na ordenação
     const sortedOpportunities = useMemo(() => {
         const sorted = [...opportunities].sort((a, b) => {
             if (sortBy === 'distance') {
+                // HOLD primeiro
                 if (a.is_holding !== b.is_holding) {
                     return a.is_holding ? -1 : 1;
                 }
-                const tierA = a.tier ?? 999;
-                const tierB = b.tier ?? 999;
-                if (tierA !== tierB) return tierA - tierB;
+                // Depois, ordenar apenas pela distância (mais próximo primeiro)
                 const distA = a.distance_to_next_status ?? 999;
                 const distB = b.distance_to_next_status ?? 999;
-                return distA - distB;
-            } else if (sortBy === 'symbol') {
+                if (distA !== distB) {
+                    return distA - distB;
+                }
+                // Desempate opcional por tier (1, 2, 3, null)
                 const tierA = a.tier ?? 999;
                 const tierB = b.tier ?? 999;
-                if (tierA !== tierB) return tierA - tierB;
+                if (tierA !== tierB) {
+                    return tierA - tierB;
+                }
+                // Último critério: símbolo
+                return a.symbol.localeCompare(b.symbol);
+            } else if (sortBy === 'symbol') {
                 return a.symbol.localeCompare(b.symbol);
             }
             return 0;
