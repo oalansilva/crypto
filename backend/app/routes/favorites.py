@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app.models import FavoriteStrategy
-from app.schemas.favorite import FavoriteStrategyCreate, FavoriteStrategyResponse
+from app.schemas.favorite import FavoriteStrategyCreate, FavoriteStrategyResponse, FavoriteStrategyUpdate
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -28,6 +28,29 @@ def create_favorite(favorite: FavoriteStrategyCreate, db: Session = Depends(get_
         logger.error(f"Error creating favorite: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+@router.patch("/{favorite_id}", response_model=FavoriteStrategyResponse)
+def update_favorite(favorite_id: int, update_data: FavoriteStrategyUpdate, db: Session = Depends(get_db)):
+    """Update a favorite strategy (e.g., set tier)"""
+    favorite = db.query(FavoriteStrategy).filter(FavoriteStrategy.id == favorite_id).first()
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    
+    # Validate tier value if provided
+    if update_data.tier is not None:
+        if update_data.tier not in [1, 2, 3]:
+            raise HTTPException(status_code=400, detail="Tier must be 1, 2, or 3")
+        favorite.tier = update_data.tier
+    
+    # Update only provided fields
+    if update_data.name is not None:
+        favorite.name = update_data.name
+    if update_data.notes is not None:
+        favorite.notes = update_data.notes
+    
+    db.commit()
+    db.refresh(favorite)
+    return favorite
 
 @router.delete("/{favorite_id}")
 def delete_favorite(favorite_id: int, db: Session = Depends(get_db)):

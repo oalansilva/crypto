@@ -15,6 +15,7 @@ class OpportunityResponse(BaseModel):
     template_name: str
     name: str  # user custom name
     notes: Optional[str] = None
+    tier: Optional[int] = None  # 1=Core, 2=Complementares, 3=Outros
     is_holding: bool
     distance_to_next_status: float | None
     next_status_label: str  # "entry" or "exit"

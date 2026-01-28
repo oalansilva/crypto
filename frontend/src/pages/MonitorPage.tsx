@@ -3,15 +3,17 @@ import type { Opportunity } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { RefreshCw, ArrowUpDown } from 'lucide-react';
+import { RefreshCw, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 
 type SortOption = 'distance' | 'symbol';
+type TierFilter = 'all' | '1' | '2' | '3' | 'none';
 
 export const MonitorPage: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
     const [sortBy, setSortBy] = useState<SortOption>('distance');
+    const [tierFilter, setTierFilter] = useState<TierFilter>('all');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const { toast } = useToast();
 
@@ -45,19 +47,29 @@ export const MonitorPage: React.FC = () => {
         fetchOpportunities();
     }, []);
 
-    // Sort opportunities by distance (closest first) or symbol
+    const matchesTier = (o: Opportunity) => {
+        if (tierFilter === 'all') return true;
+        if (tierFilter === 'none') return o.tier == null;
+        return o.tier === parseInt(tierFilter);
+    };
+
+    // Sort opportunities by distance (closest first) or symbol; optionally by tier
     const sortedOpportunities = useMemo(() => {
         const sorted = [...opportunities].sort((a, b) => {
             if (sortBy === 'distance') {
-                // Sort by distance (closest first)
-                // Holding positions first, then by distance
                 if (a.is_holding !== b.is_holding) {
-                    return a.is_holding ? -1 : 1; // Holding first
+                    return a.is_holding ? -1 : 1;
                 }
+                const tierA = a.tier ?? 999;
+                const tierB = b.tier ?? 999;
+                if (tierA !== tierB) return tierA - tierB;
                 const distA = a.distance_to_next_status ?? 999;
                 const distB = b.distance_to_next_status ?? 999;
                 return distA - distB;
             } else if (sortBy === 'symbol') {
+                const tierA = a.tier ?? 999;
+                const tierB = b.tier ?? 999;
+                if (tierA !== tierB) return tierA - tierB;
                 return a.symbol.localeCompare(b.symbol);
             }
             return 0;
@@ -65,11 +77,11 @@ export const MonitorPage: React.FC = () => {
         return sorted;
     }, [opportunities, sortBy]);
 
-    // Separate opportunities by status
-    const holding = sortedOpportunities.filter(o => o.is_holding);
-    const stoppedOut = sortedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT');
-    const missedEntry = sortedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY');
-    const waiting = sortedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY');
+    // Separate opportunities by status, then apply tier filter
+    const holding = sortedOpportunities.filter(o => o.is_holding && matchesTier(o));
+    const stoppedOut = sortedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT' && matchesTier(o));
+    const missedEntry = sortedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY' && matchesTier(o));
+    const waiting = sortedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY' && matchesTier(o));
 
     return (
         <div className="container mx-auto p-6 space-y-8">
@@ -94,18 +106,36 @@ export const MonitorPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Simple Sort */}
-                <div className="flex items-center gap-2">
-                    <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Sort:</span>
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as SortOption)}
-                        className="text-sm border rounded px-2 py-1 bg-background"
-                    >
-                        <option value="distance">Distance (closest first)</option>
-                        <option value="symbol">Symbol</option>
-                    </select>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Tier:</span>
+                        <div className="relative">
+                            <select
+                                value={tierFilter}
+                                onChange={(e) => setTierFilter(e.target.value as TierFilter)}
+                                className="text-sm border rounded pl-2 pr-8 py-1.5 bg-background appearance-none cursor-pointer"
+                            >
+                                <option value="all">All</option>
+                                <option value="1">Tier 1 – Core</option>
+                                <option value="2">Tier 2 – Complementares</option>
+                                <option value="3">Tier 3</option>
+                                <option value="none">Sem tier</option>
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Sort:</span>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as SortOption)}
+                            className="text-sm border rounded px-2 py-1 bg-background"
+                        >
+                            <option value="distance">Distance (closest first)</option>
+                            <option value="symbol">Symbol</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 

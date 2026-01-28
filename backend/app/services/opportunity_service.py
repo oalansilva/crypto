@@ -35,9 +35,9 @@ class OpportunityService:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Query existing favorite_strategies table
+        # Query existing favorite_strategies table (incl. tier)
         cursor.execute("""
-            SELECT id, name, symbol, timeframe, strategy_name, parameters, notes
+            SELECT id, name, symbol, timeframe, strategy_name, parameters, notes, tier
             FROM favorite_strategies
         """)
         rows = cursor.fetchall()
@@ -555,6 +555,7 @@ class OpportunityService:
                     'template_name': template_name,
                     'name': fav['name'], # User custom name
                     'notes': fav.get('notes'),
+                    'tier': fav.get('tier'),
                     'is_holding': is_holding,
                     'distance_to_next_status': final_distance,
                     'next_status_label': next_status_label,

@@ -5,6 +5,7 @@ export interface Opportunity {
     template_name: string;
     name: string;
     notes?: string;
+    tier?: number | null;  // 1=Core, 2=Complementares, 3=Outros
     // Simplified model
     is_holding: boolean;
     distance_to_next_status: number | null;

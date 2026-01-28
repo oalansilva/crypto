@@ -130,6 +130,9 @@ class FavoriteStrategy(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
     notes = Column(String, nullable=True)
+    
+    # Tier system - para categorizar estratégias (1=Core obrigatório, 2=Bons complementares, 3=Outros)
+    tier = Column(Integer, nullable=True)
 
 
 class AutoBacktestRun(Base):

@@ -16,6 +16,19 @@ const getDistanceColor = (distance: number | null | undefined): string => {
     return 'text-gray-600 dark:text-gray-400';
 };
 
+const getTierStyles = (tier: number | null | undefined) => {
+    switch (tier) {
+        case 1:
+            return { dot: 'bg-green-500', border: 'rgb(34, 197, 94)', label: 'Tier 1', ring: 'ring-green-400' };
+        case 2:
+            return { dot: 'bg-amber-500', border: 'rgb(245, 158, 11)', label: 'Tier 2', ring: 'ring-amber-400' };
+        case 3:
+            return { dot: 'bg-red-500', border: 'rgb(239, 68, 68)', label: 'Tier 3', ring: 'ring-red-400' };
+        default:
+            return null;
+    }
+};
+
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity }) => {
     const { 
         symbol, 
@@ -50,6 +63,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
     const status = opportunity.status || (is_holding ? 'HOLD' : 'WAIT');
     const isStoppedOut = status === 'STOPPED_OUT';
     const isMissedEntry = status === 'MISSED_ENTRY';
+    const isWait = !is_holding && !isStoppedOut && !isMissedEntry;
+    const tierStyles = getTierStyles(opportunity.tier);
     
     // Status badge: HOLD (green), STOPPED_OUT (red/orange), MISSED_ENTRY (yellow), or WAIT (gray)
     let statusBadge = 'WAIT';
@@ -76,6 +91,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
         borderColor = 'border-l-yellow-500 border-l-4';
         cardBgColor = 'bg-yellow-50 dark:bg-yellow-900/40 border-yellow-400 dark:border-yellow-600';
         holdingIndicator = 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-500/30';
+    } else if (isWait && tierStyles) {
+        borderColor = 'border-l-4';
+        cardBgColor = tierStyles.dot === 'bg-green-500' ? 'bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
+                      tierStyles.dot === 'bg-amber-500' ? 'bg-amber-50/50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' :
+                      'bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
     }
 
     // Message: Use backend message if available, otherwise generate from distance
@@ -85,26 +105,32 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
             : `Waiting for ${next_status_label} signal`
     );
 
+    const cardStyle = is_holding ? { 
+        backgroundColor: 'rgb(220, 252, 231)',
+        borderLeftWidth: '4px',
+        borderLeftColor: 'rgb(22, 163, 74)',
+    } : isStoppedOut ? {
+        backgroundColor: 'rgb(254, 242, 242)',
+        borderLeftWidth: '4px',
+        borderLeftColor: 'rgb(220, 38, 38)',
+    } : isMissedEntry ? {
+        backgroundColor: 'rgb(254, 252, 232)',
+        borderLeftWidth: '4px',
+        borderLeftColor: 'rgb(234, 179, 8)',
+    } : isWait && tierStyles ? {
+        backgroundColor: tierStyles.dot === 'bg-green-500' ? 'rgb(240, 253, 244)' : tierStyles.dot === 'bg-amber-500' ? 'rgb(255, 251, 235)' : 'rgb(254, 242, 242)',
+        borderLeftWidth: '4px',
+        borderLeftColor: tierStyles.border,
+    } : {
+        backgroundColor: 'rgb(255, 255, 255)',
+        borderLeftWidth: '4px',
+        borderLeftColor: 'rgb(203, 213, 225)',
+    };
+
     return (
         <Card 
             className={`${borderColor} ${cardBgColor} ${holdingIndicator} hover:shadow-lg transition-all hover:scale-[1.02] relative`}
-            style={is_holding ? { 
-                backgroundColor: 'rgb(220, 252, 231)', // green-100
-                borderLeftWidth: '4px',
-                borderLeftColor: 'rgb(22, 163, 74)', // green-600
-            } : isStoppedOut ? {
-                backgroundColor: 'rgb(254, 242, 242)', // red-50
-                borderLeftWidth: '4px',
-                borderLeftColor: 'rgb(220, 38, 38)', // red-600
-            } : isMissedEntry ? {
-                backgroundColor: 'rgb(254, 252, 232)', // yellow-50
-                borderLeftWidth: '4px',
-                borderLeftColor: 'rgb(234, 179, 8)', // yellow-500
-            } : {
-                backgroundColor: 'rgb(255, 255, 255)', // branco para WAIT
-                borderLeftWidth: '4px',
-                borderLeftColor: 'rgb(203, 213, 225)', // slate-300 para WAIT
-            }}
+            style={cardStyle}
         >
             {/* Visual indicator dot for special statuses */}
             {is_holding && (
@@ -133,6 +159,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                         isMissedEntry ? 'text-yellow-700 dark:text-yellow-300' : 
                         'text-gray-900 dark:text-gray-100'
                     }`}>
+                        {tierStyles && (
+                            <span className={`w-2 h-2 rounded-full ${tierStyles.dot} ring-1 ${tierStyles.ring} flex-shrink-0`} title={tierStyles.label} />
+                        )}
                         {symbol} <span className="text-sm font-normal text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{timeframe}</span>
                     </CardTitle>
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px] font-medium">

@@ -16,6 +16,7 @@ interface FavoriteStrategy {
     metrics: Record<string, any>;
     notes?: string;
     created_at: string;
+    tier: number | null;  // 1=Core obrigatório, 2=Bons complementares, 3=Outros, null=Sem tier
 }
 
 const FavoritesDashboard: React.FC = () => {
@@ -24,6 +25,7 @@ const FavoritesDashboard: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
+    const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
 
     // New state for Trades Modal
     const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
@@ -64,6 +66,40 @@ const FavoritesDashboard: React.FC = () => {
             setSelectedIds(prev => prev.filter(sid => sid !== id));
         }
     });
+
+    // Update tier mutation
+    const updateTierMutation = useMutation({
+        mutationFn: async ({ id, tier }: { id: number; tier: number | null }) => {
+            const res = await fetch(`http://localhost:8000/api/favorites/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tier })
+            });
+            if (!res.ok) throw new Error('Failed to update tier');
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['favorites'] });
+        }
+    });
+
+    const handleUpdateTier = (fav: FavoriteStrategy, tier: number | null) => {
+        updateTierMutation.mutate({ id: fav.id, tier });
+    };
+
+    // Helper function to get tier color and label
+    const getTierInfo = (tier: number | null) => {
+        switch (tier) {
+            case 1:
+                return { color: 'bg-green-500', textColor: 'text-green-400', label: 'Tier 1 – Core obrigatório', borderColor: 'border-green-500' };
+            case 2:
+                return { color: 'bg-yellow-500', textColor: 'text-yellow-400', label: 'Tier 2 – Bons complementares', borderColor: 'border-yellow-500' };
+            case 3:
+                return { color: 'bg-red-500', textColor: 'text-red-400', label: 'Tier 3', borderColor: 'border-red-500' };
+            default:
+                return { color: 'bg-gray-500', textColor: 'text-gray-400', label: 'Sem tier', borderColor: 'border-gray-500' };
+        }
+    };
 
     const handleViewResults = async (fav: FavoriteStrategy) => {
         setLoadingBacktestId(fav.id);
@@ -159,9 +195,18 @@ const FavoritesDashboard: React.FC = () => {
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
         const matchesIndicator = selectedIndicator === 'ALL' || fav.strategy_name === selectedIndicator;
+        const matchesTier = tierFilter === 'all' || 
+            (tierFilter === 'none' && fav.tier === null) ||
+            (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
 
-        return matchesSearch && matchesSymbol && matchesIndicator;
+        return matchesSearch && matchesSymbol && matchesIndicator && matchesTier;
     }) || []).sort((a, b) => {
+        // Sort by tier (1, 2, 3, null), then by return
+        const tierA = a.tier ?? 999; // null goes last
+        const tierB = b.tier ?? 999;
+        if (tierA !== tierB) {
+            return tierA - tierB;
+        }
         const valA = a.metrics?.total_return_pct ?? a.metrics?.total_return ?? -Infinity;
         const valB = b.metrics?.total_return_pct ?? b.metrics?.total_return ?? -Infinity;
         return valB - valA; // Descending
@@ -275,6 +320,21 @@ const FavoritesDashboard: React.FC = () => {
                                 <div className="flex gap-2">
                                     <div className="relative group">
                                         <select
+                                            value={tierFilter}
+                                            onChange={(e) => setTierFilter(e.target.value as 'all' | '1' | '2' | '3' | 'none')}
+                                            className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
+                                        >
+                                            <option value="all" className="bg-gray-900">Tier: All</option>
+                                            <option value="1" className="bg-gray-900">Tier 1 – Core obrigatório</option>
+                                            <option value="2" className="bg-gray-900">Tier 2 – Bons complementares</option>
+                                            <option value="3" className="bg-gray-900">Tier 3</option>
+                                            <option value="none" className="bg-gray-900">Sem tier</option>
+                                        </select>
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                    </div>
+
+                                    <div className="relative group">
+                                        <select
                                             value={selectedSymbol}
                                             onChange={(e) => setSelectedSymbol(e.target.value)}
                                             className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
@@ -344,6 +404,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <th className="p-4 w-10 text-center">
                                             <div className="w-4 h-4 rounded border border-white/20"></div>
                                         </th>
+                                        <th className="p-4 border-r border-white/5 text-center text-gray-400 w-32">Tier</th>
                                         <th className="p-4 border-r border-white/5 font-medium text-white">Symbol</th>
                                         <th className="p-4 border-r border-white/5 font-medium text-white">Strategy</th>
                                         <th className="p-4 border-r border-white/5 text-center text-gray-400">TF</th>
@@ -368,9 +429,9 @@ const FavoritesDashboard: React.FC = () => {
                                 </thead>
                                 <tbody className="divide-y divide-industrial-800">
                                     {isLoading ? (
-                                        <tr><td colSpan={14} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
+                                        <tr><td colSpan={20} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
                                     ) : filteredFavorites.length === 0 ? (
-                                        <tr><td colSpan={14} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
+                                        <tr><td colSpan={20} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
                                     ) : (
                                         filteredFavorites.map((fav) => {
                                             const isSelected = selectedIds.includes(fav.id);
@@ -388,6 +449,9 @@ const FavoritesDashboard: React.FC = () => {
                                                     className={`
                                                     group transition-all duration-200 border-b border-white/5 hover:bg-white/5
                                                     ${isSelected ? 'bg-blue-500/10 border-blue-500/30' : ''}
+                                                    ${fav.tier === 1 ? 'bg-green-500/5 border-l-2 border-l-green-500' : ''}
+                                                    ${fav.tier === 2 ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''}
+                                                    ${fav.tier === 3 ? 'bg-red-500/5 border-l-2 border-l-red-500' : ''}
                                                 `}
                                                 >
                                                     <td className="p-4 border-r border-white/5 text-center">
@@ -399,6 +463,30 @@ const FavoritesDashboard: React.FC = () => {
                                                         >
                                                             {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                                         </div>
+                                                    </td>
+                                                    <td className="p-4 border-r border-white/5 text-center">
+                                                        <select
+                                                            value={fav.tier ?? ''}
+                                                            onChange={(e) => {
+                                                                const tierValue = e.target.value === '' ? null : parseInt(e.target.value);
+                                                                handleUpdateTier(fav, tierValue);
+                                                            }}
+                                                            className={`text-xs font-medium px-2 py-1 rounded border transition-all ${
+                                                                fav.tier === 1 
+                                                                    ? 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30' 
+                                                                    : fav.tier === 2
+                                                                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
+                                                                    : fav.tier === 3
+                                                                    ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30'
+                                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+                                                            }`}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <option value="">Sem tier</option>
+                                                            <option value="1">Tier 1</option>
+                                                            <option value="2">Tier 2</option>
+                                                            <option value="3">Tier 3</option>
+                                                        </select>
                                                     </td>
                                                     <td className="p-2 border-r border-white/5 font-bold text-white tracking-wide">{fav.symbol}</td>
                                                     <td className="p-2 border-r border-white/5 text-blue-300 font-medium">{fav.strategy_name.replace(/_/g, ' ')}</td>
