@@ -394,7 +394,7 @@ const FavoritesDashboard: React.FC = () => {
                                     <List className="w-4 h-4" /> Export
                                 </button>
                                 <button
-                                    onClick={() => navigate('/optimize/parameters')}
+                                    onClick={() => navigate('/combo/select')}
                                     className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5"
                                 >
                                     Find New
