@@ -101,6 +101,42 @@ class CloneTemplateRequest(BaseModel):
     new_name: str = Field(..., description="Name for the cloned template", min_length=3, max_length=100)
 
 
+class ComboBatchBacktestRequest(BaseModel):
+    """Request to run batch backtests for multiple symbols."""
+    template_name: str = Field(..., description="Name of the combo template")
+    symbols: List[str] = Field(..., min_length=1, description="List of symbols to run (e.g. ['BTC/USDT', 'ETH/USDT'])")
+    timeframe: str = Field(default="1d")
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    period_type: Optional[str] = Field(None, description="'6m' | '2y' | 'all'; used for skip logic")
+    deep_backtest: bool = Field(
+        default=True,
+        description="Use Deep Backtesting (15m precision) for realistic stop-loss simulation"
+    )
+    custom_ranges: Optional[Dict[str, Dict[str, Any]]] = Field(None)
+    initial_capital: float = Field(100)
+
+
+class ComboBatchBacktestResponse(BaseModel):
+    """Response from starting a batch backtest job."""
+    job_id: str = Field(..., description="Job ID to poll for progress")
+
+
+class ComboBatchProgressResponse(BaseModel):
+    """Progress and result of a batch backtest job."""
+    job_id: str
+    status: str = Field(..., description="running | completed | failed")
+    processed: int = 0
+    total: int = 0
+    succeeded: int = 0
+    failed: int = 0
+    skipped: int = Field(0, description="Skipped (already in favorites)")
+    errors: List[Dict[str, Any]] = Field(default_factory=list, description="Per-symbol errors")
+    started_at: Optional[str] = None
+    elapsed_sec: float = 0.0
+    estimated_remaining_sec: Optional[float] = None
+
+
 class TemplateListResponse(BaseModel):
     """Response listing available combo templates."""
     prebuilt: List[Dict[str, Any]]

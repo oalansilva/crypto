@@ -11,6 +11,9 @@ class FavoriteStrategyBase(BaseModel):
     metrics: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     tier: Optional[int] = None  # 1=Core obrigatório, 2=Bons complementares, 3=Outros
+    start_date: Optional[str] = None  # Período do backtest (6m/2y/todo)
+    end_date: Optional[str] = None
+    period_type: Optional[str] = None  # '6m' | '2y' | 'all'; chave para skip
 
 class FavoriteStrategyCreate(FavoriteStrategyBase):
     pass

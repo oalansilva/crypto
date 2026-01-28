@@ -17,6 +17,8 @@ interface FavoriteStrategy {
     notes?: string;
     created_at: string;
     tier: number | null;  // 1=Core obrigatório, 2=Bons complementares, 3=Outros, null=Sem tier
+    start_date?: string | null;
+    end_date?: string | null;
 }
 
 const FavoritesDashboard: React.FC = () => {
@@ -233,6 +235,7 @@ const FavoritesDashboard: React.FC = () => {
                 Symbol: fav.symbol,
                 Strategy: fav.strategy_name,
                 Timeframe: fav.timeframe,
+                Período: formatPeriod(fav),
                 Parameters: formatParams(fav.parameters),
                 "Stop Loss": formatPct(stopLoss),
                 Sharpe: formatNum(m.sharpe_ratio),
@@ -285,6 +288,15 @@ const FavoritesDashboard: React.FC = () => {
     const formatCurrency = (val?: number) => {
         if (val === undefined || val === null) return '-';
         return `$${val.toFixed(2)}`;
+    };
+
+    const formatPeriod = (fav: FavoriteStrategy): string => {
+        const s = fav.start_date;
+        const e = fav.end_date;
+        if (!s && !e) return 'Todo';
+        if (s && e) return `${s} → ${e}`;
+        if (s) return `≥ ${s}`;
+        return `≤ ${e!}`;
     };
 
     return (
@@ -407,7 +419,8 @@ const FavoritesDashboard: React.FC = () => {
                                         <th className="p-4 border-r border-white/5 text-center text-gray-400 w-32">Tier</th>
                                         <th className="p-4 border-r border-white/5 font-medium text-white">Symbol</th>
                                         <th className="p-4 border-r border-white/5 font-medium text-white">Strategy</th>
-                                        <th className="p-4 border-r border-white/5 text-center text-gray-400">TF</th>
+                                        <th className="p-4 border-r border-white/5 text-center text-gray-400">Timeframe</th>
+                                        <th className="p-4 border-r border-white/5 text-center text-gray-400 whitespace-nowrap">Período</th>
                                         <th className="p-4 border-r border-white/5 text-gray-400 w-96">Config</th>
                                         <th className="p-4 border-r border-white/5 text-right text-gray-400">Stop</th>
                                         <th className="p-4 border-r border-white/5 text-right text-blue-400">Sharpe</th>
@@ -429,9 +442,9 @@ const FavoritesDashboard: React.FC = () => {
                                 </thead>
                                 <tbody className="divide-y divide-industrial-800">
                                     {isLoading ? (
-                                        <tr><td colSpan={20} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
+                                        <tr><td colSpan={21} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
                                     ) : filteredFavorites.length === 0 ? (
-                                        <tr><td colSpan={20} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
+                                        <tr><td colSpan={21} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
                                     ) : (
                                         filteredFavorites.map((fav) => {
                                             const isSelected = selectedIds.includes(fav.id);
@@ -490,8 +503,11 @@ const FavoritesDashboard: React.FC = () => {
                                                     </td>
                                                     <td className="p-2 border-r border-white/5 font-bold text-white tracking-wide">{fav.symbol}</td>
                                                     <td className="p-2 border-r border-white/5 text-blue-300 font-medium">{fav.strategy_name.replace(/_/g, ' ')}</td>
-                                                    <td className="p-2 border-r border-white/5 text-center text-white/70">
+                                                    <td className="p-2 border-r border-white/5 text-center text-white/90" title="Timeframe rodado">
                                                         <span className="px-2 py-1 rounded bg-white/5 text-xs font-mono">{fav.timeframe}</span>
+                                                    </td>
+                                                    <td className="p-2 border-r border-white/5 text-center text-gray-300 text-xs whitespace-nowrap" title="Período em que a estratégia foi testada">
+                                                        {formatPeriod(fav)}
                                                     </td>
                                                     <td className="p-2 border-r border-white/5 text-gray-400 truncate max-w-xs text-xs font-mono" title={formatParams(fav.parameters)}>
                                                         {formatParams(fav.parameters).split('&').join(' ')}

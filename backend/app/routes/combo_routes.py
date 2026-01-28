@@ -5,7 +5,8 @@ Endpoints for combo strategy templates, backtesting, and optimization.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException
+import uuid
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from typing import Optional, List, Dict, Any
 import pandas as pd
@@ -18,6 +19,9 @@ from app.schemas.combo_params import (
     ComboBacktestResponse,
     ComboOptimizationRequest,
     ComboOptimizationResponse,
+    ComboBatchBacktestRequest,
+    ComboBatchBacktestResponse,
+    ComboBatchProgressResponse,
     TemplateListResponse,
     ComboTemplateMetadata,
     UpdateTemplateRequest,
@@ -26,6 +30,7 @@ from app.schemas.combo_params import (
 from app.services.combo_service import ComboService
 from src.data.incremental_loader import IncrementalLoader
 from app.services.combo_optimizer import ComboOptimizer
+from app.services.batch_backtest_service import run_batch_backtest, get_batch_progress, init_batch_job
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
@@ -476,7 +481,8 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
             timeframe=request.timeframe,
             start_date=request.start_date,
             end_date=request.end_date,
-            custom_ranges=request.custom_ranges
+            custom_ranges=request.custom_ranges,
+            deep_backtest=request.deep_backtest
         )
         
         logger.info(f"Optimization complete. Best score: {result.get('best_score', 'N/A')}")
@@ -488,3 +494,33 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/backtest/batch", response_model=ComboBatchBacktestResponse)
+async def start_batch_backtest(request: ComboBatchBacktestRequest, background_tasks: BackgroundTasks):
+    """
+    Start a batch backtest job for multiple symbols.
+    Uses current config (template, ranges, timeframe, deep_backtest).
+    For each symbol, runs optimization and saves best result as new favorite
+    with notes \"gerado em lote\" and tier=3. Never overwrites existing favorites.
+    Poll GET /api/combos/backtest/batch/{job_id} for progress.
+    """
+    try:
+        job_id = str(uuid.uuid4())
+        payload = request.model_dump()
+        init_batch_job(job_id, len(request.symbols))
+        background_tasks.add_task(run_batch_backtest, job_id, payload)
+        logger.info("Batch backtest started job_id=%s symbols=%s", job_id, request.symbols)
+        return ComboBatchBacktestResponse(job_id=job_id)
+    except Exception as e:
+        logger.exception("Batch backtest start failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/backtest/batch/{job_id}", response_model=ComboBatchProgressResponse)
+async def get_batch_backtest_progress(job_id: str):
+    """Get progress and result of a batch backtest job."""
+    progress = get_batch_progress(job_id)
+    if not progress:
+        raise HTTPException(status_code=404, detail="Batch job not found")
+    return ComboBatchProgressResponse(**progress)

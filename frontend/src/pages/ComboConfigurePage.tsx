@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Settings, TrendingUp, Calendar, DollarSign, Sliders } from 'lucide-react'
+import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search } from 'lucide-react'
 
 interface TemplateMetadata {
     name: string
@@ -27,10 +27,41 @@ export function ComboConfigurePage() {
 
     // Optimization parameters
     const [params, setParams] = useState<any[]>([])
-    const [symbol, setSymbol] = useState('BTC/USDT')
     const [timeframe, setTimeframe] = useState('1d')
     const [deepBacktest, setDeepBacktest] = useState(true)
     const [logs, setLogs] = useState<string[]>([])
+
+    // Período: últimos 6 meses / 2 anos / todo o histórico
+    type PeriodKey = '6m' | '2y' | 'all'
+    const [period, setPeriod] = useState<PeriodKey>('all')
+
+    // Escopo: Todos (seleciona todos, desabilita caixa) ou Seleciona (usuário escolhe).
+    type BatchScope = 'all' | 'selected'
+    const [batchScope, setBatchScope] = useState<BatchScope>('selected')
+    const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['BTC/USDT'])
+    const [leftHighlighted, setLeftHighlighted] = useState<string[]>([])
+    const [rightHighlighted, setRightHighlighted] = useState<string[]>([])
+    const [leftFilter, setLeftFilter] = useState('')
+
+    // Batch backtest
+    const [batchRunning, setBatchRunning] = useState(false)
+    const [batchJobId, setBatchJobId] = useState<string | null>(null)
+    const [batchProgress, setBatchProgress] = useState<{
+        status: string
+        processed: number
+        total: number
+        succeeded: number
+        failed: number
+        skipped?: number
+        errors: Array<{ symbol: string; error: string }>
+        started_at: string | null
+        elapsed_sec: number
+        estimated_remaining_sec: number | null
+    } | null>(null)
+    const [batchTotal, setBatchTotal] = useState(0)
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const batchStartTimeRef = useRef<number | null>(null)
+    const [clientElapsedSec, setClientElapsedSec] = useState(0)
 
     // Fetch available symbols from Binance
     const { data: symbolsData } = useQuery({
@@ -51,6 +82,12 @@ export function ComboConfigurePage() {
             fetchMetadata()
         }
     }, [templateName])
+
+    useEffect(() => {
+        if (batchScope === 'all' && (symbolsData ?? []).length > 0) {
+            setSelectedSymbols([...(symbolsData ?? [])])
+        }
+    }, [batchScope, symbolsData])
 
     const fetchMetadata = async () => {
         try {
@@ -122,45 +159,231 @@ export function ComboConfigurePage() {
         }
     }
 
-    const handleRunOptimization = async () => {
-        setRunning(true)
-        try {
-            // Build custom ranges
-            const custom_ranges: Record<string, any> = {}
-            params.forEach(p => {
-                custom_ranges[p.name] = {
-                    min: p.min,
-                    max: p.max,
-                    step: p.step
-                }
-            })
+    const getBatchSymbols = (): string[] => {
+        if (batchScope === 'all') return symbolsData ?? []
+        return selectedSymbols
+    }
 
-            const response = await fetch('http://localhost:8000/api/combos/optimize', {
+    /** Últimos 6 meses, últimos 2 anos ou todo o histórico. */
+    function getPeriodDates(): { start_date: string | null; end_date: string | null } {
+        if (period === 'all') return { start_date: null, end_date: null }
+        const end = new Date()
+        const start = new Date()
+        if (period === '6m') {
+            start.setMonth(start.getMonth() - 6)
+        } else {
+            start.setFullYear(start.getFullYear() - 2)
+        }
+        return {
+            start_date: start.toISOString().slice(0, 10),
+            end_date: end.toISOString().slice(0, 10)
+        }
+    }
+
+    function formatElapsed(sec: number): string {
+        const m = Math.floor(sec / 60)
+        const s = Math.floor(sec % 60)
+        return `${m}m ${s}s`
+    }
+
+    const handleRun = async () => {
+        const symbolsToRun = getBatchSymbols()
+        if (batchScope === 'selected' && symbolsToRun.length === 0) {
+            alert('Selecione ao menos um símbolo na lista acima.')
+            return
+        }
+        if (symbolsToRun.length === 0) {
+            alert('Nenhum símbolo disponível.')
+            return
+        }
+
+        const custom_ranges: Record<string, { min: number; max: number; step: number }> = {}
+        params.forEach(p => {
+            custom_ranges[p.name] = { min: p.min, max: p.max, step: p.step ?? 1 }
+        })
+        const { start_date, end_date } = getPeriodDates()
+
+        if (symbolsToRun.length === 1) {
+            setRunning(true)
+            try {
+                const existsUrl = new URL('http://localhost:8000/api/favorites/exists')
+                existsUrl.searchParams.set('strategy_name', templateName)
+                existsUrl.searchParams.set('symbol', symbolsToRun[0])
+                existsUrl.searchParams.set('timeframe', timeframe)
+                existsUrl.searchParams.set('period_type', period)
+                const existsRes = await fetch(existsUrl.toString())
+                if (existsRes.ok) {
+                    const { exists } = await existsRes.json()
+                    if (exists) {
+                        alert('Estratégia já existe nos favoritos (mesmo template, ativo, timeframe e período). Redirecionando.')
+                        navigate('/favorites')
+                        return
+                    }
+                }
+                const res = await fetch('http://localhost:8000/api/combos/optimize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        template_name: templateName,
+                        symbol: symbolsToRun[0],
+                        timeframe,
+                        start_date,
+                        end_date,
+                        deep_backtest: deepBacktest,
+                        custom_ranges
+                    })
+                })
+                if (!res.ok) {
+                    alert('Falha na otimização')
+                    return
+                }
+                const result = await res.json()
+                const name = `${result.template_name} - ${result.symbol} ${result.timeframe} (${new Date().toLocaleTimeString()})`
+                const favRes = await fetch('http://localhost:8000/api/favorites/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        symbol: result.symbol,
+                        timeframe: result.timeframe,
+                        strategy_name: result.template_name,
+                        parameters: result.best_parameters ?? result.parameters ?? {},
+                        metrics: result.best_metrics ?? {},
+                        start_date: start_date ?? null,
+                        end_date: end_date ?? null,
+                        period_type: period
+                    })
+                })
+                if (!favRes.ok) {
+                    const err = await favRes.json().catch(() => ({}))
+                    throw new Error(err.detail ?? 'Falha ao salvar nos favoritos')
+                }
+                navigate('/favorites')
+            } catch (e) {
+                console.error('Optimization error:', e)
+                alert(e instanceof Error ? e.message : 'Falha na otimização')
+            } finally {
+                setRunning(false)
+            }
+            return
+        }
+
+        setBatchRunning(true)
+        setBatchJobId(null)
+        setBatchProgress(null)
+        setBatchTotal(symbolsToRun.length)
+        setClientElapsedSec(0)
+        batchStartTimeRef.current = Date.now()
+        try {
+            const res = await fetch('http://localhost:8000/api/combos/backtest/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     template_name: templateName,
-                    symbol,
+                    symbols: symbolsToRun,
                     timeframe,
-                    start_date: null, // Use all available data
-                    end_date: null,
+                    start_date,
+                    end_date,
+                    period_type: period,
+                    deep_backtest: deepBacktest,
                     custom_ranges
                 })
             })
-
-            if (response.ok) {
-                const result = await response.json()
-                // Navigate to results page with data
-                navigate('/combo/results', { state: { result, isOptimization: true } })
-            } else {
-                alert('Optimization failed. Check console for details.')
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                throw new Error(err.detail ?? 'Falha ao iniciar batch')
             }
-        } catch (error) {
-            console.error('Optimization error:', error)
-            alert('Failed to run optimization')
-        } finally {
-            setRunning(false)
+            const data = await res.json()
+            setBatchJobId(data.job_id)
+        } catch (e) {
+            console.error('Batch start error:', e)
+            alert(e instanceof Error ? e.message : 'Falha ao iniciar batch')
+            setBatchRunning(false)
         }
+    }
+
+    useEffect(() => {
+        if (!batchJobId) return
+        const poll = async () => {
+            try {
+                const res = await fetch(`http://localhost:8000/api/combos/backtest/batch/${batchJobId}`)
+                if (!res.ok) return
+                const data = await res.json()
+                setBatchProgress(data)
+                if (data.status === 'completed' || data.status === 'failed') {
+                    if (pollRef.current) {
+                        clearInterval(pollRef.current)
+                        pollRef.current = null
+                    }
+                    setBatchRunning(false)
+                    setBatchJobId(null)
+                    batchStartTimeRef.current = null
+                }
+            } catch {
+                /* ignore */
+            }
+        }
+        poll()
+        pollRef.current = setInterval(poll, 2000)
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current)
+        }
+    }, [batchJobId])
+
+    useEffect(() => {
+        if (!batchRunning) return
+        const t = setInterval(() => {
+            const start = batchStartTimeRef.current
+            if (start != null) setClientElapsedSec(Math.floor((Date.now() - start) / 1000))
+        }, 1000)
+        return () => clearInterval(t)
+    }, [batchRunning])
+
+    const selectTopSymbols = () => {
+        const list = symbolsData ?? []
+        const top = list.filter(s => /^(BTC|ETH|BNB|SOL|XRP|ADA|DOGE|AVAX|MATIC|LINK)\/USDT$/i.test(s))
+        setSelectedSymbols(prev => {
+            const next = new Set(prev)
+            top.forEach(x => next.add(x))
+            return [...next]
+        })
+        setLeftHighlighted([])
+        setRightHighlighted([])
+    }
+
+    const availableSymbols = (symbolsData ?? []).filter(s => !selectedSymbols.includes(s))
+    const leftFilterLower = leftFilter.trim().toLowerCase()
+    const availableFiltered = leftFilterLower
+        ? availableSymbols.filter(s => s.toLowerCase().includes(leftFilterLower))
+        : availableSymbols
+    const toggleLeft = (s: string) => {
+        setLeftHighlighted(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+    }
+    const toggleRight = (s: string) => {
+        setRightHighlighted(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+    }
+    const addSelected = () => {
+        if (leftHighlighted.length === 0) return
+        setSelectedSymbols(prev => [...prev, ...leftHighlighted])
+        setLeftHighlighted([])
+    }
+    const removeSelected = () => {
+        if (rightHighlighted.length === 0) return
+        setSelectedSymbols(prev => {
+            const next = prev.filter(s => !rightHighlighted.includes(s))
+            return next.length ? next : ['BTC/USDT']
+        })
+        setRightHighlighted([])
+    }
+    const addAll = () => {
+        if (availableFiltered.length === 0) return
+        setSelectedSymbols(prev => [...prev, ...availableFiltered])
+        setLeftHighlighted([])
+    }
+    const clearToBtc = () => {
+        setSelectedSymbols(['BTC/USDT'])
+        setLeftHighlighted([])
+        setRightHighlighted([])
     }
 
     if (loading) {
@@ -265,27 +488,164 @@ export function ComboConfigurePage() {
                         </h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-semibold text-gray-300 mb-2">Escopo</label>
+                                <div className="flex flex-wrap gap-4 mb-4">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="scope"
+                                            checked={batchScope === 'all'}
+                                            onChange={() => {
+                                                setBatchScope('all')
+                                                setSelectedSymbols([...(symbolsData ?? [])])
+                                                setLeftHighlighted([])
+                                                setRightHighlighted([])
+                                                setLeftFilter('')
+                                            }}
+                                            className="rounded-full border-white/20"
+                                        />
+                                        <span className="text-sm text-white">Todos</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="scope"
+                                            checked={batchScope === 'selected'}
+                                            onChange={() => {
+                                                setBatchScope('selected')
+                                                setSelectedSymbols(prev => (prev.length ? prev : ['BTC/USDT']))
+                                                setLeftHighlighted([])
+                                                setRightHighlighted([])
+                                                setLeftFilter('')
+                                            }}
+                                            className="rounded-full border-white/20"
+                                        />
+                                        <span className="text-sm text-white">Seleciona</span>
+                                    </label>
+                                </div>
                                 <label className="block text-sm font-semibold text-gray-300 mb-2">
                                     <DollarSign className="w-4 h-4 inline mr-1" />
-                                    Symbol
+                                    Ativos
                                 </label>
-                                <select
-                                    value={symbol}
-                                    onChange={(e) => setSymbol(e.target.value)}
-                                    className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none"
-                                >
-                                    {symbolsData ? (
-                                        symbolsData.map(s => (
-                                            <option key={s} value={s} className="bg-gray-900 text-white">{s}</option>
-                                        ))
-                                    ) : (
-                                        <option value={symbol} className="bg-gray-900 text-white">{symbol}</option>
-                                    )}
-                                </select>
+                                <p className="text-xs text-gray-400 mb-2">
+                                    {batchScope === 'all'
+                                        ? 'Todos selecionados. Otimizar 1: usa o primeiro; N: batch em todos.'
+                                        : <>1 ativo: otimiza o <strong>primeiro</strong>. N ativos: <strong>batch</strong> nos selecionados.</>}
+                                </p>
+                                {batchScope === 'all' ? (
+                                    <div className="py-6 rounded-lg bg-white/5 border border-white/10 text-center text-gray-400 text-sm">
+                                        Modo Todos — todos os pares USDT serão usados. Altere para &quot;Seleciona&quot; para escolher ativos.
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="flex gap-2 mb-2">
+                                            <button
+                                                type="button"
+                                                onClick={selectTopSymbols}
+                                                className="text-xs px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-lg hover:bg-purple-500/30 transition-colors"
+                                            >
+                                                Top 10
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={clearToBtc}
+                                                className="text-xs px-3 py-1.5 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-colors"
+                                            >
+                                                Limpar (só BTC)
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
+                                            <div className="flex flex-col min-h-0">
+                                                <div className="text-xs text-gray-400 mb-1 font-medium">Selecione</div>
+                                                <div className="relative mb-1.5">
+                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                    <input
+                                                        type="text"
+                                                        value={leftFilter}
+                                                        onChange={(e) => setLeftFilter(e.target.value)}
+                                                        placeholder="Filtrar ativo…"
+                                                        className="w-full pl-8 pr-3 py-1.5 rounded-sm border border-white/10 bg-black/40 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+                                                    />
+                                                </div>
+                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-sm border border-white/10 bg-black/40 p-1 space-y-0.5">
+                                                    {availableFiltered.map(s => (
+                                                        <div
+                                                            key={s}
+                                                            onClick={() => toggleLeft(s)}
+                                                            onDoubleClick={() => { setSelectedSymbols(prev => [...prev, s]); setLeftHighlighted(prev => prev.filter(x => x !== s)) }}
+                                                            className={`px-3 py-1.5 rounded-sm text-sm cursor-pointer truncate ${leftHighlighted.includes(s) ? 'bg-blue-500/30 text-white' : 'text-gray-300 hover:bg-white/10'}`}
+                                                        >
+                                                            {s}
+                                                        </div>
+                                                    ))}
+                                                    {availableFiltered.length === 0 && (
+                                                        <div className="text-gray-500 text-sm italic py-4 text-center">
+                                                            {availableSymbols.length === 0 ? 'Nenhum disponível' : 'Nenhum resultado para o filtro'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col justify-center gap-1 py-6">
+                                                <button
+                                                    type="button"
+                                                    onClick={addSelected}
+                                                    disabled={leftHighlighted.length === 0}
+                                                    className="p-1.5 rounded bg-white/10 text-gray-300 hover:bg-blue-500/30 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    title="Adicionar selecionados"
+                                                >
+                                                    <ChevronRight className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={removeSelected}
+                                                    disabled={rightHighlighted.length === 0}
+                                                    className="p-1.5 rounded bg-white/10 text-gray-300 hover:bg-blue-500/30 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    title="Remover selecionados"
+                                                >
+                                                    <ChevronLeft className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={addAll}
+                                                    disabled={availableFiltered.length === 0}
+                                                    className="p-1.5 rounded bg-white/10 text-gray-300 hover:bg-blue-500/30 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    title={leftFilter.trim() ? 'Adicionar todos (filtrados)' : 'Adicionar todos'}
+                                                >
+                                                    <ChevronsRight className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={clearToBtc}
+                                                    className="p-1.5 rounded bg-white/10 text-gray-300 hover:bg-blue-500/30 hover:text-white transition-colors"
+                                                    title="Limpar (só BTC)"
+                                                >
+                                                    <ChevronsLeft className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <div className="flex flex-col min-h-0">
+                                                <div className="text-xs text-gray-400 mb-1 font-medium">Selecionados</div>
+                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-sm border border-white/10 bg-black/40 p-1 space-y-0.5">
+                                                    {selectedSymbols.map(s => (
+                                                        <div
+                                                            key={s}
+                                                            onClick={() => toggleRight(s)}
+                                                            onDoubleClick={() => setSelectedSymbols(prev => (prev.filter(x => x !== s).length ? prev.filter(x => x !== s) : ['BTC/USDT']))}
+                                                            className={`px-3 py-1.5 rounded-sm text-sm cursor-pointer truncate ${rightHighlighted.includes(s) ? 'bg-blue-500/30 text-white' : 'text-gray-300 hover:bg-white/10'}`}
+                                                        >
+                                                            {s}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Clique para marcar; duplo clique para mover. Use os botões entre as listas para adicionar/remover.
+                                        </p>
+                                    </>
+                                )}
                             </div>
 
-                            {/* Timeframe */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-300 mb-2">
                                     Timeframe
@@ -301,6 +661,20 @@ export function ComboConfigurePage() {
                                     <option value="1h" className="bg-gray-900 text-white">1 hour</option>
                                     <option value="4h" className="bg-gray-900 text-white">4 hours</option>
                                     <option value="1d" className="bg-gray-900 text-white">1 day</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                                    Período
+                                </label>
+                                <select
+                                    value={period}
+                                    onChange={(e) => setPeriod(e.target.value as PeriodKey)}
+                                    className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none"
+                                >
+                                    <option value="6m" className="bg-gray-900 text-white">Últimos 6 meses</option>
+                                    <option value="2y" className="bg-gray-900 text-white">Últimos 2 anos</option>
+                                    <option value="all" className="bg-gray-900 text-white">Todo o período</option>
                                 </select>
                             </div>
                         </div>
@@ -337,7 +711,11 @@ export function ComboConfigurePage() {
                         <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                             <p className="text-sm text-blue-300 flex items-center gap-2">
                                 <Calendar className="w-4 h-4" />
-                                Will use all available historical data for this symbol
+                                {period === 'all'
+                                    ? 'Será usado todo o histórico disponível para os símbolos escolhidos.'
+                                    : period === '6m'
+                                        ? 'Serão usados os últimos 6 meses de dados.'
+                                        : 'Serão usados os últimos 2 anos de dados.'}
                             </p>
                         </div>
                     </div>
@@ -392,25 +770,89 @@ export function ComboConfigurePage() {
                         </div>
                     )}
 
-                    {/* Run Button */}
-                    <div className="flex justify-center">
-                        <button
-                            onClick={handleRunOptimization}
-                            disabled={running}
-                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-12 rounded-xl transition-all duration-300 flex items-center gap-3 shadow-lg shadow-purple-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-                        >
-                            {running ? (
-                                <>
-                                    <Settings className="w-5 h-5 animate-spin" />
-                                    Running Optimization...
-                                </>
-                            ) : (
-                                <>
-                                    <Sliders className="w-5 h-5" />
-                                    Run Optimization
-                                </>
-                            )}
-                        </button>
+                    {/* Executar: 1 ou N ativos, mesmo botão */}
+                    <div className="glass-strong rounded-2xl p-6 border border-white/10">
+                        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <Sliders className="w-5 h-5" />
+                            Otimizar
+                            <span className="text-xs font-normal text-gray-400 flex items-center gap-1" title='1 ativo: otimiza, salva em favoritos e redireciona. N ativos: batch, salva cada um em favoritos (nota "gerado em lote", tier 3).'>
+                                <HelpCircle className="w-4 h-4" />
+                                ajuda
+                            </span>
+                        </h2>
+                        <p className="text-sm text-gray-400 mb-4">
+                            {getBatchSymbols().length === 1
+                                ? '1 ativo selecionado: otimiza, salva em favoritos e abre a página de favoritos.'
+                                : batchScope === 'all'
+                                    ? 'Todos os pares: batch (pode demorar). Cada resultado é salvo em favoritos.'
+                                    : `${selectedSymbols.length} ativos: batch. Cada resultado é salvo em favoritos.`}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-4">
+                            <button
+                                onClick={handleRun}
+                                disabled={batchRunning || running}
+                                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-10 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                            >
+                                {batchRunning || running ? (
+                                    <>
+                                        <Settings className="w-5 h-5 animate-spin" />
+                                        Otimizando…
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sliders className="w-5 h-5" />
+                                        Otimizar
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {batchRunning && (
+                            <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                                <div className="flex items-center gap-2 text-blue-300 font-medium mb-2">
+                                    <Settings className="w-4 h-4 animate-spin" />
+                                    {(batchProgress?.processed ?? 0)} de {batchProgress?.total ?? batchTotal} ativos
+                                </div>
+                                <div className="text-sm text-gray-300 space-y-1">
+                                    <p>Tempo decorrido: {formatElapsed(clientElapsedSec)}</p>
+                                    {(() => {
+                                        const p = batchProgress?.processed ?? 0
+                                        const t = batchProgress?.total ?? batchTotal
+                                        const eta = batchProgress?.estimated_remaining_sec
+                                        if (p > 0 && p < t && eta != null) return <p>Tempo restante: ~{formatElapsed(Math.ceil(eta))}</p>
+                                        if (p > 0 && p < t) return <p>Tempo restante: calculando…</p>
+                                        return null
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+
+                        {!batchRunning && batchProgress && (batchProgress.status === 'completed' || batchProgress.status === 'failed') && (
+                            <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-lg space-y-2">
+                                <p className="text-sm font-medium text-white">
+                                    Concluído: {batchProgress.succeeded} sucesso, {batchProgress.failed} falha
+                                    {(batchProgress.skipped ?? 0) > 0 && `, ${batchProgress.skipped} ignorado(s) (já em favoritos)`}.
+                                </p>
+                                {batchProgress.errors.length > 0 && (
+                                    <details className="text-xs text-gray-400">
+                                        <summary>Erros por ativo</summary>
+                                        <ul className="mt-1 list-disc list-inside">
+                                            {batchProgress.errors.map((e, i) => (
+                                                <li key={i}>{e.symbol}: {e.error}</li>
+                                            ))}
+                                        </ul>
+                                    </details>
+                                )}
+                                <button
+                                    onClick={() => navigate('/favorites')}
+                                    className="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-300"
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Abrir Strategy Favorites
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>

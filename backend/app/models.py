@@ -134,6 +134,11 @@ class FavoriteStrategy(Base):
     # Tier system - para categorizar estratégias (1=Core obrigatório, 2=Bons complementares, 3=Outros)
     tier = Column(Integer, nullable=True)
 
+    # Período do backtest (6m / 2y / todo). Chave de unicidade junto com strategy_name, symbol, timeframe.
+    start_date = Column(String, nullable=True)
+    end_date = Column(String, nullable=True)
+    period_type = Column(String, nullable=True)  # '6m' | '2y' | 'all'; usado no skip (evita drift de datas)
+
 
 class AutoBacktestRun(Base):
     """Model for Auto Backtest execution history"""

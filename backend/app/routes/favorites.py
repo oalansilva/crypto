@@ -1,11 +1,42 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
+
 from app.database import get_db
 from app.models import FavoriteStrategy
 from app.schemas.favorite import FavoriteStrategyCreate, FavoriteStrategyResponse, FavoriteStrategyUpdate
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
+
+
+class ExistsResponse(BaseModel):
+    exists: bool
+
+
+@router.get("/exists", response_model=ExistsResponse)
+def favorite_exists(
+    strategy_name: str = Query(..., description="Template name"),
+    symbol: str = Query(..., description="Symbol (e.g. ETH/USDT)"),
+    timeframe: str = Query(..., description="Timeframe (e.g. 1d)"),
+    period_type: Optional[str] = Query(None, description="'6m' | '2y' | 'all'"),
+    db: Session = Depends(get_db),
+):
+    """Check if a favorite already exists for (strategy, symbol, timeframe, period_type). Used to skip single optimize."""
+    q = db.query(FavoriteStrategy).filter(
+        FavoriteStrategy.strategy_name == strategy_name,
+        FavoriteStrategy.symbol == symbol,
+        FavoriteStrategy.timeframe == timeframe,
+    )
+    if period_type is not None:
+        q = q.filter(FavoriteStrategy.period_type == period_type)
+    else:
+        q = q.filter(
+            FavoriteStrategy.start_date.is_(None),
+            FavoriteStrategy.end_date.is_(None),
+        )
+    return ExistsResponse(exists=q.first() is not None)
+
 
 @router.get("/", response_model=List[FavoriteStrategyResponse])
 def list_favorites(db: Session = Depends(get_db)):
