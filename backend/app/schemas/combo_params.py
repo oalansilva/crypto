@@ -135,6 +135,7 @@ class ComboBatchProgressResponse(BaseModel):
     started_at: Optional[str] = None
     elapsed_sec: float = 0.0
     estimated_remaining_sec: Optional[float] = None
+    current_symbol: Optional[str] = Field(None, description="Symbol currently being optimized")
 
 
 class TemplateListResponse(BaseModel):

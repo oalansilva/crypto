@@ -35,6 +35,7 @@ def _get_or_init_job(job_id: str, total: int) -> Dict[str, Any]:
             "started_at": datetime.utcnow().isoformat(),
             "elapsed_sec": 0.0,
             "estimated_remaining_sec": None,
+            "current_symbol": None,
             "cancel_requested": False,
             "pause_requested": False,
         }
@@ -93,14 +94,17 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
 
     for i, symbol in enumerate(symbols):
         job["elapsed_sec"] = time.time() - started
+        job["current_symbol"] = symbol
         if job.get("cancel_requested"):
             job["status"] = "cancelled"
             job["estimated_remaining_sec"] = None
+            job["current_symbol"] = None
             logger.info("Batch %s cancelled by user", job_id[:8])
             return
         if job.get("pause_requested"):
             job["status"] = "paused"
             job["estimated_remaining_sec"] = None
+            job["current_symbol"] = None
             logger.info("Batch %s paused by user", job_id[:8])
             return
 
@@ -144,6 +148,12 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                 deep_backtest=deep_backtest,
                 job_id=job_id,
             )
+        except KeyboardInterrupt:
+            job["status"] = "cancelled"
+            job["estimated_remaining_sec"] = None
+            job["current_symbol"] = None
+            logger.info("Batch %s cancelled (CTRL+C)", job_id[:8])
+            return
         except Exception as e:
             logger.exception("Batch backtest failed for %s: %s", symbol, e)
             job["failed"] = job.get("failed", 0) + 1
@@ -194,5 +204,6 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
     job["elapsed_sec"] = time.time() - started
     job["status"] = "completed"
     job["estimated_remaining_sec"] = None
+    job["current_symbol"] = None
     logger.info("Batch %s completed: %d succeeded, %d failed, %d skipped", job_id[:8],
                 job.get("succeeded", 0), job.get("failed", 0), job.get("skipped", 0))

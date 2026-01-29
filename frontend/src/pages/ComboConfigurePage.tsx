@@ -58,6 +58,7 @@ export function ComboConfigurePage() {
         started_at: string | null
         elapsed_sec: number
         estimated_remaining_sec: number | null
+        current_symbol?: string | null
     } | null>(null)
     const [batchTotal, setBatchTotal] = useState(0)
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -839,6 +840,11 @@ export function ComboConfigurePage() {
                                     <Settings className="w-4 h-4 animate-spin" />
                                     {(batchProgress?.processed ?? 0)} de {batchProgress?.total ?? batchTotal} ativos
                                 </div>
+                                {batchProgress?.current_symbol && (
+                                    <p className="text-sm text-cyan-300/90 mb-2">
+                                        Ativo atual: <span className="font-medium">{batchProgress.current_symbol}</span>
+                                    </p>
+                                )}
                                 <div className="text-sm text-gray-300 space-y-1">
                                     <p>Tempo decorrido: {formatElapsed(clientElapsedSec)}</p>
                                     {(() => {
