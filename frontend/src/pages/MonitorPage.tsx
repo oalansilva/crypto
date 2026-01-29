@@ -7,35 +7,49 @@ import { RefreshCw, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
-type SortOption = 'distance' | 'symbol';
-type TierFilter = 'all' | '1' | '2' | '3' | 'none';
+type SortOption = 'distance' | 'tier_distance' | 'symbol';
+type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
 
 export const MonitorPage: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
-    const [sortBy, setSortBy] = useState<SortOption>('distance');
-    const [tierFilter, setTierFilter] = useState<TierFilter>('1');
+    const [sortBy, setSortBy] = useState<SortOption>('tier_distance');
+    const [tierFilter, setTierFilter] = useState<TierFilter>('1_2');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const { toast } = useToast();
 
-    const fetchOpportunities = async () => {
+    const fetchOpportunities = async (tier?: TierFilter) => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:8000/api/opportunities/');
+            // Convert frontend tier filter to API query param
+            const tierParam = tier || tierFilter;
+            let apiTier: string;
+            if (tierParam === 'all') {
+                apiTier = 'all';
+            } else if (tierParam === '1_2') {
+                apiTier = '1,2';  // API expects comma-separated
+            } else if (tierParam === 'none') {
+                apiTier = 'none';
+            } else {
+                apiTier = tierParam;  // '1', '2', '3'
+            }
+            
+            const url = `http://localhost:8000/api/opportunities/?tier=${encodeURIComponent(apiTier)}`;
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch opportunities');
             const data = await response.json();
             setOpportunities(data);
             setLastUpdated(new Date());
 
             toast({
-                title: "Updated",
-                description: `Analyzed ${data.length} strategies`,
+                title: "Atualizado",
+                description: `${data.length} estratégias analisadas`,
             });
         } catch (error) {
             console.error(error);
             toast({
-                title: "Error",
-                description: "Could not load opportunities. Is backend running?",
+                title: "Erro",
+                description: "Não foi possível carregar. O backend está rodando?",
                 variant: "destructive"
             });
         } finally {
@@ -43,42 +57,55 @@ export const MonitorPage: React.FC = () => {
         }
     };
 
+    // Fetch when page loads or tier filter changes
     useEffect(() => {
-        // Load once when page opens (no auto-refresh)
-        fetchOpportunities();
-    }, []);
+        fetchOpportunities(tierFilter);
+    }, [tierFilter]);
 
-    const matchesTier = (o: Opportunity) => {
-        if (tierFilter === 'all') return true;
-        if (tierFilter === 'none') return o.tier == null;
-        return o.tier === parseInt(tierFilter);
-    };
-
-    // Sort opportunities by distance (closest first) or symbol
-    // Regra desejada:
-    // - HOLD sempre primeiro
-    // - Depois, independente do tier, os mais próximos (menor distância) vêm primeiro
-    // - Tier serve apenas como filtro visual/por dropdown, não como prioridade na ordenação
+    // Sort opportunities by selected criteria
     const sortedOpportunities = useMemo(() => {
         const sorted = [...opportunities].sort((a, b) => {
-            if (sortBy === 'distance') {
-                // HOLD primeiro
+            if (sortBy === 'tier_distance') {
+                // Tier + Distância: Tier 1 e 2 primeiro, depois por distância
+                // HOLD sempre primeiro dentro de cada grupo de tier
+                const tierA = a.tier ?? 999;
+                const tierB = b.tier ?? 999;
+                // Agrupar Tier 1 e 2 como "prioritários" (< 3), outros depois
+                const priorityA = tierA <= 2 ? 0 : 1;
+                const priorityB = tierB <= 2 ? 0 : 1;
+                if (priorityA !== priorityB) {
+                    return priorityA - priorityB;
+                }
+                // Dentro do mesmo grupo de prioridade, HOLD primeiro
                 if (a.is_holding !== b.is_holding) {
                     return a.is_holding ? -1 : 1;
                 }
-                // Depois, ordenar apenas pela distância (mais próximo primeiro)
+                // Depois por tier específico (1 antes de 2)
+                if (tierA !== tierB) {
+                    return tierA - tierB;
+                }
+                // Depois por distância (mais próximo primeiro)
                 const distA = a.distance_to_next_status ?? 999;
                 const distB = b.distance_to_next_status ?? 999;
                 if (distA !== distB) {
                     return distA - distB;
                 }
-                // Desempate opcional por tier (1, 2, 3, null)
+                return a.symbol.localeCompare(b.symbol);
+            } else if (sortBy === 'distance') {
+                // Distância: HOLD primeiro, depois por distância
+                if (a.is_holding !== b.is_holding) {
+                    return a.is_holding ? -1 : 1;
+                }
+                const distA = a.distance_to_next_status ?? 999;
+                const distB = b.distance_to_next_status ?? 999;
+                if (distA !== distB) {
+                    return distA - distB;
+                }
                 const tierA = a.tier ?? 999;
                 const tierB = b.tier ?? 999;
                 if (tierA !== tierB) {
                     return tierA - tierB;
                 }
-                // Último critério: símbolo
                 return a.symbol.localeCompare(b.symbol);
             } else if (sortBy === 'symbol') {
                 return a.symbol.localeCompare(b.symbol);
@@ -89,10 +116,11 @@ export const MonitorPage: React.FC = () => {
     }, [opportunities, sortBy]);
 
     // Separate opportunities by status, then apply tier filter
-    const holding = sortedOpportunities.filter(o => o.is_holding && matchesTier(o));
-    const stoppedOut = sortedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT' && matchesTier(o));
-    const missedEntry = sortedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY' && matchesTier(o));
-    const waiting = sortedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY' && matchesTier(o));
+    // Dados já vêm filtrados por tier do backend
+    const holding = sortedOpportunities.filter(o => o.is_holding);
+    const stoppedOut = sortedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT');
+    const missedEntry = sortedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY');
+    const waiting = sortedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY');
 
     // Lista ordenada para paginação infinita: holding → stopped → missed → waiting
     type SectionKey = 'holding' | 'stoppedOut' | 'missedEntry' | 'waiting';
@@ -172,7 +200,7 @@ export const MonitorPage: React.FC = () => {
                         )}
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={fetchOpportunities} disabled={loading}>
+                        <Button variant="outline" onClick={() => fetchOpportunities()} disabled={loading}>
                             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
@@ -186,28 +214,33 @@ export const MonitorPage: React.FC = () => {
                             <select
                                 value={tierFilter}
                                 onChange={(e) => setTierFilter(e.target.value as TierFilter)}
-                                className="text-sm border rounded pl-2 pr-8 py-1.5 bg-background appearance-none cursor-pointer"
+                                className="text-sm border border-border rounded pl-2 pr-8 py-1.5 bg-gray-900 text-gray-100 appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
                             >
-                                <option value="all">All</option>
-                                <option value="1">Tier 1 – Core</option>
-                                <option value="2">Tier 2 – Complementares</option>
-                                <option value="3">Tier 3</option>
-                                <option value="none">Sem tier</option>
+                                <option value="all" className="bg-gray-900">All</option>
+                                <option value="1_2" className="bg-gray-900">Tier 1 + Tier 2</option>
+                                <option value="1" className="bg-gray-900">Tier 1 – Core</option>
+                                <option value="2" className="bg-gray-900">Tier 2 – Complementares</option>
+                                <option value="3" className="bg-gray-900">Tier 3</option>
+                                <option value="none" className="bg-gray-900">Sem tier</option>
                             </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm font-medium">Sort:</span>
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as SortOption)}
-                            className="text-sm border rounded px-2 py-1 bg-background"
-                        >
-                            <option value="distance">Distance (closest first)</option>
-                            <option value="symbol">Symbol</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                                className="text-sm border border-border rounded pl-2 pr-8 py-1.5 bg-gray-900 text-gray-100 appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
+                            >
+                                <option value="tier_distance" className="bg-gray-900">Tier + Distância</option>
+                                <option value="distance" className="bg-gray-900">Distância (mais próximo)</option>
+                                <option value="symbol" className="bg-gray-900">Símbolo</option>
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        </div>
                     </div>
                 </div>
             </div>

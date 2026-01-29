@@ -27,15 +27,23 @@ class OpportunityResponse(BaseModel):
     timestamp: str
     details: dict
 
+from fastapi import Query
+
 @router.get("/", response_model=List[OpportunityResponse])
-async def get_opportunities():
+async def get_opportunities(
+    tier: Optional[str] = Query(None, description="Filter by tier(s). E.g. '1', '1,2', 'none' for null tier, 'all' for no filter")
+):
     """
-    Get current opportunities (proximity analysis) for all favorite strategies.
-    sorted by Signal Priority (SIGNAL > NEAR > NEUTRAL).
+    Get current opportunities (proximity analysis) for favorite strategies.
+    
+    Query params:
+    - tier: Filter by tier(s). Examples: '1', '1,2', '3', 'none' (null tier), 'all' (no filter)
+    
+    Returns opportunities sorted by Signal Priority (SIGNAL > NEAR > NEUTRAL).
     """
     try:
         service = OpportunityService()
-        return service.get_opportunities()
+        return service.get_opportunities(tier_filter=tier)
     except Exception as e:
         logger.error(f"Error getting opportunities: {e}")
         raise HTTPException(status_code=500, detail=str(e))

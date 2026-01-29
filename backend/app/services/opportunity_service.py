@@ -14,6 +14,23 @@ from app.database import DB_PATH
 
 logger = logging.getLogger(__name__)
 
+# Símbolos sem dados (delistados/descontinuados na exchange, ex.: tokens alavancados Binance)
+# Evita fetch inútil e log de "No data" repetido. Amplie conforme necessário.
+UNSUPPORTED_SYMBOLS = frozenset({
+    '1INCHDOWN/USDT', '1INCHUP/USDT',
+    'AAVEDOWN/USDT', 'AAVEUP/USDT',
+    'ADADOWN/USDT', 'ADAUP/USDT',
+    'AION/USDT',
+})
+
+
+def _is_unsupported_symbol(symbol: str) -> bool:
+    s = (symbol or '').strip().upper()
+    if not s:
+        return True
+    return s in UNSUPPORTED_SYMBOLS
+
+
 class OpportunityService:
     """
     Service to manage Strategy Favorites and calculate Opportunities (Proximity to Signal).
@@ -61,19 +78,58 @@ class OpportunityService:
         conn.close()
         return favorites
 
-    def get_opportunities(self) -> List[Dict[str, Any]]:
+    def _filter_by_tier(self, favorites: List[Dict[str, Any]], tier_filter: Optional[str]) -> List[Dict[str, Any]]:
         """
-        Analyze all favorites and return their current status (is_holding, distance_to_next_status).
+        Filter favorites by tier before processing.
+        
+        Args:
+            favorites: List of all favorites
+            tier_filter: '1', '2', '3', '1,2', 'none' (null tier), 'all'/None (no filter)
+        
+        Returns:
+            Filtered list of favorites
+        """
+        if not tier_filter or tier_filter.lower() == 'all':
+            return favorites
+        
+        tier_filter = tier_filter.lower().strip()
+        
+        # Handle 'none' (null tier)
+        if tier_filter == 'none':
+            return [f for f in favorites if f.get('tier') is None]
+        
+        # Handle comma-separated tiers (e.g. '1,2')
+        try:
+            allowed_tiers = {int(t.strip()) for t in tier_filter.split(',') if t.strip().isdigit()}
+        except ValueError:
+            logger.warning(f"Invalid tier_filter '{tier_filter}', returning all favorites")
+            return favorites
+        
+        if not allowed_tiers:
+            return favorites
+        
+        return [f for f in favorites if f.get('tier') in allowed_tiers]
+
+    def get_opportunities(self, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Analyze favorites and return their current status (is_holding, distance_to_next_status).
+        
+        Args:
+            tier_filter: Filter by tier(s). Examples: '1', '1,2', '3', 'none' (null tier), 'all'/None (no filter)
         
         IMPORTANT: Buy/sell rules (entry_logic and exit_logic) are loaded dynamically from database:
         - Template metadata is fetched from combo_templates table
         - entry_logic (buy rule) and exit_logic (sell rule) come from template_data JSON field
         - Each favorite strategy uses its own template's rules from the database
         """
-        favorites = self.get_favorites()
+        all_favorites = self.get_favorites()
+        
+        # Filter by tier BEFORE processing (avoid loading unnecessary data)
+        favorites = self._filter_by_tier(all_favorites, tier_filter)
+        
         opportunities = []
         
-        logger.info(f"Processing {len(favorites)} favorite strategies")
+        logger.info(f"Processing {len(favorites)} favorite strategies (filtered from {len(all_favorites)} total, tier_filter={tier_filter})")
         
         # Cache for data to avoid refetching same symbol/timeframe
         data_cache = {}
@@ -89,8 +145,17 @@ class OpportunityService:
                 params = fav['parameters']
                 
                 logger.debug(f"Processing strategy {fav['id']}: {symbol} {tf} - {template_name}")
-                
-                # 1. Fetch Data (1D usually)
+
+                # 0. Skip known unsupported symbols (delisted / no data) before fetching
+                if _is_unsupported_symbol(symbol):
+                    skipped_strategies.append({
+                        'id': fav['id'],
+                        'symbol': symbol,
+                        'timeframe': tf,
+                        'reason': 'Symbol delisted or not available on exchange (e.g. Binance leveraged tokens)',
+                    })
+                    continue
+
                 # 1. Fetch Data (1D usually)
                 cache_key = f"{symbol}_{tf}"
                 if cache_key not in data_cache:
@@ -109,13 +174,11 @@ class OpportunityService:
                 df = data_cache[cache_key].copy()
                 
                 if df.empty:
-                    logger.warning(f"Strategy {fav['id']} ({symbol} {tf}): No data available (df.empty)")
-                    logger.warning(f"  This may indicate: 1) Symbol not available on exchange, 2) Cache file is empty/corrupt, 3) Network/API issue")
                     skipped_strategies.append({
                         'id': fav['id'],
                         'symbol': symbol,
                         'timeframe': tf,
-                        'reason': 'No data available (df.empty) - Check if symbol is valid or cache needs refresh'
+                        'reason': 'No data (symbol may be delisted, or cache/API issue)',
                     })
                     continue
 
@@ -590,8 +653,9 @@ class OpportunityService:
         # Log summary
         logger.info(f"Successfully processed {len(opportunities)} strategies out of {len(favorites)} favorites")
         if skipped_strategies:
-            logger.warning(f"Skipped {len(skipped_strategies)} strategies:")
+            symbols_str = ", ".join(s.get("symbol", "?") for s in skipped_strategies)
+            logger.warning(f"Skipped {len(skipped_strategies)} strategies (no data / delisted): {symbols_str}")
             for skipped in skipped_strategies:
-                logger.warning(f"  - ID {skipped['id']}: {skipped.get('symbol', 'unknown')} {skipped.get('timeframe', 'unknown')} - {skipped['reason']}")
+                logger.debug(f"  ID {skipped['id']}: {skipped.get('symbol', '?')} {skipped.get('timeframe', '?')} — {skipped['reason']}")
         
         return opportunities

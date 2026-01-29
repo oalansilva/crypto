@@ -3,22 +3,37 @@ import time
 import ccxt
 import pandas as pd
 from datetime import datetime, timedelta
+from pathlib import Path
 import logging
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
 class IncrementalLoader:
-    def __init__(self, exchange_id='binance', cache_dir='data/storage'):
+    def __init__(self, exchange_id='binance', cache_dir=None):
         self.exchange_id = exchange_id
-        self.cache_dir = cache_dir
+        
+        # Resolve cache_dir to absolute path relative to project root
+        # If cache_dir is None or relative, resolve from project root
+        if cache_dir is None:
+            # Find project root (look for common markers like .git, backend/, frontend/)
+            current_file = Path(__file__).resolve()
+            project_root = current_file.parent.parent.parent  # src/data/incremental_loader.py -> project root
+            cache_dir = project_root / "data" / "storage"
+        elif not os.path.isabs(cache_dir):
+            # Relative path - resolve from project root
+            current_file = Path(__file__).resolve()
+            project_root = current_file.parent.parent.parent
+            cache_dir = project_root / cache_dir
+        
+        self.cache_dir = str(cache_dir)
         self.exchange = getattr(ccxt, exchange_id)({
             'enableRateLimit': True,
         })
         
         # Ensure deep storage path
         # storage/exchange/
-        self.base_path = os.path.join(cache_dir, exchange_id)
+        self.base_path = os.path.join(self.cache_dir, exchange_id)
         if not os.path.exists(self.base_path):
             os.makedirs(self.base_path)
 
