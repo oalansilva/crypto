@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { RefreshCw, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 type SortOption = 'distance' | 'symbol';
 type TierFilter = 'all' | '1' | '2' | '3' | 'none';
@@ -13,7 +14,7 @@ export const MonitorPage: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
     const [sortBy, setSortBy] = useState<SortOption>('distance');
-    const [tierFilter, setTierFilter] = useState<TierFilter>('all');
+    const [tierFilter, setTierFilter] = useState<TierFilter>('1');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const { toast } = useToast();
 
@@ -92,6 +93,68 @@ export const MonitorPage: React.FC = () => {
     const stoppedOut = sortedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT' && matchesTier(o));
     const missedEntry = sortedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY' && matchesTier(o));
     const waiting = sortedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY' && matchesTier(o));
+
+    // Lista ordenada para paginação infinita: holding → stopped → missed → waiting
+    type SectionKey = 'holding' | 'stoppedOut' | 'missedEntry' | 'waiting';
+    const orderedCards = useMemo(() => {
+        const withSection = (arr: Opportunity[], s: SectionKey) =>
+            arr.map((opp) => ({ opp, section: s }));
+        return [
+            ...withSection(holding, 'holding'),
+            ...withSection(stoppedOut, 'stoppedOut'),
+            ...withSection(missedEntry, 'missedEntry'),
+            ...withSection(waiting, 'waiting'),
+        ];
+    }, [holding, stoppedOut, missedEntry, waiting]);
+
+    const { visibleItems, hasMore, sentinelRef } = useInfiniteScroll(orderedCards, 24, 24);
+
+    // Agrupa itens visíveis por seção consecutiva para manter headers + grid
+    const visibleGroups = useMemo(() => {
+        const g: { section: SectionKey; cards: Opportunity[] }[] = [];
+        for (const { opp, section } of visibleItems) {
+            if (g.length > 0 && g[g.length - 1].section === section)
+                g[g.length - 1].cards.push(opp);
+            else
+                g.push({ section, cards: [opp] });
+        }
+        return g;
+    }, [visibleItems]);
+
+    const SECTION_CONFIG: Record<SectionKey, { title: string; subtitle: string; dotClass: string; h2Class: string; badgeClass: string; description: string }> = {
+        holding: {
+            title: 'Em Hold',
+            subtitle: 'Posições Ativas',
+            dotClass: 'bg-green-500',
+            h2Class: 'text-green-600',
+            badgeClass: 'bg-green-500/10 text-green-600',
+            description: 'Estratégias com posição aberta. A distância mostra o quanto falta para o sinal de saída.',
+        },
+        stoppedOut: {
+            title: 'Saiu no Stop',
+            subtitle: 'Stop Loss Ativado',
+            dotClass: 'bg-red-500',
+            h2Class: 'text-red-600',
+            badgeClass: 'bg-red-500/10 text-red-600',
+            description: 'A média curta está acima da longa (condição de entrada satisfeita), mas a posição foi fechada no stop loss. A distância mostra o spread entre as médias. Aguardando cruzamento para baixo ou nova entrada.',
+        },
+        missedEntry: {
+            title: 'Entrada Perdida',
+            subtitle: 'Sem Posição',
+            dotClass: 'bg-yellow-500',
+            h2Class: 'text-yellow-600',
+            badgeClass: 'bg-yellow-500/10 text-yellow-600',
+            description: 'A média curta está acima da longa (condição de entrada satisfeita), mas não há posição ativa. Aguardando confirmação ou nova entrada.',
+        },
+        waiting: {
+            title: 'Aguardando',
+            subtitle: 'Sem Posição',
+            dotClass: 'bg-gray-400',
+            h2Class: 'text-gray-500',
+            badgeClass: 'bg-gray-500/10 text-gray-600',
+            description: 'Estratégias aguardando sinal de entrada. A distância mostra o quanto falta para a média curta cruzar acima da longa.',
+        },
+    };
 
     return (
         <div className="container mx-auto p-6 space-y-8">
@@ -176,90 +239,34 @@ export const MonitorPage: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-10">
-                    {/* Holding Section */}
-                    {holding.length > 0 && (
-                        <section className="space-y-4">
-                            <h2 className="text-xl font-semibold flex items-center gap-2 text-green-600">
-                                <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-                                Em Hold ({holding.length})
-                                <span className="bg-green-500/10 text-green-600 text-xs px-2 py-0.5 rounded-full ml-2">
-                                    Posições Ativas
-                                </span>
-                            </h2>
-                            <p className="text-sm text-muted-foreground ml-5">
-                                Estratégias com posição aberta. A distância mostra o quanto falta para o sinal de saída.
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {holding.map(opp => (
-                                    <OpportunityCard key={opp.id} opportunity={opp} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Stopped Out Section */}
-                    {stoppedOut.length > 0 && (
-                        <section className="space-y-4">
-                            <h2 className="text-xl font-semibold flex items-center gap-2 text-red-600">
-                                <span className="w-3 h-3 bg-red-500 rounded-full"></span>
-                                Saiu no Stop ({stoppedOut.length})
-                                <span className="bg-red-500/10 text-red-600 text-xs px-2 py-0.5 rounded-full ml-2">
-                                    Stop Loss Ativado
-                                </span>
-                            </h2>
-                            <p className="text-sm text-muted-foreground ml-5">
-                                A média curta está acima da longa (condição de entrada satisfeita), mas a posição foi fechada no stop loss. 
-                                A distância mostra o spread entre as médias. Aguardando cruzamento para baixo ou nova entrada.
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {stoppedOut.map(opp => (
-                                    <OpportunityCard key={opp.id} opportunity={opp} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Missed Entry Section */}
-                    {missedEntry.length > 0 && (
-                        <section className="space-y-4">
-                            <h2 className="text-xl font-semibold flex items-center gap-2 text-yellow-600">
-                                <span className="w-3 h-3 bg-yellow-500 rounded-full"></span>
-                                Entrada Perdida ({missedEntry.length})
-                                <span className="bg-yellow-500/10 text-yellow-600 text-xs px-2 py-0.5 rounded-full ml-2">
-                                    Sem Posição
-                                </span>
-                            </h2>
-                            <p className="text-sm text-muted-foreground ml-5">
-                                A média curta está acima da longa (condição de entrada satisfeita), mas não há posição ativa. 
-                                Aguardando confirmação ou nova entrada.
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {missedEntry.map(opp => (
-                                    <OpportunityCard key={opp.id} opportunity={opp} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Waiting Section */}
-                    {waiting.length > 0 && (
-                        <section className="space-y-4">
-                            <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-500">
-                                <span className="w-3 h-3 bg-gray-400 rounded-full"></span>
-                                Aguardando ({waiting.length})
-                                <span className="bg-gray-500/10 text-gray-600 text-xs px-2 py-0.5 rounded-full ml-2">
-                                    Sem Posição
-                                </span>
-                            </h2>
-                            <p className="text-sm text-muted-foreground ml-5">
-                                Estratégias aguardando sinal de entrada. A distância mostra o quanto falta para a média curta cruzar acima da longa.
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {waiting.map(opp => (
-                                    <OpportunityCard key={opp.id} opportunity={opp} />
-                                ))}
-                            </div>
-                        </section>
+                    {visibleGroups.map(({ section, cards }) => {
+                        const cfg = SECTION_CONFIG[section];
+                        const total = { holding: holding.length, stoppedOut: stoppedOut.length, missedEntry: missedEntry.length, waiting: waiting.length }[section];
+                        return (
+                            <section key={section} className="space-y-4">
+                                <h2 className={`text-xl font-semibold flex items-center gap-2 ${cfg.h2Class}`}>
+                                    <span className={`w-3 h-3 ${cfg.dotClass} rounded-full`}></span>
+                                    {cfg.title} ({total})
+                                    <span className={`${cfg.badgeClass} text-xs px-2 py-0.5 rounded-full ml-2`}>
+                                        {cfg.subtitle}
+                                    </span>
+                                </h2>
+                                <p className="text-sm text-muted-foreground ml-5">
+                                    {cfg.description}
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {cards.map((opp) => (
+                                        <OpportunityCard key={opp.id} opportunity={opp} />
+                                    ))}
+                                </div>
+                            </section>
+                        );
+                    })}
+                    {/* Sentinel: ao entrar na viewport, carrega mais itens */}
+                    {hasMore && (
+                        <div ref={sentinelRef} className="flex justify-center py-8" aria-hidden="true">
+                            <span className="text-sm text-muted-foreground animate-pulse">Carregando mais…</span>
+                        </div>
                     )}
                 </div>
             )}

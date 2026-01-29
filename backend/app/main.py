@@ -1,14 +1,18 @@
 # file: backend/app/main.py
 # force reload 14
-import logging
+import sys
 from pathlib import Path
+
+# Ensure project root (parent of backend) is on path so "src" package can be imported
+_project_root = Path(__file__).resolve().parents[2]
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.api import router
-from app.routes.sequential_optimization import router as sequential_router
-from app.routes.parameter_optimization import router as parameter_router
-from app.routes.risk_optimization import router as risk_router
 from app.routes.favorites import router as favorites_router
 from app.routes.combo_routes import router as combo_router
 from app.routes.opportunity_routes import router as opportunity_router
@@ -70,12 +74,9 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(router)
-app.include_router(sequential_router)  # Sequential optimization routes (WebSocket-based, legacy)
-app.include_router(parameter_router)  # Parameter optimization routes (simplified)
-app.include_router(risk_router)  # Risk management optimization routes
-app.include_router(favorites_router)  # Favorites management routes
-app.include_router(combo_router)  # Combo strategies routes (isolated)
-app.include_router(opportunity_router) # Opportunity Monitor routes
+app.include_router(favorites_router)
+app.include_router(combo_router)
+app.include_router(opportunity_router)
 
 @app.get("/")
 async def root():

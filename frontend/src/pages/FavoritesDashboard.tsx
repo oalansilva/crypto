@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Search, List, ChevronDown, Activity, BarChart3 } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 import * as XLSX from 'xlsx';
 
@@ -213,6 +214,12 @@ const FavoritesDashboard: React.FC = () => {
         const valB = b.metrics?.total_return_pct ?? b.metrics?.total_return ?? -Infinity;
         return valB - valA; // Descending
     });
+
+    const { visibleItems: visibleFavorites, hasMore, sentinelRef } = useInfiniteScroll(
+        filteredFavorites,
+        30,
+        30
+    );
 
     const selectedStrategies = favorites?.filter(f => selectedIds.includes(f.id)) || [];
 
@@ -446,7 +453,7 @@ const FavoritesDashboard: React.FC = () => {
                                     ) : filteredFavorites.length === 0 ? (
                                         <tr><td colSpan={21} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
                                     ) : (
-                                        filteredFavorites.map((fav) => {
+                                        visibleFavorites.map((fav: FavoriteStrategy) => {
                                             const isSelected = selectedIds.includes(fav.id);
                                             const m = fav.metrics || {};
                                             // Try to find derived metrics, fallback to N/A
@@ -589,6 +596,13 @@ const FavoritesDashboard: React.FC = () => {
                                             );
                                         })
                                     )}
+                                    {!isLoading && filteredFavorites.length > 0 && hasMore && (
+                                        <tr ref={sentinelRef}>
+                                            <td colSpan={21} className="p-6 text-center text-gray-500 text-sm">
+                                                <span className="animate-pulse">Carregando mais…</span>
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -597,7 +611,9 @@ const FavoritesDashboard: React.FC = () => {
                         <div className="p-4 bg-white/5 border-t border-white/10 flex justify-between items-center text-sm">
                             <div className="flex items-center gap-2 text-gray-400">
                                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                {filteredFavorites.length} strategies loaded
+                                {hasMore
+                                    ? `Mostrando ${visibleFavorites.length} de ${filteredFavorites.length} estratégias — role para carregar mais`
+                                    : `${filteredFavorites.length} estratégias carregadas`}
                             </div>
                             {selectedIds.length > 0 && (
                                 <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4">

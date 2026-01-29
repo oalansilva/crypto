@@ -30,7 +30,13 @@ from app.schemas.combo_params import (
 from app.services.combo_service import ComboService
 from src.data.incremental_loader import IncrementalLoader
 from app.services.combo_optimizer import ComboOptimizer
-from app.services.batch_backtest_service import run_batch_backtest, get_batch_progress, init_batch_job
+from app.services.batch_backtest_service import (
+    run_batch_backtest,
+    get_batch_progress,
+    init_batch_job,
+    request_pause_batch,
+    request_cancel_batch,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
@@ -524,3 +530,19 @@ async def get_batch_backtest_progress(job_id: str):
     if not progress:
         raise HTTPException(status_code=404, detail="Batch job not found")
     return ComboBatchProgressResponse(**progress)
+
+
+@router.post("/backtest/batch/{job_id}/pause")
+async def pause_batch_backtest(job_id: str):
+    """Request batch job to pause after the current symbol."""
+    if not request_pause_batch(job_id):
+        raise HTTPException(status_code=404, detail="Batch job not found or not running")
+    return {"status": "pause_requested", "message": "Batch will pause after current symbol"}
+
+
+@router.post("/backtest/batch/{job_id}/cancel")
+async def cancel_batch_backtest(job_id: str):
+    """Request batch job to cancel after the current symbol."""
+    if not request_cancel_batch(job_id):
+        raise HTTPException(status_code=404, detail="Batch job not found or not running")
+    return {"status": "cancel_requested", "message": "Batch will stop after current symbol"}

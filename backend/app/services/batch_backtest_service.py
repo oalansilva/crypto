@@ -35,6 +35,8 @@ def _get_or_init_job(job_id: str, total: int) -> Dict[str, Any]:
             "started_at": datetime.utcnow().isoformat(),
             "elapsed_sec": 0.0,
             "estimated_remaining_sec": None,
+            "cancel_requested": False,
+            "pause_requested": False,
         }
     return _batch_jobs[job_id]
 
@@ -47,6 +49,24 @@ def get_batch_progress(job_id: str) -> Optional[Dict[str, Any]]:
 def init_batch_job(job_id: str, total: int) -> None:
     """Create job entry before background task runs so GET /batch/{id} returns immediately."""
     _get_or_init_job(job_id, total)
+
+
+def request_pause_batch(job_id: str) -> bool:
+    """Signal the batch job to pause after the current symbol. Returns True if job exists."""
+    job = _batch_jobs.get(job_id)
+    if not job or job["status"] != "running":
+        return False
+    job["pause_requested"] = True
+    return True
+
+
+def request_cancel_batch(job_id: str) -> bool:
+    """Signal the batch job to cancel after the current symbol. Returns True if job exists."""
+    job = _batch_jobs.get(job_id)
+    if not job or job["status"] != "running":
+        return False
+    job["cancel_requested"] = True
+    return True
 
 
 def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
@@ -73,6 +93,17 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
 
     for i, symbol in enumerate(symbols):
         job["elapsed_sec"] = time.time() - started
+        if job.get("cancel_requested"):
+            job["status"] = "cancelled"
+            job["estimated_remaining_sec"] = None
+            logger.info("Batch %s cancelled by user", job_id[:8])
+            return
+        if job.get("pause_requested"):
+            job["status"] = "paused"
+            job["estimated_remaining_sec"] = None
+            logger.info("Batch %s paused by user", job_id[:8])
+            return
+
         db_check = SessionLocal()
         try:
             q = db_check.query(FavoriteStrategy).filter(
@@ -163,3 +194,5 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
     job["elapsed_sec"] = time.time() - started
     job["status"] = "completed"
     job["estimated_remaining_sec"] = None
+    logger.info("Batch %s completed: %d succeeded, %d failed, %d skipped", job_id[:8],
+                job.get("succeeded", 0), job.get("failed", 0), job.get("skipped", 0))

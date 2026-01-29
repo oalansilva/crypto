@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search } from 'lucide-react'
+import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search, Pause, Square } from 'lucide-react'
 
 interface TemplateMetadata {
     name: string
@@ -46,6 +46,7 @@ export function ComboConfigurePage() {
     // Batch backtest
     const [batchRunning, setBatchRunning] = useState(false)
     const [batchJobId, setBatchJobId] = useState<string | null>(null)
+    const [batchPauseCancelRequested, setBatchPauseCancelRequested] = useState(false)
     const [batchProgress, setBatchProgress] = useState<{
         status: string
         processed: number
@@ -186,6 +187,28 @@ export function ComboConfigurePage() {
         return `${m}m ${s}s`
     }
 
+    const handlePauseBatch = async () => {
+        if (!batchJobId || batchPauseCancelRequested) return
+        setBatchPauseCancelRequested(true)
+        try {
+            const res = await fetch(`http://localhost:8000/api/combos/backtest/batch/${batchJobId}/pause`, { method: 'POST' })
+            if (!res.ok) setBatchPauseCancelRequested(false)
+        } catch {
+            setBatchPauseCancelRequested(false)
+        }
+    }
+
+    const handleCancelBatch = async () => {
+        if (!batchJobId || batchPauseCancelRequested) return
+        setBatchPauseCancelRequested(true)
+        try {
+            const res = await fetch(`http://localhost:8000/api/combos/backtest/batch/${batchJobId}/cancel`, { method: 'POST' })
+            if (!res.ok) setBatchPauseCancelRequested(false)
+        } catch {
+            setBatchPauseCancelRequested(false)
+        }
+    }
+
     const handleRun = async () => {
         const symbolsToRun = getBatchSymbols()
         if (batchScope === 'selected' && symbolsToRun.length === 0) {
@@ -272,6 +295,7 @@ export function ComboConfigurePage() {
         setBatchJobId(null)
         setBatchProgress(null)
         setBatchTotal(symbolsToRun.length)
+        setBatchPauseCancelRequested(false)
         setClientElapsedSec(0)
         batchStartTimeRef.current = Date.now()
         try {
@@ -310,13 +334,14 @@ export function ComboConfigurePage() {
                 if (!res.ok) return
                 const data = await res.json()
                 setBatchProgress(data)
-                if (data.status === 'completed' || data.status === 'failed') {
+                if (['completed', 'failed', 'paused', 'cancelled'].includes(data.status)) {
                     if (pollRef.current) {
                         clearInterval(pollRef.current)
                         pollRef.current = null
                     }
                     setBatchRunning(false)
                     setBatchJobId(null)
+                    setBatchPauseCancelRequested(false)
                     batchStartTimeRef.current = null
                 }
             } catch {
@@ -825,13 +850,35 @@ export function ComboConfigurePage() {
                                         return null
                                     })()}
                                 </div>
+                                <div className="flex gap-2 mt-3">
+                                    <button
+                                        type="button"
+                                        onClick={handlePauseBatch}
+                                        disabled={batchPauseCancelRequested}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                                    >
+                                        <Pause className="w-4 h-4" />
+                                        Pausar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelBatch}
+                                        disabled={batchPauseCancelRequested}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                                    >
+                                        <Square className="w-4 h-4" />
+                                        Encerrar
+                                    </button>
+                                </div>
                             </div>
                         )}
 
-                        {!batchRunning && batchProgress && (batchProgress.status === 'completed' || batchProgress.status === 'failed') && (
+                        {!batchRunning && batchProgress && ['completed', 'failed', 'paused', 'cancelled'].includes(batchProgress.status) && (
                             <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-lg space-y-2">
                                 <p className="text-sm font-medium text-white">
-                                    Concluído: {batchProgress.succeeded} sucesso, {batchProgress.failed} falha
+                                    {batchProgress.status === 'cancelled' && 'Encerrado pelo usuário. '}
+                                    {batchProgress.status === 'paused' && 'Pausado pelo usuário. '}
+                                    {batchProgress.succeeded} sucesso, {batchProgress.failed} falha
                                     {(batchProgress.skipped ?? 0) > 0 && `, ${batchProgress.skipped} ignorado(s) (já em favoritos)`}.
                                 </p>
                                 {batchProgress.errors.length > 0 && (
