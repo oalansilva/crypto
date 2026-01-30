@@ -23,11 +23,13 @@ async def list_presets():
 
 @router.get("/exchanges/binance/symbols")
 async def get_binance_symbols():
-    """Get all available USDT trading pairs from Binance."""
+    """Get all available USDT trading pairs from Binance (excludes unsupported/delisted)."""
     from app.services.exchange_service import ExchangeService
+    from app.services.opportunity_service import _is_unsupported_symbol
 
     service = ExchangeService()
-    symbols = service.fetch_binance_symbols()
+    raw = service.fetch_binance_symbols()
+    symbols = [s for s in raw if not _is_unsupported_symbol(s)]
 
     return {
         "symbols": symbols,

@@ -1,0 +1,13 @@
+{
+  "description": "Símbolos excluídos da otimização e da lista de pares. Regra automática: todo ativo que termina com UP ou DOWN (ex: ADAUP, BNBDOWN) é ignorado. Aqui liste outros delistados/não suportados; use o mesmo formato da exchange (ex: BTC/USDT).",
+  "excluded_symbols": [
+    "1INCHDOWN/USDT",
+    "1INCHUP/USDT",
+    "AAVEDOWN/USDT",
+    "AAVEUP/USDT",
+    "ADADOWN/USDT",
+    "ADAUP/USDT",
+    "AION/USDT",
+    "BTT/USDT"
+  ]
+}

@@ -28,7 +28,7 @@ const FavoritesDashboard: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
-    const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
+    const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | '1_2' | 'none'>('all');
 
     // New state for Trades Modal
     const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
@@ -198,9 +198,10 @@ const FavoritesDashboard: React.FC = () => {
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
         const matchesIndicator = selectedIndicator === 'ALL' || fav.strategy_name === selectedIndicator;
-        const matchesTier = tierFilter === 'all' || 
+        const matchesTier = tierFilter === 'all' ||
+            (tierFilter === '1_2' && (fav.tier === 1 || fav.tier === 2)) ||
             (tierFilter === 'none' && fav.tier === null) ||
-            (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
+            (tierFilter !== 'none' && tierFilter !== '1_2' && fav.tier === parseInt(tierFilter));
 
         return matchesSearch && matchesSymbol && matchesIndicator && matchesTier;
     }) || []).sort((a, b) => {
@@ -340,10 +341,11 @@ const FavoritesDashboard: React.FC = () => {
                                     <div className="relative group">
                                         <select
                                             value={tierFilter}
-                                            onChange={(e) => setTierFilter(e.target.value as 'all' | '1' | '2' | '3' | 'none')}
+                                            onChange={(e) => setTierFilter(e.target.value as 'all' | '1' | '2' | '3' | '1_2' | 'none')}
                                             className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
                                         >
                                             <option value="all" className="bg-gray-900">Tier: All</option>
+                                            <option value="1_2" className="bg-gray-900">Tier 1 + Tier 2</option>
                                             <option value="1" className="bg-gray-900">Tier 1 – Core obrigatório</option>
                                             <option value="2" className="bg-gray-900">Tier 2 – Bons complementares</option>
                                             <option value="3" className="bg-gray-900">Tier 3</option>

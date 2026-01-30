@@ -885,7 +885,7 @@ export function ComboConfigurePage() {
                                     {batchProgress.status === 'cancelled' && 'Encerrado pelo usuário. '}
                                     {batchProgress.status === 'paused' && 'Pausado pelo usuário. '}
                                     {batchProgress.succeeded} sucesso, {batchProgress.failed} falha
-                                    {(batchProgress.skipped ?? 0) > 0 && `, ${batchProgress.skipped} ignorado(s) (já em favoritos)`}.
+                                    {(batchProgress.skipped ?? 0) > 0 && `, ${batchProgress.skipped} ignorado(s) (já em favoritos ou não suportados)`}.
                                 </p>
                                 {batchProgress.errors.length > 0 && (
                                     <details className="text-xs text-gray-400">

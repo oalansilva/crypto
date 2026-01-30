@@ -9,26 +9,19 @@ from pathlib import Path
 from app.strategies.combos.proximity_analyzer import ProximityAnalyzer
 from app.strategies.combos.combo_strategy import ComboStrategy
 from app.services.combo_service import ComboService
+from app.symbols_config import get_excluded_symbols, is_excluded_symbol
 from src.data.incremental_loader import IncrementalLoader
 from app.database import DB_PATH
 
 logger = logging.getLogger(__name__)
 
-# Símbolos sem dados (delistados/descontinuados na exchange, ex.: tokens alavancados Binance)
-# Evita fetch inútil e log de "No data" repetido. Amplie conforme necessário.
-UNSUPPORTED_SYMBOLS = frozenset({
-    '1INCHDOWN/USDT', '1INCHUP/USDT',
-    'AAVEDOWN/USDT', 'AAVEUP/USDT',
-    'ADADOWN/USDT', 'ADAUP/USDT',
-    'AION/USDT',
-})
+# Lista carregada de backend/config/excluded_symbols.json (compatibilidade com código que usa o nome)
+UNSUPPORTED_SYMBOLS = get_excluded_symbols()
 
 
 def _is_unsupported_symbol(symbol: str) -> bool:
-    s = (symbol or '').strip().upper()
-    if not s:
-        return True
-    return s in UNSUPPORTED_SYMBOLS
+    """True se o símbolo estiver em config/excluded_symbols.json."""
+    return is_excluded_symbol(symbol)
 
 
 class OpportunityService:

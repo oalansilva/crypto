@@ -12,6 +12,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 
 from app.services.combo_optimizer import ComboOptimizer
+from app.services.opportunity_service import _is_unsupported_symbol
 from app.database import SessionLocal
 from app.models import FavoriteStrategy
 
@@ -95,6 +96,13 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
     for i, symbol in enumerate(symbols):
         job["elapsed_sec"] = time.time() - started
         job["current_symbol"] = symbol
+        if _is_unsupported_symbol(symbol):
+            logger.info("Batch: skip %s (unsupported / excluded)", symbol)
+            job["skipped"] = job.get("skipped", 0) + 1
+            job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
+            if job["processed"] > 0 and job["processed"] < total:
+                job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (total - job["processed"])
+            continue
         if job.get("cancel_requested"):
             job["status"] = "cancelled"
             job["estimated_remaining_sec"] = None
