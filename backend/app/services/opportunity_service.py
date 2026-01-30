@@ -612,6 +612,7 @@ class OpportunityService:
                     'name': fav['name'], # User custom name
                     'notes': fav.get('notes'),
                     'tier': fav.get('tier'),
+                    'parameters': fav.get('parameters') or {},
                     'is_holding': is_holding,
                     'distance_to_next_status': final_distance,
                     'next_status_label': next_status_label,

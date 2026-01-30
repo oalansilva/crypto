@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Target, Activity } from "lucide-react";
+import { Target, Activity, Settings } from "lucide-react";
 
 import type { Opportunity } from './types';
 
@@ -214,6 +214,22 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                             <span className="font-medium text-gray-800 dark:text-gray-200 break-words">{statusMessage}</span>
                         </div>
                     </div>
+
+                    {opportunity.parameters && Object.keys(opportunity.parameters).length > 0 && (
+                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm border border-gray-300 dark:border-gray-600">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Settings className="w-4 h-4 text-violet-600 dark:text-violet-400 flex-shrink-0" />
+                                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    Parâmetros
+                                </span>
+                            </div>
+                            <p className="font-mono text-xs text-gray-700 dark:text-gray-300 break-words">
+                                {Object.entries(opportunity.parameters)
+                                    .map(([k, v]) => `${k}=${v}`)
+                                    .join(' ')}
+                            </p>
+                        </div>
+                    )}
 
                     <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-sm border border-slate-200 dark:border-slate-600">
                         <div className="flex items-center justify-between gap-2">

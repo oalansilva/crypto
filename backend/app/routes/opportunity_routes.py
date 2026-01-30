@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import logging
 
@@ -16,6 +16,7 @@ class OpportunityResponse(BaseModel):
     name: str  # user custom name
     notes: Optional[str] = None
     tier: Optional[int] = None  # 1=Core, 2=Complementares, 3=Outros
+    parameters: Optional[Dict[str, Any]] = None  # Parâmetros da estratégia (ema_short, sma_long, stop_loss, etc.)
     is_holding: bool
     distance_to_next_status: float | None
     next_status_label: str  # "entry" or "exit"

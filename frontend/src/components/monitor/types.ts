@@ -6,6 +6,7 @@ export interface Opportunity {
     name: string;
     notes?: string;
     tier?: number | null;  // 1=Core, 2=Complementares, 3=Outros
+    parameters?: Record<string, unknown>;  // Parâmetros da estratégia (ema_short, sma_long, stop_loss, etc.)
     // Simplified model
     is_holding: boolean;
     distance_to_next_status: number | null;
