@@ -332,78 +332,76 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         logger.info(f"Generated signals for {len(df_with_signals)} candles")
         
         # Use unified trade extraction logic (same as optimizer)
-        from app.services.combo_optimizer import extract_trades_from_signals
+        # - Honors deep_backtest when requested (15m simulation)
+        # - Keeps stop-loss priority consistent
+        from app.services.combo_optimizer import extract_trades_with_mode, _metrics_from_trades
         
         stop_loss_pct = request.stop_loss if request.stop_loss is not None else strategy.stop_loss
         direction = getattr(request, "direction", "long") or "long"
         if direction not in ("long", "short"):
             direction = "long"
-        trades = extract_trades_from_signals(df_with_signals, stop_loss_pct, direction)
+        
+        # Deep backtest safety guard:
+        # Intraday 15m from 2017 is huge; only attempt deep mode for bounded windows.
+        deep_requested = bool(getattr(request, "deep_backtest", False))
+        since_str = request.start_date
+        until_str = request.end_date
+        if not since_str and not df_with_signals.empty:
+            try:
+                since_str = pd.Timestamp(df_with_signals.index.min()).date().isoformat()
+            except Exception:
+                since_str = None
+        if not until_str and not df_with_signals.empty:
+            try:
+                until_str = pd.Timestamp(df_with_signals.index.max()).date().isoformat()
+            except Exception:
+                until_str = None
+        
+        deep_enabled = deep_requested
+        try:
+            if deep_enabled and since_str and until_str:
+                days = (pd.to_datetime(until_str) - pd.to_datetime(since_str)).days
+                if days > 900:
+                    logger.warning("Deep backtest window too large (%sd). Falling back to fast mode.", days)
+                    deep_enabled = False
+        except Exception:
+            # If we can't compute the window, be conservative
+            deep_enabled = False
+
+        # Prefetch 15m cache (write-enabled) only for bounded windows
+        if deep_enabled and since_str:
+            try:
+                loader.fetch_intraday_data(
+                    symbol=request.symbol,
+                    timeframe="15m",
+                    since_str=since_str,
+                    until_str=until_str,
+                    read_only=False,
+                    allow_large_backfill=False,
+                )
+            except Exception as e:
+                logger.warning("Deep backtest prefetch failed (%s). Falling back to fast mode.", e)
+                deep_enabled = False
+
+        trades, used_deep = extract_trades_with_mode(
+            df_with_signals,
+            stop_loss_pct,
+            deep_backtest=deep_enabled,
+            symbol=request.symbol,
+            since_str=since_str,
+            until_str=until_str,
+            direction=direction,
+            return_mode=True,
+        )
         
         logger.info(f"Backtest complete: {len(trades)} trades extracted")
         
-        # All trades from extract_trades_from_signals are closed (have exit_time)
-        trades_for_metrics = trades
-        
-        # Calculate metrics using same logic as combo_optimizer (TradingView-style)
         initial_capital = request.initial_capital if hasattr(request, 'initial_capital') and request.initial_capital is not None else 100
-        
-        total_trades = len(trades_for_metrics)
-        winning_trades = sum(1 for t in trades_for_metrics if t.get('profit', 0) > 0)
-        
-        # Compounded Return (TradingView-style): baseado em equity final vs inicial
-        # TradingView usa COMPOUNDING - cada trade reinveste o capital (equity cresce)
-        # Calcular equity curve com compounding
-        equity = float(initial_capital)
-        for t in trades_for_metrics:
-            profit_pct = t.get('profit', 0) if t.get('profit') is not None else 0
-            equity *= (1.0 + profit_pct)
-        # Return: (equity_final / equity_inicial - 1) * 100
-        total_return_pct = (equity / initial_capital - 1) * 100.0
-        
-        # Max Drawdown from equity curve (TradingView-style com compounding)
-        # Calcular drawdown baseado em equity curve (com reinvestimento)
-        max_drawdown_pct = 0.0
-        if len(trades_for_metrics) > 0:
-            equity_dd = float(initial_capital)
-            peak_equity = float(initial_capital)
-            max_dd = 0.0
-            for t in trades_for_metrics:
-                equity_dd *= (1.0 + t.get('profit', 0))
-                if equity_dd > peak_equity:
-                    peak_equity = equity_dd
-                drawdown = (peak_equity - equity_dd) / peak_equity
-                max_dd = max(max_dd, drawdown)
-            max_drawdown_pct = max_dd * 100.0  # Convert to percentage
-        
-        # Profit Factor (TradingView-style): usando PnL absoluto em USD com compounding
-        # Calcular PnL absoluto por trade baseado no capital ATUAL (que cresce com cada trade)
-        equity_current = float(initial_capital)
-        gross_profit_usd = 0.0
-        gross_loss_usd = 0.0
-        
-        for t in trades_for_metrics:
-            profit_pct = t.get('profit', 0) if t.get('profit') is not None else 0
-            trade_pnl_usd = equity_current * profit_pct
-            if profit_pct > 0:
-                gross_profit_usd += trade_pnl_usd
-            else:
-                gross_loss_usd += abs(trade_pnl_usd)
-            # Atualizar equity para próximo trade (compounding)
-            equity_current *= (1.0 + profit_pct)
-        
-        profit_factor = gross_profit_usd / gross_loss_usd if gross_loss_usd > 0 else (999 if gross_profit_usd > 0 else 0)
-        
-        metrics = {
-            "total_trades": total_trades,
-            "win_rate": winning_trades / total_trades if total_trades > 0 else 0,
-            "total_return": total_return_pct / 100.0,  # Store as decimal (0.4653 for 46.53%)
-            "total_return_pct": total_return_pct,  # Also store as percentage for compatibility
-            "avg_profit": total_return_pct / total_trades if total_trades > 0 else 0,
-            "max_drawdown": max_drawdown_pct / 100.0,  # Store as decimal
-            "max_drawdown_pct": max_drawdown_pct,  # Also store as percentage
-            "profit_factor": profit_factor  # TradingView-style (USD-based)
-        }
+        metrics = _metrics_from_trades(
+            trades,
+            initial_capital=float(initial_capital),
+            context_params={**(request.parameters or {}), "stop_loss": stop_loss_pct, "direction": direction},
+        )
         
         # Get indicator data for chart
         indicator_columns = strategy.get_indicator_columns()
@@ -448,7 +446,7 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             candles=candles,
             indicator_data=indicator_data,
             parameters={**(request.parameters or {}), "direction": direction},
-            execution_mode="fast_1d",
+            execution_mode="deep_15m" if used_deep else "fast_1d",
             direction=direction,
         )
         logger.info("Response object created successfully")
