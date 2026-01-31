@@ -160,12 +160,6 @@ export function ComboSelectPage() {
                                 <p className="text-sm text-gray-400 mt-0.5">Select a template to backtest or edit</p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => navigate('/')}
-                            className="text-gray-400 hover:text-white transition-colors"
-                        >
-                            ← Back to Home
-                        </button>
                     </div>
                 </div>
             </header>
