@@ -128,31 +128,6 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: st
                 'type': 'short' if is_short else 'long',
                 'entry_signal_type': 'Vender' if is_short else 'Comprar'
             }
-            # Permitir stop loss NO MESMO candle da entrada.
-            # Entramos no OPEN; o stop pode ser atingido intrabar antes do fechamento.
-            if stop_loss_pct > 0:
-                entry_price = position['entry_price']
-                if is_short:
-                    exact_stop_price = entry_price * (1 + stop_loss_pct)  # short: stop acima
-                    current_high = float(row['high'])
-                    hit_stop = current_high >= exact_stop_price
-                else:
-                    exact_stop_price = entry_price * (1 - stop_loss_pct)  # long: stop abaixo
-                    current_low = float(row['low'])
-                    hit_stop = current_low <= exact_stop_price
-
-                if hit_stop:
-                    position['exit_time'] = idx.isoformat()
-                    position['exit_price'] = exact_stop_price
-                    if is_short:
-                        position['profit'] = (entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)) / (entry_price * (1 - TRADING_FEE))
-                    else:
-                        position['profit'] = ((exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
-                    position['exit_reason'] = 'stop_loss'
-                    position['signal_type'] = 'Stop'
-                    trades.append(position)
-                    position = None
-                    continue
         elif row['signal'] == -1 and position is not None:
             exit_price = float(row['open'])
             entry_price = position['entry_price']
@@ -177,8 +152,7 @@ def extract_trades_with_mode(
     since_str: str = None,
     until_str: str = None,
     df_15m_cache: Optional[pd.DataFrame] = None,
-    direction: str = "long",
-    return_mode: bool = False,
+    direction: str = "long"
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
@@ -198,15 +172,13 @@ def extract_trades_with_mode(
     df_exec = df_with_signals.copy()
     
     if not deep_backtest:
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
-        return (trades, False) if return_mode else trades
+        return extract_trades_from_signals(df_exec, stop_loss, direction)
     
     logger = logging.getLogger(__name__)
     
     if not symbol or not since_str:
         logger.warning("Deep Backtesting requires symbol and date range. Falling back to fast mode.")
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
-        return (trades, False) if return_mode else trades
+        return extract_trades_from_signals(df_exec, stop_loss, direction)
     
     try:
         if df_15m_cache is not None:
@@ -225,8 +197,7 @@ def extract_trades_with_mode(
         if df_15m.empty:
             if df_15m_cache is None: # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
-            return (trades, False) if return_mode else trades
+            return extract_trades_from_signals(df_exec, stop_loss, direction)
 
         # Coverage guard:
         # If the 15m cache doesn't cover the full daily backtest window, deep simulation becomes unreliable.
@@ -256,12 +227,10 @@ def extract_trades_with_mode(
                     str(intraday_start),
                     str(intraday_end),
                 )
-                trades = extract_trades_from_signals(df_exec, stop_loss, direction)
-                return (trades, False) if return_mode else trades
+                return extract_trades_from_signals(df_exec, stop_loss, direction)
         except Exception:
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
-            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
-            return (trades, False) if return_mode else trades
+            return extract_trades_from_signals(df_exec, stop_loss, direction)
         
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
@@ -272,12 +241,11 @@ def extract_trades_with_mode(
             stop_loss=stop_loss,
             direction=direction
         )
-        return (trades, True) if return_mode else trades
+        return trades
         
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
-        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
-        return (trades, False) if return_mode else trades
+        return extract_trades_from_signals(df_exec, stop_loss, direction)
 
 # -----------------------------------------------------------------------------
 # WORKER FUNCTION (Top-level for ProcessPoolExecutor)
@@ -320,14 +288,10 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                 for indicator in indicators:
                     alias = indicator.get("alias", "")
                     type_ = indicator.get("type", "")
-                    alias_norm = str(alias).lower() if alias is not None else ""
-                    type_norm = str(type_).lower() if type_ is not None else ""
-                    key_norm = str(param_key).lower()
                     
                     # 1. Try "alias_param" format (e.g., "short_length") - Generated by auto-schema
-                    if alias and key_norm.startswith(f"{alias_norm}_"):
-                        # manter o "target_field" no casing original após o prefixo
-                        target_field = str(param_key)[len(str(alias)) + 1:]
+                    if alias and param_key.startswith(f"{alias}_"):
+                        target_field = param_key[len(alias)+1:]
                         if "params" not in indicator: indicator["params"] = {}
                         indicator["params"][target_field] = param_value
                         matched = True
@@ -335,7 +299,7 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                     
                     # 2. Try "type_alias" format (e.g., "sma_short") - Used in multi_ma_crossover
                     # Default to 'length' or 'period' if not specified
-                    if alias and type_ and key_norm == f"{type_norm}_{alias_norm}":
+                    if alias and type_ and param_key == f"{type_}_{alias}":
                         if "params" not in indicator: indicator["params"] = {}
                         # Try to find which param to update: length, period, or default to length
                         if "length" in indicator["params"]:
@@ -348,7 +312,7 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                         break
 
                     # 3. Try exact alias match (e.g. "short")
-                    if alias and key_norm == alias_norm:
+                    if alias and param_key == alias:
                         if "params" not in indicator: indicator["params"] = {}
                         if "length" in indicator["params"]:
                             indicator["params"]["length"] = param_value
@@ -361,8 +325,8 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
 
                     # 4. Fallback for indicators without alias:
                     # allow "type_param" format (e.g. "rsi_length") used by legacy stage generation.
-                    if (not alias) and type_ and key_norm.startswith(f"{type_norm}_"):
-                        target_field = str(param_key)[len(str(type_)) + 1:]
+                    if (not alias) and type_ and param_key.startswith(f"{type_}_"):
+                        target_field = param_key[len(type_) + 1:]
                         if "params" not in indicator: indicator["params"] = {}
                         indicator["params"][target_field] = param_value
                         matched = True
@@ -599,6 +563,34 @@ class ComboOptimizer:
             # Generate value lists for each parameter in the group
             value_lists = []
             param_names = []
+            
+            for param_name in group:
+                if param_name not in parameters:
+                    continue  # Skip if parameter not found (validation should have caught this)
+                
+                config = parameters[param_name]
+                
+                # Check for custom range override
+                if custom_ranges and param_name in custom_ranges:
+                    custom = custom_ranges[param_name]
+                    values = self._generate_range_values(
+                        custom.get('min', config.get('min')),
+                        custom.get('max', config.get('max')),
+                        custom.get('step', config.get('step'))
+                    )
+                else:
+                    values = self._generate_range_values(
+                        config.get('min'),
+                        config.get('max'),
+                        config.get('step')
+                    )
+                
+                value_lists.append(values)
+        # PHASE 1: Create Grid Search stages for correlated groups
+        for group in correlated_groups:
+            # Generate value lists for each parameter in the group
+            value_lists = []
+            param_names = []
             adaptive_meta = {}
             
             for param_name in group:
@@ -618,22 +610,13 @@ class ComboOptimizer:
                     p_max = config.get('max')
                     target_step = config.get('step')
 
-                # Guard: min/max ausentes → usa default como valor único (evita crash)
-                if p_min is None or p_max is None:
-                    default_val = config.get('default')
-                    if default_val is None:
-                        logging.warning("Skipping param '%s' in correlated_groups: missing min/max and default.", param_name)
-                        continue
-                    values = [default_val]
-                    coarse_step = target_step if target_step is not None else 1
-                else:
-                    # FORCE STOP LOSS STEP to 0.001 if user intent is strict 0.5% in Round 1
-                    if param_name == 'stop_loss' and target_step == 0.002:
-                        target_step = 0.001
+                # FORCE STOP LOSS STEP to 0.001 if user intent is strict 0.5% in Round 1
+                if param_name == 'stop_loss' and target_step == 0.002:
+                    target_step = 0.001
 
-                    # Correlated group = joint grid (product of all params). Use coarse step in R1 to avoid milhões.
-                    coarse_step = self._calculate_coarse_step(p_min, p_max, target_step)
-                    values = self._generate_range_values(p_min, p_max, coarse_step)
+                # Correlated group = joint grid (product of all params). Use coarse step in R1 to avoid millions of combinations.
+                coarse_step = self._calculate_coarse_step(p_min, p_max, target_step)
+                values = self._generate_range_values(p_min, p_max, coarse_step)
                 
                 value_lists.append(values)
                 param_names.append(param_name)
@@ -684,18 +667,9 @@ class ComboOptimizer:
                 p_max = config.get('max')
                 target_step = config.get('step')
             
-            # Guard: min/max ausentes → usa default como valor único (evita crash)
-            if p_min is None or p_max is None:
-                default_val = config.get('default')
-                if default_val is None:
-                    logging.warning("Skipping param '%s': missing min/max and default.", param_name)
-                    continue
-                values = [default_val]
-                round1_step = target_step if target_step is not None else 1
-            else:
-                # Round 1: use full grid (schema step), same as long / non-adaptive grid
-                round1_step = target_step if target_step is not None else self._calculate_coarse_step(p_min, p_max, target_step)
-                values = self._generate_range_values(p_min, p_max, round1_step)
+            # Round 1: use full grid (schema step), same as long / non-adaptive grid
+            round1_step = target_step if target_step is not None else self._calculate_coarse_step(p_min, p_max, target_step)
+            values = self._generate_range_values(p_min, p_max, round1_step)
             
             adaptive_meta = {
                 param_name: {
@@ -1758,16 +1732,7 @@ class ComboOptimizer:
             direction = best_params.get('direction', 'long')
             if direction not in ('long', 'short'):
                 direction = 'long'
-            # Final backtest deve respeitar deep_backtest (mesma lógica usada durante a otimização)
-            trades = extract_trades_with_mode(
-                df_with_signals,
-                stop_loss,
-                deep_backtest=deep_backtest,
-                symbol=symbol,
-                since_str=start_date,
-                until_str=end_date,
-                direction=direction,
-            )
+            trades = extract_trades_from_signals(df_with_signals, stop_loss, direction)
             
             # Recompute core metrics from final backtest trades (same set as returned to frontend)
             # Fixes Total Return / Win Rate mismatch vs. "List of trades" / Cumulative P&L
@@ -1882,10 +1847,7 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
         'profit_factor': 0.0,
         'max_loss': 0.0,
         'max_consecutive_losses': 0,
-        # max_drawdown em DECIMAL (0.27 = 27%) para bater com o frontend (MetricCard multiplica por 100)
         'max_drawdown': 0.0,
-        # conveniência: drawdown já em %
-        'max_drawdown_pct': 0.0,
         'expectancy': 0.0,
     }
     if not trades:
@@ -1985,8 +1947,7 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
             peak = eq
         dd = (peak - eq) / peak if peak > 0 else 0
         max_dd = max(max_dd, dd)
-    out['max_drawdown'] = max_dd
-    out['max_drawdown_pct'] = max_dd * 100.0
+    out['max_drawdown'] = max_dd * 100.0
 
     return out
 

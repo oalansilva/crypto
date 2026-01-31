@@ -301,18 +301,6 @@ class ComboStrategy:
                 in_position = True
                 entry_price = float(open_arr[i])
                 pending_entry = False
-                # Permitir stop loss no MESMO candle da entrada (entrada ocorre no OPEN).
-                # Obs: este stop é long-only aqui (ComboStrategy não conhece direction).
-                try:
-                    current_low = float(low_arr[i])
-                    low_pnl = (current_low - entry_price) / entry_price
-                    if low_pnl <= -stop_loss_decimal:
-                        signals[i] = -1
-                        in_position = False
-                        entry_price = None
-                        pending_exit = False
-                except Exception:
-                    pass
                 continue
             
             if pending_exit and in_position:
