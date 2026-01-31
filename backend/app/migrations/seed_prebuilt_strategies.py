@@ -11,11 +11,15 @@ from pathlib import Path
 
 
 def seed_prebuilt_strategies(db_path: str = None):
-    """Seed database with 6 pre-built combo strategies."""
+    """Seed database with pre-built combo strategies. Uses same DB as backend (backend/backtest.db) when db_path is None."""
     
     if db_path is None:
-        project_root = Path(__file__).parent.parent.parent
-        db_path = str(project_root / "data" / "crypto_backtest.db")
+        try:
+            from app.database import DB_PATH
+            db_path = str(DB_PATH)
+        except Exception:
+            project_root = Path(__file__).parent.parent.parent
+            db_path = str(project_root / "backtest.db")
     
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -148,18 +152,66 @@ def seed_prebuilt_strategies(db_path: str = None):
                 "fib_tolerance": {"min": 0.01, "max": 0.05, "step": 0.01, "default": 0.02},
                 "stop_loss": {"min": 0.01, "max": 0.03, "step": 0.005, "default": 0.02}
             }
+        },
+        {
+            "name": "short_ema200_pullback",
+            "description": "BTC Short Swing – EMA200 Pullback (Stop %). Short-only: bearish trend (close < EMA200), pullback to EMA21/50 (tolerance 1%), RSI 45–70, rejection candle (shooting star / bearish engulfing / strong bearish). Exit: stop % or trend/RSI reversal.",
+            "template_data": {
+                "indicators": [
+                    {"type": "ema", "alias": "ema21", "params": {"length": 21}},
+                    {"type": "ema", "alias": "ema50", "params": {"length": 50}},
+                    {"type": "ema", "alias": "ema200", "params": {"length": 200}},
+                    {"type": "rsi", "params": {"length": 14}}
+                ],
+                "entry_logic": (
+                    "(close < ema200) "
+                    "& ( ((close - ema21).abs() / ema21 * 100 <= 1.0) | ((high >= ema21) & (low <= ema21)) "
+                    "| ((close - ema50).abs() / ema50 * 100 <= 1.0) | ((high >= ema50) & (low <= ema50)) ) "
+                    "& (RSI_14 >= 45) & (RSI_14 <= 70) "
+                    "& ((high - low) > 0) "
+                    "& ( "
+                    "  ( ((high - (open + close + (open - close).abs()) / 2) >= (close - open).abs() * 2) & (close < open) & (close < (low + (high - low) * 0.5)) ) "
+                    "  | ( (close < open) & (open >= close.shift(1)) & (close <= open.shift(1)) ) "
+                    "  | ( (close < open) & ((open - close) >= (high - low) * 0.5) ) "
+                    ")"
+                ),
+                "exit_logic": "(close > ema200) | (RSI_14 < 45)",
+                "stop_loss": 0.06
+            },
+            "optimization_schema": {
+                "ema_ema21": {"min": 14, "max": 30, "step": 1, "default": 21},
+                "ema_ema50": {"min": 40, "max": 70, "step": 2, "default": 50},
+                "ema_ema200": {"min": 150, "max": 250, "step": 10, "default": 200},
+                "rsi_length": {"min": 10, "max": 18, "step": 1, "default": 14},
+                "stop_loss": {"min": 0.03, "max": 0.10, "step": 0.01, "default": 0.06}
+            }
         }
     ]
     
-    # Insert each strategy
+    # Insert or update each strategy
     inserted_count = 0
+    updated_count = 0
     for strategy in strategies:
-        # Check if already exists
         cursor.execute("SELECT id FROM combo_templates WHERE name = ?", (strategy["name"],))
-        if cursor.fetchone():
-            print(f"⚠️  Strategy '{strategy['name']}' already exists, skipping...")
+        existing = cursor.fetchone()
+        if existing:
+            # Update prebuilt template so definition changes (e.g. short_ema200_pullback) are applied
+            if strategy.get("is_prebuilt_update", False) or strategy["name"] == "short_ema200_pullback":
+                cursor.execute("""
+                    UPDATE combo_templates SET description = ?, template_data = ?, optimization_schema = ?
+                    WHERE name = ?
+                """, (
+                    strategy["description"],
+                    json.dumps(strategy["template_data"]),
+                    json.dumps(strategy["optimization_schema"]),
+                    strategy["name"],
+                ))
+                updated_count += 1
+                print(f"[UPDATE] Strategy '{strategy['name']}' updated.")
+            else:
+                print(f"[SKIP] Strategy '{strategy['name']}' already exists, skipping...")
             continue
-        
+
         cursor.execute("""
             INSERT INTO combo_templates 
             (name, description, is_prebuilt, is_example, template_data, optimization_schema)
@@ -171,19 +223,19 @@ def seed_prebuilt_strategies(db_path: str = None):
             json.dumps(strategy["optimization_schema"])
         ))
         inserted_count += 1
-        print(f"✅ Inserted strategy: {strategy['name']}")
+        print(f"[OK] Inserted strategy: {strategy['name']}")
     
     conn.commit()
     conn.close()
     
-    print(f"\n✅ Seeded {inserted_count} pre-built strategies")
+    print(f"\n[OK] Seeded {inserted_count} new, updated {updated_count} pre-built strategies")
 
 
 def run_migration():
     """Run the migration."""
-    print("🔄 Seeding pre-built combo strategies...")
+    print("Seeding pre-built combo strategies...")
     seed_prebuilt_strategies()
-    print("✅ Migration completed successfully!")
+    print("[OK] Migration completed successfully!")
 
 
 if __name__ == "__main__":

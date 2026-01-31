@@ -8,13 +8,18 @@ import sqlite3
 from pathlib import Path
 
 
-def migrate(db_path: str = None):
-    if db_path is None:
-        project_root = Path(__file__).resolve().parents[2]
-        db_path = str(project_root / "backtest.db")
-        if not Path(db_path).exists():
-            db_path = str(project_root / "data" / "crypto_backtest.db")
+def _get_db_path(db_path):
+    if db_path is not None:
+        return db_path
+    try:
+        from app.database import DB_PATH
+        return str(DB_PATH)
+    except Exception:
+        return str(Path(__file__).resolve().parents[2] / "backtest.db")
 
+
+def migrate(db_path: str = None):
+    db_path = _get_db_path(db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(favorite_strategies)")

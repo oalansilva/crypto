@@ -10,14 +10,19 @@ from pathlib import Path
 from datetime import datetime
 
 
+def _get_db_path(db_path):
+    if db_path is not None:
+        return db_path
+    try:
+        from app.database import DB_PATH
+        return str(DB_PATH)
+    except Exception:
+        return str(Path(__file__).parent.parent.parent / "backtest.db")
+
+
 def create_combo_templates_table(db_path: str = None):
     """Create combo_templates table if it doesn't exist."""
-    
-    if db_path is None:
-        from pathlib import Path
-        project_root = Path(__file__).parent.parent.parent
-        db_path = str(project_root / "data" / "crypto_backtest.db")
-    
+    db_path = _get_db_path(db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
@@ -43,12 +48,7 @@ def create_combo_templates_table(db_path: str = None):
 
 def seed_example_templates(db_path: str = None):
     """Seed database with 4 example templates."""
-    
-    if db_path is None:
-        from pathlib import Path
-        project_root = Path(__file__).parent.parent.parent
-        db_path = str(project_root / "data" / "crypto_backtest.db")
-    
+    db_path = _get_db_path(db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     

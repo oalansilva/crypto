@@ -481,7 +481,13 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
         # Create optimizer
         optimizer = ComboOptimizer()
         
-        # Run optimization
+        # Run optimization (template short_ema200_pullback is short-only: force direction)
+        direction = getattr(request, "direction", "long") or "long"
+        if request.template_name == "short_ema200_pullback":
+            direction = "short"
+        if direction not in ("long", "short"):
+            direction = "long"
+        logger.info(f"Optimization direction: {direction} (template: {request.template_name})")
         result = optimizer.run_optimization(
             template_name=request.template_name,
             symbol=request.symbol,
@@ -490,7 +496,7 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
             end_date=request.end_date,
             custom_ranges=request.custom_ranges,
             deep_backtest=request.deep_backtest,
-            direction=getattr(request, "direction", "long") or "long",
+            direction=direction,
         )
         
         logger.info(f"Optimization complete. Best score: {result.get('best_score', 'N/A')}")

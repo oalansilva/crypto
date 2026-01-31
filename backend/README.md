@@ -2,6 +2,10 @@
 
 Backend FastAPI para executar backtests de criptomoedas com persistência no Supabase.
 
+## Banco de dados (SQLite)
+
+O app usa **um único arquivo SQLite** como fonte de verdade: `backend/backtest.db` (definido em `app/database.py` como `DB_PATH`). Todas as migrations e o seed de templates usam esse mesmo caminho; não há mais uso de `backend/data/crypto_backtest.db`.
+
 ## 📋 Pré-requisitos
 
 - Python 3.11+

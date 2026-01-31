@@ -83,6 +83,10 @@ export function ComboConfigurePage() {
     useEffect(() => {
         if (templateName) {
             fetchMetadata()
+            // Template short_ema200_pullback é só para short: forçar Direction = Short
+            if (templateName === 'short_ema200_pullback') {
+                setDirection('short')
+            }
         }
     }, [templateName])
 

@@ -5,13 +5,23 @@ This migration adds a new column to support protecting pre-built templates
 from accidental modifications. Pre-built templates must be cloned before editing.
 """
 import sqlite3
+import sys
 from pathlib import Path
 
+def _get_db_path():
+    # backend/migrations -> backend/app/database
+    backend_app = Path(__file__).resolve().parent.parent / "app"
+    if str(backend_app.parent) not in sys.path:
+        sys.path.insert(0, str(backend_app.parent))
+    try:
+        from app.database import DB_PATH
+        return str(DB_PATH)
+    except Exception:
+        return str(Path(__file__).resolve().parent.parent / "backtest.db")
+
 def migrate():
-    # Get database path
-    db_path = Path(__file__).parent.parent / "data" / "crypto_backtest.db"
-    
-    conn = sqlite3.connect(str(db_path))
+    db_path = _get_db_path()
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     try:

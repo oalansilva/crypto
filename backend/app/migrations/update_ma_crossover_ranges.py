@@ -6,12 +6,17 @@ import sqlite3
 import json
 from pathlib import Path
 
+def _get_db_path():
+    try:
+        from app.database import DB_PATH
+        return str(DB_PATH)
+    except Exception:
+        return str(Path(__file__).parent.parent.parent / "backtest.db")
+
+
 def update_multi_ma_crossover_ranges():
     """Update optimization ranges for multi_ma_crossover template."""
-    
-    project_root = Path(__file__).parent.parent.parent
-    db_path = str(project_root / "data" / "crypto_backtest.db")
-    
+    db_path = _get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     

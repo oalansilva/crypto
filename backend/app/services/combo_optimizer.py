@@ -606,9 +606,8 @@ class ComboOptimizer:
                 if param_name == 'stop_loss' and target_step == 0.002:
                     target_step = 0.001
 
-                # Calculate Coarse Step for Round 1
+                # Correlated group = joint grid (product of all params). Use coarse step in R1 to avoid millions of combinations.
                 coarse_step = self._calculate_coarse_step(p_min, p_max, target_step)
-                
                 values = self._generate_range_values(p_min, p_max, coarse_step)
                 
                 value_lists.append(values)
@@ -660,14 +659,14 @@ class ComboOptimizer:
                 p_max = config.get('max')
                 target_step = config.get('step')
             
-            # Coarse Step for Round 1
-            coarse_step = self._calculate_coarse_step(p_min, p_max, target_step)
-            values = self._generate_range_values(p_min, p_max, coarse_step)
+            # Round 1: use full grid (schema step), same as long / non-adaptive grid
+            round1_step = target_step if target_step is not None else self._calculate_coarse_step(p_min, p_max, target_step)
+            values = self._generate_range_values(p_min, p_max, round1_step)
             
             adaptive_meta = {
                 param_name: {
                     'target_step': target_step,
-                    'current_step': coarse_step,
+                    'current_step': round1_step,
                     'min': p_min,
                     'max': p_max
                 }
@@ -1403,6 +1402,9 @@ class ComboOptimizer:
     ) -> Dict[str, Any]:
         if direction not in ("long", "short"):
             direction = "long"
+
+        optimization_start_time = time.time()
+
         # Generate stages
         fixed_timeframe = timeframe if timeframe else None
         stages = self.generate_stages(
@@ -1467,6 +1469,10 @@ class ComboOptimizer:
                     end_date,
                     e,
                 )
+            else:
+                logging.info(
+                    "Deep backtest ON: workers will use 15m intraday data for exit simulation (stop/target precision)."
+                )
         
         # Initialize best parameters (direction is fixed for the whole optimization)
         best_params = {"direction": direction}
@@ -1477,7 +1483,7 @@ class ComboOptimizer:
         max_workers = max(1, (os.cpu_count() or 2) - 1)
         
         # PHASE 2: Detect Grid Search and allow refinement
-        # Grid Search finds the best "coarse" region, then we refine it.
+        # Grid Search finds the best region, then we refine it. Same logic for long and short (direction-agnostic).
         has_grid_search = any(stage.get('grid_mode', False) for stage in stages)
         has_adaptive = any(stage.get('adaptive_meta') for stage in stages)
         
@@ -1495,7 +1501,7 @@ class ComboOptimizer:
                 # -------------------------------------------------------------
                 max_rounds = 4
                 logging.info("=" * 60)
-                logging.info("Adaptive Grid Search detected - activating 4D Coarse-to-Fine Optimization")
+                logging.info("Adaptive Grid Search detected - 4 rounds: full grid (R1) then refinement (R2-R4)")
                 logging.info("=" * 60)
 
                 # Candidates list (starts with single 'root' candidate which covers the whole space)
@@ -1656,7 +1662,7 @@ class ComboOptimizer:
         if not converged:
              logging.warning(f"Optimization stopped after max rounds ({max_rounds}) without full convergence.")
 
-        total_optimization_time = time.time() - start_time if 'start_time' in locals() else 0
+        total_optimization_time = time.time() - optimization_start_time
         rounds_display = round_num if converged else round_num - 1
 
         # Run final backtest with best parameters to get complete data

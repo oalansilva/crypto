@@ -17,6 +17,7 @@ settings = get_settings()
 
 # For now, let's default to SQLite for stable local development
 # This bypasses connection issues with remote Supabase
+# Single source of truth: all migrations and scripts should use this path (backend/backtest.db)
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "backtest.db"

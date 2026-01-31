@@ -9,13 +9,19 @@ import sqlite3
 from pathlib import Path
 
 
+def _get_db_path(db_path):
+    if db_path is not None:
+        return db_path
+    try:
+        from app.database import DB_PATH
+        return str(DB_PATH)
+    except Exception:
+        return str(Path(__file__).resolve().parent.parent.parent / "backtest.db")
+
+
 def add_optimization_schema_column(db_path: str = None):
     """Add optimization_schema JSON column to combo_templates table."""
-    
-    if db_path is None:
-        project_root = Path(__file__).parent.parent.parent
-        db_path = str(project_root / "data" / "crypto_backtest.db")
-    
+    db_path = _get_db_path(db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
