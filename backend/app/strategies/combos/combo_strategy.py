@@ -92,8 +92,13 @@ class ComboStrategy:
                 
                 elif ind_type == 'rsi':
                     length = params.get('length', 14)
+                    # Keep the traditional RSI_{length} column name for backward-compatible logic,
+                    # but also support a stable alias (e.g. "rsi") when provided.
                     col_name = f'RSI_{length}'
-                    df[col_name] = ta.rsi(df['close'], length=length)
+                    rsi_series = ta.rsi(df['close'], length=length)
+                    df[col_name] = rsi_series
+                    if alias and alias != col_name:
+                        df[alias] = rsi_series
                 
                 elif ind_type == 'macd':
                     fast = params.get('fast', 12)
@@ -167,15 +172,53 @@ class ComboStrategy:
             Boolean Series where True means logic condition is met
         """
         try:
+            # Normalize boolean operators for vectorized (Series) evaluation.
+            # Templates may use "and"/"or" but pandas requires bitwise "&"/"|".
+            # We only replace whole-word operators to avoid touching identifiers.
+            logic_expr = re.sub(r"\band\b", "&", logic, flags=re.IGNORECASE)
+            logic_expr = re.sub(r"\bor\b", "|", logic_expr, flags=re.IGNORECASE)
+            # NOTE: "not" is intentionally not rewritten here; templates should use parentheses and "~" if needed.
+
             # Create local context with vectorized helper functions
             local_context = HELPER_FUNCTIONS.copy()
             
             # Add all dataframe columns to context (Vectors/Series)
             for col in df.columns:
                 local_context[col] = df[col]
+
+            # Compatibility mapping for RSI references:
+            # Some example templates hardcode RSI_14 but also define optimization over RSI length.
+            # If there is a single RSI indicator, map any referenced RSI_<n> token to the computed RSI series.
+            try:
+                referenced_rsi = set(re.findall(r"\bRSI_\d+\b", logic_expr))
+                if referenced_rsi:
+                    rsi_inds = [i for i in self.indicators if str(i.get("type", "")).lower() == "rsi"]
+                    if len(rsi_inds) == 1:
+                        ind = rsi_inds[0]
+                        ind_params = ind.get("params", {}) or {}
+                        ind_len = ind_params.get("length", 14)
+                        expected_col = f"RSI_{ind_len}"
+                        alias = ind.get("alias")
+                        series = None
+                        if alias and alias in df.columns:
+                            series = df[alias]
+                        elif expected_col in df.columns:
+                            series = df[expected_col]
+                        else:
+                            # fallback: if exactly one RSI_* column exists, use it
+                            rsi_cols = [c for c in df.columns if re.match(r"^RSI_\d+$", str(c))]
+                            if len(rsi_cols) == 1:
+                                series = df[rsi_cols[0]]
+                        if series is not None:
+                            for token in referenced_rsi:
+                                if token not in local_context:
+                                    local_context[token] = series
+            except Exception:
+                # If mapping fails, let eval raise a clear error later.
+                pass
             
             # Evaluate the logic globally (fast!)
-            result = eval(logic, {"__builtins__": {}}, local_context)
+            result = eval(logic_expr, {"__builtins__": {}}, local_context)
             
             if isinstance(result, pd.Series):
                 return result.fillna(False).astype(bool)

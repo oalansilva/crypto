@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 import ccxt
 import pandas as pd
 from datetime import datetime, timedelta
@@ -75,6 +76,25 @@ class IncrementalLoader:
             df = df[(df['timestamp_utc'] >= since_dt) & (df['timestamp_utc'] <= until_dt)].copy()
             df.set_index('timestamp_utc', inplace=True)
         return df
+
+    def _atomic_to_parquet(self, df: pd.DataFrame, parquet_path: str) -> None:
+        """
+        Write parquet atomically to avoid leaving empty/corrupt files if the process
+        is interrupted mid-write. Writes to a temp file in the same directory and
+        then replaces the target.
+        """
+        # Use a unique temp path to avoid collisions across concurrent writers.
+        tmp_path = f"{parquet_path}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+        try:
+            os.makedirs(os.path.dirname(parquet_path), exist_ok=True)
+            df.to_parquet(tmp_path, index=False)
+            os.replace(tmp_path, parquet_path)
+        finally:
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
 
     def fetch_data(
         self,
@@ -287,31 +307,75 @@ class IncrementalLoader:
              
              # Save
              logger.info(f"Saving updated cache to {parquet_path}")
-             # Ensure directory exists again just in case
-             os.makedirs(os.path.dirname(parquet_path), exist_ok=True)
-             df_combined.to_parquet(parquet_path, index=False)
+             self._atomic_to_parquet(df_combined, parquet_path)
              
              df_final = df_combined
         else:
+             # e.g. backfill returned no data (exchange has no older candles): keep existing cache
+             if df_local.empty and cache_exists and cache_has_rows:
+                 try:
+                     df_local = pd.read_parquet(parquet_path)
+                     logger.info(f"Backfill returned no new rows; using existing cache ({len(df_local)} rows) for {symbol} {timeframe}.")
+                 except Exception as e:
+                     logger.error(f"Error reading local parquet after empty fetch: {e}. Will redownload.")
              df_final = df_local
              
         if df_final.empty:
-            # If we have a cache file but it's empty, try to force a full re-download (only once to prevent infinite recursion)
+            # Only delete and retry when the cache FILE is actually empty (0 rows), not when df_final is empty for other reasons (e.g. backfill returned nothing but cache has data).
             if os.path.exists(parquet_path) and _retry_count == 0:
-                logger.warning(f"Cache file exists for {symbol} {timeframe} but is empty. Attempting full re-download...")
                 try:
-                    os.remove(parquet_path)
-                    logger.info(f"Deleted empty cache file. Retrying download for {symbol} {timeframe}...")
-                    # Retry with fresh download from inception (with retry flag to prevent infinite loop)
-                    return self.fetch_data(symbol, timeframe, since_str, until_str, limit, progress_callback, _retry_count=1)
+                    try:
+                        df_verify = pd.read_parquet(parquet_path, columns=['timestamp'])
+                    except Exception:
+                        df_verify = pd.read_parquet(parquet_path, columns=['timestamp_utc'])
+                    if df_verify.empty:
+                        logger.warning(f"Cache file exists for {symbol} {timeframe} but is empty. Attempting full re-download...")
+                        try:
+                            os.remove(parquet_path)
+                            logger.info(f"Deleted empty cache file. Retrying download for {symbol} {timeframe}...")
+                            return self.fetch_data(
+                                symbol,
+                                timeframe,
+                                since_str,
+                                until_str,
+                                limit=limit,
+                                progress_callback=progress_callback,
+                                _retry_count=1,
+                                read_only=read_only,
+                                full_history_if_empty=full_history_if_empty,
+                                allow_large_backfill=allow_large_backfill,
+                            )
+                        except Exception as e:
+                            logger.error(f"Error removing cache file: {e}")
+                    else:
+                        # File has data; return it (requested slice) instead of treating as failure
+                        df_final = pd.read_parquet(parquet_path)
                 except Exception as e:
-                    logger.error(f"Error removing cache file: {e}")
+                    logger.warning(f"Could not verify cache file for {symbol} {timeframe}: {e}. Attempting full re-download...")
+                    try:
+                        os.remove(parquet_path)
+                        logger.info(f"Deleted unreadable cache file. Retrying download for {symbol} {timeframe}...")
+                        return self.fetch_data(
+                            symbol,
+                            timeframe,
+                            since_str,
+                            until_str,
+                            limit=limit,
+                            progress_callback=progress_callback,
+                            _retry_count=1,
+                            read_only=read_only,
+                            full_history_if_empty=full_history_if_empty,
+                            allow_large_backfill=allow_large_backfill,
+                        )
+                    except Exception as rm_e:
+                        logger.error(f"Error removing cache file: {rm_e}")
             else:
                 if _retry_count > 0:
                     logger.error(f"Still no data after retry for {symbol} {timeframe}. This may indicate the symbol is not available on the exchange or the timeframe is invalid.")
                 else:
                     logger.warning(f"No data available for {symbol} {timeframe} and no cache file exists.")
-            return df_final
+            if df_final.empty:
+                return df_final
             
         # 5. Return Requested Slice
         # Filter by requested since_str / until_str
@@ -339,7 +403,18 @@ class IncrementalLoader:
                     # Delete the empty/corrupt cache file
                     os.remove(parquet_path)
                     # Retry with fresh download from inception (with retry flag to prevent infinite loop)
-                    return self.fetch_data(symbol, timeframe, since_str, until_str, limit, progress_callback, _retry_count=1)
+                    return self.fetch_data(
+                        symbol,
+                        timeframe,
+                        since_str,
+                        until_str,
+                        limit=limit,
+                        progress_callback=progress_callback,
+                        _retry_count=1,
+                        read_only=read_only,
+                        full_history_if_empty=full_history_if_empty,
+                        allow_large_backfill=allow_large_backfill,
+                    )
                 else:
                     # Cache has data but not in the requested range
                     if 'timestamp_utc' in df_check.columns:
@@ -370,7 +445,7 @@ class IncrementalLoader:
                                     df_combined = pd.concat([df_check_reset, df_new])
                                     df_combined.drop_duplicates(subset=['timestamp'], keep='last', inplace=True)
                                     df_combined.sort_values('timestamp', inplace=True)
-                                    df_combined.to_parquet(parquet_path, index=False)
+                                    self._atomic_to_parquet(df_combined, parquet_path)
                                     df_combined.set_index('timestamp_utc', inplace=True)
                                     logger.info(f"Successfully downloaded and merged new data. Returning {len(df_combined)} rows for {symbol} {timeframe}")
                                     return df_combined
@@ -393,7 +468,18 @@ class IncrementalLoader:
                 logger.error(f"Error checking cache file: {e}. Attempting full re-download...")
                 try:
                     os.remove(parquet_path)
-                    return self.fetch_data(symbol, timeframe, since_str, until_str, limit, progress_callback, _retry_count=1)
+                    return self.fetch_data(
+                        symbol,
+                        timeframe,
+                        since_str,
+                        until_str,
+                        limit=limit,
+                        progress_callback=progress_callback,
+                        _retry_count=1,
+                        read_only=read_only,
+                        full_history_if_empty=full_history_if_empty,
+                        allow_large_backfill=allow_large_backfill,
+                    )
                 except:
                     pass
         

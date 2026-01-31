@@ -349,6 +349,15 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                         matched = True
                         break
 
+                    # 4. Fallback for indicators without alias:
+                    # allow "type_param" format (e.g. "rsi_length") used by legacy stage generation.
+                    if (not alias) and type_ and param_key.startswith(f"{type_}_"):
+                        target_field = param_key[len(type_) + 1:]
+                        if "params" not in indicator: indicator["params"] = {}
+                        indicator["params"][target_field] = param_value
+                        matched = True
+                        break
+
         # Create strategy instance
         from app.strategies.combos import ComboStrategy
         strategy = ComboStrategy(
@@ -545,7 +554,8 @@ class ComboOptimizer:
         stage_num = 1
         
         # Get optimization schema from database (if available)
-        optimization_schema = metadata.get('optimization_schema', {})
+        # optimization_schema may be explicitly NULL in DB (e.g. example templates)
+        optimization_schema = metadata.get('optimization_schema') or {}
         correlated_groups = optimization_schema.get('correlated_groups', [])
         parameters = optimization_schema.get('parameters', {})
         
@@ -815,7 +825,8 @@ class ComboOptimizer:
         Raises:
             ValueError: If validation fails
         """
-        optimization_schema = template_metadata.get("optimization_schema", {})
+        # optimization_schema may be explicitly NULL in DB (e.g. example templates)
+        optimization_schema = template_metadata.get("optimization_schema") or {}
         correlated_groups = optimization_schema.get("correlated_groups", [])
         parameters = optimization_schema.get("parameters", {})
         
@@ -1061,7 +1072,8 @@ class ComboOptimizer:
         Returns:
             True if params are in a correlated group
         """
-        optimization_schema = template_metadata.get("optimization_schema", {})
+        # optimization_schema may be explicitly NULL in DB (e.g. example templates)
+        optimization_schema = template_metadata.get("optimization_schema") or {}
         correlated_groups = optimization_schema.get("correlated_groups", [])
         
         param_set = set(param_names)
