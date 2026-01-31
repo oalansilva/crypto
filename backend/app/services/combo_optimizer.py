@@ -534,6 +534,14 @@ class ComboOptimizer:
         
         # Get optimization schema from database (if available)
         # optimization_schema may be explicitly NULL in DB (e.g. example templates)
+        #
+        # STRUCTURE DECIDES GRID SHAPE:
+        # - If schema has "parameters" (dict) + "correlated_groups" (list of param lists):
+        #   PHASE 1 runs: one STAGE per group, each stage = JOINT GRID (product of all params in group).
+        #   Example: correlated_groups = [["ema_short","sma_medium","sma_long","stop_loss"]] → 1 stage, N1×N2×N3×N4 combinations.
+        # - If schema is FLAT (no "parameters", no "correlated_groups"; top-level keys = param names with min/max/step):
+        #   Fallback: parameters = schema, correlated_groups = []. PHASE 2 runs: one STAGE per param (sequential = sum).
+        #   Example: short_ema200_pullback → 5 stages, 17+16+11+9+8 = 61 combinations in R1.
         optimization_schema = metadata.get('optimization_schema') or {}
         correlated_groups = optimization_schema.get('correlated_groups', [])
         parameters = optimization_schema.get('parameters', {})

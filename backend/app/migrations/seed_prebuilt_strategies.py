@@ -179,11 +179,16 @@ def seed_prebuilt_strategies(db_path: str = None):
                 "stop_loss": 0.06
             },
             "optimization_schema": {
-                "ema_ema21": {"min": 14, "max": 30, "step": 1, "default": 21},
-                "ema_ema50": {"min": 40, "max": 70, "step": 2, "default": 50},
-                "ema_ema200": {"min": 150, "max": 250, "step": 10, "default": 200},
-                "rsi_length": {"min": 10, "max": 18, "step": 1, "default": 14},
-                "stop_loss": {"min": 0.03, "max": 0.10, "step": 0.01, "default": 0.06}
+                "parameters": {
+                    "ema_ema21": {"min": 14, "max": 30, "step": 1, "default": 21},
+                    "ema_ema50": {"min": 40, "max": 70, "step": 2, "default": 50},
+                    "ema_ema200": {"min": 150, "max": 250, "step": 10, "default": 200},
+                    "rsi_length": {"min": 10, "max": 18, "step": 1, "default": 14},
+                    "stop_loss": {"min": 0.03, "max": 0.10, "step": 0.01, "default": 0.06},
+                },
+                "correlated_groups": [
+                    ["ema_ema21", "ema_ema50", "ema_ema200", "rsi_length", "stop_loss"]
+                ],
             }
         }
     ]
