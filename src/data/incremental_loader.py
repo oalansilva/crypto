@@ -43,7 +43,52 @@ class IncrementalLoader:
         filename = f"{safe_symbol}_{timeframe}.parquet"
         return os.path.join(self.base_path, filename)
 
-    def fetch_data(self, symbol, timeframe, since_str, until_str=None, limit=1000, progress_callback=None, _retry_count=0):
+    def _read_parquet_slice(self, parquet_path: str, since_dt: pd.Timestamp, until_dt: pd.Timestamp) -> pd.DataFrame:
+        """
+        Read only the requested time slice from parquet (predicate pushdown when supported).
+        This avoids loading the entire dataset into memory, which is critical for 15m data.
+        """
+        cols = ['timestamp', 'timestamp_utc', 'open', 'high', 'low', 'close', 'volume']
+        since_ms = int(since_dt.timestamp() * 1000)
+        until_ms = int(until_dt.timestamp() * 1000)
+
+        # Prefer filtering by integer millisecond timestamp (no timezone edge cases)
+        try:
+            df = pd.read_parquet(
+                parquet_path,
+                columns=cols,
+                filters=[('timestamp', '>=', since_ms), ('timestamp', '<=', until_ms)]
+            )
+        except Exception:
+            # Fallback: read without filters (or if filters/columns not supported by engine)
+            df = pd.read_parquet(parquet_path)
+
+        if df.empty:
+            return df
+
+        # Normalize timestamp_utc
+        if 'timestamp_utc' not in df.columns and 'timestamp' in df.columns:
+            df['timestamp_utc'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+
+        # Ensure slice (in case filters were not applied)
+        if 'timestamp_utc' in df.columns:
+            df = df[(df['timestamp_utc'] >= since_dt) & (df['timestamp_utc'] <= until_dt)].copy()
+            df.set_index('timestamp_utc', inplace=True)
+        return df
+
+    def fetch_data(
+        self,
+        symbol,
+        timeframe,
+        since_str,
+        until_str=None,
+        limit=1000,
+        progress_callback=None,
+        _retry_count=0,
+        read_only: bool = False,
+        full_history_if_empty: bool = True,
+        allow_large_backfill: bool = False,
+    ):
         """
         Smart fetch: Check local Parquet -> Download Delta -> Append -> Return Slice
         
@@ -70,50 +115,71 @@ class IncrementalLoader:
         
         # Parquet Path
         parquet_path = self._get_parquet_path(symbol, timeframe)
+
+        # Read-only mode: never download/write. Just read what exists (slice) and return.
+        if read_only:
+            if not os.path.exists(parquet_path):
+                logger.info(f"Read-only: no cache file for {symbol} {timeframe}. Returning empty DF.")
+                return pd.DataFrame()
+            try:
+                df_slice = self._read_parquet_slice(parquet_path, since_dt, until_dt)
+                if not df_slice.empty:
+                    logger.info(f"Read-only: returning {len(df_slice)} rows for {symbol} {timeframe}")
+                return df_slice
+            except Exception as e:
+                logger.error(f"Read-only: failed reading parquet slice for {symbol} {timeframe}: {e}")
+                return pd.DataFrame()
         
         # 1. Load Local State
         df_local = pd.DataFrame()
         last_ts = None
+        first_ts = None
+        cache_exists = os.path.exists(parquet_path)
+        cache_has_rows = False
         
-        if os.path.exists(parquet_path):
+        if cache_exists:
             logger.info(f"Local cache found for {symbol} {timeframe}: {parquet_path}")
             try:
-                # Read metadata or full file?
-                # Reading full file is fast enough for <1GB.
-                df_local = pd.read_parquet(parquet_path)
-                if not df_local.empty:
-                     # timestamp_utc is likely the index or column
-                     if 'timestamp' in df_local.columns:
-                         last_ts_val = df_local['timestamp'].max()
-                         # Ensure last_ts is a valid integer, not None or NaN
-                         if pd.notna(last_ts_val):
-                             last_ts = int(last_ts_val)
-                         else:
-                             last_ts = None
-                     elif 'timestamp_utc' in df_local.columns:
-                         # Try timestamp_utc column
-                         last_ts_dt = df_local['timestamp_utc'].max()
-                         if pd.notna(last_ts_dt):
-                             # Convert datetime to timestamp in milliseconds
-                             if isinstance(last_ts_dt, pd.Timestamp):
-                                 last_ts = int(last_ts_dt.timestamp() * 1000)
-                             else:
-                                 last_ts = None
-                         else:
-                             last_ts = None
-                     else:
-                         # try index if datetime
-                         last_ts = None
+                # Fast path: read only the timestamp column to decide if we need a delta download.
+                # This avoids loading the full Parquet (critical for 15m).
+                try:
+                    df_ts = pd.read_parquet(parquet_path, columns=['timestamp'])
+                    cache_has_rows = not df_ts.empty
+                    if cache_has_rows:
+                        last_ts_val = df_ts['timestamp'].max()
+                        last_ts = int(last_ts_val) if pd.notna(last_ts_val) else None
+                        first_ts_val = df_ts['timestamp'].min()
+                        first_ts = int(first_ts_val) if pd.notna(first_ts_val) else None
+                except Exception:
+                    # Fallback for older files without 'timestamp' column
+                    df_ts = pd.read_parquet(parquet_path, columns=['timestamp_utc'])
+                    cache_has_rows = not df_ts.empty
+                    if cache_has_rows:
+                        last_ts_dt = df_ts['timestamp_utc'].max()
+                        if pd.notna(last_ts_dt):
+                            last_ts = int(pd.Timestamp(last_ts_dt).timestamp() * 1000)
+                        first_ts_dt = df_ts['timestamp_utc'].min()
+                        if pd.notna(first_ts_dt):
+                            first_ts = int(pd.Timestamp(first_ts_dt).timestamp() * 1000)
             except Exception as e:
                 logger.error(f"Error reading local parquet: {e}. Will redownload.")
+                # Treat as corrupt cache; remove so we can rebuild cleanly.
+                try:
+                    os.remove(parquet_path)
+                    logger.warning(f"Deleted corrupt cache file: {parquet_path}")
+                    cache_exists = False
+                except Exception as rm_e:
+                    logger.warning(f"Failed to delete corrupt cache file {parquet_path}: {rm_e}")
                 df_local = pd.DataFrame() # Corrupt?
                 last_ts = None
+                cache_has_rows = False
         
         # 2. Determine Download Range
         # Default: Download from requested 'since'
         fetch_since_ts = int(since_dt.timestamp() * 1000)
+        backfill_until_ts: Optional[int] = None
         
-        if not df_local.empty and last_ts is not None and isinstance(last_ts, (int, float)):
+        if cache_has_rows and last_ts is not None and isinstance(last_ts, (int, float)):
             # We have data up to last_ts.
             # If our stored data covers up to 'now' (approx), we might not need to download much.
             
@@ -127,13 +193,55 @@ class IncrementalLoader:
             # but standard is inclusive. So +1ms avoids dup of last candle).
             
             until_ts_int = int(until_dt.timestamp() * 1000)
-            if last_ts < until_ts_int:
-                 fetch_since_ts = int(last_ts) + 1
-                 logger.info(f"Incremental update needed. Downloading from {datetime.fromtimestamp(fetch_since_ts/1000)}")
+
+            # HEAD coverage check (important for intraday/deep backtest):
+            # If cache starts AFTER requested since, we need to backfill at least to since_dt.
+            if first_ts is not None and isinstance(first_ts, (int, float)) and int(first_ts) > fetch_since_ts:
+                # For very large intraday backfills (e.g. 2017..now at 15m), avoid runaway downloads.
+                # Callers should prefer bounded windows (6m/2y) for intraday.
+                is_intraday = str(timeframe).endswith('m') or str(timeframe).endswith('h')
+                requested_days = (until_dt - since_dt).days
+                if is_intraday and requested_days > 900 and not allow_large_backfill:
+                    logger.warning(
+                        "Intraday cache does not cover requested start (%s %s). "
+                        "Requested window=%sd (>900d). Skipping backfill to avoid huge download.",
+                        symbol, timeframe, requested_days
+                    )
+                    # Do not attempt any fetch; we'll return what we have (caller may fallback).
+                    fetch_since_ts = None
+                else:
+                    backfill_until_ts = int(first_ts)
+                    logger.info(
+                        "Cache starts at %s but requested since is %s. Backfilling missing head...",
+                        datetime.fromtimestamp(int(first_ts) / 1000),
+                        datetime.fromtimestamp(fetch_since_ts / 1000),
+                    )
+            elif last_ts < until_ts_int:
+                fetch_since_ts = int(last_ts) + 1
+                logger.info(f"Incremental update needed. Downloading from {datetime.fromtimestamp(fetch_since_ts/1000)}")
             else:
-                 logger.info("Local data covers request. No network fetch needed.")
-                 fetch_since_ts = None # No fetch needed
+                logger.info("Local data covers request. No network fetch needed.")
+                fetch_since_ts = None  # No fetch needed
         
+        # Fast return: no network fetch needed → read only the slice from parquet
+        # (keeps behavior for empty-range fallback by falling back to the slow path when needed).
+        if fetch_since_ts is None and cache_exists and cache_has_rows:
+            try:
+                df_slice_fast = self._read_parquet_slice(parquet_path, since_dt, until_dt)
+                if not df_slice_fast.empty:
+                    logger.info(f"Returning {len(df_slice_fast)} rows for {symbol} {timeframe} (slice read from parquet)")
+                    return df_slice_fast
+            except Exception as e:
+                logger.warning(f"Fast parquet slice read failed ({symbol} {timeframe}): {e}. Falling back to full read.")
+
+            # We need the full DF for the existing empty-range fallback logic below.
+            try:
+                df_local = pd.read_parquet(parquet_path)
+            except Exception as e:
+                logger.error(f"Error reading local parquet for fallback: {e}. Will redownload.")
+                df_local = pd.DataFrame()
+                cache_has_rows = False
+
         # 3. Fetch New Data (if needed)
         df_new = pd.DataFrame()
         if fetch_since_ts is not None:
@@ -142,18 +250,29 @@ class IncrementalLoader:
             # So if local is empty, we probably should ignore 'since_str' (which might be 2023) and download from 2017?
             # BUT 'fetch_data' is called by BacktestService with a specific range.
             # If we enforce "Full Life", we should set `fetch_since_ts` to 2017-01-01 IF df_local is empty.
-            if df_local.empty:
+            if not cache_has_rows and full_history_if_empty:
                 logger.info("First run (empty cache). Downloading from 2017-01-01 (Full History mode).")
                 inception_ts = int(datetime(2017, 1, 1).timestamp() * 1000)
-                # But wait, if user requested 2023, and we download 2017, it takes minimal time extra and saves future.
                 fetch_since_ts = inception_ts
-            
-            until_ts_download = int(datetime.now().timestamp() * 1000) # Always update to NOW
-            
+
+            # Always download up to NOW by default, but for backfill we only need up to cache start.
+            until_ts_download = int(datetime.now().timestamp() * 1000)
+            if backfill_until_ts is not None:
+                until_ts_download = int(backfill_until_ts)
+
             df_new = self._download_loop(symbol, timeframe, fetch_since_ts, until_ts_download, limit)
         
         # 4. Merge and Save
         if not df_new.empty:
+             # If cache exists and has rows, load local DF now for merge (only when needed).
+             if df_local.empty and cache_exists and cache_has_rows:
+                 try:
+                     df_local = pd.read_parquet(parquet_path)
+                 except Exception as e:
+                     logger.error(f"Error reading local parquet for merge: {e}. Will redownload.")
+                     df_local = pd.DataFrame()
+                     cache_has_rows = False
+
              if not df_local.empty:
                  logger.info(f"Merging {len(df_new)} new rows with {len(df_local)} local rows.")
                  # Concatenate
@@ -281,7 +400,15 @@ class IncrementalLoader:
         logger.info(f"Returning {len(df_slice)} rows for {symbol} {timeframe} from {since_dt} to {until_dt}")
         return df_slice
     
-    def fetch_intraday_data(self, symbol, timeframe='15m', since_str=None, until_str=None):
+    def fetch_intraday_data(
+        self,
+        symbol,
+        timeframe='15m',
+        since_str=None,
+        until_str=None,
+        read_only: bool = False,
+        allow_large_backfill: bool = False,
+    ):
         """
         Fetch intraday data (15m by default) for Deep Backtesting.
         This is a convenience wrapper around fetch_data with specific handling for intraday timeframes.
@@ -303,7 +430,17 @@ class IncrementalLoader:
         logger.info(f"Fetching intraday data ({timeframe}) for {symbol}")
         
         # Use the standard fetch_data method (it already handles caching and incremental updates)
-        return self.fetch_data(symbol, timeframe, since_str, until_str)
+        # For intraday caches, do NOT force full-history download on first run.
+        # Intraday from 2017 is enormous; callers should provide a bounded window (e.g. 6m/2y).
+        return self.fetch_data(
+            symbol,
+            timeframe,
+            since_str,
+            until_str,
+            read_only=read_only,
+            full_history_if_empty=False,
+            allow_large_backfill=allow_large_backfill,
+        )
     
     def check_intraday_availability(self, symbol, timeframe='15m', since_str=None):
         """

@@ -28,6 +28,33 @@ from src.data.incremental_loader import IncrementalLoader
 from app.services.deep_backtest import simulate_execution_with_15m
 
 # -----------------------------------------------------------------------------
+# WORKER-SIDE INTRADAY CACHE (per process)
+# -----------------------------------------------------------------------------
+# IMPORTANT:
+# - This cache lives inside each ProcessPoolExecutor worker process.
+# - It only becomes effective if we reuse the same executor across stages/rounds.
+_WORKER_15M_CACHE: Dict[str, Any] = {"key": None, "df": None}
+
+
+def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Optional[pd.DataFrame]:
+    """Load (or reuse) the 15m DF in the current worker process."""
+    key = (symbol, since_str, until_str)
+    if _WORKER_15M_CACHE.get("key") == key and _WORKER_15M_CACHE.get("df") is not None:
+        return _WORKER_15M_CACHE["df"]
+
+    loader = IncrementalLoader()
+    df_15m = loader.fetch_intraday_data(
+        symbol=symbol,
+        timeframe="15m",
+        since_str=since_str,
+        until_str=until_str,
+        read_only=True,
+    )
+    _WORKER_15M_CACHE["key"] = key
+    _WORKER_15M_CACHE["df"] = df_15m
+    return df_15m
+
+# -----------------------------------------------------------------------------
 # WORKER LOGGING (ProcessPoolExecutor workers run in separate processes)
 # -----------------------------------------------------------------------------
 def _init_worker_logging():
@@ -189,12 +216,47 @@ def extract_trades_with_mode(
                 symbol=symbol,
                 timeframe='15m',
                 since_str=since_str,
-                until_str=until_str
+                until_str=until_str,
+                read_only=True
             )
         
         if df_15m.empty:
             if df_15m_cache is None: # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
+            return extract_trades_from_signals(df_exec, stop_loss)
+
+        # Coverage guard:
+        # If the 15m cache doesn't cover the full daily backtest window, deep simulation becomes unreliable.
+        # In that case, fallback to fast mode instead of mixing partial intraday data.
+        try:
+            daily_start = df_exec.index.min()
+            daily_end = df_exec.index.max()
+            intraday_start = df_15m.index.min()
+            intraday_end = df_15m.index.max()
+
+            # Some markets start trading partway through the first "day" (listing time).
+            # Daily candles are still labeled at 00:00 UTC, but intraday data may begin later that same date
+            # (e.g., BTC/USDT starting at 04:00 UTC on the first day). This is NOT a real coverage problem.
+            start_ok = True
+            if intraday_start > daily_start:
+                try:
+                    start_ok = (intraday_start.date() == daily_start.date())
+                except Exception:
+                    start_ok = False
+
+            if (not start_ok) or (intraday_end < daily_end):
+                logger.warning(
+                    "15m coverage insufficient for deep backtest (%s): daily=[%s..%s] 15m=[%s..%s]. Falling back to fast mode.",
+                    symbol,
+                    str(daily_start),
+                    str(daily_end),
+                    str(intraday_start),
+                    str(intraday_end),
+                )
+                return extract_trades_from_signals(df_exec, stop_loss)
+        except Exception:
+            # If we can't validate coverage, avoid risking partial-deep behavior.
+            logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
             return extract_trades_from_signals(df_exec, stop_loss)
         
         if df_15m_cache is None:
@@ -374,7 +436,7 @@ def _worker_run_backtest(args):
 def _worker_run_batch(batch_args):
     """
     Optimized worker for Grid Search BATCH execution.
-    Loads 15m data ONCE per batch to eliminate redundant I/O.
+    Uses worker-level 15m cache (per process) to eliminate redundant I/O.
     """
     if not batch_args:
         return []
@@ -386,7 +448,7 @@ def _worker_run_batch(batch_args):
 
     results = []
     
-    # 1. Initialize Optimization Cache (Load 15m data once)
+    # 1. Initialize Optimization Cache (Load 15m data once per WORKER process)
     df_15m_cache = None
     first_arg = batch_args[0]
     # unpacking args structure: 
@@ -398,15 +460,7 @@ def _worker_run_batch(batch_args):
     
     if deep_backtest:
         try:
-            loader = IncrementalLoader()
-            df_15m_cache = loader.fetch_intraday_data(
-                symbol=symbol,
-                timeframe='15m',
-                since_str=since_str,
-                until_str=until_str
-            )
-
-
+            df_15m_cache = _worker_get_15m_cache(symbol, since_str, until_str)
         except Exception as e:
             # proceed without cache
             pass
@@ -1068,9 +1122,24 @@ class ComboOptimizer:
                 
         return selected
 
-    def _execute_opt_stages(self, stages, initial_params, round_num, max_workers, 
-                          template_name, symbol, timeframe, fixed_timeframe, start_date, end_date, deep_backtest, template_metadata, df,
-                          return_top_n: int = 1):
+    def _execute_opt_stages(
+        self,
+        stages,
+        initial_params,
+        round_num,
+        max_workers,
+        template_name,
+        symbol,
+        timeframe,
+        fixed_timeframe,
+        start_date,
+        end_date,
+        deep_backtest,
+        template_metadata,
+        df,
+        return_top_n: int = 1,
+        executor: Optional[concurrent.futures.ProcessPoolExecutor] = None,
+    ):
         """
         Execute all stages for a specific branch/candidate.
         Returns: 
@@ -1205,48 +1274,65 @@ class ComboOptimizer:
             completed_batches = 0
             processed_combinations = 0
             
-            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers, initializer=_init_worker_logging) as executor:
-                futures = {executor.submit(_worker_run_batch, batch): i for i, batch in enumerate(worker_batches)}
+            local_executor: Optional[concurrent.futures.ProcessPoolExecutor] = None
+            exec_to_use = executor
+            if exec_to_use is None:
+                # Backward-compatible fallback: create a pool just for this call.
+                local_executor = concurrent.futures.ProcessPoolExecutor(
+                    max_workers=max_workers, initializer=_init_worker_logging
+                )
+                exec_to_use = local_executor
+
+            futures = {}
+            try:
+                futures = {exec_to_use.submit(_worker_run_batch, batch): i for i, batch in enumerate(worker_batches)}
+                for future in concurrent.futures.as_completed(futures):
+                    batch_idx = futures[future]
+                    try:
+                        batch_results = future.result()
+                        results.extend(batch_results)
+
+                        # Update progress
+                        completed_batches += 1
+                        processed_combinations += len(worker_batches[batch_idx])
+
+                        # Calculate progress metrics
+                        progress_pct = (completed_batches / total_batches) * 100
+                        elapsed_time = time.time() - start_time
+
+                        # Estimate time remaining
+                        if completed_batches > 0:
+                            avg_time_per_batch = elapsed_time / completed_batches
+                            remaining_batches = total_batches - completed_batches
+                            estimated_remaining = avg_time_per_batch * remaining_batches
+
+                            # Format time
+                            elapsed_min = int(elapsed_time / 60)
+                            elapsed_sec = int(elapsed_time % 60)
+                            remaining_min = int(estimated_remaining / 60)
+                            remaining_sec = int(estimated_remaining % 60)
+
+                            logging.info(
+                                f"✅ Batch {completed_batches}/{total_batches} completo "
+                                f"({progress_pct:.1f}%) | "
+                                f"Processadas: {processed_combinations:,}/{combinations_count:,} | "
+                                f"Tempo: {elapsed_min}m{elapsed_sec}s | "
+                                f"Restante: ~{remaining_min}m{remaining_sec}s"
+                            )
+                    except Exception as e:
+                        logging.warning(f"⚠️ Batch {batch_idx} falhou: {e}")
+                        pass
+            except KeyboardInterrupt:
+                # Do NOT shutdown a shared executor; just cancel pending futures.
                 try:
-                    for future in concurrent.futures.as_completed(futures):
-                        batch_idx = futures[future]
-                        try:
-                            batch_results = future.result()
-                            results.extend(batch_results)
-                            
-                            # Update progress
-                            completed_batches += 1
-                            processed_combinations += len(worker_batches[batch_idx])
-                            
-                            # Calculate progress metrics
-                            progress_pct = (completed_batches / total_batches) * 100
-                            elapsed_time = time.time() - start_time
-                            
-                            # Estimate time remaining
-                            if completed_batches > 0:
-                                avg_time_per_batch = elapsed_time / completed_batches
-                                remaining_batches = total_batches - completed_batches
-                                estimated_remaining = avg_time_per_batch * remaining_batches
-                                
-                                # Format time
-                                elapsed_min = int(elapsed_time / 60)
-                                elapsed_sec = int(elapsed_time % 60)
-                                remaining_min = int(estimated_remaining / 60)
-                                remaining_sec = int(estimated_remaining % 60)
-                                
-                                logging.info(
-                                    f"✅ Batch {completed_batches}/{total_batches} completo "
-                                    f"({progress_pct:.1f}%) | "
-                                    f"Processadas: {processed_combinations:,}/{combinations_count:,} | "
-                                    f"Tempo: {elapsed_min}m{elapsed_sec}s | "
-                                    f"Restante: ~{remaining_min}m{remaining_sec}s"
-                                )
-                        except Exception as e:
-                            logging.warning(f"⚠️ Batch {batch_idx} falhou: {e}")
-                            pass
-                except KeyboardInterrupt:
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    raise
+                    for f in futures:
+                        f.cancel()
+                except Exception:
+                    pass
+                raise
+            finally:
+                if local_executor is not None:
+                    local_executor.shutdown(wait=True)
             
             total_time = time.time() - start_time
             total_min = int(total_time / 60)
@@ -1338,8 +1424,10 @@ class ComboOptimizer:
         
         # Ensure we have date ranges for Deep Backtesting
         # If not provided, use full period (2017-present for comprehensive testing)
+        start_date_defaulted = False
         if not start_date:
             start_date = "2017-01-01"  # Full crypto history (works for most major assets)
+            start_date_defaulted = True
         if not end_date:
             from datetime import datetime
             end_date = datetime.now().strftime("%Y-%m-%d")
@@ -1351,6 +1439,41 @@ class ComboOptimizer:
             since_str=start_date,
             until_str=end_date
         )
+
+        # Prefetch 15m cache ONCE (main process) when deep backtest is enabled.
+        # Workers will only READ the parquet slice (read_only=True) to avoid concurrent writes/corruption.
+        if deep_backtest:
+            try:
+                # For "all history", align intraday start to the first available daily candle
+                # (avoids downloading 15m before the exchange has data for the symbol).
+                intraday_since = start_date
+                allow_large = False
+                if start_date_defaulted and df is not None and not df.empty:
+                    intraday_since = pd.Timestamp(df.index.min()).date().isoformat()
+                    allow_large = True
+                    logging.warning(
+                        "Deep backtest requested for full history. Building/expanding 15m cache for %s from %s..%s. "
+                        "This may take a long time on first run.",
+                        symbol,
+                        intraday_since,
+                        end_date,
+                    )
+                self.loader.fetch_intraday_data(
+                    symbol=symbol,
+                    timeframe="15m",
+                    since_str=intraday_since,
+                    until_str=end_date,
+                    read_only=False,
+                    allow_large_backfill=allow_large,
+                )
+            except Exception as e:
+                logging.warning(
+                    "Prefetch 15m failed for %s (%s..%s): %s. Deep backtest will fall back to fast mode.",
+                    symbol,
+                    start_date,
+                    end_date,
+                    e,
+                )
         
         # Initialize best parameters
         best_params = {}
@@ -1369,169 +1492,172 @@ class ComboOptimizer:
         max_rounds = 5
         round_num = 1
         converged = False
-        
-        if has_grid_search and has_adaptive:
-             # -------------------------------------------------------------
-             # 4D ADAPTIVE OPTIMIZATION (MULTI-BRANCH)
-             # -------------------------------------------------------------
-            max_rounds = 4
-            logging.info("=" * 60)
-            logging.info("Adaptive Grid Search detected - activating 4D Coarse-to-Fine Optimization")
-            logging.info("=" * 60)
-            
-            # Candidates list (starts with single 'root' candidate which covers the whole space)
-            # Structure: {'params': dict, 'meta': dict, 'round': 1, 'score': float}
-            candidates = [{'params': best_params.copy(), 'meta': {}, 'round': 1, 'score': float('-inf')}]
-            
-            final_best_candidates = []
-            
-            for round_num in range(1, max_rounds + 1):
-                logging.info(f"--- STARTING ROUND {round_num} OF ADAPTIVE OPTIMIZATION ---")
-                logging.info(f"Candidates (Branches) to process: {len(candidates)}")
-                
-                next_round_candidates = []
-                
-                for idx, candidate in enumerate(candidates):
-                    logging.info(f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}")
-                    
-                    # 1. Setup stages for this candidate
-                    if round_num == 1:
-                        current_stages = stages # Use initial coarse stages
-                    else:
-                        # Clone stages to avoid polluting other branches
-                        import copy
-                        current_stages = copy.deepcopy(stages)
-                        # Refine based on THIS candidate's best params
-                        for stage in current_stages:
-                             if stage.get('adaptive_meta'):
-                                 self._refine_stage_values(stage, candidate['params'], round_num=round_num)
-                    
-                    
-                    # 2. Execute Optimization for this branch
-                    # For Round 1 (Grid), we want multiple candidates to feed the logical branches.
-                    # For Round > 1, we just want the best refinement for this specific branch.
-                    return_n = 10 if round_num == 1 else 1
-                    
-                    execution_result = self._execute_opt_stages(
-                       current_stages, 
-                       candidate['params'], 
-                       round_num, 
-                       max_workers,
-                       template_name,
-                       symbol,
-                       timeframe, 
-                       fixed_timeframe,
-                       start_date,
-                       end_date,
-                       deep_backtest,
-                       template_metadata,
-                       df,
-                       return_top_n=return_n
-                    )
-                    
-                    if round_num == 1:
-                        # Reviewing multiple candidates from Grid
-                        branch_candidates = execution_result # It's a list
-                        for cand in branch_candidates:
-                             result_candidate = {
-                                'params': cand['params'],
-                                'meta': candidate['meta'], 
-                                'round': round_num + 1,
-                                'score': cand['score'],
-                                'metrics': cand['metrics']
-                            }
-                             next_round_candidates.append(result_candidate)
-                    else:
-                        # Standard single result
-                        branch_best_params, branch_best_metrics = execution_result
-                        
-                        # 3. Score this branch result
-                        score = branch_best_metrics.get('sharpe_ratio', -999) if branch_best_metrics else -999
-                        
-                        result_candidate = {
-                            'params': branch_best_params,
-                            'meta': candidate['meta'], 
-                            'round': round_num + 1,
-                            'score': score,
-                            'metrics': branch_best_metrics
-                        }
-                        
-                        next_round_candidates.append(result_candidate)
-                
-                # SELECTION LOGIC (End of Round)
-                if round_num < max_rounds:
-                    # Select Top 10 Distinct Candidates for next round - USER REQUEST CHANGE 3 -> 10
-                    # If Round 1 produced 20 candidates, we pick top 10 distinct ones here.
-                    candidates = self._select_top_candidates(next_round_candidates, top_k=10)
-                    logging.info(f"Selected {len(candidates)} candidates for Round {round_num + 1}")
-                else:
-                    # Final round - collect all results
-                    final_best_candidates = next_round_candidates
 
-            # Find absolute best from final candidates
-            if final_best_candidates:
-                # Sort by score descending
-                final_best_candidates.sort(key=lambda x: x['score'], reverse=True)
-                best_candidate = final_best_candidates[0]
-                
-                best_params = best_candidate['params']
-                best_metrics = best_candidate['metrics']
-                
-                # Log details about the winner
-                logging.info(f"Global Best Found from {len(final_best_candidates)} final branches")
-                
-            converged = True # Mark as done so we skip legacy loop logic
-            
-        else:
-            # -------------------------------------------------------------
-            # LEGACY SEQUENTIAL / SIMPLE GRID (Backup)
-            # -------------------------------------------------------------
-            if has_grid_search:
-                max_rounds = 1
+        # Reuse a single executor across all stages/rounds in this optimization.
+        # This drastically reduces process spawn overhead and enables per-worker caches (e.g. 15m data).
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers, initializer=_init_worker_logging) as executor:
+            if has_grid_search and has_adaptive:
+                # -------------------------------------------------------------
+                # 4D ADAPTIVE OPTIMIZATION (MULTI-BRANCH)
+                # -------------------------------------------------------------
+                max_rounds = 4
                 logging.info("=" * 60)
-                logging.info("Grid Search (Non-Adaptive) detected - running single round")
+                logging.info("Adaptive Grid Search detected - activating 4D Coarse-to-Fine Optimization")
                 logging.info("=" * 60)
+
+                # Candidates list (starts with single 'root' candidate which covers the whole space)
+                # Structure: {'params': dict, 'meta': dict, 'round': 1, 'score': float}
+                candidates = [{'params': best_params.copy(), 'meta': {}, 'round': 1, 'score': float('-inf')}]
+
+                final_best_candidates = []
+
+                for round_num in range(1, max_rounds + 1):
+                    logging.info(f"--- STARTING ROUND {round_num} OF ADAPTIVE OPTIMIZATION ---")
+                    logging.info(f"Candidates (Branches) to process: {len(candidates)}")
+
+                    next_round_candidates = []
+
+                    for idx, candidate in enumerate(candidates):
+                        logging.info(f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}")
+
+                        # 1. Setup stages for this candidate
+                        if round_num == 1:
+                            current_stages = stages  # Use initial coarse stages
+                        else:
+                            # Clone stages to avoid polluting other branches
+                            import copy
+                            current_stages = copy.deepcopy(stages)
+                            # Refine based on THIS candidate's best params
+                            for stage in current_stages:
+                                if stage.get('adaptive_meta'):
+                                    self._refine_stage_values(stage, candidate['params'], round_num=round_num)
+
+                        # 2. Execute Optimization for this branch
+                        # For Round 1 (Grid), we want multiple candidates to feed the logical branches.
+                        # For Round > 1, we just want the best refinement for this specific branch.
+                        return_n = 10 if round_num == 1 else 1
+
+                        execution_result = self._execute_opt_stages(
+                            current_stages,
+                            candidate['params'],
+                            round_num,
+                            max_workers,
+                            template_name,
+                            symbol,
+                            timeframe,
+                            fixed_timeframe,
+                            start_date,
+                            end_date,
+                            deep_backtest,
+                            template_metadata,
+                            df,
+                            return_top_n=return_n,
+                            executor=executor,
+                        )
+
+                        if round_num == 1:
+                            # Reviewing multiple candidates from Grid
+                            branch_candidates = execution_result  # It's a list
+                            for cand in branch_candidates:
+                                result_candidate = {
+                                    'params': cand['params'],
+                                    'meta': candidate['meta'],
+                                    'round': round_num + 1,
+                                    'score': cand['score'],
+                                    'metrics': cand['metrics']
+                                }
+                                next_round_candidates.append(result_candidate)
+                        else:
+                            # Standard single result
+                            branch_best_params, branch_best_metrics = execution_result
+
+                            # 3. Score this branch result
+                            score = branch_best_metrics.get('sharpe_ratio', -999) if branch_best_metrics else -999
+
+                            result_candidate = {
+                                'params': branch_best_params,
+                                'meta': candidate['meta'],
+                                'round': round_num + 1,
+                                'score': score,
+                                'metrics': branch_best_metrics
+                            }
+
+                            next_round_candidates.append(result_candidate)
+
+                    # SELECTION LOGIC (End of Round)
+                    if round_num < max_rounds:
+                        # Select Top 10 Distinct Candidates for next round - USER REQUEST CHANGE 3 -> 10
+                        # If Round 1 produced 20 candidates, we pick top 10 distinct ones here.
+                        candidates = self._select_top_candidates(next_round_candidates, top_k=10)
+                        logging.info(f"Selected {len(candidates)} candidates for Round {round_num + 1}")
+                    else:
+                        # Final round - collect all results
+                        final_best_candidates = next_round_candidates
+
+                # Find absolute best from final candidates
+                if final_best_candidates:
+                    # Sort by score descending
+                    final_best_candidates.sort(key=lambda x: x['score'], reverse=True)
+                    best_candidate = final_best_candidates[0]
+
+                    best_params = best_candidate['params']
+                    best_metrics = best_candidate['metrics']
+
+                    # Log details about the winner
+                    logging.info(f"Global Best Found from {len(final_best_candidates)} final branches")
+
+                converged = True  # Mark as done so we skip legacy loop logic
+
             else:
-                max_rounds = 5
-                logging.info("Sequential optimization - using iterative refinement (5 rounds)")
-            
-            while not converged and round_num <= max_rounds:
-                logging.info(f"--- STARTING ROUND {round_num} OF REFINE ---")
-    
-                # Refine stages for rounds > 1 (Adaptive Zoom)
-                if round_num > 1:
-                     logging.info(f"Refining search grid around best result: {best_params}")
-                     for stage in stages:
-                         if stage.get('adaptive_meta'):
-                             self._refine_stage_values(stage, best_params)
-                
-                # Execute stages using shared helper (single branch)
-                current_metrics = best_metrics
-                best_params, best_metrics = self._execute_opt_stages(
-                       stages, 
-                       best_params, 
-                       round_num, 
-                       max_workers,
-                       template_name,
-                       symbol,
-                       timeframe, 
-                       fixed_timeframe,
-                       start_date,
-                       end_date,
-                       deep_backtest,
-                       template_metadata,
-                       df
-                )
-                
-                # End of Round Analysis
-                # Simple loose check for convergence
-                params_changed = True # (Simplify logic: always refine if rounds left in legacy mode unless strictly identical)
-                
-                if round_num < max_rounds:
-                    logging.info(f"--- ROUND {round_num} COMPLETE: Parameters changed. Refining... ---")
-                    round_num += 1
+                # -------------------------------------------------------------
+                # LEGACY SEQUENTIAL / SIMPLE GRID (Backup)
+                # -------------------------------------------------------------
+                if has_grid_search:
+                    max_rounds = 1
+                    logging.info("=" * 60)
+                    logging.info("Grid Search (Non-Adaptive) detected - running single round")
+                    logging.info("=" * 60)
                 else:
-                    converged = True
+                    max_rounds = 5
+                    logging.info("Sequential optimization - using iterative refinement (5 rounds)")
+
+                while not converged and round_num <= max_rounds:
+                    logging.info(f"--- STARTING ROUND {round_num} OF REFINE ---")
+
+                    # Refine stages for rounds > 1 (Adaptive Zoom)
+                    if round_num > 1:
+                        logging.info(f"Refining search grid around best result: {best_params}")
+                        for stage in stages:
+                            if stage.get('adaptive_meta'):
+                                self._refine_stage_values(stage, best_params)
+
+                    # Execute stages using shared helper (single branch)
+                    best_params, best_metrics = self._execute_opt_stages(
+                        stages,
+                        best_params,
+                        round_num,
+                        max_workers,
+                        template_name,
+                        symbol,
+                        timeframe,
+                        fixed_timeframe,
+                        start_date,
+                        end_date,
+                        deep_backtest,
+                        template_metadata,
+                        df,
+                        executor=executor,
+                    )
+
+                    # End of Round Analysis
+                    # Simple loose check for convergence
+                    params_changed = True  # (Simplify logic: always refine if rounds left in legacy mode unless strictly identical)
+
+                    if round_num < max_rounds:
+                        logging.info(f"--- ROUND {round_num} COMPLETE: Parameters changed. Refining... ---")
+                        round_num += 1
+                    else:
+                        converged = True
 
                 
         if not converged:
