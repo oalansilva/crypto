@@ -48,3 +48,15 @@ Os metadados MUST incluir: nome do indicador com parâmetros, cor sugerida, e da
 - ENTÃO a resposta inclui um array de indicadores
 - E cada indicador contém `name` (ex: "SMA(15)"), `color`, e `data`
 
+### Requirement: Visualização de EMA 50 e EMA 200
+O gráfico de resultados SHALL exibir as linhas EMA 50 e EMA 200 quando a estratégia EMA RSI Volume é executada. EMA 50 em laranja (#fb923c), EMA 200 em azul (#3b82f6). Legendas "EMA 50" e "EMA 200" com cores correspondentes.
+
+### Requirement: Visualização de RSI em Painel Separado
+O gráfico SHALL exibir RSI em painel inferior (lower). RSI em roxo (#8b5cf6), legenda "RSI(14)" ou período configurado. Painel RSI MUST incluir linhas de referência em rsi_min e rsi_max.
+
+### Requirement: Sincronização de Indicadores com Parâmetros
+Os indicadores visualizados MUST refletir os parâmetros configurados (ema_fast, ema_slow, rsi_period). Backend MUST retornar metadados com name, color, data, panel ("main" para EMAs, "lower" para RSI).
+
+### Requirement: Visualização Fibonacci EMA
+O gráfico SHALL exibir EMA 200 e níveis Fibonacci (0.5, 0.618) quando a estratégia Fibonacci EMA é executada. Cores distintas para EMA e níveis.
+
