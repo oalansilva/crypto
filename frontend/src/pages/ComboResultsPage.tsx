@@ -92,6 +92,7 @@ export function ComboResultsPage() {
                     pnl = initialCapital * trade.profit;
                 }
                 
+                const isShortExport = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase() === 'short';
                 // Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
                 let signalType = (trade as any).signal_type || '';
                 if (!signalType) {
@@ -99,9 +100,9 @@ export function ComboResultsPage() {
                     if (exitReason && exitReason.toLowerCase().includes('stop')) {
                         signalType = 'Stop';
                     } else if (exitReason) {
-                        signalType = 'Close entry(s) order...';
+                        signalType = isShortExport ? 'Cobrir' : 'Close entry(s) order...';
                     } else {
-                        signalType = (trade as any).entry_signal_type || 'Comprar';
+                        signalType = (trade as any).entry_signal_type || (isShortExport ? 'Vender' : 'Comprar');
                     }
                 }
                 
@@ -110,7 +111,7 @@ export function ComboResultsPage() {
                     entry_price: trade.entry_price,
                     exit_time: trade.exit_time || '',
                     exit_price: trade.exit_price || 0,
-                    type: trade.type || 'long',
+                    type: (trade as any).type || (isShortExport ? 'short' : 'long'),
                     signal_type: signalType,  // Incluir signal_type para exportação
                     profit: trade.profit || 0,
                     pnl: pnl || 0,
@@ -174,6 +175,9 @@ export function ComboResultsPage() {
         )
     }
 
+    const direction = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase()
+    const isShort = direction === 'short'
+
     // Métricas derivadas dos MESMOS trades exibidos na tabela (fechados, ordenados)
     // Garante que Win Rate e Total Return batam com a List of trades / Cumulative P&L
     const closedTrades = useMemo(() => {
@@ -212,26 +216,43 @@ export function ComboResultsPage() {
         ? { ...baseMetrics, ...derivedMetrics }
         : baseMetrics
 
-    // Prepare Chart Data
+    // Prepare Chart Data (entry/exit invertidos para short: entrada = venda, saída = compra)
     const markers = result.trades.flatMap(curr => {
         const list = []
-        // Entry Marker
-        list.push({
-            time: curr.entry_time,
-            position: 'belowBar',
-            color: '#10b981',
-            shape: 'arrowUp',
-            text: 'BUY'
-        })
-        // Exit Marker
-        if (curr.exit_time) {
+        if (isShort) {
             list.push({
-                time: curr.exit_time,
+                time: curr.entry_time,
                 position: 'aboveBar',
-                color: '#ef4444',
+                color: '#f97316',
                 shape: 'arrowDown',
-                text: `SELL (${(curr.profit! * 100).toFixed(2)}%)`
+                text: 'SHORT'
             })
+            if (curr.exit_time) {
+                list.push({
+                    time: curr.exit_time,
+                    position: 'belowBar',
+                    color: '#10b981',
+                    shape: 'arrowUp',
+                    text: `COVER (${(curr.profit! * 100).toFixed(2)}%)`
+                })
+            }
+        } else {
+            list.push({
+                time: curr.entry_time,
+                position: 'belowBar',
+                color: '#10b981',
+                shape: 'arrowUp',
+                text: 'BUY'
+            })
+            if (curr.exit_time) {
+                list.push({
+                    time: curr.exit_time,
+                    position: 'aboveBar',
+                    color: '#ef4444',
+                    shape: 'arrowDown',
+                    text: `SELL (${(curr.profit! * 100).toFixed(2)}%)`
+                })
+            }
         }
         return list
     })
@@ -494,16 +515,16 @@ export function ComboResultsPage() {
                                         // Calcular cumulative P&L do mais antigo para o mais recente
                                         let runningEquity = initialCapital;
                                         const tradesWithCumulative = sortedTrades.map((trade, idx) => {
-                                            // Determinar Signal Type
+                                            // Determinar Signal Type (short: Vender/Cobrir; long: Comprar/Close)
                                             let signalType = (trade as any).signal_type || '';
                                             if (!signalType) {
                                                 const exitReason = (trade as any).exit_reason || '';
                                                 if (exitReason && exitReason.toLowerCase().includes('stop')) {
                                                     signalType = 'Stop';
                                                 } else if (exitReason) {
-                                                    signalType = 'Close entry(s) order...';
+                                                    signalType = isShort ? 'Cobrir' : 'Close entry(s) order...';
                                                 } else {
-                                                    signalType = (trade as any).entry_signal_type || 'Comprar';
+                                                    signalType = (trade as any).entry_signal_type || (isShort ? 'Vender' : 'Comprar');
                                                 }
                                             }
                                             
@@ -596,11 +617,11 @@ export function ComboResultsPage() {
                                                 <tr key={`${trade.tradeNum}-entry`} className="hover:bg-gray-50">
                                                     <td rowSpan={2} className="px-4 py-3 text-center border-r border-gray-200">
                                                         <div className="font-medium text-gray-900">{trade.tradeNum}</div>
-                                                        <div className="text-xs text-gray-500">Long</div>
+                                                        <div className={`text-xs ${isShort ? 'text-orange-600' : 'text-gray-500'}`}>{isShort ? 'Short' : 'Long'}</div>
                                                     </td>
                                                     <td className="px-4 py-2 text-gray-700">Entry</td>
                                                     <td className="px-4 py-2 text-gray-700">{formatDate(trade.entry_time)}</td>
-                                                    <td className="px-4 py-2 text-gray-700">Comprar</td>
+                                                    <td className="px-4 py-2 text-gray-700">{isShort ? 'Vender' : 'Comprar'}</td>
                                                     <td className="px-4 py-2 text-gray-900 font-medium">{formatPrice(trade.entry_price)}</td>
                                                     <td className="px-4 py-2 text-gray-700">
                                                         <div>{trade.positionSize.toFixed(2)}</div>
@@ -663,7 +684,7 @@ export function ComboResultsPage() {
                     template_name: result.template_name,
                     symbol: result.symbol,
                     timeframe: result.timeframe,
-                    parameters: result.parameters || (result as any).best_parameters || {},
+                    parameters: { ...(result.parameters || (result as any).best_parameters || {}), direction: isShort ? 'short' : 'long' },
                     metrics: metrics,
                     trades: (() => {
                         // Sort trades by entry time to ensure correct chronological order for balance calculation
@@ -689,7 +710,7 @@ export function ComboResultsPage() {
                                 initial_capital: initial_capital,
                                 final_capital: final_capital,
                                 pnl: profitAmount, // PnL in dollars
-                                direction: t.type === 'short' ? 'Short' : 'Long'
+                                direction: isShort ? 'Short' : 'Long'
                             };
                         });
                     })()

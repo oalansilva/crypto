@@ -20,9 +20,10 @@ def favorite_exists(
     symbol: str = Query(..., description="Symbol (e.g. ETH/USDT)"),
     timeframe: str = Query(..., description="Timeframe (e.g. 1d)"),
     period_type: Optional[str] = Query(None, description="'6m' | '2y' | 'all'"),
+    direction: Optional[str] = Query(None, description="'long' | 'short'; if omitted, any direction matches"),
     db: Session = Depends(get_db),
 ):
-    """Check if a favorite already exists for (strategy, symbol, timeframe, period_type). Used to skip single optimize."""
+    """Check if a favorite already exists for (strategy, symbol, timeframe, period_type, direction). Used to skip single optimize."""
     q = db.query(FavoriteStrategy).filter(
         FavoriteStrategy.strategy_name == strategy_name,
         FavoriteStrategy.symbol == symbol,
@@ -35,7 +36,16 @@ def favorite_exists(
             FavoriteStrategy.start_date.is_(None),
             FavoriteStrategy.end_date.is_(None),
         )
-    return ExistsResponse(exists=q.first() is not None)
+    rows = q.all()
+    if direction is not None:
+        want = (direction or "long").lower()
+        if want not in ("long", "short"):
+            want = "long"
+        rows = [
+            r for r in rows
+            if ((r.parameters or {}).get("direction") or "long").lower() == want
+        ]
+    return ExistsResponse(exists=len(rows) > 0)
 
 
 @router.get("/", response_model=List[FavoriteStrategyResponse])

@@ -40,6 +40,7 @@ class ComboBacktestRequest(BaseModel):
     stop_loss: Optional[float] = Field(None, description="Stop loss percentage")
     deep_backtest: bool = Field(True, description="Enable Deep Backtesting with 15m intraday precision (default: True for 1D strategies)")
     initial_capital: float = Field(100, description="Initial capital in USD for metrics calculation (default: $100, TradingView-style)")
+    direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
 
 
 class ComboBacktestResponse(BaseModel):
@@ -53,6 +54,7 @@ class ComboBacktestResponse(BaseModel):
     indicator_data: Dict[str, List[Optional[float]]]  # Allow None for NaN values
     candles: List[Dict[str, Any]] = Field(default_factory=list, description="OHLCV data for chart")
     execution_mode: str = Field(default="fast_1d", description="Execution mode: 'fast_1d' or 'deep_15m'")
+    direction: str = Field(default="long", description="Backtest direction: 'long' or 'short'")
 
 
 class ComboOptimizationRequest(BaseModel):
@@ -71,6 +73,7 @@ class ComboOptimizationRequest(BaseModel):
         description="Custom optimization ranges for parameters"
     )
     initial_capital: float = Field(100, description="Initial capital in USD for metrics calculation (default: $100, TradingView-style)")
+    direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
 
 
 class ComboOptimizationResponse(BaseModel):
@@ -87,6 +90,7 @@ class ComboOptimizationResponse(BaseModel):
     candles: List[Dict[str, Any]] = Field(default_factory=list)
     indicator_data: Dict[str, List[Optional[float]]] = Field(default_factory=dict)
     parameters: Dict[str, Any] = Field(default_factory=dict)  # Alias for best_parameters
+    direction: str = Field(default="long", description="Backtest direction: 'long' or 'short'")
 
 
 class UpdateTemplateRequest(BaseModel):
@@ -115,6 +119,7 @@ class ComboBatchBacktestRequest(BaseModel):
     )
     custom_ranges: Optional[Dict[str, Dict[str, Any]]] = Field(None)
     initial_capital: float = Field(100)
+    direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
 
 
 class ComboBatchBacktestResponse(BaseModel):

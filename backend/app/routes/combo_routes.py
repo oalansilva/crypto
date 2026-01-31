@@ -334,11 +334,11 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         # Use unified trade extraction logic (same as optimizer)
         from app.services.combo_optimizer import extract_trades_from_signals
         
-        # Override stop_loss if provided in request, otherwise use strategy's default
         stop_loss_pct = request.stop_loss if request.stop_loss is not None else strategy.stop_loss
-        
-        # Extract trades using unified logic (executes at CLOSE, includes stop loss, uses 0.075% fee)
-        trades = extract_trades_from_signals(df_with_signals, stop_loss_pct)
+        direction = getattr(request, "direction", "long") or "long"
+        if direction not in ("long", "short"):
+            direction = "long"
+        trades = extract_trades_from_signals(df_with_signals, stop_loss_pct, direction)
         
         logger.info(f"Backtest complete: {len(trades)} trades extracted")
         
@@ -447,8 +447,9 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             trades=trades,
             candles=candles,
             indicator_data=indicator_data,
-            parameters=request.parameters,
-            execution_mode="fast_1d"
+            parameters={**(request.parameters or {}), "direction": direction},
+            execution_mode="fast_1d",
+            direction=direction,
         )
         logger.info("Response object created successfully")
         from fastapi.encoders import jsonable_encoder
@@ -488,7 +489,8 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
             start_date=request.start_date,
             end_date=request.end_date,
             custom_ranges=request.custom_ranges,
-            deep_backtest=request.deep_backtest
+            deep_backtest=request.deep_backtest,
+            direction=getattr(request, "direction", "long") or "long",
         )
         
         logger.info(f"Optimization complete. Best score: {result.get('best_score', 'N/A')}")

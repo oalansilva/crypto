@@ -29,6 +29,7 @@ export function ComboConfigurePage() {
     const [params, setParams] = useState<any[]>([])
     const [timeframe, setTimeframe] = useState('1d')
     const [deepBacktest, setDeepBacktest] = useState(true)
+    const [direction, setDirection] = useState<'long' | 'short'>('long')
     const [logs, setLogs] = useState<string[]>([])
 
     // Período: últimos 6 meses / 2 anos / todo o histórico
@@ -235,11 +236,12 @@ export function ComboConfigurePage() {
                 existsUrl.searchParams.set('symbol', symbolsToRun[0])
                 existsUrl.searchParams.set('timeframe', timeframe)
                 existsUrl.searchParams.set('period_type', period)
+                existsUrl.searchParams.set('direction', direction)
                 const existsRes = await fetch(existsUrl.toString())
                 if (existsRes.ok) {
                     const { exists } = await existsRes.json()
                     if (exists) {
-                        alert('Estratégia já existe nos favoritos (mesmo template, ativo, timeframe e período). Redirecionando.')
+                        alert('Estratégia já existe nos favoritos (mesmo template, ativo, timeframe, período e direção). Redirecionando.')
                         navigate('/favorites')
                         return
                     }
@@ -254,6 +256,7 @@ export function ComboConfigurePage() {
                         start_date,
                         end_date,
                         deep_backtest: deepBacktest,
+                        direction,
                         custom_ranges
                     })
                 })
@@ -263,6 +266,8 @@ export function ComboConfigurePage() {
                 }
                 const result = await res.json()
                 const name = `${result.template_name} - ${result.symbol} ${result.timeframe} (${new Date().toLocaleTimeString()})`
+                const baseParams = result.best_parameters ?? result.parameters ?? {}
+                const parameters = { ...baseParams, direction }
                 const favRes = await fetch('http://localhost:8000/api/favorites/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -271,7 +276,7 @@ export function ComboConfigurePage() {
                         symbol: result.symbol,
                         timeframe: result.timeframe,
                         strategy_name: result.template_name,
-                        parameters: result.best_parameters ?? result.parameters ?? {},
+                        parameters,
                         metrics: result.best_metrics ?? {},
                         start_date: start_date ?? null,
                         end_date: end_date ?? null,
@@ -311,6 +316,7 @@ export function ComboConfigurePage() {
                     end_date,
                     period_type: period,
                     deep_backtest: deepBacktest,
+                    direction,
                     custom_ranges
                 })
             })
@@ -703,6 +709,20 @@ export function ComboConfigurePage() {
                                     <option value="all" className="bg-gray-900 text-white">Todo o período</option>
                                 </select>
                             </div>
+                        </div>
+
+                        {/* Direction: Long / Short */}
+                        <div className="mt-6">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Direction</label>
+                            <select
+                                value={direction}
+                                onChange={(e) => setDirection(e.target.value as 'long' | 'short')}
+                                className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none bg-white/5"
+                            >
+                                <option value="long" className="bg-gray-900 text-white">Long</option>
+                                <option value="short" className="bg-gray-900 text-white">Short</option>
+                            </select>
+                            <p className="text-xs text-gray-400 mt-1">Long = buy on entry signal, sell on exit. Short = sell on entry, buy on exit (same template logic).</p>
                         </div>
 
                         {/* Deep Backtest Toggle */}

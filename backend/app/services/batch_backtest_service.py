@@ -85,6 +85,9 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
     deep_backtest = payload.get("deep_backtest", True)
     custom_ranges = payload.get("custom_ranges")
     initial_capital = payload.get("initial_capital", 100)
+    direction = payload.get("direction", "long")
+    if direction not in ("long", "short"):
+        direction = "long"
 
     total = len(symbols)
     job = _get_or_init_job(job_id, total)
@@ -134,9 +137,17 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                     q = q.filter(FavoriteStrategy.end_date.is_(None))
                 else:
                     q = q.filter(FavoriteStrategy.end_date == end_date)
-            existing = q.first()
-            if existing:
-                logger.info("Batch: skip %s (already in favorites, same period)", symbol)
+            rows = q.all()
+            if direction is not None:
+                want = (direction or "long").lower()
+                if want not in ("long", "short"):
+                    want = "long"
+                rows = [
+                    r for r in rows
+                    if ((r.parameters or {}).get("direction") or "long").lower() == want
+                ]
+            if rows:
+                logger.info("Batch: skip %s (already in favorites, same period and direction)", symbol)
                 job["skipped"] = job.get("skipped", 0) + 1
                 job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
                 if job["processed"] > 0 and job["processed"] < total:
@@ -155,6 +166,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                 custom_ranges=custom_ranges,
                 deep_backtest=deep_backtest,
                 job_id=job_id,
+                direction=direction,
             )
         except KeyboardInterrupt:
             job["status"] = "cancelled"
@@ -173,6 +185,8 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
 
         best_params = result.get("best_parameters") or result.get("parameters") or {}
         best_metrics = result.get("best_metrics") or {}
+        params_with_direction = dict(best_params)
+        params_with_direction["direction"] = direction
 
         name = f"{template_name} - {symbol} {timeframe} (batch)"
         notes = batch_note
@@ -184,7 +198,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                 symbol=symbol,
                 timeframe=timeframe,
                 strategy_name=template_name,
-                parameters=best_params,
+                parameters=params_with_direction,
                 metrics=best_metrics,
                 notes=notes,
                 tier=3,

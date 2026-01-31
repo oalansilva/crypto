@@ -73,93 +73,72 @@ def _init_worker_logging():
 # -----------------------------------------------------------------------------
 # SHARED LOGIC HELPER
 # -----------------------------------------------------------------------------
-def extract_trades_from_signals(df_with_signals, stop_loss: float):
+def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: str = "long"):
     """
     Extract trades from signals with consistent logic:
     - Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
     - ComboStrategy: logic confirmed at CLOSE of candle i → signal on candle i+1 → execute at OPEN of candle i+1
-    - This matches: "utilizo os valores fechado para os sinais entrar(comprar ou vender) no proximo dia"
-    - Intra-candle Stop Loss (Low vs Stop Price) - checked BEFORE signal processing
+    - direction: "long" (default) or "short". Short = signal 1 opens short, -1 closes short; stop above entry, PnL when price falls.
+    - Intra-candle Stop Loss - checked BEFORE signal processing (low for long, high for short)
     - Binance Fees (0.075% per op) - applied on both entry and exit
     - Exit at exact Stop Price if triggered
     
     CRITICAL PRIORITY RULES:
     - STOP LOSS ALWAYS has priority over exit signals
     - Stop loss is checked FIRST on each candle before checking exit signals
-    - If stop loss is triggered, exit immediately and skip exit signal check
-    - Exit signals are only processed if stop loss was not triggered
-    
-    IMPORTANT: 
-    - All signal entry/exit executions use OPEN price of the candle where signal appears (next day)
-    - Stop loss detection uses intraday low price (for daily) or 15m data (for deep backtest)
-    - Stop loss can execute immediately (simulating real broker behavior)
-    - All trades use fee of 0.075% (Binance spot fee)
     """
     TRADING_FEE = 0.00075  # Binance spot fee: 0.075%
     trades = []
     position = None
-    
-    # Pre-calculate stop loss threshold to avoid repeated float casting
+    is_short = (direction or "long").lower() == "short"
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
     
     for idx, row in df_with_signals.iterrows():
         # PRIORIDADE 1: Check stop loss FIRST if we have an open position
-        # Stop loss ALWAYS has priority over exit signals
-        # This ensures stop loss is checked before any exit signal processing
         if position is not None and stop_loss_pct > 0:
-            current_low = float(row['low'])
             entry_price = position['entry_price']
+            if is_short:
+                exact_stop_price = entry_price * (1 + stop_loss_pct)  # short: stop above entry
+                current_high = float(row['high'])
+                hit_stop = current_high >= exact_stop_price
+            else:
+                exact_stop_price = entry_price * (1 - stop_loss_pct)  # long: stop below entry
+                current_low = float(row['low'])
+                hit_stop = current_low <= exact_stop_price
             
-            # Intra-candle stop check
-            # Stop loss is triggered if low price reaches or goes below stop price
-            exact_stop_price = entry_price * (1 - stop_loss_pct)
-            
-            if current_low <= exact_stop_price:
-                # Stop loss triggered - EXIT IMMEDIATELY
-                # Stop loss has priority over all exit signals
-                # Keep UTC timezone to match TradingView
+            if hit_stop:
                 position['exit_time'] = idx.isoformat()
                 position['exit_price'] = exact_stop_price
-                
-                # Calculate Net Profit with Fees
-                # ((Exit*(1-fee)) - (Entry*(1+fee))) / (Entry*(1+fee))
-                position['profit'] = ((exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
-                
+                if is_short:
+                    # Short PnL: sold at entry*(1-fee), buy back at exit*(1+fee); profit when exit < entry
+                    position['profit'] = (entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)) / (entry_price * (1 - TRADING_FEE))
+                else:
+                    position['profit'] = ((exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
                 position['exit_reason'] = 'stop_loss'
-                position['signal_type'] = 'Stop'  # Tipo de sinal para Tradeview
+                position['signal_type'] = 'Stop'
                 trades.append(position)
                 position = None
-                continue  # CRITICAL: Skip signal check for this candle - stop loss has priority
+                continue
 
-        # PRIORIDADE 2: Check signals ONLY if stop loss was not triggered
-        # Exit signals are only processed if stop loss was not hit
-        # IMPORTANT: Signal detected at CLOSE of candle i → Execute at OPEN of candle i+1 (next day)
-        # ComboStrategy places signal on candle i+1 after logic confirmed at CLOSE of candle i
-        # We execute at OPEN of the same candle where signal appears (i+1)
+        # PRIORIDADE 2: Check signals
         if row['signal'] == 1 and position is None:
-            # Entry signal: Execute at OPEN of current candle (where signal appears)
-            # Signal was detected at CLOSE of previous candle, now execute at OPEN of this candle
-            # Keep UTC timezone to match TradingView
             position = {
                 'entry_time': idx.isoformat(),
-                'entry_price': float(row['open']),  # Execute at OPEN of next day
-                'type': 'long',
-                'entry_signal_type': 'Comprar'  # Tipo de sinal de entrada para Tradeview
+                'entry_price': float(row['open']),
+                'type': 'short' if is_short else 'long',
+                'entry_signal_type': 'Vender' if is_short else 'Comprar'
             }
         elif row['signal'] == -1 and position is not None:
-            # Exit signal: Execute at OPEN of current candle (where signal appears)
-            # Signal was detected at CLOSE of previous candle, now execute at OPEN of this candle
-            exit_price = float(row['open'])  # Execute at OPEN of next day
+            exit_price = float(row['open'])
             entry_price = position['entry_price']
-            
             position['exit_time'] = idx.isoformat()
             position['exit_price'] = exit_price
-            
-            # Calculate Net Profit with Fees
-            position['profit'] = ((exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
-            
+            if is_short:
+                position['profit'] = (entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)) / (entry_price * (1 - TRADING_FEE))
+            else:
+                position['profit'] = ((exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
             position['exit_reason'] = 'signal'
-            position['signal_type'] = 'Close entry(s) order...'  # Tipo de sinal de saída para Tradeview
+            position['signal_type'] = 'Close entry(s) order...'
             trades.append(position)
             position = None
             
@@ -172,7 +151,8 @@ def extract_trades_with_mode(
     symbol: str = None,
     since_str: str = None,
     until_str: str = None,
-    df_15m_cache: Optional[pd.DataFrame] = None
+    df_15m_cache: Optional[pd.DataFrame] = None,
+    direction: str = "long"
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
@@ -184,27 +164,21 @@ def extract_trades_with_mode(
         symbol: Trading pair (required for deep backtest)
         since_str: Start date (required for deep backtest)
         until_str: End date (required for deep backtest)
+        direction: "long" (default) or "short"
         
     Returns:
         List of trades
     """
-    # FIX: DO NOT Shift signals manually here.
-    # ComboStrategy already places the signal on the execution candle (Day+1).
-    # If we shift again, we create a double lag (Day+2).
     df_exec = df_with_signals.copy()
-    # df_exec['signal'] = df_exec['signal'].shift(1).fillna(0) # REMOVED REDUNDANT SHIFT
     
     if not deep_backtest:
-        # Fast mode: use existing daily-only logic
-        return extract_trades_from_signals(df_exec, stop_loss)
+        return extract_trades_from_signals(df_exec, stop_loss, direction)
     
-    # Deep Backtesting mode: fetch 15m data and simulate execution
     logger = logging.getLogger(__name__)
-    # logger.info(f"Deep Backtesting enabled for {symbol}") # Too noisy for grid search
     
     if not symbol or not since_str:
         logger.warning("Deep Backtesting requires symbol and date range. Falling back to fast mode.")
-        return extract_trades_from_signals(df_exec, stop_loss)
+        return extract_trades_from_signals(df_exec, stop_loss, direction)
     
     try:
         if df_15m_cache is not None:
@@ -223,7 +197,7 @@ def extract_trades_with_mode(
         if df_15m.empty:
             if df_15m_cache is None: # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
-            return extract_trades_from_signals(df_exec, stop_loss)
+            return extract_trades_from_signals(df_exec, stop_loss, direction)
 
         # Coverage guard:
         # If the 15m cache doesn't cover the full daily backtest window, deep simulation becomes unreliable.
@@ -253,27 +227,25 @@ def extract_trades_with_mode(
                     str(intraday_start),
                     str(intraday_end),
                 )
-                return extract_trades_from_signals(df_exec, stop_loss)
+                return extract_trades_from_signals(df_exec, stop_loss, direction)
         except Exception:
-            # If we can't validate coverage, avoid risking partial-deep behavior.
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
-            return extract_trades_from_signals(df_exec, stop_loss)
+            return extract_trades_from_signals(df_exec, stop_loss, direction)
         
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
         
-        # Run deep backtest simulation
         trades = simulate_execution_with_15m(
             df_daily_signals=df_exec,
             df_15m=df_15m,
-            stop_loss=stop_loss
+            stop_loss=stop_loss,
+            direction=direction
         )
-        
         return trades
         
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
-        return extract_trades_from_signals(df_exec, stop_loss)
+        return extract_trades_from_signals(df_exec, stop_loss, direction)
 
 # -----------------------------------------------------------------------------
 # WORKER FUNCTION (Top-level for ProcessPoolExecutor)
@@ -309,6 +281,8 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                 
                 if param_key == "timeframe":
                     continue
+                if param_key == "direction":
+                    continue  # Top-level backtest config, not a strategy parameter
 
                 matched = False
                 for indicator in indicators:
@@ -372,6 +346,10 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
 
 
         
+        # Direction: long (default) or short
+        direction = (params or {}).get("direction", "long")
+        if direction not in ("long", "short"):
+            direction = "long"
         # Extract trades from signals WITH STOP LOSS using Deep or Fast mode
         trades = extract_trades_with_mode(
             df_with_signals, 
@@ -380,7 +358,8 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             symbol=symbol,
             since_str=since_str,
             until_str=until_str,
-            df_15m_cache=df_15m_cache
+            df_15m_cache=df_15m_cache,
+            direction=direction
         )
 
         # Construct full effective parameters (médias, stop) para log de "profit fora do range"
@@ -1419,9 +1398,11 @@ class ComboOptimizer:
         end_date: Optional[str] = None,
         custom_ranges: Optional[Dict[str, Any]] = None,
         deep_backtest: bool = True,  # Default to Deep Backtesting
-        job_id: Optional[str] = None
+        job_id: Optional[str] = None,
+        direction: str = "long",
     ) -> Dict[str, Any]:
-        
+        if direction not in ("long", "short"):
+            direction = "long"
         # Generate stages
         fixed_timeframe = timeframe if timeframe else None
         stages = self.generate_stages(
@@ -1487,8 +1468,8 @@ class ComboOptimizer:
                     e,
                 )
         
-        # Initialize best parameters
-        best_params = {}
+        # Initialize best parameters (direction is fixed for the whole optimization)
+        best_params = {"direction": direction}
         best_metrics = None
         
         # Use ProcessPoolExecutor for parallel execution
@@ -1732,10 +1713,12 @@ class ComboOptimizer:
             # Generate signals
             df_with_signals = strategy.generate_signals(df_final.copy())
             
-            # Extract trades
-            # Extract trades with exact logic matching worker (Stop Loss + Fees)
+            # Extract trades (same direction as optimization)
             stop_loss = best_params.get('stop_loss', 0.0)
-            trades = extract_trades_from_signals(df_with_signals, stop_loss)
+            direction = best_params.get('direction', 'long')
+            if direction not in ('long', 'short'):
+                direction = 'long'
+            trades = extract_trades_from_signals(df_with_signals, stop_loss, direction)
             
             # Recompute core metrics from final backtest trades (same set as returned to frontend)
             # Fixes Total Return / Win Rate mismatch vs. "List of trades" / Cumulative P&L
@@ -1824,7 +1807,8 @@ class ComboOptimizer:
             "trades": trades,
             "candles": candles,
             "indicator_data": indicator_data,
-            "parameters": best_params  # For compatibility with ComboResultsPage
+            "parameters": best_params,  # For compatibility with ComboResultsPage
+            "direction": best_params.get("direction", "long"),
         }
 
 

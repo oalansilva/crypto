@@ -116,6 +116,7 @@ const FavoritesDashboard: React.FC = () => {
                     symbol: fav.symbol,
                     timeframe: fav.timeframe,
                     parameters: fav.parameters,
+                    direction: (fav.parameters?.direction as string) || 'long',
                     stop_loss: fav.parameters.stop_loss || null,
                     start_date: null, // Usar todos os dados disponíveis
                     end_date: null,
@@ -176,6 +177,7 @@ const FavoritesDashboard: React.FC = () => {
 
     const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
     const [selectedIndicator, setSelectedIndicator] = useState<string>('ALL');
+    const [directionFilter, setDirectionFilter] = useState<'all' | 'long' | 'short'>('all');
 
     // ... existing code ...
 
@@ -203,7 +205,10 @@ const FavoritesDashboard: React.FC = () => {
             (tierFilter === 'none' && fav.tier === null) ||
             (tierFilter !== 'none' && tierFilter !== '1_2' && fav.tier === parseInt(tierFilter));
 
-        return matchesSearch && matchesSymbol && matchesIndicator && matchesTier;
+        const favDirection = ((fav.parameters?.direction as string) || 'long').toLowerCase();
+        const matchesDirection = directionFilter === 'all' || favDirection === directionFilter;
+
+        return matchesSearch && matchesSymbol && matchesIndicator && matchesTier && matchesDirection;
     }) || []).sort((a, b) => {
         // Sort by tier (1, 2, 3, null), then by return
         const tierA = a.tier ?? 999; // null goes last
@@ -238,10 +243,12 @@ const FavoritesDashboard: React.FC = () => {
             const expectancy = m.expectancy ?? (m.total_pnl && m.total_trades ? m.total_pnl / m.total_trades : null);
             const stopLoss = fav.parameters.stop_loss || null;
 
+            const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
             return {
                 Name: fav.name,
                 Symbol: fav.symbol,
                 Strategy: fav.strategy_name,
+                Direção: direction === 'short' ? 'Short' : 'Long',
                 Timeframe: fav.timeframe,
                 Período: formatPeriod(fav),
                 Parameters: formatParams(fav.parameters),
@@ -381,6 +388,19 @@ const FavoritesDashboard: React.FC = () => {
                                         </select>
                                         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                                     </div>
+
+                                    <div className="relative group">
+                                        <select
+                                            value={directionFilter}
+                                            onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'long' | 'short')}
+                                            className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
+                                        >
+                                            <option value="all" className="bg-gray-900">Direção: All</option>
+                                            <option value="long" className="bg-gray-900">Long</option>
+                                            <option value="short" className="bg-gray-900">Short</option>
+                                        </select>
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                    </div>
                                 </div>
 
                                 <div className="relative">
@@ -428,6 +448,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <th className="p-4 border-r border-white/5 text-center text-gray-400 w-32">Tier</th>
                                         <th className="p-4 border-r border-white/5 font-medium text-white">Symbol</th>
                                         <th className="p-4 border-r border-white/5 font-medium text-white">Strategy</th>
+                                        <th className="p-4 border-r border-white/5 text-center text-gray-400 whitespace-nowrap">Direção</th>
                                         <th className="p-4 border-r border-white/5 text-center text-gray-400">Timeframe</th>
                                         <th className="p-4 border-r border-white/5 text-center text-gray-400 whitespace-nowrap">Período</th>
                                         <th className="p-4 border-r border-white/5 text-gray-400 w-96">Config</th>
@@ -451,9 +472,9 @@ const FavoritesDashboard: React.FC = () => {
                                 </thead>
                                 <tbody className="divide-y divide-industrial-800">
                                     {isLoading ? (
-                                        <tr><td colSpan={21} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
+                                        <tr><td colSpan={22} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
                                     ) : filteredFavorites.length === 0 ? (
-                                        <tr><td colSpan={21} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
+                                        <tr><td colSpan={22} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
                                     ) : (
                                         visibleFavorites.map((fav: FavoriteStrategy) => {
                                             const isSelected = selectedIds.includes(fav.id);
@@ -512,6 +533,13 @@ const FavoritesDashboard: React.FC = () => {
                                                     </td>
                                                     <td className="p-2 border-r border-white/5 font-bold text-white tracking-wide">{fav.symbol}</td>
                                                     <td className="p-2 border-r border-white/5 text-blue-300 font-medium">{fav.strategy_name.replace(/_/g, ' ')}</td>
+                                                    <td className="p-2 border-r border-white/5 text-center" title="Long = compra na entrada / Short = venda na entrada">
+                                                        {((fav.parameters?.direction as string) || 'long').toLowerCase() === 'short' ? (
+                                                            <span className="px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/40">Short</span>
+                                                        ) : (
+                                                            <span className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">Long</span>
+                                                        )}
+                                                    </td>
                                                     <td className="p-2 border-r border-white/5 text-center text-white/90" title="Timeframe rodado">
                                                         <span className="px-2 py-1 rounded bg-white/5 text-xs font-mono">{fav.timeframe}</span>
                                                     </td>
@@ -600,7 +628,7 @@ const FavoritesDashboard: React.FC = () => {
                                     )}
                                     {!isLoading && filteredFavorites.length > 0 && hasMore && (
                                         <tr ref={sentinelRef}>
-                                            <td colSpan={21} className="p-6 text-center text-gray-500 text-sm">
+                                            <td colSpan={22} className="p-6 text-center text-gray-500 text-sm">
                                                 <span className="animate-pulse">Carregando mais…</span>
                                             </td>
                                         </tr>
