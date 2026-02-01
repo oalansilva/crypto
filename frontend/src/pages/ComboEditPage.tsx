@@ -3,6 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Settings, Save, ArrowLeft, AlertTriangle, Check, Code, Type } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 
+interface ParamConfig {
+    min: number
+    max: number
+    step: number
+    default?: number
+}
+
 interface TemplateMetadata {
     name: string
     description: string
@@ -11,15 +18,23 @@ interface TemplateMetadata {
     exit_logic: string
     is_readonly: boolean
     optimization_schema: {
-        parameters: Record<string, {
-            min: number
-            max: number
-            step: number
-            default?: number
-        }>
+        parameters?: Record<string, ParamConfig>
+        [key: string]: any
     }
-    // Allow other keys for full JSON editing
     [key: string]: any
+}
+
+/** Backend can return flat schema (multi_ma_crossover, multi_ma_crossoverV2) or nested .parameters. Normalize to params map. */
+function getOptimizationParameters(schema: TemplateMetadata['optimization_schema'] | null | undefined): Record<string, ParamConfig> {
+    if (!schema || typeof schema !== 'object') return {}
+    if (schema.parameters && typeof schema.parameters === 'object') return schema.parameters
+    const flat = schema as Record<string, unknown>
+    const result: Record<string, ParamConfig> = {}
+    for (const [k, v] of Object.entries(flat)) {
+        if (v && typeof v === 'object' && 'min' in v && 'max' in v)
+            result[k] = v as ParamConfig
+    }
+    return result
 }
 
 export function ComboEditPage() {
@@ -77,9 +92,10 @@ export function ComboEditPage() {
             isValid = false
         }
 
-        // Validate parameters
-        if (data.optimization_schema?.parameters) {
-            Object.entries(data.optimization_schema.parameters).forEach(([paramName, config]) => {
+        // Validate parameters (supports both nested .parameters and flat schema)
+        const params = getOptimizationParameters(data.optimization_schema)
+        if (Object.keys(params).length > 0) {
+            Object.entries(params).forEach(([paramName, config]) => {
                 if (config.min >= config.max) {
                     errors[paramName] = `Min (${config.min}) must be less than Max (${config.max})`
                     isValid = false
@@ -161,7 +177,8 @@ export function ComboEditPage() {
         if (!metadata) return
 
         const numValue = parseFloat(value)
-        const newParams = { ...metadata.optimization_schema.parameters }
+        const currentParams = getOptimizationParameters(metadata.optimization_schema)
+        const newParams = { ...currentParams }
 
         newParams[paramName] = {
             ...newParams[paramName],
@@ -316,12 +333,16 @@ export function ComboEditPage() {
                                 Optimization Ranges
                             </h2>
 
-                            {metadata.optimization_schema?.parameters && Object.entries(metadata.optimization_schema.parameters).map(([paramName, config]) => (
+                            {(() => {
+                                const params = getOptimizationParameters(metadata?.optimization_schema)
+                                const entries = Object.entries(params)
+                                if (entries.length === 0) return <p className="text-gray-500 text-sm">No optimization ranges defined for this template.</p>
+                                return entries.map(([paramName, config]) => (
                                 <div key={paramName} className={`glass-strong p-4 rounded-xl border transition-all ${formErrors[paramName] ? 'border-red-500/50 bg-red-500/5' : 'border-white/5'}`}>
                                     <div className="flex justify-between items-center mb-3">
                                         <h3 className="font-mono text-blue-300 text-sm">{paramName}</h3>
                                         <div className="text-xs text-gray-500">
-                                            Current Default: {config.default}
+                                            Current Default: {config.default ?? '—'}
                                         </div>
                                     </div>
 
@@ -364,7 +385,8 @@ export function ComboEditPage() {
                                         </div>
                                     )}
                                 </div>
-                            ))}
+                            ))
+                            })()}
                         </div>
                     </div>
                 )}
