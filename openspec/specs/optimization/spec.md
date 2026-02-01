@@ -23,4 +23,3 @@ The system MUST execute optimization in sequential stages: each stage optimizes 
 
 ### Requirement: Full History Backtesting (Sequential)
 The system MUST use complete available historical data for ALL tests in ALL stages. No date range selection; auto-detect earliest/latest; entire dataset per backtest.
-

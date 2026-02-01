@@ -59,4 +59,3 @@ Os indicadores visualizados MUST refletir os parâmetros configurados (ema_fast,
 
 ### Requirement: Visualização Fibonacci EMA
 O gráfico SHALL exibir EMA 200 e níveis Fibonacci (0.5, 0.618) quando a estratégia Fibonacci EMA é executada. Cores distintas para EMA e níveis.
-

@@ -21,6 +21,9 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 import pandas as pd
 
+# Log 15m coverage warning only once per symbol per process (avoids thousands of identical lines)
+_deep_coverage_warned: set = set()
+
 from app.services.sequential_optimizer import SequentialOptimizer
 from app.services.combo_service import ComboService
 from app.services.backtest_service import BacktestService
@@ -199,9 +202,8 @@ def extract_trades_with_mode(
                 logger.warning("No 15m data available. Falling back to fast mode.")
             return extract_trades_from_signals(df_exec, stop_loss, direction)
 
-        # Coverage guard:
-        # If the 15m cache doesn't cover the full daily backtest window, deep simulation becomes unreliable.
-        # In that case, fallback to fast mode instead of mixing partial intraday data.
+        # Coverage guard: we need 15m for the current day of each trade to simulate stop/target correctly.
+        # So 15m must cover the full daily range (same end as daily); otherwise fallback to fast mode.
         try:
             daily_start = df_exec.index.min()
             daily_end = df_exec.index.max()
@@ -218,15 +220,22 @@ def extract_trades_with_mode(
                 except Exception:
                     start_ok = False
 
-            if (not start_ok) or (intraday_end < daily_end):
-                logger.warning(
-                    "15m coverage insufficient for deep backtest (%s): daily=[%s..%s] 15m=[%s..%s]. Falling back to fast mode.",
-                    symbol,
-                    str(daily_start),
-                    str(daily_end),
-                    str(intraday_start),
-                    str(intraday_end),
-                )
+            # 15m must extend to at least the last daily candle so we have intraday data for the day of each trade.
+            end_ok = intraday_end >= daily_end
+
+            if (not start_ok) or (not end_ok):
+                # Log only once per symbol per process to avoid flooding the log (e.g. 16k identical lines)
+                warn_key = (symbol,)
+                if warn_key not in _deep_coverage_warned:
+                    _deep_coverage_warned.add(warn_key)
+                    logger.warning(
+                        "15m coverage insufficient for deep backtest (%s): daily=[%s..%s] 15m=[%s..%s]. Falling back to fast mode.",
+                        symbol,
+                        str(daily_start),
+                        str(daily_end),
+                        str(intraday_start),
+                        str(intraday_end),
+                    )
                 return extract_trades_from_signals(df_exec, stop_loss, direction)
         except Exception:
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
@@ -1388,10 +1397,13 @@ class ComboOptimizer:
         # Log total combinations tested
         logging.info(f"📊 Total combinations tested in this execution: {total_combinations_tested}")
         
-        if return_top_n > 1 and collected_candidates:
-            # Sort all collected candidates (if multiple grid stages existed, unlikely for 4D)
-            collected_candidates.sort(key=lambda x: x['score'], reverse=True)
-            return collected_candidates[:return_top_n*2] 
+        if return_top_n > 1:
+            if collected_candidates:
+                # Sort all collected candidates (if multiple grid stages existed, unlikely for 4D)
+                collected_candidates.sort(key=lambda x: x['score'], reverse=True)
+                return collected_candidates[:return_top_n*2]
+            # All batches failed: return one fallback candidate so caller always gets list of {params, metrics, score}
+            return [{'params': best_params, 'metrics': best_metrics or {}, 'score': float('-inf')}]
             
         return best_params, best_metrics
 
@@ -1445,6 +1457,7 @@ class ComboOptimizer:
 
         # Prefetch 15m cache ONCE (main process) when deep backtest is enabled.
         # Workers will only READ the parquet slice (read_only=True) to avoid concurrent writes/corruption.
+        # After prefetch, ensure 15m tail is up to end_date (self-healing: avoids stale cache for this symbol).
         if deep_backtest:
             try:
                 # For "all history", align intraday start to the first available daily candle
@@ -1477,10 +1490,41 @@ class ComboOptimizer:
                     end_date,
                     e,
                 )
-            else:
-                logging.info(
-                    "Deep backtest ON: workers will use 15m intraday data for exit simulation (stop/target precision)."
-                )
+            # Self-healing: ensure 15m cache extends to end_date (handles stale cache or partial prefetch failure).
+            try:
+                from datetime import datetime as _dt, timedelta
+                info = self.loader.check_intraday_availability(symbol, "15m")
+                end_dt = _dt.strptime(end_date, "%Y-%m-%d")
+                need_tail = False
+                if not info.get("available") or not info.get("coverage"):
+                    need_tail = True  # No cache or empty: try last 30 days only
+                else:
+                    cache_end_str = info["coverage"].get("end")
+                    if cache_end_str:
+                        cache_end = pd.Timestamp(cache_end_str)
+                        if getattr(cache_end, "tz", None) is None:
+                            cache_end = cache_end.tz_localize("UTC")
+                        if cache_end.date() < end_dt.date():
+                            need_tail = True
+                if need_tail:
+                    tail_since = (end_dt - timedelta(days=30)).strftime("%Y-%m-%d")
+                    logging.info(
+                        "15m cache lags behind end_date; updating tail for %s (%s to %s)",
+                        symbol, tail_since, end_date,
+                    )
+                    self.loader.fetch_intraday_data(
+                        symbol=symbol,
+                        timeframe="15m",
+                        since_str=tail_since,
+                        until_str=end_date,
+                        read_only=False,
+                        allow_large_backfill=False,
+                    )
+            except Exception as e2:
+                logging.debug("15m tail update check failed: %s", e2)
+            logging.info(
+                "Deep backtest ON: workers will use 15m intraday data for exit simulation (stop/target precision)."
+            )
         
         # Initialize best parameters (direction is fixed for the whole optimization)
         best_params = {"direction": direction}
@@ -1563,15 +1607,20 @@ class ComboOptimizer:
                         )
 
                         if round_num == 1:
-                            # Reviewing multiple candidates from Grid
-                            branch_candidates = execution_result  # It's a list
+                            # Reviewing multiple candidates from Grid (or single fallback when all batches failed)
+                            branch_candidates = execution_result
+                            if isinstance(branch_candidates, (tuple, list)) and len(branch_candidates) == 2 and not isinstance(branch_candidates[0], dict):
+                                branch_candidates = [{'params': branch_candidates[0], 'metrics': branch_candidates[1] or {}, 'score': float('-inf')}]
                             for cand in branch_candidates:
+                                params = cand.get('params') if isinstance(cand, dict) else None
+                                if params is None:
+                                    continue
                                 result_candidate = {
-                                    'params': cand['params'],
+                                    'params': params,
                                     'meta': candidate['meta'],
                                     'round': round_num + 1,
-                                    'score': cand['score'],
-                                    'metrics': cand['metrics']
+                                    'score': cand.get('score', float('-inf')),
+                                    'metrics': cand.get('metrics') or {}
                                 }
                                 next_round_candidates.append(result_candidate)
                         else:

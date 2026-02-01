@@ -37,4 +37,3 @@ The system MUST display a configuration screen before starting optimization wher
 
 ### Requirement: Live Progress Tracking (Sequential)
 The system MUST provide a real-time web interface showing current stage, progress within stage (e.g., "Testing 5/13 values"), and stage results as they complete.
-

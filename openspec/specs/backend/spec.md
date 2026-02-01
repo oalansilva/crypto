@@ -102,4 +102,3 @@ The system SHALL accept a `precision_mode` parameter in backtest requests.
 - **WHEN** backtest request omits `precision_mode`
 - **THEN** use daily-only execution (current behavior)
 - **AND** return results with metadata: `{ "precision": "fast" }`
-

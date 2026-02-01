@@ -69,4 +69,3 @@ The system SHALL provide an endpoint to check intraday data coverage before runn
 - **WHEN** user requests `/api/data/intraday-availability?symbol=BTC/USDT&timeframe=1h&since=2020-01-01`
 - **THEN** return `{ "available": true, "coverage": { "start": "2020-01-01", "end": "2025-10-15" } }`
 - **OR** return `{ "available": false, "reason": "Insufficient data before 2021-01-01" }`
-

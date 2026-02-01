@@ -80,4 +80,3 @@ The system SHALL allow the user to trigger a **batch backtest** from the `Config
   - quantidade de símbolos processados com sucesso
   - quantidade de símbolos que falharam
   - indicação de onde revisar os favoritos criados (ex.: link para `Strategy Favorites` ou `Opportunity Board`).
-

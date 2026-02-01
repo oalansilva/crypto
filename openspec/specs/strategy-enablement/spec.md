@@ -96,4 +96,3 @@ O sistema SHALL fornecer interface em `/combo/edit/{template_name}` com formulá
 
 ### Requirement: Acesso ao Editor pela Página de Seleção (REQ-STRAT-NAV-001)
 Em `/combo/select`, templates customizados mostram botão "Editar"; templates pré-construídos mostram "Clonar & Editar" com modal de nome e redirecionamento ao editor do clone.
-
