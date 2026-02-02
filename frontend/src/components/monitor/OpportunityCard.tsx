@@ -231,6 +231,27 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                         </div>
                     )}
 
+                    {opportunity.indicator_values && Object.keys(opportunity.indicator_values).length > 0 && (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md text-sm border border-blue-200 dark:border-blue-800">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Target className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                                    Valores usados (último candle fechado)
+                                </span>
+                            </div>
+                            {opportunity.indicator_values_candle_time && (
+                                <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 mb-1 font-medium">
+                                    Candle: {new Date(opportunity.indicator_values_candle_time).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' })} UTC
+                                </p>
+                            )}
+                            <p className="font-mono text-xs text-gray-700 dark:text-gray-300 break-words">
+                                {Object.entries(opportunity.indicator_values)
+                                    .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v}`)
+                                    .join(' · ')}
+                            </p>
+                        </div>
+                    )}
+
                     <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-sm border border-slate-200 dark:border-slate-600">
                         <div className="flex items-center justify-between gap-2">
                             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

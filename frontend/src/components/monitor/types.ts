@@ -18,4 +18,8 @@ export interface Opportunity {
     last_price: number;
     timestamp: string;
     details?: any;
+    /** Valores dos indicadores usados no cálculo da distância (último candle fechado) */
+    indicator_values?: Record<string, number>;
+    /** Data/hora do candle usado (ISO) para conferir com TradingView */
+    indicator_values_candle_time?: string | null;
 }

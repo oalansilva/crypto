@@ -20,6 +20,8 @@ class OpportunityResponse(BaseModel):
     is_holding: bool
     distance_to_next_status: float | None
     next_status_label: str  # "entry" or "exit"
+    indicator_values: Optional[Dict[str, float]] = None  # Valores usados no cálculo da distância (short, medium, long, etc.)
+    indicator_values_candle_time: Optional[str] = None  # ISO datetime do candle usado (para conferir com TradingView)
     # Legacy fields (kept for backward compatibility)
     status: str
     badge: str

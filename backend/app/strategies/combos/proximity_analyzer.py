@@ -113,7 +113,10 @@ class ProximityAnalyzer:
         
         min_distance = float('inf')
         nearest_condition = None
-        
+        # When entry has multiple crossovers (e.g. short/long and short/medium), prefer the
+        # distance that involves "long" for display so it matches TradingView (short vs long gap).
+        distance_involving_long: Optional[float] = None
+
         for cond in conditions:
             left, op, right = cond
             
@@ -158,40 +161,30 @@ class ProximityAnalyzer:
                     debug_logger.info(f"ProximityAnalyzer - Condition: {left} {op} {right}, values: {val_left:.4f} vs {val_right:.4f}, is_met={is_met}")
                 
                 if not is_met:
-                    # Calculate distance
-                    # For CROSS_UP: distance is how much left needs to rise to cross right
-                    # For CROSS_DOWN: distance is how much left needs to fall to cross right
-                    # For regular comparisons: percentage difference
+                    # Calculate distance so % matches TradingView: (high - low) / low
+                    # Use the LOWER value as denominator so 3.47% matches chart measurement
                     if op == 'CROSS_UP':
-                        # For crossover UP: left must go from current to above right
-                        # Distance = (right - left) / right (how much left needs to rise as % of right)
-                        if val_right == 0:
-                            dist = float('inf')  # Invalid condition, skip
-                            continue
-                        elif val_left >= val_right:
-                            # Already above - this crossover condition is already met
-                            # Skip this condition, don't count it in distance calculation
-                            # (but continue checking other conditions like CROSS_UP medium)
-                            # Debug log for skipping
+                        # Left must rise to cross right. Distance = (right - left) / min = (high - low) / low
+                        if val_left >= val_right:
                             if 'short' in str(left).lower():
                                 import logging
                                 debug_logger = logging.getLogger(__name__)
                                 debug_logger.info(f"ProximityAnalyzer - Skipping {left} {op} {right} (already above: {val_left:.4f} >= {val_right:.4f}), continuing to check other conditions")
                             continue
-                        else:
-                            # Calculate how much left needs to rise as percentage of right
-                            dist = (val_right - val_left) / abs(val_right)
+                        denom = min(val_left, val_right)
+                        if denom <= 0:
+                            continue
+                        dist = (val_right - val_left) / denom
                     elif op == 'CROSS_DOWN':
-                        # For crossunder DOWN: left must go from current to below right
-                        # Distance = (left - right) / right (how much left needs to fall as % of right)
-                        if val_right == 0:
-                            dist = 0
-                        elif val_left <= val_right:
-                            # Already below, distance is 0
+                        # Left must fall to cross right. Distance = (left - right) / min = (high - low) / low
+                        if val_left <= val_right:
                             dist = 0
                         else:
-                            # Calculate how much left needs to fall as percentage of right
-                            dist = (val_left - val_right) / abs(val_right)
+                            denom = min(val_left, val_right)
+                            if denom <= 0:
+                                dist = 0
+                            else:
+                                dist = (val_left - val_right) / denom
                     else:
                         # Standard comparison: percentage difference
                         if val_right == 0:
@@ -208,24 +201,31 @@ class ProximityAnalyzer:
                              nearest_condition = f"{left}: {val_left:.4f} crossing DOWN {right}: {val_right:.4f}"
                         else:
                              nearest_condition = f"{left}: {val_left:.4f} {op} {right}: {val_right:.4f}"
+                    # Prefer distance involving "long" for display (matches TradingView short-long gap)
+                    if right == 'long':
+                        distance_involving_long = dist
 
             except Exception:
                 continue # Skip unparseable (e.g. strict boolean columns)
 
-        # 3. Determine Status
+        # 3. Determine Status and displayed distance
+        # Use distance involving "long" when present so % matches TradingView (short-long gap)
+        display_distance = distance_involving_long if distance_involving_long is not None else min_distance
+        display_pct = round(display_distance * 100, 2) if display_distance != float('inf') else None
+
         if min_distance <= self.threshold:
             return {
                 'status': 'NEAR',
                 'badge': 'warning', # Yellow
                 'message': f"Approaching {nearest_condition}",
-                'distance': round(min_distance * 100, 2)
+                'distance': display_pct if display_pct is not None else round(min_distance * 100, 2)
             }
         else:
              return {
                 'status': 'NEUTRAL',
                 'badge': 'neutral', # Grey
                 'message': 'Waiting for setup',
-                'distance': round(min_distance * 100, 2) if min_distance != float('inf') else None
+                'distance': display_pct
             }
 
     def _extract_comparisons(self, logic: str) -> List[tuple]:

@@ -24,6 +24,100 @@ def _is_unsupported_symbol(symbol: str) -> bool:
     return is_excluded_symbol(symbol)
 
 
+def _last_closed_candle_offset(timeframe: str, now: Optional[pd.Timestamp] = None) -> int:
+    """
+    Return the row offset (from the end) for the last *closed* candle, so values match TradingView/Binance.
+    - For 1d: candle with index T closes at T+1day; we want the last row whose close time <= now.
+    - If the last row is already closed (e.g. data has no "today" yet), use 0 (last row).
+    - If the last row is still forming (e.g. we have "today"), use 1 (second-to-last).
+    """
+    if now is None:
+        now = pd.Timestamp.utcnow()
+    tf = (timeframe or "1d").strip().lower()
+    if "d" in tf or tf == "1d":
+        period = pd.Timedelta(days=1)
+    elif "h" in tf:
+        try:
+            h = int("".join(c for c in tf if c.isdigit()) or 1)
+            period = pd.Timedelta(hours=h)
+        except Exception:
+            period = pd.Timedelta(days=1)
+    else:
+        period = pd.Timedelta(days=1)
+    return period
+
+
+def _get_df_last_closed(df: pd.DataFrame, timeframe: str, now: Optional[pd.Timestamp] = None) -> pd.DataFrame:
+    """
+    Return a 1-row DataFrame with the last *closed* candle (same convention as TradingView/Binance).
+    Candle with index T is closed when T + period <= now (e.g. 1d bar at 31 Jan 00:00 closes at 1 Feb 00:00).
+    """
+    if df.empty:
+        return df
+    now = now or pd.Timestamp.utcnow()
+    if getattr(now, "tzinfo", None) is None:
+        now = now.tz_localize("UTC")
+    period = _last_closed_candle_offset(timeframe, now)
+    # Last row's close time
+    last_ts = pd.Timestamp(df.index[-1])
+    if getattr(last_ts, "tzinfo", None) is None and getattr(now, "tzinfo", None) is not None:
+        last_ts = last_ts.tz_localize("UTC")
+    close_time = last_ts + period
+    if close_time <= now:
+        # Last row is already closed (e.g. no "today" in data yet) -> use last row
+        return df.iloc[-1:].copy()
+    # Last row is forming -> use second-to-last
+    if len(df) >= 2:
+        return df.iloc[-2:-1].copy()
+    return df.iloc[-1:].copy()
+
+def _apply_crypto_continuity_fix(df: pd.DataFrame, timeframe: str, *, tail_rows: int = 60, threshold_pct: float = 0.5) -> pd.DataFrame:
+    """
+    Heuristic repair for crypto OHLC caches:
+    On continuous markets (Binance spot/futures), typically:
+        open[t] ~= close[t-1]
+    When our cache has a large gap (often due to partial/incorrect candle overwrite),
+    indicator values (EMA/SMA) diverge from TradingView/Binance.
+
+    This function adjusts ONLY the tail of the series, and ONLY the `close` of the previous candle:
+        close[t-1] = open[t]
+    when the mismatch exceeds `threshold_pct`.
+
+    Notes:
+    - We apply this in-memory (monitor/proximity only) to avoid rewriting historical cache.
+    - We only need `close` continuity since our indicators are based on `close`.
+    """
+    tf = (timeframe or "").strip().lower()
+    if df.empty:
+        return df
+    if "open" not in df.columns or "close" not in df.columns:
+        return df
+    # Apply only to daily/intraday candles (ignore weekly/monthly for now)
+    if not any(x in tf for x in ("m", "h", "d")):
+        return df
+
+    out = df.copy()
+    out = out.sort_index()
+
+    # Work on tail only
+    n = len(out)
+    start_idx = max(0, n - tail_rows)
+    tail = out.iloc[start_idx:].copy()
+
+    next_open = tail["open"].shift(-1)
+    prev_close = tail["close"]
+    # mismatch as percentage of previous close
+    mismatch = (next_open - prev_close).abs() / prev_close.replace(0, pd.NA)
+    mask = next_open.notna() & mismatch.notna() & (mismatch > (threshold_pct / 100.0))
+
+    if mask.any():
+        # Set close[t] = open[t+1] for the mismatched rows (within tail window)
+        tail.loc[mask, "close"] = next_open.loc[mask]
+        # Write back into out
+        out.iloc[start_idx:] = tail
+    return out
+
+
 class OpportunityService:
     """
     Service to manage Strategy Favorites and calculate Opportunities (Proximity to Signal).
@@ -176,6 +270,10 @@ class OpportunityService:
                     })
                     continue
 
+                # Heuristic: fix corrupted tail candles (open[t] != close[t-1]) so MAs match TradingView/Binance.
+                # This is especially important for the last closed candle used in distance calculations.
+                df = _apply_crypto_continuity_fix(df, tf)
+
                 # 2. Get Template Metadata from Database (entry_logic and exit_logic)
                 # This dynamically loads the buy/sell rules from combo_templates table
                 meta = self.combo_service.get_template_metadata(template_name)
@@ -297,10 +395,10 @@ class OpportunityService:
                     logger.info(f"SOL/USDT - params used: {params}")
                 
                 # 5. Analyze Entry Proximity using buy rule from database
-                # Use CURRENT candle (last row) for distance calculation to match TradingView
-                # This ensures the distance shown matches what the user sees on TradingView
-                df_current = df_with_inds.iloc[-1:].copy()  # Current candle for distance
+                # Use LAST CLOSED candle (same as TradingView/Binance: close 76.968,21 for 31/01)
+                df_current = df_with_inds.iloc[-1:].copy()  # Current candle for HOLD/signal checks
                 df_closed = df_with_inds.iloc[:-1].copy()  # Closed candles for signal detection
+                df_for_distance = _get_df_last_closed(df_with_inds, tf)  # Last closed by close time <= now
                 
                 # Debug: Log current candle values for SOL
                 if symbol == 'SOL/USDT' and not df_current.empty:
@@ -327,8 +425,8 @@ class OpportunityService:
                     long_val = current_row['long']
                     short_above_long = short_val > long_val
                 
-                # Analyze proximity to entry signal using CURRENT candle (matches TradingView)
-                analysis = self.analyzer.analyze(df_current, strategy.entry_logic)
+                # Analyze proximity using LAST CLOSED candle so distance % matches TradingView
+                analysis = self.analyzer.analyze(df_for_distance, strategy.entry_logic)
                 
                 # But verify signal on closed candles (stable signals only)
                 if not df_closed.empty:
@@ -604,7 +702,31 @@ class OpportunityService:
                     final_distance = analysis.get('distance')
                     if final_distance is not None:
                         final_distance = round(final_distance, 2)
-                
+
+                # Indicator values used for distance (last closed candle) — for display on card
+                indicator_values = {}
+                indicator_values_candle_time = None  # date/time of candle so user can match TradingView
+                if not df_for_distance.empty:
+                    row_used = df_for_distance.iloc[-1]
+                    for key in ('short', 'medium', 'long', 'fast', 'slow', 'inter'):
+                        if key in row_used and pd.notna(row_used.get(key)):
+                            try:
+                                indicator_values[key] = round(float(row_used[key]), 2)
+                            except (TypeError, ValueError):
+                                pass
+                    # Include open/close of that candle so user can compare with TradingView (O=76,968.22, C=...)
+                    for key in ('open', 'close'):
+                        if key in row_used and pd.notna(row_used.get(key)):
+                            try:
+                                indicator_values[key] = round(float(row_used[key]), 2)
+                            except (TypeError, ValueError):
+                                pass
+                    try:
+                        idx = df_for_distance.index[-1]
+                        indicator_values_candle_time = str(pd.Timestamp(idx).isoformat()) if idx is not None else None
+                    except Exception:
+                        pass
+
                 opportunities.append({
                     'id': fav['id'],
                     'symbol': symbol,
@@ -617,6 +739,8 @@ class OpportunityService:
                     'is_holding': is_holding,
                     'distance_to_next_status': final_distance,
                     'next_status_label': next_status_label,
+                    'indicator_values': indicator_values if indicator_values else None,
+                    'indicator_values_candle_time': indicator_values_candle_time,
                     # Keep legacy fields for backward compatibility
                     'status': analysis['status'],
                     'badge': analysis['badge'],
