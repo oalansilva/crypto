@@ -28,9 +28,7 @@ O retorno DEVE agrupar os resultados por estratégia para permitir comparação 
 
 ### Requirement: Auto Backtest Orchestration
 The System SHALL provide an automated end-to-end backtest workflow that executes timeframe selection, parameter optimization, and risk management optimization sequentially without user intervention.
-The System MUST return the final optimized configuration and automatically save it to the user's favorites with a timestamp note.
-
-#### Scenario: User runs auto backtest for BTC/USDT with RSI
+The System MUST return the final optimized configuration and automatically save it to the user's favorites with a timestamp note.#### Scenario: User runs auto backtest for BTC/USDT with RSI
 Given the user selects symbol "BTC/USDT" and strategy "RSI"
 When the user triggers the auto backtest endpoint
 Then the System SHALL:
@@ -63,9 +61,7 @@ The System MUST save partial logs when a stage fails for debugging purposes.
 The System SHALL allow users to cancel a running auto backtest at any time.
 
 ### Requirement: Input Validation (Auto Backtest)
-The System SHALL validate user inputs before starting the auto backtest workflow.
-
-### Requirement: Execution History (Auto Backtest)
+The System SHALL validate user inputs before starting the auto backtest workflow.### Requirement: Execution History (Auto Backtest)
 The System SHALL persist all auto backtest executions and allow users to view past runs.
 
 ### Requirement: Default Configuration Values (Auto Backtest)

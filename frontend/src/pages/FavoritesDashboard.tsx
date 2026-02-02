@@ -178,8 +178,16 @@ const FavoritesDashboard: React.FC = () => {
     const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
     const [selectedIndicator, setSelectedIndicator] = useState<string>('ALL');
     const [directionFilter, setDirectionFilter] = useState<'all' | 'long' | 'short'>('all');
-    type SortByOption = 'return' | 'sharpe' | 'trades' | 'returnPerTrade' | 'potential';
+    type SortByOption = 'return' | 'sharpe' | 'trades' | 'returnPerTrade';
     const [sortBy, setSortBy] = useState<SortByOption>('returnPerTrade');
+
+    /** Número de trades: preferir tamanho da lista metrics.trades para bater com a "List of trades". */
+    const getTradesCount = (fav: FavoriteStrategy): number => {
+        const m = fav.metrics || {};
+        if (Array.isArray(m.trades) && m.trades.length >= 0) return m.trades.length;
+        const n = m.total_trades ?? (typeof m.trades === 'number' ? m.trades : null);
+        return n != null ? Math.max(0, Number(n)) : 0;
+    };
 
     // Get unique symbols for filter
     const uniqueSymbols = React.useMemo(() => {
@@ -216,8 +224,8 @@ const FavoritesDashboard: React.FC = () => {
 
         const returnPctA = a.metrics?.total_return_pct ?? (a.metrics?.total_return != null ? a.metrics.total_return * 100 : -Infinity);
         const returnPctB = b.metrics?.total_return_pct ?? (b.metrics?.total_return != null ? b.metrics.total_return * 100 : -Infinity);
-        const tradesA = Math.max(1, a.metrics?.total_trades ?? a.metrics?.trades ?? 1);
-        const tradesB = Math.max(1, b.metrics?.total_trades ?? b.metrics?.trades ?? 1);
+        const tradesA = Math.max(1, getTradesCount(a));
+        const tradesB = Math.max(1, getTradesCount(b));
         const sharpeA = a.metrics?.sharpe_ratio ?? -Infinity;
         const sharpeB = b.metrics?.sharpe_ratio ?? -Infinity;
 
@@ -238,14 +246,6 @@ const FavoritesDashboard: React.FC = () => {
             case 'returnPerTrade':
                 valA = returnPctA === -Infinity ? -Infinity : returnPctA / tradesA;
                 valB = returnPctB === -Infinity ? -Infinity : returnPctB / tradesB;
-                break;
-            case 'potential':
-                const rptA = returnPctA === -Infinity ? -Infinity : returnPctA / tradesA;
-                const rptB = returnPctB === -Infinity ? -Infinity : returnPctB / tradesB;
-                const bonusA = Math.min(1, 20 / tradesA);
-                const bonusB = Math.min(1, 20 / tradesB);
-                valA = rptA === -Infinity ? -Infinity : rptA * (1 + 0.3 * bonusA) + 0.01 * (sharpeA === -Infinity ? 0 : sharpeA);
-                valB = rptB === -Infinity ? -Infinity : rptB * (1 + 0.3 * bonusB) + 0.01 * (sharpeB === -Infinity ? 0 : sharpeB);
                 break;
             default:
                 valA = returnPctA === -Infinity ? -Infinity : returnPctA / tradesA;
@@ -274,9 +274,9 @@ const FavoritesDashboard: React.FC = () => {
             // derived
             const totalReturn = m.total_return_pct ?? m.total_return;
             const totalReturnPct = m.total_return_pct ?? (m.total_return != null ? m.total_return * 100 : null);
-            const tradesN = Math.max(1, m.total_trades ?? m.trades ?? 1);
+            const tradesN = Math.max(1, getTradesCount(fav));
             const returnPerTradePct = totalReturnPct != null ? totalReturnPct / tradesN : null;
-            const expectancy = m.expectancy ?? (m.total_pnl && m.total_trades ? m.total_pnl / m.total_trades : null);
+            const expectancy = m.expectancy ?? (m.total_pnl && tradesN ? m.total_pnl / tradesN : null);
             const stopLoss = fav.parameters.stop_loss || null;
 
             const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
@@ -290,7 +290,7 @@ const FavoritesDashboard: React.FC = () => {
                 Parameters: formatParams(fav.parameters),
                 "Stop Loss": formatPct(stopLoss),
                 Sharpe: formatNum(m.sharpe_ratio),
-                Trades: m.total_trades || m.trades || 0,
+                Trades: getTradesCount(fav),
                 "Win Rate": formatPct(m.win_rate),
                 "Total Return": formatPct(totalReturn),
                 "Ret/T %": returnPerTradePct != null ? formatPct(returnPerTradePct) : '-',
@@ -444,13 +444,11 @@ const FavoritesDashboard: React.FC = () => {
                                             value={sortBy}
                                             onChange={(e) => setSortBy(e.target.value as SortByOption)}
                                             className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
-                                            title="Ordenação padrão: Ret/T % (return por trade em %)"
                                         >
                                             <option value="returnPerTrade" className="bg-gray-900">Ordenar: Ret/T %</option>
                                             <option value="return" className="bg-gray-900">Ordenar: Return</option>
                                             <option value="sharpe" className="bg-gray-900">Ordenar: Sharpe</option>
                                             <option value="trades" className="bg-gray-900">Ordenar: Trades</option>
-                                            <option value="potential" className="bg-gray-900">Ordenar: Potential</option>
                                         </select>
                                         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                                     </div>
@@ -510,8 +508,6 @@ const FavoritesDashboard: React.FC = () => {
                                         <th className="p-4 border-r border-white/5 text-right text-gray-400">Trades</th>
                                         <th className="p-4 border-r border-white/5 text-right text-gray-400">Win%</th>
                                         <th className="p-4 border-r border-white/5 text-right text-white">Return</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400 whitespace-nowrap">Ret/T %</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400">Exp/T</th>
                                         <th className="p-4 border-r border-white/5 text-right text-red-400">Max DD</th>
                                         <th className="p-4 border-r border-white/5 text-right text-gray-400">PF</th>
                                         <th className="p-4 border-r border-white/5 text-right text-gray-400">Sort</th>
@@ -526,9 +522,9 @@ const FavoritesDashboard: React.FC = () => {
                                 </thead>
                                 <tbody className="divide-y divide-industrial-800">
                                     {isLoading ? (
-                                        <tr><td colSpan={23} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
+                                        <tr><td colSpan={21} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
                                     ) : filteredFavorites.length === 0 ? (
-                                        <tr><td colSpan={23} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
+                                        <tr><td colSpan={21} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
                                     ) : (
                                         visibleFavorites.map((fav: FavoriteStrategy) => {
                                             const isSelected = selectedIds.includes(fav.id);
@@ -536,9 +532,9 @@ const FavoritesDashboard: React.FC = () => {
                                             // Try to find derived metrics, fallback to N/A
                                             const totalReturn = m.total_return_pct ?? m.total_return;
                                             const totalReturnPct = m.total_return_pct ?? (m.total_return != null ? m.total_return * 100 : null);
-                                            const tradesN = Math.max(1, m.total_trades ?? m.trades ?? 1);
+                                            const tradesN = Math.max(1, getTradesCount(fav));
                                             const returnPerTradePct = totalReturnPct != null ? totalReturnPct / tradesN : null;
-                                            const expectancy = m.expectancy ?? (m.total_pnl && m.total_trades ? m.total_pnl / m.total_trades : null);
+                                            const expectancy = m.expectancy ?? (m.total_pnl && tradesN ? m.total_pnl / tradesN : null);
                                             // Stop loss usually in parameters
                                             const stopLoss = fav.parameters.stop_loss ? fav.parameters.stop_loss : null;
 
@@ -613,19 +609,13 @@ const FavoritesDashboard: React.FC = () => {
                                                         {formatNum(m.sharpe_ratio)}
                                                     </td>
                                                     <td className="p-2 border-r border-white/5 text-right text-gray-300 font-mono">
-                                                        {m.total_trades || m.trades || 0}
+                                                        {getTradesCount(fav)}
                                                     </td>
                                                     <td className="p-2 border-r border-white/5 text-right text-gray-300 font-mono">
                                                         {formatPct(m.win_rate)}
                                                     </td>
                                                     <td className={`p-2 border-r border-white/5 text-right font-bold font-mono ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                                         {formatPct(totalReturn)}
-                                                    </td>
-                                                    <td className={`p-2 border-r border-white/5 text-right font-mono ${returnPerTradePct != null && returnPerTradePct >= 0 ? 'text-green-400' : 'text-red-400'}`} title="Return per trade (%)">
-                                                        {returnPerTradePct != null ? formatPct(returnPerTradePct) : '-'}
-                                                    </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-gray-400 font-mono">
-                                                        {formatCurrency(expectancy)}
                                                     </td>
                                                     <td className="p-2 border-r border-white/5 text-right text-red-400 font-mono">
                                                         {formatPct(m.max_drawdown)}
@@ -688,7 +678,7 @@ const FavoritesDashboard: React.FC = () => {
                                     )}
                                     {!isLoading && filteredFavorites.length > 0 && hasMore && (
                                         <tr ref={sentinelRef}>
-                                            <td colSpan={23} className="p-6 text-center text-gray-500 text-sm">
+                                            <td colSpan={21} className="p-6 text-center text-gray-500 text-sm">
                                                 <span className="animate-pulse">Carregando mais…</span>
                                             </td>
                                         </tr>

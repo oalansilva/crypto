@@ -14,7 +14,7 @@ export const MonitorPage: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
     const [sortBy, setSortBy] = useState<SortOption>('tier_distance');
-    const [tierFilter, setTierFilter] = useState<TierFilter>('1_2');
+    const [tierFilter, setTierFilter] = useState<TierFilter>('all');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const { toast } = useToast();
 
@@ -215,12 +215,13 @@ export const MonitorPage: React.FC = () => {
                                 value={tierFilter}
                                 onChange={(e) => setTierFilter(e.target.value as TierFilter)}
                                 className="text-sm border border-border rounded pl-2 pr-8 py-1.5 bg-gray-900 text-gray-100 appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
+                                title="Filtrar por tier"
                             >
-                                <option value="all" className="bg-gray-900">All</option>
-                                <option value="1_2" className="bg-gray-900">Tier 1 + Tier 2</option>
+                                <option value="all" className="bg-gray-900">Tier: All</option>
                                 <option value="1" className="bg-gray-900">Tier 1 – Core</option>
                                 <option value="2" className="bg-gray-900">Tier 2 – Complementares</option>
                                 <option value="3" className="bg-gray-900">Tier 3</option>
+                                <option value="1_2" className="bg-gray-900">Tier 1 + Tier 2</option>
                                 <option value="none" className="bg-gray-900">Sem tier</option>
                             </select>
                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />

@@ -77,13 +77,13 @@ def update_favorite(favorite_id: int, update_data: FavoriteStrategyUpdate, db: S
     if not favorite:
         raise HTTPException(status_code=404, detail="Favorite not found")
     
-    # Validate tier value if provided
-    if update_data.tier is not None:
-        if update_data.tier not in [1, 2, 3]:
-            raise HTTPException(status_code=400, detail="Tier must be 1, 2, or 3")
-        favorite.tier = update_data.tier
-    
-    # Update only provided fields
+    # Update only fields that were explicitly sent (exclude_unset so we can set tier to null)
+    updates = update_data.model_dump(exclude_unset=True)
+    if "tier" in updates:
+        tier_val = updates["tier"]
+        if tier_val is not None and tier_val not in (1, 2, 3):
+            raise HTTPException(status_code=400, detail="Tier must be 1, 2, 3 or null (Sem tier)")
+        favorite.tier = tier_val
     if update_data.name is not None:
         favorite.name = update_data.name
     if update_data.notes is not None:

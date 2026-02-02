@@ -83,11 +83,12 @@ class OpportunityService:
             Filtered list of favorites
         """
         if not tier_filter or tier_filter.lower() == 'all':
-            return favorites
+            # "All" = apenas Tier 1, 2 e 3 (excluir Sem tier)
+            return [f for f in favorites if f.get('tier') in (1, 2, 3)]
         
         tier_filter = tier_filter.lower().strip()
         
-        # Handle 'none' (null tier)
+        # Handle 'none' (null tier) - explícito quando usuário quer ver só Sem tier
         if tier_filter == 'none':
             return [f for f in favorites if f.get('tier') is None]
         

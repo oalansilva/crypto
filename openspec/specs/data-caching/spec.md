@@ -33,9 +33,7 @@ And MUST NOT make any network requests to the exchange
 
 ### Requirement: Cache Exchange Symbols
 The System SHALL cache the list of available trading pairs (symbols) fetched from the exchange API (Binance) to minimize latency and API calls.
-The cache MUST be persisted to disk (e.g., JSON or SQLite) and remain valid for a configurable duration (default: 24 hours).
-
-#### Scenario: First Fetch (Cache Miss)
+The cache MUST be persisted to disk (e.g., JSON or SQLite) and remain valid for a configurable duration (default: 24 hours).#### Scenario: First Fetch (Cache Miss)
 Given the cache file does not exist or is older than 24 hours
 When the System requests the list of symbols
 Then it MUST fetch the latest markets from the Binance API
@@ -50,9 +48,7 @@ Then it MUST read the list directly from the local cache file
 And return the list immediately without calling the external API
 
 ### Requirement: Multi-Timeframe Data Storage
-The system SHALL support fetching and caching multiple timeframes for the same symbol simultaneously.
-
-#### Scenario: Fetch both daily and hourly data
+The system SHALL support fetching and caching multiple timeframes for the same symbol simultaneously.#### Scenario: Fetch both daily and hourly data
 - **WHEN** a backtest requests precise mode for BTC/USDT
 - **THEN** the system fetches and caches both 1d and 1h data
 - **AND** stores them in separate Parquet files (`BTC_USDT_1d.parquet`, `BTC_USDT_1h.parquet`)

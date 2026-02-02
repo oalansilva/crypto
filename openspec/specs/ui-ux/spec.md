@@ -33,7 +33,5 @@ Elementos `<option>` devem respeitar o tema escuro.
 - E não deve haver fundo branco ofuscante
 
 ### Requirement: Pre-Optimization Parameter Review (Sequential)
-The system MUST display a configuration screen before starting optimization where the user reviews and can modify ALL optimization ranges for indicator parameters and risk management. System pre-fills with market best practices; user can accept defaults or customize; clear indication of market standard vs custom.
-
-### Requirement: Live Progress Tracking (Sequential)
+The system MUST display a configuration screen before starting optimization where the user reviews and can modify ALL optimization ranges for indicator parameters and risk management. System pre-fills with market best practices; user can accept defaults or customize; clear indication of market standard vs custom.### Requirement: Live Progress Tracking (Sequential)
 The system MUST provide a real-time web interface showing current stage, progress within stage (e.g., "Testing 5/13 values"), and stage results as they complete.
