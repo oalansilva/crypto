@@ -230,6 +230,78 @@ class ComboStrategy:
             except Exception:
                 # If mapping fails, let eval raise a clear error later.
                 pass
+
+            # Compatibility mapping for MA/ATR/ADX references:
+            # Some templates hardcode EMA_20 / SMA_50 / ATR_14 / ADX_14 in logic, while optimization changes the
+            # underlying indicator length (changing the computed column name). To keep logic stable during
+            # optimization, map referenced tokens to the computed series when unambiguous.
+            def _map_length_token(prefix: str, ind_type: str) -> None:
+                try:
+                    referenced = set(re.findall(rf"\b{re.escape(prefix)}_\d+\b", logic_expr))
+                    if not referenced:
+                        return
+
+                    inds = [i for i in self.indicators if str(i.get("type", "")).lower() == ind_type]
+                    if not inds:
+                        return
+
+                    # Helper: choose series for one indicator
+                    def series_for_indicator(ind: Dict[str, Any]) -> Optional[pd.Series]:
+                        params = ind.get("params", {}) or {}
+                        length = params.get("length")
+                        alias = ind.get("alias")
+                        if alias and alias in df.columns:
+                            return df[alias]
+                        if length is not None:
+                            col = f"{prefix}_{int(length)}" if float(length).is_integer() else f"{prefix}_{length}"
+                            if col in df.columns:
+                                return df[col]
+                        return None
+
+                    # If exactly one indicator of this type exists, map ALL referenced PREFIX_<n> tokens to it.
+                    if len(inds) == 1:
+                        s = series_for_indicator(inds[0])
+                        if s is None:
+                            # fallback: if exactly one PREFIX_* column exists, use it
+                            cols = [c for c in df.columns if re.match(rf"^{re.escape(prefix)}_\d+$", str(c))]
+                            if len(cols) == 1:
+                                s = df[cols[0]]
+                        if s is None:
+                            return
+                        for token in referenced:
+                            if token not in local_context:
+                                local_context[token] = s
+                        return
+
+                    # Multiple indicators: map only when token length matches an indicator length.
+                    for token in referenced:
+                        if token in local_context:
+                            continue
+                        m = re.match(rf"^{re.escape(prefix)}_(\d+)$", token)
+                        if not m:
+                            continue
+                        want_len = int(m.group(1))
+                        match = None
+                        for ind in inds:
+                            try:
+                                ilen = int((ind.get("params", {}) or {}).get("length"))
+                            except Exception:
+                                continue
+                            if ilen == want_len:
+                                match = ind
+                                break
+                        if match is None:
+                            continue
+                        s = series_for_indicator(match)
+                        if s is not None:
+                            local_context[token] = s
+                except Exception:
+                    return
+
+            _map_length_token("EMA", "ema")
+            _map_length_token("SMA", "sma")
+            _map_length_token("ATR", "atr")
+            _map_length_token("ADX", "adx")
             
             # Rewrite boolean logic to vectorized operators using AST (prevents precedence bugs).
             # Example: `rsi < 30 and close > ema_fast` becomes `(rsi < 30) & (close > ema_fast)`
