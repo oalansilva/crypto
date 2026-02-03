@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
 import logging
+from typing import Optional
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -43,6 +44,27 @@ class IncrementalLoader:
         # Structure: data/storage/binance/BTC_USDT_1h.parquet
         filename = f"{safe_symbol}_{timeframe}.parquet"
         return os.path.join(self.base_path, filename)
+
+    @staticmethod
+    def _parse_datetime_utc(value: Optional[str], default: pd.Timestamp) -> pd.Timestamp:
+        """
+        Parse a datetime input into a timezone-aware UTC pandas Timestamp.
+
+        Behavior:
+        - If `value` is None/empty → returns `default` (expected to be UTC-aware).
+        - If `value` has timezone info → converts to UTC.
+        - If `value` is naive → assumes it is already in UTC (keeps behavior stable across environments).
+        """
+        if value is None:
+            return default
+        if isinstance(value, str) and value.strip() == "":
+            return default
+        ts = pd.to_datetime(value, errors="coerce")
+        if pd.isna(ts):
+            return default
+        if getattr(ts, "tz", None) is None:
+            return ts.tz_localize("UTC")
+        return ts.tz_convert("UTC")
 
     def _read_parquet_slice(self, parquet_path: str, since_dt: pd.Timestamp, until_dt: pd.Timestamp) -> pd.DataFrame:
         """
@@ -121,17 +143,18 @@ class IncrementalLoader:
             logger.warning(f"Received invalid limit={limit} for fetch_data({symbol}, {timeframe}). "
                            f"Defaulting to 1000.")
             limit = 1000
-        # Parse Dates (Ensure UTC)
-        # Handle None values - default to full history
-        if since_str is None:
-            since_dt = pd.Timestamp('2017-01-01', tz='UTC')
-        else:
-            since_dt = pd.to_datetime(since_str).tz_localize('UTC') if pd.to_datetime(since_str).tz is None else pd.to_datetime(since_str)
-        
-        if until_str is None:
-            until_dt = pd.Timestamp.now(tz='UTC')
-        else:
-            until_dt = pd.to_datetime(until_str).tz_localize('UTC') if pd.to_datetime(until_str).tz is None else pd.to_datetime(until_str)
+
+        # Parse Dates (UTC)
+        # NOTE: If the caller sends naive datetimes, we assume they are already UTC.
+        # This avoids environment-dependent shifts (e.g. local timezone differences).
+        since_dt = self._parse_datetime_utc(since_str, pd.Timestamp("2017-01-01", tz="UTC"))
+        until_dt = self._parse_datetime_utc(until_str, pd.Timestamp.now(tz="UTC"))
+        if until_dt < since_dt:
+            logger.warning(
+                "until_dt (%s) < since_dt (%s) for %s %s. Swapping to keep a valid range.",
+                str(until_dt), str(since_dt), symbol, timeframe
+            )
+            since_dt, until_dt = until_dt, since_dt
         
         # Parquet Path
         parquet_path = self._get_parquet_path(symbol, timeframe)
@@ -208,9 +231,12 @@ class IncrementalLoader:
             # We ONLY check the TAIL.
             
             # If last_ts < until_dt: We need to update tail.
-            # Start download from last_ts + 1 candle duration approx.
-            # Safest is last_ts + 1ms (CCXT handles overlap usually exclusive/inclusive depending on exchange, 
-            # but standard is inclusive. So +1ms avoids dup of last candle).
+            #
+            # IMPORTANT (crypto continuity):
+            # We MUST overlap by at least 1 candle when updating the tail. Otherwise, the last candle in cache
+            # can remain "partial" (wrong close) and never gets refreshed after it closes (e.g. open[t] != close[t-1]
+            # on continuous crypto markets like Binance). Overlapping 1 candle allows CCXT to return the last cached
+            # candle again with its final close, and our dedupe logic (keep='last') will update it.
             
             until_ts_int = int(until_dt.timestamp() * 1000)
 
@@ -233,12 +259,31 @@ class IncrementalLoader:
                     backfill_until_ts = int(first_ts)
                     logger.info(
                         "Cache starts at %s but requested since is %s. Backfilling missing head...",
-                        datetime.fromtimestamp(int(first_ts) / 1000),
-                        datetime.fromtimestamp(fetch_since_ts / 1000),
+                        datetime.utcfromtimestamp(int(first_ts) / 1000),
+                        datetime.utcfromtimestamp(fetch_since_ts / 1000),
                     )
             elif last_ts < until_ts_int:
-                fetch_since_ts = int(last_ts) + 1
-                logger.info(f"Incremental update needed. Downloading from {datetime.fromtimestamp(fetch_since_ts/1000)}")
+                # Overlap 1 candle to refresh last cached candle close
+                tf = str(timeframe).strip().lower()
+                overlap_ms = 0
+                try:
+                    if tf.endswith('m'):
+                        overlap_ms = int(tf[:-1]) * 60_000
+                    elif tf.endswith('h'):
+                        overlap_ms = int(tf[:-1]) * 3_600_000
+                    elif tf.endswith('d'):
+                        overlap_ms = int(tf[:-1]) * 86_400_000
+                    else:
+                        overlap_ms = 86_400_000
+                except Exception:
+                    overlap_ms = 86_400_000
+
+                fetch_since_ts = max(int(last_ts) - overlap_ms + 1, 0)
+                logger.info(
+                    "Incremental update needed. Downloading from %s (overlap=%ss)",
+                    datetime.utcfromtimestamp(fetch_since_ts / 1000),
+                    int(overlap_ms / 1000),
+                )
             else:
                 logger.info("Local data covers request. No network fetch needed.")
                 fetch_since_ts = None  # No fetch needed
@@ -249,7 +294,15 @@ class IncrementalLoader:
             try:
                 df_slice_fast = self._read_parquet_slice(parquet_path, since_dt, until_dt)
                 if not df_slice_fast.empty:
-                    logger.info(f"Returning {len(df_slice_fast)} rows for {symbol} {timeframe} (slice read from parquet)")
+                    try:
+                        real_start = df_slice_fast.index.min()
+                        real_end = df_slice_fast.index.max()
+                        logger.info(
+                            "Returning %s rows for %s %s (slice read from parquet) [%s .. %s]",
+                            len(df_slice_fast), symbol, timeframe, str(real_start), str(real_end)
+                        )
+                    except Exception:
+                        logger.info(f"Returning {len(df_slice_fast)} rows for {symbol} {timeframe} (slice read from parquet)")
                     return df_slice_fast
             except Exception as e:
                 logger.warning(f"Fast parquet slice read failed ({symbol} {timeframe}): {e}. Falling back to full read.")
@@ -272,7 +325,7 @@ class IncrementalLoader:
             # If we enforce "Full Life", we should set `fetch_since_ts` to 2017-01-01 IF df_local is empty.
             if not cache_has_rows and full_history_if_empty:
                 logger.info("First run (empty cache). Downloading from 2017-01-01 (Full History mode).")
-                inception_ts = int(datetime(2017, 1, 1).timestamp() * 1000)
+                inception_ts = int(pd.Timestamp("2017-01-01", tz="UTC").timestamp() * 1000)
                 fetch_since_ts = inception_ts
 
             # Always download up to NOW by default, but for backfill we only need up to cache start.
@@ -483,7 +536,42 @@ class IncrementalLoader:
                 except:
                     pass
         
-        logger.info(f"Returning {len(df_slice)} rows for {symbol} {timeframe} from {since_dt} to {until_dt}")
+        # Log the REAL returned range (not just the requested since/until).
+        if not df_slice.empty:
+            real_start = None
+            real_end = None
+            try:
+                if isinstance(df_slice.index, pd.DatetimeIndex) and len(df_slice.index) > 0:
+                    real_start = df_slice.index.min()
+                    real_end = df_slice.index.max()
+                elif 'timestamp_utc' in df_slice.columns:
+                    s = pd.to_datetime(df_slice['timestamp_utc'], utc=True, errors='coerce')
+                    real_start = s.min()
+                    real_end = s.max()
+                elif 'timestamp' in df_slice.columns:
+                    s = pd.to_datetime(df_slice['timestamp'], unit='ms', utc=True, errors='coerce')
+                    real_start = s.min()
+                    real_end = s.max()
+            except Exception:
+                # If anything goes wrong, we still log the requested range below.
+                real_start = None
+                real_end = None
+
+            if real_start is not None and real_end is not None:
+                logger.info(
+                    "Returning %s rows for %s %s [%s .. %s] (requested: %s .. %s)",
+                    len(df_slice), symbol, timeframe, str(real_start), str(real_end), str(since_dt), str(until_dt)
+                )
+            else:
+                logger.info(
+                    "Returning %s rows for %s %s (requested: %s .. %s)",
+                    len(df_slice), symbol, timeframe, str(since_dt), str(until_dt)
+                )
+        else:
+            logger.info(
+                "Returning 0 rows for %s %s (requested: %s .. %s)",
+                symbol, timeframe, str(since_dt), str(until_dt)
+            )
         return df_slice
     
     def fetch_intraday_data(
@@ -618,7 +706,7 @@ class IncrementalLoader:
                            f"Using default 1000.")
             limit = 1000
         
-        logger.info(f"Starting download loop for {symbol} from {datetime.fromtimestamp(since_ts_int/1000)} "
+        logger.info(f"Starting download loop for {symbol} from {datetime.utcfromtimestamp(since_ts_int/1000)} "
                     f"with limit={limit}")
         
         current_since = since_ts_int

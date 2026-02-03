@@ -10,6 +10,7 @@ import pandas_ta as ta
 import numpy as np
 from typing import Dict, List, Any, Optional
 import re
+import ast
 from .helpers import HELPER_FUNCTIONS
 
 
@@ -172,15 +173,28 @@ class ComboStrategy:
             Boolean Series where True means logic condition is met
         """
         try:
-            # Normalize boolean operators for vectorized (Series) evaluation.
-            # Templates may use "and"/"or" but pandas requires bitwise "&"/"|".
-            # We only replace whole-word operators to avoid touching identifiers.
-            logic_expr = re.sub(r"\band\b", "&", logic, flags=re.IGNORECASE)
-            logic_expr = re.sub(r"\bor\b", "|", logic_expr, flags=re.IGNORECASE)
-            # NOTE: "not" is intentionally not rewritten here; templates should use parentheses and "~" if needed.
+            # Normalize boolean keywords for parsing.
+            # Templates may use AND/OR/NOT (case-insensitive). We'll parse them as Python `and/or/not`,
+            # then rewrite the AST to safe vectorized operations (no precedence bugs like `a < 30 & b > c`).
+            logic_expr = re.sub(r"\bAND\b", "and", logic, flags=re.IGNORECASE)
+            logic_expr = re.sub(r"\bOR\b", "or", logic_expr, flags=re.IGNORECASE)
+            logic_expr = re.sub(r"\bNOT\b", "not", logic_expr, flags=re.IGNORECASE)
+            # Also accept C-style operators if present in templates.
+            logic_expr = logic_expr.replace("&&", " and ").replace("||", " or ")
 
             # Create local context with vectorized helper functions
             local_context = HELPER_FUNCTIONS.copy()
+
+            # Vectorized NOT helper (works for Series and scalars)
+            def NOT(x):
+                if isinstance(x, pd.Series):
+                    return (~x.fillna(False)).astype(bool)
+                # numpy arrays / scalars
+                try:
+                    return not bool(x)
+                except Exception:
+                    return ~x
+            local_context["NOT"] = NOT
             
             # Add all dataframe columns to context (Vectors/Series)
             for col in df.columns:
@@ -217,8 +231,37 @@ class ComboStrategy:
                 # If mapping fails, let eval raise a clear error later.
                 pass
             
+            # Rewrite boolean logic to vectorized operators using AST (prevents precedence bugs).
+            # Example: `rsi < 30 and close > ema_fast` becomes `(rsi < 30) & (close > ema_fast)`
+            class _VectorizeBoolOps(ast.NodeTransformer):
+                def visit_BoolOp(self, node: ast.BoolOp):
+                    self.generic_visit(node)
+                    if isinstance(node.op, ast.And):
+                        expr = node.values[0]
+                        for v in node.values[1:]:
+                            expr = ast.BinOp(left=expr, op=ast.BitAnd(), right=v)
+                        return ast.copy_location(expr, node)
+                    if isinstance(node.op, ast.Or):
+                        expr = node.values[0]
+                        for v in node.values[1:]:
+                            expr = ast.BinOp(left=expr, op=ast.BitOr(), right=v)
+                        return ast.copy_location(expr, node)
+                    return node
+
+                def visit_UnaryOp(self, node: ast.UnaryOp):
+                    self.generic_visit(node)
+                    if isinstance(node.op, ast.Not):
+                        call = ast.Call(func=ast.Name(id="NOT", ctx=ast.Load()), args=[node.operand], keywords=[])
+                        return ast.copy_location(call, node)
+                    return node
+
+            parsed = ast.parse(logic_expr, mode="eval")
+            rewritten = _VectorizeBoolOps().visit(parsed)
+            ast.fix_missing_locations(rewritten)
+            code = compile(rewritten, filename="<combo_logic>", mode="eval")
+
             # Evaluate the logic globally (fast!)
-            result = eval(logic_expr, {"__builtins__": {}}, local_context)
+            result = eval(code, {"__builtins__": {}}, local_context)
             
             if isinstance(result, pd.Series):
                 return result.fillna(False).astype(bool)
