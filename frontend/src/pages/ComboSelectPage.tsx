@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layers, Sparkles, ArrowRight, Database, Edit, Copy, Settings, Lock, Unlock, X, Trash2, Play } from 'lucide-react'
+import { API_BASE_URL } from '../lib/apiBase'
 
 interface Template {
     name: string
@@ -37,7 +38,7 @@ export function ComboSelectPage() {
 
     const fetchTemplates = async () => {
         try {
-            const response = await fetch('http://localhost:8000/api/combos/templates')
+            const response = await fetch(`${API_BASE_URL}/combos/templates`)
             const data = await response.json()
             setTemplates(data)
         } catch (error) {
