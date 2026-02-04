@@ -59,6 +59,11 @@ updated_at: <auto>
 
 # 7) VALIDATE (mandatory)
 
+## Proposal link
+
+- Proposal URL (filled after viewer exists): <http://31.97.92.212:5173/openspec/<id>>
+- Status: draft → validated → approved → implemented
+
 Before implementation, complete this checklist:
 
 - [ ] Scope is unambiguous (in-scope/out-of-scope are explicit)
