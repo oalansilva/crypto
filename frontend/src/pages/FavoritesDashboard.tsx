@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, ChevronDown, Activity, BarChart3 } from 'lucide-react';
+import { Trash2, Search, List, ChevronDown, Activity, BarChart3, MessageCircle } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
+import { AgentChatModal } from '../components/AgentChatModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 
@@ -41,6 +42,10 @@ const FavoritesDashboard: React.FC = () => {
     
     // State for loading backtest
     const [loadingBacktestId, setLoadingBacktestId] = useState<number | null>(null);
+
+    // Agent chat modal
+    const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+    const [selectedAgentFavorite, setSelectedAgentFavorite] = useState<FavoriteStrategy | null>(null);
 
     // Fetch favorites
     const { data: favorites, isLoading } = useQuery({
@@ -174,6 +179,11 @@ const FavoritesDashboard: React.FC = () => {
         setSelectedTradesTemplate(fav.strategy_name);
         setSelectedTradesTimeframe(fav.timeframe);
         setIsTradesModalOpen(true);
+    };
+
+    const handleOpenAgent = (fav: FavoriteStrategy) => {
+        setSelectedAgentFavorite(fav);
+        setIsAgentModalOpen(true);
     };
 
     const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
@@ -666,6 +676,13 @@ const FavoritesDashboard: React.FC = () => {
                                                             )}
                                                         </button>
                                                         <button
+                                                            onClick={() => handleOpenAgent(fav)}
+                                                            className="p-1.5 hover:bg-purple-500/20 rounded-lg text-gray-400 hover:text-purple-300 transition-colors"
+                                                            title="Chat com o agente"
+                                                        >
+                                                            <MessageCircle className="w-4 h-4" />
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleDelete(fav.id)}
                                                             className="p-1.5 hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-400 transition-colors"
                                                             title="Delete"
@@ -851,6 +868,18 @@ const FavoritesDashboard: React.FC = () => {
                     symbol={selectedTradesSymbol}
                     templateName={selectedTradesTemplate}
                     timeframe={selectedTradesTimeframe}
+                />
+
+                <AgentChatModal
+                    open={isAgentModalOpen}
+                    onClose={() => setIsAgentModalOpen(false)}
+                    favorite={selectedAgentFavorite ? {
+                        id: selectedAgentFavorite.id,
+                        name: selectedAgentFavorite.name,
+                        symbol: selectedAgentFavorite.symbol,
+                        timeframe: selectedAgentFavorite.timeframe,
+                        strategy_name: selectedAgentFavorite.strategy_name,
+                    } : null}
                 />
             </div>
         </div>
