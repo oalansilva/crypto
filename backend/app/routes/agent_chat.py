@@ -106,6 +106,8 @@ async def _run_openclaw_agent(session_id: str, message: str, thinking: str, time
         "main",
         "--session-id",
         session_id,
+        "--channel",
+        "last",
         "--message",
         message,
         "--thinking",
