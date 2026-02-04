@@ -18,7 +18,6 @@ import asyncio
 import json
 import os
 import time
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -96,66 +95,45 @@ def _build_prompt(fav: FavoriteStrategy, user_msg: str) -> str:
     )
 
 
-async def _run_openclaw_agent(session_id: str, message: str, thinking: str, timeout_s: int = 180) -> Dict[str, Any]:
-    """Call OpenClaw via CLI and return parsed JSON.
+from app.services.openclaw_gateway_client import run_agent_via_gateway
 
-    Notes:
-    - If AGENT_CHAT_TO is set, we use --to to ensure the gateway can derive a session key.
-      Some deployments may not route properly with only --session-id.
+
+async def _run_openclaw_agent(session_key: str, message: str, thinking: str, timeout_s: int = 180) -> Dict[str, Any]:
+    """Call OpenClaw via Gateway WS API and return a result shape similar to the CLI.
+
+    We return a dict with a `payloads` list when possible, plus `meta.agentMeta` when present.
     """
 
-    agent_chat_to = os.getenv("AGENT_CHAT_TO")
-
-    cmd = [
-        "openclaw",
-        "agent",
-        "--agent",
-        "main",
-    ]
-
-    if agent_chat_to:
-        cmd += ["--to", agent_chat_to]
-    else:
-        cmd += ["--session-id", session_id]
-
-    cmd += [
-        "--channel",
-        "last",
-        "--message",
-        message,
-        "--thinking",
-        thinking,
-        "--json",
-        "--timeout",
-        str(timeout_s),
-    ]
-
     start = time.time()
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,
+    payload = await run_agent_via_gateway(
+        message=message,
+        session_key=session_key,
+        agent_id="main",
+        thinking=thinking,
+        timeout_s=timeout_s,
     )
-    try:
-        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout_s + 30)
-    except asyncio.TimeoutError:
-        proc.kill()
-        raise HTTPException(status_code=504, detail="LLM timeout")
-
     dur_ms = int((time.time() - start) * 1000)
 
-    text = (out or b"").decode("utf-8", errors="replace").strip()
-    if proc.returncode != 0:
-        raise HTTPException(status_code=502, detail=f"openclaw agent failed: {text[:800]}")
+    # Gateway returns: { runId, status, summary, result }
+    result = payload.get("result") if isinstance(payload, dict) else None
 
-    try:
-        data = json.loads(text)
-    except Exception:
-        raise HTTPException(status_code=502, detail=f"openclaw agent returned non-JSON: {text[:800]}")
+    # Normalize to the previous expectations of this route
+    data: Dict[str, Any] = {
+        "payloads": None,
+        "meta": {
+            "durationMs": dur_ms,
+            "agentMeta": None,
+        },
+        "raw": payload,
+    }
 
-    # attach duration
-    data.setdefault("meta", {})
-    data["meta"].setdefault("durationMs", dur_ms)
+    if isinstance(result, dict):
+        # Some versions return { payloads, meta: { agentMeta } }
+        if isinstance(result.get("payloads"), list):
+            data["payloads"] = result.get("payloads")
+        if isinstance((result.get("meta") or {}).get("agentMeta"), dict):
+            data["meta"]["agentMeta"] = (result.get("meta") or {}).get("agentMeta")
+
     return data
 
 
@@ -170,12 +148,13 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
 
     # stable conversation_id per favorite unless provided
     conversation_id = (req.conversation_id or f"fav-{fav.id}").strip()
-    session_id = f"agentchat:{conversation_id}"
+    # Use an agent-scoped gateway session key for stability
+    session_key = f"agent:main:agentchat:{conversation_id}"
 
-    lock = _get_lock(session_id)
+    lock = _get_lock(session_key)
     async with lock:
         prompt = _build_prompt(fav, req.message)
-        result = await _run_openclaw_agent(session_id=session_id, message=prompt, thinking=req.thinking)
+        result = await _run_openclaw_agent(session_key=session_key, message=prompt, thinking=req.thinking)
 
     payloads = result.get("payloads") or []
 
