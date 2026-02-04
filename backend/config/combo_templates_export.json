@@ -1,0 +1,1048 @@
+[
+  {
+    "name": "Bollinger_Breakout",
+    "description": "Volatility breakout strategy using Bollinger Bands.",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "BBANDS",
+          "params": {
+            "length": 20,
+            "std": 2.0
+          },
+          "alias": "bb"
+        }
+      ],
+      "entry_logic": "close > bb.upper",
+      "exit_logic": "close < bb.middle",
+      "stop_loss": 0.03
+    },
+    "optimization_schema": {
+      "parameters": {
+        "bb_length": {
+          "min": 10,
+          "max": 50
+        },
+        "bb_std": {
+          "min": 1.5,
+          "max": 3.0
+        }
+      },
+      "correlated_groups": [
+        [
+          "bb_length",
+          "bb_std"
+        ]
+      ]
+    },
+    "created_at": "2026-01-24 23:16:10.435919"
+  },
+  {
+    "name": "Example: Breakout with Volume",
+    "description": "Price breakout confirmed by volume spike",
+    "is_example": true,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "volume_sma",
+          "alias": "vol_avg",
+          "params": {
+            "length": 20
+          },
+          "optimization_range": {
+            "min": 10,
+            "max": 30,
+            "step": 5
+          }
+        }
+      ],
+      "entry_logic": "(volume > vol_avg * 2) and (close > high.shift(1))",
+      "exit_logic": "(close < close.shift(1).rolling(5).max())",
+      "stop_loss": {
+        "default": 0.015,
+        "optimization_range": {
+          "min": 0.01,
+          "max": 0.025,
+          "step": 0.005
+        }
+      }
+    },
+    "optimization_schema": {
+      "parameters": {
+        "stop_loss": {
+          "min": 0.01,
+          "max": 0.025,
+          "default": 0.015
+        },
+        "volume_sma_vol_avg": {
+          "min": 10,
+          "max": 30,
+          "default": 20
+        }
+      },
+      "correlated_groups": [
+        [
+          "stop_loss"
+        ],
+        [
+          "volume_sma_vol_avg"
+        ]
+      ]
+    },
+    "created_at": "2026-01-18 17:52:43"
+  },
+  {
+    "name": "Example: Scalping EMA 5/13",
+    "description": "Fast EMAs for scalping in short timeframes",
+    "is_example": true,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "fast",
+          "params": {
+            "length": 5
+          },
+          "optimization_range": {
+            "min": 3,
+            "max": 10,
+            "step": 1
+          }
+        },
+        {
+          "type": "ema",
+          "alias": "slow",
+          "params": {
+            "length": 13
+          },
+          "optimization_range": {
+            "min": 10,
+            "max": 20,
+            "step": 1
+          }
+        }
+      ],
+      "entry_logic": "crossover(fast, slow)",
+      "exit_logic": "crossunder(fast, slow)",
+      "stop_loss": {
+        "default": 0.01,
+        "optimization_range": {
+          "min": 0.005,
+          "max": 0.015,
+          "step": 0.0025
+        }
+      }
+    },
+    "optimization_schema": {
+      "parameters": {
+        "stop_loss": {
+          "min": 0.005,
+          "max": 0.015,
+          "default": 0.01
+        },
+        "ema_fast": {
+          "min": 3,
+          "max": 10,
+          "default": 5
+        },
+        "ema_slow": {
+          "min": 10,
+          "max": 20,
+          "default": 13
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema_fast",
+          "ema_slow",
+          "stop_loss"
+        ]
+      ]
+    },
+    "created_at": "2026-01-18 17:52:43"
+  },
+  {
+    "name": "Example: Swing RSI Divergence",
+    "description": "RSI divergence detection for swing trading",
+    "is_example": true,
+    "is_prebuilt": false,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "rsi",
+          "params": {
+            "length": 14
+          },
+          "optimization_range": {
+            "min": 10,
+            "max": 20,
+            "step": 1
+          }
+        }
+      ],
+      "entry_logic": "(RSI_14 < 30) and (close < close.shift(5))",
+      "exit_logic": "(RSI_14 > 70)",
+      "stop_loss": {
+        "default": 0.02,
+        "optimization_range": {
+          "min": 0.01,
+          "max": 0.03,
+          "step": 0.005
+        }
+      }
+    },
+    "optimization_schema": {
+      "parameters": {
+        "stop_loss": {
+          "min": 0.01,
+          "max": 0.03,
+          "default": 0.02
+        },
+        "rsi_length": {
+          "min": 10,
+          "max": 20,
+          "default": 14
+        }
+      },
+      "correlated_groups": [
+        [
+          "rsi_length",
+          "stop_loss"
+        ]
+      ]
+    },
+    "created_at": "2026-01-18 17:52:43"
+  },
+  {
+    "name": "MACD_Cross",
+    "description": "Standard MACD Trend Following.",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "MACD",
+          "params": {
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "alias": "macd"
+        }
+      ],
+      "entry_logic": "macd.macd > macd.signal",
+      "exit_logic": "macd.macd < macd.signal",
+      "stop_loss": 0.05
+    },
+    "optimization_schema": {
+      "parameters": {
+        "macd_fast": {
+          "min": 8,
+          "max": 20
+        },
+        "macd_slow": {
+          "min": 20,
+          "max": 40
+        },
+        "macd_signal": {
+          "min": 5,
+          "max": 15
+        }
+      },
+      "correlated_groups": [
+        [
+          "macd_fast",
+          "macd_slow",
+          "macd_signal"
+        ]
+      ]
+    },
+    "created_at": "2026-01-24 23:16:10.435922"
+  },
+  {
+    "name": "RSI_EMA_Scalping",
+    "description": "Simple RSI + EMA crossover strategy for scalping.",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "RSI",
+          "alias": "rsi",
+          "params": {
+            "length": 14
+          },
+          "optimization_range": null
+        },
+        {
+          "type": "EMA",
+          "alias": "ema_fast",
+          "params": {
+            "length": 9
+          },
+          "optimization_range": null
+        },
+        {
+          "type": "EMA",
+          "alias": "ema_slow",
+          "params": {
+            "length": 21
+          },
+          "optimization_range": null
+        }
+      ],
+      "entry_logic": "rsi < 30 and close > ema_fast",
+      "exit_logic": "rsi > 70 or close < ema_slow",
+      "stop_loss": {
+        "default": 0.02
+      },
+      "id": null,
+      "name": "RSI_EMA_Scalping",
+      "description": "Simple RSI + EMA crossover strategy for scalping.",
+      "is_example": false,
+      "is_prebuilt": true,
+      "is_readonly": false,
+      "optimization_schema": {
+        "parameters": {
+          "rsi_length": {
+            "min": 5,
+            "max": 25,
+            "step": 1
+          },
+          "ema_fast_length": {
+            "min": 5,
+            "max": 15,
+            "step": 1
+          },
+          "ema_slow_length": {
+            "min": 15,
+            "max": 50,
+            "step": 1
+          }
+        },
+        "correlated_groups": [
+          [
+            "rsi_length",
+            "ema_fast_length",
+            "ema_slow_length"
+          ]
+        ]
+      }
+    },
+    "optimization_schema": {
+      "parameters": {
+        "rsi_length": {
+          "min": 5,
+          "max": 25
+        },
+        "ema_fast_length": {
+          "min": 5,
+          "max": 15
+        },
+        "ema_slow_length": {
+          "min": 15,
+          "max": 50
+        }
+      },
+      "correlated_groups": [
+        [
+          "rsi_length",
+          "ema_fast_length",
+          "ema_slow_length"
+        ]
+      ]
+    },
+    "created_at": "2026-01-24 23:16:10.435912"
+  },
+  {
+    "name": "bollinger_rsi_adx",
+    "description": "Bollinger Bands + RSI + ADX for mean reversion with trend filter",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "bbands",
+          "alias": "bb",
+          "params": {
+            "length": 20,
+            "std": 2
+          },
+          "optimization_range": null
+        },
+        {
+          "type": "rsi",
+          "alias": null,
+          "params": {
+            "length": 14
+          },
+          "optimization_range": null
+        },
+        {
+          "type": "adx",
+          "alias": null,
+          "params": {
+            "length": 14
+          },
+          "optimization_range": null
+        }
+      ],
+      "entry_logic": "(close < bb_lower) & (RSI_14 < 30) & (ADX_14 > 20)",
+      "exit_logic": "(close > bb_middle) | (RSI_14 > 70)",
+      "stop_loss": {
+        "default": 0.02
+      },
+      "id": null,
+      "name": "bollinger_rsi_adx",
+      "description": "Bollinger Bands + RSI + ADX for mean reversion with trend filter",
+      "is_example": false,
+      "is_prebuilt": true,
+      "is_readonly": false,
+      "optimization_schema": {
+        "parameters": {
+          "bb_length": {
+            "min": 15,
+            "max": 30,
+            "step": 1,
+            "default": 20
+          },
+          "bb_std": {
+            "min": 1.5,
+            "max": 2.5,
+            "step": 0.1,
+            "default": 2
+          },
+          "rsi_length": {
+            "min": 10,
+            "max": 20,
+            "step": 1,
+            "default": 14
+          },
+          "adx_length": {
+            "min": 10,
+            "max": 20,
+            "step": 1,
+            "default": 14
+          },
+          "adx_threshold": {
+            "min": 15,
+            "max": 30,
+            "step": 1,
+            "default": 20
+          },
+          "stop_loss": {
+            "min": 0.005,
+            "max": 0.013,
+            "step": 0.002,
+            "default": 0.02
+          }
+        },
+        "correlated_groups": [
+          [
+            "bb_length",
+            "bb_std",
+            "stop_loss",
+            "rsi_length",
+            "adx_length",
+            "adx_threshold"
+          ]
+        ]
+      }
+    },
+    "optimization_schema": {
+      "parameters": {
+        "bb_length": {
+          "min": 15,
+          "max": 30,
+          "default": 20
+        },
+        "bb_std": {
+          "min": 1.5,
+          "max": 2.5,
+          "default": 2
+        },
+        "rsi_length": {
+          "min": 10,
+          "max": 20,
+          "default": 14
+        },
+        "adx_length": {
+          "min": 10,
+          "max": 20,
+          "default": 14
+        },
+        "adx_threshold": {
+          "min": 15,
+          "max": 30,
+          "default": 20
+        },
+        "stop_loss": {
+          "min": 0.005,
+          "max": 0.013,
+          "default": 0.02
+        }
+      },
+      "correlated_groups": [
+        [
+          "bb_length",
+          "bb_std",
+          "stop_loss",
+          "rsi_length",
+          "adx_length",
+          "adx_threshold"
+        ]
+      ]
+    },
+    "created_at": "2026-01-19 01:24:41"
+  },
+  {
+    "name": "ema_macd_volume",
+    "description": "EMA + MACD + Volume combo for trend confirmation with volume filter",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "params": {
+            "length": 20
+          }
+        },
+        {
+          "type": "macd",
+          "params": {
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          }
+        },
+        {
+          "type": "volume_sma",
+          "alias": "vol_avg",
+          "params": {
+            "length": 20
+          }
+        }
+      ],
+      "entry_logic": "(close > EMA_20) & (MACD_macd > MACD_signal) & (volume > vol_avg)",
+      "exit_logic": "(MACD_macd < MACD_signal) | (close < EMA_20)",
+      "stop_loss": 0.02
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema_length": {
+          "min": 10,
+          "max": 50,
+          "default": 20,
+          "step": 1
+        },
+        "macd_fast": {
+          "min": 8,
+          "max": 15,
+          "default": 12,
+          "step": 1
+        },
+        "macd_slow": {
+          "min": 20,
+          "max": 30,
+          "default": 26,
+          "step": 1
+        },
+        "macd_signal": {
+          "min": 5,
+          "max": 12,
+          "default": 9,
+          "step": 1
+        },
+        "volume_length": {
+          "min": 10,
+          "max": 30,
+          "default": 20,
+          "step": 1
+        },
+        "stop_loss": {
+          "min": 0.005,
+          "max": 0.13,
+          "default": 0.02,
+          "step": 0.002
+        }
+      },
+      "correlated_groups": [
+        [
+          "macd_fast",
+          "macd_slow",
+          "macd_signal",
+          "stop_loss"
+        ],
+        [
+          "ema_length"
+        ],
+        [
+          "volume_length"
+        ]
+      ]
+    },
+    "created_at": "2026-01-19 01:24:41"
+  },
+  {
+    "name": "ema_rsi",
+    "description": "EMA + RSI combo for trend following with momentum confirmation",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "fast",
+          "params": {
+            "length": 9
+          }
+        },
+        {
+          "type": "ema",
+          "alias": "slow",
+          "params": {
+            "length": 21
+          }
+        },
+        {
+          "type": "rsi",
+          "params": {
+            "length": 14
+          }
+        }
+      ],
+      "entry_logic": "(close > fast) & (close > slow) & (RSI_14 > 30) & (RSI_14 < 50)",
+      "exit_logic": "(RSI_14 > 70) | (close < fast)",
+      "stop_loss": 0.015
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema_fast": {
+          "min": 5,
+          "max": 20,
+          "default": 9
+        },
+        "ema_slow": {
+          "min": 15,
+          "max": 50,
+          "default": 21
+        },
+        "rsi_period": {
+          "min": 7,
+          "max": 21,
+          "default": 14
+        },
+        "rsi_min": {
+          "min": 20,
+          "max": 40,
+          "default": 30
+        },
+        "rsi_max": {
+          "min": 60,
+          "max": 80,
+          "default": 50
+        },
+        "stop_loss": {
+          "min": 0.01,
+          "max": 0.05,
+          "default": 0.015
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema_fast",
+          "ema_slow",
+          "stop_loss"
+        ],
+        [
+          "rsi_period",
+          "rsi_min",
+          "rsi_max"
+        ]
+      ]
+    },
+    "created_at": "2026-01-19 01:24:41"
+  },
+  {
+    "name": "ema_rsi_fibonacci",
+    "description": "EMA + RSI + Fibonacci for trend following with retracement entries",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "trend",
+          "params": {
+            "length": 200
+          }
+        },
+        {
+          "type": "rsi",
+          "params": {
+            "length": 14
+          }
+        }
+      ],
+      "entry_logic": "(close > trend) & (RSI_14 > 40) & (RSI_14 < 60)",
+      "exit_logic": "(RSI_14 > 70) | (close < trend)",
+      "stop_loss": 0.02
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema_length": {
+          "min": 100,
+          "max": 300,
+          "default": 200
+        },
+        "rsi_length": {
+          "min": 10,
+          "max": 20,
+          "default": 14
+        },
+        "fib_lookback": {
+          "min": 30,
+          "max": 100,
+          "default": 50
+        },
+        "fib_tolerance": {
+          "min": 0.01,
+          "max": 0.05,
+          "default": 0.02
+        },
+        "stop_loss": {
+          "min": 0.01,
+          "max": 0.03,
+          "default": 0.02
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema_length",
+          "stop_loss"
+        ],
+        [
+          "rsi_length"
+        ],
+        [
+          "fib_lookback"
+        ],
+        [
+          "fib_tolerance"
+        ]
+      ]
+    },
+    "created_at": "2026-01-19 01:24:41"
+  },
+  {
+    "name": "multi_ma_crossover",
+    "description": "Triple Moving Average Crossover Strategy - Classic trend following with three averages",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "short",
+          "params": {
+            "length": 9
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "medium",
+          "params": {
+            "length": 21
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "long",
+          "params": {
+            "length": 50
+          }
+        }
+      ],
+      "entry_logic": "(crossover(short, long) | crossover(short, medium)) & (short > long)",
+      "exit_logic": "crossunder(short, medium)",
+      "stop_loss": 0.0
+    },
+    "optimization_schema": {
+      "parameters": {
+        "sma_medium": {
+          "min": 10,
+          "max": 40,
+          "default": 21,
+          "step": 1
+        },
+        "sma_long": {
+          "min": 20,
+          "max": 100,
+          "default": 50,
+          "step": 1
+        },
+        "stop_loss": {
+          "min": 0.005,
+          "max": 0.13,
+          "default": 0,
+          "step": 0.002
+        },
+        "ema_short": {
+          "min": 3,
+          "max": 20,
+          "default": 9,
+          "step": 1
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema_short",
+          "sma_medium",
+          "sma_long",
+          "stop_loss"
+        ]
+      ]
+    },
+    "created_at": "2026-01-19 01:24:41"
+  },
+  {
+    "name": "multi_ma_crossoverV2",
+    "description": "BTC MEDIAS (FINAL - trend filter fixo). EMA curta + SMA inter + SMA longa. Entrada: (crossover short/long ou short/medium) e tendência alta (short > long). Saída: crossunder(short, long). Stop % configurável.",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "short",
+          "params": {
+            "length": 18
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "medium",
+          "params": {
+            "length": 20
+          }
+        },
+        {
+          "type": "sma",
+          "alias": "long",
+          "params": {
+            "length": 35
+          }
+        }
+      ],
+      "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+      "exit_logic": "crossunder(short, long)",
+      "stop_loss": 0.042
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema_short": {
+          "min": 3,
+          "max": 20,
+          "default": 18
+        },
+        "sma_medium": {
+          "min": 10,
+          "max": 40,
+          "default": 20
+        },
+        "sma_long": {
+          "min": 20,
+          "max": 100,
+          "default": 35
+        },
+        "stop_loss": {
+          "min": 0.005,
+          "max": 0.13,
+          "default": 0.042
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema_short",
+          "sma_medium",
+          "sma_long",
+          "stop_loss"
+        ]
+      ]
+    },
+    "created_at": null
+  },
+  {
+    "name": "short_ema200_pullback",
+    "description": "BTC Short Swing – EMA200 Pullback (Stop %). Short-only: bearish trend (close < EMA200), pullback to EMA21/50 (tolerance 1%), RSI 45–70, rejection candle (shooting star / bearish engulfing / strong bearish). Exit: stop % or trend/RSI reversal.",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "ema21",
+          "params": {
+            "length": 21
+          }
+        },
+        {
+          "type": "ema",
+          "alias": "ema50",
+          "params": {
+            "length": 50
+          }
+        },
+        {
+          "type": "ema",
+          "alias": "ema200",
+          "params": {
+            "length": 200
+          }
+        },
+        {
+          "type": "rsi",
+          "params": {
+            "length": 14
+          }
+        }
+      ],
+      "entry_logic": "(close < ema200) & ( ((close - ema21).abs() / ema21 * 100 <= 1.0) | ((high >= ema21) & (low <= ema21)) | ((close - ema50).abs() / ema50 * 100 <= 1.0) | ((high >= ema50) & (low <= ema50)) ) & (RSI_14 >= 45) & (RSI_14 <= 70) & ((high - low) > 0) & (   ( ((high - (open + close + (open - close).abs()) / 2) >= (close - open).abs() * 2) & (close < open) & (close < (low + (high - low) * 0.5)) )   | ( (close < open) & (open >= close.shift(1)) & (close <= open.shift(1)) )   | ( (close < open) & ((open - close) >= (high - low) * 0.5) ) )",
+      "exit_logic": "(close > ema200) | (RSI_14 < 45)",
+      "stop_loss": 0.06
+    },
+    "optimization_schema": {
+      "parameters": {
+        "ema_ema21": {
+          "min": 14,
+          "max": 30,
+          "default": 21
+        },
+        "ema_ema50": {
+          "min": 40,
+          "max": 70,
+          "default": 50
+        },
+        "ema_ema200": {
+          "min": 150,
+          "max": 250,
+          "default": 200
+        },
+        "rsi_length": {
+          "min": 10,
+          "max": 18,
+          "default": 14
+        },
+        "stop_loss": {
+          "min": 0.03,
+          "max": 0.1,
+          "default": 0.06
+        }
+      },
+      "correlated_groups": [
+        [
+          "ema_ema21",
+          "ema_ema50",
+          "ema_ema200",
+          "rsi_length",
+          "stop_loss"
+        ]
+      ]
+    },
+    "created_at": null
+  },
+  {
+    "name": "volume_atr_breakout",
+    "description": "Volume + ATR Breakout strategy for volatility-based entries",
+    "is_example": false,
+    "is_prebuilt": true,
+    "is_readonly": false,
+    "template_data": {
+      "indicators": [
+        {
+          "type": "volume_sma",
+          "alias": "vol_avg",
+          "params": {
+            "length": 20
+          }
+        },
+        {
+          "type": "atr",
+          "params": {
+            "length": 14
+          }
+        }
+      ],
+      "entry_logic": "(volume > vol_avg * 1.5) & (close > close.shift(1) + ATR_14 * 0.5)",
+      "exit_logic": "close < (close.shift(1) - ATR_14 * 0.3)",
+      "stop_loss": 0.025
+    },
+    "optimization_schema": {
+      "parameters": {
+        "volume_length": {
+          "min": 10,
+          "max": 30,
+          "default": 20
+        },
+        "volume_multiplier": {
+          "min": 1.2,
+          "max": 2.0,
+          "default": 1.5
+        },
+        "atr_length": {
+          "min": 10,
+          "max": 20,
+          "default": 14
+        },
+        "atr_entry_mult": {
+          "min": 0.3,
+          "max": 1.0,
+          "default": 0.5
+        },
+        "atr_exit_mult": {
+          "min": 0.2,
+          "max": 0.5,
+          "default": 0.3
+        },
+        "stop_loss": {
+          "min": 0.015,
+          "max": 0.04,
+          "default": 0.025
+        }
+      },
+      "correlated_groups": [
+        [
+          "atr_length",
+          "atr_entry_mult",
+          "atr_exit_mult",
+          "stop_loss"
+        ],
+        [
+          "volume_length"
+        ],
+        [
+          "volume_multiplier"
+        ]
+      ]
+    },
+    "created_at": "2026-01-19 01:24:41"
+  }
+]
