@@ -5,6 +5,7 @@ import {
     ArrowLeft, Search, CheckCircle, BarChart3,
     Sliders
 } from 'lucide-react'
+import { API_BASE_URL } from '../lib/apiBase'
 
 // Mock Data (Replace with API fetch)
 const TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
@@ -24,7 +25,7 @@ export function ComboOptimizePage() {
 
     // Fetch templates on load
     useEffect(() => {
-        fetch('http://localhost:8000/api/combos/templates')
+        fetch(`${API_BASE_URL}/combos/templates`)
             .then(res => res.json())
             .then(data => {
                 const all = [
@@ -40,7 +41,7 @@ export function ComboOptimizePage() {
     useEffect(() => {
         if (!selectedTemplate) return
 
-        fetch(`http://localhost:8000/api/combos/templates/${selectedTemplate}/metadata`)
+        fetch(`${API_BASE_URL}/combos/templates/${selectedTemplate}/metadata`)
             .then(res => res.json())
             .then(data => {
                 // Extract params for optimization
@@ -86,7 +87,7 @@ export function ComboOptimizePage() {
         })
 
         try {
-            const res = await fetch('http://localhost:8000/api/combos/optimize', {
+            const res = await fetch(`${API_BASE_URL}/combos/optimize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

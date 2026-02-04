@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Star, Download } from 'lucide-react'
 import { CandlestickChart } from '../components/CandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
+import { API_BASE_URL } from '../lib/apiBase'
 
 interface BacktestResult {
     template_name: string
@@ -51,7 +52,7 @@ export function ComboResultsPage() {
         console.log('📤 handleSaveFavorite chamado com:', data)
 
         try {
-            const response = await fetch('http://localhost:8000/api/favorites', {
+            const response = await fetch(`${API_BASE_URL}/favorites`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -123,7 +124,7 @@ export function ComboResultsPage() {
                 };
             });
 
-            const response = await fetch('http://localhost:8000/api/combos/export-trades', {
+            const response = await fetch(`${API_BASE_URL}/combos/export-trades`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

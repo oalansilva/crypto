@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Trash2, Search, List, ChevronDown, Activity, BarChart3 } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { API_BASE_URL } from '../lib/apiBase';
 
 import * as XLSX from 'xlsx';
 
@@ -45,7 +46,7 @@ const FavoritesDashboard: React.FC = () => {
     const { data: favorites, isLoading } = useQuery({
         queryKey: ['favorites'],
         queryFn: async () => {
-            const res = await fetch('http://localhost:8000/api/favorites/');
+            const res = await fetch(`${API_BASE_URL}/favorites/`);
             if (!res.ok) throw new Error('Failed to fetch favorites');
             const data = await res.json() as FavoriteStrategy[];
             console.log('📥 Loaded favorites:', data);
@@ -59,7 +60,7 @@ const FavoritesDashboard: React.FC = () => {
     // Delete mutation
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
-            const res = await fetch(`http://localhost:8000/api/favorites/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/favorites/${id}`, {
                 method: 'DELETE'
             });
             if (!res.ok) throw new Error('Failed to delete');
@@ -73,7 +74,7 @@ const FavoritesDashboard: React.FC = () => {
     // Update tier mutation
     const updateTierMutation = useMutation({
         mutationFn: async ({ id, tier }: { id: number; tier: number | null }) => {
-            const res = await fetch(`http://localhost:8000/api/favorites/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/favorites/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tier })
@@ -108,7 +109,7 @@ const FavoritesDashboard: React.FC = () => {
         setLoadingBacktestId(fav.id);
         try {
             // Executar backtest com os parâmetros do favorito
-            const response = await fetch('http://localhost:8000/api/combos/backtest', {
+            const response = await fetch(`${API_BASE_URL}/combos/backtest`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

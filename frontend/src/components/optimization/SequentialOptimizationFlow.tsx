@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ParameterConfigScreen from './ParameterConfigScreen';
 import SequentialOptimizationWizard from './SequentialOptimizationWizard';
+import { API_BASE_URL } from '../../lib/apiBase';
 
 interface SequentialOptimizationFlowProps {
     symbol: string;
@@ -22,7 +23,7 @@ const SequentialOptimizationFlow: React.FC<SequentialOptimizationFlowProps> = ({
     const handleStartOptimization = async (config: any) => {
         try {
             // Start optimization
-            const response = await fetch('http://localhost:8000/api/optimize/sequential/start', {
+            const response = await fetch(`${API_BASE_URL}/optimize/sequential/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)

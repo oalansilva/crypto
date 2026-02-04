@@ -82,7 +82,7 @@ export function ComboSelectPage() {
         e.stopPropagation()
         if (window.confirm(`Are you sure you want to delete "${templateName}"? This cannot be undone.`)) {
             try {
-                const response = await fetch(`http://localhost:8000/api/combos/meta/${templateName}`, {
+                const response = await fetch(`${API_BASE_URL}/combos/meta/${templateName}`, {
                     method: 'DELETE'
                 })
                 if (response.ok) {
@@ -104,7 +104,7 @@ export function ComboSelectPage() {
 
         setCloning(true)
         try {
-            const response = await fetch(`http://localhost:8000/api/combos/meta/${templateToClone}/clone`, {
+            const response = await fetch(`${API_BASE_URL}/combos/meta/${templateToClone}/clone`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ new_name: newTemplateName })

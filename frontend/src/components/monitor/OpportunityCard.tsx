@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Target, Activity, Settings } from "lucide-react";
+import { API_BASE_URL } from '../../lib/apiBase';
 
 import type { Opportunity } from './types';
 
@@ -294,7 +295,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                                         onClick={async () => {
                                             try {
                                                 setIsSavingNotes(true);
-                                                const res = await fetch(`http://localhost:8000/api/favorites/${opportunity.id}`, {
+                                                const res = await fetch(`${API_BASE_URL}/favorites/${opportunity.id}`, {
                                                     method: 'PATCH',
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify({ notes: notesValue }),

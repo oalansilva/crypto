@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Settings, Save, ArrowLeft, AlertTriangle, Check, Code, Type } from 'lucide-react'
 import Editor from '@monaco-editor/react'
+import { API_BASE_URL } from '../lib/apiBase'
 
 interface ParamConfig {
     min: number
@@ -66,7 +67,7 @@ export function ComboEditPage() {
 
     const fetchMetadata = async () => {
         try {
-            const response = await fetch(`http://localhost:8000/api/combos/meta/${templateName}`)
+            const response = await fetch(`${API_BASE_URL}/combos/meta/${templateName}`)
             if (!response.ok) throw new Error('Failed to fetch template')
 
             const data = await response.json()
@@ -150,7 +151,7 @@ export function ComboEditPage() {
                 }
             }
 
-            const response = await fetch(`http://localhost:8000/api/combos/meta/${templateName}`, {
+            const response = await fetch(`${API_BASE_URL}/combos/meta/${templateName}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

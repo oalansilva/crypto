@@ -43,6 +43,87 @@ from app.database import Base, engine
 # Import models to register them with Base
 import app.models
 
+def seed_combo_templates_if_empty():
+    """Seed combo_templates from JSON export if the table is empty."""
+    import json
+    from pathlib import Path
+    from app.database import DB_PATH
+    import sqlite3
+    
+    json_path = Path(__file__).parent.parent / "config" / "combo_templates_export.json"
+    if not json_path.exists():
+        logger.warning(f"combo_templates_export.json not found at {json_path}")
+        return
+    
+    conn = sqlite3.connect(str(DB_PATH))
+    cur = conn.cursor()
+    
+    # Check if table has any rows
+    cur.execute("SELECT COUNT(*) FROM combo_templates")
+    count = cur.fetchone()[0]
+    
+    if count > 0:
+        logger.info(f"combo_templates already has {count} templates, skipping seed")
+        conn.close()
+        return
+    
+    logger.info("combo_templates is empty, seeding from JSON export...")
+    
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+        inserted = 0
+        
+        for item in data:
+            name = item.get("name")
+            if not name:
+                continue
+            
+            description = item.get("description") or ""
+            is_prebuilt = 1 if item.get("is_prebuilt") else 0
+            is_example = 1 if item.get("is_example") else 0
+            is_readonly = 1 if item.get("is_readonly") else 0
+            template_data = item.get("template_data") or {}
+            optimization_schema = item.get("optimization_schema")
+            created_at = item.get("created_at")
+            
+            if created_at:
+                cur.execute(
+                    """
+                    INSERT INTO combo_templates (
+                        name, description, is_prebuilt, is_example, is_readonly,
+                        template_data, optimization_schema, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    """,
+                    (
+                        name, description, is_prebuilt, is_example, is_readonly,
+                        json.dumps(template_data, ensure_ascii=False),
+                        json.dumps(optimization_schema, ensure_ascii=False) if optimization_schema else None,
+                        created_at,
+                    ),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO combo_templates (
+                        name, description, is_prebuilt, is_example, is_readonly,
+                        template_data, optimization_schema
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        name, description, is_prebuilt, is_example, is_readonly,
+                        json.dumps(template_data, ensure_ascii=False),
+                        json.dumps(optimization_schema, ensure_ascii=False) if optimization_schema else None,
+                    ),
+                )
+            inserted += 1
+        
+        conn.commit()
+        logger.info(f"Seeded {inserted} combo_templates from JSON export")
+    except Exception as e:
+        logger.error(f"Error seeding combo_templates: {e}")
+    finally:
+        conn.close()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize DB
@@ -50,6 +131,9 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database initialized successfully.")
+        
+        # Seed combo_templates if empty
+        seed_combo_templates_if_empty()
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
     yield

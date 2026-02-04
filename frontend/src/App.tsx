@@ -76,6 +76,8 @@ function App() {
           <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/combo/select" element={<ComboSelectPage />} />
+          {/* Backward-compat route (old link/bookmark) */}
+          <Route path="/combo/selectCrypto" element={<ComboSelectPage />} />
           <Route path="/combo/edit/:templateName" element={<ComboEditPage />} />
           <Route path="/combo/configure" element={<ComboConfigurePage />} />
           <Route path="/combo/optimize" element={<ComboOptimizePage />} />

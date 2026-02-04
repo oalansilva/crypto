@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search, Pause, Square } from 'lucide-react'
+import { API_BASE_URL } from '../lib/apiBase'
 
 interface TemplateMetadata {
     name: string
@@ -70,7 +71,7 @@ export function ComboConfigurePage() {
     const { data: symbolsData } = useQuery({
         queryKey: ['binance-symbols'],
         queryFn: async () => {
-            const response = await fetch('http://localhost:8000/api/exchanges/binance/symbols');
+            const response = await fetch(`${API_BASE_URL}/exchanges/binance/symbols`);
             if (!response.ok) {
                 throw new Error('Failed to fetch symbols');
             }
@@ -98,7 +99,7 @@ export function ComboConfigurePage() {
 
     const fetchMetadata = async () => {
         try {
-            const response = await fetch(`http://localhost:8000/api/combos/meta/${templateName}`)
+            const response = await fetch(`${API_BASE_URL}/combos/meta/${templateName}`)
             const data = await response.json()
             setMetadata(data)
 
@@ -197,7 +198,7 @@ export function ComboConfigurePage() {
         if (!batchJobId || batchPauseCancelRequested) return
         setBatchPauseCancelRequested(true)
         try {
-            const res = await fetch(`http://localhost:8000/api/combos/backtest/batch/${batchJobId}/pause`, { method: 'POST' })
+            const res = await fetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/pause`, { method: 'POST' })
             if (!res.ok) setBatchPauseCancelRequested(false)
         } catch {
             setBatchPauseCancelRequested(false)
@@ -208,7 +209,7 @@ export function ComboConfigurePage() {
         if (!batchJobId || batchPauseCancelRequested) return
         setBatchPauseCancelRequested(true)
         try {
-            const res = await fetch(`http://localhost:8000/api/combos/backtest/batch/${batchJobId}/cancel`, { method: 'POST' })
+            const res = await fetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/cancel`, { method: 'POST' })
             if (!res.ok) setBatchPauseCancelRequested(false)
         } catch {
             setBatchPauseCancelRequested(false)
@@ -235,7 +236,7 @@ export function ComboConfigurePage() {
         if (symbolsToRun.length === 1) {
             setRunning(true)
             try {
-                const existsUrl = new URL('http://localhost:8000/api/favorites/exists')
+                const existsUrl = new URL(`${API_BASE_URL}/favorites/exists`)
                 existsUrl.searchParams.set('strategy_name', templateName)
                 existsUrl.searchParams.set('symbol', symbolsToRun[0])
                 existsUrl.searchParams.set('timeframe', timeframe)
@@ -250,7 +251,7 @@ export function ComboConfigurePage() {
                         return
                     }
                 }
-                const res = await fetch('http://localhost:8000/api/combos/optimize', {
+                const res = await fetch(`${API_BASE_URL}/combos/optimize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -272,7 +273,7 @@ export function ComboConfigurePage() {
                 const name = `${result.template_name} - ${result.symbol} ${result.timeframe} (${new Date().toLocaleTimeString()})`
                 const baseParams = result.best_parameters ?? result.parameters ?? {}
                 const parameters = { ...baseParams, direction }
-                const favRes = await fetch('http://localhost:8000/api/favorites/', {
+                const favRes = await fetch(`${API_BASE_URL}/favorites/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -309,7 +310,7 @@ export function ComboConfigurePage() {
         setClientElapsedSec(0)
         batchStartTimeRef.current = Date.now()
         try {
-            const res = await fetch('http://localhost:8000/api/combos/backtest/batch', {
+            const res = await fetch(`${API_BASE_URL}/combos/backtest/batch`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -341,7 +342,7 @@ export function ComboConfigurePage() {
         if (!batchJobId) return
         const poll = async () => {
             try {
-                const res = await fetch(`http://localhost:8000/api/combos/backtest/batch/${batchJobId}`)
+                const res = await fetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}`)
                 if (!res.ok) return
                 const data = await res.json()
                 setBatchProgress(data)

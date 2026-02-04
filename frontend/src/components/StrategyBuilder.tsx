@@ -7,6 +7,7 @@ import {
     BarChart2, Zap, Layout, Code, Save, Trash2,
     HelpCircle, Filter
 } from 'lucide-react'
+import { API_BASE_URL } from '../lib/apiBase'
 
 // --- Interfaces ---
 interface IndicatorParam {
@@ -65,7 +66,7 @@ export function StrategyBuilder({ onSave, onCancel }: StrategyBuilderProps) {
     const { data: indicators = [], isLoading } = useQuery<IndicatorMetadata[]>({
         queryKey: ['indicators-metadata'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:8000/api/strategies/metadata')
+            const res = await axios.get(`${API_BASE_URL}/strategies/metadata`)
             // API returns: { "category1": [...], "category2": [...] }
             // Transform to flat array: [...]
             const grouped = res.data

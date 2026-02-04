@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipForward, X, CheckCircle, Clock, TrendingUp, TrendingDown } from 'lucide-react';
+import { API_BASE_URL, WS_BASE_URL } from '../../lib/apiBase';
 
 interface OptimizationWizardProps {
     jobId: string;
@@ -62,7 +63,7 @@ const SequentialOptimizationWizard: React.FC<OptimizationWizardProps> = ({
 
     // WebSocket connection
     useEffect(() => {
-        const ws = new WebSocket(`ws://localhost:8000/api/optimize/sequential/ws/${jobId}`);
+        const ws = new WebSocket(`${WS_BASE_URL}/optimize/sequential/ws/${jobId}`);
         wsRef.current = ws;
 
         ws.onopen = () => {
@@ -173,7 +174,7 @@ const SequentialOptimizationWizard: React.FC<OptimizationWizardProps> = ({
 
     const handlePause = async () => {
         try {
-            await fetch(`http://localhost:8000/api/optimize/sequential/pause/${jobId}`, {
+            await fetch(`${API_BASE_URL}/optimize/sequential/pause/${jobId}`, {
                 method: 'POST'
             });
         } catch (error) {
@@ -183,7 +184,7 @@ const SequentialOptimizationWizard: React.FC<OptimizationWizardProps> = ({
 
     const handleResume = async () => {
         try {
-            await fetch(`http://localhost:8000/api/optimize/sequential/resume/${jobId}`, {
+            await fetch(`${API_BASE_URL}/optimize/sequential/resume/${jobId}`, {
                 method: 'POST'
             });
         } catch (error) {
@@ -193,7 +194,7 @@ const SequentialOptimizationWizard: React.FC<OptimizationWizardProps> = ({
 
     const handleSkip = async () => {
         try {
-            await fetch(`http://localhost:8000/api/optimize/sequential/skip/${jobId}/stage/${currentStage}`, {
+            await fetch(`${API_BASE_URL}/optimize/sequential/skip/${jobId}/stage/${currentStage}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ default_value: null })
@@ -205,7 +206,7 @@ const SequentialOptimizationWizard: React.FC<OptimizationWizardProps> = ({
 
     const handleCancel = async () => {
         try {
-            await fetch(`http://localhost:8000/api/optimize/sequential/cancel/${jobId}`, {
+            await fetch(`${API_BASE_URL}/optimize/sequential/cancel/${jobId}`, {
                 method: 'DELETE'
             });
             onCancel();
