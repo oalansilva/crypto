@@ -11,6 +11,7 @@ interface SaveFavoriteModalProps {
         parameters: Record<string, any>
         metrics: {
             total_return: number
+            total_return_pct?: number
             win_rate: number
             total_trades: number
             max_drawdown?: number

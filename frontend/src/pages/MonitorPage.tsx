@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import type { Opportunity } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { RefreshCw, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
@@ -34,7 +34,8 @@ export const MonitorPage: React.FC = () => {
                 apiTier = tierParam;  // '1', '2', '3'
             }
             
-            const url = `http://localhost:8000/api/opportunities/?tier=${encodeURIComponent(apiTier)}`;
+            const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8003/api";
+            const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch opportunities');
             const data = await response.json();
@@ -200,7 +201,7 @@ export const MonitorPage: React.FC = () => {
                         )}
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => fetchOpportunities()} disabled={loading}>
+                        <Button variant="secondary" onClick={() => fetchOpportunities()} disabled={loading}>
                             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
@@ -267,7 +268,7 @@ export const MonitorPage: React.FC = () => {
             ) : opportunities.length === 0 && !loading ? (
                 <div className="text-center py-20 space-y-4">
                     <p className="text-muted-foreground">No favorites found. Star some strategies in the Backtester to see them here!</p>
-                    <Button variant="outline" onClick={() => window.location.href = '/'}>
+                    <Button variant="secondary" onClick={() => window.location.href = '/'}>
                         Go to Backtester
                     </Button>
                 </div>

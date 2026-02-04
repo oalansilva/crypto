@@ -677,8 +677,9 @@ const FavoritesDashboard: React.FC = () => {
                                         })
                                     )}
                                     {!isLoading && filteredFavorites.length > 0 && hasMore && (
-                                        <tr ref={sentinelRef}>
+                                        <tr>
                                             <td colSpan={21} className="p-6 text-center text-gray-500 text-sm">
+                                                <div ref={sentinelRef} />
                                                 <span className="animate-pulse">Carregando mais…</span>
                                             </td>
                                         </tr>

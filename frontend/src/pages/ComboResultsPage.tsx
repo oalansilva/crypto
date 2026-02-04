@@ -25,6 +25,9 @@ interface BacktestResult {
         exit_price?: number
         profit?: number
         type?: string
+        pnl?: number
+        initial_capital?: number
+        final_capital?: number
     }>
     indicator_data: Record<string, number[]>
     candles: Array<{
