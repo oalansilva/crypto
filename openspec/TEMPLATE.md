@@ -57,11 +57,23 @@ updated_at: <auto>
 - DB:
 - Migrations:
 
-# 7) Acceptance criteria (Definition of Done)
+# 7) VALIDATE (mandatory)
+
+Before implementation, complete this checklist:
+
+- [ ] Scope is unambiguous (in-scope/out-of-scope are explicit)
+- [ ] Acceptance criteria are testable (binary pass/fail)
+- [ ] API/contracts are specified (request/response/error) when applicable
+- [ ] UX states covered (loading/empty/error)
+- [ ] Security considerations noted (auth/exposure) when applicable
+- [ ] Test plan includes manual smoke + at least one automated check
+- [ ] Open questions resolved or explicitly tracked
+
+# 8) Acceptance criteria (Definition of Done)
 
 - [ ] 
 
-# 8) Test plan
+# 9) Test plan
 
 ## Automated
 - 
