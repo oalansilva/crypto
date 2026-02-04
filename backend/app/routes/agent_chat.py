@@ -97,15 +97,28 @@ def _build_prompt(fav: FavoriteStrategy, user_msg: str) -> str:
 
 
 async def _run_openclaw_agent(session_id: str, message: str, thinking: str, timeout_s: int = 180) -> Dict[str, Any]:
-    """Call OpenClaw via CLI and return parsed JSON."""
+    """Call OpenClaw via CLI and return parsed JSON.
+
+    Notes:
+    - If AGENT_CHAT_TO is set, we use --to to ensure the gateway can derive a session key.
+      Some deployments may not route properly with only --session-id.
+    """
+
+    agent_chat_to = os.getenv("AGENT_CHAT_TO")
 
     cmd = [
         "openclaw",
         "agent",
         "--agent",
         "main",
-        "--session-id",
-        session_id,
+    ]
+
+    if agent_chat_to:
+        cmd += ["--to", agent_chat_to]
+    else:
+        cmd += ["--session-id", session_id]
+
+    cmd += [
         "--channel",
         "last",
         "--message",
