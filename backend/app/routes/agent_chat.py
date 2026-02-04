@@ -161,26 +161,43 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
 
     # Robustly extract assistant text from OpenClaw CLI JSON.
     # Different OpenClaw versions/providers may shape payloads differently.
+    def _collect_text(x: Any, out: list[str]) -> None:
+        if x is None:
+            return
+        if isinstance(x, str):
+            if x.strip():
+                out.append(x.strip())
+            return
+        if isinstance(x, dict):
+            # Prefer explicit common keys first
+            for k in ("text", "content", "message", "output_text"):
+                if k in x and isinstance(x[k], str) and x[k].strip():
+                    out.append(x[k].strip())
+                    # don't early-return; there may be more text nested
+            # Traverse other fields
+            for v in x.values():
+                _collect_text(v, out)
+            return
+        if isinstance(x, (list, tuple)):
+            for it in x:
+                _collect_text(it, out)
+            return
+
     reply_parts: list[str] = []
     if isinstance(payloads, list):
         for p in payloads:
-            if not isinstance(p, dict):
-                continue
-            # common keys
-            for k in ("text", "content", "message"):
-                v = p.get(k)
-                if isinstance(v, str) and v.strip():
-                    reply_parts.append(v.strip())
-                    break
-            # nested content patterns
-            if not reply_parts:
-                v = p.get("data")
-                if isinstance(v, dict):
-                    t = v.get("text") or v.get("content")
-                    if isinstance(t, str) and t.strip():
-                        reply_parts.append(t.strip())
+            _collect_text(p, reply_parts)
 
-    reply = "\n\n".join(reply_parts).strip()
+    # De-dup while preserving order
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for t in reply_parts:
+        if t in seen:
+            continue
+        seen.add(t)
+        deduped.append(t)
+
+    reply = "\n\n".join(deduped).strip()
 
     # final fallbacks
     if not reply:
