@@ -16,6 +16,7 @@ from app.api import router
 from app.routes.favorites import router as favorites_router
 from app.routes.combo_routes import router as combo_router
 from app.routes.opportunity_routes import router as opportunity_router
+from app.routes.logs import router as logs_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -163,6 +164,7 @@ app.include_router(router)
 app.include_router(favorites_router)
 app.include_router(combo_router)
 app.include_router(opportunity_router)
+app.include_router(logs_router)
 
 @app.get("/")
 async def root():

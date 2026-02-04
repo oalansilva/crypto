@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search, Pause, Square } from 'lucide-react'
 import { API_BASE_URL } from '../lib/apiBase'
+import { BackendLogViewer } from '../components/BackendLogViewer'
 
 interface TemplateMetadata {
     name: string
@@ -32,6 +33,7 @@ export function ComboConfigurePage() {
     const [deepBacktest, setDeepBacktest] = useState(true)
     const [direction, setDirection] = useState<'long' | 'short'>('long')
     const [logs, setLogs] = useState<string[]>([])
+    const [logViewerOpen, setLogViewerOpen] = useState(false)
 
     // Período: últimos 6 meses / 2 anos / todo o histórico
     type PeriodKey = '6m' | '2y' | 'all'
@@ -857,6 +859,15 @@ export function ComboConfigurePage() {
                                     </>
                                 )}
                             </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setLogViewerOpen(true)}
+                                className="bg-white/5 hover:bg-white/10 text-gray-200 px-4 py-3 rounded-xl border border-white/10 transition-colors"
+                                title="Ver logs do backend (últimas linhas)"
+                            >
+                                Ver logs
+                            </button>
                         </div>
 
                         {batchRunning && (
@@ -934,6 +945,14 @@ export function ComboConfigurePage() {
                     </div>
                 </div>
             </main>
+
+            <BackendLogViewer
+                open={logViewerOpen}
+                onClose={() => setLogViewerOpen(false)}
+                name="full_execution_log"
+                lines={400}
+                pollMs={2000}
+            />
         </div>
     )
 }

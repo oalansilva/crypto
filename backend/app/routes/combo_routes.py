@@ -488,7 +488,11 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
         if direction not in ("long", "short"):
             direction = "long"
         logger.info(f"Optimization direction: {direction} (template: {request.template_name})")
-        result = optimizer.run_optimization(
+        # Run optimization in a worker thread so the API can keep responding (e.g. log tailing)
+        import asyncio
+
+        result = await asyncio.to_thread(
+            optimizer.run_optimization,
             template_name=request.template_name,
             symbol=request.symbol,
             timeframe=request.timeframe,
