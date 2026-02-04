@@ -36,6 +36,10 @@ def _enabled() -> bool:
     return os.getenv("AGENT_CHAT_ENABLED", "0") in ("1", "true", "yes", "on")
 
 
+def _debug_enabled() -> bool:
+    return os.getenv("AGENT_CHAT_DEBUG", "0") in ("1", "true", "yes", "on")
+
+
 # Per-conversation lock to avoid OpenClaw session file lock issues.
 _LOCKS: Dict[str, asyncio.Lock] = {}
 
@@ -60,6 +64,7 @@ class AgentChatResponse(BaseModel):
     provider: Optional[str] = None
     usage: Optional[Dict[str, Any]] = None
     duration_ms: Optional[int] = None
+    debug: Optional[Dict[str, Any]] = None
 
 
 def _build_prompt(fav: FavoriteStrategy, user_msg: str) -> str:
@@ -210,6 +215,18 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
     agent_meta = (((result.get("meta") or {}).get("agentMeta")) or {})
     usage = agent_meta.get("usage")
 
+    debug: Optional[Dict[str, Any]] = None
+    if _debug_enabled():
+        # keep small + safe
+        debug = {
+            "topLevelKeys": sorted(list(result.keys())),
+            "metaKeys": sorted(list((result.get("meta") or {}).keys())),
+            "payloadsCount": len(payloads) if isinstance(payloads, list) else None,
+            "agentMeta": agent_meta or None,
+            # include a compact preview to figure out where the text lives
+            "payloadsPreview": payloads[:2] if isinstance(payloads, list) else payloads,
+        }
+
     return AgentChatResponse(
         conversation_id=conversation_id,
         reply=reply,
@@ -217,4 +234,5 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
         provider=agent_meta.get("provider"),
         usage=usage,
         duration_ms=(result.get("meta") or {}).get("durationMs"),
+        debug=debug,
     )
