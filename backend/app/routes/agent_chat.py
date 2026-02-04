@@ -158,9 +158,37 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
         result = await _run_openclaw_agent(session_id=session_id, message=prompt, thinking=req.thinking)
 
     payloads = result.get("payloads") or []
-    reply = ""
-    if payloads and isinstance(payloads, list) and isinstance(payloads[0], dict):
-        reply = str(payloads[0].get("text") or "")
+
+    # Robustly extract assistant text from OpenClaw CLI JSON.
+    # Different OpenClaw versions/providers may shape payloads differently.
+    reply_parts: list[str] = []
+    if isinstance(payloads, list):
+        for p in payloads:
+            if not isinstance(p, dict):
+                continue
+            # common keys
+            for k in ("text", "content", "message"):
+                v = p.get(k)
+                if isinstance(v, str) and v.strip():
+                    reply_parts.append(v.strip())
+                    break
+            # nested content patterns
+            if not reply_parts:
+                v = p.get("data")
+                if isinstance(v, dict):
+                    t = v.get("text") or v.get("content")
+                    if isinstance(t, str) and t.strip():
+                        reply_parts.append(t.strip())
+
+    reply = "\n\n".join(reply_parts).strip()
+
+    # final fallbacks
+    if not reply:
+        for k in ("reply", "text", "output"):
+            v = result.get(k)
+            if isinstance(v, str) and v.strip():
+                reply = v.strip()
+                break
 
     agent_meta = (((result.get("meta") or {}).get("agentMeta")) or {})
     usage = agent_meta.get("usage")
