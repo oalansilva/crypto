@@ -1,0 +1,98 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '@/lib/apiBase';
+
+const LabPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [symbol, setSymbol] = useState('BTC/USDT');
+  const [timeframe, setTimeframe] = useState('1d');
+  const [baseTemplate, setBaseTemplate] = useState('multi_ma_crossover');
+  const [objective, setObjective] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol,
+          timeframe,
+          base_template: baseTemplate,
+          direction: 'long',
+          constraints: { max_drawdown: 0.2, min_sharpe: 0.4 },
+          objective: objective || null,
+          thinking: 'low',
+          deep_backtest: true,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(String(data?.detail || `HTTP ${res.status}`));
+      }
+      const runId = String(data.run_id || '').trim();
+      if (!runId) throw new Error('run_id vazio');
+      navigate(`/lab/runs/${runId}`);
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao iniciar run');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white p-6">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Strategy Lab</h1>
+          <a href="/favorites" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">voltar</a>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-gray-400">Symbol</label>
+              <input value={symbol} onChange={(e) => setSymbol(e.target.value)} className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400">Timeframe</label>
+              <input value={timeframe} onChange={(e) => setTimeframe(e.target.value)} className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400">Template base</label>
+              <input value={baseTemplate} onChange={(e) => setBaseTemplate(e.target.value)} className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-400">Objetivo (opcional)</label>
+            <textarea value={objective} onChange={(e) => setObjective(e.target.value)} rows={3} className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" placeholder="Ex.: melhorar robustez em bear mantendo DD < 20%" />
+          </div>
+
+          {error ? (
+            <div className="text-sm text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg p-3">Erro: {error}</div>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              onClick={run}
+              disabled={busy}
+              className="px-5 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-bold disabled:opacity-50"
+            >
+              {busy ? 'Rodando…' : 'Run Lab'}
+            </button>
+          </div>
+
+          <div className="text-xs text-gray-500">
+            CP1: apenas cria run_id + polling. Sem LangGraph ainda.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LabPage;

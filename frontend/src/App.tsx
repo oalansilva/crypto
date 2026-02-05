@@ -9,6 +9,8 @@ import { ComboOptimizePage } from './pages/ComboOptimizePage'
 import { ComboEditPage } from './pages/ComboEditPage'
 import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
+import LabPage from './pages/LabPage'
+import LabRunPage from './pages/LabRunPage'
 import { Sparkles } from 'lucide-react'
 import { Toaster } from "@/components/ui/toaster"
 
@@ -86,6 +88,8 @@ function App() {
           <Route path="/combo/results" element={<ComboResultsPage />} />
           <Route path="/openspec" element={<OpenSpecListPage />} />
           <Route path="/openspec/:id" element={<OpenSpecDetailPage />} />
+          <Route path="/lab" element={<LabPage />} />
+          <Route path="/lab/runs/:runId" element={<LabRunPage />} />
         </Route>
       </Routes>
       <Toaster />

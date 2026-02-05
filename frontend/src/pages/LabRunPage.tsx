@@ -1,0 +1,84 @@
+import React, { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { API_BASE_URL } from '@/lib/apiBase';
+
+type RunStatus = {
+  run_id: string;
+  status: string;
+  step?: string | null;
+  created_at_ms: number;
+  updated_at_ms: number;
+  trace: { viewer_url: string; api_url: string };
+};
+
+const LabRunPage: React.FC = () => {
+  const { runId } = useParams();
+  const id = (runId || '').trim();
+  const [data, setData] = useState<RunStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+
+    const tick = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}`);
+        const j = (await res.json().catch(() => null)) as any;
+        if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
+        if (!alive) return;
+        setData(j as RunStatus);
+        setError(null);
+      } catch (e: any) {
+        if (!alive) return;
+        setError(e?.message || 'Falha ao carregar');
+      }
+    };
+
+    tick();
+    const t = setInterval(tick, 2000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [id]);
+
+  return (
+    <div className="min-h-screen bg-black text-white p-6">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="text-xs text-gray-400">Lab run</div>
+            <div className="font-mono text-sm text-gray-200">{id}</div>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link to="/lab" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">novo run</Link>
+            <a href="/favorites" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">favorites</a>
+          </div>
+        </div>
+
+        {error ? (
+          <div className="text-sm text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg p-3">Erro: {error}</div>
+        ) : null}
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+          <div className="text-sm">
+            <span className="text-gray-400">status:</span> <span className="font-semibold">{data?.status || '…'}</span>
+          </div>
+          <div className="text-sm">
+            <span className="text-gray-400">step:</span> <span className="font-mono">{data?.step || '-'}</span>
+          </div>
+          <div className="text-xs text-gray-500">Polling a cada 2s (CP1)</div>
+
+          {data?.trace?.api_url ? (
+            <div className="text-xs text-gray-400">
+              API: <span className="font-mono">{data.trace.api_url}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LabRunPage;

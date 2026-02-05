@@ -19,6 +19,7 @@ from app.routes.opportunity_routes import router as opportunity_router
 from app.routes.logs import router as logs_router
 from app.routes.agent_chat import router as agent_chat_router
 from app.routes.openspec import router as openspec_router
+from app.routes.lab import router as lab_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -169,6 +170,7 @@ app.include_router(opportunity_router)
 app.include_router(logs_router)
 app.include_router(agent_chat_router)
 app.include_router(openspec_router)
+app.include_router(lab_router)
 
 @app.get("/")
 async def root():
