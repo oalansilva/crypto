@@ -481,11 +481,12 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
             "session_key": session_key,
             "thinking": thinking,
             "context": context,
+            "deps": deps,
             "budget": budget,
             "outputs": outputs,
         }
 
-        state_out = graph.invoke(state_in, {"deps": deps})
+        state_out = graph.invoke(state_in)
         budget = state_out.get("budget") or budget
         outputs = state_out.get("outputs") or outputs
 

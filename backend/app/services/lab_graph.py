@@ -31,6 +31,9 @@ class LabGraphState(TypedDict, total=False):
     thinking: str
     context: Dict[str, Any]
 
+    # runtime deps (in-process only)
+    deps: Any
+
     budget: Dict[str, Any]
     outputs: Dict[str, Any]
 
@@ -45,8 +48,8 @@ class LabGraphDeps:
 
 
 def _node_factory(*, persona: str, system_prompt: str, output_key: str):
-    def _node(state: LabGraphState, config: Dict[str, Any]) -> LabGraphState:
-        deps: LabGraphDeps = (config or {}).get("deps")
+    def _node(state: LabGraphState) -> LabGraphState:
+        deps: LabGraphDeps = state.get("deps")
         if deps is None:
             raise RuntimeError("missing deps")
 
