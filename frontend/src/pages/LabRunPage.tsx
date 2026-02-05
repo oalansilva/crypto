@@ -199,6 +199,13 @@ const LabRunPage: React.FC = () => {
                 </div>
               </div>
             ) : null}
+            {data.outputs.selection ? (
+              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <div className="text-xs text-gray-400">Selection gate (CP10)</div>
+                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{JSON.stringify(data.outputs.selection, null, 2)}</pre>
+              </div>
+            ) : null}
+
             {data.outputs.validator_verdict ? (
               <div>
                 <div className="text-xs text-gray-400">Validator</div>

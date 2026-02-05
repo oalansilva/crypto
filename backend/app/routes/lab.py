@@ -118,6 +118,9 @@ class LabRunOutputs(BaseModel):
     dev_summary: Optional[str] = None
     validator_verdict: Optional[str] = None
 
+    # CP10 selection gate summary
+    selection: Optional[Dict[str, Any]] = None
+
     # CP8
     candidate_template_name: Optional[str] = None
 
@@ -471,11 +474,70 @@ def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict
         return outputs
 
 
+def _cp10_selection_gate(run: Dict[str, Any]) -> Dict[str, Any]:
+    """CP10: deterministic approval gate based on holdout metrics.
+
+    This gate is evaluated before autosave.
+    """
+
+    inp = run.get("input") or {}
+    constraints = inp.get("constraints") or {}
+    max_dd = constraints.get("max_drawdown")
+    min_sharpe = constraints.get("min_sharpe")
+
+    backtest = run.get("backtest") or {}
+    wf = backtest.get("walk_forward") or {}
+    hold = (wf.get("holdout") or {}).get("metrics") or {}
+
+    total_trades = hold.get("total_trades")
+    sharpe = hold.get("sharpe_ratio")
+    dd = hold.get("max_drawdown")
+    # Some parts store pct; accept both
+    dd_pct = hold.get("max_drawdown_pct")
+
+    reasons: list[str] = []
+
+    # Minimum trades on holdout (default 10)
+    min_holdout_trades = int(constraints.get("min_holdout_trades") or 10)
+    if not isinstance(total_trades, (int, float)) or int(total_trades) < min_holdout_trades:
+        reasons.append(f"holdout_total_trades<{min_holdout_trades} ({total_trades})")
+
+    if min_sharpe is not None:
+        try:
+            if sharpe is None or float(sharpe) < float(min_sharpe):
+                reasons.append(f"holdout_sharpe<{min_sharpe} ({sharpe})")
+        except Exception:
+            reasons.append("holdout_sharpe_invalid")
+
+    if max_dd is not None:
+        # compare against decimal dd if available else pct
+        try:
+            if dd is not None:
+                if float(dd) > float(max_dd):
+                    reasons.append(f"holdout_max_drawdown>{max_dd} ({dd})")
+            elif dd_pct is not None:
+                if float(dd_pct) / 100.0 > float(max_dd):
+                    reasons.append(f"holdout_max_drawdown_pct>{max_dd} ({dd_pct})")
+        except Exception:
+            reasons.append("holdout_max_drawdown_invalid")
+
+    return {
+        "approved": len(reasons) == 0,
+        "reasons": reasons,
+        "min_holdout_trades": min_holdout_trades,
+        "holdout": {"total_trades": total_trades, "sharpe_ratio": sharpe, "max_drawdown": dd, "max_drawdown_pct": dd_pct},
+    }
+
+
 def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[str, Any]) -> Dict[str, Any]:
-    """CP5: autosave (template + favorite) only when validator says approved."""
+    """CP5/CP10: autosave (template + favorite) only when validator says approved AND selection gate passes."""
 
     verdict = _verdict_label(outputs.get("validator_verdict"))
+    selection = outputs.get("selection") or {}
     if verdict != "approved":
+        return outputs
+    if not selection or not selection.get("approved"):
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "autosave_blocked", "data": {"reason": "selection_gate", "selection": selection}})
         return outputs
 
     try:
@@ -486,22 +548,26 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
         inp = run.get("input") or {}
         backtest = run.get("backtest") or {}
         base_template = str(inp.get("base_template") or backtest.get("template") or "")
+        # CP10: if we have a candidate template, autosave should be based on it.
+        candidate_template = outputs.get("candidate_template_name")
+        template_to_save = str(candidate_template or base_template)
+
         symbol = str(backtest.get("symbol") or inp.get("symbol") or "")
         timeframe = str(backtest.get("timeframe") or inp.get("timeframe") or "")
 
         combo = ComboService()
 
-        # CP6 guardrail: max 4 indicators
-        base_meta = combo.get_template_metadata(base_template)
+        # Guardrail: max 4 indicators
+        base_meta = combo.get_template_metadata(template_to_save)
         inds = (base_meta or {}).get("indicators") or []
         if len(inds) > 4:
             raise RuntimeError(f"template has too many indicators (max 4): {len(inds)}")
 
-        new_name = _make_autosave_name(run_id=run_id, base_template=base_template, symbol=symbol, timeframe=timeframe)
+        new_name = _make_autosave_name(run_id=run_id, base_template=template_to_save, symbol=symbol, timeframe=timeframe)
         new_name = _ensure_unique_template_name(combo, new_name)
 
         # Clone template
-        cloned = combo.clone_template(template_name=base_template, new_name=new_name)
+        cloned = combo.clone_template(template_name=template_to_save, new_name=new_name)
         if not cloned:
             raise RuntimeError("failed to clone template")
 
@@ -628,7 +694,14 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
     if outputs.get("coordinator_summary") and outputs.get("dev_summary"):
         outputs = _cp8_save_candidate_template(run_id, run, outputs)
 
-    # CP5: autosave only if approved
+    # CP10: deterministic selection gate (holdout-based)
+    if outputs.get("coordinator_summary") and outputs.get("validator_verdict"):
+        sel = _cp10_selection_gate(run)
+        outputs["selection"] = sel
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
+        _update_run_json(run_id, {"outputs": outputs})
+
+    # CP5/CP10: autosave only if approved
     if outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"):
         outputs = _cp5_autosave_if_approved(run_id, run, outputs)
 
