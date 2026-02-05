@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { API_BASE_URL } from '@/lib/apiBase';
 
@@ -21,6 +21,52 @@ type RunStatus = {
   budget?: any;
   outputs?: any;
   needs_user_confirm?: boolean;
+};
+
+const fmtPct = (v: any) => {
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return '-';
+  const n = Number(v);
+  return `${(n * 100).toFixed(2)}%`;
+};
+
+const fmtNum = (v: any, digits = 2) => {
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return '-';
+  return Number(v).toFixed(digits);
+};
+
+const MetricCard: React.FC<{ title: string; subtitle?: string; metrics?: any }> = ({ title, subtitle, metrics }) => {
+  const m = metrics || {};
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold">{title}</div>
+          {subtitle ? <div className="text-[11px] text-gray-500 mt-0.5">{subtitle}</div> : null}
+        </div>
+        <div className="text-xs text-gray-400">trades: <span className="font-mono text-gray-200">{m.total_trades ?? '-'}</span></div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div>
+          <div className="text-[10px] text-gray-500">return</div>
+          <div className="text-sm font-mono">{m.total_return_pct != null ? `${fmtNum(m.total_return_pct)}%` : (m.total_return != null ? fmtPct(m.total_return) : '-')}</div>
+        </div>
+        <div>
+          <div className="text-[10px] text-gray-500">max DD</div>
+          <div className="text-sm font-mono">
+            {m.max_drawdown_pct != null ? `${fmtNum(m.max_drawdown_pct)}%` : (m.max_drawdown != null ? `${fmtNum(m.max_drawdown)}${m.max_drawdown > 1.5 ? '%' : ''}` : '-')}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] text-gray-500">sharpe</div>
+          <div className="text-sm font-mono">{m.sharpe_ratio != null ? fmtNum(m.sharpe_ratio) : '-'}</div>
+        </div>
+        <div>
+          <div className="text-[10px] text-gray-500">profit factor</div>
+          <div className="text-sm font-mono">{m.profit_factor != null ? fmtNum(m.profit_factor) : '-'}</div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const LabRunPage: React.FC = () => {
@@ -71,9 +117,24 @@ const LabRunPage: React.FC = () => {
     }
   };
 
+  const selection = data?.outputs?.selection;
+  const gateApproved = selection?.approved === true;
+
+  const wf = useMemo(() => {
+    const bt = data?.backtest;
+    const w = bt?.walk_forward;
+    return {
+      all: bt?.metrics,
+      inSample: w?.in_sample?.metrics,
+      holdout: w?.holdout?.metrics,
+      inSampleRange: w?.in_sample ? `${w.in_sample.since} → ${w.in_sample.until}` : undefined,
+      holdoutRange: w?.holdout ? `${w.holdout.since} → ${w.holdout.until}` : undefined,
+    };
+  }, [data?.backtest]);
+
   return (
     <div className="min-h-screen bg-black text-white p-6">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="text-xs text-gray-400">Lab run</div>
@@ -90,103 +151,125 @@ const LabRunPage: React.FC = () => {
           <div className="text-sm text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg p-3">Erro: {error}</div>
         ) : null}
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
-          <div className="text-sm">
-            <span className="text-gray-400">status:</span> <span className="font-semibold">{data?.status || '…'}</span>
-          </div>
-          <div className="text-sm">
-            <span className="text-gray-400">step:</span> <span className="font-mono">{data?.step || '-'}</span>
-          </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+              <div className="text-xs text-gray-400">Status</div>
+              <div className="mt-1 flex items-center gap-3">
+                <div className="text-sm font-semibold">{data?.status || '…'}</div>
+                <div className="text-xs text-gray-400">step: <span className="font-mono text-gray-200">{data?.step || '-'}</span></div>
+                {selection ? (
+                  <div className={`text-xs px-2 py-1 rounded-full border ${gateApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-red-500/40 bg-red-500/10 text-red-200'}`}>
+                    gate: {gateApproved ? 'approved' : 'blocked'}
+                  </div>
+                ) : null}
+              </div>
 
-          {data?.budget ? (
-            <div className="text-xs text-gray-400 font-mono whitespace-pre-wrap">
-              budget: {JSON.stringify(data.budget)}
-            </div>
-          ) : null}
-
-          {data?.needs_user_confirm ? (
-            <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3">
-              <div className="text-sm text-yellow-200 font-semibold">Limite atingido — confirmar para continuar</div>
-              <div className="text-xs text-yellow-200/80 mt-1">Continuar adiciona +3 turns e +15000 tokens.</div>
-              <button
-                onClick={continueRun}
-                disabled={continuing}
-                className="mt-3 px-4 py-2 rounded-lg bg-yellow-500 text-black text-sm font-bold disabled:opacity-50"
-              >
-                {continuing ? 'Continuando…' : 'Continuar'}
-              </button>
-            </div>
-          ) : null}
-
-          <div className="text-xs text-gray-500">Polling a cada 2s</div>
-
-          {data?.backtest_job?.job_id ? (
-            <div className="text-xs text-gray-400">
-              Job: <span className="font-mono">{data.backtest_job.job_id}</span>
-              {data.backtest_job.status ? (
-                <span className="ml-2">status: <span className="font-mono">{data.backtest_job.status}</span></span>
+              {data?.backtest ? (
+                <div className="mt-2 text-xs text-gray-400">
+                  {data.backtest.symbol} • {data.backtest.timeframe} • template <span className="font-mono text-gray-200">{data.backtest.template}</span>
+                </div>
               ) : null}
-              {data.backtest_job.progress ? (
-                <span className="ml-2">step: <span className="font-mono">{data.backtest_job.progress.step}</span> ({data.backtest_job.progress.pct}%)</span>
-              ) : null}
-              <a
-                className="ml-2 text-gray-300 hover:text-white underline underline-offset-4"
-                href={`${API_BASE_URL}/lab/jobs/${encodeURIComponent(data.backtest_job.job_id)}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                ver JSON
-              </a>
-            </div>
-          ) : null}
 
-          {data?.trace?.api_url ? (
-            <div className="text-xs text-gray-400">
-              API: <span className="font-mono">{data.trace.api_url}</span>
+              <div className="mt-2 text-[10px] text-gray-500">Polling a cada 2s</div>
+
+              {data?.needs_user_confirm ? (
+                <div className="mt-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3">
+                  <div className="text-sm text-yellow-200 font-semibold">Limite atingido — confirmar para continuar</div>
+                  <div className="text-xs text-yellow-200/80 mt-1">Continuar adiciona +3 turns e +15000 tokens.</div>
+                  <button
+                    onClick={continueRun}
+                    disabled={continuing}
+                    className="mt-3 px-4 py-2 rounded-lg bg-yellow-500 text-black text-sm font-bold disabled:opacity-50"
+                  >
+                    {continuing ? 'Continuando…' : 'Continuar'}
+                  </button>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+
+            <div className="text-xs text-gray-400 space-y-2">
+              {data?.backtest_job?.job_id ? (
+                <div>
+                  <div>
+                    Job: <span className="font-mono text-gray-200">{data.backtest_job.job_id}</span>
+                    {data.backtest_job.status ? (
+                      <span className="ml-2">status: <span className="font-mono text-gray-200">{data.backtest_job.status}</span></span>
+                    ) : null}
+                  </div>
+                  {data.backtest_job.progress ? (
+                    <div className="mt-1">
+                      step: <span className="font-mono text-gray-200">{data.backtest_job.progress.step}</span> ({data.backtest_job.progress.pct}%)
+                      <div className="mt-1 h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-2 bg-white/40" style={{ width: `${Math.min(100, Math.max(0, Number(data.backtest_job.progress.pct) || 0))}%` }} />
+                      </div>
+                    </div>
+                  ) : null}
+                  <a
+                    className="inline-block mt-2 text-gray-300 hover:text-white underline underline-offset-4"
+                    href={`${API_BASE_URL}/lab/jobs/${encodeURIComponent(data.backtest_job.job_id)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ver JSON do job
+                  </a>
+                </div>
+              ) : null}
+
+              {data?.budget ? (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-gray-300 hover:text-white">budget</summary>
+                  <pre className="mt-2 text-[11px] text-gray-300 font-mono whitespace-pre-wrap">{JSON.stringify(data.budget, null, 2)}</pre>
+                </details>
+              ) : null}
+
+              {data?.trace?.api_url ? (
+                <div className="text-[11px] text-gray-500">
+                  API: <span className="font-mono">{data.trace.api_url}</span>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         {data?.backtest ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-sm font-semibold mb-3">Backtest (CP6: walk-forward 70/30)</div>
-            <div className="text-xs text-gray-400 font-mono whitespace-pre-wrap">
-              {JSON.stringify(
-                {
-                  symbol: data.backtest.symbol,
-                  timeframe: data.backtest.timeframe,
-                  template: data.backtest.template,
-                  deep_backtest: data.backtest.deep_backtest,
-                  candles_all: data.backtest.candles,
-                  metrics_all: data.backtest.metrics,
-                  in_sample: data.backtest.walk_forward?.in_sample,
-                  holdout: data.backtest.walk_forward?.holdout,
-                },
-                null,
-                2
-              )}
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <div className="text-sm font-semibold">Backtest</div>
+                <div className="text-xs text-gray-500">CP6: walk-forward 70/30 (IS vs Holdout)</div>
+              </div>
+              <div className="text-xs text-gray-400">candles: <span className="font-mono text-gray-200">{data.backtest.candles ?? '-'}</span></div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <MetricCard title="ALL" metrics={wf.all} />
+              <MetricCard title="IN-SAMPLE" subtitle={wf.inSampleRange} metrics={wf.inSample} />
+              <MetricCard title="HOLDOUT" subtitle={wf.holdoutRange} metrics={wf.holdout} />
+            </div>
+
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm text-gray-300 hover:text-white">ver JSON completo</summary>
+              <pre className="mt-3 text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                {JSON.stringify(data.backtest, null, 2)}
+              </pre>
+            </details>
           </div>
         ) : null}
 
         {data?.outputs ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
-            <div className="text-sm font-semibold">Personas (CP4)</div>
-            {data.outputs.coordinator_summary ? (
-              <div>
-                <div className="text-xs text-gray-400">Coordinator</div>
-                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.coordinator_summary}</pre>
-              </div>
-            ) : null}
-            {data.outputs.dev_summary ? (
-              <div>
-                <div className="text-xs text-gray-400">Dev</div>
-                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.dev_summary}</pre>
-              </div>
-            ) : null}
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="text-sm font-semibold">Decisão (personas + gate)</div>
+              {selection ? (
+                <div className={`text-xs px-2 py-1 rounded-full border ${gateApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-red-500/40 bg-red-500/10 text-red-200'}`}>
+                  {gateApproved ? 'APROVADO (gate)' : 'REJEITADO (gate)'}
+                </div>
+              ) : null}
+            </div>
 
             {data.outputs.candidate_template_name ? (
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-3 mb-3">
                 <div className="text-xs text-gray-400">Candidate template (CP8)</div>
                 <div className="mt-1 flex items-center gap-3">
                   <div className="text-xs text-gray-200 font-mono break-all">{data.outputs.candidate_template_name}</div>
@@ -199,19 +282,38 @@ const LabRunPage: React.FC = () => {
                 </div>
               </div>
             ) : null}
-            {data.outputs.selection ? (
+
+            {selection ? (
               <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                <div className="text-xs text-gray-400">Selection gate (CP10)</div>
-                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{JSON.stringify(data.outputs.selection, null, 2)}</pre>
+                <div className="text-xs text-gray-400">Selection gate (CP10) — motivos</div>
+                {selection.approved ? (
+                  <div className="text-sm text-emerald-200">Passou no gate.</div>
+                ) : (
+                  <ul className="mt-2 list-disc pl-5 text-sm text-gray-200 space-y-1">
+                    {(selection.reasons || []).map((r: string) => (
+                      <li key={r} className="font-mono text-xs">{r}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ) : null}
 
-            {data.outputs.validator_verdict ? (
-              <div>
-                <div className="text-xs text-gray-400">Validator</div>
-                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.validator_verdict}</pre>
-              </div>
-            ) : null}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <details className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <summary className="cursor-pointer text-xs text-gray-300 hover:text-white">Coordinator</summary>
+                <pre className="mt-2 text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.coordinator_summary || '—'}</pre>
+              </details>
+              <details className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <summary className="cursor-pointer text-xs text-gray-300 hover:text-white">Dev</summary>
+                <pre className="mt-2 text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.dev_summary || '—'}</pre>
+              </details>
+            </div>
+
+            <details className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3">
+              <summary className="cursor-pointer text-xs text-gray-300 hover:text-white">Validator (texto completo)</summary>
+              <pre className="mt-2 text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.validator_verdict || '—'}</pre>
+            </details>
+
             {!data.outputs.coordinator_summary && !data.outputs.dev_summary && !data.outputs.validator_verdict ? (
               <div className="text-sm text-gray-400">Aguardando execução das personas…</div>
             ) : null}
@@ -219,32 +321,36 @@ const LabRunPage: React.FC = () => {
         ) : null}
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold">Trace (CP2)</div>
-            <div className="text-xs text-gray-500">
-              {data?.trace_events?.length ? `${data.trace_events.length} eventos` : 'sem eventos'}
-            </div>
-          </div>
+          <details>
+            <summary className="cursor-pointer flex items-center justify-between">
+              <span className="text-sm font-semibold">Trace (CP2)</span>
+              <span className="text-xs text-gray-500">
+                {data?.trace_events?.length ? `${data.trace_events.length} eventos` : 'sem eventos'}
+              </span>
+            </summary>
 
-          {data?.trace_events?.length ? (
-            <div className="space-y-3">
-              {data.trace_events.slice().reverse().map((ev, idx) => (
-                <div key={`${ev.ts_ms}-${idx}`} className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-xs text-gray-300 font-mono">{ev.type}</div>
-                    <div className="text-[10px] text-gray-500 font-mono">{new Date(ev.ts_ms).toISOString()}</div>
-                  </div>
-                  {ev.data ? (
-                    <pre className="mt-2 text-xs text-gray-200 whitespace-pre-wrap font-mono">
-                      {JSON.stringify(ev.data, null, 2)}
-                    </pre>
-                  ) : null}
+            <div className="mt-4">
+              {data?.trace_events?.length ? (
+                <div className="space-y-3">
+                  {data.trace_events.slice().reverse().map((ev, idx) => (
+                    <div key={`${ev.ts_ms}-${idx}`} className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs text-gray-300 font-mono">{ev.type}</div>
+                        <div className="text-[10px] text-gray-500 font-mono">{new Date(ev.ts_ms).toISOString()}</div>
+                      </div>
+                      {ev.data ? (
+                        <pre className="mt-2 text-xs text-gray-200 whitespace-pre-wrap font-mono">
+                          {JSON.stringify(ev.data, null, 2)}
+                        </pre>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="text-sm text-gray-400">Nenhum evento de trace ainda.</div>
+              )}
             </div>
-          ) : (
-            <div className="text-sm text-gray-400">Nenhum evento de trace ainda.</div>
-          )}
+          </details>
         </div>
       </div>
     </div>
