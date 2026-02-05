@@ -47,6 +47,7 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 - Endpoints no backend para:
   - criar uma requisição de "lab run"
   - executar um fluxo LangGraph **no mesmo processo do backend (FastAPI)**
+  - **rodar backtests via o backtest assíncrono existente** (jobs/status/result), sem bloquear o request principal
   - persistir resultados:
     - salvar automaticamente um combo_template (com novo nome)
     - salvar automaticamente uma FavoriteStrategy vinculada ao run
@@ -66,7 +67,7 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 - Criar classes novas de estratégia em Python (v1 foca em **usar/modificar templates**; ajustes pontuais no motor são permitidos via guardrails)
 - Multi-tenant / autenticação avançada
 - Otimização avançada (grid grande / BO) além de poucos candidatos
-- Fila de jobs longos + streaming de progresso (v1 pode ser síncrono)
+- Streaming avançado (SSE/WebSocket) além do que já existe
 
 # 3) User stories
 
@@ -76,6 +77,10 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 # 4) UX / UI
 
 ## Rota: `/lab`
+
+- A execução do Lab deve ser assíncrona do ponto de vista do frontend:
+  - `POST /api/lab/run` retorna `accepted` + `run_id`
+  - UI faz polling em `GET /api/lab/runs/{run_id}` até finalizar
 
 - Inputs:
   - Symbol (dropdown)
@@ -123,28 +128,11 @@ Request:
 }
 ```
 
-Response (success):
+Response (accepted):
 ```json
 {
   "run_id": "...",
-  "status": "ok",
-  "coordinator_summary": "...",
-  "validator": { "verdict": "approved", "notes": "..." },
-  "dev": { "changes": "..." },
-  "saved": {
-    "template_name": "lab_multi_ma_crossover_sol_1d_20260205",
-    "favorite_id": 123
-  },
-  "backtest": {
-    "metrics": { "sharpe_ratio": 0.5, "max_drawdown": 0.18 }
-  },
-  "budget": {
-    "turns_used": 7,
-    "turns_max": 12,
-    "tokens_total": 10301,
-    "tokens_max": 60000,
-    "on_limit": "ask_user"
-  },
+  "status": "accepted",
   "trace": {
     "viewer_url": "http://31.97.92.212:5173/lab/runs/...",
     "api_url": "/api/lab/runs/..."
@@ -152,9 +140,29 @@ Response (success):
 }
 ```
 
+O frontend acompanha o progresso consultando o run (inclui status dos backtests assíncronos).
+
 Response (error):
 - 4xx: erro de validação
 - 5xx: erro de execução do grafo/backtest/salvamento
+
+### GET /api/lab/runs/{run_id}
+
+Retorna o estado atual do run, incluindo o estado dos backtests assíncronos.
+
+Response (example):
+```json
+{
+  "run_id": "...",
+  "status": "running",
+  "step": "backtest",
+  "backtests": [
+    { "candidate": 1, "job_run_id": "...", "status": "RUNNING", "progress": 0.4 }
+  ],
+  "budget": { "turns_used": 5, "turns_max": 12, "tokens_total": 25000, "tokens_max": 60000, "on_limit": "ask_user" },
+  "trace": { "viewer_url": "..." }
+}
+```
 
 ## OpenClaw / LLM
 
