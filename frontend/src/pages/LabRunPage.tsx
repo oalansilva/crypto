@@ -17,6 +17,9 @@ type RunStatus = {
   trace: { viewer_url: string; api_url: string };
   trace_events?: TraceEvent[];
   backtest?: any;
+  budget?: any;
+  outputs?: any;
+  needs_user_confirm?: boolean;
 };
 
 const LabRunPage: React.FC = () => {
@@ -24,6 +27,7 @@ const LabRunPage: React.FC = () => {
   const id = (runId || '').trim();
   const [data, setData] = useState<RunStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [continuing, setContinuing] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -51,6 +55,21 @@ const LabRunPage: React.FC = () => {
     };
   }, [id]);
 
+  const continueRun = async () => {
+    if (!id) return;
+    setContinuing(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/continue`, { method: 'POST' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
+      // polling will refresh
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao continuar');
+    } finally {
+      setContinuing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-3xl mx-auto">
@@ -76,6 +95,27 @@ const LabRunPage: React.FC = () => {
           <div className="text-sm">
             <span className="text-gray-400">step:</span> <span className="font-mono">{data?.step || '-'}</span>
           </div>
+
+          {data?.budget ? (
+            <div className="text-xs text-gray-400 font-mono whitespace-pre-wrap">
+              budget: {JSON.stringify(data.budget)}
+            </div>
+          ) : null}
+
+          {data?.needs_user_confirm ? (
+            <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3">
+              <div className="text-sm text-yellow-200 font-semibold">Limite atingido — confirmar para continuar</div>
+              <div className="text-xs text-yellow-200/80 mt-1">Continuar adiciona +3 turns e +15000 tokens.</div>
+              <button
+                onClick={continueRun}
+                disabled={continuing}
+                className="mt-3 px-4 py-2 rounded-lg bg-yellow-500 text-black text-sm font-bold disabled:opacity-50"
+              >
+                {continuing ? 'Continuando…' : 'Continuar'}
+              </button>
+            </div>
+          ) : null}
+
           <div className="text-xs text-gray-500">Polling a cada 2s</div>
 
           {data?.trace?.api_url ? (
@@ -102,6 +142,33 @@ const LabRunPage: React.FC = () => {
                 2
               )}
             </div>
+          </div>
+        ) : null}
+
+        {data?.outputs ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+            <div className="text-sm font-semibold">Personas (CP4)</div>
+            {data.outputs.coordinator_summary ? (
+              <div>
+                <div className="text-xs text-gray-400">Coordinator</div>
+                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.coordinator_summary}</pre>
+              </div>
+            ) : null}
+            {data.outputs.dev_summary ? (
+              <div>
+                <div className="text-xs text-gray-400">Dev</div>
+                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.dev_summary}</pre>
+              </div>
+            ) : null}
+            {data.outputs.validator_verdict ? (
+              <div>
+                <div className="text-xs text-gray-400">Validator</div>
+                <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.validator_verdict}</pre>
+              </div>
+            ) : null}
+            {!data.outputs.coordinator_summary && !data.outputs.dev_summary && !data.outputs.validator_verdict ? (
+              <div className="text-sm text-gray-400">Aguardando execução das personas…</div>
+            ) : null}
           </div>
         ) : null}
 

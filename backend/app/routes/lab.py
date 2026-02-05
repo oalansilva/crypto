@@ -105,6 +105,20 @@ class LabRunTraceEvent(BaseModel):
     data: Dict[str, Any] = Field(default_factory=dict)
 
 
+class LabRunBudget(BaseModel):
+    turns_used: int = 0
+    turns_max: int = 12
+    tokens_total: int = 0
+    tokens_max: int = 60000
+    on_limit: str = "ask_user"  # ask_user
+
+
+class LabRunOutputs(BaseModel):
+    coordinator_summary: Optional[str] = None
+    dev_summary: Optional[str] = None
+    validator_verdict: Optional[str] = None
+
+
 class LabRunStatusResponse(BaseModel):
     run_id: str
     status: str
@@ -114,18 +128,31 @@ class LabRunStatusResponse(BaseModel):
     trace: Dict[str, str]
     trace_events: List[LabRunTraceEvent] = Field(default_factory=list)
 
+    budget: LabRunBudget = Field(default_factory=LabRunBudget)
+    outputs: LabRunOutputs = Field(default_factory=LabRunOutputs)
+
     # CP3: minimal backtest output for 1 candidate (no autosave yet)
     backtest: Optional[Dict[str, Any]] = None
+
+    # If we hit budget limits, the run waits for user confirmation.
+    needs_user_confirm: bool = False
+
+
+def _load_run_json(run_id: str) -> Dict[str, Any]:
+    p = _run_path(run_id)
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 def _update_run_json(run_id: str, patch: Dict[str, Any]) -> None:
     p = _run_path(run_id)
     if not p.exists():
         return
-    try:
-        cur = json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
-        cur = {}
+    cur = _load_run_json(run_id)
     cur.update(patch)
     cur["updated_at_ms"] = _now_ms()
     p.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -139,6 +166,180 @@ def _cp3_default_since(timeframe: str) -> str:
         return "2025-08-01 00:00:00"
     # Daily+: 2 years
     return "2024-01-01 00:00:00"
+
+
+def _extract_tokens_from_gateway_payload(payload: Dict[str, Any]) -> int:
+    """Best-effort token extraction from OpenClaw gateway agent payload."""
+
+    # payload: {runId,status,result:{...}}
+    res = (payload or {}).get("result") or {}
+    usage = res.get("usage") or res.get("usageSummary") or {}
+    for k in ("totalTokens", "total_tokens", "tokens_total"):
+        v = usage.get(k)
+        if isinstance(v, int):
+            return v
+    # Some providers split in/out
+    if isinstance(usage.get("inputTokens"), int) and isinstance(usage.get("outputTokens"), int):
+        return int(usage.get("inputTokens")) + int(usage.get("outputTokens"))
+    return 0
+
+
+def _persona_call_sync(*,
+                       run_id: str,
+                       session_key: str,
+                       persona: str,
+                       system_prompt: str,
+                       message: str,
+                       thinking: str,
+                       timeout_s: int = 180) -> Dict[str, Any]:
+    """Run one persona through OpenClaw gateway and trace it."""
+
+    import asyncio
+
+    from app.services.openclaw_gateway_client import run_agent_via_gateway
+
+    start = _now_ms()
+    _append_trace(run_id, {"ts_ms": start, "type": "persona_started", "data": {"persona": persona}})
+
+    payload = asyncio.run(
+        run_agent_via_gateway(
+            message=message,
+            session_key=session_key,
+            agent_id="main",
+            thinking=thinking,
+            timeout_s=timeout_s,
+            extra_system_prompt=system_prompt,
+        )
+    )
+
+    tokens = _extract_tokens_from_gateway_payload(payload)
+    end = _now_ms()
+
+    # Best-effort content extraction
+    result = (payload or {}).get("result") or {}
+    text = result.get("text") or result.get("message") or result.get("output")
+    if not isinstance(text, str):
+        text = json.dumps(result, ensure_ascii=False)[:4000]
+
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": end,
+            "type": "persona_done",
+            "data": {"persona": persona, "duration_ms": end - start, "tokens": tokens, "text": text[:2000]},
+        },
+    )
+
+    return {"text": text, "tokens": tokens, "raw": payload}
+
+
+def _budget_ok(budget: Dict[str, Any]) -> bool:
+    return int(budget.get("turns_used", 0)) < int(budget.get("turns_max", 0)) and int(budget.get("tokens_total", 0)) < int(
+        budget.get("tokens_max", 0)
+    )
+
+
+def _inc_budget(budget: Dict[str, Any], *, turns: int = 0, tokens: int = 0) -> Dict[str, Any]:
+    b = dict(budget or {})
+    b["turns_used"] = int(b.get("turns_used", 0)) + int(turns)
+    b["tokens_total"] = int(b.get("tokens_total", 0)) + int(tokens)
+    return b
+
+
+def _cp4_run_personas_if_possible(run_id: str) -> None:
+    """CP4: call 3 personas (coordinator/dev/validator) with budgets + UI confirmation."""
+
+    run = _load_run_json(run_id)
+    budget = run.get("budget") or {}
+    outputs = run.get("outputs") or {}
+
+    # If already waiting, do nothing.
+    if run.get("needs_user_confirm"):
+        return
+
+    if not _budget_ok(budget):
+        _update_run_json(run_id, {"status": "needs_user_confirm", "step": "budget", "needs_user_confirm": True})
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "budget_limit", "data": budget})
+        return
+
+    session_key = run.get("session_key") or f"lab-{run_id}"
+    thinking = (run.get("input") or {}).get("thinking") or "low"
+
+    backtest = run.get("backtest") or {}
+    objective = (run.get("input") or {}).get("objective")
+
+    context = {
+        "objective": objective,
+        "symbol": backtest.get("symbol"),
+        "timeframe": backtest.get("timeframe"),
+        "template": backtest.get("template"),
+        "metrics": (backtest.get("metrics") or {}),
+    }
+
+    # Coordinator
+    if not outputs.get("coordinator_summary") and _budget_ok(budget):
+        r = _persona_call_sync(
+            run_id=run_id,
+            session_key=session_key,
+            persona="coordinator",
+            thinking=thinking,
+            system_prompt=(
+                "Você é o Coordenador do Strategy Lab. Resuma o que foi feito e proponha próximos passos. "
+                "Responda em pt-BR, curto e objetivo."),
+            message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nEscreva um sumário do coordenador.",
+        )
+        outputs["coordinator_summary"] = r["text"]
+        budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
+
+    # Dev
+    if not outputs.get("dev_summary") and _budget_ok(budget):
+        r = _persona_call_sync(
+            run_id=run_id,
+            session_key=session_key,
+            persona="dev_senior",
+            thinking=thinking,
+            system_prompt=(
+                "Você é um Dev Sênior focado em templates/estratégias do Crypto Backtester. "
+                "Sugira melhorias de template sem quebrar o sistema. Responda em pt-BR."),
+            message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nSugira melhorias no template/parametros.\n", 
+        )
+        outputs["dev_summary"] = r["text"]
+        budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
+
+    # Validator
+    if not outputs.get("validator_verdict") and _budget_ok(budget):
+        r = _persona_call_sync(
+            run_id=run_id,
+            session_key=session_key,
+            persona="validator",
+            thinking=thinking,
+            system_prompt=(
+                "Você é um Trader/Validador. Avalie robustez e riscos (sem lookahead, custos, overfit). "
+                "Dê veredito 'approved' ou 'rejected' com motivos. Responda em pt-BR."),
+            message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nDê veredito e motivos.",
+        )
+        outputs["validator_verdict"] = r["text"]
+        budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
+
+    # Persist
+    needs_confirm = not _budget_ok(budget) and not (outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"))
+
+    patch: Dict[str, Any] = {
+        "budget": budget,
+        "outputs": outputs,
+        "session_key": session_key,
+        "needs_user_confirm": bool(needs_confirm),
+    }
+
+    if outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"):
+        patch.update({"status": "done", "step": "done", "needs_user_confirm": False})
+    elif needs_confirm:
+        patch.update({"status": "needs_user_confirm", "step": "budget"})
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "budget_limit", "data": budget})
+    else:
+        patch.update({"status": "running", "step": "personas"})
+
+    _update_run_json(run_id, patch)
 
 
 def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> None:
@@ -231,7 +432,15 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
                 },
             },
         )
-        _update_run_json(run_id, {"status": "done", "step": "done", "backtest": out})
+        _update_run_json(run_id, {"status": "running", "step": "personas", "backtest": out})
+
+        # CP4: run personas (may require OPENCLAW_GATEWAY_TOKEN configured)
+        try:
+            _cp4_run_personas_if_possible(run_id)
+        except Exception as e:
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "personas_error", "data": {"error": str(e)}})
+            # Don't fail the run hard; keep backtest available.
+            _update_run_json(run_id, {"status": "done", "step": "done"})
 
     except Exception as e:
         err_ms = _now_ms()
@@ -251,6 +460,22 @@ async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks
         "updated_at_ms": now,
         "input": req.model_dump(),
         "trace": [],
+        "session_key": f"lab-{run_id}",
+        "budget": {
+            "turns_used": 0,
+            "turns_max": 12,
+            "tokens_total": 0,
+            "tokens_max": 60000,
+            "on_limit": "ask_user",
+            "continue_turns": 3,
+            "continue_tokens": 15000,
+        },
+        "outputs": {
+            "coordinator_summary": None,
+            "dev_summary": None,
+            "validator_verdict": None,
+        },
+        "needs_user_confirm": False,
     }
 
     try:
@@ -303,5 +528,47 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
             "api_url": f"/api/lab/runs/{run_id}",
         },
         trace_events=trace_events,
+        budget=data.get("budget") or {},
+        outputs=data.get("outputs") or {},
         backtest=data.get("backtest"),
+        needs_user_confirm=bool(data.get("needs_user_confirm")),
     )
+
+
+@router.post("/runs/{run_id}/continue")
+async def continue_run(run_id: str) -> Dict[str, Any]:
+    """CP4: User-confirmed budget extension.
+
+    Strategy per Alan choice (option 2): extend by +3 turns and +15000 tokens.
+    """
+
+    p = _run_path(run_id)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="run not found")
+
+    run = _load_run_json(run_id)
+    budget = run.get("budget") or {}
+    inc_turns = int(budget.get("continue_turns", 3))
+    inc_tokens = int(budget.get("continue_tokens", 15000))
+
+    budget["turns_max"] = int(budget.get("turns_max", 0)) + inc_turns
+    budget["tokens_max"] = int(budget.get("tokens_max", 0)) + inc_tokens
+
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": _now_ms(),
+            "type": "user_continue",
+            "data": {"inc_turns": inc_turns, "inc_tokens": inc_tokens, "budget": budget},
+        },
+    )
+
+    _update_run_json(run_id, {"budget": budget, "needs_user_confirm": False, "status": "running", "step": "personas"})
+
+    # Resume personas now.
+    try:
+        _cp4_run_personas_if_possible(run_id)
+    except Exception as e:
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "personas_error", "data": {"error": str(e)}})
+
+    return {"status": "ok", "run_id": run_id, "budget": budget}
