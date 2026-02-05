@@ -190,6 +190,11 @@ class ComboStrategy:
             # Also accept C-style operators if present in templates.
             logic_expr = logic_expr.replace("&&", " and ").replace("||", " or ")
 
+            # Backward-compatible dotted indicator access:
+            # Some templates use bb.upper / bb.middle / bb.lower. Internally we materialize as
+            # bb_upper / bb_middle / bb_lower.
+            logic_expr = re.sub(r"\b([A-Za-z_][A-Za-z0-9_]*)\.(upper|middle|lower)\b", r"\1_\2", logic_expr)
+
             # Create local context with vectorized helper functions
             local_context = HELPER_FUNCTIONS.copy()
 
