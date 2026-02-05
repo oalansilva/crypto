@@ -99,6 +99,9 @@ class LabRunCreateRequest(BaseModel):
     since: Optional[str] = None
     until: Optional[str] = None
 
+    # Autonomous search limits
+    max_iterations: int = 3
+
 
 class LabRunCreateResponse(BaseModel):
     run_id: str
