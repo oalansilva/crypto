@@ -16,6 +16,7 @@ type RunStatus = {
   updated_at_ms: number;
   trace: { viewer_url: string; api_url: string };
   trace_events?: TraceEvent[];
+  backtest_job?: any;
   backtest?: any;
   budget?: any;
   outputs?: any;
@@ -118,6 +119,26 @@ const LabRunPage: React.FC = () => {
           ) : null}
 
           <div className="text-xs text-gray-500">Polling a cada 2s</div>
+
+          {data?.backtest_job?.job_id ? (
+            <div className="text-xs text-gray-400">
+              Job: <span className="font-mono">{data.backtest_job.job_id}</span>
+              {data.backtest_job.status ? (
+                <span className="ml-2">status: <span className="font-mono">{data.backtest_job.status}</span></span>
+              ) : null}
+              {data.backtest_job.progress ? (
+                <span className="ml-2">step: <span className="font-mono">{data.backtest_job.progress.step}</span> ({data.backtest_job.progress.pct}%)</span>
+              ) : null}
+              <a
+                className="ml-2 text-gray-300 hover:text-white underline underline-offset-4"
+                href={`${API_BASE_URL}/lab/jobs/${encodeURIComponent(data.backtest_job.job_id)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                ver JSON
+              </a>
+            </div>
+          ) : null}
 
           {data?.trace?.api_url ? (
             <div className="text-xs text-gray-400">

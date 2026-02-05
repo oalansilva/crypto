@@ -138,6 +138,9 @@ class LabRunStatusResponse(BaseModel):
     budget: LabRunBudget = Field(default_factory=LabRunBudget)
     outputs: LabRunOutputs = Field(default_factory=LabRunOutputs)
 
+    # CP9: job pipeline info for backtest execution
+    backtest_job: Optional[Dict[str, Any]] = None
+
     # CP3/CP6: backtest output (supports walk-forward split)
     backtest: Optional[Dict[str, Any]] = None
 
@@ -648,9 +651,12 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
 
 
 def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> None:
-    """CP3/CP6: run backtests in background and persist the result into run json.
+    """CP9: run backtests using the job pipeline (JobManager state), then persist into run json.
 
-    CP6 (option A): walk-forward split 70/30 and evaluate primarily on holdout.
+    Still executed as a background task from FastAPI, but progress/state is exposed
+    via the shared job storage (backend/data/jobs/job_<job_id>.json).
+
+    CP6: walk-forward split 70/30 and evaluate primarily on holdout.
     """
 
     start_ms = _now_ms()
@@ -668,7 +674,26 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             },
         },
     )
-    _update_run_json(run_id, {"status": "running", "step": "backtest"})
+    # CP9: create a persistent job record
+    from app.services.job_manager import JobManager
+
+    jm = JobManager()
+    job_id = jm.create_job({"kind": "lab_backtest", "run_id": run_id, "input": req_dict})
+
+    # Store job reference on the run
+    _update_run_json(
+        run_id,
+        {
+            "status": "running",
+            "step": "backtest_job",
+            "backtest_job": {
+                "job_id": job_id,
+                "status": "RUNNING",
+                "progress": {"step": "init", "pct": 0},
+            },
+        },
+    )
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "job_created", "data": {"job_id": job_id}})
 
     try:
         from app.services.combo_service import ComboService
@@ -697,6 +722,11 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             "exit_logic": meta.get("exit_logic"),
             "stop_loss": meta.get("stop_loss"),
         }
+
+        # Update job progress: loading data
+        state = jm.load_state(job_id) or {}
+        state.update({"status": "RUNNING", "progress": {"step": "load_data", "pct": 10}})
+        jm.save_state(job_id, state)
 
         loader = IncrementalLoader()
         df = loader.fetch_data(symbol=symbol, timeframe=timeframe, since_str=since_str, until_str=until_str)
@@ -732,6 +762,10 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
         params = {"direction": direction}
 
         # ALL
+        state = jm.load_state(job_id) or {}
+        state.update({"status": "RUNNING", "progress": {"step": "backtest_all", "pct": 35}})
+        jm.save_state(job_id, state)
+
         metrics_all, full_params = _run_backtest_logic(
             template_data=template_data,
             params=params,
@@ -743,6 +777,10 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
         )
 
         # In-sample
+        state = jm.load_state(job_id) or {}
+        state.update({"status": "RUNNING", "progress": {"step": "backtest_in_sample", "pct": 60}})
+        jm.save_state(job_id, state)
+
         metrics_is, _ = _run_backtest_logic(
             template_data=template_data,
             params=params,
@@ -754,6 +792,10 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
         )
 
         # Holdout
+        state = jm.load_state(job_id) or {}
+        state.update({"status": "RUNNING", "progress": {"step": "backtest_holdout", "pct": 85}})
+        jm.save_state(job_id, state)
+
         metrics_oos, _ = _run_backtest_logic(
             template_data=template_data,
             params=params,
@@ -802,7 +844,24 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
                 },
             },
         )
-        _update_run_json(run_id, {"status": "running", "step": "personas", "backtest": out})
+        # Mark job completed
+        state = jm.load_state(job_id) or {}
+        state.update({"status": "COMPLETED", "progress": {"step": "done", "pct": 100}, "final_results": out})
+        jm.save_state(job_id, state)
+
+        _update_run_json(
+            run_id,
+            {
+                "status": "running",
+                "step": "personas",
+                "backtest": out,
+                "backtest_job": {
+                    "job_id": job_id,
+                    "status": "COMPLETED",
+                    "progress": {"step": "done", "pct": 100},
+                },
+            },
+        )
 
         # CP4: run personas (may require OPENCLAW_GATEWAY_TOKEN configured)
         try:
@@ -815,7 +874,25 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
     except Exception as e:
         err_ms = _now_ms()
         _append_trace(run_id, {"ts_ms": err_ms, "type": "backtest_error", "data": {"error": str(e)}})
-        _update_run_json(run_id, {"status": "error", "step": "error", "error": str(e)})
+        try:
+            state = jm.load_state(job_id) or {}
+            state.update({"status": "ERROR", "progress": {"step": "error", "pct": 100}, "error": str(e)})
+            jm.save_state(job_id, state)
+        except Exception:
+            pass
+        _update_run_json(
+            run_id,
+            {
+                "status": "error",
+                "step": "error",
+                "error": str(e),
+                "backtest_job": {
+                    "job_id": job_id,
+                    "status": "ERROR",
+                    "progress": {"step": "error", "pct": 100},
+                },
+            },
+        )
 
 
 @router.post("/run", response_model=LabRunCreateResponse)
@@ -844,7 +921,11 @@ async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks
             "coordinator_summary": None,
             "dev_summary": None,
             "validator_verdict": None,
+            "candidate_template_name": None,
+            "saved_template_name": None,
+            "saved_favorite_id": None,
         },
+        "backtest_job": None,
         "needs_user_confirm": False,
     }
 
@@ -900,9 +981,23 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         trace_events=trace_events,
         budget=data.get("budget") or {},
         outputs=data.get("outputs") or {},
+        backtest_job=data.get("backtest_job"),
         backtest=data.get("backtest"),
         needs_user_confirm=bool(data.get("needs_user_confirm")),
     )
+
+
+@router.get("/jobs/{job_id}")
+async def get_job(job_id: str) -> Dict[str, Any]:
+    """CP9: fetch job state for a backtest job."""
+
+    from app.services.job_manager import JobManager
+
+    jm = JobManager()
+    state = jm.load_state(job_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="job not found")
+    return state
 
 
 @router.post("/runs/{run_id}/continue")
