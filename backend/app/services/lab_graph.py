@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 
 class LabGraphState(TypedDict, total=False):
@@ -44,7 +45,11 @@ class LabGraphDeps:
 
 
 def _node_factory(*, persona: str, system_prompt: str, output_key: str):
-    def _node(state: LabGraphState, deps: LabGraphDeps) -> LabGraphState:
+    def _node(state: LabGraphState, config: Dict[str, Any]) -> LabGraphState:
+        deps: LabGraphDeps = (config or {}).get("deps")
+        if deps is None:
+            raise RuntimeError("missing deps")
+
         run_id = state.get("run_id")
         budget = state.get("budget") or {}
         outputs = state.get("outputs") or {}
@@ -90,7 +95,7 @@ def _node_factory(*, persona: str, system_prompt: str, output_key: str):
     return _node
 
 
-def build_cp7_graph():
+def build_cp7_graph() -> CompiledStateGraph:
     g = StateGraph(LabGraphState)
 
     g.add_node(

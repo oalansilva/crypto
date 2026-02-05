@@ -485,7 +485,7 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
             "outputs": outputs,
         }
 
-        state_out = graph.invoke(state_in, deps)
+        state_out = graph.invoke(state_in, {"deps": deps})
         budget = state_out.get("budget") or budget
         outputs = state_out.get("outputs") or outputs
 
