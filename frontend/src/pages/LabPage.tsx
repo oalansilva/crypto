@@ -10,6 +10,7 @@ const LabPage: React.FC = () => {
 
   const [symbols, setSymbols] = useState<string[]>([]);
   const [timeframes, setTimeframes] = useState<string[]>([]);
+  const [templates, setTemplates] = useState<string[]>([]);
   const [loadingMeta, setLoadingMeta] = useState(false);
 
   useEffect(() => {
@@ -17,15 +18,25 @@ const LabPage: React.FC = () => {
     const load = async () => {
       setLoadingMeta(true);
       try {
-        const [symRes, tfRes] = await Promise.all([
+        const [symRes, tfRes, tplRes] = await Promise.all([
           fetch(`${API_BASE_URL}/exchanges/binance/symbols`),
           fetch(`${API_BASE_URL}/exchanges/binance/timeframes`),
+          fetch(`${API_BASE_URL}/combo/templates`),
         ]);
         const symJson = await symRes.json().catch(() => ({} as any));
         const tfJson = await tfRes.json().catch(() => ({} as any));
+        const tplJson = await tplRes.json().catch(() => ({} as any));
         if (!alive) return;
         if (symRes.ok) setSymbols(Array.isArray(symJson.symbols) ? symJson.symbols : []);
         if (tfRes.ok) setTimeframes(Array.isArray(tfJson.timeframes) ? tfJson.timeframes : []);
+        if (tplRes.ok) {
+          const prebuilt = (tplJson?.prebuilt || []).map((t: any) => t?.name).filter(Boolean);
+          const examples = (tplJson?.examples || []).map((t: any) => t?.name).filter(Boolean);
+          const custom = (tplJson?.custom || []).map((t: any) => t?.name).filter(Boolean);
+          const all = Array.from(new Set<string>([...prebuilt, ...examples, ...custom]));
+          all.sort();
+          setTemplates(all);
+        }
       } catch {
         // ignore; user can still type manually
       } finally {
@@ -128,7 +139,28 @@ const LabPage: React.FC = () => {
             </div>
             <div>
               <label className="text-xs text-gray-400">Template base</label>
-              <input value={baseTemplate} onChange={(e) => setBaseTemplate(e.target.value)} className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+              {templates.length ? (
+                <select
+                  value={baseTemplate}
+                  onChange={(e) => setBaseTemplate(e.target.value)}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                >
+                  {templates.map((t) => (
+                    <option key={t} value={t} className="bg-gray-900">
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={baseTemplate}
+                  onChange={(e) => setBaseTemplate(e.target.value)}
+                  className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                />
+              )}
+              <div className="text-[10px] text-gray-500 mt-1">
+                {loadingMeta ? 'carregando templates…' : templates.length ? `${templates.length} templates` : 'digite manualmente'}
+              </div>
             </div>
           </div>
 
