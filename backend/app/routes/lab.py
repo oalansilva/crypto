@@ -796,6 +796,7 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
         if direction not in ("long", "short"):
             direction = "long"
 
+        run = _load_run_json(run_id) or {}
         inp = run.get("input") or {}
         full_history = bool(inp.get("full_history", True))
         since_str = str(inp.get("since") or "").strip() or _cp3_default_since(timeframe, full_history=full_history)
