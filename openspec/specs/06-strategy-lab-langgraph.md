@@ -31,12 +31,12 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 - Sempre manter uma tag estável para rollback (ex.: `stable-2026-02-05`).
 - **Foco do Lab:** priorizar exclusivamente a criação/melhoria de estratégias e templates (backtest, validação, autosave). **Não** gastar ciclos propondo novas telas, notas, features gerais ou refactors não relacionados à estratégia.
 - **Sem lookahead/leakage:** o motor/validações devem garantir que sinais/indicadores usem apenas dados até o candle atual.
-- **Walk-forward mínimo obrigatório:** toda estratégia proposta deve ser avaliada com split temporal (ex.: 70/30) ou 3 blocos; não confiar apenas em "all".
+- **Walk-forward mínimo obrigatório:** usar split temporal **70% antigo / 30% recente**; critérios de aprovação usam principalmente o **30% mais recente** (holdout). Não confiar apenas em "all".
 - **Custos sempre ligados por padrão:** fee+slippage default (não permitir backtest "limpo" por padrão no Lab).
 - **Deep backtest obrigatório:** no Lab, sempre executar backtests com `deep_backtest=true` para que o stop considere candles de 15 minutos (consistência com o seu critério de stop).
 - **Controle de complexidade:** no máximo **4 indicadores** por template (evitar overfit e templates ilegíveis).
 - **Rate limit/limites de execução:** limitar número de candidatos/backtests por run e por janela de tempo.
-- **Autosave com critérios:** só autosalvar como favorito principal quando bater thresholds; caso contrário salvar como candidato/rejeitado (ou não salvar).
+- **Autosave com critérios:** somente **salvar quando aprovado** (reprovados não salvam nada). Favoritos/templates aprovados devem ser salvos com naming padrão e `notes` contendo `lab_run_id`.
 
 ## Dentro do escopo (in scope)
 - Nova tela: `/lab`
@@ -231,5 +231,6 @@ Somente depois do OK do Alan:
 # 13) Notas / dúvidas em aberto
 
 - Precisamos de jobs assíncronos (fila/progresso) no v1, ou síncrono é aceitável?
-- Convenção de nome para templates/favorites auto-salvos (formato + unicidade)
+- Convenção de nome para templates/favorites aprovados (formato + unicidade)
 - Quantos candidatos por run? (default: 3–5)
+- Thresholds mínimos de aprovação (ex.: trades mínimos, sharpe mínimo, DD máximo)
