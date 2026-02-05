@@ -18,7 +18,7 @@ import json
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -36,6 +36,46 @@ def _runs_dir() -> Path:
 
 def _run_path(run_id: str) -> Path:
     return _runs_dir() / f"{run_id}.json"
+
+
+def _trace_path(run_id: str) -> Path:
+    return _runs_dir() / f"{run_id}.jsonl"
+
+
+def _append_trace(run_id: str, event: Dict[str, Any]) -> None:
+    """Append one JSONL trace event for this run."""
+
+    p = _trace_path(run_id)
+    line = json.dumps(event, ensure_ascii=False)
+    # Atomic-ish append
+    with p.open("a", encoding="utf-8") as f:
+        f.write(line)
+        f.write("\n")
+
+
+def _read_trace_tail(run_id: str, limit: int = 200) -> List[Dict[str, Any]]:
+    """Read up to `limit` events from the tail of the JSONL trace."""
+
+    p = _trace_path(run_id)
+    if not p.exists():
+        return []
+
+    try:
+        lines = p.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return []
+
+    out: List[Dict[str, Any]] = []
+    for line in lines[-limit:]:
+        line = (line or "").strip()
+        if not line:
+            continue
+        try:
+            out.append(json.loads(line))
+        except Exception:
+            continue
+
+    return out
 
 
 def _now_ms() -> int:
@@ -59,6 +99,12 @@ class LabRunCreateResponse(BaseModel):
     trace: Dict[str, str]
 
 
+class LabRunTraceEvent(BaseModel):
+    ts_ms: int
+    type: str
+    data: Dict[str, Any] = Field(default_factory=dict)
+
+
 class LabRunStatusResponse(BaseModel):
     run_id: str
     status: str
@@ -66,6 +112,7 @@ class LabRunStatusResponse(BaseModel):
     created_at_ms: int
     updated_at_ms: int
     trace: Dict[str, str]
+    trace_events: List[LabRunTraceEvent] = Field(default_factory=list)
 
 
 @router.post("/run", response_model=LabRunCreateResponse)
@@ -84,6 +131,14 @@ async def create_run(req: LabRunCreateRequest) -> LabRunCreateResponse:
 
     try:
         _run_path(run_id).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": now,
+                "type": "run_created",
+                "data": {"input": req.model_dump()},
+            },
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"failed to persist run: {e}")
 
@@ -108,6 +163,8 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"failed to read run: {e}")
 
+    trace_events = _read_trace_tail(run_id, limit=200)
+
     return LabRunStatusResponse(
         run_id=data.get("run_id") or run_id,
         status=data.get("status") or "unknown",
@@ -118,4 +175,5 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
             "viewer_url": f"http://31.97.92.212:5173/lab/runs/{run_id}",
             "api_url": f"/api/lab/runs/{run_id}",
         },
+        trace_events=trace_events,
     )
