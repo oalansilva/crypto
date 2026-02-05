@@ -7,6 +7,7 @@ const LabPage: React.FC = () => {
   const [symbol, setSymbol] = useState('BTC/USDT');
   const [timeframe, setTimeframe] = useState('1d');
   const [baseTemplate, setBaseTemplate] = useState('multi_ma_crossover');
+  const [fullHistory, setFullHistory] = useState(true);
 
   const [symbols, setSymbols] = useState<string[]>([]);
   const [timeframes, setTimeframes] = useState<string[]>([]);
@@ -72,6 +73,7 @@ const LabPage: React.FC = () => {
           objective: objective || null,
           thinking: 'low',
           deep_backtest: true,
+          full_history: fullHistory,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -162,6 +164,21 @@ const LabPage: React.FC = () => {
                 {loadingMeta ? 'carregando templates…' : templates.length ? `${templates.length} templates` : 'digite manualmente'}
               </div>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <label className="text-xs text-gray-400">Período</label>
+            <label className="flex items-center gap-2 text-xs text-gray-300">
+              <input
+                type="checkbox"
+                checked={fullHistory}
+                onChange={(e) => setFullHistory(e.target.checked)}
+              />
+              usar full history
+            </label>
+          </div>
+          <div className="text-[10px] text-gray-500 -mt-2">
+            Se marcado: since padrão = 2017-01-01 (pode demorar mais em intraday).
           </div>
 
           <div>

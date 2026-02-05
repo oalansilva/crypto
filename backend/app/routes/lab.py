@@ -92,6 +92,13 @@ class LabRunCreateRequest(BaseModel):
     thinking: str = "low"
     deep_backtest: bool = True
 
+    # Use full available history by default (user preference). For Binance/ccxt
+    # data, the true maximum depends on the loader, but we treat this as:
+    # since = inception default (2017-01-01) unless explicitly overridden.
+    full_history: bool = True
+    since: Optional[str] = None
+    until: Optional[str] = None
+
 
 class LabRunCreateResponse(BaseModel):
     run_id: str
@@ -171,8 +178,16 @@ def _update_run_json(run_id: str, patch: Dict[str, Any]) -> None:
     p.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _cp3_default_since(timeframe: str) -> str:
-    # Simple default windows to keep runtime bounded.
+def _cp3_default_since(timeframe: str, full_history: bool = True) -> str:
+    """Default since.
+
+    If full_history=True, we always start from a conservative "inception" date.
+    """
+
+    if full_history:
+        return "2017-01-01 00:00:00"
+
+    # Legacy bounded windows (kept for optional override)
     tf = (timeframe or "").lower()
     if tf.endswith("h") or tf.endswith("m"):
         # Intraday: 6 months
@@ -781,8 +796,10 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
         if direction not in ("long", "short"):
             direction = "long"
 
-        since_str = _cp3_default_since(timeframe)
-        until_str = None
+        inp = run.get("input") or {}
+        full_history = bool(inp.get("full_history", True))
+        since_str = str(inp.get("since") or "").strip() or _cp3_default_since(timeframe, full_history=full_history)
+        until_str = str(inp.get("until") or "").strip() or None
 
         combo = ComboService()
         meta = combo.get_template_metadata(template_name)
@@ -994,6 +1011,7 @@ async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks
             "coordinator_summary": None,
             "dev_summary": None,
             "validator_verdict": None,
+            "selection": None,
             "candidate_template_name": None,
             "saved_template_name": None,
             "saved_favorite_id": None,
