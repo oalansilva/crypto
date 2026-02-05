@@ -16,6 +16,7 @@ type RunStatus = {
   updated_at_ms: number;
   trace: { viewer_url: string; api_url: string };
   trace_events?: TraceEvent[];
+  backtest?: any;
 };
 
 const LabRunPage: React.FC = () => {
@@ -83,6 +84,26 @@ const LabRunPage: React.FC = () => {
             </div>
           ) : null}
         </div>
+
+        {data?.backtest ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="text-sm font-semibold mb-3">Backtest (CP3)</div>
+            <div className="text-xs text-gray-400 font-mono whitespace-pre-wrap">
+              {JSON.stringify(
+                {
+                  symbol: data.backtest.symbol,
+                  timeframe: data.backtest.timeframe,
+                  template: data.backtest.template,
+                  deep_backtest: data.backtest.deep_backtest,
+                  candles: data.backtest.candles,
+                  metrics: data.backtest.metrics,
+                },
+                null,
+                2
+              )}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
           <div className="flex items-center justify-between mb-3">
