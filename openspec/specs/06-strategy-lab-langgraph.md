@@ -30,6 +30,12 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 - **Merge somente com OK final do Alan** após testes manuais no UI (USER TEST) + smoke automatizado.
 - Sempre manter uma tag estável para rollback (ex.: `stable-2026-02-05`).
 - **Foco do Lab:** priorizar exclusivamente a criação/melhoria de estratégias e templates (backtest, validação, autosave). **Não** gastar ciclos propondo novas telas, notas, features gerais ou refactors não relacionados à estratégia.
+- **Sem lookahead/leakage:** o motor/validações devem garantir que sinais/indicadores usem apenas dados até o candle atual.
+- **Walk-forward mínimo obrigatório:** toda estratégia proposta deve ser avaliada com split temporal (ex.: 70/30) ou 3 blocos; não confiar apenas em "all".
+- **Custos sempre ligados por padrão:** fee+slippage default (não permitir backtest "limpo" por padrão no Lab).
+- **Controle de complexidade:** limitar quantidade de indicadores/condições por template (evitar overfit e templates ilegíveis).
+- **Rate limit/limites de execução:** limitar número de candidatos/backtests por run e por janela de tempo.
+- **Autosave com critérios:** só autosalvar como favorito principal quando bater thresholds; caso contrário salvar como candidato/rejeitado (ou não salvar).
 
 ## Dentro do escopo (in scope)
 - Nova tela: `/lab`
