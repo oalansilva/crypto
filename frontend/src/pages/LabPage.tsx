@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '@/lib/apiBase';
 
@@ -7,6 +7,40 @@ const LabPage: React.FC = () => {
   const [symbol, setSymbol] = useState('BTC/USDT');
   const [timeframe, setTimeframe] = useState('1d');
   const [baseTemplate, setBaseTemplate] = useState('multi_ma_crossover');
+
+  const [symbols, setSymbols] = useState<string[]>([]);
+  const [timeframes, setTimeframes] = useState<string[]>([]);
+  const [loadingMeta, setLoadingMeta] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      setLoadingMeta(true);
+      try {
+        const [symRes, tfRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/exchanges/binance/symbols`),
+          fetch(`${API_BASE_URL}/exchanges/binance/timeframes`),
+        ]);
+        const symJson = await symRes.json().catch(() => ({} as any));
+        const tfJson = await tfRes.json().catch(() => ({} as any));
+        if (!alive) return;
+        if (symRes.ok) setSymbols(Array.isArray(symJson.symbols) ? symJson.symbols : []);
+        if (tfRes.ok) setTimeframes(Array.isArray(tfJson.timeframes) ? tfJson.timeframes : []);
+      } catch {
+        // ignore; user can still type manually
+      } finally {
+        if (alive) setLoadingMeta(false);
+      }
+    };
+    load();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const timeframeOptions = useMemo(() => {
+    return timeframes.length ? timeframes : ['15m', '1h', '4h', '1d', '1w'];
+  }, [timeframes]);
   const [objective, setObjective] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,12 +96,35 @@ const LabPage: React.FC = () => {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-gray-400">Symbol</label>
-              <input value={symbol} onChange={(e) => setSymbol(e.target.value)} className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+              <label className="text-xs text-gray-400">Symbol (Binance)</label>
+              <input
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value)}
+                list="lab-binance-symbols"
+                className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+              />
+              <datalist id="lab-binance-symbols">
+                {symbols.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              <div className="text-[10px] text-gray-500 mt-1">
+                {loadingMeta ? 'carregando símbolos…' : symbols.length ? `${symbols.length} símbolos` : 'digite manualmente'}
+              </div>
             </div>
             <div>
               <label className="text-xs text-gray-400">Timeframe</label>
-              <input value={timeframe} onChange={(e) => setTimeframe(e.target.value)} className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value)}
+                className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+              >
+                {timeframeOptions.map((tf) => (
+                  <option key={tf} value={tf} className="bg-gray-900">
+                    {tf}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs text-gray-400">Template base</label>

@@ -37,6 +37,16 @@ async def get_binance_symbols():
     }
 
 
+@router.get("/exchanges/binance/timeframes")
+async def get_binance_timeframes():
+    """Get supported timeframes for Binance (cached)."""
+    from app.services.exchange_service import ExchangeService
+
+    service = ExchangeService()
+    tfs = service.fetch_binance_timeframes()
+    return {"timeframes": tfs, "count": len(tfs)}
+
+
 @router.get("/strategies/metadata")
 async def get_strategies_metadata():
     """Get metadata for all available pandas-ta indicators + custom strategies"""
