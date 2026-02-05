@@ -96,6 +96,23 @@ Before implementation, complete this checklist:
 - Rollout:
 - Rollback:
 
-# 11) Notes / open questions
+# 11) USER TEST (mandatory)
+
+After deployment/restart, Alan will validate in the UI.
+
+- Test URL(s):
+- What to test (smoke steps):
+- Result:
+  - [ ] Alan confirmed: OK
+
+# 12) ARCHIVE / CLOSE (mandatory)
+
+Only after Alan confirms OK:
+
+- [ ] Update spec frontmatter `status: implemented`
+- [ ] Update `updated_at`
+- [ ] Add brief evidence (commit hash + URL tested) in the spec
+
+# 13) Notes / open questions
 
 - 
