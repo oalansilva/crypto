@@ -5,6 +5,7 @@ const navItems = [
   { to: '/', label: 'Playground', icon: Sparkles },
   { to: '/favorites', label: 'Favorites', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
+  { to: '/lab', label: 'Lab', icon: Sparkles },
   { to: '/combo/select', label: 'Combo', icon: Layers },
 ] as const
 
@@ -14,6 +15,7 @@ export function AppNav() {
   const isActive = (to: string) => {
     if (to === '/') return location.pathname === '/'
     if (to.startsWith('/combo')) return location.pathname.startsWith('/combo')
+    if (to.startsWith('/lab')) return location.pathname.startsWith('/lab')
     return location.pathname === to
   }
 
