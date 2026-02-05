@@ -6,6 +6,7 @@ const LabPage: React.FC = () => {
   const navigate = useNavigate();
   const [symbol, setSymbol] = useState('BTC/USDT');
   const [timeframe, setTimeframe] = useState('1d');
+  const [mode, setMode] = useState<'autonomous' | 'seed'>('autonomous');
   const [baseTemplate, setBaseTemplate] = useState('multi_ma_crossover');
   const [fullHistory, setFullHistory] = useState(true);
 
@@ -67,7 +68,7 @@ const LabPage: React.FC = () => {
         body: JSON.stringify({
           symbol,
           timeframe,
-          base_template: baseTemplate,
+          base_template: mode === 'seed' ? baseTemplate : null,
           direction: 'long',
           constraints: { max_drawdown: 0.2, min_sharpe: 0.4 },
           objective: objective || null,
@@ -140,30 +141,59 @@ const LabPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-400">Template base</label>
-              {templates.length ? (
-                <select
-                  value={baseTemplate}
-                  onChange={(e) => setBaseTemplate(e.target.value)}
-                  className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
-                >
-                  {templates.map((t) => (
-                    <option key={t} value={t} className="bg-gray-900">
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  value={baseTemplate}
-                  onChange={(e) => setBaseTemplate(e.target.value)}
-                  className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
-                />
-              )}
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-xs text-gray-400">Modo</label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMode('autonomous')}
+                    className={`text-xs px-3 py-1 rounded-lg border ${mode === 'autonomous' ? 'border-white/30 bg-white/10 text-white' : 'border-white/10 bg-black/30 text-gray-300'}`}
+                  >
+                    Autônomo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('seed')}
+                    className={`text-xs px-3 py-1 rounded-lg border ${mode === 'seed' ? 'border-white/30 bg-white/10 text-white' : 'border-white/10 bg-black/30 text-gray-300'}`}
+                  >
+                    Seed
+                  </button>
+                </div>
+              </div>
               <div className="text-[10px] text-gray-500 mt-1">
-                {loadingMeta ? 'carregando templates…' : templates.length ? `${templates.length} templates` : 'digite manualmente'}
+                {mode === 'autonomous'
+                  ? 'Autônomo: o Lab escolhe um template seed automaticamente (você não precisa selecionar).'
+                  : 'Seed: você escolhe um template para servir de ponto de partida.'}
               </div>
             </div>
+
+            {mode === 'seed' ? (
+              <div>
+                <label className="text-xs text-gray-400">Template base</label>
+                {templates.length ? (
+                  <select
+                    value={baseTemplate}
+                    onChange={(e) => setBaseTemplate(e.target.value)}
+                    className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                  >
+                    {templates.map((t) => (
+                      <option key={t} value={t} className="bg-gray-900">
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={baseTemplate}
+                    onChange={(e) => setBaseTemplate(e.target.value)}
+                    className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                  />
+                )}
+                <div className="text-[10px] text-gray-500 mt-1">
+                  {loadingMeta ? 'carregando templates…' : templates.length ? `${templates.length} templates` : 'digite manualmente'}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex items-center justify-between gap-3">

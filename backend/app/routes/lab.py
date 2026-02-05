@@ -85,7 +85,10 @@ def _now_ms() -> int:
 class LabRunCreateRequest(BaseModel):
     symbol: str = Field(..., min_length=3, max_length=30)
     timeframe: str = Field(..., min_length=1, max_length=10)
-    base_template: str = Field(..., min_length=1, max_length=128)
+
+    # In autonomous mode, this can be omitted and the Lab will pick a seed.
+    base_template: Optional[str] = Field(default=None, min_length=1, max_length=128)
+
     direction: str = "long"
     constraints: Dict[str, Any] = Field(default_factory=dict)
     objective: Optional[str] = None
@@ -741,6 +744,34 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
     _update_run_json(run_id, patch)
 
 
+def _choose_seed_template(*, combo: Any, preferred: Optional[str] = None) -> str:
+    """Pick a seed template when the UI is in autonomous mode."""
+
+    if isinstance(preferred, str) and preferred.strip():
+        return preferred.strip()
+
+    try:
+        templates = combo.list_templates() or {}
+        # Prefer prebuilt/examples first
+        candidates = []
+        for k in ("prebuilt", "examples", "custom"):
+            for t in (templates.get(k) or []):
+                name = (t or {}).get("name")
+                if not name:
+                    continue
+                # avoid known short-only seed
+                if name == "short_ema200_pullback":
+                    continue
+                candidates.append(str(name))
+        if candidates:
+            # deterministic default: pick first alphabetical
+            return sorted(set(candidates))[0]
+    except Exception:
+        pass
+
+    return "multi_ma_crossover"
+
+
 def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
     """Autonomous Lab loop.
 
@@ -1021,7 +1052,8 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "param_tune_error", "data": {"template": template_name, "iteration": iteration, "error": str(e)}})
 
     # Loop: propose → backtest candidate → validate → repeat
-    current_template = str(req_dict.get("base_template") or "multi_ma_crossover")
+    current_template = _choose_seed_template(combo=combo, preferred=req_dict.get("base_template"))
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "seed_chosen", "data": {"template": current_template}})
 
     for it in range(1, max_iterations + 1):
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_started", "data": {"iteration": it, "template": current_template}})
