@@ -38,9 +38,12 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 - **Rate limit/limites de execução:** limitar número de candidatos/backtests por run e por janela de tempo.
 - **Engine-fix permitido com gate:** se houver erro no motor, o Dev pode fazer ajustes pequenos **somente em branch** e **somente** se passar um smoke fixo antes de qualquer merge: `BTC/USDT 1d` + template base `multi_ma_crossover` + `deep_backtest=true` (rodar sem erro e produzir métricas/trades válidos).
 - **Autosave com critérios:** somente **salvar quando aprovado** (reprovados não salvam nada). Favoritos/templates aprovados devem ser salvos com naming padrão e `notes` contendo `lab_run_id`.
+- **Observabilidade do Lab (obrigatório):** registrar as interações do grafo/personas (mensagens + chamadas de tools + métricas/usage) para auditoria/debug pelo Alan.
+- **Orçamento de tokens/turnos (obrigatório):** limitar o número de interações e o custo por run (máx turns/máx tokens). Se atingir o limite, o Coordenador deve resumir o estado e parar (ou pedir confirmação para continuar).
 
 ## Dentro do escopo (in scope)
 - Nova tela: `/lab`
+- Página de inspeção: `/lab/runs/:run_id` para visualizar trace/interações (mensagens/tool calls/usage)
 - Endpoints no backend para:
   - criar uma requisição de "lab run"
   - executar um fluxo LangGraph **no mesmo processo do backend (FastAPI)**
@@ -101,6 +104,8 @@ Estados:
 
 ### POST /api/lab/run
 
+Observação: a execução deve registrar logs e usage por persona/tool, vinculados a `run_id`.
+
 Request:
 ```json
 {
@@ -132,6 +137,16 @@ Response (success):
   },
   "backtest": {
     "metrics": { "sharpe_ratio": 0.5, "max_drawdown": 0.18 }
+  },
+  "budget": {
+    "turns_used": 7,
+    "turns_max": 12,
+    "tokens_total": 10301,
+    "tokens_max": 60000
+  },
+  "trace": {
+    "viewer_url": "http://31.97.92.212:5173/lab/runs/...",
+    "api_url": "/api/lab/runs/..."
   }
 }
 ```
@@ -148,14 +163,15 @@ Response (error):
 
 # 6) Mudanças de modelo/dados
 
-- Opcional (v1): criar tabela `lab_runs` para persistir:
+- Recomendado (v1): criar tabela `lab_runs` para persistir:
   - inputs
   - outputs do grafo
   - template criado
   - favorite criado
   - timestamps
+  - **logs/trace do grafo** (mensagens por persona + tool calls + usage de tokens)
 
-Se não criarmos tabela no v1, ainda assim precisamos retornar ids e depender das tabelas existentes.
+Se não criarmos tabela no v1, salvar ao menos um JSONL em disco em `backend/logs/lab_runs/<run_id>.jsonl` e retornar `run_id` para consulta.
 
 # 7) VALIDATE (obrigatório)
 
