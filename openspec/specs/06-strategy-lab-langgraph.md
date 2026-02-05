@@ -217,7 +217,39 @@ Checklist (preencher antes de implementar):
   - (b) teste manual do Alan
   - (c) OK final explícito
 
-# 9) Plano de testes
+# 9) Checkpoints de implementação (obrigatório)
+
+A implementação será entregue em checkpoints com pausas obrigatórias para validação do Alan. Só avançar após OK explícito.
+
+- **CP1 — Estrutura mínima do Lab (sem LangGraph ainda)**
+  - UI `/lab` com formulário + botão
+  - Backend `POST /api/lab/run` cria `run_id` e grava run inicial
+  - Backend `GET /api/lab/runs/{run_id}` retorna status + trace vazio
+  - UI faz polling e mostra status
+
+- **CP2 — Observabilidade/Trace**
+  - Persistir trace (DB `lab_runs` ou JSONL em `backend/logs/lab_runs/<run_id>.jsonl`)
+  - Tela `/lab/runs/:run_id` para inspecionar mensagens/tool calls/usage
+
+- **CP3 — Integração com backtest assíncrono existente (1 candidato)**
+  - Disparar job assíncrono de backtest
+  - Polling até DONE
+  - `deep_backtest=true`
+
+- **CP4 — Personas via OpenClaw + budget**
+  - Coordinator/Dev/Validator via OpenClaw Gateway
+  - Budget turns/tokens (12/60k) e UI de confirmação para continuar
+
+- **CP5 — Autosave (somente aprovado)**
+  - Se aprovado: salvar template + favorite (com `lab_run_id` nas notes)
+  - Se reprovado: não salva
+
+- **CP6 — Walk-forward 70/30 + máx 4 indicadores + gates**
+  - Avaliar holdout (30% recente) como critério principal
+  - Enforce max 4 indicadores
+  - Gates de engine-fix (BTC 1d baseline) quando houver patch de motor
+
+# 10) Plano de testes
 
 ## Smoke manual
 1. Abrir `/lab`
@@ -229,12 +261,12 @@ Checklist (preencher antes de implementar):
 - Backend: teste unitário para validação do request + nome seguro/único do template
 - Frontend: `npm run build`
 
-# 10) Rollout / rollback
+# 11) Rollout / rollback
 
 - Rollout: deploy de backend + frontend, feature disponível em `/lab`
 - Rollback: voltar para a tag `stable-2026-02-05`
 
-# 11) USER TEST (obrigatório)
+# 12) USER TEST (obrigatório)
 
 Após deploy/restart, Alan valida na UI.
 
@@ -246,7 +278,7 @@ Após deploy/restart, Alan valida na UI.
 - Resultado:
   - [ ] Alan confirmou: OK
 
-# 12) ARQUIVAR / FECHAR (obrigatório)
+# 13) ARQUIVAR / FECHAR (obrigatório)
 
 Somente depois do OK do Alan:
 
@@ -254,7 +286,7 @@ Somente depois do OK do Alan:
 - [ ] Atualizar `updated_at`
 - [ ] Adicionar evidência breve (hash do commit + URL testada) no spec
 
-# 13) Notas / dúvidas em aberto
+# 14) Notas / dúvidas em aberto
 
 - Precisamos de jobs assíncronos (fila/progresso) no v1, ou síncrono é aceitável?
 - Convenção de nome para templates/favorites aprovados (formato + unicidade)
