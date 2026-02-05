@@ -87,7 +87,8 @@ function App() {
           <Route path="/combo/optimize" element={<ComboOptimizePage />} />
           <Route path="/combo/results" element={<ComboResultsPage />} />
           <Route path="/openspec" element={<OpenSpecListPage />} />
-          <Route path="/openspec/:id" element={<OpenSpecDetailPage />} />
+          {/* Catch-all to support nested specs like /openspec/backend/spec */}
+          <Route path="/openspec/*" element={<OpenSpecDetailPage />} />
           <Route path="/lab" element={<LabPage />} />
           <Route path="/lab/runs/:runId" element={<LabRunPage />} />
         </Route>

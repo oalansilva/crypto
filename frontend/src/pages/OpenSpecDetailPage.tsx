@@ -6,8 +6,10 @@ import { API_BASE_URL } from '@/lib/apiBase';
 type GetResp = { id: string; markdown: string };
 
 const OpenSpecDetailPage: React.FC = () => {
-  const { id } = useParams();
-  const specId = (id || '').trim();
+  const params = useParams();
+  // With route "/openspec/*" React Router puts the remainder in params["*"]
+  const rawId = ((params as any)['*'] || (params as any).id || '') as string;
+  const specId = (rawId || '').trim();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['openspec', 'get', specId],

@@ -1,7 +1,7 @@
 """OpenSpec read-only viewer endpoints (single-tenant MVP).
 
 Allows the frontend to list and fetch spec markdown files from
-`crypto/openspec/specs/*.md`.
+`crypto/openspec/specs/**/*.md`.
 
 Security:
 - No auth (explicit by user).
@@ -22,7 +22,40 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api/openspec", tags=["openspec"])
 
 
-_SPEC_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_SPEC_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def _normalize_spec_id(spec_id: str) -> List[str]:
+    """Normalize and validate a spec id.
+
+    We support nested specs like `backend/spec` which maps to
+    `openspec/specs/backend/spec.md`.
+
+    Security constraints:
+    - Only allow safe path segments (no traversal, no empty segments)
+    - Always resolve under the specs directory
+    - Caller appends `.md` (ids should not include extension)
+    """
+
+    spec_id = (spec_id or "").strip().replace("\\", "/")
+    if not spec_id:
+        raise HTTPException(status_code=400, detail="Invalid spec id")
+
+    # Disallow passing the extension explicitly.
+    if spec_id.endswith(".md"):
+        spec_id = spec_id[: -len(".md")]
+
+    parts = [p for p in spec_id.split("/") if p]
+    if not parts:
+        raise HTTPException(status_code=400, detail="Invalid spec id")
+
+    for p in parts:
+        if p in (".", ".."):
+            raise HTTPException(status_code=400, detail="Invalid spec id")
+        if not _SPEC_SEGMENT_RE.match(p):
+            raise HTTPException(status_code=400, detail="Invalid spec id")
+
+    return parts
 
 
 def _project_root() -> Path:
@@ -90,8 +123,15 @@ async def list_specs() -> OpenSpecListResponse:
         except Exception:
             return 0.0
 
-    for p in sorted(specs_dir.glob("*.md"), key=_mtime_key, reverse=True):
-        spec_id = p.stem
+    for p in sorted(specs_dir.glob("**/*.md"), key=_mtime_key, reverse=True):
+        # id is the relative path from specs dir without the .md suffix
+        try:
+            rel = p.relative_to(specs_dir)
+        except Exception:
+            continue
+        spec_id = rel.as_posix()
+        if spec_id.endswith(".md"):
+            spec_id = spec_id[: -len(".md")]
         try:
             txt = p.read_text(encoding="utf-8")
         except Exception:
@@ -100,7 +140,7 @@ async def list_specs() -> OpenSpecListResponse:
         items.append(
             OpenSpecListItem(
                 id=spec_id,
-                path=str(Path("openspec") / "specs" / p.name),
+                path=str(Path("openspec") / "specs" / rel),
                 title=fm.get("title"),
                 status=fm.get("status"),
                 updated_at=fm.get("updated_at") or fm.get("created_at"),
@@ -110,19 +150,18 @@ async def list_specs() -> OpenSpecListResponse:
     return OpenSpecListResponse(items=items)
 
 
-@router.get("/specs/{spec_id}", response_model=OpenSpecGetResponse)
+@router.get("/specs/{spec_id:path}", response_model=OpenSpecGetResponse)
 async def get_spec(spec_id: str) -> OpenSpecGetResponse:
-    spec_id = (spec_id or "").strip()
-    if not _SPEC_ID_RE.match(spec_id):
-        raise HTTPException(status_code=400, detail="Invalid spec id")
+    parts = _normalize_spec_id(spec_id)
 
-    p = _specs_dir() / f"{spec_id}.md"
+    p = _specs_dir().joinpath(*parts).with_suffix(".md")
     if not p.exists() or not p.is_file():
         raise HTTPException(status_code=404, detail="Spec not found")
 
     # Extra safety: ensure the resolved path stays under specs dir.
     specs_dir = _specs_dir().resolve()
-    if specs_dir not in p.resolve().parents:
+    resolved = p.resolve()
+    if resolved == specs_dir or specs_dir not in resolved.parents:
         raise HTTPException(status_code=400, detail="Invalid path")
 
     try:
@@ -130,4 +169,6 @@ async def get_spec(spec_id: str) -> OpenSpecGetResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read spec: {e}")
 
-    return OpenSpecGetResponse(id=spec_id, markdown=md)
+    # Return the normalized id as posix path without extension
+    norm_id = "/".join(parts)
+    return OpenSpecGetResponse(id=norm_id, markdown=md)
