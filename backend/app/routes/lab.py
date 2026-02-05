@@ -118,6 +118,10 @@ class LabRunOutputs(BaseModel):
     dev_summary: Optional[str] = None
     validator_verdict: Optional[str] = None
 
+    # CP5
+    saved_template_name: Optional[str] = None
+    saved_favorite_id: Optional[int] = None
+
 
 class LabRunStatusResponse(BaseModel):
     run_id: str
@@ -277,6 +281,110 @@ def _inc_budget(budget: Dict[str, Any], *, turns: int = 0, tokens: int = 0) -> D
     return b
 
 
+def _verdict_label(text: Optional[str]) -> str:
+    t = (text or "").strip().lower()
+    if not t:
+        return "unknown"
+    # common patterns
+    if "veredito" in t and "approved" in t:
+        return "approved"
+    if "veredito" in t and "rejected" in t:
+        return "rejected"
+    if t.startswith("approved") or " approved" in t:
+        return "approved"
+    if t.startswith("rejected") or " rejected" in t:
+        return "rejected"
+    return "unknown"
+
+
+def _make_autosave_name(*, run_id: str, base_template: str, symbol: str, timeframe: str) -> str:
+    safe_symbol = (symbol or "").replace("/", "_")
+    rid = (run_id or "")[:8]
+    return f"lab_{rid}_{base_template}_{safe_symbol}_{timeframe}".strip("_")
+
+
+def _ensure_unique_template_name(combo, name: str) -> str:
+    # combo: ComboService
+    base = name
+    if not combo.get_template_metadata(base):
+        return base
+    for i in range(2, 200):
+        cand = f"{base}_{i}"
+        if not combo.get_template_metadata(cand):
+            return cand
+    # last resort
+    return f"{base}_{uuid.uuid4().hex[:6]}"
+
+
+def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[str, Any]) -> Dict[str, Any]:
+    """CP5: autosave (template + favorite) only when validator says approved."""
+
+    verdict = _verdict_label(outputs.get("validator_verdict"))
+    if verdict != "approved":
+        return outputs
+
+    try:
+        from app.services.combo_service import ComboService
+        from app.database import SessionLocal
+        from app.models import FavoriteStrategy
+
+        inp = run.get("input") or {}
+        backtest = run.get("backtest") or {}
+        base_template = str(inp.get("base_template") or backtest.get("template") or "")
+        symbol = str(backtest.get("symbol") or inp.get("symbol") or "")
+        timeframe = str(backtest.get("timeframe") or inp.get("timeframe") or "")
+
+        combo = ComboService()
+        new_name = _make_autosave_name(run_id=run_id, base_template=base_template, symbol=symbol, timeframe=timeframe)
+        new_name = _ensure_unique_template_name(combo, new_name)
+
+        # Clone template
+        cloned = combo.clone_template(template_name=base_template, new_name=new_name)
+        if not cloned:
+            raise RuntimeError("failed to clone template")
+
+        # Create favorite pointing to the cloned template
+        params = backtest.get("params") or {}
+        metrics = backtest.get("metrics")
+        since = backtest.get("since")
+        until = backtest.get("until")
+
+        period_type = "2y" if str(timeframe).endswith("d") else "6m"
+
+        fav_name = f"{new_name} - {symbol} {timeframe} (lab)"
+        notes = f"lab_run_id={run_id}; verdict=approved"
+
+        db = SessionLocal()
+        try:
+            fav = FavoriteStrategy(
+                name=fav_name,
+                symbol=symbol,
+                timeframe=timeframe,
+                strategy_name=new_name,
+                parameters=params,
+                metrics=metrics,
+                notes=notes,
+                tier=None,
+                start_date=since,
+                end_date=until,
+                period_type=period_type,
+            )
+            db.add(fav)
+            db.commit()
+            db.refresh(fav)
+            outputs["saved_template_name"] = new_name
+            outputs["saved_favorite_id"] = int(fav.id)
+        finally:
+            db.close()
+
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "autosave_done", "data": {"template": new_name, "favorite_id": outputs.get("saved_favorite_id")}})
+        return outputs
+
+    except Exception as e:
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "autosave_error", "data": {"error": str(e)}})
+        return outputs
+
+
 def _cp4_run_personas_if_possible(run_id: str) -> None:
     """CP4: call 3 personas (coordinator/dev/validator) with budgets + UI confirmation."""
 
@@ -321,6 +429,10 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         )
         outputs["coordinator_summary"] = r["text"]
         budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
+        run = _load_run_json(run_id)
+        run["budget"] = budget
+        run["outputs"] = outputs
+        _update_run_json(run_id, {"budget": budget, "outputs": outputs})
 
     # Dev
     if not outputs.get("dev_summary") and _budget_ok(budget):
@@ -332,10 +444,14 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
             system_prompt=(
                 "Você é um Dev Sênior focado em templates/estratégias do Crypto Backtester. "
                 "Sugira melhorias de template sem quebrar o sistema. Responda em pt-BR."),
-            message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nSugira melhorias no template/parametros.\n", 
+            message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nSugira melhorias no template/parametros.\n",
         )
         outputs["dev_summary"] = r["text"]
         budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
+        run = _load_run_json(run_id)
+        run["budget"] = budget
+        run["outputs"] = outputs
+        _update_run_json(run_id, {"budget": budget, "outputs": outputs})
 
     # Validator
     if not outputs.get("validator_verdict") and _budget_ok(budget):
@@ -351,9 +467,17 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         )
         outputs["validator_verdict"] = r["text"]
         budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
+        run = _load_run_json(run_id)
+        run["budget"] = budget
+        run["outputs"] = outputs
+        _update_run_json(run_id, {"budget": budget, "outputs": outputs})
 
     # Persist
     needs_confirm = not _budget_ok(budget) and not (outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"))
+
+    # CP5: autosave only if approved
+    if outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"):
+        outputs = _cp5_autosave_if_approved(run_id, run, outputs)
 
     patch: Dict[str, Any] = {
         "budget": budget,
