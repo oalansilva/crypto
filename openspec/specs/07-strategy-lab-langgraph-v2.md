@@ -2,7 +2,7 @@
 spec: openspec.v1
 id: crypto.lab.langgraph.v2
 title: Strategy Lab v2 (LangGraph + tool-driven template edits + job pipeline)
-status: draft
+status: validated
 owner: Alan
 created_at: 2026-02-05
 updated_at: 2026-02-05
@@ -134,6 +134,6 @@ Entregar em etapas testáveis (igual ao v1), para reduzir risco:
 - Automatizado:
   - backend unit tests para validação de patch e enforcement max-4-indicators
 
-# 6) Notas
+# 7) Notas
 
 - Reavaliar o problema atual: ATR/ADX = 0 (provável pipeline/feature). Ideal corrigir antes de tentar automatizar filtros de regime.
