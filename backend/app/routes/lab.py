@@ -1130,9 +1130,10 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
                     session_key=run.get("session_key") or f"lab-{run_id}",
                     persona="validator",
                     system_prompt=(
-                        "Você é um Trader/Validador. Avalie robustez e riscos (sem lookahead, custos, overfit). "
-                        "Use principalmente o HOLDOUT (30% mais recente) para o veredito. "
-                        "Dê veredito 'approved' ou 'rejected' com motivos. Responda em pt-BR."
+                        "Você é o VALIDATOR, atuando como TRADER e também como PO (Product Owner) do Strategy Lab. "
+                        "Tome a decisão final (approved/rejected) usando principalmente o HOLDOUT (30% mais recente). "
+                        "Se houver 0 trades, lógica inválida ou métrica suspeita, rejeite e descreva o bug. "
+                        "Responda em pt-BR em bullets, com critérios objetivos para aprovar."
                     ),
                     message=msg,
                     thinking=inp.get("thinking") or "low",

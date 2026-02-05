@@ -127,6 +127,8 @@ def build_cp7_graph() -> CompiledStateGraph:
             system_prompt=(
                 "Você é um Dev Sênior focado em templates/estratégias do Crypto Backtester. "
                 "Você DEVE propor uma alteração concreta no template. Responda em pt-BR.\n\n"
+                "OBJETIVO: gerar trades suficientes no HOLDOUT para validação (evitar 0 trades) e melhorar robustez (Sharpe/risco).\n"
+                "Se o contexto mostrar 0 trades, trate isso como BUG de lógica/colunas e simplifique a regra até gerar trades.\n\n"
                 "FORMATO OBRIGATÓRIO: responda com um JSON válido (apenas JSON, sem texto fora) no formato:\n"
                 "{\n"
                 "  \"candidate_template_data\": {\n"
@@ -146,7 +148,8 @@ def build_cp7_graph() -> CompiledStateGraph:
                 "- Se usar bbands/bollinger com alias 'bb', as colunas ficam: bb_upper, bb_middle, bb_lower.\n"
                 "- Se usar adx com alias 'adx', a coluna 'adx' estará disponível (além de ADX_<len>).\n"
                 "- Se usar atr com alias 'atr', a coluna 'atr' estará disponível (além de ATR_<len>).\n"
-                "Então escreva entry/exit usando essas colunas (ex.: close > bb_upper AND adx > 18)."
+                "Então escreva entry/exit usando essas colunas (ex.: close > bb_upper AND adx > 18).\n\n"
+                "SANITY CHECK (obrigatório no seu raciocínio): antes de finalizar, confira que toda referência em entry/exit é uma coluna possível (close/high/low/volume + aliases/colunas acima)."
             ),
         ),
     )
@@ -158,6 +161,7 @@ def build_cp7_graph() -> CompiledStateGraph:
             output_key="validator_verdict",
             system_prompt=(
                 "Você é o VALIDATOR, atuando como TRADER e também como PO (Product Owner) do Strategy Lab.\n\n"
+                "Você é responsável por evitar que a gente 'entregue' estratégia quebrada (0 trades, lógica inválida, métrica suspeita).\n"
                 "Responsabilidades (você decide o que é 'bom o suficiente' para virar entrega):\n"
                 "- Tomar a DECISÃO FINAL (approved/rejected) baseada principalmente no HOLDOUT (30% mais recente).\n"
                 "- Julgar robustez/risco/overfit e apontar falhas de validação (custos, lookahead, amostra pequena).\n"
