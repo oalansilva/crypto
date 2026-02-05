@@ -29,6 +29,7 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 - **Nunca quebrar o sistema atual**: desenvolvimento e mudanças longas devem acontecer em branch (ex.: `feature/long-change`).
 - **Merge somente com OK final do Alan** após testes manuais no UI (USER TEST) + smoke automatizado.
 - Sempre manter uma tag estável para rollback (ex.: `stable-2026-02-05`).
+- **Foco do Lab:** priorizar exclusivamente a criação/melhoria de estratégias e templates (backtest, validação, autosave). **Não** gastar ciclos propondo novas telas, notas, features gerais ou refactors não relacionados à estratégia.
 
 ## Dentro do escopo (in scope)
 - Nova tela: `/lab`
