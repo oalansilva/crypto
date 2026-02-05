@@ -738,71 +738,91 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
     _update_run_json(run_id, patch)
 
 
-def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> None:
-    """CP9: run backtests using the job pipeline (JobManager state), then persist into run json.
+def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
+    """Autonomous Lab loop.
 
-    Still executed as a background task from FastAPI, but progress/state is exposed
-    via the shared job storage (backend/data/jobs/job_<job_id>.json).
+    Implements:
+    1) Backtest candidate inside the same run (not just propose it).
+    2) Iterate multiple attempts (bounded) until an interesting result or limits hit.
+    3) Quick parameter tuning (tool-based) on the candidate before re-testing.
 
-    CP6: walk-forward split 70/30 and evaluate primarily on holdout.
+    Uses the CP9 job pipeline (JobManager state) for each backtest.
     """
 
-    start_ms = _now_ms()
-    _append_trace(
-        run_id,
-        {
-            "ts_ms": start_ms,
-            "type": "backtest_started",
-            "data": {
-                "symbol": req_dict.get("symbol"),
-                "timeframe": req_dict.get("timeframe"),
-                "template": req_dict.get("base_template"),
-                "deep_backtest": bool(req_dict.get("deep_backtest", True)),
-                "walk_forward": {"split": "70/30"},
-            },
-        },
-    )
-    # CP9: create a persistent job record
+    import copy
+    import itertools
+    import random
+
     from app.services.job_manager import JobManager
+    from app.services.combo_service import ComboService
+    from src.data.incremental_loader import IncrementalLoader
+    from app.services.combo_optimizer import _run_backtest_logic
+
+    symbol = str(req_dict.get("symbol") or "BTC/USDT")
+    timeframe = str(req_dict.get("timeframe") or "1d")
+    deep_backtest = bool(req_dict.get("deep_backtest", True))
+    direction = str(req_dict.get("direction") or "long")
+    if direction not in ("long", "short"):
+        direction = "long"
+
+    run = _load_run_json(run_id) or {}
+    inp = run.get("input") or {}
+    full_history = bool(inp.get("full_history", True))
+    since_str = str(inp.get("since") or "").strip() or _cp3_default_since(timeframe, full_history=full_history)
+    until_str = str(inp.get("until") or "").strip() or None
+
+    max_iterations = int(inp.get("max_iterations") or 3)
+    max_iterations = max(1, min(10, max_iterations))
 
     jm = JobManager()
-    job_id = jm.create_job({"kind": "lab_backtest", "run_id": run_id, "input": req_dict})
+    combo = ComboService()
 
-    # Store job reference on the run
-    _update_run_json(
-        run_id,
-        {
-            "status": "running",
-            "step": "backtest_job",
-            "backtest_job": {
-                "job_id": job_id,
-                "status": "RUNNING",
-                "progress": {"step": "init", "pct": 0},
-            },
-        },
-    )
-    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "job_created", "data": {"job_id": job_id}})
-
+    # Load candles ONCE for the run (full history by default)
+    loader = IncrementalLoader()
+    df = loader.fetch_data(symbol=symbol, timeframe=timeframe, since_str=since_str, until_str=until_str)
+    if getattr(df, "empty", False) or len(df) == 0:
+        _update_run_json(run_id, {"status": "error", "step": "error", "error": "no candles loaded"})
+        return
     try:
-        from app.services.combo_service import ComboService
-        from src.data.incremental_loader import IncrementalLoader
-        from app.services.combo_optimizer import _run_backtest_logic
+        df = df.sort_index()
+    except Exception:
+        pass
 
-        symbol = str(req_dict.get("symbol") or "BTC/USDT")
-        timeframe = str(req_dict.get("timeframe") or "1d")
-        template_name = str(req_dict.get("base_template") or "multi_ma_crossover")
-        deep_backtest = bool(req_dict.get("deep_backtest", True))
-        direction = str(req_dict.get("direction") or "long")
-        if direction not in ("long", "short"):
-            direction = "long"
+    n = len(df)
+    split_idx = int(n * 0.7)
+    split_idx = max(1, min(n - 1, split_idx))
+    df_is = df.iloc[:split_idx]
+    df_oos = df.iloc[split_idx:]
 
-        run = _load_run_json(run_id) or {}
-        inp = run.get("input") or {}
-        full_history = bool(inp.get("full_history", True))
-        since_str = str(inp.get("since") or "").strip() or _cp3_default_since(timeframe, full_history=full_history)
-        until_str = str(inp.get("until") or "").strip() or None
+    def _df_bounds(dfx):
+        if len(dfx) == 0:
+            return None, None
+        try:
+            s = dfx.index[0]
+            e = dfx.index[-1]
+            return (s.isoformat() if hasattr(s, "isoformat") else str(s)), (e.isoformat() if hasattr(e, "isoformat") else str(e))
+        except Exception:
+            return None, None
 
-        combo = ComboService()
+    is_since, is_until = _df_bounds(df_is)
+    oos_since, oos_until = _df_bounds(df_oos)
+
+    def _context_for_backtest(bt: Dict[str, Any]) -> Dict[str, Any]:
+        wf = (bt.get("walk_forward") or {})
+        return {
+            "objective": (inp.get("objective") or None),
+            "symbol": bt.get("symbol"),
+            "timeframe": bt.get("timeframe"),
+            "template": bt.get("template"),
+            "walk_forward": {
+                "split": (wf.get("split") or "70/30"),
+                "metrics_all": (bt.get("metrics") or {}),
+                "metrics_in_sample": ((wf.get("in_sample") or {}).get("metrics") or {}),
+                "metrics_holdout": ((wf.get("holdout") or {}).get("metrics") or {}),
+            },
+        }
+
+    def _run_backtest_job(*, template_name: str, label: str, iteration: int) -> Dict[str, Any]:
         meta = combo.get_template_metadata(template_name)
         if not meta:
             raise RuntimeError(f"template not found: {template_name}")
@@ -814,52 +834,24 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             "stop_loss": meta.get("stop_loss"),
         }
 
-        # Update job progress: loading data
-        state = jm.load_state(job_id) or {}
-        state.update({"status": "RUNNING", "progress": {"step": "load_data", "pct": 10}})
-        jm.save_state(job_id, state)
+        job_id = jm.create_job({"kind": "lab_backtest", "run_id": run_id, "iteration": iteration, "label": label, "template": template_name})
+        _update_run_json(
+            run_id,
+            {
+                "status": "running",
+                "step": "backtest_job",
+                "backtest_job": {"job_id": job_id, "status": "RUNNING", "progress": {"step": "init", "pct": 0}},
+            },
+        )
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "job_created", "data": {"job_id": job_id, "label": label, "template": template_name, "iteration": iteration}})
 
-        loader = IncrementalLoader()
-        df = loader.fetch_data(symbol=symbol, timeframe=timeframe, since_str=since_str, until_str=until_str)
-        if getattr(df, "empty", False) or len(df) == 0:
-            raise RuntimeError("no candles loaded")
-
-        # Ensure chronological order
-        try:
-            df = df.sort_index()
-        except Exception:
-            pass
-
-        # CP6: walk-forward split 70/30
-        n = len(df)
-        split_idx = int(n * 0.7)
-        split_idx = max(1, min(n - 1, split_idx))
-        df_is = df.iloc[:split_idx]
-        df_oos = df.iloc[split_idx:]
-
-        def _df_bounds(dfx):
-            if len(dfx) == 0:
-                return None, None
-            try:
-                s = dfx.index[0]
-                e = dfx.index[-1]
-                return (s.isoformat() if hasattr(s, "isoformat") else str(s)), (e.isoformat() if hasattr(e, "isoformat") else str(e))
-            except Exception:
-                return None, None
-
-        is_since, is_until = _df_bounds(df_is)
-        oos_since, oos_until = _df_bounds(df_oos)
-
-        params = {"direction": direction}
-
-        # ALL
+        # ALL / IS / HOLDOUT metrics
         state = jm.load_state(job_id) or {}
         state.update({"status": "RUNNING", "progress": {"step": "backtest_all", "pct": 35}})
         jm.save_state(job_id, state)
-
         metrics_all, full_params = _run_backtest_logic(
             template_data=template_data,
-            params=params,
+            params={"direction": direction},
             df=df,
             deep_backtest=deep_backtest,
             symbol=symbol,
@@ -867,14 +859,12 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             until_str=until_str,
         )
 
-        # In-sample
         state = jm.load_state(job_id) or {}
         state.update({"status": "RUNNING", "progress": {"step": "backtest_in_sample", "pct": 60}})
         jm.save_state(job_id, state)
-
         metrics_is, _ = _run_backtest_logic(
             template_data=template_data,
-            params=params,
+            params={"direction": direction},
             df=df_is,
             deep_backtest=deep_backtest,
             symbol=symbol,
@@ -882,14 +872,12 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             until_str=is_until,
         )
 
-        # Holdout
         state = jm.load_state(job_id) or {}
         state.update({"status": "RUNNING", "progress": {"step": "backtest_holdout", "pct": 85}})
         jm.save_state(job_id, state)
-
         metrics_oos, _ = _run_backtest_logic(
             template_data=template_data,
-            params=params,
+            params={"direction": direction},
             df=df_oos,
             deep_backtest=deep_backtest,
             symbol=symbol,
@@ -897,7 +885,6 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             until_str=oos_until,
         )
 
-        done_ms = _now_ms()
         out = {
             "symbol": symbol,
             "timeframe": timeframe,
@@ -918,24 +905,19 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             },
             "metrics": metrics_all,
             "candles": n,
-            "duration_ms": done_ms - start_ms,
+            "label": label,
+            "iteration": iteration,
         }
 
         _append_trace(
             run_id,
             {
-                "ts_ms": done_ms,
+                "ts_ms": _now_ms(),
                 "type": "backtest_done",
-                "data": {
-                    "candles": n,
-                    "duration_ms": done_ms - start_ms,
-                    "metrics_all": metrics_all,
-                    "metrics_in_sample": metrics_is,
-                    "metrics_holdout": metrics_oos,
-                },
+                "data": {"label": label, "template": template_name, "metrics_all": metrics_all, "metrics_in_sample": metrics_is, "metrics_holdout": metrics_oos},
             },
         )
-        # Mark job completed
+
         state = jm.load_state(job_id) or {}
         state.update({"status": "COMPLETED", "progress": {"step": "done", "pct": 100}, "final_results": out})
         jm.save_state(job_id, state)
@@ -946,44 +928,207 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
                 "status": "running",
                 "step": "personas",
                 "backtest": out,
-                "backtest_job": {
-                    "job_id": job_id,
-                    "status": "COMPLETED",
-                    "progress": {"step": "done", "pct": 100},
-                },
+                "backtest_job": {"job_id": job_id, "status": "COMPLETED", "progress": {"step": "done", "pct": 100}},
             },
         )
+        return out
 
-        # CP4: run personas (may require OPENCLAW_GATEWAY_TOKEN configured)
+    def _quick_tune_candidate_params(template_name: str, iteration: int) -> None:
+        """Lightweight parameter tuning on IN-SAMPLE using tool backtests.
+
+        We keep it intentionally small/fast: sample a handful of variations.
+        """
+
         try:
-            _cp4_run_personas_if_possible(run_id)
+            meta = combo.get_template_metadata(template_name)
+            if not meta:
+                return
+            inds = meta.get("indicators") or []
+            if not isinstance(inds, list) or not inds:
+                return
+
+            # Build candidate value options for numeric params
+            per_ind_options: list[list[Dict[str, Any]]] = []
+            for ind in inds:
+                if not isinstance(ind, dict):
+                    continue
+                params0 = ind.get("params") or {}
+                if not isinstance(params0, dict):
+                    params0 = {}
+
+                # For common length/period keys, try +/- 20% and +/- 5
+                options = []
+                for delta_mul in (0.8, 1.0, 1.2):
+                    ind2 = copy.deepcopy(ind)
+                    for k in list(params0.keys()):
+                        v = params0.get(k)
+                        if isinstance(v, (int, float)) and k in ("length", "period"):
+                            nv = int(max(2, round(float(v) * delta_mul)))
+                            ind2.setdefault("params", {})[k] = nv
+                    options.append(ind2)
+                per_ind_options.append(options[:3])
+
+            if not per_ind_options:
+                return
+
+            # Sample up to 12 combinations
+            combos = list(itertools.product(*per_ind_options))
+            random.shuffle(combos)
+            combos = combos[:12]
+
+            base_template_data = {
+                "indicators": meta.get("indicators"),
+                "entry_logic": meta.get("entry_logic"),
+                "exit_logic": meta.get("exit_logic"),
+                "stop_loss": meta.get("stop_loss"),
+            }
+
+            best = None
+            best_metrics = None
+
+            for c in combos:
+                td = copy.deepcopy(base_template_data)
+                td["indicators"] = list(c)
+                # Tune stop_loss lightly
+                sl = td.get("stop_loss")
+                if isinstance(sl, dict):
+                    sl = sl.get("default")
+                if not isinstance(sl, (int, float)):
+                    sl = 0.03
+                td["stop_loss"] = float(min(0.08, max(0.005, sl)))
+
+                metrics, _ = _run_backtest_logic(
+                    template_data=td,
+                    params={"direction": direction},
+                    df=df_is,
+                    deep_backtest=False,
+                    symbol=symbol,
+                    since_str=is_since or since_str,
+                    until_str=is_until,
+                )
+                sharpe = (metrics or {}).get("sharpe_ratio")
+                if best is None or (isinstance(sharpe, (int, float)) and isinstance((best_metrics or {}).get("sharpe_ratio"), (int, float)) and sharpe > (best_metrics or {}).get("sharpe_ratio")):
+                    best = td
+                    best_metrics = metrics
+
+            if best is not None and best_metrics is not None:
+                combo.update_template(template_name=template_name, template_data=best)
+                _append_trace(run_id, {"ts_ms": _now_ms(), "type": "param_tuned", "data": {"template": template_name, "iteration": iteration, "best_in_sample": best_metrics}})
         except Exception as e:
-            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "personas_error", "data": {"error": str(e)}})
-            # Don't fail the run hard; keep backtest available.
-            _update_run_json(run_id, {"status": "done", "step": "done"})
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "param_tune_error", "data": {"template": template_name, "iteration": iteration, "error": str(e)}})
 
-    except Exception as e:
-        err_ms = _now_ms()
-        _append_trace(run_id, {"ts_ms": err_ms, "type": "backtest_error", "data": {"error": str(e)}})
+    # Loop: propose → backtest candidate → validate → repeat
+    current_template = str(req_dict.get("base_template") or "multi_ma_crossover")
+
+    for it in range(1, max_iterations + 1):
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_started", "data": {"iteration": it, "template": current_template}})
+
+        # Backtest current template
+        bt = _run_backtest_job(template_name=current_template, label=f"iter{it}_current", iteration=it)
+
+        # Run CP7 personas (coordinator+dev+validator) on current results to get a candidate
         try:
-            state = jm.load_state(job_id) or {}
-            state.update({"status": "ERROR", "progress": {"step": "error", "pct": 100}, "error": str(e)})
-            jm.save_state(job_id, state)
-        except Exception:
-            pass
-        _update_run_json(
-            run_id,
-            {
-                "status": "error",
-                "step": "error",
-                "error": str(e),
-                "backtest_job": {
-                    "job_id": job_id,
-                    "status": "ERROR",
-                    "progress": {"step": "error", "pct": 100},
-                },
-            },
-        )
+            from app.services.lab_graph import LabGraphDeps, build_cp7_graph
+
+            run = _load_run_json(run_id) or {}
+            budget = run.get("budget") or {}
+            outputs = run.get("outputs") or {}
+
+            deps = LabGraphDeps(
+                persona_call=_persona_call_sync,
+                append_trace=_append_trace,
+                now_ms=_now_ms,
+                inc_budget=_inc_budget,
+                budget_ok=_budget_ok,
+            )
+
+            graph = build_cp7_graph()
+            state = {
+                "run_id": run_id,
+                "session_key": run.get("session_key") or f"lab-{run_id}",
+                "thinking": inp.get("thinking") or "low",
+                "context": _context_for_backtest(bt),
+                "deps": deps,
+                "budget": budget,
+                "outputs": outputs,
+            }
+            final = graph.invoke(state)
+            budget = final.get("budget") or budget
+            outputs = final.get("outputs") or outputs
+            _update_run_json(run_id, {"budget": budget, "outputs": outputs})
+
+            if not _budget_ok(budget):
+                _update_run_json(run_id, {"status": "needs_user_confirm", "step": "budget", "needs_user_confirm": True})
+                return
+
+            # CP8 save candidate
+            outputs = _cp8_save_candidate_template(run_id, _load_run_json(run_id) or {}, outputs)
+            _update_run_json(run_id, {"outputs": outputs})
+
+        except Exception as e:
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "personas_error", "data": {"error": str(e), "iteration": it}})
+            _update_run_json(run_id, {"status": "error", "step": "error", "error": str(e)})
+            return
+
+        run = _load_run_json(run_id) or {}
+        outputs = run.get("outputs") or {}
+        cand = outputs.get("candidate_template_name")
+        if not cand:
+            _update_run_json(run_id, {"status": "error", "step": "error", "error": "candidate not created"})
+            return
+
+        # Tool-based quick parameter tuning on candidate (IN-SAMPLE)
+        _quick_tune_candidate_params(str(cand), it)
+
+        # Backtest candidate and overwrite run.backtest
+        bt2 = _run_backtest_job(template_name=str(cand), label=f"iter{it}_candidate", iteration=it)
+
+        # Re-run validator on the candidate results (so verdict matches the tested candidate)
+        try:
+            run = _load_run_json(run_id) or {}
+            budget = run.get("budget") or {}
+            outputs = run.get("outputs") or {}
+            if _budget_ok(budget):
+                msg = "Contexto do run (JSON):\n" + json.dumps(_context_for_backtest(bt2), ensure_ascii=False, indent=2) + "\n"
+                r = _persona_call_sync(
+                    run_id=run_id,
+                    session_key=run.get("session_key") or f"lab-{run_id}",
+                    persona="validator",
+                    system_prompt=(
+                        "Você é um Trader/Validador. Avalie robustez e riscos (sem lookahead, custos, overfit). "
+                        "Use principalmente o HOLDOUT (30% mais recente) para o veredito. "
+                        "Dê veredito 'approved' ou 'rejected' com motivos. Responda em pt-BR."
+                    ),
+                    message=msg,
+                    thinking=inp.get("thinking") or "low",
+                )
+                outputs["validator_verdict"] = r.get("text")
+                budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0) or 0)
+                _update_run_json(run_id, {"budget": budget, "outputs": outputs})
+        except Exception as e:
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "validator_error", "data": {"error": str(e), "iteration": it}})
+
+        # Gate + autosave (based on candidate backtest)
+        run = _load_run_json(run_id) or {}
+        outputs = run.get("outputs") or {}
+        sel = _cp10_selection_gate(run)
+        outputs["selection"] = sel
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
+        _update_run_json(run_id, {"outputs": outputs})
+
+        outputs = _cp5_autosave_if_approved(run_id, run, outputs)
+        _update_run_json(run_id, {"outputs": outputs})
+
+        if outputs.get("saved_favorite_id"):
+            _update_run_json(run_id, {"status": "done", "step": "done", "needs_user_confirm": False})
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": "approved_and_saved"}})
+            return
+
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": "rejected"}})
+        current_template = str(cand)
+
+    # If we exit the loop, we're done (rejected after max iterations)
+    _update_run_json(run_id, {"status": "done", "step": "done"})
 
 
 @router.post("/run", response_model=LabRunCreateResponse)
@@ -1034,8 +1179,8 @@ async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"failed to persist run: {e}")
 
-    # CP3: fire one background backtest (1 candidate, no personas yet)
-    background_tasks.add_task(_run_single_candidate_backtest, run_id, req.model_dump())
+    # Autonomous loop: base backtest → propose candidate → backtest candidate → validate → repeat
+    background_tasks.add_task(_run_lab_autonomous, run_id, req.model_dump())
 
     return LabRunCreateResponse(
         run_id=run_id,
