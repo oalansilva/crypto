@@ -1,87 +1,89 @@
 ---
 spec: openspec.v1
 id: crypto.lab.langgraph.v1
-title: Strategy Lab (LangGraph) with 3 personas + autosave templates/favorites
+title: Strategy Lab (LangGraph) com 3 personas + autosave de templates/favoritos
 status: draft
 owner: Alan
 created_at: 2026-02-05
 updated_at: 2026-02-05
 ---
 
-# 0) One-liner
+# 0) Resumo (one-liner)
 
-Add a new "Strategy Lab" feature (new UI + backend endpoints) that runs a LangGraph workflow with 3 personas (Coordinator, Dev Senior, Trader Validator) to generate/improve strategies using existing templates, run backtests, and **auto-save** the resulting combo_template + favorite.
+Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que executa um fluxo LangGraph com 3 personas (Coordenador, Dev Sênior, Trader/Validador) para gerar/melhorar estratégias usando templates existentes, rodar backtests e **salvar automaticamente** o combo_template + favorito.
 
-# 1) Context
+# 1) Contexto
 
-- Current system already supports:
+- O sistema atual já suporta:
   - combo_templates (templates)
   - backtesting
   - favorites
-  - agent chat about favorites
-- We want a more structured workflow where multiple personas collaborate and use the existing tools to create new templates/strategies.
-- We want to avoid breaking the current app: this must be a separate feature/tela.
+  - agent chat sobre favorites
+- Queremos um fluxo estruturado com múltiplas personas colaborando e usando as ferramentas existentes para criar novas estratégias/templates.
+- Não podemos quebrar o app atual: isso precisa ficar como **feature separada / nova tela**.
 
-# 2) Goal
+# 2) Objetivo
 
-## In scope
-- New UI page: `/lab`
-- Backend endpoints to:
-  - create a "lab run" request
-  - execute a LangGraph flow in-process (FastAPI backend)
-  - persist results:
-    - auto-save a combo_template (new name)
-    - auto-save a FavoriteStrategy linked to the run
-- Three personas (LLM prompts/roles):
-  1) Coordinator: orchestration + final decision
-  2) Dev Senior: template changes + implementation notes
-  3) Trader Validator: risk/robustness checks + approve/reject
-- Tooling inside the graph:
-  - read available templates
-  - propose template modifications (declarative)
-  - run backtest using existing backtest engine
-  - save template + favorite
+## Dentro do escopo (in scope)
+- Nova tela: `/lab`
+- Endpoints no backend para:
+  - criar uma requisição de "lab run"
+  - executar um fluxo LangGraph **no mesmo processo do backend (FastAPI)**
+  - persistir resultados:
+    - salvar automaticamente um combo_template (com novo nome)
+    - salvar automaticamente uma FavoriteStrategy vinculada ao run
+- Três personas (prompts/roles):
+  1) **Coordenador**: orquestração + decisão final
+  2) **Dev Sênior**: mudanças em template + notas de implementação
+  3) **Trader/Validador**: checagens de risco/robustez + aprovar/reprovar
+- Ferramentas (tools) dentro do grafo:
+  - listar templates disponíveis
+  - propor modificações em template (declarativo)
+  - rodar backtest usando o motor existente
+  - salvar template + favorito
 
-## Out of scope (v1)
-- Creating brand-new Python strategy classes (only modify/use templates)
-- Multi-tenant auth
-- Advanced optimization (grid/BO) beyond a small candidate set
-- Long-running job queue + progress streaming (we can do synchronous MVP first)
+## Fora do escopo (v1)
+- Criar classes novas de estratégia em Python (v1 foca em **usar/modificar templates**)
+- Multi-tenant / autenticação avançada
+- Otimização avançada (grid grande / BO) além de poucos candidatos
+- Fila de jobs longos + streaming de progresso (v1 pode ser síncrono)
 
 # 3) User stories
 
-- As Alan, I want to describe an objective (symbol/timeframe/constraints) and let the system propose + validate a strategy.
-- As Alan, I want the system to automatically save the winning template and favorite so I can review it in Favorites.
+- Como Alan, quero descrever um objetivo (symbol/timeframe/restrições) e deixar o sistema propor + validar uma estratégia.
+- Como Alan, quero que o sistema salve automaticamente o template vencedor e o favorito para eu revisar em Favorites.
 
 # 4) UX / UI
 
-## Route: `/lab`
+## Rota: `/lab`
 
 - Inputs:
   - Symbol (dropdown)
   - Timeframe
-  - Base template (dropdown)
-  - Constraints (max DD, min Sharpe, direction, etc.)
-  - Optional free-text objective
-- Actions:
-  - "Run Lab" button
+  - Template base (dropdown)
+  - Restrições (max DD, min Sharpe, direction etc.)
+  - Objetivo em texto livre (opcional)
+- Ações:
+  - Botão "Run Lab"
 - Outputs:
-  - Summary from Coordinator
-  - Validator verdict (approved/rejected + reasons)
+  - Sumário do Coordenador
+  - Veredito do Validador (approved/rejected + motivos)
+  - Resumo do Dev (mudanças sugeridas)
   - Links:
-    - Open saved Favorite
-    - Open saved Template (edit screen)
+    - Abrir Favorite salvo
+    - Abrir Template salvo (tela de edição)
 
-States:
-- Loading (graph running)
+Estados:
+- Loading (grafo rodando)
 - Error
-- Success (show saved ids)
+- Success (mostrar ids salvos)
 
-# 5) API / Contracts
+# 5) API / Contratos
 
 ## Backend
 
 ### POST /api/lab/run
+
 Request:
 ```json
 {
@@ -117,94 +119,95 @@ Response (success):
 ```
 
 Response (error):
-- 4xx validation errors
-- 5xx execution errors
+- 4xx: erro de validação
+- 5xx: erro de execução do grafo/backtest/salvamento
 
 ## OpenClaw / LLM
-- Use OpenClaw Gateway agent (same OAuth) similarly to agent chat.
-- Personas implemented as distinct system prompts and tool-selection instructions.
 
-# 6) Data model changes
+- Usar OpenClaw Gateway (mesmo OAuth já existente) no estilo do agent chat.
+- Personas implementadas como prompts distintos e instruções de uso de tools.
 
-- Optional (v1): a new DB table `lab_runs` to persist:
+# 6) Mudanças de modelo/dados
+
+- Opcional (v1): criar tabela `lab_runs` para persistir:
   - inputs
-  - graph outputs
-  - created template name
-  - created favorite id
+  - outputs do grafo
+  - template criado
+  - favorite criado
   - timestamps
 
-If we skip DB in v1, at least return ids and rely on existing tables.
+Se não criarmos tabela no v1, ainda assim precisamos retornar ids e depender das tabelas existentes.
 
-# 7) VALIDATE (mandatory)
+# 7) VALIDATE (obrigatório)
 
-## Proposal link
+## Link da proposta
 
 - Proposal URL: http://31.97.92.212:5173/openspec/06-strategy-lab-langgraph
 - Status: draft → validated → approved → implemented
 
-Before implementation, complete this checklist:
+Checklist (preencher antes de implementar):
 
-- [ ] Scope is unambiguous (in-scope/out-of-scope are explicit)
-- [ ] Acceptance criteria are testable (binary pass/fail)
-- [ ] API/contracts are specified (request/response/error) when applicable
-- [ ] UX states covered (loading/empty/error)
-- [ ] Security considerations noted (auth/exposure) when applicable
-- [ ] Test plan includes manual smoke + at least one automated check
-- [ ] Open questions resolved or explicitly tracked
+- [ ] Escopo sem ambiguidades (in-scope/out-of-scope explícitos)
+- [ ] Critérios de aceite testáveis (pass/fail)
+- [ ] API/contratos definidos (request/response/error) quando aplicável
+- [ ] Estados de UI cobertos (loading/empty/error)
+- [ ] Segurança anotada (auth/exposição) quando aplicável
+- [ ] Plano de testes inclui smoke manual + pelo menos 1 check automatizado
+- [ ] Perguntas em aberto resolvidas ou explicitamente listadas
 
-# 8) Acceptance criteria (Definition of Done)
+# 8) Critérios de aceite (DoD)
 
-- [ ] `/lab` page exists and can trigger a lab run.
-- [ ] A lab run produces:
-  - a backtest result
-  - a coordinator summary
-  - a validator verdict
-  - a dev change summary
-- [ ] On success, system auto-saves:
-  - a new combo_template
-  - a new favorite strategy
-- [ ] Saved favorite is visible on `/favorites` and can be opened in Agent chat.
-- [ ] No regressions on existing routes (`/favorites`, `/combo/*`).
+- [ ] Existe a página `/lab` e ela dispara um lab run.
+- [ ] Um lab run gera:
+  - um resultado de backtest
+  - um sumário do Coordenador
+  - um veredito do Validador
+  - um resumo do Dev
+- [ ] Em caso de sucesso, salva automaticamente:
+  - um novo combo_template
+  - um novo FavoriteStrategy
+- [ ] O Favorite salvo aparece em `/favorites` e o Agent chat funciona nele.
+- [ ] Sem regressão nas rotas atuais (`/favorites`, `/combo/*`).
 
-# 9) Test plan
+# 9) Plano de testes
 
-## Manual smoke
-1. Open `/lab`
-2. Run with base template `multi_ma_crossover` on `BTC/USDT 1d`
-3. Confirm run returns approved/rejected with summary
-4. Confirm new favorite appears in `/favorites`
+## Smoke manual
+1. Abrir `/lab`
+2. Rodar com template base `multi_ma_crossover` em `BTC/USDT 1d`
+3. Confirmar approved/rejected + sumário
+4. Confirmar novo Favorite em `/favorites`
 
-## Automated
-- Backend: unit test for request validation + safe template naming
+## Automatizado
+- Backend: teste unitário para validação do request + nome seguro/único do template
 - Frontend: `npm run build`
 
 # 10) Rollout / rollback
 
-- Rollout: deploy backend+frontend, feature available at `/lab`
-- Rollback: revert to git tag `stable-2026-02-05`
+- Rollout: deploy de backend + frontend, feature disponível em `/lab`
+- Rollback: voltar para a tag `stable-2026-02-05`
 
-# 11) USER TEST (mandatory)
+# 11) USER TEST (obrigatório)
 
-After deployment/restart, Alan will validate in the UI.
+Após deploy/restart, Alan valida na UI.
 
-- Test URL(s):
+- URL(s) para testar:
   - http://31.97.92.212:5173/lab
-- What to test (smoke steps):
-  1) Run a lab task and verify it auto-saves.
-  2) Confirm the saved favorite exists and agent chat works.
-- Result:
-  - [ ] Alan confirmed: OK
+- O que testar (smoke):
+  1) Rodar um lab task e verificar autosave.
+  2) Confirmar que o Favorite salvo existe e Agent chat funciona.
+- Resultado:
+  - [ ] Alan confirmou: OK
 
-# 12) ARCHIVE / CLOSE (mandatory)
+# 12) ARQUIVAR / FECHAR (obrigatório)
 
-Only after Alan confirms OK:
+Somente depois do OK do Alan:
 
-- [ ] Update spec frontmatter `status: implemented`
-- [ ] Update `updated_at`
-- [ ] Add brief evidence (commit hash + URL tested) in the spec
+- [ ] Atualizar frontmatter do spec para `status: implemented`
+- [ ] Atualizar `updated_at`
+- [ ] Adicionar evidência breve (hash do commit + URL testada) no spec
 
-# 13) Notes / open questions
+# 13) Notas / dúvidas em aberto
 
-- Do we need async jobs for long runs (queue/progress) in v1, or is sync acceptable?
-- Naming convention for auto-saved templates/favorites (format + uniqueness)
-- Candidate generation: how many variants per run? (default: 3-5)
+- Precisamos de jobs assíncronos (fila/progresso) no v1, ou síncrono é aceitável?
+- Convenção de nome para templates/favorites auto-salvos (formato + unicidade)
+- Quantos candidatos por run? (default: 3–5)
