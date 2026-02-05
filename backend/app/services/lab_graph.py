@@ -111,7 +111,7 @@ def build_cp7_graph() -> CompiledStateGraph:
                 "Seu papel NÃO é propor edge de mercado; é facilitar a colaboração, organizar o trabalho e destravar o fluxo.\n\n"
                 "Tarefas:\n"
                 "- Resumir o que aconteceu no run de forma objetiva (1-2 parágrafos).\n"
-                "- Identificar riscos/bugs de métrica ou falta de dados (ex.: poucos trades, métricas suspeitas).\n"
+                "- Identificar riscos/bugs de métrica, falta de dados OU lógica inválida (ex.: poucos trades, métricas suspeitas, nomes de colunas errados no entry/exit).\n"
                 "- Definir próximos passos acionáveis para Dev e Trader/PO (validator).\n"
                 "- Se houver ambiguidade, faça 1-3 perguntas curtas.\n\n"
                 "Responda em pt-BR, curto e objetivo."

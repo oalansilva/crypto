@@ -213,6 +213,28 @@ class ComboStrategy:
             for col in df.columns:
                 local_context[col] = df[col]
 
+            # Preflight: detect unknown identifiers early (avoids silent 0-trade runs)
+            # This catches cases like `bb.upper` (mapped to bb_upper) when the column doesn't exist.
+            tokens = set(re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", logic_expr))
+            reserved = {
+                "and",
+                "or",
+                "not",
+                "True",
+                "False",
+                "None",
+            }
+            # helper functions are available via HELPER_FUNCTIONS/local_context
+            allowed = set(local_context.keys()) | reserved
+            missing = sorted([t for t in tokens if t not in allowed])
+            if missing:
+                raise RuntimeError(
+                    "Logic references unknown columns/functions: "
+                    + ", ".join(missing)
+                    + ". Available example columns: "
+                    + ", ".join(list(df.columns)[:20])
+                )
+
             # Compatibility mapping for RSI references:
             # Some example templates hardcode RSI_14 but also define optimization over RSI length.
             # If there is a single RSI indicator, map any referenced RSI_<n> token to the computed RSI series.
