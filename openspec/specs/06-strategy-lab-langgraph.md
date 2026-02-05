@@ -34,7 +34,7 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 - **Walk-forward mínimo obrigatório:** toda estratégia proposta deve ser avaliada com split temporal (ex.: 70/30) ou 3 blocos; não confiar apenas em "all".
 - **Custos sempre ligados por padrão:** fee+slippage default (não permitir backtest "limpo" por padrão no Lab).
 - **Deep backtest obrigatório:** no Lab, sempre executar backtests com `deep_backtest=true` para que o stop considere candles de 15 minutos (consistência com o seu critério de stop).
-- **Controle de complexidade:** limitar quantidade de indicadores/condições por template (evitar overfit e templates ilegíveis).
+- **Controle de complexidade:** no máximo **4 indicadores** por template (evitar overfit e templates ilegíveis).
 - **Rate limit/limites de execução:** limitar número de candidatos/backtests por run e por janela de tempo.
 - **Autosave com critérios:** só autosalvar como favorito principal quando bater thresholds; caso contrário salvar como candidato/rejeitado (ou não salvar).
 
