@@ -74,7 +74,27 @@ Faltam partes do escopo original da v1 que foram propositalmente “simplificada
 - GET /api/lab/runs/{run_id}
   - retorna status do grafo + candidatos + jobs
 
-# 4) DoD
+# 4) Checkpoints (propostos)
+
+Entregar em etapas testáveis (igual ao v1), para reduzir risco:
+
+- **CP7 — LangGraph mínimo rodando (sem patch real ainda)**
+  - Grafo executa Coordinator → Dev → Validator
+  - Trace registra `node_started/node_done` por nó
+
+- **CP8 — Patch real de template (candidate)**
+  - Dev produz patch estruturado e backend salva um `candidate_template`
+  - Enforce max 4 indicadores
+
+- **CP9 — Backtest via pipeline de jobs**
+  - Em vez de BackgroundTasks, disparar job (status/result)
+  - UI mostra job_id + status + progresso
+
+- **CP10 — Seleção por holdout + autosave final**
+  - Validator decide primariamente pelo holdout
+  - Autosave somente se approved (template final + favorite)
+
+# 5) DoD
 
 - [ ] LangGraph executa end-to-end (mínimo: 1 candidato)
 - [ ] Dev aplica mudança real no template (não só sugestões em texto)
@@ -82,7 +102,7 @@ Faltam partes do escopo original da v1 que foram propositalmente “simplificada
 - [ ] Validator decide usando holdout
 - [ ] Autosave somente se aprovado
 
-# 5) Test plan
+# 6) Test plan
 
 - Smoke manual:
   - Criar run, ver nós do grafo, ver candidato aplicado, ver backtest job, ver decisão.
