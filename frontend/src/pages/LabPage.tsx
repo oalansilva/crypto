@@ -21,7 +21,7 @@ const LabPage: React.FC = () => {
         const [symRes, tfRes, tplRes] = await Promise.all([
           fetch(`${API_BASE_URL}/exchanges/binance/symbols`),
           fetch(`${API_BASE_URL}/exchanges/binance/timeframes`),
-          fetch(`${API_BASE_URL}/combo/templates`),
+          fetch(`${API_BASE_URL}/combos/templates`),
         ]);
         const symJson = await symRes.json().catch(() => ({} as any));
         const tfJson = await tfRes.json().catch(() => ({} as any));
