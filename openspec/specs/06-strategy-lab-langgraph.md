@@ -24,6 +24,12 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 
 # 2) Objetivo
 
+## Guardrails (obrigatório)
+
+- **Nunca quebrar o sistema atual**: desenvolvimento e mudanças longas devem acontecer em branch (ex.: `feature/long-change`).
+- **Merge somente com OK final do Alan** após testes manuais no UI (USER TEST) + smoke automatizado.
+- Sempre manter uma tag estável para rollback (ex.: `stable-2026-02-05`).
+
 ## Dentro do escopo (in scope)
 - Nova tela: `/lab`
 - Endpoints no backend para:
@@ -38,12 +44,14 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
   3) **Trader/Validador**: checagens de risco/robustez + aprovar/reprovar
 - Ferramentas (tools) dentro do grafo:
   - listar templates disponíveis
-  - propor modificações em template (declarativo)
+  - propor/criar templates (declarativo)
+  - **computar indicadores pandas-ta de forma genérica** (evitar code changes por indicador)
   - rodar backtest usando o motor existente
   - salvar template + favorito
+  - (quando necessário) propor patch de código do motor, mas **somente em branch + com gates + OK final do Alan**
 
 ## Fora do escopo (v1)
-- Criar classes novas de estratégia em Python (v1 foca em **usar/modificar templates**)
+- Criar classes novas de estratégia em Python (v1 foca em **usar/modificar templates**; ajustes pontuais no motor são permitidos via guardrails)
 - Multi-tenant / autenticação avançada
 - Otimização avançada (grid grande / BO) além de poucos candidatos
 - Fila de jobs longos + streaming de progresso (v1 pode ser síncrono)
@@ -168,6 +176,10 @@ Checklist (preencher antes de implementar):
   - um novo FavoriteStrategy
 - [ ] O Favorite salvo aparece em `/favorites` e o Agent chat funciona nele.
 - [ ] Sem regressão nas rotas atuais (`/favorites`, `/combo/*`).
+- [ ] Qualquer mudança de código (se ocorrer) acontece em branch e **não é mergeada** sem:
+  - (a) smoke automatizado passando
+  - (b) teste manual do Alan
+  - (c) OK final explícito
 
 # 9) Plano de testes
 
