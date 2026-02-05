@@ -141,7 +141,12 @@ def build_cp7_graph() -> CompiledStateGraph:
                 "  \"description\": \"...\",\n"
                 "  \"notes\": \"rationale / changes\"\n"
                 "}\n\n"
-                "REGRAS: no máximo 4 indicadores. Cada indicador DEVE ser objeto com type/alias/params. Não invente campos fora desses." 
+                "REGRAS: no máximo 4 indicadores. Cada indicador DEVE ser objeto com type/alias/params. Não invente campos fora desses.\n\n"
+                "IMPORTANTE (nomes de colunas no engine):\n"
+                "- Se usar bbands/bollinger com alias 'bb', as colunas ficam: bb_upper, bb_middle, bb_lower.\n"
+                "- Se usar adx com alias 'adx', a coluna 'adx' estará disponível (além de ADX_<len>).\n"
+                "- Se usar atr com alias 'atr', a coluna 'atr' estará disponível (além de ATR_<len>).\n"
+                "Então escreva entry/exit usando essas colunas (ex.: close > bb_upper AND adx > 18)."
             ),
         ),
     )

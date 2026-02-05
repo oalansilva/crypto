@@ -131,13 +131,21 @@ class ComboStrategy:
                 elif ind_type == 'atr':
                     length = params.get('length', 14)
                     col_name = f'ATR_{length}'
-                    df[col_name] = ta.atr(df['high'], df['low'], df['close'], length=length)
+                    atr_series = ta.atr(df['high'], df['low'], df['close'], length=length)
+                    df[col_name] = atr_series
+                    # Support stable alias when provided (e.g. "atr")
+                    if alias and alias != col_name:
+                        df[alias] = atr_series
                 
                 elif ind_type == 'adx':
                     length = params.get('length', 14)
                     col_name = f'ADX_{length}'
                     adx_result = ta.adx(df['high'], df['low'], df['close'], length=length)
-                    df[col_name] = adx_result[f'ADX_{length}']
+                    adx_series = adx_result[f'ADX_{length}']
+                    df[col_name] = adx_series
+                    # Support stable alias when provided (e.g. "adx")
+                    if alias and alias != col_name:
+                        df[alias] = adx_series
                 
                 elif ind_type == 'volume_sma':
                     length = params.get('length', 20)
