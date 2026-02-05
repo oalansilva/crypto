@@ -163,6 +163,21 @@ const LabRunPage: React.FC = () => {
                 <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono">{data.outputs.dev_summary}</pre>
               </div>
             ) : null}
+
+            {data.outputs.candidate_template_name ? (
+              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <div className="text-xs text-gray-400">Candidate template (CP8)</div>
+                <div className="mt-1 flex items-center gap-3">
+                  <div className="text-xs text-gray-200 font-mono break-all">{data.outputs.candidate_template_name}</div>
+                  <a
+                    className="text-xs text-gray-300 hover:text-white underline underline-offset-4"
+                    href={`/combo/edit/${encodeURIComponent(data.outputs.candidate_template_name)}`}
+                  >
+                    abrir no editor
+                  </a>
+                </div>
+              </div>
+            ) : null}
             {data.outputs.validator_verdict ? (
               <div>
                 <div className="text-xs text-gray-400">Validator</div>

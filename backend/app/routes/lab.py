@@ -118,6 +118,9 @@ class LabRunOutputs(BaseModel):
     dev_summary: Optional[str] = None
     validator_verdict: Optional[str] = None
 
+    # CP8
+    candidate_template_name: Optional[str] = None
+
     # CP5
     saved_template_name: Optional[str] = None
     saved_favorite_id: Optional[int] = None
@@ -347,6 +350,102 @@ def _ensure_unique_template_name(combo, name: str) -> str:
     return f"{base}_{uuid.uuid4().hex[:6]}"
 
 
+def _extract_json_object(text: str) -> Optional[Dict[str, Any]]:
+    if not isinstance(text, str):
+        return None
+    s = text.strip()
+    if not s:
+        return None
+    # try direct parse
+    try:
+        obj = json.loads(s)
+        if isinstance(obj, dict):
+            return obj
+    except Exception:
+        pass
+    # try substring between first { and last }
+    a = s.find("{")
+    b = s.rfind("}")
+    if a >= 0 and b > a:
+        try:
+            obj = json.loads(s[a : b + 1])
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            return None
+    return None
+
+
+def _make_candidate_name(*, run_id: str, base_template: str, symbol: str, timeframe: str, n: int) -> str:
+    safe_symbol = (symbol or "").replace("/", "_")
+    rid = (run_id or "")[:8]
+    return f"lab_{rid}_candidate_{n}_{base_template}_{safe_symbol}_{timeframe}".strip("_")
+
+
+def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict[str, Any]) -> Dict[str, Any]:
+    """CP8: save a real candidate template based on dev output JSON."""
+
+    if outputs.get("candidate_template_name"):
+        return outputs
+
+    dev_text = outputs.get("dev_summary")
+    blob = _extract_json_object(dev_text or "")
+    if not blob:
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": "dev_summary is not valid JSON"}})
+        return outputs
+
+    candidate_data = blob.get("candidate_template_data")
+    if not isinstance(candidate_data, dict):
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": "missing candidate_template_data"}})
+        return outputs
+
+    inds = candidate_data.get("indicators") or []
+    if not isinstance(inds, list):
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": "indicators must be a list"}})
+        return outputs
+
+    if len(inds) > 4:
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"too many indicators: {len(inds)}"}})
+        return outputs
+
+    try:
+        from app.services.combo_service import ComboService
+
+        inp = run.get("input") or {}
+        backtest = run.get("backtest") or {}
+        base_template = str(inp.get("base_template") or backtest.get("template") or "")
+        symbol = str(backtest.get("symbol") or inp.get("symbol") or "")
+        timeframe = str(backtest.get("timeframe") or inp.get("timeframe") or "")
+
+        combo = ComboService()
+
+        # find next available candidate name
+        n = 1
+        while True:
+            name = _make_candidate_name(run_id=run_id, base_template=base_template, symbol=symbol, timeframe=timeframe, n=n)
+            if not combo.get_template_metadata(name):
+                break
+            n += 1
+            if n > 50:
+                raise RuntimeError("too many candidates")
+
+        # clone base, then overwrite template_data
+        combo.clone_template(template_name=base_template, new_name=name)
+        desc = blob.get("description")
+        if not isinstance(desc, str):
+            desc = f"Lab candidate from {run_id}"
+
+        combo.update_template(template_name=name, description=desc, template_data=candidate_data)
+
+        outputs["candidate_template_name"] = name
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_saved", "data": {"template": name}})
+        return outputs
+
+    except Exception as e:
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": str(e)}})
+        return outputs
+
+
 def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[str, Any]) -> Dict[str, Any]:
     """CP5: autosave (template + favorite) only when validator says approved."""
 
@@ -499,6 +598,10 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
 
     # Persist
     needs_confirm = not _budget_ok(budget) and not (outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"))
+
+    # CP8: persist candidate template after Dev output exists
+    if outputs.get("coordinator_summary") and outputs.get("dev_summary"):
+        outputs = _cp8_save_candidate_template(run_id, run, outputs)
 
     # CP5: autosave only if approved
     if outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"):

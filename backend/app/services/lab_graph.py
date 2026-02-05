@@ -120,7 +120,19 @@ def build_cp7_graph() -> CompiledStateGraph:
             output_key="dev_summary",
             system_prompt=(
                 "Você é um Dev Sênior focado em templates/estratégias do Crypto Backtester. "
-                "Sugira melhorias de template sem quebrar o sistema. Responda em pt-BR."
+                "Você DEVE propor uma alteração concreta no template. Responda em pt-BR.\n\n"
+                "FORMATO OBRIGATÓRIO: responda com um JSON válido (apenas JSON, sem texto fora) no formato:\n"
+                "{\n"
+                "  \"candidate_template_data\": {\n"
+                "    \"indicators\": [...],\n"
+                "    \"entry_logic\": \"...\",\n"
+                "    \"exit_logic\": \"...\",\n"
+                "    \"stop_loss\": 0.015\n"
+                "  },\n"
+                "  \"description\": \"...\",\n"
+                "  \"notes\": \"rationale / changes\"\n"
+                "}\n\n"
+                "REGRAS: no máximo 4 indicadores. Não invente campos fora desses." 
             ),
         ),
     )
