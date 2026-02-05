@@ -127,7 +127,7 @@ const LabRunPage: React.FC = () => {
 
         {data?.backtest ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-sm font-semibold mb-3">Backtest (CP3)</div>
+            <div className="text-sm font-semibold mb-3">Backtest (CP6: walk-forward 70/30)</div>
             <div className="text-xs text-gray-400 font-mono whitespace-pre-wrap">
               {JSON.stringify(
                 {
@@ -135,8 +135,10 @@ const LabRunPage: React.FC = () => {
                   timeframe: data.backtest.timeframe,
                   template: data.backtest.template,
                   deep_backtest: data.backtest.deep_backtest,
-                  candles: data.backtest.candles,
-                  metrics: data.backtest.metrics,
+                  candles_all: data.backtest.candles,
+                  metrics_all: data.backtest.metrics,
+                  in_sample: data.backtest.walk_forward?.in_sample,
+                  holdout: data.backtest.walk_forward?.holdout,
                 },
                 null,
                 2

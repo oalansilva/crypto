@@ -135,7 +135,7 @@ class LabRunStatusResponse(BaseModel):
     budget: LabRunBudget = Field(default_factory=LabRunBudget)
     outputs: LabRunOutputs = Field(default_factory=LabRunOutputs)
 
-    # CP3: minimal backtest output for 1 candidate (no autosave yet)
+    # CP3/CP6: backtest output (supports walk-forward split)
     backtest: Optional[Dict[str, Any]] = None
 
     # If we hit budget limits, the run waits for user confirmation.
@@ -335,6 +335,13 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
         timeframe = str(backtest.get("timeframe") or inp.get("timeframe") or "")
 
         combo = ComboService()
+
+        # CP6 guardrail: max 4 indicators
+        base_meta = combo.get_template_metadata(base_template)
+        inds = (base_meta or {}).get("indicators") or []
+        if len(inds) > 4:
+            raise RuntimeError(f"template has too many indicators (max 4): {len(inds)}")
+
         new_name = _make_autosave_name(run_id=run_id, base_template=base_template, symbol=symbol, timeframe=timeframe)
         new_name = _ensure_unique_template_name(combo, new_name)
 
@@ -407,12 +414,18 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
     backtest = run.get("backtest") or {}
     objective = (run.get("input") or {}).get("objective")
 
+    wf = (backtest.get("walk_forward") or {})
     context = {
         "objective": objective,
         "symbol": backtest.get("symbol"),
         "timeframe": backtest.get("timeframe"),
         "template": backtest.get("template"),
-        "metrics": (backtest.get("metrics") or {}),
+        "walk_forward": {
+            "split": (wf.get("split") or "70/30"),
+            "metrics_all": (backtest.get("metrics") or {}),
+            "metrics_in_sample": ((wf.get("in_sample") or {}).get("metrics") or {}),
+            "metrics_holdout": ((wf.get("holdout") or {}).get("metrics") or {}),
+        },
     }
 
     # Coordinator
@@ -462,6 +475,7 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
             thinking=thinking,
             system_prompt=(
                 "Você é um Trader/Validador. Avalie robustez e riscos (sem lookahead, custos, overfit). "
+                "Use principalmente o HOLDOUT (30% mais recente) para o veredito. "
                 "Dê veredito 'approved' ou 'rejected' com motivos. Responda em pt-BR."),
             message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nDê veredito e motivos.",
         )
@@ -498,7 +512,10 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
 
 
 def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> None:
-    """CP3: run one backtest in background and persist the result into run json."""
+    """CP3/CP6: run backtests in background and persist the result into run json.
+
+    CP6 (option A): walk-forward split 70/30 and evaluate primarily on holdout.
+    """
 
     start_ms = _now_ms()
     _append_trace(
@@ -511,6 +528,7 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
                 "timeframe": req_dict.get("timeframe"),
                 "template": req_dict.get("base_template"),
                 "deep_backtest": bool(req_dict.get("deep_backtest", True)),
+                "walk_forward": {"split": "70/30"},
             },
         },
     )
@@ -549,8 +567,36 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
         if getattr(df, "empty", False) or len(df) == 0:
             raise RuntimeError("no candles loaded")
 
+        # Ensure chronological order
+        try:
+            df = df.sort_index()
+        except Exception:
+            pass
+
+        # CP6: walk-forward split 70/30
+        n = len(df)
+        split_idx = int(n * 0.7)
+        split_idx = max(1, min(n - 1, split_idx))
+        df_is = df.iloc[:split_idx]
+        df_oos = df.iloc[split_idx:]
+
+        def _df_bounds(dfx):
+            if len(dfx) == 0:
+                return None, None
+            try:
+                s = dfx.index[0]
+                e = dfx.index[-1]
+                return (s.isoformat() if hasattr(s, "isoformat") else str(s)), (e.isoformat() if hasattr(e, "isoformat") else str(e))
+            except Exception:
+                return None, None
+
+        is_since, is_until = _df_bounds(df_is)
+        oos_since, oos_until = _df_bounds(df_oos)
+
         params = {"direction": direction}
-        metrics, full_params = _run_backtest_logic(
+
+        # ALL
+        metrics_all, full_params = _run_backtest_logic(
             template_data=template_data,
             params=params,
             df=df,
@@ -558,6 +604,28 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             symbol=symbol,
             since_str=since_str,
             until_str=until_str,
+        )
+
+        # In-sample
+        metrics_is, _ = _run_backtest_logic(
+            template_data=template_data,
+            params=params,
+            df=df_is,
+            deep_backtest=deep_backtest,
+            symbol=symbol,
+            since_str=is_since or since_str,
+            until_str=is_until,
+        )
+
+        # Holdout
+        metrics_oos, _ = _run_backtest_logic(
+            template_data=template_data,
+            params=params,
+            df=df_oos,
+            deep_backtest=deep_backtest,
+            symbol=symbol,
+            since_str=oos_since or since_str,
+            until_str=oos_until,
         )
 
         done_ms = _now_ms()
@@ -569,9 +637,18 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
             "until": until_str,
             "deep_backtest": deep_backtest,
             "direction": direction,
-            "metrics": metrics,
             "params": full_params,
-            "candles": len(df),
+            "walk_forward": {
+                "split": "70/30",
+                "split_idx": split_idx,
+                "candles_all": n,
+                "candles_in_sample": len(df_is),
+                "candles_holdout": len(df_oos),
+                "in_sample": {"since": is_since, "until": is_until, "metrics": metrics_is},
+                "holdout": {"since": oos_since, "until": oos_until, "metrics": metrics_oos},
+            },
+            "metrics": metrics_all,
+            "candles": n,
             "duration_ms": done_ms - start_ms,
         }
 
@@ -581,9 +658,11 @@ def _run_single_candidate_backtest(run_id: str, req_dict: Dict[str, Any]) -> Non
                 "ts_ms": done_ms,
                 "type": "backtest_done",
                 "data": {
-                    "candles": len(df),
+                    "candles": n,
                     "duration_ms": done_ms - start_ms,
-                    "metrics": metrics,
+                    "metrics_all": metrics_all,
+                    "metrics_in_sample": metrics_is,
+                    "metrics_holdout": metrics_oos,
                 },
             },
         )
