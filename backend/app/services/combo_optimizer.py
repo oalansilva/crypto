@@ -382,11 +382,33 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
         # Métricas via fonte única (_metrics_from_trades) – scoring e exibição consistentes
         metrics = _metrics_from_trades(trades, initial_capital, context_params=full_params)
 
-        if len(trades) > 0:
-            atr_col = next((c for c in df.columns if c.startswith('ATR')), None)
-            adx_col = next((c for c in df.columns if c.startswith('ADX')), None)
-            metrics['avg_atr'] = df[atr_col].mean() if atr_col else 0
-            metrics['avg_adx'] = df[adx_col].mean() if adx_col else 0
+        # Optional diagnostic indicators (best-effort).
+        # Use df_with_signals because that's where indicator columns live.
+        def _first_col(prefix: str):
+            pref = prefix.upper()
+            for c in df_with_signals.columns:
+                try:
+                    if str(c).upper().startswith(pref):
+                        return c
+                except Exception:
+                    continue
+            return None
+
+        atr_col = _first_col("ATR")
+        adx_col = _first_col("ADX")
+
+        def _safe_mean(series):
+            try:
+                m = series.dropna().mean()
+                # avoid serializing NaN
+                if m != m:  # NaN
+                    return None
+                return float(m)
+            except Exception:
+                return None
+
+        metrics['avg_atr'] = _safe_mean(df_with_signals[atr_col]) if atr_col else None
+        metrics['avg_adx'] = _safe_mean(df_with_signals[adx_col]) if adx_col else None
 
         return metrics, full_params
         
