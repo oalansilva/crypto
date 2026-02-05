@@ -42,12 +42,12 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
   1) **Coordenador**: orquestração + decisão final
   2) **Dev Sênior**: mudanças em template + notas de implementação
   3) **Trader/Validador**: checagens de risco/robustez + aprovar/reprovar
-- Ferramentas (tools) dentro do grafo:
-  - listar templates disponíveis
-  - propor/criar templates (declarativo)
-  - **computar indicadores pandas-ta de forma genérica** (evitar code changes por indicador)
-  - rodar backtest usando o motor existente
-  - salvar template + favorito
+- Ferramentas (tools) dentro do grafo (reutilizar o que já existe):
+  - listar/ler/criar templates (reutilizar `combo_templates` e a lógica atual)
+  - **buscar candles** (reutilizar o storage/cache/parquet + exchange fetch existente)
+  - rodar backtest (reutilizar o motor atual de backtest, sem duplicar lógica)
+  - salvar favoritos (reutilizar a tabela/endpoint de favorites)
+  - **computar indicadores via pandas-ta** por adapter genérico (para suportar "qualquer" indicador sem code changes por indicador)
   - (quando necessário) propor patch de código do motor, mas **somente em branch + com gates + OK final do Alan**
 
 ## Fora do escopo (v1)
@@ -134,6 +134,7 @@ Response (error):
 
 - Usar OpenClaw Gateway (mesmo OAuth já existente) no estilo do agent chat.
 - Personas implementadas como prompts distintos e instruções de uso de tools.
+- Importante: o grafo deve preferir **tools do sistema** (candle fetch, backtest, favorites, templates) em vez de “simular” resultados.
 
 # 6) Mudanças de modelo/dados
 
