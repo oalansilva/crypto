@@ -124,7 +124,10 @@ def build_cp7_graph() -> CompiledStateGraph:
                 "FORMATO OBRIGATÓRIO: responda com um JSON válido (apenas JSON, sem texto fora) no formato:\n"
                 "{\n"
                 "  \"candidate_template_data\": {\n"
-                "    \"indicators\": [...],\n"
+                "    \"indicators\": [\n"
+                "      {\"type\": \"ema\", \"alias\": \"fast\", \"params\": {\"length\": 20}},\n"
+                "      {\"type\": \"adx\", \"alias\": \"adx\", \"params\": {\"length\": 14}}\n"
+                "    ],\n"
                 "    \"entry_logic\": \"...\",\n"
                 "    \"exit_logic\": \"...\",\n"
                 "    \"stop_loss\": 0.015\n"
@@ -132,7 +135,7 @@ def build_cp7_graph() -> CompiledStateGraph:
                 "  \"description\": \"...\",\n"
                 "  \"notes\": \"rationale / changes\"\n"
                 "}\n\n"
-                "REGRAS: no máximo 4 indicadores. Não invente campos fora desses." 
+                "REGRAS: no máximo 4 indicadores. Cada indicador DEVE ser objeto com type/alias/params. Não invente campos fora desses." 
             ),
         ),
     )

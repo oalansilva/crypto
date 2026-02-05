@@ -408,6 +408,28 @@ def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"too many indicators: {len(inds)}"}})
         return outputs
 
+    # Validate indicator schema (must match ComboStrategy expectation)
+    for idx, ind in enumerate(inds):
+        if not isinstance(ind, dict):
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": _now_ms(),
+                    "type": "candidate_error",
+                    "data": {"error": f"indicator[{idx}] must be an object with type/alias/params"},
+                },
+            )
+            return outputs
+        if not isinstance(ind.get("type"), str) or not ind.get("type"):
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"indicator[{idx}].type missing"}})
+            return outputs
+        if not isinstance(ind.get("alias"), str) or not ind.get("alias"):
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"indicator[{idx}].alias missing"}})
+            return outputs
+        if not isinstance(ind.get("params"), dict):
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"indicator[{idx}].params must be object"}})
+            return outputs
+
     try:
         from app.services.combo_service import ComboService
 
