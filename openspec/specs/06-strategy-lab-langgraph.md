@@ -36,6 +36,7 @@ Adicionar uma nova feature "Strategy Lab" (nova tela + endpoints no backend) que
 - **Deep backtest obrigatório:** no Lab, sempre executar backtests com `deep_backtest=true` para que o stop considere candles de 15 minutos (consistência com o seu critério de stop).
 - **Controle de complexidade:** no máximo **4 indicadores** por template (evitar overfit e templates ilegíveis).
 - **Rate limit/limites de execução:** limitar número de candidatos/backtests por run e por janela de tempo.
+- **Engine-fix permitido com gate:** se houver erro no motor, o Dev pode fazer ajustes pequenos **somente em branch** e **somente** se passar um smoke fixo antes de qualquer merge: `BTC/USDT 1d` + template base `multi_ma_crossover` + `deep_backtest=true` (rodar sem erro e produzir métricas/trades válidos).
 - **Autosave com critérios:** somente **salvar quando aprovado** (reprovados não salvam nada). Favoritos/templates aprovados devem ser salvos com naming padrão e `notes` contendo `lab_run_id`.
 
 ## Dentro do escopo (in scope)
