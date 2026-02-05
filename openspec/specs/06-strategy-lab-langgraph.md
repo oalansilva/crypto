@@ -2,7 +2,7 @@
 spec: openspec.v1
 id: crypto.lab.langgraph.v1
 title: Strategy Lab (LangGraph) com 3 personas + autosave de templates/favoritos
-status: validated
+status: implemented
 owner: Alan
 created_at: 2026-02-05
 updated_at: 2026-02-05
@@ -276,15 +276,27 @@ Após deploy/restart, Alan valida na UI.
   1) Rodar um lab task e verificar autosave.
   2) Confirmar que o Favorite salvo existe e Agent chat funciona.
 - Resultado:
-  - [ ] Alan confirmou: OK
+  - [x] Alan confirmou: OK CP6 (MVP)
 
 # 13) ARQUIVAR / FECHAR (obrigatório)
 
-Somente depois do OK do Alan:
+✅ **MVP CP1–CP6 implementado**.
 
-- [ ] Atualizar frontmatter do spec para `status: implemented`
-- [ ] Atualizar `updated_at`
-- [ ] Adicionar evidência breve (hash do commit + URL testada) no spec
+Evidência:
+- Branch: `feature/long-change`
+- Commits (CP1–CP6):
+  - CP1: `08618a7`
+  - CP2: `f16a0cf`
+  - CP3: `6dae1fe`
+  - CP4: `84350c4`, `3584135`
+  - CP5: `4efaee7` (autosave aprovado)
+  - CP6: `aef15ef` (walk-forward 70/30 + holdout), `39fd5e6` (fix veredito)
+- URLs testadas:
+  - http://31.97.92.212:5173/lab
+  - http://31.97.92.212:5173/lab/runs/<run_id>
+
+Próximo:
+- Ver spec v2: `/openspec/07-strategy-lab-langgraph-v2` (LangGraph + tools + job pipeline)
 
 # 14) Notas / dúvidas em aberto
 
