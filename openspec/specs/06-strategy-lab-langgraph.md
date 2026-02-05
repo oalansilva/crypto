@@ -2,7 +2,7 @@
 spec: openspec.v1
 id: crypto.lab.langgraph.v1
 title: Strategy Lab (LangGraph) com 3 personas + autosave de templates/favoritos
-status: draft
+status: validated
 owner: Alan
 created_at: 2026-02-05
 updated_at: 2026-02-05
@@ -191,13 +191,13 @@ Se não criarmos tabela no v1, salvar ao menos um JSONL em disco em `backend/log
 
 Checklist (preencher antes de implementar):
 
-- [ ] Escopo sem ambiguidades (in-scope/out-of-scope explícitos)
-- [ ] Critérios de aceite testáveis (pass/fail)
-- [ ] API/contratos definidos (request/response/error) quando aplicável
-- [ ] Estados de UI cobertos (loading/empty/error)
-- [ ] Segurança anotada (auth/exposição) quando aplicável
-- [ ] Plano de testes inclui smoke manual + pelo menos 1 check automatizado
-- [ ] Perguntas em aberto resolvidas ou explicitamente listadas
+- [x] Escopo sem ambiguidades (in-scope/out-of-scope explícitos)
+- [x] Critérios de aceite testáveis (pass/fail)
+- [x] API/contratos definidos (request/response/error) quando aplicável
+- [x] Estados de UI cobertos (loading/empty/error)
+- [x] Segurança anotada (auth/exposição) quando aplicável
+- [x] Plano de testes inclui smoke manual + pelo menos 1 check automatizado
+- [x] Perguntas em aberto resolvidas ou explicitamente listadas (ver seção 13)
 
 # 8) Critérios de aceite (DoD)
 
