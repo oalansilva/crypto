@@ -282,18 +282,49 @@ def _inc_budget(budget: Dict[str, Any], *, turns: int = 0, tokens: int = 0) -> D
 
 
 def _verdict_label(text: Optional[str]) -> str:
+    """Extract approval label from the validator output.
+
+    Important: do NOT treat mentions like "para virar approved" as approval.
+    Prefer explicit leading verdict markers.
+    """
+
     t = (text or "").strip().lower()
     if not t:
         return "unknown"
-    # common patterns
-    if "veredito" in t and "approved" in t:
-        return "approved"
-    if "veredito" in t and "rejected" in t:
+
+    # Strong signals first (explicit markers)
+    for pat in (
+        "veredito: rejected",
+        "veredito: reprovado",
+        "veredito: aprovado",  # pt-BR
+        "veredito: approved",
+    ):
+        if pat in t:
+            if "rejected" in pat or "reprovado" in pat:
+                return "rejected"
+            if "approved" in pat or "aprovado" in pat:
+                return "approved"
+
+    # Next: heading-ish patterns at start
+    if t.startswith("**veredito: rejected") or t.startswith("veredito: rejected"):
         return "rejected"
-    if t.startswith("approved") or " approved" in t:
+    if t.startswith("**veredito: approved") or t.startswith("veredito: approved"):
         return "approved"
-    if t.startswith("rejected") or " rejected" in t:
+    if t.startswith("rejected") or t.startswith("**rejected"):
         return "rejected"
+    if t.startswith("approved") or t.startswith("**approved"):
+        return "approved"
+
+    # Fallback: if both words appear, prefer rejected (safer)
+    has_app = "approved" in t or "aprovado" in t
+    has_rej = "rejected" in t or "reprovado" in t
+    if has_app and has_rej:
+        return "rejected"
+    if has_rej:
+        return "rejected"
+    if has_app:
+        return "approved"
+
     return "unknown"
 
 
