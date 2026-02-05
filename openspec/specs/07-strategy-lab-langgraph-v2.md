@@ -28,6 +28,13 @@ Faltam partes do escopo original da v1 que foram propositalmente “simplificada
 
 ## In scope
 
+### 2.0 Engine-fix automático (quando necessário)
+- Se o Lab detectar um bug no motor/pipeline (ex.: indicadores ATR/ADX zerados) ou falha de execução:
+  - o nó Dev pode **gerar um patch de código automaticamente** (em branch nova)
+  - rodar o **gate smoke obrigatório** (BTC/USDT 1d + template base multi_ma_crossover + deep_backtest=true)
+  - se passar, o sistema pode **abrir um PR automaticamente** no GitHub e anexar evidência no trace
+
+⚠️ Segurança/risco: o sistema **não deve fazer merge direto em main** sem um mecanismo de rollback e sem você habilitar explicitamente esse modo.
 ### 2.1 LangGraph (workflow real)
 - Implementar um grafo com nós:
   - Coordinator → decide objetivo e orquestra
