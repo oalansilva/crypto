@@ -79,6 +79,7 @@ const LabRunPage: React.FC = () => {
             <div className="font-mono text-sm text-gray-200">{id}</div>
           </div>
           <div className="flex items-center gap-4">
+            <a href="/openspec/07-strategy-lab-langgraph-v2" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">spec v2</a>
             <Link to="/lab" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">novo run</Link>
             <a href="/favorites" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">favorites</a>
           </div>

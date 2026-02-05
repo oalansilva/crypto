@@ -47,8 +47,16 @@ const LabPage: React.FC = () => {
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Strategy Lab</h1>
-          <a href="/favorites" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">voltar</a>
+          <div>
+            <h1 className="text-2xl font-bold">Strategy Lab</h1>
+            <div className="text-xs text-gray-500 mt-1">
+              Spec v2: <a href="/openspec/07-strategy-lab-langgraph-v2" className="underline underline-offset-4 text-gray-300 hover:text-white">openspec/07-strategy-lab-langgraph-v2</a>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <a href="/openspec/07-strategy-lab-langgraph-v2" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">spec v2</a>
+            <a href="/favorites" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">voltar</a>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
