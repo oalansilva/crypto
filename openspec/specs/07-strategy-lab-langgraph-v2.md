@@ -29,12 +29,30 @@ Faltam partes do escopo original da v1 que foram propositalmente “simplificada
 ## In scope
 
 ### 2.0 Engine-fix automático (quando necessário)
-- Se o Lab detectar um bug no motor/pipeline (ex.: indicadores ATR/ADX zerados) ou falha de execução:
-  - o nó Dev pode **gerar um patch de código automaticamente** (em branch nova)
-  - rodar o **gate smoke obrigatório** (BTC/USDT 1d + template base multi_ma_crossover + deep_backtest=true)
-  - se passar, o sistema pode **abrir um PR automaticamente** no GitHub e anexar evidência no trace
 
-⚠️ Segurança/risco: o sistema **não deve fazer merge direto em main** sem um mecanismo de rollback e sem você habilitar explicitamente esse modo.
+Se o Lab detectar um bug no motor/pipeline (ex.: indicadores ATR/ADX zerados) ou falha de execução, o nó Dev pode **corrigir automaticamente** o código.
+
+**Estratégia de git (obrigatória):**
+- A automação deve fazer **commit + push direto** na branch **`feature/long-change`** (sem PR)
+- **PROIBIDO** qualquer commit/merge em `main`
+
+**Gate smoke obrigatório (antes de push):**
+- Rodar um smoke fixo e determinístico:
+  - Symbol: `BTC/USDT`
+  - Timeframe: `1d`
+  - Template base: `multi_ma_crossover`
+  - `deep_backtest=true`
+- Evidência obrigatória no trace:
+  - comando executado (ou equivalente)
+  - logs resumidos
+  - resultado pass/fail
+
+**Rollback automático:**
+- Se o gate falhar:
+  - reverter o commit do auto-fix (ou criar commit de revert) **na própria feature/long-change**
+  - registrar evento `engine_fix_failed` no trace e parar o run
+
+⚠️ Nota: como não há merge em main, esse fluxo evolui apenas a branch `feature/long-change` até revisão humana posterior.
 ### 2.1 LangGraph (workflow real)
 - Implementar um grafo com nós:
   - Coordinator → decide objetivo e orquestra
