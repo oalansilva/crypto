@@ -424,7 +424,11 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
 
 
 def _cp4_run_personas_if_possible(run_id: str) -> None:
-    """CP4: call 3 personas (coordinator/dev/validator) with budgets + UI confirmation."""
+    """CP4/CP7: run personas.
+
+    CP7 (v2) requirement: execute the flow via LangGraph and emit
+    `node_started`/`node_done` trace events.
+    """
 
     run = _load_run_json(run_id)
     budget = run.get("budget") or {}
@@ -459,63 +463,38 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         },
     }
 
-    # Coordinator
-    if not outputs.get("coordinator_summary") and _budget_ok(budget):
-        r = _persona_call_sync(
-            run_id=run_id,
-            session_key=session_key,
-            persona="coordinator",
-            thinking=thinking,
-            system_prompt=(
-                "Você é o Coordenador do Strategy Lab. Resuma o que foi feito e proponha próximos passos. "
-                "Responda em pt-BR, curto e objetivo."),
-            message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nEscreva um sumário do coordenador.",
+    # LangGraph CP7
+    try:
+        from app.services.lab_graph import LabGraphDeps, build_cp7_graph
+
+        graph = build_cp7_graph()
+        deps = LabGraphDeps(
+            persona_call=_persona_call_sync,
+            append_trace=_append_trace,
+            now_ms=_now_ms,
+            inc_budget=_inc_budget,
+            budget_ok=_budget_ok,
         )
-        outputs["coordinator_summary"] = r["text"]
-        budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
-        run = _load_run_json(run_id)
-        run["budget"] = budget
-        run["outputs"] = outputs
+
+        state_in = {
+            "run_id": run_id,
+            "session_key": session_key,
+            "thinking": thinking,
+            "context": context,
+            "budget": budget,
+            "outputs": outputs,
+        }
+
+        state_out = graph.invoke(state_in, deps)
+        budget = state_out.get("budget") or budget
+        outputs = state_out.get("outputs") or outputs
+
+        # Persist partial progress too
         _update_run_json(run_id, {"budget": budget, "outputs": outputs})
 
-    # Dev
-    if not outputs.get("dev_summary") and _budget_ok(budget):
-        r = _persona_call_sync(
-            run_id=run_id,
-            session_key=session_key,
-            persona="dev_senior",
-            thinking=thinking,
-            system_prompt=(
-                "Você é um Dev Sênior focado em templates/estratégias do Crypto Backtester. "
-                "Sugira melhorias de template sem quebrar o sistema. Responda em pt-BR."),
-            message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nSugira melhorias no template/parametros.\n",
-        )
-        outputs["dev_summary"] = r["text"]
-        budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
-        run = _load_run_json(run_id)
-        run["budget"] = budget
-        run["outputs"] = outputs
-        _update_run_json(run_id, {"budget": budget, "outputs": outputs})
-
-    # Validator
-    if not outputs.get("validator_verdict") and _budget_ok(budget):
-        r = _persona_call_sync(
-            run_id=run_id,
-            session_key=session_key,
-            persona="validator",
-            thinking=thinking,
-            system_prompt=(
-                "Você é um Trader/Validador. Avalie robustez e riscos (sem lookahead, custos, overfit). "
-                "Use principalmente o HOLDOUT (30% mais recente) para o veredito. "
-                "Dê veredito 'approved' ou 'rejected' com motivos. Responda em pt-BR."),
-            message=f"Contexto do run (JSON):\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\nDê veredito e motivos.",
-        )
-        outputs["validator_verdict"] = r["text"]
-        budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0))
-        run = _load_run_json(run_id)
-        run["budget"] = budget
-        run["outputs"] = outputs
-        _update_run_json(run_id, {"budget": budget, "outputs": outputs})
+    except Exception as e:
+        # Fallback to previous behavior (but still keep the run alive)
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "langgraph_error", "data": {"error": str(e)}})
 
     # Persist
     needs_confirm = not _budget_ok(budget) and not (outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"))

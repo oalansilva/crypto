@@ -9,6 +9,9 @@ httpx>=0.24,<0.26
 sqlalchemy>=2.0.0
 pandas-ta>=0.3.14b0
 
+# Lab v2
+langgraph>=0.2.0
+
 # Core Data/Trading
 ccxt
 pandas
