@@ -173,15 +173,50 @@ def _extract_tokens_from_gateway_payload(payload: Dict[str, Any]) -> int:
 
     # payload: {runId,status,result:{...}}
     res = (payload or {}).get("result") or {}
-    usage = res.get("usage") or res.get("usageSummary") or {}
-    for k in ("totalTokens", "total_tokens", "tokens_total"):
+
+    # Newer gateway shape: result.meta.agentMeta.usage
+    agent_meta = (res.get("meta") or {}).get("agentMeta") or {}
+    usage = agent_meta.get("usage") or {}
+
+    # Common keys
+    for k in ("totalTokens", "total_tokens", "tokens_total", "total"):
         v = usage.get(k)
         if isinstance(v, int):
             return v
+
     # Some providers split in/out
+    if isinstance(usage.get("input"), int) and isinstance(usage.get("output"), int):
+        return int(usage.get("input")) + int(usage.get("output"))
     if isinstance(usage.get("inputTokens"), int) and isinstance(usage.get("outputTokens"), int):
         return int(usage.get("inputTokens")) + int(usage.get("outputTokens"))
+
     return 0
+
+
+def _extract_text_from_gateway_payload(payload: Dict[str, Any]) -> str:
+    """Best-effort extraction of assistant text from gateway payload."""
+
+    res = (payload or {}).get("result") or {}
+
+    # Preferred: payloads[0].text
+    payloads = res.get("payloads")
+    if isinstance(payloads, list) and payloads:
+        p0 = payloads[0]
+        if isinstance(p0, dict):
+            t = p0.get("text") or p0.get("content")
+            if isinstance(t, str) and t.strip():
+                return t.strip()
+        if isinstance(p0, str) and p0.strip():
+            return p0.strip()
+
+    # Fallback: meta/message fields
+    for k in ("text", "message", "output"):
+        t = res.get(k)
+        if isinstance(t, str) and t.strip():
+            return t.strip()
+
+    # Last resort: stringify compactly
+    return json.dumps(res, ensure_ascii=False)[:4000]
 
 
 def _persona_call_sync(*,
@@ -215,11 +250,7 @@ def _persona_call_sync(*,
     tokens = _extract_tokens_from_gateway_payload(payload)
     end = _now_ms()
 
-    # Best-effort content extraction
-    result = (payload or {}).get("result") or {}
-    text = result.get("text") or result.get("message") or result.get("output")
-    if not isinstance(text, str):
-        text = json.dumps(result, ensure_ascii=False)[:4000]
+    text = _extract_text_from_gateway_payload(payload)
 
     _append_trace(
         run_id,
