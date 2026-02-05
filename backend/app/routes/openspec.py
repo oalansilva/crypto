@@ -82,7 +82,15 @@ async def list_specs() -> OpenSpecListResponse:
         return OpenSpecListResponse(items=[])
 
     items: List[OpenSpecListItem] = []
-    for p in sorted(specs_dir.glob("*.md")):
+
+    # Newest first (by file mtime). Falls back to name sort if stat fails.
+    def _mtime_key(p: Path) -> float:
+        try:
+            return p.stat().st_mtime
+        except Exception:
+            return 0.0
+
+    for p in sorted(specs_dir.glob("*.md"), key=_mtime_key, reverse=True):
         spec_id = p.stem
         try:
             txt = p.read_text(encoding="utf-8")
