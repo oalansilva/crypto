@@ -60,7 +60,9 @@ def _normalize_spec_id(spec_id: str) -> List[str]:
 
 def _project_root() -> Path:
     # backend/app/routes/openspec.py -> backend/app/routes -> backend/app -> backend -> crypto
-    return Path(__file__).resolve().parents[3]
+    # NOTE: This file lives under `crypto/backend/...`, so we need one more parent
+    # to reach the repo root (`crypto/`).
+    return Path(__file__).resolve().parents[4]
 
 
 def _specs_dir() -> Path:
