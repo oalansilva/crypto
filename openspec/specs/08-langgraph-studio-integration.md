@@ -2,7 +2,7 @@
 spec: openspec.v1
 id: crypto.lab.langgraph.studio.v1
 title: Strategy Lab — integração com LangGraph Studio (debug/traces) + link run_id → trace
-status: draft
+status: validated
 owner: Alan
 created_at: 2026-02-06
 updated_at: 2026-02-06
