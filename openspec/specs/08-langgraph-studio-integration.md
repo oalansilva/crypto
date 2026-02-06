@@ -10,41 +10,38 @@ depends_on:
   - crypto.lab.langgraph.v2
 ---
 
-# 0) One-liner
+# 0) Resumo (one-liner)
 
-Adicionar uma camada de **dev/observabilidade** para que execuções disparadas pelo **/lab** (FastAPI) possam ser **inspecionadas no LangGraph Studio**, com correlação por `run_id` e um link direto “ver trace”.
+Adicionar uma camada de **dev/observabilidade** para que execuções disparadas pelo **/lab** (FastAPI) possam ser **inspecionadas no LangGraph Studio**, com correlação por `run_id` e um link direto “Abrir no Studio”.
 
-# 1) Context
+# 1) Contexto
 
-- Problema:
-  - O Strategy Lab roda um workflow LangGraph, mas hoje o debug fica espalhado entre logs e o UI do /lab.
-  - Para iterar rápido em nós (ingest/enrich/validate/backtest/validator) precisamos de uma forma visual de inspecionar **state**, inputs/outputs e erros por nó.
-- Por que agora:
-  - O /lab já existe e já tem o conceito de `run_id` + página de runs.
-  - LangGraph Studio acelera validação e reduz tempo de diagnóstico.
-- Restrições:
-  - O Studio é uma ferramenta de **desenvolvimento**: não precisa (e não deve) ser embedado no /lab para usuário final.
-  - Produção não pode depender do Studio estar “no ar”.
-  - Não assumir serviços pagos; suportar fluxo gratuito/local.
+- O Strategy Lab roda um workflow LangGraph, mas hoje o debug fica espalhado entre logs e o UI do /lab.
+- Para iterar rápido em nós (ingest/enrich/validate/backtest/validator) precisamos de uma forma visual de inspecionar **state**, inputs/outputs e erros por nó.
 
-# 2) Goal
+Restrições importantes:
+- O Studio é ferramenta de **desenvolvimento**: não precisa (e não deve) ser embedado no /lab para usuário final.
+- Produção **não pode** depender do Studio estar “no ar”.
+- Não assumir serviço pago como requisito; suportar fluxo gratuito/local.
 
-## In scope
+# 2) Objetivo
+
+## Dentro do escopo (in scope)
 
 - Habilitar execução do LangGraph no backend FastAPI com:
   - **correlação** (`run_id` ↔ `thread_id`/`trace_id`) persistida.
   - persistência mínima de eventos por nó (start/end + erros) para UI.
-- Adicionar no UI `/lab/runs/:run_id`:
-  - um campo/CTA “**Abrir no Studio**” quando a integração estiver habilitada.
-- Definir um “modo dev”:
-  - Rodar Studio apontando para o grafo do projeto.
-  - Executar runs via UI e conseguir rastrear a mesma execução no Studio.
+- UI `/lab/runs/:run_id`:
+  - exibir um CTA “**Abrir no Studio**” quando a integração estiver habilitada.
+- Definir “modo dev”:
+  - rodar Studio apontando para o grafo do projeto.
+  - executar runs via UI e rastrear a mesma execução no Studio.
 - Documentar custos:
   - Studio local: sem custo de licença.
   - Custos variáveis: tokens de LLM + infra.
   - Opcional: tracing hospedado (ex.: LangSmith), se Alan decidir.
 
-## Out of scope
+## Fora do escopo
 
 - Builder visual (drag-and-drop) para criar o grafo.
 - Expor o Studio publicamente na internet sem autenticação.
@@ -56,7 +53,7 @@ Adicionar uma camada de **dev/observabilidade** para que execuções disparadas 
 - Como Alan, quero que o `run_id` do /lab seja correlacionável com o trace, para não perder tempo procurando execuções.
 - Como Alan, quero que em produção o sistema continue funcionando mesmo sem Studio, para evitar dependência de ferramenta de dev.
 
-# 4) UX / UI
+# 4) UX / UI (Lab)
 
 - Entry points:
   - `/lab/runs/:run_id` → seção “Debug/Trace”.
@@ -68,7 +65,7 @@ Adicionar uma camada de **dev/observabilidade** para que execuções disparadas 
   - Botão: “Abrir no Studio”
   - Tooltip/nota: “Disponível apenas em modo dev.”
 
-# 5) API / Contracts
+# 5) API / Contratos
 
 ## Backend endpoints
 
@@ -122,7 +119,7 @@ Adicionar uma camada de **dev/observabilidade** para que execuções disparadas 
 - Rate limits:
   - `POST /lab/run`: manter limite do job manager (se existir) ou aplicar limite simples por IP em dev.
 
-# 6) Data model changes
+# 6) Mudanças no modelo de dados
 
 - DB:
   - Tabela/registro de runs deve armazenar:
@@ -159,7 +156,7 @@ Before implementation, complete this checklist:
 - [ ] Em modo prod (debug_trace=false), o Lab continua funcionando e a página não quebra (mostra estado Empty).
 - [ ] Documentação adicionada: como rodar Studio local e como habilitar/desabilitar trace.
 
-# 9) Test plan
+# 9) Plano de testes
 
 ## Automated
 
@@ -174,7 +171,7 @@ Before implementation, complete this checklist:
 4. Clicar e confirmar que abre o Studio/trace correspondente.
 5. Desabilitar tracing e repetir: CTA não aparece, mas página continua OK.
 
-# 9) Implementation plan
+# 9) Plano de implementação
 
 - Step 1: Definir estratégia de correlação (`run_id` ↔ `thread_id`/`trace_id`) no state do LangGraph.
 - Step 2: Persistir metadados de trace no registro do run.
