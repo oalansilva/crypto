@@ -31,10 +31,16 @@ Thumbs.db
 full_execution_log.txt
 backend_log.txt
 
+# OpenSpec tool integrations (IDE/agent glue)
+.codex/
+
 # Backend data (checkpoints, jobs, storage)
 backend/data/
 backend/backend/data/
 data/storage/
+
+# Backend runtime logs
+backend/logs/
 
 # Large data files (prevent accidental commits)
 *.parquet
@@ -49,6 +55,9 @@ data/storage/
 **/checkpoints/
 **/cache/
 **/.cache/
+
+# Frontend dev outputs
+frontend/vite.out
 
 # Test and debug scripts (root level)
 test_*.py
