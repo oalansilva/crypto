@@ -154,7 +154,10 @@ async def list_specs() -> OpenSpecListResponse:
 async def get_spec(spec_id: str) -> OpenSpecGetResponse:
     parts = _normalize_spec_id(spec_id)
 
-    p = _specs_dir().joinpath(*parts).with_suffix(".md")
+    # IMPORTANT: spec ids may contain dots (e.g. crypto.lab.langgraph.studio.v1).
+    # `Path.with_suffix(".md")` would treat the last dot segment as an extension and
+    # incorrectly drop it ("...v1" -> "...md"). So we append ".md" explicitly.
+    p = Path(str(_specs_dir().joinpath(*parts)) + ".md")
     if not p.exists() or not p.is_file():
         raise HTTPException(status_code=404, detail="Spec not found")
 
