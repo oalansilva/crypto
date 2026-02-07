@@ -66,6 +66,26 @@ Servidor rodando em: http://localhost:8000
 
 Documentação interativa: http://localhost:8000/docs
 
+## Strategy Lab — Tracing/Studio (dev)
+
+O Strategy Lab expõe runs em `POST /api/lab/run` e `GET /api/lab/runs/{run_id}`.
+
+Para habilitar metadados de tracing (dev-only):
+- Envie `debug_trace=true` no `POST /api/lab/run`.
+- O `GET /api/lab/runs/{run_id}` retorna um objeto `trace` com:
+  - `enabled`, `provider`, `thread_id`, `trace_id`
+  - `trace_url` (opcional)
+
+Para que o backend gere um link clicável (`trace_url`), configure uma destas env vars:
+- `LAB_TRACE_PUBLIC_URL` (preferido)
+- `TRACE_PUBLIC_URL`
+
+Exemplo:
+```bash
+export LAB_TRACE_PUBLIC_URL="http://localhost:2024"
+```
+O backend monta: `${LAB_TRACE_PUBLIC_URL}/{thread_id}`.
+
 ## 📡 Endpoints
 
 ### Health Check
