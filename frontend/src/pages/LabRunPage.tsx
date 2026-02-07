@@ -14,7 +14,7 @@ type RunStatus = {
   step?: string | null;
   created_at_ms: number;
   updated_at_ms: number;
-  trace: { viewer_url: string; api_url: string };
+  trace: { viewer_url: string; api_url: string; enabled?: boolean; provider?: string; thread_id?: string; trace_id?: string; trace_url?: string | null };
   trace_events?: TraceEvent[];
   backtest_job?: any;
   backtest?: any;
@@ -221,6 +221,17 @@ const LabRunPage: React.FC = () => {
                   <summary className="cursor-pointer text-gray-300 hover:text-white">budget</summary>
                   <pre className="mt-2 text-[11px] text-gray-300 font-mono whitespace-pre-wrap">{JSON.stringify(data.budget, null, 2)}</pre>
                 </details>
+              ) : null}
+
+              {data?.trace?.trace_url ? (
+                <a
+                  className="inline-block text-sm text-gray-300 hover:text-white underline underline-offset-4"
+                  href={String(data.trace.trace_url)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Abrir no Studio
+                </a>
               ) : null}
 
               {data?.trace?.api_url ? (

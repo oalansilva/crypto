@@ -15,6 +15,7 @@ Security:
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from pathlib import Path
@@ -86,6 +87,9 @@ class LabRunCreateRequest(BaseModel):
     symbol: str = Field(..., min_length=3, max_length=30)
     timeframe: str = Field(..., min_length=1, max_length=10)
 
+    # Dev-only: enable trace correlation metadata for Studio/LangSmith.
+    debug_trace: bool = False
+
     # In autonomous mode, this can be omitted and the Lab will pick a seed.
     base_template: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
@@ -109,7 +113,7 @@ class LabRunCreateRequest(BaseModel):
 class LabRunCreateResponse(BaseModel):
     run_id: str
     status: str
-    trace: Dict[str, str]
+    trace: Dict[str, Any]
 
 
 class LabRunTraceEvent(BaseModel):
@@ -148,8 +152,14 @@ class LabRunStatusResponse(BaseModel):
     step: Optional[str] = None
     created_at_ms: int
     updated_at_ms: int
-    trace: Dict[str, str]
+
+    # Stable trace object used by the UI.
+    # Back-compat: includes viewer_url + api_url.
+    trace: Dict[str, Any]
+
+    # Back-compat: keep trace_events, but also provide events as alias.
     trace_events: List[LabRunTraceEvent] = Field(default_factory=list)
+    events: List[LabRunTraceEvent] = Field(default_factory=list)
 
     budget: LabRunBudget = Field(default_factory=LabRunBudget)
     outputs: LabRunOutputs = Field(default_factory=LabRunOutputs)
@@ -1173,6 +1183,17 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks) -> LabRunCreateResponse:
     run_id = uuid.uuid4().hex
     now = _now_ms()
+    trace_provider = "langgraph_studio" if bool(req.debug_trace) else "none"
+    trace_enabled = bool(req.debug_trace)
+    trace_thread_id = f"lab-{run_id}"  # stable correlation key for dev tools
+    trace_id = run_id
+
+    # Optional: if configured, return a URL that the frontend can open.
+    # For Studio this is usually local/dev-only; for hosted tracing (LangSmith)
+    # this could be a real URL.
+    trace_public_base = (os.environ.get("LAB_TRACE_PUBLIC_URL") or os.environ.get("TRACE_PUBLIC_URL") or "").strip().rstrip("/")
+    trace_url = f"{trace_public_base}/{trace_thread_id}" if (trace_public_base and trace_enabled) else None
+
     payload = {
         "run_id": run_id,
         "status": "accepted",
@@ -1181,7 +1202,14 @@ async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks
         "updated_at_ms": now,
         "input": req.model_dump(),
         "trace": [],
-        "session_key": f"lab-{run_id}",
+        "trace_meta": {
+            "enabled": trace_enabled,
+            "provider": trace_provider,
+            "thread_id": trace_thread_id,
+            "trace_id": trace_id,
+            "trace_url": trace_url,
+        },
+        "session_key": trace_thread_id,
         "budget": {
             "turns_used": 0,
             "turns_max": 12,
@@ -1226,6 +1254,11 @@ async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks
         trace={
             "viewer_url": f"http://31.97.92.212:5173/lab/runs/{run_id}",
             "api_url": f"/api/lab/runs/{run_id}",
+            "enabled": trace_enabled,
+            "provider": trace_provider,
+            "thread_id": trace_thread_id,
+            "trace_id": trace_id,
+            "trace_url": trace_url,
         },
     )
 
@@ -1243,6 +1276,13 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
 
     trace_events = _read_trace_tail(run_id, limit=200)
 
+    trace_meta = data.get("trace_meta") or {}
+    enabled = bool(trace_meta.get("enabled"))
+    provider = str(trace_meta.get("provider") or ("langgraph_studio" if enabled else "none"))
+    thread_id = trace_meta.get("thread_id")
+    trace_id = trace_meta.get("trace_id")
+    trace_url = trace_meta.get("trace_url")
+
     return LabRunStatusResponse(
         run_id=data.get("run_id") or run_id,
         status=data.get("status") or "unknown",
@@ -1252,8 +1292,14 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         trace={
             "viewer_url": f"http://31.97.92.212:5173/lab/runs/{run_id}",
             "api_url": f"/api/lab/runs/{run_id}",
+            "enabled": enabled,
+            "provider": provider,
+            "thread_id": thread_id,
+            "trace_id": trace_id,
+            "trace_url": trace_url,
         },
         trace_events=trace_events,
+        events=trace_events,
         budget=data.get("budget") or {},
         outputs=data.get("outputs") or {},
         backtest_job=data.get("backtest_job"),
