@@ -1194,8 +1194,20 @@ async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks
     # Optional: if configured, return a URL that the frontend can open.
     # For Studio this is usually local/dev-only; for hosted tracing (LangSmith)
     # this could be a real URL.
-    trace_public_base = (os.environ.get("LAB_TRACE_PUBLIC_URL") or os.environ.get("TRACE_PUBLIC_URL") or "").strip().rstrip("/")
-    trace_url = f"{trace_public_base}/{trace_thread_id}" if (trace_public_base and trace_enabled) else None
+    trace_public_base = (os.environ.get("LAB_TRACE_PUBLIC_URL") or os.environ.get("TRACE_PUBLIC_URL") or "").strip()
+
+    def _make_trace_url(base: str, thread_id: str) -> str:
+        base = (base or "").strip()
+        if not base:
+            return ""
+        # If base already has a query string, append as a query param so we don't
+        # break the URL structure.
+        if "?" in base:
+            sep = "&" if not base.endswith("?") else ""
+            return f"{base}{sep}q={thread_id}"
+        return base.rstrip("/") + "/" + thread_id
+
+    trace_url = _make_trace_url(trace_public_base, trace_thread_id) if (trace_public_base and trace_enabled) else None
 
     payload = {
         "run_id": run_id,
