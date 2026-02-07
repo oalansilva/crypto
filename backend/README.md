@@ -66,6 +66,27 @@ Servidor rodando em: http://localhost:8000
 
 Documentação interativa: http://localhost:8000/docs
 
+## Strategy Lab — Tracing/Studio (dev)
+
+O Strategy Lab expõe runs em `POST /api/lab/run` e `GET /api/lab/runs/{run_id}`.
+
+Para habilitar metadados de tracing (dev-only):
+- Envie `debug_trace=true` no `POST /api/lab/run`.
+- O `GET /api/lab/runs/{run_id}` retorna um objeto `trace` com:
+  - `enabled`, `provider`, `thread_id`, `trace_id`
+  - `trace_url` (opcional)
+
+Para que o backend gere um link clicável (`trace_url`), configure uma destas env vars:
+
+- `LAB_TRACE_PUBLIC_URL` (preferido)
+- `TRACE_PUBLIC_URL`
+
+Exemplo:
+```bash
+export LAB_TRACE_PUBLIC_URL="http://localhost:2024"
+```
+O backend vai montar: `${LAB_TRACE_PUBLIC_URL}/{thread_id}`.
+
 ## 📡 Endpoints
 
 ### Health Check
@@ -118,128 +139,3 @@ GET /api/backtest/status/{run_id}
 ```
 
 ### Obter Resultado
-```http
-GET /api/backtest/result/{run_id}
-```
-
-### Listar Histórico
-```http
-GET /api/backtest/runs?limit=50&offset=0
-```
-
-### Deletar Run
-```http
-DELETE /api/backtest/runs/{run_id}
-```
-
-## 🔄 Fluxo de Execução
-
-1. **POST** `/api/backtest/compare` → Retorna `run_id` imediatamente
-2. Backend cria registro com `status=PENDING`
-3. Job em background inicia (`status=RUNNING`)
-4. **Poll** `/api/backtest/status/{run_id}` até `status=DONE`
-5. **GET** `/api/backtest/result/{run_id}` para obter resultado completo
-
-## 📦 Estrutura do Resultado
-
-```json
-{
-  "run_id": "uuid",
-  "mode": "compare",
-  "dataset": {
-    "exchange": "binance",
-    "symbol": "BTC/USDT",
-    "timeframe": "4h",
-    "candle_count": 6555
-  },
-  "candles": [
-    {"timestamp_utc": "...", "open": 16617, "high": 16799, ...}
-  ],
-  "results": {
-    "sma_cross": {
-      "metrics": {
-        "total_return_pct": 0.142,
-        "max_drawdown_pct": -0.076,
-        "sharpe": 0.014,
-        "num_trades": 72,
-        "win_rate": 0.388
-      },
-      "trades": [...],
-      "equity": [...],
-      "markers": [...]
-    }
-  },
-  "benchmark": {
-    "return_pct": 0.52,
-    "equity": [...]
-  }
-}
-```
-
-## 🛠️ Desenvolvimento
-
-### Estrutura de Pastas
-```
-backend/
-├── app/
-│   ├── main.py           # FastAPI app
-│   ├── api.py            # Endpoints
-│   ├── config.py         # Settings
-│   ├── supabase_client.py
-│   ├── schemas/          # Pydantic models
-│   ├── services/         # Business logic
-│   │   ├── backtest_service.py
-│   │   ├── preset_service.py
-│   │   └── run_repository.py
-│   └── workers/          # Background jobs
-│       └── runner.py
-├── supabase_schema.sql
-├── requirements.txt
-└── .env.example
-```
-
-### Adicionar Nova Estratégia
-
-1. Implemente a estratégia em `src/strategy/`
-2. Registre em `backtest_service.py`:
-```python
-STRATEGY_MAP = {
-    'sma_cross': SMACrossStrategy,
-    'rsi_reversal': RSIReversalStrategy,
-    'bb_meanrev': BBMeanReversionStrategy,
-    'nova_estrategia': NovaEstrategia  # Adicione aqui
-}
-```
-
-## 🔒 Segurança
-
-- ✅ Service Role Key **APENAS** no backend
-- ✅ CORS configurado para localhost (dev)
-- ✅ Validação de inputs via Pydantic
-- ✅ Limite de 20k candles por request
-
-Para produção:
-- Configure CORS para seu domínio
-- Use HTTPS
-- Adicione rate limiting
-- Considere implementar autenticação
-
-## 🐛 Troubleshooting
-
-**Erro: "No module named 'src'"**
-- Certifique-se de rodar o backend a partir da raiz do projeto
-
-**Erro: "Connection refused" no Supabase**
-- Verifique se `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` estão corretos
-- Confirme que o SQL foi executado
-
-**Backtest fica em PENDING**
-- Verifique logs do servidor
-- Confirme que o background worker está rodando
-
-## 📝 Próximos Passos
-
-- [ ] Frontend React (Fase 2)
-- [ ] Testes automatizados
-- [ ] Deploy (Railway, Render, etc.)
-- [ ] Autenticação (Supabase Auth + RLS)
