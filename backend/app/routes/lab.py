@@ -1183,7 +1183,10 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks) -> LabRunCreateResponse:
     run_id = uuid.uuid4().hex
     now = _now_ms()
-    trace_provider = "langgraph_studio" if bool(req.debug_trace) else "none"
+    # Trace provider selection (dev-only).
+    # If LangSmith tracing is enabled in the environment, prefer it.
+    langsmith_on = str(os.environ.get("LANGSMITH_TRACING") or "").lower() in ("1", "true", "yes", "on")
+    trace_provider = "langsmith" if (bool(req.debug_trace) and langsmith_on) else ("langgraph_studio" if bool(req.debug_trace) else "none")
     trace_enabled = bool(req.debug_trace)
     trace_thread_id = f"lab-{run_id}"  # stable correlation key for dev tools
     trace_id = run_id
