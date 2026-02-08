@@ -1,7 +1,20 @@
+import asyncio
+import json
+import sys
+from pathlib import Path
+
 import pytest
 import pandas as pd
+from fastapi import BackgroundTasks
 from src.engine.backtester import Backtester
 from src.strategy.base import Strategy
+
+# Access backend route tests from root pytest invocation.
+BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+
+from app.routes import lab as lab_routes
 
 # Mock Strategy that returns specific signals
 class MockStrategy(Strategy):
@@ -73,3 +86,50 @@ def test_market_sell_long_only_no_position(sample_data):
     
     backtester.run(sample_data, strategy)
     assert len(backtester.trades) == 0, "Should not sell with 0 position"
+
+
+class _FixedUUID:
+    hex = "fixedrunid1234567890"
+
+
+def test_create_run_returns_needs_user_input_when_missing_required_fields(tmp_path, monkeypatch):
+    monkeypatch.setattr(lab_routes, "_run_path", lambda run_id: tmp_path / f"{run_id}.json")
+    monkeypatch.setattr(lab_routes, "_trace_path", lambda run_id: tmp_path / f"{run_id}.jsonl")
+
+    req = lab_routes.LabRunCreateRequest(objective="rodar lab")
+    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
+
+    assert isinstance(resp, lab_routes.LabRunNeedsUserInputResponse)
+    assert resp.status == "needs_user_input"
+    assert resp.missing == ["symbol", "timeframe"]
+    assert "symbol" in resp.question
+    assert "timeframe" in resp.question
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_create_run_accepts_when_symbol_and_timeframe_are_present(tmp_path, monkeypatch):
+    monkeypatch.setattr(lab_routes, "_run_path", lambda run_id: tmp_path / f"{run_id}.json")
+    monkeypatch.setattr(lab_routes, "_trace_path", lambda run_id: tmp_path / f"{run_id}.jsonl")
+    monkeypatch.setattr(lab_routes.uuid, "uuid4", lambda: _FixedUUID())
+
+    req = lab_routes.LabRunCreateRequest(
+        symbol="BTC/USDT",
+        timeframe="1h",
+        objective="rodar com foco em robustez",
+    )
+    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
+
+    assert isinstance(resp, lab_routes.LabRunCreateResponse)
+    assert resp.status == "accepted"
+    assert resp.run_id == _FixedUUID.hex
+
+    run_file = tmp_path / f"{_FixedUUID.hex}.json"
+    trace_file = tmp_path / f"{_FixedUUID.hex}.jsonl"
+    assert run_file.exists()
+    assert trace_file.exists()
+
+    payload = json.loads(run_file.read_text(encoding="utf-8"))
+    assert payload["status"] == "accepted"
+    assert payload["input"]["symbol"] == "BTC/USDT"
+    assert payload["input"]["timeframe"] == "1h"
+    assert "base_template" not in payload["input"]

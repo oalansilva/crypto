@@ -1,86 +1,63 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '@/lib/apiBase';
 
+type ParsedLabInputs = {
+  symbol?: string;
+  timeframe?: string;
+};
+
+const parseLabInputsFromPrompt = (text: string): ParsedLabInputs => {
+  const raw = String(text || '');
+  const symbolMatch = raw.match(/(?:^|\s)symbol\s*[:=]\s*([A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)/i);
+  const timeframeMatch = raw.match(/(?:^|\s)timeframe\s*[:=]\s*([0-9]+[A-Za-z]+)/i);
+
+  return {
+    symbol: symbolMatch?.[1]?.trim(),
+    timeframe: timeframeMatch?.[1]?.trim(),
+  };
+};
+
 const LabPage: React.FC = () => {
   const navigate = useNavigate();
-  const [symbol, setSymbol] = useState('BTC/USDT');
-  const [timeframe, setTimeframe] = useState('1d');
-  const [mode, setMode] = useState<'autonomous' | 'seed'>('autonomous');
-  const [baseTemplate, setBaseTemplate] = useState('multi_ma_crossover');
+  const [message, setMessage] = useState('');
   const [fullHistory, setFullHistory] = useState(true);
-
-  const [symbols, setSymbols] = useState<string[]>([]);
-  const [timeframes, setTimeframes] = useState<string[]>([]);
-  const [templates, setTemplates] = useState<string[]>([]);
-  const [loadingMeta, setLoadingMeta] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      setLoadingMeta(true);
-      try {
-        const [symRes, tfRes, tplRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/exchanges/binance/symbols`),
-          fetch(`${API_BASE_URL}/exchanges/binance/timeframes`),
-          fetch(`${API_BASE_URL}/combos/templates`),
-        ]);
-        const symJson = await symRes.json().catch(() => ({} as any));
-        const tfJson = await tfRes.json().catch(() => ({} as any));
-        const tplJson = await tplRes.json().catch(() => ({} as any));
-        if (!alive) return;
-        if (symRes.ok) setSymbols(Array.isArray(symJson.symbols) ? symJson.symbols : []);
-        if (tfRes.ok) setTimeframes(Array.isArray(tfJson.timeframes) ? tfJson.timeframes : []);
-        if (tplRes.ok) {
-          const prebuilt = (tplJson?.prebuilt || []).map((t: any) => t?.name).filter(Boolean);
-          const examples = (tplJson?.examples || []).map((t: any) => t?.name).filter(Boolean);
-          const custom = (tplJson?.custom || []).map((t: any) => t?.name).filter(Boolean);
-          const all = Array.from(new Set<string>([...prebuilt, ...examples, ...custom]));
-          all.sort();
-          setTemplates(all);
-        }
-      } catch {
-        // ignore; user can still type manually
-      } finally {
-        if (alive) setLoadingMeta(false);
-      }
-    };
-    load();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const timeframeOptions = useMemo(() => {
-    return timeframes.length ? timeframes : ['15m', '1h', '4h', '1d', '1w'];
-  }, [timeframes]);
-  const [objective, setObjective] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendQuestion, setBackendQuestion] = useState<string | null>(null);
 
   const run = async () => {
     setBusy(true);
     setError(null);
+    setBackendQuestion(null);
+
     try {
+      const parsed = parseLabInputsFromPrompt(message);
       const res = await fetch(`${API_BASE_URL}/lab/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          symbol,
-          timeframe,
-          base_template: mode === 'seed' ? baseTemplate : null,
+          symbol: parsed.symbol,
+          timeframe: parsed.timeframe,
           direction: 'long',
           constraints: { max_drawdown: 0.2, min_sharpe: 0.4 },
-          objective: objective || null,
+          objective: message.trim() || null,
           thinking: 'low',
           deep_backtest: true,
           full_history: fullHistory,
         }),
       });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(String(data?.detail || `HTTP ${res.status}`));
       }
+
+      if (data?.status === 'needs_user_input') {
+        setBackendQuestion(String(data?.question || 'Informe symbol e timeframe para iniciar o Lab.'));
+        return;
+      }
+
       const runId = String(data.run_id || '').trim();
       if (!runId) throw new Error('run_id vazio');
       navigate(`/lab/runs/${runId}`);
@@ -108,92 +85,18 @@ const LabPage: React.FC = () => {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-gray-400">Symbol (Binance)</label>
-              <input
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                list="lab-binance-symbols"
-                className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
-              />
-              <datalist id="lab-binance-symbols">
-                {symbols.map((s) => (
-                  <option key={s} value={s} />
-                ))}
-              </datalist>
-              <div className="text-[10px] text-gray-500 mt-1">
-                {loadingMeta ? 'carregando símbolos…' : symbols.length ? `${symbols.length} símbolos` : 'digite manualmente'}
-              </div>
+          <div>
+            <label className="text-xs text-gray-400">Mensagem para o Lab</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={5}
+              className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+              placeholder="Ex.: Quero rodar o lab com symbol=BTC/USDT timeframe=1h, foco em robustez e DD < 20%."
+            />
+            <div className="text-[10px] text-gray-500 mt-1">
+              Use formato explícito no chat: <span className="font-mono">symbol=BTC/USDT timeframe=1h</span>
             </div>
-            <div>
-              <label className="text-xs text-gray-400">Timeframe</label>
-              <select
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
-              >
-                {timeframeOptions.map((tf) => (
-                  <option key={tf} value={tf} className="bg-gray-900">
-                    {tf}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <label className="text-xs text-gray-400">Modo</label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMode('autonomous')}
-                    className={`text-xs px-3 py-1 rounded-lg border ${mode === 'autonomous' ? 'border-white/30 bg-white/10 text-white' : 'border-white/10 bg-black/30 text-gray-300'}`}
-                  >
-                    Autônomo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode('seed')}
-                    className={`text-xs px-3 py-1 rounded-lg border ${mode === 'seed' ? 'border-white/30 bg-white/10 text-white' : 'border-white/10 bg-black/30 text-gray-300'}`}
-                  >
-                    Seed
-                  </button>
-                </div>
-              </div>
-              <div className="text-[10px] text-gray-500 mt-1">
-                {mode === 'autonomous'
-                  ? 'Autônomo: o Lab escolhe um template seed automaticamente (você não precisa selecionar).'
-                  : 'Seed: você escolhe um template para servir de ponto de partida.'}
-              </div>
-            </div>
-
-            {mode === 'seed' ? (
-              <div>
-                <label className="text-xs text-gray-400">Template base</label>
-                {templates.length ? (
-                  <select
-                    value={baseTemplate}
-                    onChange={(e) => setBaseTemplate(e.target.value)}
-                    className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
-                  >
-                    {templates.map((t) => (
-                      <option key={t} value={t} className="bg-gray-900">
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={baseTemplate}
-                    onChange={(e) => setBaseTemplate(e.target.value)}
-                    className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
-                  />
-                )}
-                <div className="text-[10px] text-gray-500 mt-1">
-                  {loadingMeta ? 'carregando templates…' : templates.length ? `${templates.length} templates` : 'digite manualmente'}
-                </div>
-              </div>
-            ) : null}
           </div>
 
           <div className="flex items-center justify-between gap-3">
@@ -211,10 +114,11 @@ const LabPage: React.FC = () => {
             Se marcado: since padrão = 2017-01-01 (pode demorar mais em intraday).
           </div>
 
-          <div>
-            <label className="text-xs text-gray-400">Objetivo (opcional)</label>
-            <textarea value={objective} onChange={(e) => setObjective(e.target.value)} rows={3} className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" placeholder="Ex.: melhorar robustez em bear mantendo DD < 20%" />
-          </div>
+          {backendQuestion ? (
+            <div className="text-sm text-yellow-200 border border-yellow-500/30 bg-yellow-500/10 rounded-lg p-3">
+              {backendQuestion}
+            </div>
+          ) : null}
 
           {error ? (
             <div className="text-sm text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg p-3">Erro: {error}</div>
@@ -231,7 +135,7 @@ const LabPage: React.FC = () => {
           </div>
 
           <div className="text-xs text-gray-500">
-            CP1: apenas cria run_id + polling. Sem LangGraph ainda.
+            Inputs obrigatórios (symbol/timeframe) agora entram via chat.
           </div>
         </div>
       </div>

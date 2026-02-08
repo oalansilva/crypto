@@ -19,7 +19,7 @@ import os
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
@@ -84,14 +84,11 @@ def _now_ms() -> int:
 
 
 class LabRunCreateRequest(BaseModel):
-    symbol: str = Field(..., min_length=3, max_length=30)
-    timeframe: str = Field(..., min_length=1, max_length=10)
+    symbol: Optional[str] = Field(default=None, max_length=30)
+    timeframe: Optional[str] = Field(default=None, max_length=10)
 
     # Dev-only: enable trace correlation metadata for Studio/LangSmith.
     debug_trace: bool = False
-
-    # In autonomous mode, this can be omitted and the Lab will pick a seed.
-    base_template: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
     direction: str = "long"
     constraints: Dict[str, Any] = Field(default_factory=dict)
@@ -114,6 +111,32 @@ class LabRunCreateResponse(BaseModel):
     run_id: str
     status: str
     trace: Dict[str, Any]
+
+
+class LabRunNeedsUserInputResponse(BaseModel):
+    status: str
+    missing: List[str]
+    question: str
+
+
+def _inputs_preflight(req: LabRunCreateRequest) -> Optional[LabRunNeedsUserInputResponse]:
+    missing: List[str] = []
+    if not str(req.symbol or "").strip():
+        missing.append("symbol")
+    if not str(req.timeframe or "").strip():
+        missing.append("timeframe")
+
+    if not missing:
+        return None
+
+    if missing == ["symbol", "timeframe"]:
+        question = "Quais são o symbol (ex: BTC/USDT) e o timeframe (ex: 1h, 4h) para rodarmos o Lab?"
+    elif missing == ["symbol"]:
+        question = "Qual é o symbol (ex: BTC/USDT) para rodarmos o Lab?"
+    else:
+        question = "Qual é o timeframe (ex: 1h, 4h) para rodarmos o Lab?"
+
+    return LabRunNeedsUserInputResponse(status="needs_user_input", missing=missing, question=question)
 
 
 class LabRunTraceEvent(BaseModel):
@@ -1338,8 +1361,15 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
     _update_run_json(run_id, {"status": "done", "step": "done"})
 
 
-@router.post("/run", response_model=LabRunCreateResponse)
-async def create_run(req: LabRunCreateRequest, background_tasks: BackgroundTasks) -> LabRunCreateResponse:
+@router.post("/run", response_model=Union[LabRunCreateResponse, LabRunNeedsUserInputResponse])
+async def create_run(
+    req: LabRunCreateRequest,
+    background_tasks: BackgroundTasks,
+) -> Union[LabRunCreateResponse, LabRunNeedsUserInputResponse]:
+    preflight = _inputs_preflight(req)
+    if preflight is not None:
+        return preflight
+
     run_id = uuid.uuid4().hex
     now = _now_ms()
     # Trace provider selection (dev-only).
