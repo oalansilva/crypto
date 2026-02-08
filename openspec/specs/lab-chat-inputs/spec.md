@@ -39,7 +39,8 @@ O backend MUST validar determinísticamente se o payload possui os campos necess
 Campos necessários para iniciar um run:
 - `symbol` (ex.: `BTC/USDT`) — **obrigatório**
 - `timeframe` (ex.: `1h`, `4h`) — **obrigatório**
-- `base_template` — **opcional** se existir default claro no backend; caso contrário, obrigatório (decisão deve ser documentada no código)
+
+Observação: `base_template` NÃO deve mais existir neste fluxo. A cada solicitação os agentes devem criar um template novo (não depende de template base escolhido pelo usuário).
 
 #### Scenario: Payload sem symbol/timeframe
 - **WHEN** o cliente solicita criação de run sem `symbol` e/ou sem `timeframe`
@@ -59,7 +60,7 @@ Exemplo de resposta:
 ```
 
 #### Scenario: Payload completo
-- **WHEN** o cliente solicita criação de run com `symbol` e `timeframe` (e `base_template` se aplicável)
+- **WHEN** o cliente solicita criação de run com `symbol` e `timeframe`
 - **THEN** o backend aceita a criação e retorna `status = "accepted"` e `run_id`
 
 Exemplo de resposta:
@@ -67,7 +68,7 @@ Exemplo de resposta:
 {
   "status": "accepted",
   "run_id": "...",
-  "inputs": {"symbol": "BTC/USDT", "timeframe": "1h", "base_template": "..."}
+  "inputs": {"symbol": "BTC/USDT", "timeframe": "1h"}
 }
 ```
 
