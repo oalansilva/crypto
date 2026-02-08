@@ -1908,18 +1908,34 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
     import numpy as np
 
     out = {
+        # --- Core ---
         'total_trades': 0,
         'win_rate': 0.0,
-        'total_return': 0.0,
-        'total_return_pct': 0.0,
-        'avg_profit': 0.0,
+        'total_return': 0.0,          # decimal (e.g. 0.35 = +35%)
+        'total_return_pct': 0.0,      # percent (e.g. 35.0)
+        'avg_profit': 0.0,            # mean return per trade (decimal)
+
+        # --- Risk / ratios ---
         'sharpe_ratio': 0.0,
-        'sortino_ratio': 0.0,
+        'sortino_ratio': None,        # may be None when degenerate
+        'sortino_status': None,       # ok|degenerate|invalid
+        'downside_deviation': None,   # downside std (same units as returns)
+        'neg_return_count': 0,
+        'return_series_kind': 'per_trade',
+
+        # --- PnL / trade stats ---
         'profit_factor': 0.0,
         'max_loss': 0.0,
         'max_consecutive_losses': 0,
-        'max_drawdown': 0.0,
-        'expectancy': 0.0,
+
+        # Drawdown: keep both decimal + pct (avoid unit confusion)
+        'max_drawdown': 0.0,          # decimal (0..1)
+        'max_drawdown_pct': 0.0,      # percent (0..100)
+
+        # Expectancy: provide multiple units explicitly
+        'expectancy': 0.0,            # decimal per trade (same unit as avg_profit)
+        'expectancy_pct': 0.0,        # percent per trade
+        'expectancy_usd_10k': 0.0,    # legacy-style (assumes $10k notional)
     }
     if not trades:
         return out
@@ -1963,22 +1979,37 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
 
     total_return_pct = (cap / initial_capital - 1) * 100.0
     total_return = total_return_pct / 100.0
-    out['total_return'] = total_return
-    out['total_return_pct'] = total_return_pct
-    out['avg_profit'] = (total_return / n) if n else 0
+    out['total_return'] = float(total_return)
+    out['total_return_pct'] = float(total_return_pct)
 
-    # Sharpe
-    arr = np.array(returns)
-    std_dev = np.std(arr)
-    out['sharpe_ratio'] = (np.mean(arr) / std_dev) if std_dev > 0 else 0.0
+    # avg_profit = mean return per trade (decimal)
+    out['avg_profit'] = float(np.mean(np.array(returns, dtype=float))) if n else 0.0
 
-    # Sortino (downside deviation)
+    # Sharpe (per-trade return series; not annualized)
+    arr = np.array(returns, dtype=float)
+    std_dev = float(np.std(arr))
+    out['sharpe_ratio'] = float(np.mean(arr) / std_dev) if std_dev > 0 else 0.0
+
+    # Sortino (downside deviation) with guardrails
     neg = arr[arr < 0]
-    if len(neg) > 1:
-        down_std = np.std(neg)
-        out['sortino_ratio'] = (np.mean(arr) / down_std) if down_std > 0 else out['sharpe_ratio']
+    out['neg_return_count'] = int(len(neg))
+
+    # Note: with very few negatives or near-zero downside deviation, Sortino is degenerate.
+    # Returning a huge number is misleading; we return None + status instead.
+    eps = 1e-9
+    if len(neg) < 2:
+        out['sortino_ratio'] = None
+        out['downside_deviation'] = 0.0
+        out['sortino_status'] = 'degenerate'
     else:
-        out['sortino_ratio'] = out['sharpe_ratio']
+        down_std = float(np.std(neg))
+        out['downside_deviation'] = down_std
+        if down_std < eps:
+            out['sortino_ratio'] = None
+            out['sortino_status'] = 'degenerate'
+        else:
+            out['sortino_ratio'] = float(np.mean(arr) / down_std)
+            out['sortino_status'] = 'ok'
 
     # Profit factor (USD com compounding)
     cap2 = float(initial_capital)
@@ -1997,7 +2028,12 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
     )
 
     out['max_loss'] = float(np.min(arr))
-    out['expectancy'] = float(np.mean(arr)) * 10000.0  # $10k assumed
+
+    # Expectancy: keep units explicit
+    mean_r = float(np.mean(arr))
+    out['expectancy'] = mean_r
+    out['expectancy_pct'] = mean_r * 100.0
+    out['expectancy_usd_10k'] = mean_r * 10000.0  # legacy: assumes $10k notional
 
     # Max consecutive losses
     streak = 0
@@ -2010,15 +2046,18 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
             streak = 0
     out['max_consecutive_losses'] = max_streak
 
-    # Max drawdown (equity curve já em valor absoluto)
+    # Max drawdown (equity curve em valor absoluto)
     peak = float(initial_capital)
     max_dd = 0.0
     for eq in equity_curve:
         if eq > peak:
             peak = eq
         dd = (peak - eq) / peak if peak > 0 else 0
-        max_dd = max(max_dd, dd)
-    out['max_drawdown'] = max_dd * 100.0
+        max_dd = max(max_dd, float(dd))
+
+    # IMPORTANT: store drawdown as decimal + pct (avoid mixing units elsewhere)
+    out['max_drawdown'] = float(max_dd)            # 0..1
+    out['max_drawdown_pct'] = float(max_dd) * 100.0
 
     return out
 

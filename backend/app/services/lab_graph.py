@@ -64,6 +64,29 @@ def _node_factory(*, persona: str, system_prompt: str, output_key: str):
             deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "budget_limit", "data": budget})
             return {"budget": budget, "outputs": outputs}
 
+        # Deterministic preflight can block expensive LLM calls (especially validator)
+        if persona == "validator":
+            ctx = state.get("context") or {}
+            pre = ctx.get("metrics_preflight") or {}
+            if isinstance(pre, dict) and pre.get("ok") is False:
+                deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "node_started", "data": {"node": persona}})
+                payload = {
+                    "verdict": "metrics_invalid",
+                    "reasons": ["metrics_preflight_failed"],
+                    "required_fixes": (pre.get("errors") or [])[:8],
+                    "notes": "Preflight determinístico falhou; bloqueando chamada ao validator LLM.",
+                }
+                outputs[output_key] = json.dumps(payload, ensure_ascii=False)
+                deps.append_trace(
+                    run_id,
+                    {
+                        "ts_ms": deps.now_ms(),
+                        "type": "node_done",
+                        "data": {"node": persona, "tokens": 0, "blocked_by": "metrics_preflight"},
+                    },
+                )
+                return {"budget": budget, "outputs": outputs}
+
         deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "node_started", "data": {"node": persona}})
 
         msg = (
@@ -192,14 +215,20 @@ def build_cp7_graph() -> CompiledStateGraph:
                 "- Robustez e risco (Sharpe, drawdown, estabilidade).\n"
                 "- Overfitting ou sinais de ajuste excessivo.\n"
                 "- Problemas clássicos de validação: custos ignorados/irreais, lookahead bias, amostra pequena/enviesada.\n\n"
-                "Decisão final (obrigatória)\n"
-                "Declare explicitamente um veredito: approved ou rejected. O veredito deve estar claramente presente no texto.\n\n"
-                "Justificativa\n"
-                "Explique sua decisão em bullets objetivos. Se o veredito for rejected, deixe claro: o que falhou e o que precisaria mudar para aprovar no próximo ciclo.\n\n"
-                "Regras de resposta\n"
-                "- Baseie o veredito principalmente no HOLDOUT.\n"
+                "Output obrigatório (JSON-only)\n"
+                "Responda EXCLUSIVAMENTE com um JSON válido (sem markdown e sem texto fora do JSON), no formato:\n"
+                "{\n"
+                "  \"verdict\": \"approved\" | \"rejected\" | \"metrics_invalid\",\n"
+                "  \"reasons\": [\"...\"],\n"
+                "  \"required_fixes\": [\"...\"],\n"
+                "  \"notes\": \"...\"\n"
+                "}\n\n"
+                "Regras\n"
+                "- Baseie o veredito principalmente no HOLDOUT (30% mais recente).\n"
+                "- Se houver 0 trades, colunas inválidas ou métricas suspeitas/degeneradas, use verdict=metrics_invalid ou rejected (conforme o caso) e explique.\n"
+                "- Seja curto: no máximo ~8 itens somando reasons+required_fixes.\n"
                 "- Idioma: pt-BR.\n"
-                "- Tom criterioso, técnico e decisório (sem sugestão de edge novo)."
+                "- Não sugerir edge novo; focar em integridade/robustez."
             ),
         ),
     )

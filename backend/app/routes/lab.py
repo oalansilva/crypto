@@ -328,9 +328,20 @@ def _verdict_label(text: Optional[str]) -> str:
     Prefer explicit leading verdict markers.
     """
 
-    t = (text or "").strip().lower()
+    raw = (text or "").strip()
+    t = raw.lower()
     if not t:
         return "unknown"
+
+    # JSON-only validator support
+    if raw.startswith("{"):
+        try:
+            obj = json.loads(raw)
+            v = str(obj.get("verdict") or "").strip().lower()
+            if v in ("approved", "rejected", "metrics_invalid"):
+                return v
+        except Exception:
+            pass
 
     # Strong signals first (explicit markers)
     for pat in (
@@ -560,16 +571,125 @@ def _cp10_selection_gate(run: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _metrics_preflight(*, run: Dict[str, Any]) -> Dict[str, Any]:
+    """Deterministic preflight for metrics integrity.
+
+    Goal: detect instrumentação/métricas inválidas cedo e evitar gastar tokens no validator.
+    """
+
+    backtest = run.get("backtest") or {}
+    wf = backtest.get("walk_forward") or {}
+    hold = (wf.get("holdout") or {}).get("metrics") or {}
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    def _finite(x) -> bool:
+        try:
+            xf = float(x)
+            return (xf == xf) and (xf not in (float("inf"), float("-inf")))
+        except Exception:
+            return False
+
+    sortino = hold.get("sortino_ratio")
+    sortino_status = hold.get("sortino_status")
+    dd = hold.get("max_drawdown")
+    dd_pct = hold.get("max_drawdown_pct")
+
+    # Sortino sanity
+    if sortino is not None:
+        if not _finite(sortino):
+            errors.append("sortino_invalid")
+        else:
+            try:
+                if abs(float(sortino)) > 1e6:
+                    errors.append(f"sortino_implausible ({sortino})")
+            except Exception:
+                errors.append("sortino_invalid")
+    else:
+        # None is OK when degenerate, but we want an explicit status
+        if sortino_status not in ("degenerate", "ok", "invalid"):
+            warnings.append("sortino_missing_status")
+
+    # Drawdown sanity
+    if dd is not None:
+        if not _finite(dd) or float(dd) < 0 or float(dd) > 1.0:
+            errors.append(f"max_drawdown_invalid ({dd})")
+    elif dd_pct is not None:
+        if not _finite(dd_pct) or float(dd_pct) < 0 or float(dd_pct) > 100.0:
+            errors.append(f"max_drawdown_pct_invalid ({dd_pct})")
+    else:
+        warnings.append("max_drawdown_missing")
+
+    # Trades count sanity
+    tt = hold.get("total_trades")
+    if tt is None:
+        warnings.append("holdout_total_trades_missing")
+
+    ok = len(errors) == 0
+    return {
+        "ok": ok,
+        "errors": errors,
+        "warnings": warnings,
+        "metrics_checks": {
+            "sortino_present": sortino is not None,
+            "sortino_status": sortino_status,
+            "max_drawdown": dd,
+            "max_drawdown_pct": dd_pct,
+            "total_trades": tt,
+        },
+    }
+
+
+def _gate_decision(*, outputs: Dict[str, Any], selection: Dict[str, Any], preflight: Dict[str, Any]) -> Dict[str, Any]:
+    """Consolidate final verdict into a single, consistent decision object."""
+
+    verdict = _verdict_label(outputs.get("validator_verdict"))
+
+    reasons: list[str] = []
+    if isinstance(preflight, dict) and preflight.get("ok") is False:
+        reasons.append("metrics_preflight_failed")
+
+    if isinstance(selection, dict) and not selection.get("approved"):
+        reasons.extend(selection.get("reasons") or [])
+
+    if verdict in ("unknown", "metrics_invalid"):
+        if verdict == "metrics_invalid":
+            reasons.append("validator_metrics_invalid")
+        else:
+            reasons.append("validator_unknown")
+
+    approved = (verdict == "approved") and bool(selection.get("approved")) and not (isinstance(preflight, dict) and preflight.get("ok") is False)
+
+    final = {
+        "verdict": "approved" if approved else ("metrics_invalid" if (verdict == "metrics_invalid" or (isinstance(preflight, dict) and preflight.get("ok") is False)) else "rejected"),
+        "approved": bool(approved),
+        "reasons": reasons,
+        "validator_verdict": verdict,
+        "selection_gate": selection,
+        "metrics_preflight": preflight,
+    }
+    return final
+
+
 def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[str, Any]) -> Dict[str, Any]:
     """CP5/CP10: autosave (template + favorite) only when validator says approved AND selection gate passes."""
 
-    verdict = _verdict_label(outputs.get("validator_verdict"))
-    selection = outputs.get("selection") or {}
-    if verdict != "approved":
-        return outputs
-    if not selection or not selection.get("approved"):
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "autosave_blocked", "data": {"reason": "selection_gate", "selection": selection}})
-        return outputs
+    # Prefer consolidated gate decision when available
+    gate = outputs.get("gate_decision") if isinstance(outputs, dict) else None
+    if isinstance(gate, dict):
+        if not gate.get("approved"):
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "autosave_blocked", "data": {"reason": "gate_decision", "gate_decision": gate}})
+            return outputs
+        selection = (gate.get("selection_gate") or {}) if isinstance(gate.get("selection_gate"), dict) else (outputs.get("selection") or {})
+    else:
+        verdict = _verdict_label(outputs.get("validator_verdict"))
+        selection = outputs.get("selection") or {}
+        if verdict != "approved":
+            return outputs
+        if not selection or not selection.get("approved"):
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "autosave_blocked", "data": {"reason": "selection_gate", "selection": selection}})
+            return outputs
 
     try:
         from app.services.combo_service import ComboService
@@ -682,7 +802,14 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
             "metrics_in_sample": ((wf.get("in_sample") or {}).get("metrics") or {}),
             "metrics_holdout": ((wf.get("holdout") or {}).get("metrics") or {}),
         },
+        "metrics_preflight": _metrics_preflight(run=run),
     }
+
+    # Emit deterministic metrics preflight
+    try:
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "metrics_preflight", "data": context.get("metrics_preflight") or {}})
+    except Exception:
+        pass
 
     # LangGraph CP7
     try:
@@ -730,6 +857,13 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         sel = _cp10_selection_gate(run)
         outputs["selection"] = sel
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
+
+        # Consolidated gate decision
+        pre = (context.get("metrics_preflight") or {}) if isinstance(context, dict) else {}
+        gate = _gate_decision(outputs=outputs, selection=sel, preflight=pre)
+        outputs["gate_decision"] = gate
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "gate_decision", "data": gate})
+
         _update_run_json(run_id, {"outputs": outputs})
 
     # CP5/CP10: autosave only if approved
@@ -1134,25 +1268,41 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
             budget = run.get("budget") or {}
             outputs = run.get("outputs") or {}
             if _budget_ok(budget):
-                msg = "Contexto do run (JSON):\n" + json.dumps(_context_for_backtest(bt2), ensure_ascii=False, indent=2) + "\n"
-                r = _persona_call_sync(
-                    run_id=run_id,
-                    session_key=run.get("session_key") or f"lab-{run_id}",
-                    persona="validator",
-                    system_prompt=(
-                        "Papel: Validator (Trader + Product Owner). "
-                        "Você é o gate final de decisão do Strategy Lab. "
-                        "Tome a decisão final (approved/rejected) usando principalmente o HOLDOUT (30% mais recente). "
-                        "Se houver 0 trades, lógica inválida/colunas inválidas ou métrica suspeita, rejeite e descreva o problema. "
-                        "Explique em bullets objetivos o que falhou e o que precisaria mudar para aprovar no próximo ciclo. "
-                        "Idioma: pt-BR. Tom técnico e decisório (sem sugerir edge novo)."
-                    ),
-                    message=msg,
-                    thinking=inp.get("thinking") or "low",
-                )
-                outputs["validator_verdict"] = r.get("text")
-                budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0) or 0)
-                _update_run_json(run_id, {"budget": budget, "outputs": outputs})
+                # Deterministic preflight: block validator call if metrics are invalid
+                pre = _metrics_preflight(run=run)
+                _append_trace(run_id, {"ts_ms": _now_ms(), "type": "metrics_preflight", "data": pre})
+                if pre.get("ok") is False:
+                    outputs["validator_verdict"] = json.dumps(
+                        {
+                            "verdict": "metrics_invalid",
+                            "reasons": ["metrics_preflight_failed"],
+                            "required_fixes": (pre.get("errors") or [])[:8],
+                            "notes": "Preflight determinístico falhou; bloqueando validator LLM.",
+                        },
+                        ensure_ascii=False,
+                    )
+                    _update_run_json(run_id, {"budget": budget, "outputs": outputs})
+                else:
+                    msg = "Contexto do run (JSON):\n" + json.dumps(_context_for_backtest(bt2), ensure_ascii=False, indent=2) + "\n"
+                    r = _persona_call_sync(
+                        run_id=run_id,
+                        session_key=run.get("session_key") or f"lab-{run_id}",
+                        persona="validator",
+                        system_prompt=(
+                            "Papel: Validator (Trader + Product Owner). "
+                            "Você é o gate final de decisão do Strategy Lab. "
+                            "Responda EXCLUSIVAMENTE com JSON válido (sem markdown/texto fora do JSON) no formato: "
+                            "{\"verdict\":\"approved\"|\"rejected\"|\"metrics_invalid\",\"reasons\":[...],\"required_fixes\":[...],\"notes\":\"...\"}. "
+                            "Baseie o veredito principalmente no HOLDOUT (30% mais recente). "
+                            "Se houver 0 trades, colunas inválidas ou métricas suspeitas/degeneradas, use verdict=metrics_invalid ou rejected (conforme o caso). "
+                            "Idioma: pt-BR. Seja curto e decisório."
+                        ),
+                        message=msg,
+                        thinking=inp.get("thinking") or "low",
+                    )
+                    outputs["validator_verdict"] = r.get("text")
+                    budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0) or 0)
+                    _update_run_json(run_id, {"budget": budget, "outputs": outputs})
         except Exception as e:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "validator_error", "data": {"error": str(e), "iteration": it}})
 
@@ -1162,6 +1312,13 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
         sel = _cp10_selection_gate(run)
         outputs["selection"] = sel
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
+
+        # Consolidated gate decision
+        pre = _metrics_preflight(run=run)
+        gate = _gate_decision(outputs=outputs, selection=sel, preflight=pre)
+        outputs["gate_decision"] = gate
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "gate_decision", "data": gate})
+
         _update_run_json(run_id, {"outputs": outputs})
 
         outputs = _cp5_autosave_if_approved(run_id, run, outputs)
@@ -1172,7 +1329,9 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": "approved_and_saved"}})
             return
 
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": "rejected"}})
+        gd = (outputs.get("gate_decision") or {}) if isinstance(outputs, dict) else {}
+        res = str(gd.get("verdict") or "rejected")
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": res}})
         current_template = str(cand)
 
     # If we exit the loop, we're done (rejected after max iterations)
