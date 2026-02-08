@@ -31,13 +31,19 @@ def test_fee_application(sample_data):
     # Fee 10% (0.1) for easy math.
     # Buy 2000 worth. Fee should be 200.
     backtester = Backtester(initial_capital=10000, fee=0.1, slippage=0, position_size_pct=0.2)
-    strategy = MockStrategy([1, 0, 0, 0, 0]) # Buy on first candle
-    
+    # NOTE: Backtester only records a trade when it is CLOSED.
+    # So we must also emit a sell signal to close the position.
+    strategy = MockStrategy([1, 0, 0, 0, -1]) # Buy first candle, sell last candle
+
     backtester.run(sample_data, strategy)
-    
+
     trade = backtester.trades[0]
-    expected_commission = trade['size'] * trade['price'] * 0.1
-    assert abs(trade['commission'] - expected_commission) < 0.01
+
+    # Commission stored on trade is total (entry + exit)
+    entry_commission = trade['size'] * trade['entry_price'] * 0.1
+    exit_commission = trade['size'] * trade['exit_price'] * 0.1
+    expected_total_commission = entry_commission + exit_commission
+    assert abs(trade['commission'] - expected_total_commission) < 0.01
 
 def test_slippage_application(sample_data):
     # Test if slippage increases buy price
@@ -45,11 +51,12 @@ def test_slippage_application(sample_data):
     # Buy Price (Close) = 101
     # Exec price should be 101 * 1.1 = 111.1
     backtester = Backtester(initial_capital=10000, fee=0, slippage=0.1, position_size_pct=0.2)
-    strategy = MockStrategy([1, 0, 0, 0, 0])
-    
+    # Close the trade so Backtester records it
+    strategy = MockStrategy([1, 0, 0, 0, -1])
+
     backtester.run(sample_data, strategy)
     trade = backtester.trades[0]
-    assert abs(trade['price'] - (101 * 1.1)) < 0.01
+    assert abs(trade['entry_price'] - (101 * 1.1)) < 0.01
 
 def test_market_buy_long_only_no_cash(sample_data):
     # Try to buy with 0 cash
