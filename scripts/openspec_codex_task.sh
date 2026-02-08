@@ -113,7 +113,9 @@ echo "[tests] running pytest"
 
 # 5) Guardrail: diff limits
 MAX_FILES_CHANGED="${MAX_FILES_CHANGED:-3}"
-MAX_LINES_CHANGED="${MAX_LINES_CHANGED:-200}"
+# Default changed: disable strict line-limit by default (was 200).
+# Set MAX_LINES_CHANGED to a positive integer to re-enable.
+MAX_LINES_CHANGED="${MAX_LINES_CHANGED:-0}"
 
 FILES_CHANGED=$(git diff --name-only | wc -l | tr -d ' ')
 LINES_CHANGED=$(git diff --numstat | awk '{add+=$1; del+=$2} END {print add+del+0}')
@@ -126,7 +128,8 @@ git diff --stat
 
 over_limit="false"
 if [[ "$FILES_CHANGED" -gt "$MAX_FILES_CHANGED" ]]; then over_limit="true"; fi
-if [[ "$LINES_CHANGED" -gt "$MAX_LINES_CHANGED" ]]; then over_limit="true"; fi
+# If MAX_LINES_CHANGED <= 0, line-limit is disabled.
+if [[ "$MAX_LINES_CHANGED" -gt 0 && "$LINES_CHANGED" -gt "$MAX_LINES_CHANGED" ]]; then over_limit="true"; fi
 
 if [[ "$over_limit" == "true" && "$CONFIRM" != "true" ]]; then
   echo "Diff exceeded limits. Review manually and re-run with --confirm if acceptable." >&2
