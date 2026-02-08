@@ -74,14 +74,14 @@ if [[ ! -f "$SPEC_FILE" ]]; then
 fi
 
 # 3) Run Codex
-ALLOWED_PATHS=("backend/" "src/" "tests/" "openspec/")
+ALLOWED_PATHS=("backend/" "frontend/" "src/" "tests/" "openspec/")
 
 PROMPT=$(cat <<'EOF'
 You are implementing an OpenSpec in the repo.
 
 Instructions:
 - Read the spec file at: openspec/specs/${SPEC_ID}/spec.md
-- Only modify files under: backend/, src/, tests/, openspec/
+- Only modify files under: backend/, frontend/, src/, tests/, openspec/
 - Do NOT do broad refactors, reformatting, or drive-by changes.
 - Keep diffs minimal and focused on the spec.
 - After implementation, run tests: ./backend/.venv/bin/python -m pytest -q
