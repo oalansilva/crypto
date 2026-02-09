@@ -373,16 +373,18 @@ def _try_trader_upstream_turn(
     system_prompt = (
         "Papel: Trader do upstream do Strategy Lab.\n"
         "Você conversa com um humano para fechar um contrato upstream.\n"
+        "Objetivo: conversa fluida (estilo chat), entendendo respostas em formatos variados e extraindo inputs/constraints com segurança.\n"
         "Responda EXCLUSIVAMENTE com JSON válido no formato:\n"
         "{\n"
-        '  "reply": "texto curto para o humano",\n'
-        '  "inputs": {"symbol": "...", "timeframe": "...", "objective": "..."},\n'
+        '  "reply": "próxima pergunta curta (ou confirmação)",\n'
+        '  "inputs": {"symbol": "BTC/USDT", "timeframe": "4h", "objective": "..."},\n'
         '  "constraints": {"max_drawdown": 0.2, "min_sharpe": 0.4}\n'
-        "}\n"
+        "}\n\n"
         "Regras:\n"
-        "- Se não souber algum campo, omita o campo.\n"
-        "- Não invente symbol/timeframe.\n"
-        "- Em `reply`, faça próxima pergunta objetiva quando faltar contexto.\n"
+        "- NÃO invente symbol/timeframe.\n"
+        "- Se o humano responder algo como 'BTC/USDT 4H', 'BTCUSDT 4h', 'btc usdt no 4 horas', extraia e preencha `inputs`.\n"
+        "- Se um campo já existir no Contrato atual (JSON) ou já apareceu no histórico, NÃO pergunte por ele de novo. Pergunte pelo próximo campo faltante.\n"
+        "- Se não souber algum campo, omita o campo e faça uma pergunta objetiva.\n"
     )
 
     payload_message = (
@@ -436,9 +438,21 @@ def _try_trader_upstream_turn(
 def _next_trader_prompt(contract: Dict[str, Any]) -> str:
     if bool(contract.get("approved")):
         return "Contrato upstream aprovado. Revise o resumo e clique em Iniciar execução."
+
+    missing = contract.get("missing")
+    if isinstance(missing, list) and missing:
+        m0 = str(missing[0] or "").strip().lower()
+        if m0 in ("symbol", "ticker"):
+            return "Qual é o symbol (ex: BTC/USDT)?"
+        if m0 in ("timeframe", "tf"):
+            return "Qual é o timeframe (ex: 1h, 4h, 1d)?"
+        if m0 in ("objective", "goal"):
+            return "Qual é o objetivo do backtest (o que você quer otimizar/validar)?"
+
     q = str(contract.get("question") or "").strip()
     if q:
         return q
+
     return "Antes de continuar, preciso de mais detalhes para fechar o contrato upstream."
 
 
@@ -478,11 +492,42 @@ def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message
         upstream_messages=upstream.get("messages") or [],
     )
 
+    def _normalize_timeframe(tf: str) -> str:
+        t = str(tf or "").strip().lower().replace(" ", "")
+        # Portuguese words
+        t = t.replace("horas", "h").replace("hora", "h")
+        t = t.replace("minutos", "m").replace("minuto", "m")
+        t = t.replace("dias", "d").replace("dia", "d")
+        t = t.replace("semanas", "w").replace("semana", "w")
+        m = re.match(r"^([0-9]+)([a-z]+)$", t)
+        if not m:
+            return str(tf or "").strip()
+        n, u = m.group(1), m.group(2)
+        if u not in ("m", "h", "d", "w"):
+            return str(tf or "").strip()
+        return f"{n}{u}"
+
+    def _normalize_symbol(sym: str) -> str:
+        s = str(sym or "").strip().upper().replace("-", "/").replace("_", "/")
+        if "/" in s:
+            return s
+        # Common compact forms: BTCUSDT
+        for quote in ("USDT", "USD", "USDC"):
+            if s.endswith(quote) and len(s) > len(quote):
+                base = s[: -len(quote)]
+                return f"{base}/{quote}"
+        return s
+
     trader_inputs = trader_turn.get("inputs") if isinstance(trader_turn.get("inputs"), dict) else {}
     for k in ("symbol", "timeframe", "objective"):
         v = trader_inputs.get(k)
         if isinstance(v, str) and v.strip():
-            inp[k] = v.strip()
+            if k == "symbol":
+                inp[k] = _normalize_symbol(v)
+            elif k == "timeframe":
+                inp[k] = _normalize_timeframe(v)
+            else:
+                inp[k] = v.strip()
 
     trader_constraints = trader_turn.get("constraints")
     if isinstance(trader_constraints, dict):
