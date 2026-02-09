@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -120,23 +121,24 @@ class LabRunNeedsUserInputResponse(BaseModel):
 
 
 def _inputs_preflight(req: LabRunCreateRequest) -> Optional[LabRunNeedsUserInputResponse]:
-    missing: List[str] = []
-    if not str(req.symbol or "").strip():
-        missing.append("symbol")
-    if not str(req.timeframe or "").strip():
-        missing.append("timeframe")
+    from app.services.lab_graph import build_upstream_contract
 
-    if not missing:
+    contract = build_upstream_contract(
+        context={
+            "input": req.model_dump(),
+            "symbol": req.symbol,
+            "timeframe": req.timeframe,
+            "objective": req.objective,
+        }
+    )
+    if bool(contract.get("approved")):
         return None
 
-    if missing == ["symbol", "timeframe"]:
-        question = "Quais são o symbol (ex: BTC/USDT) e o timeframe (ex: 1h, 4h) para rodarmos o Lab?"
-    elif missing == ["symbol"]:
-        question = "Qual é o symbol (ex: BTC/USDT) para rodarmos o Lab?"
-    else:
-        question = "Qual é o timeframe (ex: 1h, 4h) para rodarmos o Lab?"
-
-    return LabRunNeedsUserInputResponse(status="needs_user_input", missing=missing, question=question)
+    return LabRunNeedsUserInputResponse(
+        status="needs_user_input",
+        missing=list(contract.get("missing") or []),
+        question=str(contract.get("question") or ""),
+    )
 
 
 class LabRunTraceEvent(BaseModel):
@@ -157,6 +159,8 @@ class LabRunOutputs(BaseModel):
     coordinator_summary: Optional[str] = None
     dev_summary: Optional[str] = None
     validator_verdict: Optional[str] = None
+    tests_done: Optional[Dict[str, Any]] = None
+    final_decision: Optional[Dict[str, Any]] = None
 
     # CP10 selection gate summary
     selection: Optional[Dict[str, Any]] = None
@@ -195,6 +199,29 @@ class LabRunStatusResponse(BaseModel):
 
     # If we hit budget limits, the run waits for user confirmation.
     needs_user_confirm: bool = False
+
+    # Two-phase graph persistence fields
+    phase: Optional[str] = None
+    upstream_contract: Optional[Dict[str, Any]] = None
+
+
+class LabRunContinueRequest(BaseModel):
+    message: Optional[str] = None
+    symbol: Optional[str] = Field(default=None, max_length=30)
+    timeframe: Optional[str] = Field(default=None, max_length=10)
+    objective: Optional[str] = None
+
+
+def _parse_symbol_timeframe_from_text(text: Optional[str]) -> Dict[str, str]:
+    raw = str(text or "")
+    symbol_match = re.search(r"(?:^|\s)symbol\s*[:=]\s*([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)", raw, flags=re.IGNORECASE)
+    timeframe_match = re.search(r"(?:^|\s)timeframe\s*[:=]\s*([0-9]+[A-Za-z]+)", raw, flags=re.IGNORECASE)
+    out: Dict[str, str] = {}
+    if symbol_match:
+        out["symbol"] = str(symbol_match.group(1) or "").strip()
+    if timeframe_match:
+        out["timeframe"] = str(timeframe_match.group(1) or "").strip()
+    return out
 
 
 def _load_run_json(run_id: str) -> Dict[str, Any]:
@@ -788,36 +815,44 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
 
 
 def _cp4_run_personas_if_possible(run_id: str) -> None:
-    """CP4/CP7: run personas.
-
-    CP7 (v2) requirement: execute the flow via LangGraph and emit
-    `node_started`/`node_done` trace events.
-    """
+    """Run two-phase Lab graph, persisting upstream contract + phase."""
 
     run = _load_run_json(run_id)
     budget = run.get("budget") or {}
     outputs = run.get("outputs") or {}
+    upstream_contract = run.get("upstream_contract") or {}
+    phase = str(run.get("phase") or "upstream")
 
-    # If already waiting, do nothing.
+    # If already waiting budget confirmation, do nothing.
     if run.get("needs_user_confirm"):
         return
 
     if not _budget_ok(budget):
-        _update_run_json(run_id, {"status": "needs_user_confirm", "step": "budget", "needs_user_confirm": True})
+        _update_run_json(
+            run_id,
+            {
+                "status": "needs_user_confirm",
+                "step": "budget",
+                "needs_user_confirm": True,
+                "phase": phase,
+                "upstream_contract": upstream_contract,
+            },
+        )
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "budget_limit", "data": budget})
         return
 
     session_key = run.get("session_key") or f"lab-{run_id}"
-    thinking = (run.get("input") or {}).get("thinking") or "low"
-
+    inp = run.get("input") or {}
+    thinking = inp.get("thinking") or "low"
     backtest = run.get("backtest") or {}
-    objective = (run.get("input") or {}).get("objective")
+    objective = inp.get("objective")
 
-    wf = (backtest.get("walk_forward") or {})
+    wf = backtest.get("walk_forward") or {}
     context = {
+        "input": inp,
         "objective": objective,
-        "symbol": backtest.get("symbol"),
-        "timeframe": backtest.get("timeframe"),
+        "symbol": (backtest.get("symbol") or inp.get("symbol")),
+        "timeframe": (backtest.get("timeframe") or inp.get("timeframe")),
         "template": backtest.get("template"),
         "walk_forward": {
             "split": (wf.get("split") or "70/30"),
@@ -828,13 +863,12 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         "metrics_preflight": _metrics_preflight(run=run),
     }
 
-    # Emit deterministic metrics preflight
     try:
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "metrics_preflight", "data": context.get("metrics_preflight") or {}})
     except Exception:
         pass
 
-    # LangGraph CP7
+    graph_status = ""
     try:
         from app.services.lab_graph import LabGraphDeps, build_cp7_graph
 
@@ -855,58 +889,84 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
             "deps": deps,
             "budget": budget,
             "outputs": outputs,
+            "upstream_contract": upstream_contract,
+            "phase": phase,
         }
 
         state_out = graph.invoke(state_in)
         budget = state_out.get("budget") or budget
         outputs = state_out.get("outputs") or outputs
+        upstream_contract = state_out.get("upstream_contract") or upstream_contract
+        phase = str(state_out.get("phase") or phase)
+        graph_status = str(state_out.get("status") or "").strip()
 
-        # Persist partial progress too
-        _update_run_json(run_id, {"budget": budget, "outputs": outputs})
-
+        _update_run_json(
+            run_id,
+            {
+                "budget": budget,
+                "outputs": outputs,
+                "upstream_contract": upstream_contract,
+                "phase": phase,
+            },
+        )
     except Exception as e:
-        # Fallback to previous behavior (but still keep the run alive)
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "langgraph_error", "data": {"error": str(e)}})
 
-    # Persist
-    needs_confirm = not _budget_ok(budget) and not (outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"))
+    if isinstance(upstream_contract, dict) and not bool(upstream_contract.get("approved")):
+        _update_run_json(
+            run_id,
+            {
+                "status": "needs_user_input",
+                "step": "upstream",
+                "phase": "upstream",
+                "upstream_contract": upstream_contract,
+                "budget": budget,
+                "outputs": outputs,
+                "session_key": session_key,
+                "needs_user_confirm": False,
+            },
+        )
+        return
 
     # CP8: persist candidate template after Dev output exists
     if outputs.get("coordinator_summary") and outputs.get("dev_summary"):
-        outputs = _cp8_save_candidate_template(run_id, run, outputs)
+        outputs = _cp8_save_candidate_template(run_id, _load_run_json(run_id) or run, outputs)
 
     # CP10: deterministic selection gate (holdout-based)
     if outputs.get("coordinator_summary") and outputs.get("validator_verdict"):
-        sel = _cp10_selection_gate(run)
+        sel = _cp10_selection_gate(_load_run_json(run_id) or run)
         outputs["selection"] = sel
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
 
-        # Consolidated gate decision
         pre = (context.get("metrics_preflight") or {}) if isinstance(context, dict) else {}
         gate = _gate_decision(outputs=outputs, selection=sel, preflight=pre)
         outputs["gate_decision"] = gate
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "gate_decision", "data": gate})
-
         _update_run_json(run_id, {"outputs": outputs})
 
     # CP5/CP10: autosave only if approved
     if outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"):
-        outputs = _cp5_autosave_if_approved(run_id, run, outputs)
+        outputs = _cp5_autosave_if_approved(run_id, _load_run_json(run_id) or run, outputs)
 
+    needs_confirm = not _budget_ok(budget) and graph_status not in ("done", "failed")
     patch: Dict[str, Any] = {
         "budget": budget,
         "outputs": outputs,
         "session_key": session_key,
         "needs_user_confirm": bool(needs_confirm),
+        "phase": phase,
+        "upstream_contract": upstream_contract,
     }
 
-    if outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"):
-        patch.update({"status": "done", "step": "done", "needs_user_confirm": False})
+    if graph_status == "done":
+        patch.update({"status": "done", "step": "done", "needs_user_confirm": False, "phase": "done"})
+    elif graph_status == "failed":
+        patch.update({"status": "failed", "step": "tests", "needs_user_confirm": False, "phase": "done"})
     elif needs_confirm:
         patch.update({"status": "needs_user_confirm", "step": "budget"})
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "budget_limit", "data": budget})
     else:
-        patch.update({"status": "running", "step": "personas"})
+        patch.update({"status": "running", "step": "implementation", "phase": phase or "implementation"})
 
     _update_run_json(run_id, patch)
 
@@ -958,16 +1018,52 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
     from app.services.combo_service import ComboService
     from src.data.incremental_loader import IncrementalLoader
     from app.services.combo_optimizer import _run_backtest_logic
+    from app.services.lab_graph import build_upstream_contract
 
-    symbol = str(req_dict.get("symbol") or "BTC/USDT")
-    timeframe = str(req_dict.get("timeframe") or "1d")
+    run = _load_run_json(run_id) or {}
+    inp = run.get("input") or {}
+
+    upstream_contract = build_upstream_contract(
+        context={
+            "input": req_dict,
+            "symbol": req_dict.get("symbol"),
+            "timeframe": req_dict.get("timeframe"),
+            "objective": req_dict.get("objective"),
+        }
+    )
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "upstream_started", "data": {}})
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": _now_ms(),
+            "type": "upstream_done",
+            "data": {
+                "approved": bool(upstream_contract.get("approved")),
+                "missing": upstream_contract.get("missing") or [],
+                "question": upstream_contract.get("question") or "",
+            },
+        },
+    )
+    _update_run_json(run_id, {"phase": "upstream", "upstream_contract": upstream_contract, "status": "running", "step": "upstream"})
+    if not bool(upstream_contract.get("approved")):
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "final_decision",
+                "data": {"status": "needs_user_input", "reason": "upstream_not_approved", "missing": upstream_contract.get("missing") or []},
+            },
+        )
+        _update_run_json(run_id, {"status": "needs_user_input", "step": "upstream", "phase": "upstream", "upstream_contract": upstream_contract})
+        return
+
+    inputs = upstream_contract.get("inputs") or {}
+    symbol = str(inputs.get("symbol") or "").strip()
+    timeframe = str(inputs.get("timeframe") or "").strip()
     deep_backtest = bool(req_dict.get("deep_backtest", True))
     direction = str(req_dict.get("direction") or "long")
     if direction not in ("long", "short"):
         direction = "long"
-
-    run = _load_run_json(run_id) or {}
-    inp = run.get("input") or {}
     full_history = bool(inp.get("full_history", True))
     since_str = str(inp.get("since") or "").strip() or _cp3_default_since(timeframe, full_history=full_history)
     until_str = str(inp.get("until") or "").strip() or None
@@ -1011,6 +1107,7 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
     def _context_for_backtest(bt: Dict[str, Any]) -> Dict[str, Any]:
         wf = (bt.get("walk_forward") or {})
         return {
+            "input": inp,
             "objective": (inp.get("objective") or None),
             "symbol": bt.get("symbol"),
             "timeframe": bt.get("timeframe"),
@@ -1253,11 +1350,33 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
                 "deps": deps,
                 "budget": budget,
                 "outputs": outputs,
+                "upstream_contract": run.get("upstream_contract") or {},
+                "phase": run.get("phase") or "upstream",
             }
             final = graph.invoke(state)
             budget = final.get("budget") or budget
             outputs = final.get("outputs") or outputs
-            _update_run_json(run_id, {"budget": budget, "outputs": outputs})
+            phase = final.get("phase") or run.get("phase") or "upstream"
+            upstream_contract = final.get("upstream_contract") or run.get("upstream_contract") or {}
+            graph_status = str(final.get("status") or "").strip()
+
+            _update_run_json(
+                run_id,
+                {
+                    "budget": budget,
+                    "outputs": outputs,
+                    "phase": phase,
+                    "upstream_contract": upstream_contract,
+                },
+            )
+
+            if isinstance(upstream_contract, dict) and not bool(upstream_contract.get("approved")):
+                _update_run_json(run_id, {"status": "needs_user_input", "step": "upstream", "phase": "upstream"})
+                return
+
+            if graph_status == "failed":
+                _update_run_json(run_id, {"status": "failed", "step": "tests", "phase": "done"})
+                return
 
             if not _budget_ok(budget):
                 _update_run_json(run_id, {"status": "needs_user_confirm", "step": "budget", "needs_user_confirm": True})
@@ -1348,7 +1467,7 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
         _update_run_json(run_id, {"outputs": outputs})
 
         if outputs.get("saved_favorite_id"):
-            _update_run_json(run_id, {"status": "done", "step": "done", "needs_user_confirm": False})
+            _update_run_json(run_id, {"status": "done", "step": "done", "phase": "done", "needs_user_confirm": False})
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": "approved_and_saved"}})
             return
 
@@ -1358,7 +1477,7 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
         current_template = str(cand)
 
     # If we exit the loop, we're done (rejected after max iterations)
-    _update_run_json(run_id, {"status": "done", "step": "done"})
+    _update_run_json(run_id, {"status": "done", "step": "done", "phase": "done"})
 
 
 @router.post("/run", response_model=Union[LabRunCreateResponse, LabRunNeedsUserInputResponse])
@@ -1369,6 +1488,8 @@ async def create_run(
     preflight = _inputs_preflight(req)
     if preflight is not None:
         return preflight
+
+    from app.services.lab_graph import build_upstream_contract
 
     run_id = uuid.uuid4().hex
     now = _now_ms()
@@ -1397,14 +1518,24 @@ async def create_run(
         return base.rstrip("/") + "/" + thread_id
 
     trace_url = _make_trace_url(trace_public_base, trace_thread_id) if (trace_public_base and trace_enabled) else None
+    upstream_contract = build_upstream_contract(
+        context={
+            "input": req.model_dump(),
+            "symbol": req.symbol,
+            "timeframe": req.timeframe,
+            "objective": req.objective,
+        }
+    )
 
     payload = {
         "run_id": run_id,
         "status": "accepted",
         "step": "init",
+        "phase": "upstream",
         "created_at_ms": now,
         "updated_at_ms": now,
         "input": req.model_dump(),
+        "upstream_contract": upstream_contract,
         "trace": [],
         "trace_meta": {
             "enabled": trace_enabled,
@@ -1427,6 +1558,8 @@ async def create_run(
             "coordinator_summary": None,
             "dev_summary": None,
             "validator_verdict": None,
+            "tests_done": None,
+            "final_decision": None,
             "selection": None,
             "candidate_template_name": None,
             "saved_template_name": None,
@@ -1509,6 +1642,8 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         backtest_job=data.get("backtest_job"),
         backtest=data.get("backtest"),
         needs_user_confirm=bool(data.get("needs_user_confirm")),
+        phase=data.get("phase"),
+        upstream_contract=data.get("upstream_contract"),
     )
 
 
@@ -1526,17 +1661,32 @@ async def get_job(job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/runs/{run_id}/continue")
-async def continue_run(run_id: str) -> Dict[str, Any]:
-    """CP4: User-confirmed budget extension.
-
-    Strategy per Alan choice (option 2): extend by +3 turns and +15000 tokens.
-    """
+async def continue_run(run_id: str, req: Optional[LabRunContinueRequest] = None) -> Dict[str, Any]:
+    """Resume from upstream, optionally with updated user inputs."""
 
     p = _run_path(run_id)
     if not p.exists():
         raise HTTPException(status_code=404, detail="run not found")
 
     run = _load_run_json(run_id)
+    inp = run.get("input") or {}
+
+    payload_updates: Dict[str, Any] = {}
+    parsed_from_message = _parse_symbol_timeframe_from_text((req.message if req else None))
+    if req is not None:
+        if req.symbol:
+            payload_updates["symbol"] = str(req.symbol).strip()
+        if req.timeframe:
+            payload_updates["timeframe"] = str(req.timeframe).strip()
+        if req.objective is not None:
+            payload_updates["objective"] = str(req.objective)
+        if req.message:
+            payload_updates["objective"] = str(req.message)
+    for k, v in parsed_from_message.items():
+        payload_updates[k] = v
+    if payload_updates:
+        inp.update(payload_updates)
+
     budget = run.get("budget") or {}
     inc_turns = int(budget.get("continue_turns", 3))
     inc_tokens = int(budget.get("continue_tokens", 15000))
@@ -1549,16 +1699,26 @@ async def continue_run(run_id: str) -> Dict[str, Any]:
         {
             "ts_ms": _now_ms(),
             "type": "user_continue",
-            "data": {"inc_turns": inc_turns, "inc_tokens": inc_tokens, "budget": budget},
+            "data": {"inc_turns": inc_turns, "inc_tokens": inc_tokens, "budget": budget, "input_updates": payload_updates},
         },
     )
 
-    _update_run_json(run_id, {"budget": budget, "needs_user_confirm": False, "status": "running", "step": "personas"})
+    _update_run_json(
+        run_id,
+        {
+            "input": inp,
+            "budget": budget,
+            "needs_user_confirm": False,
+            "status": "running",
+            "step": "upstream",
+            "phase": "upstream",
+        },
+    )
 
-    # Resume personas now.
+    # Resume graph from upstream now.
     try:
         _cp4_run_personas_if_possible(run_id)
     except Exception as e:
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "personas_error", "data": {"error": str(e)}})
 
-    return {"status": "ok", "run_id": run_id, "budget": budget}
+    return {"status": "ok", "run_id": run_id, "budget": budget, "input": inp}

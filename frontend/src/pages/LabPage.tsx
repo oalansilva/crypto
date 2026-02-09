@@ -25,11 +25,13 @@ const LabPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backendQuestion, setBackendQuestion] = useState<string | null>(null);
+  const [backendMissing, setBackendMissing] = useState<string[]>([]);
 
   const run = async () => {
     setBusy(true);
     setError(null);
     setBackendQuestion(null);
+    setBackendMissing([]);
 
     try {
       const parsed = parseLabInputsFromPrompt(message);
@@ -55,6 +57,7 @@ const LabPage: React.FC = () => {
 
       if (data?.status === 'needs_user_input') {
         setBackendQuestion(String(data?.question || 'Informe symbol e timeframe para iniciar o Lab.'));
+        setBackendMissing(Array.isArray(data?.missing) ? data.missing.map((v: unknown) => String(v)) : []);
         return;
       }
 
@@ -116,7 +119,14 @@ const LabPage: React.FC = () => {
 
           {backendQuestion ? (
             <div className="text-sm text-yellow-200 border border-yellow-500/30 bg-yellow-500/10 rounded-lg p-3">
-              {backendQuestion}
+              <div className="font-semibold">Upstream precisa de mais contexto</div>
+              <div className="mt-1">{backendQuestion}</div>
+              {backendMissing.length ? (
+                <div className="mt-2 text-xs text-yellow-100/90">
+                  Faltando: <span className="font-mono">{backendMissing.join(', ')}</span>
+                </div>
+              ) : null}
+              <div className="mt-2 text-xs text-yellow-100/80">Responda no campo acima e clique em Run Lab novamente.</div>
             </div>
           ) : null}
 

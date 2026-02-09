@@ -130,6 +130,72 @@ def test_create_run_accepts_when_symbol_and_timeframe_are_present(tmp_path, monk
 
     payload = json.loads(run_file.read_text(encoding="utf-8"))
     assert payload["status"] == "accepted"
+    assert payload["phase"] == "upstream"
+    assert payload["upstream_contract"]["approved"] is True
+    assert payload["upstream_contract"]["inputs"]["symbol"] == "BTC/USDT"
+    assert payload["upstream_contract"]["inputs"]["timeframe"] == "1h"
     assert payload["input"]["symbol"] == "BTC/USDT"
     assert payload["input"]["timeframe"] == "1h"
     assert "base_template" not in payload["input"]
+
+
+class _FakeTwoPhaseGraph:
+    def invoke(self, state):
+        outputs = dict(state.get("outputs") or {})
+        outputs["coordinator_summary"] = "ok"
+        outputs["dev_summary"] = "{\"candidate_template_data\": {\"indicators\": []}}"
+        outputs["validator_verdict"] = "{\"verdict\":\"approved\",\"reasons\":[],\"required_fixes\":[],\"notes\":\"ok\"}"
+        outputs["tests_done"] = {"pass": True}
+        outputs["final_decision"] = {"status": "done", "tests_pass": True}
+        return {
+            **state,
+            "outputs": outputs,
+            "budget": state.get("budget") or {},
+            "upstream_contract": {
+                "approved": True,
+                "missing": [],
+                "question": "",
+                "inputs": {"symbol": "BTC/USDT", "timeframe": "1h"},
+                "objective": "rodar com foco em robustez",
+                "acceptance_criteria": ["a", "b"],
+                "risk_notes": ["r1"],
+            },
+            "phase": "done",
+            "status": "done",
+        }
+
+
+def test_cp4_two_phase_approved_updates_phase_and_status(tmp_path, monkeypatch):
+    monkeypatch.setattr(lab_routes, "_run_path", lambda run_id: tmp_path / f"{run_id}.json")
+    monkeypatch.setattr(lab_routes, "_trace_path", lambda run_id: tmp_path / f"{run_id}.jsonl")
+    monkeypatch.setattr(lab_routes, "_cp8_save_candidate_template", lambda run_id, run, outputs: outputs)
+    monkeypatch.setattr(lab_routes, "_cp5_autosave_if_approved", lambda run_id, run, outputs: outputs)
+
+    import app.services.lab_graph as lab_graph
+
+    monkeypatch.setattr(lab_graph, "build_cp7_graph", lambda: _FakeTwoPhaseGraph())
+
+    run_id = "run_two_phase_ok"
+    payload = {
+        "run_id": run_id,
+        "status": "running",
+        "step": "upstream",
+        "phase": "upstream",
+        "created_at_ms": 1,
+        "updated_at_ms": 1,
+        "input": {"symbol": "BTC/USDT", "timeframe": "1h", "objective": "rodar com foco em robustez", "thinking": "low"},
+        "session_key": f"lab-{run_id}",
+        "budget": {"turns_used": 0, "turns_max": 12, "tokens_total": 0, "tokens_max": 60000, "on_limit": "ask_user"},
+        "outputs": {"coordinator_summary": None, "dev_summary": None, "validator_verdict": None},
+        "backtest": {},
+        "needs_user_confirm": False,
+    }
+    (tmp_path / f"{run_id}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    lab_routes._cp4_run_personas_if_possible(run_id)
+
+    updated = json.loads((tmp_path / f"{run_id}.json").read_text(encoding="utf-8"))
+    assert updated["status"] == "done"
+    assert updated["phase"] == "done"
+    assert updated["upstream_contract"]["approved"] is True
+    assert updated["outputs"]["tests_done"]["pass"] is True
