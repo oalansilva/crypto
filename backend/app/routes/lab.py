@@ -149,9 +149,11 @@ class LabRunTraceEvent(BaseModel):
 
 class LabRunBudget(BaseModel):
     turns_used: int = 0
-    turns_max: int = 12
+    # Default budgets for Labs runs.
+    # Set high to avoid frequent UI "Limite atingido" confirmations during long backtests.
+    turns_max: int = 200
     tokens_total: int = 0
-    tokens_max: int = 60000
+    tokens_max: int = 1_000_000
     on_limit: str = "ask_user"  # ask_user
 
 
@@ -1547,9 +1549,9 @@ async def create_run(
         "session_key": trace_thread_id,
         "budget": {
             "turns_used": 0,
-            "turns_max": 12,
+            "turns_max": 200,
             "tokens_total": 0,
-            "tokens_max": 60000,
+            "tokens_max": 1000000,
             "on_limit": "ask_user",
             "continue_turns": 3,
             "continue_tokens": 15000,
