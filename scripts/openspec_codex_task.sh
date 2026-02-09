@@ -120,8 +120,74 @@ print(obj.get('instruction') or '')
 PY
 <<<"$APPLY_JSON")
 
+# Extract context file paths (proposal/design/tasks + specs glob)
+CONTEXT_PROPOSAL=$(python3 - <<'PY'
+import json, sys
+obj=json.loads(sys.stdin.read() or '{}')
+print((obj.get('contextFiles') or {}).get('proposal') or '')
+PY
+<<<"$APPLY_JSON")
+
+CONTEXT_DESIGN=$(python3 - <<'PY'
+import json, sys
+obj=json.loads(sys.stdin.read() or '{}')
+print((obj.get('contextFiles') or {}).get('design') or '')
+PY
+<<<"$APPLY_JSON")
+
+CONTEXT_TASKS=$(python3 - <<'PY'
+import json, sys
+obj=json.loads(sys.stdin.read() or '{}')
+print((obj.get('contextFiles') or {}).get('tasks') or '')
+PY
+<<<"$APPLY_JSON")
+
+CONTEXT_SPECS_GLOB=$(python3 - <<'PY'
+import json, sys
+obj=json.loads(sys.stdin.read() or '{}')
+print((obj.get('contextFiles') or {}).get('specs') or '')
+PY
+<<<"$APPLY_JSON")
+
 # 3) Run Codex
 ALLOWED_PATHS=("backend/" "frontend/" "src/" "tests/" "openspec/")
+
+FILE_CHAR_LIMIT="${FILE_CHAR_LIMIT:-12000}"
+
+_read_capped() {
+  local path="$1"
+  local limit="$2"
+  python3 - <<'PY'
+import os, sys
+path=sys.argv[1]
+limit=int(sys.argv[2])
+try:
+  with open(path, 'r', encoding='utf-8') as f:
+    data=f.read()
+except Exception as e:
+  print(f"[ERROR reading file: {e}]")
+  raise SystemExit(0)
+
+if limit > 0 and len(data) > limit:
+  print(data[:limit])
+  print(f"\n[TRUNCATED to {limit} chars]\n")
+else:
+  print(data)
+PY
+  "$path" "$limit"
+}
+
+_spec_files_from_glob() {
+  local glob_expr="$1"
+  python3 - <<'PY'
+import glob, sys
+expr=sys.argv[1]
+paths=sorted(glob.glob(expr, recursive=True))
+for p in paths:
+  print(p)
+PY
+  "$glob_expr"
+}
 
 PROMPT=$(cat <<'EOF'
 You are implementing an OpenSpec **change** in this repo.
@@ -129,27 +195,58 @@ You are implementing an OpenSpec **change** in this repo.
 Change id: ${CHANGE_ID}
 Change dir: openspec/changes/${CHANGE_ID}
 
-Instructions:
-- Treat `openspec/changes/${CHANGE_ID}/tasks.md` as the source of truth.
-- Use the enriched apply instruction below.
+Rules:
+- Use the change artifacts below. `tasks.md` is the execution plan; specs/design are the contract/constraints.
+- Implement ONLY what is required by tasks/specs. No broad refactors or reformatting.
 - Only modify files under: backend/, frontend/, src/, tests/, openspec/
-- Do NOT do broad refactors, reformatting, or drive-by changes.
-- Keep diffs minimal and focused on the tasks.
 - After implementation, run tests: ./backend/.venv/bin/python -m pytest -q
 - If tests fail, fix them and rerun.
 
 Enriched apply instruction (from OpenSpec):
 ${APPLY_INSTRUCTION}
 
-Tasks file (verbatim):
 ---
+CHANGE ARTIFACTS (verbatim, may be truncated per-file):
 EOF
 )
 
-PROMPT+="$(cat "$TASKS_FILE")"
-PROMPT+=$'\n---\n'
+# Attach proposal/design/specs/tasks
+if [[ -n "$CONTEXT_PROPOSAL" && -f "$CONTEXT_PROPOSAL" ]]; then
+  PROMPT+=$'\n[CHANGE FILE] '
+  PROMPT+="$CONTEXT_PROPOSAL"
+  PROMPT+=$'\n'
+  PROMPT+="$(_read_capped "$CONTEXT_PROPOSAL" "$FILE_CHAR_LIMIT")"
+fi
+
+if [[ -n "$CONTEXT_DESIGN" && -f "$CONTEXT_DESIGN" ]]; then
+  PROMPT+=$'\n[CHANGE FILE] '
+  PROMPT+="$CONTEXT_DESIGN"
+  PROMPT+=$'\n'
+  PROMPT+="$(_read_capped "$CONTEXT_DESIGN" "$FILE_CHAR_LIMIT")"
+fi
+
+if [[ -n "$CONTEXT_SPECS_GLOB" ]]; then
+  while IFS= read -r spec_path; do
+    [[ -z "$spec_path" ]] && continue
+    if [[ -f "$spec_path" ]]; then
+      PROMPT+=$'\n[CHANGE FILE] '
+      PROMPT+="$spec_path"
+      PROMPT+=$'\n'
+      PROMPT+="$(_read_capped "$spec_path" "$FILE_CHAR_LIMIT")"
+    fi
+  done < <(_spec_files_from_glob "$CONTEXT_SPECS_GLOB")
+fi
+
+if [[ -n "$CONTEXT_TASKS" && -f "$CONTEXT_TASKS" ]]; then
+  PROMPT+=$'\n[CHANGE FILE] '
+  PROMPT+="$CONTEXT_TASKS"
+  PROMPT+=$'\n'
+  PROMPT+="$(_read_capped "$CONTEXT_TASKS" "$FILE_CHAR_LIMIT")"
+fi
+
 PROMPT+=$(cat <<'EOF'
 
+---
 Output requirements (end of your run):
 - A short summary of what changed
 - Files changed

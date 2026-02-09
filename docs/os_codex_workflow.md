@@ -36,6 +36,7 @@ Com wrapper (change-driven):
 - o wrapper valida o change
 - busca as tasks via `openspec instructions apply --change <change_id> --json`
 - falha se não houver tasks
+- injeta no prompt do Codex o contexto completo do change: `proposal.md`, `design.md`, `specs/**/*.md`, `tasks.md` (com truncamento por arquivo)
 
 ```bash
 ./scripts/openspec_codex_task.sh <change_id>
