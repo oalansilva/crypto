@@ -1,34 +1,20 @@
-## Tasks
+## 1. UI — Chat simplificado no /lab/runs/:run_id
 
-1) **Normalização de eventos**
-   - Criar `RunChatView` que converte `trace_events` em uma lista de itens renderizáveis:
-     - `phase_marker`
-     - `agent_message`
-     - `key_event`
-     - `debug_event`
+- [ ] 1.1 Extrair um componente `RunChatView` (ex.: `frontend/src/components/lab/RunChatView.tsx`) que normaliza `trace_events` em itens renderizáveis:
+  - `phase_marker`
+  - `agent_message`
+  - `key_event`
+  - `debug_event`
+- [ ] 1.2 Adicionar **tabs** na `LabRunPage`: `Chat (simplificado)` (default) e `Eventos (debug)`.
+- [ ] 1.3 Implementar filtros por persona + toggle **Mostrar eventos técnicos** (off por padrão).
+- [ ] 1.4 Inserir separadores de fase (Upstream/Execução) e um resumo do upstream quando existir `upstream_done`.
+- [ ] 1.5 UX polish: empty state quando não houver trace; bolhas consistentes; timestamps.
 
-2) **Tabs + filtros**
-   - Adicionar tabs (Chat/Debug) na `LabRunPage`.
-   - Filtros por persona + toggle “Mostrar eventos técnicos”.
+## 2. Tests / Verify
 
-3) **Upstream/Execução**
-   - Renderizar um resumo do upstream:
-     - `upstream_done.data.approved`
-     - `missing[]`
-     - `question`
-   - Inserir separadores na timeline.
-
-4) **UX polish**
-   - Mensagens com layout consistente (bolhas), timestamps, e badges (tokens/duração) opcionais.
-   - “Empty state” quando não houver trace.
-
-5) **Viewer de changes (/openspec/changes/...)**
-   - Backend: adicionar endpoints read-only para artefatos do change (`openspec/changes/<id>/**`).
-   - Frontend: ajustar o viewer para rotear `/openspec/changes/...` e buscar no endpoint de changes.
-
-6) **Validate**
-   - Ajustar spec delta em `specs/ui/spec.md`.
-   - Rodar `openspec validate lab-runs-chat-ui --type change`.
+- [ ] 2.1 (Opcional) Teste unitário da normalização de eventos.
+- [ ] 2.2 `openspec validate lab-runs-chat-ui --type change`.
+- [ ] 2.3 `npm --prefix frontend run build`.
 
 ## Test plan
 
@@ -38,6 +24,3 @@
     - mensagens das personas
     - decisão do gate
   - Toggle debug: mostra eventos técnicos.
-
-- Automated (lightweight):
-  - Teste unitário de normalização (input: trace_events; output: itens + ordem).
