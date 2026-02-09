@@ -64,7 +64,7 @@ fi
 
 # 2) Validate the change (OpenSpec gate)
 echo "[openspec] validating change: $CHANGE_ID"
-openspec validate "$CHANGE_ID"
+openspec validate "$CHANGE_ID" --type change
 
 CHANGE_DIR="$REPO_ROOT/openspec/changes/$CHANGE_ID"
 if [[ ! -d "$CHANGE_DIR" ]]; then
