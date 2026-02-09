@@ -294,6 +294,6 @@ if [[ "$over_limit" == "true" && "$CONFIRM" != "true" ]]; then
   exit 3
 fi
 
-echo "OK: spec validated, codex run completed, tests passed, diff within limits (or confirmed)."
+echo "OK: change validated, codex run completed, tests passed, diff within limits (or confirmed)."
 
-echo "Next: git add -A && git commit -m \"[spec:$SPEC_ID] <message>\""
+echo "Next: git add -A && git commit -m \"[change:$CHANGE_ID] <message>\""
