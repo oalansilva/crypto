@@ -202,7 +202,7 @@ CHANGE ARTIFACTS (verbatim, may be truncated per-file):
 EOF
 )
 
-# Attach proposal/design/specs/tasks
+# Attach proposal/design/specs/tasks (+ repo AGENTS.md / README.md)
 TRUNCATED_REPORT=()
 
 _attach_file() {
@@ -221,6 +221,10 @@ _attach_file() {
   PROMPT+=$'\n'
   PROMPT+="$(_read_capped "$p" "$FILE_CHAR_LIMIT")"
 }
+
+# Repo-level instructions for agents (kept small). These are additive context.
+_attach_file "$REPO_ROOT/AGENTS.md"
+_attach_file "$REPO_ROOT/README.md"
 
 _attach_file "$CONTEXT_PROPOSAL"
 _attach_file "$CONTEXT_DESIGN"
