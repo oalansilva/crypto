@@ -22,6 +22,15 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api/openspec", tags=["openspec"])
 
 
+_CHANGE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_ALLOWED_CHANGE_ARTIFACTS = {
+    "proposal": "proposal.md",
+    "design": "design.md",
+    "tasks": "tasks.md",
+    "readme": "README.md",
+}
+
+
 _SPEC_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
@@ -67,6 +76,10 @@ def _specs_dir() -> Path:
     return _project_root() / "openspec" / "specs"
 
 
+def _changes_dir() -> Path:
+    return _project_root() / "openspec" / "changes"
+
+
 def _parse_frontmatter(text: str) -> Dict[str, Any]:
     """Very small YAML-frontmatter parser.
 
@@ -105,6 +118,12 @@ class OpenSpecListResponse(BaseModel):
 
 class OpenSpecGetResponse(BaseModel):
     id: str
+    markdown: str
+
+
+class OpenSpecChangeArtifactResponse(BaseModel):
+    change_id: str
+    artifact: str
     markdown: str
 
 
@@ -175,3 +194,33 @@ async def get_spec(spec_id: str) -> OpenSpecGetResponse:
     # Return the normalized id as posix path without extension
     norm_id = "/".join(parts)
     return OpenSpecGetResponse(id=norm_id, markdown=md)
+
+
+@router.get("/changes/{change_id}/{artifact}", response_model=OpenSpecChangeArtifactResponse)
+async def get_change_artifact(change_id: str, artifact: str) -> OpenSpecChangeArtifactResponse:
+    change_id = (change_id or "").strip()
+    artifact = (artifact or "").strip().lower()
+
+    if not change_id or not _CHANGE_ID_RE.match(change_id):
+        raise HTTPException(status_code=400, detail="Invalid change id")
+
+    fname = _ALLOWED_CHANGE_ARTIFACTS.get(artifact)
+    if not fname:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    base = (_changes_dir() / change_id).resolve()
+    if not base.exists() or not base.is_dir():
+        raise HTTPException(status_code=404, detail="Change not found")
+
+    p = (base / fname).resolve()
+    if p == base or base not in p.parents:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not p.exists() or not p.is_file():
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    try:
+        md = p.read_text(encoding="utf-8")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read artifact: {e}")
+
+    return OpenSpecChangeArtifactResponse(change_id=change_id, artifact=artifact, markdown=md)
