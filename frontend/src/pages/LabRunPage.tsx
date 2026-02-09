@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { API_BASE_URL } from '@/lib/apiBase';
+import RunChatView, { type TraceEvent } from '@/components/lab/RunChatView';
 
-type TraceEvent = {
-  ts_ms: number;
-  type: string;
-  data?: any;
-};
+// TraceEvent type moved to RunChatView
 
 type RunStatus = {
   run_id: string;
@@ -75,6 +72,7 @@ const LabRunPage: React.FC = () => {
   const [data, setData] = useState<RunStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [continuing, setContinuing] = useState(false);
+  const [tab, setTab] = useState<'chat' | 'debug'>('chat');
 
   useEffect(() => {
     if (!id) return;
@@ -315,67 +313,37 @@ const LabRunPage: React.FC = () => {
           </div>
         ) : null}
 
-        {/* Chat-like view of agent conversation based on trace events */}
-        {data?.trace_events?.length ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div>
-                <div className="text-sm font-semibold">Conversa dos agentes</div>
-                <div className="text-xs text-gray-500">Timeline (trace) em formato de chat</div>
-              </div>
+        {/* Conversa / Trace */}
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <div className="text-sm font-semibold">Conversa</div>
+              <div className="text-xs text-gray-500">Upstream/Execução em formato de chat</div>
             </div>
 
-            <div className="space-y-3">
-              {data.trace_events
-                .filter((ev) => ev.type === 'persona_done' || ev.type === 'persona_started' || ev.type === 'seed_chosen' || ev.type === 'iteration_started' || ev.type === 'iteration_done' || ev.type === 'param_tuned' || ev.type === 'backtest_done' || ev.type === 'selection_gate')
-                .slice()
-                .sort((a, b) => a.ts_ms - b.ts_ms)
-                .map((ev, idx) => {
-                  const persona = ev?.data?.persona;
-                  const isAgentMsg = ev.type === 'persona_done' && !!persona;
-                  const who = isAgentMsg ? String(persona) : 'system';
-                  const text = isAgentMsg ? String(ev?.data?.text || '') : '';
-
-                  const bubbleClass = isAgentMsg
-                    ? who === 'dev_senior'
-                      ? 'bg-blue-500/10 border-blue-500/20'
-                      : who === 'validator'
-                        ? 'bg-purple-500/10 border-purple-500/20'
-                        : 'bg-emerald-500/10 border-emerald-500/20'
-                    : 'bg-black/30 border-white/10';
-
-                  return (
-                    <div key={`${ev.ts_ms}-${idx}`} className={`rounded-2xl border p-4 ${bubbleClass}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-xs text-gray-300 font-mono">{who}</div>
-                        <div className="text-[10px] text-gray-500 font-mono">{new Date(ev.ts_ms).toISOString()}</div>
-                      </div>
-
-                      {isAgentMsg ? (
-                        <pre className="mt-2 text-xs text-gray-100 whitespace-pre-wrap font-mono">{text}</pre>
-                      ) : (
-                        <details className="mt-2">
-                          <summary className="cursor-pointer text-xs text-gray-300 hover:text-white">{ev.type}</summary>
-                          <pre className="mt-2 text-[11px] text-gray-300 whitespace-pre-wrap font-mono">{JSON.stringify(ev.data || {}, null, 2)}</pre>
-                        </details>
-                      )}
-                    </div>
-                  );
-                })}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTab('chat')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${tab === 'chat' ? 'border-white/20 bg-white/10 text-white' : 'border-white/10 bg-black/20 text-gray-400'}`}
+              >
+                Chat (simplificado)
+              </button>
+              <button
+                onClick={() => setTab('debug')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${tab === 'debug' ? 'border-white/20 bg-white/10 text-white' : 'border-white/10 bg-black/20 text-gray-400'}`}
+              >
+                Eventos (debug)
+              </button>
             </div>
           </div>
-        ) : null}
 
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-          <details>
-            <summary className="cursor-pointer flex items-center justify-between">
-              <span className="text-sm font-semibold">Trace (CP2)</span>
-              <span className="text-xs text-gray-500">
+          {tab === 'chat' ? (
+            <RunChatView traceEvents={(data?.trace_events || []) as TraceEvent[]} />
+          ) : (
+            <div>
+              <div className="text-xs text-gray-400 mb-3">
                 {data?.trace_events?.length ? `${data.trace_events.length} eventos` : 'sem eventos'}
-              </span>
-            </summary>
-
-            <div className="mt-4">
+              </div>
               {data?.trace_events?.length ? (
                 <div className="space-y-3">
                   {data.trace_events.slice().reverse().map((ev, idx) => (
@@ -396,7 +364,7 @@ const LabRunPage: React.FC = () => {
                 <div className="text-sm text-gray-400">Nenhum evento de trace ainda.</div>
               )}
             </div>
-          </details>
+          )}
         </div>
       </div>
     </div>
