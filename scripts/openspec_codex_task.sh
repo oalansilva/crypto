@@ -141,28 +141,24 @@ FILE_CHAR_LIMIT="${FILE_CHAR_LIMIT:-12000}"
 
 _file_len() {
   local path="$1"
-  python3 - <<'PY'
-import sys
-path=sys.argv[1]
+  python3 -c 'import sys
+p=sys.argv[1]
 try:
-  with open(path, 'r', encoding='utf-8') as f:
-    data=f.read()
-  print(len(data))
+  with open(p, "r", encoding="utf-8") as f:
+    print(len(f.read()))
 except Exception:
   print(-1)
-PY
-  "$path"
+' "$path"
 }
 
 _read_capped() {
   local path="$1"
   local limit="$2"
-  python3 - <<'PY'
-import sys
-path=sys.argv[1]
+  python3 -c 'import sys
+p=sys.argv[1]
 limit=int(sys.argv[2])
 try:
-  with open(path, 'r', encoding='utf-8') as f:
+  with open(p, "r", encoding="utf-8") as f:
     data=f.read()
 except Exception as e:
   print(f"[ERROR reading file: {e}]")
@@ -173,20 +169,16 @@ if limit > 0 and len(data) > limit:
   print(f"\n[TRUNCATED to {limit} chars]\n")
 else:
   print(data)
-PY
-  "$path" "$limit"
+' "$path" "$limit"
 }
 
 _spec_files_from_glob() {
   local glob_expr="$1"
-  python3 - <<'PY'
-import glob, sys
+  python3 -c 'import glob, sys
 expr=sys.argv[1]
-paths=sorted(glob.glob(expr, recursive=True))
-for p in paths:
+for p in sorted(glob.glob(expr, recursive=True)):
   print(p)
-PY
-  "$glob_expr"
+' "$glob_expr"
 }
 
 PROMPT=$(cat <<'EOF'
