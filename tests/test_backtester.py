@@ -92,19 +92,30 @@ class _FixedUUID:
     hex = "fixedrunid1234567890"
 
 
-def test_create_run_returns_needs_user_input_when_missing_required_fields(tmp_path, monkeypatch):
+def test_create_run_initializes_upstream_chat_when_missing_required_fields(tmp_path, monkeypatch):
     monkeypatch.setattr(lab_routes, "_run_path", lambda run_id: tmp_path / f"{run_id}.json")
     monkeypatch.setattr(lab_routes, "_trace_path", lambda run_id: tmp_path / f"{run_id}.jsonl")
+    monkeypatch.setattr(lab_routes.uuid, "uuid4", lambda: _FixedUUID())
+    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", lambda **kwargs: {"reply": "Qual symbol e timeframe?"})
 
     req = lab_routes.LabRunCreateRequest(objective="rodar lab")
     resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
 
-    assert isinstance(resp, lab_routes.LabRunNeedsUserInputResponse)
+    assert isinstance(resp, lab_routes.LabRunCreateResponse)
     assert resp.status == "needs_user_input"
-    assert resp.missing == ["symbol", "timeframe"]
-    assert "symbol" in resp.question
-    assert "timeframe" in resp.question
-    assert list(tmp_path.iterdir()) == []
+    assert resp.run_id == _FixedUUID.hex
+
+    run_file = tmp_path / f"{_FixedUUID.hex}.json"
+    assert run_file.exists()
+    payload = json.loads(run_file.read_text(encoding="utf-8"))
+
+    assert payload["status"] == "needs_user_input"
+    assert payload["phase"] == "upstream"
+    assert payload["upstream_contract"]["approved"] is False
+    assert payload["upstream"]["pending_question"] == "Qual symbol e timeframe?"
+    assert payload["upstream"]["messages"][-1]["role"] == "trader"
+    assert "symbol" in payload["upstream_contract"]["missing"]
+    assert "timeframe" in payload["upstream_contract"]["missing"]
 
 
 def test_create_run_accepts_when_symbol_and_timeframe_are_present(tmp_path, monkeypatch):
@@ -120,7 +131,7 @@ def test_create_run_accepts_when_symbol_and_timeframe_are_present(tmp_path, monk
     resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
 
     assert isinstance(resp, lab_routes.LabRunCreateResponse)
-    assert resp.status == "accepted"
+    assert resp.status == "ready_for_execution"
     assert resp.run_id == _FixedUUID.hex
 
     run_file = tmp_path / f"{_FixedUUID.hex}.json"
@@ -129,14 +140,54 @@ def test_create_run_accepts_when_symbol_and_timeframe_are_present(tmp_path, monk
     assert trace_file.exists()
 
     payload = json.loads(run_file.read_text(encoding="utf-8"))
-    assert payload["status"] == "accepted"
+    assert payload["status"] == "ready_for_execution"
     assert payload["phase"] == "upstream"
     assert payload["upstream_contract"]["approved"] is True
+    assert payload["upstream"]["messages"] == []
+    assert payload["upstream"]["pending_question"] == ""
     assert payload["upstream_contract"]["inputs"]["symbol"] == "BTC/USDT"
     assert payload["upstream_contract"]["inputs"]["timeframe"] == "1h"
     assert payload["input"]["symbol"] == "BTC/USDT"
     assert payload["input"]["timeframe"] == "1h"
     assert "base_template" not in payload["input"]
+
+
+def test_post_upstream_message_persists_history_and_updates_contract(tmp_path, monkeypatch):
+    monkeypatch.setattr(lab_routes, "_run_path", lambda run_id: tmp_path / f"{run_id}.json")
+    monkeypatch.setattr(lab_routes, "_trace_path", lambda run_id: tmp_path / f"{run_id}.jsonl")
+    monkeypatch.setattr(lab_routes.uuid, "uuid4", lambda: _FixedUUID())
+
+    # Initial turn: asks for missing symbol/timeframe.
+    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", lambda **kwargs: {"reply": "Qual symbol e timeframe?"})
+    req = lab_routes.LabRunCreateRequest(objective="rodar lab")
+    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
+    assert resp.run_id == _FixedUUID.hex
+
+    # User answers with required fields; trader confirms.
+    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", lambda **kwargs: {"reply": "Perfeito, contrato aprovado."})
+    msg_req = lab_routes.LabRunUpstreamMessageRequest(message="symbol=BTC/USDT timeframe=1h")
+    msg_resp = asyncio.run(lab_routes.post_upstream_message(_FixedUUID.hex, msg_req))
+
+    assert msg_resp.status == "ready_for_execution"
+    assert msg_resp.phase == "upstream"
+    assert msg_resp.upstream_contract["approved"] is True
+
+    run_file = tmp_path / f"{_FixedUUID.hex}.json"
+    payload = json.loads(run_file.read_text(encoding="utf-8"))
+    assert payload["status"] == "ready_for_execution"
+    assert payload["upstream_contract"]["approved"] is True
+    assert payload["upstream_contract"]["inputs"]["symbol"] == "BTC/USDT"
+    assert payload["upstream_contract"]["inputs"]["timeframe"] == "1h"
+    assert payload["upstream"]["pending_question"] == ""
+    assert payload["upstream"]["messages"][-2]["role"] == "user"
+    assert payload["upstream"]["messages"][-1]["role"] == "trader"
+
+    trace_file = tmp_path / f"{_FixedUUID.hex}.jsonl"
+    trace_lines = [json.loads(line) for line in trace_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+    trace_types = [line.get("type") for line in trace_lines]
+    assert "upstream_message" in trace_types
+    assert "upstream_contract_updated" in trace_types
+    assert "upstream_approved" in trace_types
 
 
 class _FakeTwoPhaseGraph:

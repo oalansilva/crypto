@@ -55,15 +55,19 @@ const LabPage: React.FC = () => {
         throw new Error(String(data?.detail || `HTTP ${res.status}`));
       }
 
+      const runId = String(data.run_id || '').trim();
+      if (runId) {
+        navigate(`/lab/runs/${runId}`);
+        return;
+      }
+
       if (data?.status === 'needs_user_input') {
         setBackendQuestion(String(data?.question || 'Informe symbol e timeframe para iniciar o Lab.'));
         setBackendMissing(Array.isArray(data?.missing) ? data.missing.map((v: unknown) => String(v)) : []);
         return;
       }
 
-      const runId = String(data.run_id || '').trim();
-      if (!runId) throw new Error('run_id vazio');
-      navigate(`/lab/runs/${runId}`);
+      throw new Error('run_id vazio');
     } catch (e: any) {
       setError(e?.message || 'Falha ao iniciar run');
     } finally {

@@ -39,10 +39,15 @@ const getArrStr = (o: Record<string, unknown> | null, k: string): string[] => {
   return v.filter((x) => typeof x === 'string') as string[];
 };
 
-const personaLabel = (p: string) => {
+const normalizePersona = (p: string) => {
   const s = String(p || '').trim();
   if (!s) return 'agent';
   return s;
+};
+
+const personaUiLabel = (p: string) => {
+  if (p === 'validator') return 'Trader';
+  return p;
 };
 
 const bubbleClassForPersona = (who: string) => {
@@ -130,7 +135,7 @@ export const RunChatView: React.FC<{ traceEvents?: TraceEvent[] }> = ({ traceEve
       }
 
       if (isPersonaDone) {
-        const persona = personaLabel(getStr(d, 'persona'));
+        const persona = normalizePersona(getStr(d, 'persona'));
         const text = getStr(d, 'text');
         const tokens = getNum(d, 'tokens');
         const duration_ms = getNum(d, 'duration_ms');
@@ -202,7 +207,7 @@ export const RunChatView: React.FC<{ traceEvents?: TraceEvent[] }> = ({ traceEve
               onClick={() => togglePersona(p)}
               className={`px-2 py-1 rounded-full border text-[11px] font-mono ${selected.has(p) ? 'border-white/20 bg-white/10 text-white' : 'border-white/10 bg-black/20 text-gray-500'}`}
             >
-              {p}
+              {personaUiLabel(p)}
             </button>
           ))}
 
@@ -257,7 +262,7 @@ export const RunChatView: React.FC<{ traceEvents?: TraceEvent[] }> = ({ traceEve
             return (
               <div key={`${it.kind}-${it.ts_ms}-${idx}`} className={`rounded-2xl border p-4 ${bubbleClass}`}>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="text-xs text-gray-300 font-mono">{who}</div>
+                  <div className="text-xs text-gray-300 font-mono">{personaUiLabel(who)}</div>
                   <div className="text-[10px] text-gray-500 font-mono">{fmtTs(it.ts_ms)}</div>
                 </div>
                 {(it.tokens != null || it.duration_ms != null) ? (

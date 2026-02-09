@@ -205,6 +205,7 @@ class LabRunStatusResponse(BaseModel):
     # Two-phase graph persistence fields
     phase: Optional[str] = None
     upstream_contract: Optional[Dict[str, Any]] = None
+    upstream: Optional[Dict[str, Any]] = None
 
 
 class LabRunContinueRequest(BaseModel):
@@ -212,6 +213,18 @@ class LabRunContinueRequest(BaseModel):
     symbol: Optional[str] = Field(default=None, max_length=30)
     timeframe: Optional[str] = Field(default=None, max_length=10)
     objective: Optional[str] = None
+
+
+class LabRunUpstreamMessageRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class LabRunUpstreamMessageResponse(BaseModel):
+    status: str
+    run_id: str
+    phase: str
+    upstream_contract: Dict[str, Any]
+    upstream: Dict[str, Any]
 
 
 def _parse_symbol_timeframe_from_text(text: Optional[str]) -> Dict[str, str]:
@@ -226,14 +239,301 @@ def _parse_symbol_timeframe_from_text(text: Optional[str]) -> Dict[str, str]:
     return out
 
 
+def _sanitize_upstream_messages(raw: Any) -> List[Dict[str, Any]]:
+    if not isinstance(raw, list):
+        return []
+
+    out: List[Dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role") or "").strip().lower()
+        if role == "validator":
+            role = "trader"
+        if role not in ("user", "trader"):
+            continue
+        text = str(item.get("text") or "").strip()
+        if not text:
+            continue
+        ts_raw = item.get("ts_ms")
+        try:
+            ts_ms = int(ts_raw)
+        except Exception:
+            ts_ms = _now_ms()
+        out.append({"role": role, "text": text, "ts_ms": ts_ms})
+    return out
+
+
+def _ensure_upstream_state(run: Dict[str, Any]) -> Dict[str, Any]:
+    upstream = run.get("upstream")
+    if not isinstance(upstream, dict):
+        upstream = {}
+
+    messages = _sanitize_upstream_messages(upstream.get("messages"))
+    pending_question = str(upstream.get("pending_question") or "").strip()
+
+    contract = run.get("upstream_contract") or {}
+    if not pending_question and isinstance(contract, dict) and not bool(contract.get("approved")):
+        pending_question = str(contract.get("question") or "").strip()
+
+    normalized = {
+        "messages": messages,
+        "pending_question": pending_question,
+    }
+    run["upstream"] = normalized
+    return normalized
+
+
+def _append_upstream_message(run_id: str, run: Dict[str, Any], *, role: str, text: str) -> Optional[Dict[str, Any]]:
+    role_norm = str(role or "").strip().lower()
+    if role_norm == "validator":
+        role_norm = "trader"
+    if role_norm not in ("user", "trader"):
+        return None
+
+    content = str(text or "").strip()
+    if not content:
+        return None
+
+    upstream = _ensure_upstream_state(run)
+    msg = {"role": role_norm, "text": content, "ts_ms": _now_ms()}
+    upstream["messages"].append(msg)
+    run["upstream"] = upstream
+
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": msg["ts_ms"],
+            "type": "upstream_message",
+            "data": {"role": role_norm, "text": content[:2000]},
+        },
+    )
+    return msg
+
+
+def _build_upstream_contract_from_input(inp: Dict[str, Any]) -> Dict[str, Any]:
+    from app.services.lab_graph import build_upstream_contract
+
+    return build_upstream_contract(
+        context={
+            "input": inp,
+            "symbol": inp.get("symbol"),
+            "timeframe": inp.get("timeframe"),
+            "objective": inp.get("objective"),
+        }
+    )
+
+
+def _contract_trace_data(contract: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "approved": bool(contract.get("approved")),
+        "missing": list(contract.get("missing") or []),
+        "question": str(contract.get("question") or ""),
+        "inputs": dict(contract.get("inputs") or {}),
+    }
+
+
+def _try_trader_upstream_turn(
+    *,
+    run_id: str,
+    session_key: str,
+    thinking: str,
+    user_message: str,
+    contract: Dict[str, Any],
+    upstream_messages: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Best-effort Trader turn using validator persona id internally."""
+
+    compact_history = []
+    for msg in upstream_messages[-12:]:
+        if not isinstance(msg, dict):
+            continue
+        role = str(msg.get("role") or "").strip().lower()
+        text = str(msg.get("text") or "").strip()
+        if role in ("user", "trader") and text:
+            compact_history.append({"role": role, "text": text})
+
+    system_prompt = (
+        "Papel: Trader do upstream do Strategy Lab.\n"
+        "Você conversa com um humano para fechar um contrato upstream.\n"
+        "Responda EXCLUSIVAMENTE com JSON válido no formato:\n"
+        "{\n"
+        '  "reply": "texto curto para o humano",\n'
+        '  "inputs": {"symbol": "...", "timeframe": "...", "objective": "..."},\n'
+        '  "constraints": {"max_drawdown": 0.2, "min_sharpe": 0.4}\n'
+        "}\n"
+        "Regras:\n"
+        "- Se não souber algum campo, omita o campo.\n"
+        "- Não invente symbol/timeframe.\n"
+        "- Em `reply`, faça próxima pergunta objetiva quando faltar contexto.\n"
+    )
+
+    payload_message = (
+        "Histórico upstream (JSON):\n"
+        + json.dumps(compact_history, ensure_ascii=False, indent=2)
+        + "\n\nContrato atual (JSON):\n"
+        + json.dumps(contract, ensure_ascii=False, indent=2)
+        + "\n\nÚltima mensagem do humano:\n"
+        + str(user_message or "")
+    )
+
+    try:
+        response = _persona_call_sync(
+            run_id=run_id,
+            session_key=session_key,
+            persona="validator",
+            system_prompt=system_prompt,
+            message=payload_message,
+            thinking=thinking or "low",
+            timeout_s=60,
+        )
+    except Exception:
+        return {}
+
+    obj = _extract_json_object(response.get("text") or "")
+    if not isinstance(obj, dict):
+        return {}
+
+    out: Dict[str, Any] = {}
+    reply = str(obj.get("reply") or obj.get("question") or obj.get("message") or "").strip()
+    if reply:
+        out["reply"] = reply
+
+    inputs = obj.get("inputs")
+    if isinstance(inputs, dict):
+        norm_inputs: Dict[str, Any] = {}
+        for k in ("symbol", "timeframe", "objective"):
+            v = inputs.get(k)
+            if isinstance(v, str) and v.strip():
+                norm_inputs[k] = v.strip()
+        if norm_inputs:
+            out["inputs"] = norm_inputs
+
+    constraints = obj.get("constraints")
+    if isinstance(constraints, dict):
+        out["constraints"] = constraints
+
+    return out
+
+
+def _next_trader_prompt(contract: Dict[str, Any]) -> str:
+    if bool(contract.get("approved")):
+        return "Contrato upstream aprovado. Revise o resumo e clique em Iniciar execução."
+    q = str(contract.get("question") or "").strip()
+    if q:
+        return q
+    return "Antes de continuar, preciso de mais detalhes para fechar o contrato upstream."
+
+
+def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message: str) -> Dict[str, Any]:
+    text = str(user_message or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="message is required")
+
+    _ensure_upstream_state(run)
+    _append_upstream_message(run_id, run, role="user", text=text)
+    upstream = _ensure_upstream_state(run)
+
+    inp = run.get("input") or {}
+    if not isinstance(inp, dict):
+        inp = {}
+
+    parsed = _parse_symbol_timeframe_from_text(text)
+    for k, v in parsed.items():
+        inp[k] = v
+
+    if not str(inp.get("objective") or "").strip():
+        inp["objective"] = text
+
+    prev_contract = run.get("upstream_contract") or {}
+    prev_approved = bool(prev_contract.get("approved"))
+    session_key = str(run.get("session_key") or f"lab-{run_id}")
+    thinking = str((run.get("input") or {}).get("thinking") or "low")
+
+    contract = _build_upstream_contract_from_input(inp)
+
+    trader_turn = _try_trader_upstream_turn(
+        run_id=run_id,
+        session_key=session_key,
+        thinking=thinking,
+        user_message=text,
+        contract=contract,
+        upstream_messages=upstream.get("messages") or [],
+    )
+
+    trader_inputs = trader_turn.get("inputs") if isinstance(trader_turn.get("inputs"), dict) else {}
+    for k in ("symbol", "timeframe", "objective"):
+        v = trader_inputs.get(k)
+        if isinstance(v, str) and v.strip():
+            inp[k] = v.strip()
+
+    trader_constraints = trader_turn.get("constraints")
+    if isinstance(trader_constraints, dict):
+        constraints = inp.get("constraints") if isinstance(inp.get("constraints"), dict) else {}
+        constraints.update(trader_constraints)
+        inp["constraints"] = constraints
+
+    contract = _build_upstream_contract_from_input(inp)
+
+    trader_reply = str(trader_turn.get("reply") or "").strip() or _next_trader_prompt(contract)
+    if bool(contract.get("approved")):
+        contract["question"] = ""
+        upstream["pending_question"] = ""
+    else:
+        contract["question"] = trader_reply
+        upstream["pending_question"] = trader_reply
+
+    run["input"] = inp
+    run["upstream"] = upstream
+    run["upstream_contract"] = contract
+
+    _append_upstream_message(run_id, run, role="trader", text=trader_reply)
+    upstream = _ensure_upstream_state(run)
+
+    run["upstream"] = upstream
+
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": _now_ms(),
+            "type": "upstream_contract_updated",
+            "data": _contract_trace_data(contract),
+        },
+    )
+    if bool(contract.get("approved")) and not prev_approved:
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "upstream_approved",
+                "data": {"inputs": dict(contract.get("inputs") or {})},
+            },
+        )
+
+    status = "ready_for_execution" if bool(contract.get("approved")) else "needs_user_input"
+    return {
+        "input": inp,
+        "upstream": upstream,
+        "upstream_contract": contract,
+        "status": status,
+        "step": "upstream",
+        "phase": "upstream",
+        "needs_user_confirm": False,
+    }
+
+
 def _load_run_json(run_id: str) -> Dict[str, Any]:
     p = _run_path(run_id)
     if not p.exists():
         return {}
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        data = json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return {}
+    if not isinstance(data, dict):
+        return {}
+    _ensure_upstream_state(data)
+    return data
 
 
 def _update_run_json(run_id: str, patch: Dict[str, Any]) -> None:
@@ -242,6 +542,7 @@ def _update_run_json(run_id: str, patch: Dict[str, Any]) -> None:
         return
     cur = _load_run_json(run_id)
     cur.update(patch)
+    _ensure_upstream_state(cur)
     cur["updated_at_ms"] = _now_ms()
     p.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -1024,40 +1325,60 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 
     run = _load_run_json(run_id) or {}
     inp = run.get("input") or {}
+    upstream_contract = run.get("upstream_contract") or {}
 
-    upstream_contract = build_upstream_contract(
-        context={
-            "input": req_dict,
-            "symbol": req_dict.get("symbol"),
-            "timeframe": req_dict.get("timeframe"),
-            "objective": req_dict.get("objective"),
-        }
-    )
-    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "upstream_started", "data": {}})
-    _append_trace(
-        run_id,
-        {
-            "ts_ms": _now_ms(),
-            "type": "upstream_done",
-            "data": {
-                "approved": bool(upstream_contract.get("approved")),
-                "missing": upstream_contract.get("missing") or [],
-                "question": upstream_contract.get("question") or "",
-            },
-        },
-    )
-    _update_run_json(run_id, {"phase": "upstream", "upstream_contract": upstream_contract, "status": "running", "step": "upstream"})
     if not bool(upstream_contract.get("approved")):
+        upstream_contract = build_upstream_contract(
+            context={
+                "input": req_dict,
+                "symbol": req_dict.get("symbol"),
+                "timeframe": req_dict.get("timeframe"),
+                "objective": req_dict.get("objective"),
+            }
+        )
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "upstream_started", "data": {}})
         _append_trace(
             run_id,
             {
                 "ts_ms": _now_ms(),
-                "type": "final_decision",
-                "data": {"status": "needs_user_input", "reason": "upstream_not_approved", "missing": upstream_contract.get("missing") or []},
+                "type": "upstream_done",
+                "data": {
+                    "approved": bool(upstream_contract.get("approved")),
+                    "missing": upstream_contract.get("missing") or [],
+                    "question": upstream_contract.get("question") or "",
+                },
             },
         )
-        _update_run_json(run_id, {"status": "needs_user_input", "step": "upstream", "phase": "upstream", "upstream_contract": upstream_contract})
-        return
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "upstream_contract_updated",
+                "data": _contract_trace_data(upstream_contract),
+            },
+        )
+        _update_run_json(run_id, {"phase": "upstream", "upstream_contract": upstream_contract, "status": "running", "step": "upstream"})
+        if not bool(upstream_contract.get("approved")):
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": _now_ms(),
+                    "type": "final_decision",
+                    "data": {"status": "needs_user_input", "reason": "upstream_not_approved", "missing": upstream_contract.get("missing") or []},
+                },
+            )
+            _update_run_json(run_id, {"status": "needs_user_input", "step": "upstream", "phase": "upstream", "upstream_contract": upstream_contract})
+            return
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "upstream_approved",
+                "data": {"inputs": dict(upstream_contract.get("inputs") or {})},
+            },
+        )
+
+    _update_run_json(run_id, {"phase": "execution", "upstream_contract": upstream_contract, "status": "running", "step": "execution"})
 
     inputs = upstream_contract.get("inputs") or {}
     symbol = str(inputs.get("symbol") or "").strip()
@@ -1487,12 +1808,6 @@ async def create_run(
     req: LabRunCreateRequest,
     background_tasks: BackgroundTasks,
 ) -> Union[LabRunCreateResponse, LabRunNeedsUserInputResponse]:
-    preflight = _inputs_preflight(req)
-    if preflight is not None:
-        return preflight
-
-    from app.services.lab_graph import build_upstream_contract
-
     run_id = uuid.uuid4().hex
     now = _now_ms()
     # Trace provider selection (dev-only).
@@ -1520,24 +1835,40 @@ async def create_run(
         return base.rstrip("/") + "/" + thread_id
 
     trace_url = _make_trace_url(trace_public_base, trace_thread_id) if (trace_public_base and trace_enabled) else None
-    upstream_contract = build_upstream_contract(
-        context={
-            "input": req.model_dump(),
-            "symbol": req.symbol,
-            "timeframe": req.timeframe,
-            "objective": req.objective,
-        }
-    )
+    run_input = req.model_dump()
+    upstream_contract = _build_upstream_contract_from_input(run_input)
+    initial_status = "ready_for_execution" if bool(upstream_contract.get("approved")) else "needs_user_input"
+    initial_question = _next_trader_prompt(upstream_contract)
+
+    if not bool(upstream_contract.get("approved")):
+        trader_turn = _try_trader_upstream_turn(
+            run_id=run_id,
+            session_key=trace_thread_id,
+            thinking=str(run_input.get("thinking") or "low"),
+            user_message=str(run_input.get("objective") or ""),
+            contract=upstream_contract,
+            upstream_messages=[],
+        )
+        initial_question = str(trader_turn.get("reply") or "").strip() or initial_question
+        upstream_contract["question"] = initial_question
 
     payload = {
         "run_id": run_id,
-        "status": "accepted",
-        "step": "init",
+        "status": initial_status,
+        "step": "upstream",
         "phase": "upstream",
         "created_at_ms": now,
         "updated_at_ms": now,
-        "input": req.model_dump(),
+        "input": run_input,
         "upstream_contract": upstream_contract,
+        "upstream": {
+            "messages": (
+                [{"role": "trader", "text": initial_question, "ts_ms": now}]
+                if not bool(upstream_contract.get("approved"))
+                else []
+            ),
+            "pending_question": (initial_question if not bool(upstream_contract.get("approved")) else ""),
+        },
         "trace": [],
         "trace_meta": {
             "enabled": trace_enabled,
@@ -1577,19 +1908,42 @@ async def create_run(
             run_id,
             {
                 "ts_ms": now,
+                "type": "upstream_contract_updated",
+                "data": _contract_trace_data(upstream_contract),
+            },
+        )
+        if bool(upstream_contract.get("approved")):
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": now,
+                    "type": "upstream_approved",
+                    "data": {"inputs": dict(upstream_contract.get("inputs") or {})},
+                },
+            )
+        else:
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": now,
+                    "type": "upstream_message",
+                    "data": {"role": "trader", "text": initial_question[:2000]},
+                },
+            )
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": now,
                 "type": "run_created",
-                "data": {"input": req.model_dump()},
+                "data": {"input": run_input},
             },
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"failed to persist run: {e}")
 
-    # Autonomous loop: base backtest → propose candidate → backtest candidate → validate → repeat
-    background_tasks.add_task(_run_lab_autonomous, run_id, req.model_dump())
-
     return LabRunCreateResponse(
         run_id=run_id,
-        status="accepted",
+        status=initial_status,
         trace={
             "viewer_url": f"http://31.97.92.212:5173/lab/runs/{run_id}",
             "api_url": f"/api/lab/runs/{run_id}",
@@ -1608,10 +1962,9 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
     if not p.exists():
         raise HTTPException(status_code=404, detail="run not found")
 
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"failed to read run: {e}")
+    data = _load_run_json(run_id)
+    if not data:
+        raise HTTPException(status_code=500, detail="failed to read run")
 
     trace_events = _read_trace_tail(run_id, limit=200)
 
@@ -1646,6 +1999,7 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         needs_user_confirm=bool(data.get("needs_user_confirm")),
         phase=data.get("phase"),
         upstream_contract=data.get("upstream_contract"),
+        upstream=data.get("upstream") or {"messages": [], "pending_question": ""},
     )
 
 
@@ -1662,8 +2016,36 @@ async def get_job(job_id: str) -> Dict[str, Any]:
     return state
 
 
+@router.post("/runs/{run_id}/upstream/message", response_model=LabRunUpstreamMessageResponse)
+async def post_upstream_message(run_id: str, req: LabRunUpstreamMessageRequest) -> LabRunUpstreamMessageResponse:
+    p = _run_path(run_id)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="run not found")
+
+    run = _load_run_json(run_id)
+    phase = str(run.get("phase") or "upstream")
+    if phase != "upstream":
+        raise HTTPException(status_code=409, detail="upstream chat is available only during phase=upstream")
+
+    patch = _handle_upstream_user_message(run_id, run, req.message)
+    _update_run_json(run_id, patch)
+    updated = _load_run_json(run_id)
+
+    return LabRunUpstreamMessageResponse(
+        status=str(updated.get("status") or patch.get("status") or "needs_user_input"),
+        run_id=run_id,
+        phase=str(updated.get("phase") or "upstream"),
+        upstream_contract=dict(updated.get("upstream_contract") or {}),
+        upstream=dict(updated.get("upstream") or {"messages": [], "pending_question": ""}),
+    )
+
+
 @router.post("/runs/{run_id}/continue")
-async def continue_run(run_id: str, req: Optional[LabRunContinueRequest] = None) -> Dict[str, Any]:
+async def continue_run(
+    run_id: str,
+    background_tasks: BackgroundTasks,
+    req: Optional[LabRunContinueRequest] = None,
+) -> Dict[str, Any]:
     """Resume from upstream, optionally with updated user inputs."""
 
     p = _run_path(run_id)
@@ -1671,6 +2053,30 @@ async def continue_run(run_id: str, req: Optional[LabRunContinueRequest] = None)
         raise HTTPException(status_code=404, detail="run not found")
 
     run = _load_run_json(run_id)
+    phase = str(run.get("phase") or "upstream")
+    upstream_contract = run.get("upstream_contract") or {}
+
+    if phase == "upstream":
+        if not bool(upstream_contract.get("approved")):
+            raise HTTPException(status_code=409, detail="upstream contract not approved")
+
+        if str(run.get("status") or "").strip() in ("running", "done"):
+            return {"status": "ok", "run_id": run_id, "phase": "execution"}
+
+        inp = run.get("input") or {}
+        _update_run_json(
+            run_id,
+            {
+                "status": "running",
+                "step": "execution",
+                "phase": "execution",
+                "needs_user_confirm": False,
+            },
+        )
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_started_by_user", "data": {}})
+        background_tasks.add_task(_run_lab_autonomous, run_id, inp)
+        return {"status": "ok", "run_id": run_id, "phase": "execution"}
+
     inp = run.get("input") or {}
 
     payload_updates: Dict[str, Any] = {}
@@ -1712,15 +2118,16 @@ async def continue_run(run_id: str, req: Optional[LabRunContinueRequest] = None)
             "budget": budget,
             "needs_user_confirm": False,
             "status": "running",
-            "step": "upstream",
-            "phase": "upstream",
+            "step": ("upstream" if phase == "upstream" else str(run.get("step") or "execution")),
+            "phase": phase,
         },
     )
 
-    # Resume graph from upstream now.
-    try:
-        _cp4_run_personas_if_possible(run_id)
-    except Exception as e:
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "personas_error", "data": {"error": str(e)}})
+    if phase == "upstream":
+        # Legacy path for pre-CTA upstream resumes.
+        try:
+            _cp4_run_personas_if_possible(run_id)
+        except Exception as e:
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "personas_error", "data": {"error": str(e)}})
 
-    return {"status": "ok", "run_id": run_id, "budget": budget, "input": inp}
+    return {"status": "ok", "run_id": run_id, "budget": budget, "input": inp, "phase": phase}

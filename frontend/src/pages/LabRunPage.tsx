@@ -9,6 +9,7 @@ type RunStatus = {
   run_id: string;
   status: string;
   step?: string | null;
+  phase?: string | null;
   created_at_ms: number;
   updated_at_ms: number;
   trace: { viewer_url: string; api_url: string; enabled?: boolean; provider?: string; thread_id?: string; trace_id?: string; trace_url?: string | null };
@@ -17,6 +18,11 @@ type RunStatus = {
   backtest?: any;
   budget?: any;
   outputs?: any;
+  upstream_contract?: any;
+  upstream?: {
+    messages?: Array<{ role?: string; text?: string; ts_ms?: number }>;
+    pending_question?: string;
+  };
   needs_user_confirm?: boolean;
 };
 
@@ -72,6 +78,8 @@ const LabRunPage: React.FC = () => {
   const [data, setData] = useState<RunStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [continuing, setContinuing] = useState(false);
+  const [sendingUpstream, setSendingUpstream] = useState(false);
+  const [upstreamInput, setUpstreamInput] = useState('');
   const [tab, setTab] = useState<'chat' | 'debug'>('chat');
 
   useEffect(() => {
@@ -115,8 +123,35 @@ const LabRunPage: React.FC = () => {
     }
   };
 
+  const sendUpstreamMessage = async () => {
+    if (!id) return;
+    const text = upstreamInput.trim();
+    if (!text) return;
+
+    setSendingUpstream(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
+      setUpstreamInput('');
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao enviar mensagem upstream');
+    } finally {
+      setSendingUpstream(false);
+    }
+  };
+
   const selection = data?.outputs?.selection;
   const gateApproved = selection?.approved === true;
+  const upstreamApproved = data?.upstream_contract?.approved === true;
+  const upstreamMessages = Array.isArray(data?.upstream?.messages) ? data?.upstream?.messages : [];
+  const upstreamPendingQuestion = String(data?.upstream?.pending_question || '');
+  const inUpstreamPhase = (data?.phase || 'upstream') === 'upstream';
 
   const wf = useMemo(() => {
     const bt = data?.backtest;
@@ -156,6 +191,7 @@ const LabRunPage: React.FC = () => {
               <div className="mt-1 flex items-center gap-3">
                 <div className="text-sm font-semibold">{data?.status || '…'}</div>
                 <div className="text-xs text-gray-400">step: <span className="font-mono text-gray-200">{data?.step || '-'}</span></div>
+                <div className="text-xs text-gray-400">phase: <span className="font-mono text-gray-200">{data?.phase || '-'}</span></div>
                 {selection ? (
                   <div className={`text-xs px-2 py-1 rounded-full border ${gateApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-red-500/40 bg-red-500/10 text-red-200'}`}>
                     gate: {gateApproved ? 'approved' : 'blocked'}
@@ -239,6 +275,93 @@ const LabRunPage: React.FC = () => {
               ) : null}
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <details open={inUpstreamPhase}>
+            <summary className="cursor-pointer flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">Upstream (chat)</div>
+                <div className="text-xs text-gray-500">Humano ↔ Trader</div>
+              </div>
+              <div className={`text-xs px-2 py-1 rounded-full border ${upstreamApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'}`}>
+                {upstreamApproved ? 'aprovado' : 'aguardando input'}
+              </div>
+            </summary>
+
+            <div className="mt-4 space-y-3">
+              {upstreamMessages.length ? (
+                <div className="space-y-2">
+                  {upstreamMessages.map((msg, idx) => {
+                    const role = String(msg?.role || '').toLowerCase();
+                    const text = String(msg?.text || '');
+                    const isTrader = role === 'trader' || role === 'validator';
+                    const ts = Number(msg?.ts_ms || 0);
+                    return (
+                      <div
+                        key={`${ts}-${idx}`}
+                        className={`rounded-xl border p-3 ${isTrader ? 'border-purple-500/20 bg-purple-500/10' : 'border-blue-500/20 bg-blue-500/10'}`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-xs font-mono text-gray-200">{isTrader ? 'Trader' : 'Humano'}</div>
+                          <div className="text-[10px] text-gray-500 font-mono">
+                            {ts ? new Date(ts).toISOString() : '-'}
+                          </div>
+                        </div>
+                        <div className="mt-1 text-sm text-gray-100 whitespace-pre-wrap">{text}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-400">Sem mensagens no upstream ainda.</div>
+              )}
+
+              {inUpstreamPhase && !upstreamApproved ? (
+                <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3">
+                  <div className="text-xs text-yellow-100/80">Pergunta atual do Trader</div>
+                  <div className="mt-1 text-sm text-yellow-100">{upstreamPendingQuestion || 'Envie uma mensagem para continuar.'}</div>
+                </div>
+              ) : null}
+
+              {inUpstreamPhase && !upstreamApproved ? (
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <textarea
+                    value={upstreamInput}
+                    onChange={(e) => setUpstreamInput(e.target.value)}
+                    rows={3}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                    placeholder="Responda ao Trader..."
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      onClick={sendUpstreamMessage}
+                      disabled={sendingUpstream || !upstreamInput.trim()}
+                      className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold disabled:opacity-50"
+                    >
+                      {sendingUpstream ? 'Enviando…' : 'Enviar'}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {inUpstreamPhase && upstreamApproved ? (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                  <div className="text-sm text-emerald-200 font-semibold">Contrato upstream aprovado</div>
+                  <div className="mt-1 text-xs text-emerald-100/90">
+                    inputs: <span className="font-mono">{JSON.stringify(data?.upstream_contract?.inputs || {}, null, 0)}</span>
+                  </div>
+                  <button
+                    onClick={continueRun}
+                    disabled={continuing}
+                    className="mt-3 px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-bold disabled:opacity-50"
+                  >
+                    {continuing ? 'Iniciando…' : 'Iniciar execução'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </details>
         </div>
 
         {data?.backtest ? (
