@@ -243,15 +243,23 @@ def _parse_symbol_timeframe_from_text(text: Optional[str]) -> Dict[str, str]:
     # Also accept compact inputs like: "BTC/USDT 4H" (or "BTC/USDT 4h")
     compact_match = re.search(r"([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)\s+([0-9]+[A-Za-z]+)", raw)
 
+    # Also accept symbol-only or timeframe-only freeform.
+    symbol_only_match = re.search(r"\b([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)\b", raw)
+    timeframe_only_match = re.search(r"\b([0-9]+\s*(?:m|h|d|w|minuto(?:s)?|hora(?:s)?|dia(?:s)?|semana(?:s)?))\b", raw, flags=re.IGNORECASE)
+
     if symbol_match:
         out["symbol"] = str(symbol_match.group(1) or "").strip()
     elif compact_match:
         out["symbol"] = str(compact_match.group(1) or "").strip()
+    elif symbol_only_match:
+        out["symbol"] = str(symbol_only_match.group(1) or "").strip()
 
     if timeframe_match:
         out["timeframe"] = str(timeframe_match.group(1) or "").strip()
     elif compact_match:
         out["timeframe"] = str(compact_match.group(2) or "").strip()
+    elif timeframe_only_match:
+        out["timeframe"] = str(timeframe_only_match.group(1) or "").strip()
 
     return out
 
