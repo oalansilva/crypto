@@ -82,72 +82,57 @@ fi
 
 # 2.1) Pull apply instructions (JSON) and ensure tasks are present
 APPLY_RAW="$({ openspec instructions apply --change "$CHANGE_ID" --json; } 2>&1)"
-APPLY_JSON=$(python3 - <<'PY'
-import json, sys
+APPLY_JSON=$(python3 -c 'import json,sys
 s=sys.stdin.read()
-idx=s.find('{')
+idx=s.find("{")
 if idx<0:
   raise SystemExit(2)
 blob=s[idx:]
 try:
   obj=json.loads(blob)
 except Exception:
-  # try to trim after last }
-  end=blob.rfind('}')
+  end=blob.rfind("}")
   if end<0:
     raise
   obj=json.loads(blob[:end+1])
 print(json.dumps(obj, ensure_ascii=False))
-PY
-<<<"$APPLY_RAW")
+' <<<"$APPLY_RAW")
 
-TASK_COUNT=$(python3 - <<'PY'
-import json, sys
-obj=json.loads(sys.stdin.read() or '{}')
-print(len(obj.get('tasks') or []))
-PY
-<<<"$APPLY_JSON")
+TASK_COUNT=$(python3 -c 'import json,sys
+obj=json.loads(sys.stdin.read() or "{}")
+print(len(obj.get("tasks") or []))
+' <<<"$APPLY_JSON")
 
 if [[ "$TASK_COUNT" -le 0 ]]; then
   echo "No tasks found for change '$CHANGE_ID' (blocked). Add tasks to $TASKS_FILE and try again." >&2
   exit 2
 fi
 
-APPLY_INSTRUCTION=$(python3 - <<'PY'
-import json, sys
-obj=json.loads(sys.stdin.read() or '{}')
-print(obj.get('instruction') or '')
-PY
-<<<"$APPLY_JSON")
+APPLY_INSTRUCTION=$(python3 -c 'import json,sys
+obj=json.loads(sys.stdin.read() or "{}")
+print(obj.get("instruction") or "")
+' <<<"$APPLY_JSON")
 
 # Extract context file paths (proposal/design/tasks + specs glob)
-CONTEXT_PROPOSAL=$(python3 - <<'PY'
-import json, sys
-obj=json.loads(sys.stdin.read() or '{}')
-print((obj.get('contextFiles') or {}).get('proposal') or '')
-PY
-<<<"$APPLY_JSON")
+CONTEXT_PROPOSAL=$(python3 -c 'import json,sys
+obj=json.loads(sys.stdin.read() or "{}")
+print((obj.get("contextFiles") or {}).get("proposal") or "")
+' <<<"$APPLY_JSON")
 
-CONTEXT_DESIGN=$(python3 - <<'PY'
-import json, sys
-obj=json.loads(sys.stdin.read() or '{}')
-print((obj.get('contextFiles') or {}).get('design') or '')
-PY
-<<<"$APPLY_JSON")
+CONTEXT_DESIGN=$(python3 -c 'import json,sys
+obj=json.loads(sys.stdin.read() or "{}")
+print((obj.get("contextFiles") or {}).get("design") or "")
+' <<<"$APPLY_JSON")
 
-CONTEXT_TASKS=$(python3 - <<'PY'
-import json, sys
-obj=json.loads(sys.stdin.read() or '{}')
-print((obj.get('contextFiles') or {}).get('tasks') or '')
-PY
-<<<"$APPLY_JSON")
+CONTEXT_TASKS=$(python3 -c 'import json,sys
+obj=json.loads(sys.stdin.read() or "{}")
+print((obj.get("contextFiles") or {}).get("tasks") or "")
+' <<<"$APPLY_JSON")
 
-CONTEXT_SPECS_GLOB=$(python3 - <<'PY'
-import json, sys
-obj=json.loads(sys.stdin.read() or '{}')
-print((obj.get('contextFiles') or {}).get('specs') or '')
-PY
-<<<"$APPLY_JSON")
+CONTEXT_SPECS_GLOB=$(python3 -c 'import json,sys
+obj=json.loads(sys.stdin.read() or "{}")
+print((obj.get("contextFiles") or {}).get("specs") or "")
+' <<<"$APPLY_JSON")
 
 # 3) Run Codex
 ALLOWED_PATHS=("backend/" "frontend/" "src/" "tests/" "openspec/")
