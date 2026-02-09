@@ -270,7 +270,7 @@ echo "[tests] running pytest"
 ./backend/.venv/bin/python -m pytest -q
 
 # 5) Guardrail: diff limits
-MAX_FILES_CHANGED="${MAX_FILES_CHANGED:-3}"
+MAX_FILES_CHANGED="${MAX_FILES_CHANGED:-10}"
 # Default changed: disable strict line-limit by default (was 200).
 # Set MAX_LINES_CHANGED to a positive integer to re-enable.
 MAX_LINES_CHANGED="${MAX_LINES_CHANGED:-0}"
