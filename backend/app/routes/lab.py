@@ -227,6 +227,24 @@ class LabRunUpstreamMessageResponse(BaseModel):
     upstream: Dict[str, Any]
 
 
+class LabRunUpstreamApproveResponse(BaseModel):
+    status: str
+    run_id: str
+    phase: str
+
+
+class LabRunUpstreamFeedbackRequest(BaseModel):
+    message: str
+
+
+class LabRunUpstreamFeedbackResponse(BaseModel):
+    status: str
+    run_id: str
+    phase: str
+    upstream_contract: Dict[str, Any]
+    upstream: Dict[str, Any]
+
+
 def _parse_symbol_timeframe_from_text(text: Optional[str]) -> Dict[str, str]:
     raw = str(text or "")
 
@@ -301,9 +319,21 @@ def _ensure_upstream_state(run: Dict[str, Any]) -> Dict[str, Any]:
     if not pending_question and isinstance(contract, dict) and not bool(contract.get("approved")):
         pending_question = str(contract.get("question") or "").strip()
 
+    strategy_draft = upstream.get("strategy_draft")
+    if not isinstance(strategy_draft, dict):
+        strategy_draft = None
+
+    ready_for_user_review = bool(upstream.get("ready_for_user_review"))
+    user_approved = bool(upstream.get("user_approved"))
+    user_feedback = str(upstream.get("user_feedback") or "").strip()
+
     normalized = {
         "messages": messages,
         "pending_question": pending_question,
+        "strategy_draft": strategy_draft,
+        "ready_for_user_review": ready_for_user_review,
+        "user_approved": user_approved,
+        "user_feedback": user_feedback,
     }
     run["upstream"] = normalized
     return normalized
@@ -380,19 +410,32 @@ def _try_trader_upstream_turn(
 
     system_prompt = (
         "Papel: Trader do upstream do Strategy Lab.\n"
-        "Você conversa com um humano para fechar um contrato upstream.\n"
+        "Você conversa com um humano para fechar um contrato upstream e propor uma estratégia antes de executar.\n"
         "Objetivo: conversa fluida (estilo chat), entendendo respostas em formatos variados e extraindo inputs/constraints com segurança.\n"
         "Responda EXCLUSIVAMENTE com JSON válido no formato:\n"
         "{\n"
         '  "reply": "próxima pergunta curta (ou confirmação)",\n'
         '  "inputs": {"symbol": "BTC/USDT", "timeframe": "4h", "objective": "..."},\n'
-        '  "constraints": {"max_drawdown": 0.2, "min_sharpe": 0.4}\n'
+        '  "constraints": {"max_drawdown": 0.2, "min_sharpe": 0.4},\n'
+        '  "ready_for_user_review": true,\n'
+        '  "strategy_draft": {\n'
+        '    "version": 1,\n'
+        '    "one_liner": "...",\n'
+        '    "rationale": "...",\n'
+        '    "indicators": [{"source":"pandas_ta","name":"rsi","params":{"length":14}}],\n'
+        '    "entry_idea": "...",\n'
+        '    "exit_idea": "...",\n'
+        '    "risk_plan": "...",\n'
+        '    "what_to_measure": ["sharpe_holdout","max_drawdown_holdout","min_trades"],\n'
+        '    "open_questions": ["..."]\n'
+        '  }\n'
         "}\n\n"
         "Regras:\n"
         "- NÃO invente symbol/timeframe.\n"
-        "- Se o humano responder algo como 'BTC/USDT 4H', 'BTCUSDT 4h', 'btc usdt no 4 horas', extraia e preencha `inputs`.\n"
+        "- Se o humano respondeu algo como 'BTC/USDT 4H', 'BTCUSDT 4h', 'btc usdt no 4 horas', extraia e preencha `inputs`.\n"
         "- Se um campo já existir no Contrato atual (JSON) ou já apareceu no histórico, NÃO pergunte por ele de novo. Pergunte pelo próximo campo faltante.\n"
         "- Se não souber algum campo, omita o campo e faça uma pergunta objetiva.\n"
+        "- Quando já houver informação suficiente (symbol+timeframe+objetivo+constraints), preencha `strategy_draft` e marque `ready_for_user_review=true`.\n"
     )
 
     payload_message = (
@@ -439,6 +482,13 @@ def _try_trader_upstream_turn(
     constraints = obj.get("constraints")
     if isinstance(constraints, dict):
         out["constraints"] = constraints
+
+    if isinstance(obj.get("ready_for_user_review"), bool):
+        out["ready_for_user_review"] = bool(obj.get("ready_for_user_review"))
+
+    strategy_draft = obj.get("strategy_draft")
+    if isinstance(strategy_draft, dict):
+        out["strategy_draft"] = strategy_draft
 
     return out
 
@@ -545,6 +595,16 @@ def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message
 
     contract = _build_upstream_contract_from_input(inp)
 
+    # Strategy draft + review gate
+    if bool(contract.get("approved")):
+        upstream["ready_for_user_review"] = bool(trader_turn.get("ready_for_user_review"))
+        sd = trader_turn.get("strategy_draft")
+        if isinstance(sd, dict) and bool(sd):
+            upstream["strategy_draft"] = sd
+    else:
+        upstream["ready_for_user_review"] = False
+        upstream["strategy_draft"] = None
+
     trader_reply = str(trader_turn.get("reply") or "").strip() or _next_trader_prompt(contract)
     if bool(contract.get("approved")):
         contract["question"] = ""
@@ -580,7 +640,10 @@ def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message
             },
         )
 
-    status = "ready_for_execution" if bool(contract.get("approved")) else "needs_user_input"
+    status = "ready_for_review" if (bool(contract.get("approved")) and bool(upstream.get("ready_for_user_review"))) else ("ready_for_execution" if bool(contract.get("approved")) else "needs_user_input")
+    if bool(upstream.get("ready_for_user_review")):
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "upstream_strategy_draft_ready", "data": {"has_draft": bool(upstream.get("strategy_draft"))}})
+
     return {
         "input": inp,
         "upstream": upstream,
@@ -1909,7 +1972,10 @@ async def create_run(
     upstream_contract = _build_upstream_contract_from_input(run_input)
     initial_status = "ready_for_execution" if bool(upstream_contract.get("approved")) else "needs_user_input"
     initial_question = _next_trader_prompt(upstream_contract)
+    initial_strategy_draft = None
+    initial_ready_for_review = False
 
+    trader_turn = None
     if not bool(upstream_contract.get("approved")):
         trader_turn = _try_trader_upstream_turn(
             run_id=run_id,
@@ -1919,8 +1985,24 @@ async def create_run(
             contract=upstream_contract,
             upstream_messages=[],
         )
-        initial_question = str(trader_turn.get("reply") or "").strip() or initial_question
+        initial_question = str((trader_turn or {}).get("reply") or "").strip() or initial_question
         upstream_contract["question"] = initial_question
+    else:
+        # If already approved at creation time, Trader may still provide a draft for review.
+        trader_turn = _try_trader_upstream_turn(
+            run_id=run_id,
+            session_key=trace_thread_id,
+            thinking=str(run_input.get("thinking") or "low"),
+            user_message=str(run_input.get("objective") or ""),
+            contract=upstream_contract,
+            upstream_messages=[],
+        )
+        initial_ready_for_review = bool((trader_turn or {}).get("ready_for_user_review"))
+        sd = (trader_turn or {}).get("strategy_draft")
+        if isinstance(sd, dict) and bool(sd):
+            initial_strategy_draft = sd
+        if initial_ready_for_review:
+            initial_status = "ready_for_review"
 
     payload = {
         "run_id": run_id,
@@ -1938,6 +2020,10 @@ async def create_run(
                 else []
             ),
             "pending_question": (initial_question if not bool(upstream_contract.get("approved")) else ""),
+            "strategy_draft": initial_strategy_draft,
+            "ready_for_user_review": initial_ready_for_review,
+            "user_approved": False,
+            "user_feedback": "",
         },
         "trace": [],
         "trace_meta": {
@@ -2108,6 +2194,87 @@ async def post_upstream_message(run_id: str, req: LabRunUpstreamMessageRequest) 
         upstream_contract=dict(updated.get("upstream_contract") or {}),
         upstream=dict(updated.get("upstream") or {"messages": [], "pending_question": ""}),
     )
+
+
+@router.post("/runs/{run_id}/upstream/feedback", response_model=LabRunUpstreamFeedbackResponse)
+async def post_upstream_feedback(run_id: str, req: LabRunUpstreamFeedbackRequest) -> LabRunUpstreamFeedbackResponse:
+    p = _run_path(run_id)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="run not found")
+
+    run = _load_run_json(run_id)
+    phase = str(run.get("phase") or "upstream")
+    if phase != "upstream":
+        raise HTTPException(status_code=409, detail="upstream feedback is available only during phase=upstream")
+
+    upstream = _ensure_upstream_state(run)
+    feedback = str(req.message or "").strip()
+    if not feedback:
+        raise HTTPException(status_code=400, detail="message is required")
+
+    upstream["user_feedback"] = feedback
+    upstream["ready_for_user_review"] = False
+    upstream["user_approved"] = False
+
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "upstream_user_feedback", "data": {"text": feedback[:2000]}})
+
+    # Treat feedback as the next user message to revise the draft.
+    patch = _handle_upstream_user_message(run_id, run, feedback)
+    patch["upstream"] = upstream
+
+    _update_run_json(run_id, patch)
+    updated = _load_run_json(run_id)
+
+    return LabRunUpstreamFeedbackResponse(
+        status=str(updated.get("status") or patch.get("status") or "needs_user_input"),
+        run_id=run_id,
+        phase=str(updated.get("phase") or "upstream"),
+        upstream_contract=dict(updated.get("upstream_contract") or {}),
+        upstream=dict(updated.get("upstream") or {"messages": [], "pending_question": ""}),
+    )
+
+
+@router.post("/runs/{run_id}/upstream/approve", response_model=LabRunUpstreamApproveResponse)
+async def post_upstream_approve(run_id: str, background_tasks: BackgroundTasks) -> LabRunUpstreamApproveResponse:
+    p = _run_path(run_id)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="run not found")
+
+    run = _load_run_json(run_id)
+    phase = str(run.get("phase") or "upstream")
+    if phase != "upstream":
+        raise HTTPException(status_code=409, detail="upstream approve is available only during phase=upstream")
+
+    upstream_contract = run.get("upstream_contract") or {}
+    if not bool(upstream_contract.get("approved")):
+        raise HTTPException(status_code=409, detail="upstream contract not approved")
+
+    upstream = _ensure_upstream_state(run)
+    if not bool(upstream.get("ready_for_user_review")):
+        raise HTTPException(status_code=409, detail="strategy draft not ready for review")
+
+    upstream["user_approved"] = True
+    run["upstream"] = upstream
+
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "upstream_user_approved", "data": {}})
+
+    _update_run_json(run_id, {"upstream": upstream})
+
+    # Start execution (same behavior as /continue when upstream is approved)
+    inp = run.get("input") or {}
+    _update_run_json(
+        run_id,
+        {
+            "status": "running",
+            "step": "execution",
+            "phase": "execution",
+            "needs_user_confirm": False,
+        },
+    )
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_started_by_user", "data": {"via": "upstream_approve"}})
+    background_tasks.add_task(_run_lab_autonomous, run_id, inp)
+
+    return LabRunUpstreamApproveResponse(status="ok", run_id=run_id, phase="execution")
 
 
 @router.post("/runs/{run_id}/continue")

@@ -22,6 +22,10 @@ type RunStatus = {
   upstream?: {
     messages?: Array<{ role?: string; text?: string; ts_ms?: number }>;
     pending_question?: string;
+    strategy_draft?: any;
+    ready_for_user_review?: boolean;
+    user_approved?: boolean;
+    user_feedback?: string;
   };
   needs_user_confirm?: boolean;
 };
@@ -81,6 +85,9 @@ const LabRunPage: React.FC = () => {
   const [sendingUpstream, setSendingUpstream] = useState(false);
   const [upstreamInput, setUpstreamInput] = useState('');
   const [tab, setTab] = useState<'chat' | 'debug'>('chat');
+  const [draftFeedback, setDraftFeedback] = useState('');
+  const [sendingDraftFeedback, setSendingDraftFeedback] = useState(false);
+  const [approvingDraft, setApprovingDraft] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -146,12 +153,52 @@ const LabRunPage: React.FC = () => {
     }
   };
 
+  const sendDraftFeedback = async () => {
+    if (!id) return;
+    const text = draftFeedback.trim();
+    if (!text) return;
+
+    setSendingDraftFeedback(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
+      setDraftFeedback('');
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao enviar feedback');
+    } finally {
+      setSendingDraftFeedback(false);
+    }
+  };
+
+  const approveDraftAndRun = async () => {
+    if (!id) return;
+    setApprovingDraft(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/approve`, { method: 'POST' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao aprovar e iniciar');
+    } finally {
+      setApprovingDraft(false);
+    }
+  };
+
   const selection = data?.outputs?.selection;
   const gateApproved = selection?.approved === true;
   const upstreamApproved = data?.upstream_contract?.approved === true;
   const upstreamMessages = Array.isArray(data?.upstream?.messages) ? data?.upstream?.messages : [];
   const upstreamPendingQuestion = String(data?.upstream?.pending_question || '');
   const inUpstreamPhase = (data?.phase || 'upstream') === 'upstream';
+  const readyForReview = Boolean((data?.upstream as any)?.ready_for_user_review);
+  const strategyDraft = (data?.upstream as any)?.strategy_draft;
 
   const wf = useMemo(() => {
     const bt = data?.backtest;
@@ -345,19 +392,93 @@ const LabRunPage: React.FC = () => {
                 </div>
               ) : null}
 
-              {inUpstreamPhase && upstreamApproved ? (
+              {inUpstreamPhase && upstreamApproved && !readyForReview ? (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
                   <div className="text-sm text-emerald-200 font-semibold">Contrato upstream aprovado</div>
                   <div className="mt-1 text-xs text-emerald-100/90">
                     inputs: <span className="font-mono">{JSON.stringify(data?.upstream_contract?.inputs || {}, null, 0)}</span>
                   </div>
-                  <button
-                    onClick={continueRun}
-                    disabled={continuing}
-                    className="mt-3 px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-bold disabled:opacity-50"
-                  >
-                    {continuing ? 'Iniciando…' : 'Iniciar execução'}
-                  </button>
+                  <div className="mt-2 text-xs text-emerald-100/80">
+                    Aguardando o Trader gerar a proposta da estratégia…
+                  </div>
+                </div>
+              ) : null}
+
+              {inUpstreamPhase && upstreamApproved && readyForReview ? (
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold">Proposta do Trader</div>
+                      <div className="text-xs text-gray-500">Revise e aprove antes de iniciar a execução</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 font-mono">draft v{String(strategyDraft?.version ?? 1)}</div>
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="text-xs text-gray-400">one-liner</div>
+                    <div className="text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.one_liner || '') || '-'}</div>
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="text-xs text-gray-400">rationale</div>
+                    <div className="text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.rationale || '') || '-'}</div>
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="text-xs text-gray-400">indicators</div>
+                    <pre className="mt-1 text-[11px] text-gray-200 whitespace-pre-wrap font-mono">{JSON.stringify(strategyDraft?.indicators || [], null, 2)}</pre>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                      <div className="text-xs text-gray-400">entry</div>
+                      <div className="mt-1 text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.entry_idea || '') || '-'}</div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                      <div className="text-xs text-gray-400">exit</div>
+                      <div className="mt-1 text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.exit_idea || '') || '-'}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div className="text-xs text-gray-400">risk plan</div>
+                    <div className="mt-1 text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.risk_plan || '') || '-'}</div>
+                  </div>
+
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs text-gray-300 hover:text-white">ver JSON completo</summary>
+                    <pre className="mt-2 text-[11px] text-gray-200 whitespace-pre-wrap font-mono">{JSON.stringify(strategyDraft || {}, null, 2)}</pre>
+                  </details>
+
+                  <div className="mt-4 flex flex-col gap-3">
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                      <div className="text-xs text-gray-400">Quero ajustar</div>
+                      <textarea
+                        value={draftFeedback}
+                        onChange={(e) => setDraftFeedback(e.target.value)}
+                        rows={3}
+                        className="mt-2 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                        placeholder="Ex.: quero RSI + filtro de tendência, e reduzir número de operações"
+                      />
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          onClick={sendDraftFeedback}
+                          disabled={sendingDraftFeedback || !draftFeedback.trim()}
+                          className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold disabled:opacity-50"
+                        >
+                          {sendingDraftFeedback ? 'Enviando…' : 'Enviar feedback'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={approveDraftAndRun}
+                      disabled={approvingDraft}
+                      className="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-bold disabled:opacity-50"
+                    >
+                      {approvingDraft ? 'Iniciando…' : 'Aprovar e iniciar execução'}
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </div>
