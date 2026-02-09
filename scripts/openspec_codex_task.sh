@@ -154,11 +154,26 @@ ALLOWED_PATHS=("backend/" "frontend/" "src/" "tests/" "openspec/")
 
 FILE_CHAR_LIMIT="${FILE_CHAR_LIMIT:-12000}"
 
+_file_len() {
+  local path="$1"
+  python3 - <<'PY'
+import sys
+path=sys.argv[1]
+try:
+  with open(path, 'r', encoding='utf-8') as f:
+    data=f.read()
+  print(len(data))
+except Exception:
+  print(-1)
+PY
+  "$path"
+}
+
 _read_capped() {
   local path="$1"
   local limit="$2"
   python3 - <<'PY'
-import os, sys
+import sys
 path=sys.argv[1]
 limit=int(sys.argv[2])
 try:
@@ -211,37 +226,43 @@ EOF
 )
 
 # Attach proposal/design/specs/tasks
-if [[ -n "$CONTEXT_PROPOSAL" && -f "$CONTEXT_PROPOSAL" ]]; then
-  PROMPT+=$'\n[CHANGE FILE] '
-  PROMPT+="$CONTEXT_PROPOSAL"
-  PROMPT+=$'\n'
-  PROMPT+="$(_read_capped "$CONTEXT_PROPOSAL" "$FILE_CHAR_LIMIT")"
-fi
+TRUNCATED_REPORT=()
 
-if [[ -n "$CONTEXT_DESIGN" && -f "$CONTEXT_DESIGN" ]]; then
+_attach_file() {
+  local p="$1"
+  [[ -z "$p" ]] && return 0
+  [[ ! -f "$p" ]] && return 0
+
+  local n
+  n="$(_file_len "$p")"
+  if [[ "$FILE_CHAR_LIMIT" -gt 0 && "$n" -gt "$FILE_CHAR_LIMIT" ]]; then
+    TRUNCATED_REPORT+=("$p ($n chars)")
+  fi
+
   PROMPT+=$'\n[CHANGE FILE] '
-  PROMPT+="$CONTEXT_DESIGN"
+  PROMPT+="$p"
   PROMPT+=$'\n'
-  PROMPT+="$(_read_capped "$CONTEXT_DESIGN" "$FILE_CHAR_LIMIT")"
-fi
+  PROMPT+="$(_read_capped "$p" "$FILE_CHAR_LIMIT")"
+}
+
+_attach_file "$CONTEXT_PROPOSAL"
+_attach_file "$CONTEXT_DESIGN"
 
 if [[ -n "$CONTEXT_SPECS_GLOB" ]]; then
   while IFS= read -r spec_path; do
     [[ -z "$spec_path" ]] && continue
-    if [[ -f "$spec_path" ]]; then
-      PROMPT+=$'\n[CHANGE FILE] '
-      PROMPT+="$spec_path"
-      PROMPT+=$'\n'
-      PROMPT+="$(_read_capped "$spec_path" "$FILE_CHAR_LIMIT")"
-    fi
+    _attach_file "$spec_path"
   done < <(_spec_files_from_glob "$CONTEXT_SPECS_GLOB")
 fi
 
-if [[ -n "$CONTEXT_TASKS" && -f "$CONTEXT_TASKS" ]]; then
-  PROMPT+=$'\n[CHANGE FILE] '
-  PROMPT+="$CONTEXT_TASKS"
-  PROMPT+=$'\n'
-  PROMPT+="$(_read_capped "$CONTEXT_TASKS" "$FILE_CHAR_LIMIT")"
+_attach_file "$CONTEXT_TASKS"
+
+if [[ ${#TRUNCATED_REPORT[@]} -gt 0 ]]; then
+  echo "[warn] Some change context files exceeded FILE_CHAR_LIMIT=$FILE_CHAR_LIMIT and were truncated in the Codex prompt:" >&2
+  for item in "${TRUNCATED_REPORT[@]}"; do
+    echo "  - $item" >&2
+  done
+  echo "[warn] You can increase limit with: FILE_CHAR_LIMIT=<n> ./scripts/openspec_codex_task.sh $CHANGE_ID" >&2
 fi
 
 PROMPT+=$(cat <<'EOF'
