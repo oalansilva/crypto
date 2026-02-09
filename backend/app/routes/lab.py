@@ -229,13 +229,30 @@ class LabRunUpstreamMessageResponse(BaseModel):
 
 def _parse_symbol_timeframe_from_text(text: Optional[str]) -> Dict[str, str]:
     raw = str(text or "")
-    symbol_match = re.search(r"(?:^|\s)symbol\s*[:=]\s*([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)", raw, flags=re.IGNORECASE)
+
+    # Accept explicit key/value (symbol=, timeframe=). Tolerate common typo: "sumbol".
+    symbol_match = re.search(
+        r"(?:^|\s)(?:symbol|sumbol)\s*[:=]\s*([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)",
+        raw,
+        flags=re.IGNORECASE,
+    )
     timeframe_match = re.search(r"(?:^|\s)timeframe\s*[:=]\s*([0-9]+[A-Za-z]+)", raw, flags=re.IGNORECASE)
+
     out: Dict[str, str] = {}
+
+    # Also accept compact inputs like: "BTC/USDT 4H" (or "BTC/USDT 4h")
+    compact_match = re.search(r"([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)\s+([0-9]+[A-Za-z]+)", raw)
+
     if symbol_match:
         out["symbol"] = str(symbol_match.group(1) or "").strip()
+    elif compact_match:
+        out["symbol"] = str(compact_match.group(1) or "").strip()
+
     if timeframe_match:
         out["timeframe"] = str(timeframe_match.group(1) or "").strip()
+    elif compact_match:
+        out["timeframe"] = str(compact_match.group(2) or "").strip()
+
     return out
 
 
