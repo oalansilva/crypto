@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     # CORS - Allow all origins in development
     cors_origins: list[str] = ["*"]
     
+    # Agent chat (LLM conversation about strategies)
+    agent_chat_enabled: str = "0"
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
