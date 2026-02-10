@@ -35,6 +35,27 @@ openspec validate <change_id> --type change
 ./scripts/openspec_codex_task.sh <change_id>
 ```
 
+**Skills usadas (Codex CLI - automático):**
+- **Feature/Crie Funcionalidade:**
+  - `brainstorming` → `writing-plans`
+  - Se UI: `ui-ux-designer`
+  - Se backend (FastAPI/Python): `backend-architect`, `python-development-python-scaffold`
+  - Se frontend (React/TS): `core-components`, `react-state-management`
+  - Se testes: `python-testing-patterns` (backend), `javascript-testing-patterns` (frontend)
+- **Bug/Fix:**
+  - `error-detective`
+  - Se prompt: `prompt-engineering-patterns`
+- **Antes de finalizar:**
+  - `verification-before-completion`
+
+**Transparência (OBRIGATÓRIO):**
+Após implementação, reportar no chat:
+```
+✅ Implementação concluída
+Skills usadas: brainstorming, writing-plans, backend-architect, python-testing-patterns
+```
+*OU:* `Skills usadas: (nenhuma)` se implementação foi manual.
+
 **Guardrails:**
 - Working tree limpa (commit antes)
 - Validação OpenSpec passa
@@ -216,9 +237,40 @@ Localização: `crypto/test_e2e_template.py`
 1. **Sempre rodar testes antes de marcar como "concluído"**
 2. **Screenshots são apenas para debug local (NÃO enviar pro Telegram)**
 3. **Reportar resultado dos testes no chat (PASSOU/FALHOU + resumo)**
-4. **Se testes falharem, corrigir antes de fazer deploy**
-5. **Documentar testes criados no commit message**
+4. **Reportar skills usadas após implementação (OBRIGATÓRIO)**
+5. **Se testes falharem, corrigir antes de fazer deploy**
+6. **Documentar testes criados no commit message**
 
 ---
 
-**Última atualização:** 2026-02-10 (inclusão de testes automatizados obrigatórios)
+## 🛠️ Skills do Codex CLI (Automático)
+
+As skills são invocadas automaticamente conforme o tipo de tarefa. **Não é necessário** Alan especificar quais usar.
+
+### Mapeamento por tipo de tarefa:
+
+| Tipo de Tarefa | Skills Usadas |
+|---------------|---------------|
+| **Nova Feature (Full Stack)** | `brainstorming`, `writing-plans`, `ui-ux-designer`, `backend-architect`, `core-components`, `python-development-python-scaffold`, `react-state-management` |
+| **Backend apenas** | `brainstorming`, `writing-plans`, `backend-architect`, `python-development-python-scaffold` |
+| **Frontend apenas** | `brainstorming`, `writing-plans`, `ui-ux-designer`, `core-components`, `react-state-management` |
+| **Testes** | `python-testing-patterns` (backend), `javascript-testing-patterns` (frontend) |
+| **Bug/Fix** | `error-detective`, (opcional) `prompt-engineering-patterns` |
+| **Antes de commit** | `verification-before-completion` |
+
+### Transparência:
+Após cada implementação, reportar:
+```
+✅ Implementação concluída
+Skills usadas: brainstorming, backend-architect, python-testing-patterns
+```
+
+Se nenhuma skill foi usada (implementação manual):
+```
+✅ Implementação concluída
+Skills usadas: (nenhuma) — implementação manual
+```
+
+---
+
+**Última atualização:** 2026-02-10 (inclusão de testes automatizados obrigatórios + skills transparency)
