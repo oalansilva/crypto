@@ -96,7 +96,11 @@ def test_create_run_initializes_upstream_chat_when_missing_required_fields(tmp_p
     monkeypatch.setattr(lab_routes, "_run_path", lambda run_id: tmp_path / f"{run_id}.json")
     monkeypatch.setattr(lab_routes, "_trace_path", lambda run_id: tmp_path / f"{run_id}.jsonl")
     monkeypatch.setattr(lab_routes.uuid, "uuid4", lambda: _FixedUUID())
-    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", lambda **kwargs: {"reply": "Qual symbol e timeframe?"})
+
+    async def _fake_turn(**kwargs):
+        return {"reply": "Qual symbol e timeframe?"}
+
+    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", _fake_turn)
 
     req = lab_routes.LabRunCreateRequest(objective="rodar lab")
     resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
@@ -158,13 +162,19 @@ def test_post_upstream_message_persists_history_and_updates_contract(tmp_path, m
     monkeypatch.setattr(lab_routes.uuid, "uuid4", lambda: _FixedUUID())
 
     # Initial turn: asks for missing symbol/timeframe.
-    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", lambda **kwargs: {"reply": "Qual symbol e timeframe?"})
+    async def _fake_turn(**kwargs):
+        return {"reply": "Qual symbol e timeframe?"}
+
+    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", _fake_turn)
     req = lab_routes.LabRunCreateRequest(objective="rodar lab")
     resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
     assert resp.run_id == _FixedUUID.hex
 
     # User answers with required fields; trader confirms.
-    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", lambda **kwargs: {"reply": "Perfeito, contrato aprovado."})
+    async def _fake_turn_approved(**kwargs):
+        return {"reply": "Perfeito, contrato aprovado."}
+
+    monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", _fake_turn_approved)
     msg_req = lab_routes.LabRunUpstreamMessageRequest(message="symbol=BTC/USDT timeframe=1h")
     msg_resp = asyncio.run(lab_routes.post_upstream_message(_FixedUUID.hex, msg_req))
 
@@ -196,6 +206,7 @@ class _FakeTwoPhaseGraph:
         outputs["coordinator_summary"] = "ok"
         outputs["dev_summary"] = "{\"candidate_template_data\": {\"indicators\": []}}"
         outputs["validator_verdict"] = "{\"verdict\":\"approved\",\"reasons\":[],\"required_fixes\":[],\"notes\":\"ok\"}"
+        outputs["trader_verdict"] = outputs["validator_verdict"]
         outputs["tests_done"] = {"pass": True}
         outputs["final_decision"] = {"status": "done", "tests_pass": True}
         return {
@@ -224,7 +235,7 @@ def test_cp4_two_phase_approved_updates_phase_and_status(tmp_path, monkeypatch):
 
     import app.services.lab_graph as lab_graph
 
-    monkeypatch.setattr(lab_graph, "build_cp7_graph", lambda: _FakeTwoPhaseGraph())
+    monkeypatch.setattr(lab_graph, "build_trader_dev_graph", lambda: _FakeTwoPhaseGraph())
 
     run_id = "run_two_phase_ok"
     payload = {
@@ -237,7 +248,7 @@ def test_cp4_two_phase_approved_updates_phase_and_status(tmp_path, monkeypatch):
         "input": {"symbol": "BTC/USDT", "timeframe": "1h", "objective": "rodar com foco em robustez", "thinking": "low"},
         "session_key": f"lab-{run_id}",
         "budget": {"turns_used": 0, "turns_max": 12, "tokens_total": 0, "tokens_max": 60000, "on_limit": "ask_user"},
-        "outputs": {"coordinator_summary": None, "dev_summary": None, "validator_verdict": None},
+        "outputs": {"coordinator_summary": None, "dev_summary": None, "validator_verdict": None, "trader_verdict": None},
         "backtest": {},
         "needs_user_confirm": False,
     }

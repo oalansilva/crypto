@@ -154,6 +154,7 @@ def _run_persona(
     persona: str,
     system_prompt: str,
     output_key: str,
+    message: Optional[str] = None,
 ) -> tuple[Dict[str, Any], Dict[str, Any], bool]:
     deps: LabGraphDeps = state.get("deps")
     if deps is None:
@@ -194,7 +195,7 @@ def _run_persona(
 
     deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "node_started", "data": {"node": persona}})
 
-    msg = "Contexto do run (JSON):\n" + json.dumps(state.get("context") or {}, ensure_ascii=False, indent=2) + "\n"
+    msg = message or ("Contexto do run (JSON):\n" + json.dumps(state.get("context") or {}, ensure_ascii=False, indent=2) + "\n")
 
     response = deps.persona_call(
         run_id=run_id,
@@ -298,17 +299,7 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         state["budget"] = budget
         state["outputs"] = outputs
 
-    if ok:
-        budget, outputs, ok = _run_persona(
-            state=state,
-            persona="validator",
-            output_key="validator_verdict",
-            system_prompt=VALIDATOR_PROMPT,
-        )
-        state["budget"] = budget
-        state["outputs"] = outputs
-
-    completed = bool(outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"))
+    completed = bool(outputs.get("coordinator_summary") and outputs.get("dev_summary"))
 
     deps.append_trace(
         run_id,
@@ -335,6 +326,87 @@ def _after_implementation(state: LabGraphState) -> str:
     return "tests" if bool(state.get("implementation_complete")) else "end"
 
 
+def _build_trader_validation_message(
+    *,
+    strategy_draft: Optional[Dict[str, Any]],
+    dev_summary: Optional[str],
+    context: Dict[str, Any],
+) -> str:
+    payload = {
+        "strategy_draft": strategy_draft,
+        "dev_summary": dev_summary,
+        "metrics": context.get("walk_forward") or {},
+        "template": context.get("template"),
+        "symbol": context.get("symbol"),
+        "timeframe": context.get("timeframe"),
+    }
+    return "Contexto para validação do Trader (JSON):\n" + json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+
+
+def _trader_validation_node(state: LabGraphState) -> LabGraphState:
+    deps: LabGraphDeps = state.get("deps")
+    if deps is None:
+        raise RuntimeError("missing deps")
+
+    run_id = state.get("run_id")
+    deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "trader_validation_started", "data": {}})
+
+    budget = state.get("budget") or {}
+    outputs = state.get("outputs") or {}
+    context = state.get("context") or {}
+    upstream = state.get("upstream_contract") or {}
+
+    message = _build_trader_validation_message(
+        strategy_draft=upstream.get("strategy_draft"),
+        dev_summary=outputs.get("dev_summary"),
+        context=context,
+    )
+
+    budget, outputs, ok = _run_persona(
+        state=state,
+        persona="trader",
+        output_key="trader_verdict",
+        system_prompt=TRADER_VALIDATION_PROMPT,
+        message=message,
+    )
+
+    state["budget"] = budget
+    state["outputs"] = outputs
+
+    verdict_obj = outputs.get("trader_verdict")
+    verdict = _verdict_label(verdict_obj)
+    status = "needs_adjustment"
+    if verdict == "approved":
+        status = "approved"
+    elif verdict == "rejected":
+        status = "rejected"
+
+    deps.append_trace(
+        run_id,
+        {
+            "ts_ms": deps.now_ms(),
+            "type": "trader_validation_done",
+            "data": {"verdict": verdict, "budget_ok": deps.budget_ok(budget)},
+        },
+    )
+
+    return {
+        "budget": budget,
+        "outputs": outputs,
+        "phase": "trader_validation",
+        "status": status,
+    }
+
+
+
+def _after_trader_validation(state: LabGraphState) -> str:
+    status = state.get("status") or ""
+    if status == "approved" or status == "rejected":
+        return "end"
+    return "dev_implementation"
+
+
+
 def _tests_node(state: LabGraphState) -> LabGraphState:
     deps: LabGraphDeps = state.get("deps")
     if deps is None:
@@ -348,7 +420,7 @@ def _tests_node(state: LabGraphState) -> LabGraphState:
 
     preflight = context.get("metrics_preflight") or {}
     preflight_ok = not isinstance(preflight, dict) or bool(preflight.get("ok", True))
-    verdict = _verdict_label(outputs.get("validator_verdict"))
+    verdict = _verdict_label(outputs.get("trader_verdict") or outputs.get("validator_verdict"))
 
     tests_pass = bool(preflight_ok)
     if verdict == "metrics_invalid":
@@ -399,15 +471,14 @@ def _final_decision_node(state: LabGraphState) -> LabGraphState:
     }
 
 
-def build_cp7_graph() -> CompiledStateGraph:
-    """Build the current lab graph (now 2-phase with upstream branch)."""
+def build_trader_dev_graph() -> CompiledStateGraph:
+    """Build the trader-driven lab graph (Trader → Dev → Trader)."""
 
     graph = StateGraph(LabGraphState)
 
     graph.add_node("upstream", _upstream_node)
-    graph.add_node("implementation", _implementation_node)
-    graph.add_node("tests", _tests_node)
-    graph.add_node("final_decision", _final_decision_node)
+    graph.add_node("dev_implementation", _implementation_node)
+    graph.add_node("trader_validation", _trader_validation_node)
 
     graph.set_entry_point("upstream")
 
@@ -415,110 +486,100 @@ def build_cp7_graph() -> CompiledStateGraph:
         "upstream",
         _after_upstream,
         {
-            "implementation": "implementation",
+            "implementation": "dev_implementation",
             "end": END,
         },
     )
 
     graph.add_conditional_edges(
-        "implementation",
-        _after_implementation,
+        "dev_implementation",
+        lambda state: "trader_validation" if bool((state.get("outputs") or {}).get("dev_summary")) else "end",
         {
-            "tests": "tests",
+            "trader_validation": "trader_validation",
             "end": END,
         },
     )
 
-    graph.add_edge("tests", "final_decision")
-    graph.add_edge("final_decision", END)
+    graph.add_conditional_edges(
+        "trader_validation",
+        _after_trader_validation,
+        {
+            "dev_implementation": "dev_implementation",
+            "end": END,
+        },
+    )
 
     return graph.compile()
 
 
+def build_cp7_graph() -> CompiledStateGraph:
+    """Deprecated: kept for backward compatibility."""
+
+    return build_trader_dev_graph()
+
+
 COORDINATOR_PROMPT = (
-    "Papel: Coordinator (Agilista / Scrum Master)\n"
-    "Você atua como COORDINATOR (Agilista/Scrum Master) do Strategy Lab. Seu papel facilitar a colaboração, organizar o trabalho e destravar o fluxo do time.\n\n"
-    "Responsabilidades\n"
-    "1. Resumo do run\n"
-    "- Sintetize objetivamente o que aconteceu no último run (máx. 1-2 parágrafos).\n"
-    "- Foque em fatos, resultados e eventos relevantes.\n\n"
-    "2. Análise de riscos e problemas\n"
-    "- Identifique possíveis: bugs ou inconsistências de métricas; falta ou baixa qualidade de dados; lógica inválida ou frágil.\n"
-    "- Exemplos: número insuficiente de trades; métricas estatisticamente suspeitas; colunas incorretas ou inconsistentes em entry/exit.\n\n"
-    "3. Próximos passos\n"
-    "- Defina ações claras e acionáveis, separando responsabilidades entre: Dev e Trader/PO (validator).\n\n"
-    "4. Gestão de ambiguidade\n"
-    "- Caso existam pontos pouco claros, faça 1 a 3 perguntas objetivas para destravar a decisão.\n\n"
-    "Diretrizes de resposta\n"
-    "- Idioma: pt-BR\n"
-    "- Estilo: curto, direto e objetivo\n"
-    "- Evite opiniões subjetivas ou sugestões de estratégia de mercado."
+    "Papel: Coordinator (Agile Coach)\n"
+    "Você NÃO gera resumos automáticos.\n\n"
+    "Só intervém quando:\n"
+    "- Dev ou Trader reportam explicitamente uma dúvida/impasse\n"
+    "- Contexto indica bloqueio (ex: 3+ iterações sem progresso)\n\n"
+    "Quando intervir:\n"
+    "- Facilite comunicação entre Dev e Trader\n"
+    "- Sugira compromissos técnicos vs negócio\n"
+    "- Mantenha foco nos critérios de aceite do upstream\n\n"
+    "Responda JSON:\n"
+    "{\n"
+    "  \"needs_intervention\": true | false,\n"
+    "  \"facilitation\": \"...\"\n"
+    "}\n\n"
+    "Default: needs_intervention=false.\n"
+    "Idioma: pt-BR."
 )
 
 DEV_SENIOR_PROMPT = (
     "Papel: Dev (Dev Sênior)\n"
-    "Você atua como Dev Sênior responsável por templates e estratégias do Crypto Backtester. Seu papel é propor obrigatoriamente uma alteração concreta no template, com foco em execução correta no engine e validação estatística.\n\n"
-    "Objetivo principal\n"
-    "- Aumentar robustez da estratégia, observando risco e métricas como Sharpe.\n"
-    "- Caso o contexto apresente 0 trades, trate isso como BUG de lógica ou de colunas e simplifique as regras até que trades sejam gerados.\n\n"
-    "Entregável obrigatório\n"
-    "Responda exclusivamente com um JSON válido, sem qualquer texto fora dele, no seguinte formato:\n"
+    "Você implementa estratégias de trading propostas pelo Trader.\n\n"
+    "Workflow:\n"
+    "1. Ler strategy_draft do contexto.\n"
+    "2. Criar template técnico (schema do engine).\n"
+    "3. Rodar backtest usando funções disponíveis.\n"
+    "4. Diagnosticar problemas (0 trades, colunas inválidas, bugs).\n"
+    "5. Iterar até ter resultado tecnicamente válido (máx. 5 iterações).\n"
+    "6. Entregar template + métricas para Trader validar.\n\n"
+    "Entregável (JSON válido):\n"
     "{\n"
-    "  \"candidate_template_data\": {\n"
-    "    \"indicators\": [\n"
-    "      {\"type\": \"ema\", \"alias\": \"fast\", \"params\": {\"length\": 20}},\n"
-    "      {\"type\": \"adx\", \"alias\": \"adx\", \"params\": {\"length\": 14}}\n"
-    "    ],\n"
-    "    \"entry_logic\": \"...\",\n"
-    "    \"exit_logic\": \"...\",\n"
-    "    \"stop_loss\": 0.015\n"
-    "  },\n"
-    "  \"description\": \"...\",\n"
-    "  \"notes\": \"rationale / changes\"\n"
+    "  \"template_name\": \"...\",\n"
+    "  \"template_data\": { indicators, entry_logic, exit_logic, stop_loss },\n"
+    "  \"backtest_summary\": { all, in_sample, holdout },\n"
+    "  \"iterations_done\": N,\n"
+    "  \"technical_notes\": \"...\",\n"
+    "  \"ready_for_trader\": true\n"
     "}\n\n"
-    "Regras estruturais (obrigatórias)\n"
-    "- Máximo de 4 indicadores.\n"
-    "- Cada indicador DEVE ser um objeto contendo exatamente: type, alias, params.\n"
-    "- Não crie campos fora do schema definido.\n\n"
-    "Regras do engine (nomes de colunas)\n"
-    "Ao escrever entry_logic e exit_logic, utilize somente colunas válidas:\n"
-    "- Bollinger Bands: type bbands/bollinger, alias bb -> colunas bb_upper, bb_middle, bb_lower\n"
-    "- ADX: alias adx -> coluna adx (além de ADX_<length>)\n"
-    "- ATR: alias atr -> coluna atr (além de ATR_<length>)\n"
-    "- Também disponíveis: close, open, high, low, volume\n"
-    "Exemplo válido: close > bb_upper AND adx > 18\n\n"
-    "Sanity check obrigatório\n"
-    "Antes de finalizar a resposta: verifique que todas as referências usadas em entry/exit correspondem a colunas realmente existentes no engine. Se alguma coluna não existir, corrija antes de responder.\n\n"
-    "Diretrizes finais\n"
-    "- Idioma: pt-BR\n"
-    "- Foco: execução, robustez e geração de trades\n"
-    "- Não explique o JSON fora do campo description ou notes."
+    "Regras estruturais:\n"
+    "- Máximo de 4 indicadores\n"
+    "- Cada indicador: type, alias, params\n"
+    "- Use apenas colunas válidas (bb_upper, adx, atr, close, etc.)\n\n"
+    "IMPORTANTE: Se strategy_draft presente no contexto, USE-O como base.\n"
+    "Idioma: pt-BR."
 )
 
-VALIDATOR_PROMPT = (
-    "Papel: Validator (Trader + Product Owner)\n"
-    "Você atua como VALIDATOR, acumulando os papéis de TRADER e PO (Product Owner) do Strategy Lab. Seu papel é garantir que nenhuma estratégia quebrada ou frágil seja entregue.\n\n"
-    "Responsabilidade central\n"
-    "Você é o gate final de decisão. Cabe a você decidir se a estratégia está boa o suficiente para virar entrega, com base em critérios técnicos, estatísticos e de risco.\n\n"
-    "Critérios de avaliação\n"
-    "Avalie principalmente com base no HOLDOUT (30% mais recente) e considere:\n"
-    "- Existência de trades suficientes (0 trades é falha crítica).\n"
-    "- Validade da lógica (sem bugs óbvios, colunas inválidas ou regras incoerentes).\n"
-    "- Robustez e risco (Sharpe, drawdown, estabilidade).\n"
-    "- Overfitting ou sinais de ajuste excessivo.\n"
-    "- Problemas clássicos de validação: custos ignorados/irreais, lookahead bias, amostra pequena/enviesada.\n\n"
-    "Output obrigatório (JSON-only)\n"
-    "Responda EXCLUSIVAMENTE com um JSON válido (sem markdown e sem texto fora do JSON), no formato:\n"
+TRADER_VALIDATION_PROMPT = (
+    "Papel: Trader (Profissional de Mercado Financeiro)\n"
+    "Você é o MESMO trader que propôs a estratégia no upstream.\n\n"
+    "Contexto:\n"
+    "- Você propôs uma estratégia (strategy_draft).\n"
+    "- User aprovou.\n"
+    "- Dev implementou e rodou backtest.\n\n"
+    "Agora você deve validar o resultado:\n"
+    "1. Alinhamento com a proposta original\n"
+    "2. Métricas de holdout (Sharpe, drawdown)\n"
+    "3. Robustez (sem overfitting grave)\n\n"
+    "Responda EXCLUSIVAMENTE com JSON válido:\n"
     "{\n"
-    "  \"verdict\": \"approved\" | \"rejected\" | \"metrics_invalid\",\n"
+    "  \"verdict\": \"approved\" | \"needs_adjustment\" | \"rejected\",\n"
     "  \"reasons\": [\"...\"],\n"
-    "  \"required_fixes\": [\"...\"],\n"
-    "  \"notes\": \"...\"\n"
+    "  \"feedback_for_dev\": \"...\"\n"
     "}\n\n"
-    "Regras\n"
-    "- Baseie o veredito principalmente no HOLDOUT (30% mais recente).\n"
-    "- Se houver 0 trades, colunas inválidas ou métricas suspeitas/degeneradas, use verdict=metrics_invalid ou rejected (conforme o caso) e explique.\n"
-    "- Seja curto: no máximo ~8 itens somando reasons+required_fixes.\n"
-    "- Idioma: pt-BR.\n"
-    "- Não sugerir edge novo; focar em integridade/robustez."
+    "Idioma: pt-BR."
 )

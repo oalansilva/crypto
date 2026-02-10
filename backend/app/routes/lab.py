@@ -161,6 +161,7 @@ class LabRunOutputs(BaseModel):
     coordinator_summary: Optional[str] = None
     dev_summary: Optional[str] = None
     validator_verdict: Optional[str] = None
+    trader_verdict: Optional[str] = None
     tests_done: Optional[Dict[str, Any]] = None
     final_decision: Optional[Dict[str, Any]] = None
 
@@ -1034,6 +1035,8 @@ def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict
 
     candidate_data = blob.get("candidate_template_data")
     if not isinstance(candidate_data, dict):
+        candidate_data = blob.get("template_data")
+    if not isinstance(candidate_data, dict):
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": "missing candidate_template_data"}})
         return outputs
 
@@ -1234,7 +1237,7 @@ def _metrics_preflight(*, run: Dict[str, Any]) -> Dict[str, Any]:
 def _gate_decision(*, outputs: Dict[str, Any], selection: Dict[str, Any], preflight: Dict[str, Any]) -> Dict[str, Any]:
     """Consolidate final verdict into a single, consistent decision object."""
 
-    verdict = _verdict_label(outputs.get("validator_verdict"))
+    verdict = _verdict_label(outputs.get("trader_verdict") or outputs.get("validator_verdict"))
 
     reasons: list[str] = []
     if isinstance(preflight, dict) and preflight.get("ok") is False:
@@ -1256,6 +1259,7 @@ def _gate_decision(*, outputs: Dict[str, Any], selection: Dict[str, Any], prefli
         "approved": bool(approved),
         "reasons": reasons,
         "validator_verdict": verdict,
+        "trader_verdict": verdict,
         "selection_gate": selection,
         "metrics_preflight": preflight,
     }
@@ -1273,7 +1277,7 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
             return outputs
         selection = (gate.get("selection_gate") or {}) if isinstance(gate.get("selection_gate"), dict) else (outputs.get("selection") or {})
     else:
-        verdict = _verdict_label(outputs.get("validator_verdict"))
+        verdict = _verdict_label(outputs.get("trader_verdict") or outputs.get("validator_verdict"))
         selection = outputs.get("selection") or {}
         if verdict != "approved":
             return outputs
@@ -1410,9 +1414,9 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
 
     graph_status = ""
     try:
-        from app.services.lab_graph import LabGraphDeps, build_cp7_graph
+        from app.services.lab_graph import LabGraphDeps, build_trader_dev_graph
 
-        graph = build_cp7_graph()
+        graph = build_trader_dev_graph()
         deps = LabGraphDeps(
             persona_call=_persona_call_sync,
             append_trace=_append_trace,
@@ -1473,7 +1477,7 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         outputs = _cp8_save_candidate_template(run_id, _load_run_json(run_id) or run, outputs)
 
     # CP10: deterministic selection gate (holdout-based)
-    if outputs.get("coordinator_summary") and outputs.get("validator_verdict"):
+    if outputs.get("coordinator_summary") and (outputs.get("trader_verdict") or outputs.get("validator_verdict")):
         sel = _cp10_selection_gate(_load_run_json(run_id) or run)
         outputs["selection"] = sel
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
@@ -1485,7 +1489,7 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         _update_run_json(run_id, {"outputs": outputs})
 
     # CP5/CP10: autosave only if approved
-    if outputs.get("coordinator_summary") and outputs.get("dev_summary") and outputs.get("validator_verdict"):
+    if outputs.get("coordinator_summary") and outputs.get("dev_summary") and (outputs.get("trader_verdict") or outputs.get("validator_verdict")):
         outputs = _cp5_autosave_if_approved(run_id, _load_run_json(run_id) or run, outputs)
 
     needs_confirm = not _budget_ok(budget) and graph_status not in ("done", "failed")
@@ -1511,8 +1515,133 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
     _update_run_json(run_id, patch)
 
 
-def _choose_seed_template(*, combo: Any, preferred: Optional[str] = None) -> str:
+def _convert_idea_to_logic(idea: str) -> str:
+    if not isinstance(idea, str):
+        return ""
+    import re
+
+    logic = idea.strip()
+    logic = logic.replace(" E ", " AND ").replace(" OU ", " OR ")
+    logic = logic.replace("≤", "<=").replace("≥", ">=")
+    logic = re.sub(r"([A-Za-z]+)\(\d+\)", lambda m: m.group(1).lower(), logic)
+    logic = logic.replace("preço", "close").replace("price", "close")
+    logic = re.sub(r"\([^)]*\)", "", logic)
+    logic = re.sub(r"\s+", " ", logic).strip()
+    return logic.lower()
+
+
+def _extract_stop_loss_from_plan(plan: str) -> Optional[float]:
+    if not isinstance(plan, str):
+        return None
+    import re
+
+    match = re.search(r"stop[_\-\s]*loss[:\s]*(\d+(?:\.\d+)?)%?", plan, re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        value = float(match.group(1))
+    except ValueError:
+        return None
+    if value >= 1:
+        value = value / 100.0
+    return min(0.1, max(0.005, value))
+
+
+def _create_template_from_strategy_draft(
+    *,
+    combo: Any,
+    strategy_draft: Dict[str, Any],
+    symbol: str,
+    timeframe: str,
+    run_id: str,
+) -> str:
+    indicators = strategy_draft.get("indicators") or []
+    entry_idea = strategy_draft.get("entry_idea") or ""
+    exit_idea = strategy_draft.get("exit_idea") or ""
+    risk_plan = strategy_draft.get("risk_plan") or ""
+
+    normalized_indicators = []
+    for ind in indicators:
+        if not isinstance(ind, dict):
+            continue
+        ind_type = ind.get("name") or ind.get("type")
+        if not ind_type:
+            continue
+        normalized_indicators.append(
+            {
+                "type": str(ind_type).lower(),
+                "alias": str(ind.get("alias") or ind_type).lower(),
+                "params": ind.get("params") or {},
+            }
+        )
+
+    entry_logic = _convert_idea_to_logic(entry_idea)
+    exit_logic = _convert_idea_to_logic(exit_idea)
+    stop_loss = _extract_stop_loss_from_plan(risk_plan) or 0.03
+
+    template_data = {
+        "indicators": normalized_indicators[:4],
+        "entry_logic": entry_logic,
+        "exit_logic": exit_logic,
+        "stop_loss": float(stop_loss),
+    }
+
+    symbol_clean = symbol.replace("/", "_").replace("-", "_")
+    template_name = f"lab_{run_id[:8]}_draft_{symbol_clean}_{timeframe}"
+
+    combo.create_template(
+        name=template_name,
+        template_data=template_data,
+        category="custom",
+        metadata={
+            "created_from": "strategy_draft",
+            "run_id": run_id,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "one_liner": strategy_draft.get("one_liner") or "Estratégia do Trader",
+        },
+    )
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": _now_ms(),
+            "type": "template_created_from_draft",
+            "data": {"template_name": template_name, "indicators_count": len(normalized_indicators)},
+        },
+    )
+
+    return template_name
+
+
+def _choose_seed_template(
+    *,
+    combo: Any,
+    preferred: Optional[str] = None,
+    strategy_draft: Optional[Dict[str, Any]] = None,
+    symbol: Optional[str] = None,
+    timeframe: Optional[str] = None,
+    run_id: Optional[str] = None,
+) -> str:
     """Pick a seed template when the UI is in autonomous mode."""
+
+    if strategy_draft and symbol and timeframe and run_id:
+        try:
+            return _create_template_from_strategy_draft(
+                combo=combo,
+                strategy_draft=strategy_draft,
+                symbol=symbol,
+                timeframe=timeframe,
+                run_id=run_id,
+            )
+        except Exception as e:
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": _now_ms(),
+                    "type": "strategy_draft_conversion_error",
+                    "data": {"error": str(e)},
+                },
+            )
 
     if isinstance(preferred, str) and preferred.strip():
         return preferred.strip()
@@ -1666,12 +1795,16 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 
     def _context_for_backtest(bt: Dict[str, Any]) -> Dict[str, Any]:
         wf = (bt.get("walk_forward") or {})
+        run = _load_run_json(run_id) or {}
+        upstream = run.get("upstream") or {}
+        strategy_draft = upstream.get("strategy_draft")
         return {
             "input": inp,
             "objective": (inp.get("objective") or None),
             "symbol": bt.get("symbol"),
             "timeframe": bt.get("timeframe"),
             "template": bt.get("template"),
+            "strategy_draft": strategy_draft,
             "walk_forward": {
                 "split": (wf.get("split") or "70/30"),
                 "metrics_all": (bt.get("metrics") or {}),
@@ -1876,8 +2009,26 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "param_tune_error", "data": {"template": template_name, "iteration": iteration, "error": str(e)}})
 
     # Loop: propose → backtest candidate → validate → repeat
-    current_template = _choose_seed_template(combo=combo, preferred=req_dict.get("base_template"))
-    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "seed_chosen", "data": {"template": current_template}})
+    run = _load_run_json(run_id) or {}
+    upstream = run.get("upstream") or {}
+    strategy_draft = upstream.get("strategy_draft")
+
+    current_template = _choose_seed_template(
+        combo=combo,
+        preferred=req_dict.get("base_template"),
+        strategy_draft=strategy_draft,
+        symbol=symbol,
+        timeframe=timeframe,
+        run_id=run_id,
+    )
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": _now_ms(),
+            "type": "seed_chosen",
+            "data": {"template": current_template, "from_strategy_draft": bool(strategy_draft)},
+        },
+    )
 
     for it in range(1, max_iterations + 1):
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_started", "data": {"iteration": it, "template": current_template}})
@@ -1887,7 +2038,7 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 
         # Run CP7 personas (coordinator+dev+validator) on current results to get a candidate
         try:
-            from app.services.lab_graph import LabGraphDeps, build_cp7_graph
+            from app.services.lab_graph import LabGraphDeps, build_trader_dev_graph
 
             run = _load_run_json(run_id) or {}
             budget = run.get("budget") or {}
@@ -1901,7 +2052,7 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
                 budget_ok=_budget_ok,
             )
 
-            graph = build_cp7_graph()
+            graph = build_trader_dev_graph()
             state = {
                 "run_id": run_id,
                 "session_key": run.get("session_key") or f"lab-{run_id}",
@@ -1974,24 +2125,26 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
                 pre = _metrics_preflight(run=run)
                 _append_trace(run_id, {"ts_ms": _now_ms(), "type": "metrics_preflight", "data": pre})
                 if pre.get("ok") is False:
-                    outputs["validator_verdict"] = json.dumps(
+                    verdict_payload = json.dumps(
                         {
                             "verdict": "metrics_invalid",
                             "reasons": ["metrics_preflight_failed"],
                             "required_fixes": (pre.get("errors") or [])[:8],
-                            "notes": "Preflight determinístico falhou; bloqueando validator LLM.",
+                            "notes": "Preflight determinístico falhou; bloqueando trader LLM.",
                         },
                         ensure_ascii=False,
                     )
+                    outputs["trader_verdict"] = verdict_payload
+                    outputs["validator_verdict"] = verdict_payload
                     _update_run_json(run_id, {"budget": budget, "outputs": outputs})
                 else:
                     msg = "Contexto do run (JSON):\n" + json.dumps(_context_for_backtest(bt2), ensure_ascii=False, indent=2) + "\n"
                     r = _persona_call_sync(
                         run_id=run_id,
                         session_key=run.get("session_key") or f"lab-{run_id}",
-                        persona="validator",
+                        persona="trader",
                         system_prompt=(
-                            "Papel: Validator (Trader + Product Owner). "
+                            "Papel: Trader (Profissional de Mercado Financeiro). "
                             "Você é o gate final de decisão do Strategy Lab. "
                             "Responda EXCLUSIVAMENTE com JSON válido (sem markdown/texto fora do JSON) no formato: "
                             "{\"verdict\":\"approved\"|\"rejected\"|\"metrics_invalid\",\"reasons\":[...],\"required_fixes\":[...],\"notes\":\"...\"}. "
@@ -2002,6 +2155,7 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
                         message=msg,
                         thinking=inp.get("thinking") or "low",
                     )
+                    outputs["trader_verdict"] = r.get("text")
                     outputs["validator_verdict"] = r.get("text")
                     budget = _inc_budget(budget, turns=1, tokens=r.get("tokens", 0) or 0)
                     _update_run_json(run_id, {"budget": budget, "outputs": outputs})
@@ -2151,6 +2305,7 @@ async def create_run(
             "coordinator_summary": None,
             "dev_summary": None,
             "validator_verdict": None,
+            "trader_verdict": None,
             "tests_done": None,
             "final_decision": None,
             "selection": None,
