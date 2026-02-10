@@ -493,6 +493,76 @@ def _try_trader_upstream_turn(
     return out
 
 
+def _try_trader_generate_strategy_draft(*, run_id: str, session_key: str, thinking: str, contract: Dict[str, Any], upstream_messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Focused call to generate only the strategy draft once inputs are approved."""
+
+    compact_history = []
+    for msg in upstream_messages[-12:]:
+        if not isinstance(msg, dict):
+            continue
+        role = str(msg.get("role") or "").strip().lower()
+        text = str(msg.get("text") or "").strip()
+        if role in ("user", "trader") and text:
+            compact_history.append({"role": role, "text": text})
+
+    system_prompt = (
+        "Papel: Trader do upstream do Strategy Lab.\n"
+        "Tarefa: gerar um Strategy Draft para o humano aprovar ANTES de iniciar execução.\n"
+        "Responda EXCLUSIVAMENTE com JSON válido no formato:\n"
+        "{\n"
+        '  "ready_for_user_review": true,\n'
+        '  "strategy_draft": {\n'
+        '    "version": 1,\n'
+        '    "one_liner": "...",\n'
+        '    "rationale": "...",\n'
+        '    "indicators": [{"source":"pandas_ta","name":"rsi","params":{"length":14}}],\n'
+        '    "entry_idea": "...",\n'
+        '    "exit_idea": "...",\n'
+        '    "risk_plan": "...",\n'
+        '    "what_to_measure": ["sharpe_holdout","max_drawdown_holdout","min_trades"],\n'
+        '    "open_questions": []\n'
+        '  }\n'
+        "}\n\n"
+        "Regras:\n"
+        "- NÃO invente symbol/timeframe. Use os do Contrato atual.\n"
+        "- Indicadores devem ser plausíveis e baseados em pandas_ta (nome + params).\n"
+        "- Draft deve ser curto e testável (idéia + como entrar/sair + risco).\n"
+    )
+
+    payload_message = (
+        "Histórico upstream (JSON):\n"
+        + json.dumps(compact_history, ensure_ascii=False, indent=2)
+        + "\n\nContrato atual (JSON):\n"
+        + json.dumps(contract, ensure_ascii=False, indent=2)
+    )
+
+    try:
+        response = _persona_call_sync(
+            run_id=run_id,
+            session_key=session_key,
+            persona="validator",
+            system_prompt=system_prompt,
+            message=payload_message,
+            thinking=thinking or "low",
+            timeout_s=60,
+        )
+    except Exception:
+        return {}
+
+    obj = _extract_json_object(response.get("text") or "")
+    if not isinstance(obj, dict):
+        return {}
+
+    out: Dict[str, Any] = {}
+    if isinstance(obj.get("ready_for_user_review"), bool):
+        out["ready_for_user_review"] = bool(obj.get("ready_for_user_review"))
+    sd = obj.get("strategy_draft")
+    if isinstance(sd, dict) and bool(sd):
+        out["strategy_draft"] = sd
+
+    return out
+
+
 def _next_trader_prompt(contract: Dict[str, Any]) -> str:
     if bool(contract.get("approved")):
         return "Contrato upstream aprovado. Revise o resumo e clique em Iniciar execução."
@@ -601,6 +671,19 @@ def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message
         sd = trader_turn.get("strategy_draft")
         if isinstance(sd, dict) and bool(sd):
             upstream["strategy_draft"] = sd
+
+        # If contract is approved but the Trader didn't provide a draft yet, force a focused draft generation call.
+        if not bool(upstream.get("ready_for_user_review")) or not isinstance(upstream.get("strategy_draft"), dict):
+            draft_turn = _try_trader_generate_strategy_draft(
+                run_id=run_id,
+                session_key=session_key,
+                thinking=thinking,
+                contract=contract,
+                upstream_messages=upstream.get("messages") or [],
+            )
+            if bool(draft_turn.get("ready_for_user_review")) and isinstance(draft_turn.get("strategy_draft"), dict):
+                upstream["ready_for_user_review"] = True
+                upstream["strategy_draft"] = draft_turn.get("strategy_draft")
     else:
         upstream["ready_for_user_review"] = False
         upstream["strategy_draft"] = None
