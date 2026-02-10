@@ -388,7 +388,7 @@ def _contract_trace_data(contract: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _try_trader_upstream_turn(
+async def _try_trader_upstream_turn(
     *,
     run_id: str,
     session_key: str,
@@ -448,7 +448,7 @@ def _try_trader_upstream_turn(
     )
 
     try:
-        response = _persona_call_sync(
+        response = await _persona_call_async(
             run_id=run_id,
             session_key=session_key,
             persona="validator",
@@ -493,7 +493,7 @@ def _try_trader_upstream_turn(
     return out
 
 
-def _try_trader_generate_strategy_draft(*, run_id: str, session_key: str, thinking: str, contract: Dict[str, Any], upstream_messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+async def _try_trader_generate_strategy_draft(*, run_id: str, session_key: str, thinking: str, contract: Dict[str, Any], upstream_messages: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Focused call to generate only the strategy draft once inputs are approved."""
 
     compact_history = []
@@ -537,7 +537,7 @@ def _try_trader_generate_strategy_draft(*, run_id: str, session_key: str, thinki
     )
 
     try:
-        response = _persona_call_sync(
+        response = await _persona_call_sync(
             run_id=run_id,
             session_key=session_key,
             persona="validator",
@@ -584,7 +584,7 @@ def _next_trader_prompt(contract: Dict[str, Any]) -> str:
     return "Antes de continuar, preciso de mais detalhes para fechar o contrato upstream."
 
 
-def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message: str) -> Dict[str, Any]:
+async def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message: str) -> Dict[str, Any]:
     text = str(user_message or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="message is required")
@@ -611,7 +611,7 @@ def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message
 
     contract = _build_upstream_contract_from_input(inp)
 
-    trader_turn = _try_trader_upstream_turn(
+    trader_turn = await _try_trader_upstream_turn(
         run_id=run_id,
         session_key=session_key,
         thinking=thinking,
@@ -674,7 +674,7 @@ def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message
 
         # If contract is approved but the Trader didn't provide a draft yet, force a focused draft generation call.
         if not bool(upstream.get("ready_for_user_review")) or not isinstance(upstream.get("strategy_draft"), dict):
-            draft_turn = _try_trader_generate_strategy_draft(
+            draft_turn = await _try_trader_generate_strategy_draft(
                 run_id=run_id,
                 session_key=session_key,
                 thinking=thinking,
@@ -832,7 +832,7 @@ def _extract_text_from_gateway_payload(payload: Dict[str, Any]) -> str:
     return json.dumps(res, ensure_ascii=False)[:4000]
 
 
-def _persona_call_sync(*,
+async def _persona_call_async(*,
                        run_id: str,
                        session_key: str,
                        persona: str,
@@ -842,22 +842,18 @@ def _persona_call_sync(*,
                        timeout_s: int = 180) -> Dict[str, Any]:
     """Run one persona through OpenClaw gateway and trace it."""
 
-    import asyncio
-
     from app.services.openclaw_gateway_client import run_agent_via_gateway
 
     start = _now_ms()
     _append_trace(run_id, {"ts_ms": start, "type": "persona_started", "data": {"persona": persona}})
 
-    payload = asyncio.run(
-        run_agent_via_gateway(
-            message=message,
-            session_key=session_key,
-            agent_id="main",
-            thinking=thinking,
-            timeout_s=timeout_s,
-            extra_system_prompt=system_prompt,
-        )
+    payload = await run_agent_via_gateway(
+        message=message,
+        session_key=session_key,
+        agent_id="main",
+        thinking=thinking,
+        timeout_s=timeout_s,
+        extra_system_prompt=system_prompt,
     )
 
     tokens = _extract_tokens_from_gateway_payload(payload)
@@ -875,6 +871,31 @@ def _persona_call_sync(*,
     )
 
     return {"text": text, "tokens": tokens, "raw": payload}
+
+
+def _persona_call_sync(*,
+                       run_id: str,
+                       session_key: str,
+                       persona: str,
+                       system_prompt: str,
+                       message: str,
+                       thinking: str,
+                       timeout_s: int = 180) -> Dict[str, Any]:
+    """Sync wrapper for async persona call (safe for non-async contexts)."""
+
+    import asyncio
+
+    return asyncio.run(
+        _persona_call_async(
+            run_id=run_id,
+            session_key=session_key,
+            persona=persona,
+            system_prompt=system_prompt,
+            message=message,
+            thinking=thinking,
+            timeout_s=timeout_s,
+        )
+    )
 
 
 def _budget_ok(budget: Dict[str, Any]) -> bool:
@@ -2060,7 +2081,7 @@ async def create_run(
 
     trader_turn = None
     if not bool(upstream_contract.get("approved")):
-        trader_turn = _try_trader_upstream_turn(
+        trader_turn = await _try_trader_upstream_turn(
             run_id=run_id,
             session_key=trace_thread_id,
             thinking=str(run_input.get("thinking") or "low"),
@@ -2072,7 +2093,7 @@ async def create_run(
         upstream_contract["question"] = initial_question
     else:
         # If already approved at creation time, Trader may still provide a draft for review.
-        trader_turn = _try_trader_upstream_turn(
+        trader_turn = await _try_trader_upstream_turn(
             run_id=run_id,
             session_key=trace_thread_id,
             thinking=str(run_input.get("thinking") or "low"),
@@ -2266,7 +2287,7 @@ async def post_upstream_message(run_id: str, req: LabRunUpstreamMessageRequest) 
     if phase != "upstream":
         raise HTTPException(status_code=409, detail="upstream chat is available only during phase=upstream")
 
-    patch = _handle_upstream_user_message(run_id, run, req.message)
+    patch = await _handle_upstream_user_message(run_id, run, req.message)
     _update_run_json(run_id, patch)
     updated = _load_run_json(run_id)
 
