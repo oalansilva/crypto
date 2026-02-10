@@ -590,6 +590,8 @@ async def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_m
     if not text:
         raise HTTPException(status_code=400, detail="message is required")
 
+    suggest_requested = bool(re.search(r"\b(sugira|sugerir|recomenda|recomende|mais adequado|sugest[aã]o)\b", text, re.IGNORECASE))
+
     _ensure_upstream_state(run)
     _append_upstream_message(run_id, run, role="user", text=text)
     upstream = _ensure_upstream_state(run)
@@ -724,6 +726,11 @@ async def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_m
             },
         )
 
+    auto_start = False
+    if suggest_requested and bool(contract.get("approved")) and bool(upstream.get("ready_for_user_review")):
+        upstream["user_approved"] = True
+        auto_start = True
+
     status = "ready_for_review" if (bool(contract.get("approved")) and bool(upstream.get("ready_for_user_review"))) else ("ready_for_execution" if bool(contract.get("approved")) else "needs_user_input")
     if bool(upstream.get("ready_for_user_review")):
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "upstream_strategy_draft_ready", "data": {"has_draft": bool(upstream.get("strategy_draft"))}})
@@ -736,6 +743,7 @@ async def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_m
         "step": "upstream",
         "phase": "upstream",
         "needs_user_confirm": False,
+        "auto_start": auto_start,
     }
 
 
@@ -2432,7 +2440,7 @@ async def get_job(job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/runs/{run_id}/upstream/message", response_model=LabRunUpstreamMessageResponse)
-async def post_upstream_message(run_id: str, req: LabRunUpstreamMessageRequest) -> LabRunUpstreamMessageResponse:
+async def post_upstream_message(run_id: str, req: LabRunUpstreamMessageRequest, background_tasks: BackgroundTasks) -> LabRunUpstreamMessageResponse:
     p = _run_path(run_id)
     if not p.exists():
         raise HTTPException(status_code=404, detail="run not found")
@@ -2443,8 +2451,23 @@ async def post_upstream_message(run_id: str, req: LabRunUpstreamMessageRequest) 
         raise HTTPException(status_code=409, detail="upstream chat is available only during phase=upstream")
 
     patch = await _handle_upstream_user_message(run_id, run, req.message)
+    auto_start = bool(patch.pop("auto_start", False))
     _update_run_json(run_id, patch)
     updated = _load_run_json(run_id)
+
+    if auto_start:
+        inp = updated.get("input") or {}
+        _update_run_json(
+            run_id,
+            {
+                "status": "running",
+                "step": "execution",
+                "phase": "execution",
+                "needs_user_confirm": False,
+            },
+        )
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_started_by_user", "data": {"via": "auto_suggest"}})
+        background_tasks.add_task(_run_lab_autonomous, run_id, inp)
 
     return LabRunUpstreamMessageResponse(
         status=str(updated.get("status") or patch.get("status") or "needs_user_input"),

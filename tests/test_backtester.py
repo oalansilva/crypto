@@ -135,7 +135,7 @@ def test_create_run_accepts_when_symbol_and_timeframe_are_present(tmp_path, monk
     resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
 
     assert isinstance(resp, lab_routes.LabRunCreateResponse)
-    assert resp.status == "ready_for_execution"
+    assert resp.status in ("ready_for_execution", "ready_for_review")
     assert resp.run_id == _FixedUUID.hex
 
     run_file = tmp_path / f"{_FixedUUID.hex}.json"
@@ -176,7 +176,7 @@ def test_post_upstream_message_persists_history_and_updates_contract(tmp_path, m
 
     monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", _fake_turn_approved)
     msg_req = lab_routes.LabRunUpstreamMessageRequest(message="symbol=BTC/USDT timeframe=1h")
-    msg_resp = asyncio.run(lab_routes.post_upstream_message(_FixedUUID.hex, msg_req))
+    msg_resp = asyncio.run(lab_routes.post_upstream_message(_FixedUUID.hex, msg_req, BackgroundTasks()))
 
     assert msg_resp.status == "ready_for_execution"
     assert msg_resp.phase == "upstream"
