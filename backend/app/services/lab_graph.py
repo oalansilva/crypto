@@ -327,6 +327,21 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         completed = False
         outputs["dev_needs_retry"] = True
 
+    # Ensure dev used the same backtest job id from context.
+    ctx_job_id = str(context.get("backtest_job_id") or "").strip()
+    dev_job_id = ""
+    dev_summary_raw = outputs.get("dev_summary")
+    if dev_summary_raw:
+        try:
+            dev_obj = json.loads(dev_summary_raw)
+            dev_job_id = str(dev_obj.get("backtest_job_id") or "").strip()
+        except Exception:
+            dev_job_id = ""
+
+    if ctx_job_id and dev_job_id and dev_job_id != ctx_job_id:
+        completed = False
+        outputs["dev_needs_retry"] = True
+
     deps.append_trace(
         run_id,
         {

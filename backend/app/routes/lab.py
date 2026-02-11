@@ -1536,25 +1536,33 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         )
         return
 
-    # CP8: persist candidate template after Dev output exists
-    if outputs.get("coordinator_summary") and outputs.get("dev_summary"):
-        outputs = _cp8_save_candidate_template(run_id, _load_run_json(run_id) or run, outputs)
+    if outputs.get("dev_needs_retry"):
+        # Dev must re-run backtest; skip trader/validator/gates for now.
+        outputs.pop("trader_verdict", None)
+        outputs.pop("validator_verdict", None)
+        outputs.pop("selection", None)
+        outputs.pop("gate_decision", None)
+        _update_run_json(run_id, {"outputs": outputs, "status": "needs_adjustment", "step": "personas", "phase": "execution"})
+    else:
+        # CP8: persist candidate template after Dev output exists
+        if outputs.get("coordinator_summary") and outputs.get("dev_summary"):
+            outputs = _cp8_save_candidate_template(run_id, _load_run_json(run_id) or run, outputs)
 
-    # CP10: deterministic selection gate (holdout-based)
-    if outputs.get("coordinator_summary") and (outputs.get("trader_verdict") or outputs.get("validator_verdict")):
-        sel = _cp10_selection_gate(_load_run_json(run_id) or run)
-        outputs["selection"] = sel
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
+        # CP10: deterministic selection gate (holdout-based)
+        if outputs.get("coordinator_summary") and (outputs.get("trader_verdict") or outputs.get("validator_verdict")):
+            sel = _cp10_selection_gate(_load_run_json(run_id) or run)
+            outputs["selection"] = sel
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
 
-        pre = (context.get("metrics_preflight") or {}) if isinstance(context, dict) else {}
-        gate = _gate_decision(outputs=outputs, selection=sel, preflight=pre)
-        outputs["gate_decision"] = gate
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "gate_decision", "data": gate})
-        _update_run_json(run_id, {"outputs": outputs})
+            pre = (context.get("metrics_preflight") or {}) if isinstance(context, dict) else {}
+            gate = _gate_decision(outputs=outputs, selection=sel, preflight=pre)
+            outputs["gate_decision"] = gate
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "gate_decision", "data": gate})
+            _update_run_json(run_id, {"outputs": outputs})
 
-    # CP5/CP10: autosave only if approved
-    if outputs.get("coordinator_summary") and outputs.get("dev_summary") and (outputs.get("trader_verdict") or outputs.get("validator_verdict")):
-        outputs = _cp5_autosave_if_approved(run_id, _load_run_json(run_id) or run, outputs)
+        # CP5/CP10: autosave only if approved
+        if outputs.get("coordinator_summary") and outputs.get("dev_summary") and (outputs.get("trader_verdict") or outputs.get("validator_verdict")):
+            outputs = _cp5_autosave_if_approved(run_id, _load_run_json(run_id) or run, outputs)
 
     needs_confirm = not _budget_ok(budget) and graph_status not in ("done", "failed")
     patch: Dict[str, Any] = {
