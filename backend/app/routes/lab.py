@@ -1718,26 +1718,8 @@ def _choose_seed_template(
     if isinstance(preferred, str) and preferred.strip():
         return preferred.strip()
 
-    try:
-        templates = combo.list_templates() or {}
-        # Prefer prebuilt/examples first
-        candidates = []
-        for k in ("prebuilt", "examples", "custom"):
-            for t in (templates.get(k) or []):
-                name = (t or {}).get("name")
-                if not name:
-                    continue
-                # avoid known short-only seed
-                if name == "short_ema200_pullback":
-                    continue
-                candidates.append(str(name))
-        if candidates:
-            # deterministic default: pick first alphabetical
-            return sorted(set(candidates))[0]
-    except Exception:
-        pass
-
-    return "multi_ma_crossover"
+    # Do not fall back to default/prebuilt templates: we only run trader/dev proposals.
+    return ""
 
 
 def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
@@ -2093,6 +2075,18 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
         timeframe=timeframe,
         run_id=run_id,
     )
+    if not current_template:
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "seed_chosen",
+                "data": {"template": "", "from_strategy_draft": bool(strategy_draft), "error": "no_seed_template"},
+            },
+        )
+        _update_run_json(run_id, {"status": "error", "step": "error", "error": "seed_template_missing"})
+        return
+
     _append_trace(
         run_id,
         {
