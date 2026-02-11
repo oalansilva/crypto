@@ -320,6 +320,12 @@ def _ensure_upstream_state(run: Dict[str, Any]) -> Dict[str, Any]:
     if not pending_question and isinstance(contract, dict) and not bool(contract.get("approved")):
         pending_question = str(contract.get("question") or "").strip()
 
+    # Avoid duplicating the same trader question in both messages and pending_question (UI shows both).
+    if pending_question and messages:
+        last = messages[-1]
+        if last.get("role") == "trader" and str(last.get("text") or "").strip() == pending_question:
+            pending_question = ""
+
     strategy_draft = upstream.get("strategy_draft")
     if not isinstance(strategy_draft, dict):
         strategy_draft = None
