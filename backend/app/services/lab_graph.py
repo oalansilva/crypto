@@ -303,18 +303,24 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
 
     completed = bool(outputs.get("coordinator_summary") and outputs.get("dev_summary"))
 
-    # If backtest has zero trades, force a retry before trader validation.
+    # Require real backtest metrics and a job_id before trader validation.
     needs_retry = False
     context = state.get("context") or {}
-    backtest = context.get("walk_forward") or context.get("backtest") or {}
+    wf = context.get("walk_forward") or {}
 
-    def _ctx_trades(scope: str) -> int:
-        metrics = (backtest.get(scope) or {}).get("metrics") if isinstance(backtest.get(scope), dict) else (backtest.get(scope) or {})
+    def _ctx_trades(metrics: Any) -> int:
         if not isinstance(metrics, dict):
             return 0
         return int(metrics.get("total_trades") or 0)
 
-    if _ctx_trades("in_sample") == 0 or _ctx_trades("holdout") == 0:
+    in_sample = wf.get("metrics_in_sample") or {}
+    holdout = wf.get("metrics_holdout") or {}
+    if _ctx_trades(in_sample) == 0 or _ctx_trades(holdout) == 0:
+        needs_retry = True
+
+    backtest_job_id = str(context.get("backtest_job_id") or "").strip()
+    backtest_job_status = str(context.get("backtest_job_status") or "").strip().upper()
+    if not backtest_job_id or (backtest_job_status and backtest_job_status != "COMPLETED"):
         needs_retry = True
 
     if needs_retry:
@@ -584,6 +590,7 @@ DEV_SENIOR_PROMPT = (
     "{\n"
     "  \"template_name\": \"...\",\n"
     "  \"template_data\": { indicators, entry_logic, exit_logic, stop_loss },\n"
+    "  \"backtest_job_id\": \"...\",\n"
     "  \"backtest_summary\": { all, in_sample, holdout },\n"
     "  \"iterations_done\": N,\n"
     "  \"technical_notes\": \"...\",\n"
@@ -595,6 +602,7 @@ DEV_SENIOR_PROMPT = (
     "- Use apenas colunas válidas (bb_upper, adx, atr, close, etc.)\n\n"
     "IMPORTANTE: Se strategy_draft presente no contexto, USE-O como base.\n"
     "PROIBIDO inventar métricas. Use somente os resultados reais do backtest do contexto.\n"
+    "Você DEVE usar a tool de backtest e retornar o backtest_job_id.\n"
     "Se não houver trades, explique isso e marque ready_for_trader=false.\n"
     "Idioma: pt-BR."
 )

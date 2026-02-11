@@ -1459,6 +1459,8 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         "symbol": (backtest.get("symbol") or inp.get("symbol")),
         "timeframe": (backtest.get("timeframe") or inp.get("timeframe")),
         "template": backtest.get("template"),
+        "backtest_job_id": ((run.get("backtest_job") or {}).get("job_id")),
+        "backtest_job_status": ((run.get("backtest_job") or {}).get("status")),
         "walk_forward": {
             "split": (wf.get("split") or "70/30"),
             "metrics_all": (backtest.get("metrics") or {}),
