@@ -327,7 +327,7 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         completed = False
         outputs["dev_needs_retry"] = True
 
-    # Ensure dev used the same backtest job id from context.
+    # Ensure dev used the same backtest job id from context and template is valid.
     ctx_job_id = str(context.get("backtest_job_id") or "").strip()
     dev_job_id = ""
     dev_summary_raw = outputs.get("dev_summary")
@@ -335,6 +335,12 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         try:
             dev_obj = json.loads(dev_summary_raw)
             dev_job_id = str(dev_obj.get("backtest_job_id") or "").strip()
+            template_data = dev_obj.get("template_data") or {}
+            entry_logic = template_data.get("entry_logic")
+            exit_logic = template_data.get("exit_logic")
+            if not isinstance(entry_logic, str) or not isinstance(exit_logic, str):
+                completed = False
+                outputs["dev_needs_retry"] = True
         except Exception:
             dev_job_id = ""
 
@@ -605,6 +611,7 @@ DEV_SENIOR_PROMPT = (
     "{\n"
     "  \"template_name\": \"...\",\n"
     "  \"template_data\": { indicators, entry_logic, exit_logic, stop_loss },\n"
+    "  (entry_logic e exit_logic DEVEM ser strings, nunca dict)\n"
     "  \"backtest_job_id\": \"...\",\n"
     "  \"backtest_summary\": { all, in_sample, holdout },\n"
     "  \"iterations_done\": N,\n"
