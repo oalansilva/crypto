@@ -1,4 +1,4 @@
-# Capability: Log Monitoring & Proactive Error Classification
+# Capability: Proactive Runtime Error Detection & Auto-Correction
 
 ## ADDED Requirements
 
@@ -9,6 +9,22 @@
 Given a lab run enters execution and the exchange client returns an "Invalid interval" error
 When the system processes the error
 Then the run diagnostic MUST include type "invalid_interval" and a human-readable message.
+
+### Requirement: Auto-correct common interval format issues
+**Description:** The system MUST normalize common timeframe formats before requesting data (e.g., `4H` -> `4h`).
+
+#### Scenario: Normalize uppercase timeframe
+Given a run input contains timeframe "4H"
+When the system prepares the exchange request
+Then it MUST send "4h" to the exchange without failing.
+
+### Requirement: Auto-correct common symbol format issues
+**Description:** The system MUST normalize common symbol formats before requesting data (e.g., `BTC/USDT` -> `BTCUSDT` for Binance).
+
+#### Scenario: Normalize slashed symbol
+Given a run input contains symbol "BTC/USDT"
+When the system prepares the exchange request
+Then it MUST send "BTCUSDT" to the exchange without failing.
 
 ### Requirement: Expose run diagnostic via API
 **Description:** The system MUST include a diagnostic object in the lab run API response when a classified error is detected.
