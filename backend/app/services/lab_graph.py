@@ -303,6 +303,26 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
 
     completed = bool(outputs.get("coordinator_summary") and outputs.get("dev_summary"))
 
+    # If dev produced a summary but the backtest has zero trades, force a retry before trader validation.
+    needs_retry = False
+    dev_summary_raw = outputs.get("dev_summary")
+    if dev_summary_raw:
+        try:
+            dev_obj = json.loads(dev_summary_raw)
+            backtest = dev_obj.get("backtest_summary") or {}
+            def _total_trades(scope: str) -> int:
+                metrics = (backtest.get(scope) or {})
+                return int(metrics.get("total_trades") or 0)
+            if _total_trades("all") == 0 or _total_trades("holdout") == 0:
+                needs_retry = True
+        except Exception:
+            # If dev output isn't valid JSON, let trader handle it.
+            needs_retry = False
+
+    if needs_retry:
+        completed = False
+        outputs["dev_needs_retry"] = True
+
     deps.append_trace(
         run_id,
         {
@@ -321,7 +341,7 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         "phase": "implementation",
         "implementation_complete": completed,
         "implementation_rounds": int(state.get("implementation_rounds") or 0),
-        "status": "implementation_running" if completed else "needs_user_confirm",
+        "status": "implementation_running" if completed else "needs_adjustment",
     }
 
 
@@ -502,9 +522,15 @@ def build_trader_dev_graph() -> CompiledStateGraph:
 
     graph.add_conditional_edges(
         "dev_implementation",
-        lambda state: "trader_validation" if bool((state.get("outputs") or {}).get("dev_summary")) else "end",
+        lambda state: (
+            "trader_validation"
+            if bool((state.get("outputs") or {}).get("dev_summary"))
+            and not bool((state.get("outputs") or {}).get("dev_needs_retry"))
+            else ("dev_implementation" if int(state.get("implementation_rounds") or 0) < int((state.get("context") or {}).get("input", {}).get("max_iterations") or 3) else "end")
+        ),
         {
             "trader_validation": "trader_validation",
+            "dev_implementation": "dev_implementation",
             "end": END,
         },
     )
