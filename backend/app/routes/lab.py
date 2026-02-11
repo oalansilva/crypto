@@ -585,6 +585,33 @@ def _next_trader_prompt(contract: Dict[str, Any]) -> str:
     return "Antes de continuar, preciso de mais detalhes para fechar o contrato upstream."
 
 
+def _validate_symbol(symbol: str) -> bool:
+    try:
+        from app.services.exchange_service import ExchangeService
+        svc = ExchangeService()
+        valid = svc.fetch_binance_symbols()
+        s = symbol.strip().upper().replace("_", "/")
+        # Also try normalizing USDT/USD variations
+        if s not in valid:
+            # common alias fix: BTCUSDT -> BTC/USDT (already done by _normalize_symbol)
+            pass
+        return s in valid
+    except Exception as e:
+        print(f"Symbol validation warning for {symbol}: {e}")
+        return True  # Fail open to avoid blocking valid inputs on network error
+
+def _validate_timeframe(timeframe: str) -> bool:
+    try:
+        from app.services.exchange_service import ExchangeService
+        svc = ExchangeService()
+        valid = svc.fetch_binance_timeframes()
+        tf = timeframe.strip().lower()
+        return tf in valid
+    except Exception as e:
+        print(f"Timeframe validation warning for {timeframe}: {e}")
+        return True
+
+
 async def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_message: str) -> Dict[str, Any]:
     text = str(user_message or "").strip()
     if not text:
@@ -654,9 +681,22 @@ async def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_m
         v = trader_inputs.get(k)
         if isinstance(v, str) and v.strip():
             if k == "symbol":
-                inp[k] = _normalize_symbol(v)
+                norm = _normalize_symbol(v)
+                if not _validate_symbol(norm):
+                    # Reject invalid symbol
+                    err_msg = f"System: Symbol '{norm}' not found in Binance USDT pairs. Please ask the user to correct it (e.g., check for typos like USTD -> USDT)."
+                    _append_upstream_message(run_id, run, role="system", text=err_msg)
+                    # Do not update inp["symbol"]
+                    continue
+                inp[k] = norm
             elif k == "timeframe":
-                inp[k] = _normalize_timeframe(v)
+                norm = _normalize_timeframe(v)
+                if not _validate_timeframe(norm):
+                    # Reject invalid timeframe
+                    err_msg = f"System: Timeframe '{norm}' not supported. Supported: 1m, 5m, 15m, 1h, 4h, 1d, etc."
+                    _append_upstream_message(run_id, run, role="system", text=err_msg)
+                    continue
+                inp[k] = norm
             else:
                 inp[k] = v.strip()
 
@@ -1423,6 +1463,7 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
     graph_status = ""
     try:
         from app.services.lab_graph import LabGraphDeps, build_trader_dev_graph
+        from app.services.exchange_service import ExchangeService
 
         graph = build_trader_dev_graph()
         deps = LabGraphDeps(
@@ -2501,7 +2542,7 @@ async def post_upstream_feedback(run_id: str, req: LabRunUpstreamFeedbackRequest
     _append_trace(run_id, {"ts_ms": _now_ms(), "type": "upstream_user_feedback", "data": {"text": feedback[:2000]}})
 
     # Treat feedback as the next user message to revise the draft.
-    patch = _handle_upstream_user_message(run_id, run, feedback)
+    patch = await _handle_upstream_user_message(run_id, run, feedback)
     patch["upstream"] = upstream
 
     _update_run_json(run_id, patch)
