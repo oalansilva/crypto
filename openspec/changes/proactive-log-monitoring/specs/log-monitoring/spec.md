@@ -34,6 +34,14 @@ Given a lab run enters execution and the exchange client returns an "Invalid int
 When the system processes the error
 Then the run diagnostic MUST include type "invalid_interval" and a human-readable message.
 
+### Requirement: Dev fallback correction after failed backtest
+**Description:** If pre-execution normalization does not resolve the issue, the Dev stage MUST adjust the template/motor using the diagnostic before retrying the backtest.
+
+#### Scenario: Fallback correction path
+Given a backtest fails due to a classified error
+When the Dev evaluates the failure
+Then it MUST apply a correction in the "Dev: ajusta template/motor" step and retry execution.
+
 ### Requirement: Expose run diagnostic via API
 **Description:** The system MUST include a diagnostic object in the lab run API response when a classified error is detected.
 

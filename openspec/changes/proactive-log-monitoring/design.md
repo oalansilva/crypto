@@ -14,8 +14,9 @@ Inserir uma etapa explícita no **Dev** para normalizar inputs antes do backtest
 2. DevInputNormalizer corrige `timeframe` e `symbol`.
 3. Dev roda backtest com inputs normalizados.
 4. Se falhar, ErrorClassifier gera `{type, message, details}`.
-5. RunLogger salva o diagnóstico no JSON do run.
-6. `/api/lab/runs/{run_id}` retorna `diagnostic`.
+5. Dev ajusta template/motor com base no diagnóstico e tenta novamente.
+6. RunLogger salva o diagnóstico no JSON do run.
+7. `/api/lab/runs/{run_id}` retorna `diagnostic`.
 
 ## Error Types (MVP)
 - `invalid_interval` (ex.: "Invalid interval", "interval=4H")

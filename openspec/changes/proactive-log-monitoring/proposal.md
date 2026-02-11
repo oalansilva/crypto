@@ -6,5 +6,5 @@ Hoje, erros de execução (ex.: intervalo inválido no Binance) só aparecem qua
 ## What Changes
 - Inserir uma etapa de **auto‑correção no fluxo do Dev** (entre receber strategy_draft e rodar o backtest) para normalizar inputs comuns.
 - Aplicar correções automáticas quando possível (ex.: `4H` → `4h`, `BTC/USDT` → `BTCUSDT` para exchange) **antes** da execução.
-- Quando não for possível auto‑corrigir, registrar um diagnóstico e sugestão clara para o usuário.
+- **Fallback:** se a correção não for possível antes do backtest, o Dev deve ajustar na etapa **"Dev: ajusta template/motor"** após falha.
 - Expor `diagnostic` na resposta do run (API) e persistir no log.
