@@ -20,7 +20,7 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
@@ -1693,18 +1693,20 @@ def _choose_seed_template(
     symbol: Optional[str] = None,
     timeframe: Optional[str] = None,
     run_id: Optional[str] = None,
-) -> str:
+) -> Tuple[str, Optional[str]]:
     """Pick a seed template when the UI is in autonomous mode."""
 
+    conversion_error: Optional[str] = None
     if strategy_draft and symbol and timeframe and run_id:
         try:
-            return _create_template_from_strategy_draft(
+            template_name = _create_template_from_strategy_draft(
                 combo=combo,
                 strategy_draft=strategy_draft,
                 symbol=symbol,
                 timeframe=timeframe,
                 run_id=run_id,
             )
+            return template_name, None
         except Exception as e:
             _append_trace(
                 run_id,
@@ -1714,12 +1716,13 @@ def _choose_seed_template(
                     "data": {"error": str(e)},
                 },
             )
+            conversion_error = f"strategy_draft_conversion_error: {e}"
 
     if isinstance(preferred, str) and preferred.strip():
-        return preferred.strip()
+        return preferred.strip(), conversion_error
 
     # Do not fall back to default/prebuilt templates: we only run trader/dev proposals.
-    return ""
+    return "", conversion_error
 
 
 def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
@@ -2067,7 +2070,7 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
     upstream = run.get("upstream") or {}
     strategy_draft = upstream.get("strategy_draft")
 
-    current_template = _choose_seed_template(
+    current_template, seed_error = _choose_seed_template(
         combo=combo,
         preferred=req_dict.get("base_template"),
         strategy_draft=strategy_draft,
@@ -2075,16 +2078,32 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
         timeframe=timeframe,
         run_id=run_id,
     )
+
     if not current_template:
         _append_trace(
             run_id,
             {
                 "ts_ms": _now_ms(),
                 "type": "seed_chosen",
-                "data": {"template": "", "from_strategy_draft": bool(strategy_draft), "error": "no_seed_template"},
+                "data": {
+                    "template": "",
+                    "from_strategy_draft": bool(strategy_draft),
+                    "error": seed_error or "no_seed_template",
+                },
             },
         )
-        _update_run_json(run_id, {"status": "error", "step": "error", "error": "seed_template_missing"})
+        if seed_error:
+            _update_run_json(
+                run_id,
+                {
+                    "status": "error",
+                    "step": "error",
+                    "error": "strategy_draft_conversion_error",
+                    "error_details": seed_error,
+                },
+            )
+        else:
+            _update_run_json(run_id, {"status": "error", "step": "error", "error": "seed_template_missing"})
         return
 
     _append_trace(

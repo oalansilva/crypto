@@ -7,6 +7,7 @@ All strategies are now loaded from database - no hard-coded Python classes.
 
 import sqlite3
 import json
+import re
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
@@ -241,6 +242,292 @@ class ComboService:
         conn.close()
         
         return template_id
+
+    def _normalize_stop_loss_value(self, stop_loss: Any) -> float:
+        """Normalize stop loss into a positive decimal float."""
+        if isinstance(stop_loss, dict):
+            stop_loss = stop_loss.get("default")
+
+        if isinstance(stop_loss, str):
+            raw = stop_loss.strip()
+            if not raw:
+                return 0.03
+            has_percent = raw.endswith("%")
+            raw = raw.rstrip("%").strip()
+            try:
+                value = float(raw)
+            except ValueError:
+                return 0.03
+            if has_percent or value >= 1:
+                value = value / 100.0
+            return float(value) if value > 0 else 0.03
+
+        if isinstance(stop_loss, (int, float)):
+            value = float(stop_loss)
+            if value >= 1:
+                value = value / 100.0
+            return float(value) if value > 0 else 0.03
+
+        return 0.03
+
+    def _normalize_indicator(self, indicator: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Normalize indicator payload from either template_data or strategy_draft formats."""
+        if not isinstance(indicator, dict):
+            return None
+
+        indicator_type = indicator.get("type") or indicator.get("name")
+        if not indicator_type:
+            return None
+
+        alias = indicator.get("alias") or indicator_type
+        params = indicator.get("params")
+        if not isinstance(params, dict):
+            params = {}
+
+        return {
+            "type": str(indicator_type).lower(),
+            "alias": str(alias).lower(),
+            "params": params,
+        }
+
+    def _normalize_template_data(self, template_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate and normalize template data for persistence."""
+        if not isinstance(template_data, dict):
+            raise ValueError("Invalid template data: expected object.")
+
+        normalized_indicators: List[Dict[str, Any]] = []
+        raw_indicators = template_data.get("indicators")
+        if isinstance(raw_indicators, list):
+            for indicator in raw_indicators:
+                normalized = self._normalize_indicator(indicator)
+                if normalized is not None:
+                    normalized_indicators.append(normalized)
+
+        entry_logic = str(template_data.get("entry_logic") or "").strip()
+        exit_logic = str(template_data.get("exit_logic") or "").strip()
+        stop_loss = self._normalize_stop_loss_value(template_data.get("stop_loss"))
+
+        missing_fields: List[str] = []
+        if not normalized_indicators:
+            missing_fields.append("indicators")
+        if not entry_logic:
+            missing_fields.append("entry_logic")
+        if not exit_logic:
+            missing_fields.append("exit_logic")
+
+        if missing_fields:
+            fields = ", ".join(missing_fields)
+            raise ValueError(f"Invalid template data: missing required field(s): {fields}.")
+
+        return {
+            "indicators": normalized_indicators,
+            "entry_logic": entry_logic,
+            "exit_logic": exit_logic,
+            "stop_loss": stop_loss,
+        }
+
+    def _build_template_data_from_strategy_draft(self, strategy_draft: Dict[str, Any]) -> Dict[str, Any]:
+        """Map strategy draft format into normalized template_data."""
+        if not isinstance(strategy_draft, dict):
+            raise ValueError("Invalid strategy draft: expected object.")
+
+        indicators = strategy_draft.get("indicators")
+        entry_logic = strategy_draft.get("entry_logic") or strategy_draft.get("entry_idea") or ""
+        exit_logic = strategy_draft.get("exit_logic") or strategy_draft.get("exit_idea") or ""
+
+        stop_loss = strategy_draft.get("stop_loss")
+        if stop_loss is None:
+            risk_plan = strategy_draft.get("risk_plan")
+            if isinstance(risk_plan, str):
+                match = re.search(r"stop[_\-\s]*loss[:\s]*(\d+(?:\.\d+)?)\s*%?", risk_plan, re.IGNORECASE)
+                if match:
+                    stop_loss = float(match.group(1))
+
+        return self._normalize_template_data(
+            {
+                "indicators": indicators if isinstance(indicators, list) else [],
+                "entry_logic": entry_logic,
+                "exit_logic": exit_logic,
+                "stop_loss": stop_loss,
+            }
+        )
+
+    def create_template(
+        self,
+        *,
+        name: str,
+        template_data: Optional[Dict[str, Any]] = None,
+        category: str = "custom",
+        metadata: Optional[Dict[str, Any]] = None,
+        strategy_draft: Optional[Dict[str, Any]] = None,
+        description: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Create and persist a combo template.
+
+        Supports both:
+        - direct template_data payload
+        - strategy_draft payload (mapped to template_data)
+        """
+        template_name = str(name or "").strip()
+        if not template_name:
+            raise ValueError("Invalid template data: missing required field(s): name.")
+
+        normalized_template_data = (
+            self._normalize_template_data(template_data)
+            if template_data is not None
+            else self._build_template_data_from_strategy_draft(strategy_draft)
+        )
+
+        category_norm = str(category or "custom").strip().lower()
+        is_example = category_norm == "example"
+        is_prebuilt = category_norm == "prebuilt"
+
+        template_description = str(description or "").strip()
+        if not template_description and isinstance(metadata, dict):
+            one_liner = metadata.get("one_liner")
+            if isinstance(one_liner, str):
+                template_description = one_liner.strip()
+
+        try:
+            template_id = self.save_template(
+                name=template_name,
+                description=template_description,
+                indicators=normalized_template_data["indicators"],
+                entry_logic=normalized_template_data["entry_logic"],
+                exit_logic=normalized_template_data["exit_logic"],
+                stop_loss=normalized_template_data["stop_loss"],
+                is_example=is_example,
+                is_prebuilt=is_prebuilt,
+                optimization_schema=None,
+            )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(f"Template '{template_name}' already exists.") from exc
+
+        saved = self.get_template_metadata(template_name) or {
+            "name": template_name,
+            "description": template_description,
+            **normalized_template_data,
+        }
+        saved["id"] = template_id
+        saved["category"] = category_norm
+        if isinstance(metadata, dict):
+            saved["metadata"] = metadata
+
+        return saved
+
+    def create_template(
+        self,
+        name: str,
+        template_data: Dict[str, Any],
+        category: str = "custom",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create and persist a combo template from normalized template data.
+
+        Args:
+            name: Template name
+            template_data: Dict with indicators, entry_logic, exit_logic, stop_loss
+            category: custom | example | prebuilt
+            metadata: Optional metadata used for description/response
+
+        Returns:
+            Saved template metadata
+
+        Raises:
+            ValueError: If required fields are missing or invalid
+        """
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Template creation failed: missing required field 'name'")
+        template_name = name.strip()
+
+        if not isinstance(template_data, dict):
+            raise ValueError("Template creation failed: 'template_data' must be an object")
+
+        if self.get_template_metadata(template_name):
+            raise ValueError(f"Template creation failed: template '{template_name}' already exists")
+
+        raw_indicators = template_data.get("indicators")
+        entry_logic = template_data.get("entry_logic")
+        exit_logic = template_data.get("exit_logic")
+        stop_loss_raw = template_data.get("stop_loss", 0.03)
+
+        if not isinstance(raw_indicators, list) or not raw_indicators:
+            raise ValueError("Template creation failed: missing required field 'indicators'")
+        if not isinstance(entry_logic, str) or not entry_logic.strip():
+            raise ValueError("Template creation failed: missing required field 'entry_logic'")
+        if not isinstance(exit_logic, str) or not exit_logic.strip():
+            raise ValueError("Template creation failed: missing required field 'exit_logic'")
+
+        indicators: List[Dict[str, Any]] = []
+        for idx, ind in enumerate(raw_indicators):
+            if not isinstance(ind, dict):
+                raise ValueError(f"Template creation failed: indicator at index {idx} must be an object")
+
+            ind_type = ind.get("type") or ind.get("name")
+            if not ind_type:
+                raise ValueError(f"Template creation failed: indicator at index {idx} missing 'type'")
+
+            params = ind.get("params")
+            if params is None:
+                params = {}
+            if not isinstance(params, dict):
+                raise ValueError(f"Template creation failed: indicator params at index {idx} must be an object")
+
+            alias = ind.get("alias") or ind_type
+            indicators.append(
+                {
+                    "type": str(ind_type).lower(),
+                    "alias": str(alias).lower(),
+                    "params": params,
+                }
+            )
+
+        if isinstance(stop_loss_raw, dict):
+            stop_loss_raw = stop_loss_raw.get("default", 0.03)
+        if stop_loss_raw is None:
+            stop_loss_raw = 0.03
+        try:
+            stop_loss = float(stop_loss_raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Template creation failed: 'stop_loss' must be numeric") from exc
+
+        normalized_category = (category or "custom").strip().lower()
+        if normalized_category not in {"custom", "example", "prebuilt"}:
+            raise ValueError(
+                f"Template creation failed: unsupported category '{category}'. "
+                "Use custom, example, or prebuilt."
+            )
+
+        metadata_dict = metadata if isinstance(metadata, dict) else {}
+        description = (
+            metadata_dict.get("description")
+            or metadata_dict.get("one_liner")
+            or template_data.get("description")
+            or ""
+        )
+        if not isinstance(description, str):
+            description = str(description)
+
+        self.save_template(
+            name=template_name,
+            description=description.strip(),
+            indicators=indicators,
+            entry_logic=entry_logic.strip(),
+            exit_logic=exit_logic.strip(),
+            stop_loss=stop_loss,
+            is_example=(normalized_category == "example"),
+            is_prebuilt=(normalized_category == "prebuilt"),
+        )
+
+        saved = self.get_template_metadata(template_name)
+        if not saved:
+            raise RuntimeError(f"Template creation failed: unable to load saved template '{template_name}'")
+
+        saved["category"] = normalized_category
+        saved["metadata"] = metadata_dict
+        return saved
     
     def update_template_schema(
         self,
