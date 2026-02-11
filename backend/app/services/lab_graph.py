@@ -31,6 +31,7 @@ class LabGraphState(TypedDict, total=False):
     status: str
     implementation_complete: bool
     tests_result: Dict[str, Any]
+    implementation_rounds: int
 
 
 @dataclass
@@ -279,6 +280,7 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
     deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "implementation_started", "data": {}})
 
     state["phase"] = "implementation"
+    state["implementation_rounds"] = int(state.get("implementation_rounds") or 0) + 1
 
     budget, outputs, ok = _run_persona(
         state=state,
@@ -318,6 +320,7 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         "outputs": outputs,
         "phase": "implementation",
         "implementation_complete": completed,
+        "implementation_rounds": int(state.get("implementation_rounds") or 0),
         "status": "implementation_running" if completed else "needs_user_confirm",
     }
 
@@ -381,6 +384,12 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
     elif verdict == "rejected":
         status = "rejected"
 
+    # Hard stop to avoid infinite dev<->trader loops.
+    max_iterations = int((context.get("input") or {}).get("max_iterations") or 3)
+    rounds = int(state.get("implementation_rounds") or 0)
+    if status == "needs_adjustment" and rounds >= max_iterations:
+        status = "needs_user_confirm"
+
     deps.append_trace(
         run_id,
         {
@@ -401,7 +410,7 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
 
 def _after_trader_validation(state: LabGraphState) -> str:
     status = state.get("status") or ""
-    if status == "approved" or status == "rejected":
+    if status in ("approved", "rejected", "needs_user_confirm"):
         return "end"
     return "dev_implementation"
 
