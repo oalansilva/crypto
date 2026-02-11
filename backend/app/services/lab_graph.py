@@ -303,21 +303,19 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
 
     completed = bool(outputs.get("coordinator_summary") and outputs.get("dev_summary"))
 
-    # If dev produced a summary but the backtest has zero trades, force a retry before trader validation.
+    # If backtest has zero trades, force a retry before trader validation.
     needs_retry = False
-    dev_summary_raw = outputs.get("dev_summary")
-    if dev_summary_raw:
-        try:
-            dev_obj = json.loads(dev_summary_raw)
-            backtest = dev_obj.get("backtest_summary") or {}
-            def _total_trades(scope: str) -> int:
-                metrics = (backtest.get(scope) or {})
-                return int(metrics.get("total_trades") or 0)
-            if _total_trades("all") == 0 or _total_trades("holdout") == 0:
-                needs_retry = True
-        except Exception:
-            # If dev output isn't valid JSON, let trader handle it.
-            needs_retry = False
+    context = state.get("context") or {}
+    backtest = context.get("walk_forward") or context.get("backtest") or {}
+
+    def _ctx_trades(scope: str) -> int:
+        metrics = (backtest.get(scope) or {}).get("metrics") if isinstance(backtest.get(scope), dict) else (backtest.get(scope) or {})
+        if not isinstance(metrics, dict):
+            return 0
+        return int(metrics.get("total_trades") or 0)
+
+    if _ctx_trades("in_sample") == 0 or _ctx_trades("holdout") == 0:
+        needs_retry = True
 
     if needs_retry:
         completed = False
@@ -596,6 +594,8 @@ DEV_SENIOR_PROMPT = (
     "- Cada indicador: type, alias, params\n"
     "- Use apenas colunas válidas (bb_upper, adx, atr, close, etc.)\n\n"
     "IMPORTANTE: Se strategy_draft presente no contexto, USE-O como base.\n"
+    "PROIBIDO inventar métricas. Use somente os resultados reais do backtest do contexto.\n"
+    "Se não houver trades, explique isso e marque ready_for_trader=false.\n"
     "Idioma: pt-BR."
 )
 
