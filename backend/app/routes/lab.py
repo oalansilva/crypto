@@ -360,6 +360,13 @@ def _append_upstream_message(run_id: str, run: Dict[str, Any], *, role: str, tex
     upstream = _ensure_upstream_state(run)
     msg = {"role": role_norm, "text": content, "ts_ms": _now_ms()}
     upstream["messages"].append(msg)
+
+    # If we just added the same trader question, clear pending_question to avoid duplicate UI display.
+    if role_norm == "trader":
+        pending_question = str(upstream.get("pending_question") or "").strip()
+        if pending_question and pending_question == content:
+            upstream["pending_question"] = ""
+
     run["upstream"] = upstream
 
     _append_trace(
