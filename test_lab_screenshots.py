@@ -4,6 +4,10 @@ Teste visual simples: tira screenshot da página de um run
 para verificar se a UI está funcionando
 """
 
+import pytest
+
+pytestmark = pytest.mark.e2e
+
 import asyncio
 from playwright.async_api import async_playwright
 

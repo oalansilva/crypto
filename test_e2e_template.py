@@ -15,6 +15,10 @@ Estrutura padrão:
 - Screenshots salvos em /tmp/ para debug (NÃO enviados pro Telegram)
 """
 
+import pytest
+
+pytestmark = pytest.mark.e2e
+
 import asyncio
 import json
 import subprocess

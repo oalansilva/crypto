@@ -17,3 +17,6 @@ ccxt
 pandas
 numpy
 openpyxl
+
+# Testing
+pytest-asyncio>=0.23.0

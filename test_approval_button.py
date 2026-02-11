@@ -4,6 +4,10 @@ Teste simplificado: verifica se o botão de aprovação aparece no run existente
 que já tem ready_for_user_review: true
 """
 
+import pytest
+
+pytestmark = pytest.mark.e2e
+
 import asyncio
 import json
 from playwright.async_api import async_playwright

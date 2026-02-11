@@ -3,6 +3,10 @@
 Teste E2E corrigido: cria run, conversa com Trader, aprova upstream
 """
 
+import pytest
+
+pytestmark = pytest.mark.e2e
+
 import asyncio
 import json
 import subprocess

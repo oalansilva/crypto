@@ -207,6 +207,7 @@ class LabRunStatusResponse(BaseModel):
     phase: Optional[str] = None
     upstream_contract: Optional[Dict[str, Any]] = None
     upstream: Optional[Dict[str, Any]] = None
+    input: Optional[Dict[str, Any]] = None
 
 
 class LabRunContinueRequest(BaseModel):
@@ -294,7 +295,7 @@ def _sanitize_upstream_messages(raw: Any) -> List[Dict[str, Any]]:
         role = str(item.get("role") or "").strip().lower()
         if role == "validator":
             role = "trader"
-        if role not in ("user", "trader"):
+        if role not in ("user", "trader", "system"):
             continue
         text = str(item.get("text") or "").strip()
         if not text:
@@ -350,7 +351,7 @@ def _append_upstream_message(run_id: str, run: Dict[str, Any], *, role: str, tex
     role_norm = str(role or "").strip().lower()
     if role_norm == "validator":
         role_norm = "trader"
-    if role_norm not in ("user", "trader"):
+    if role_norm not in ("user", "trader", "system"):
         return None
 
     content = str(text or "").strip()
@@ -599,11 +600,13 @@ def _next_trader_prompt(contract: Dict[str, Any]) -> str:
 
 
 def _validate_symbol(symbol: str) -> bool:
+    s = symbol.strip().upper().replace("_", "/")
+    if s.endswith("/USTD"):
+        return False
     try:
         from app.services.exchange_service import ExchangeService
         svc = ExchangeService()
         valid = svc.fetch_binance_symbols()
-        s = symbol.strip().upper().replace("_", "/")
         # Also try normalizing USDT/USD variations
         if s not in valid:
             # common alias fix: BTCUSDT -> BTC/USDT (already done by _normalize_symbol)
@@ -643,6 +646,25 @@ async def _handle_upstream_user_message(run_id: str, run: Dict[str, Any], user_m
     parsed = _parse_symbol_timeframe_from_text(text)
     for k, v in parsed.items():
         inp[k] = v
+
+    if isinstance(inp.get("symbol"), str) and inp.get("symbol").strip():
+        raw_symbol = str(inp.get("symbol") or "")
+        norm_symbol = raw_symbol.strip().upper().replace("-", "/").replace("_", "/")
+        if "/" not in norm_symbol:
+            for quote in ("USDT", "USD", "USDC"):
+                if norm_symbol.endswith(quote) and len(norm_symbol) > len(quote):
+                    base = norm_symbol[: -len(quote)]
+                    norm_symbol = f"{base}/{quote}"
+                    break
+        if not _validate_symbol(norm_symbol):
+            err_msg = (
+                f"System: Symbol '{norm_symbol}' not found in Binance USDT pairs. "
+                "Please ask the user to correct it (e.g., check for typos like USTD -> USDT)."
+            )
+            _append_upstream_message(run_id, run, role="system", text=err_msg)
+            inp.pop("symbol", None)
+        else:
+            inp["symbol"] = norm_symbol
 
     if not str(inp.get("objective") or "").strip():
         inp["objective"] = text
@@ -2312,6 +2334,34 @@ async def create_run(
 
     trace_url = _make_trace_url(trace_public_base, trace_thread_id) if (trace_public_base and trace_enabled) else None
     run_input = req.model_dump()
+
+    initial_system_messages: List[Dict[str, Any]] = []
+    objective_text = str(run_input.get("objective") or "")
+    if objective_text:
+        parsed = _parse_symbol_timeframe_from_text(objective_text)
+        for k, v in parsed.items():
+            if not str(run_input.get(k) or "").strip():
+                run_input[k] = v
+
+    if isinstance(run_input.get("symbol"), str) and str(run_input.get("symbol") or "").strip():
+        raw_symbol = str(run_input.get("symbol") or "")
+        norm_symbol = raw_symbol.strip().upper().replace("-", "/").replace("_", "/")
+        if "/" not in norm_symbol:
+            for quote in ("USDT", "USD", "USDC"):
+                if norm_symbol.endswith(quote) and len(norm_symbol) > len(quote):
+                    base = norm_symbol[: -len(quote)]
+                    norm_symbol = f"{base}/{quote}"
+                    break
+        if not _validate_symbol(norm_symbol):
+            err_msg = (
+                f"System: Symbol '{norm_symbol}' not found in Binance USDT pairs. "
+                "Please ask the user to correct it (e.g., check for typos like USTD -> USDT)."
+            )
+            initial_system_messages.append({"role": "system", "text": err_msg, "ts_ms": now})
+            run_input.pop("symbol", None)
+        else:
+            run_input["symbol"] = norm_symbol
+
     upstream_contract = _build_upstream_contract_from_input(run_input)
     initial_status = "ready_for_execution" if bool(upstream_contract.get("approved")) else "needs_user_input"
     initial_question = _next_trader_prompt(upstream_contract)
@@ -2358,9 +2408,12 @@ async def create_run(
         "upstream_contract": upstream_contract,
         "upstream": {
             "messages": (
-                [{"role": "trader", "text": initial_question, "ts_ms": now}]
+                (
+                    initial_system_messages
+                    + ([{"role": "trader", "text": initial_question, "ts_ms": now}] if not bool(upstream_contract.get("approved")) else [])
+                )
                 if not bool(upstream_contract.get("approved"))
-                else []
+                else initial_system_messages
             ),
             "pending_question": (initial_question if not bool(upstream_contract.get("approved")) else ""),
             "strategy_draft": initial_strategy_draft,
@@ -2500,6 +2553,7 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         phase=data.get("phase"),
         upstream_contract=data.get("upstream_contract"),
         upstream=data.get("upstream") or {"messages": [], "pending_question": ""},
+        input=data.get("input") or {},
     )
 
 
