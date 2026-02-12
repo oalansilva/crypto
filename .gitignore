@@ -26,6 +26,9 @@ data/*.parquet
 .DS_Store
 Thumbs.db
 
+# Local data
+/data/
+
 # Logs
 *.log
 full_execution_log.txt
