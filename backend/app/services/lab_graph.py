@@ -341,12 +341,53 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
             if not isinstance(entry_logic, str) or not isinstance(exit_logic, str):
                 completed = False
                 outputs["dev_needs_retry"] = True
+
+            # Validate that dev used real metrics from context (not invented).
+            dev_metrics = dev_obj.get("backtest_summary") or {}
+            ctx_metrics = (context.get("walk_forward") or {})
+            ctx_all = (ctx_metrics.get("metrics_all") or {})
+            ctx_is = (ctx_metrics.get("metrics_in_sample") or {})
+            ctx_holdout = (ctx_metrics.get("metrics_holdout") or {})
+
+            def _mt(m):
+                try:
+                    return int((m or {}).get("total_trades") or 0)
+                except Exception:
+                    return 0
+
+            if not dev_metrics:
+                completed = False
+                outputs["dev_needs_retry"] = True
+                outputs["dev_summary"] = None
+                deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "dev_summary_rejected", "data": {"reason": "missing_backtest_summary"}})
+            else:
+                dev_all = dev_metrics.get("all") or {}
+                dev_is = dev_metrics.get("in_sample") or {}
+                dev_holdout = dev_metrics.get("holdout") or {}
+                if _mt(dev_all) != _mt(ctx_all) or _mt(dev_is) != _mt(ctx_is) or _mt(dev_holdout) != _mt(ctx_holdout):
+                    completed = False
+                    outputs["dev_needs_retry"] = True
+                    outputs["dev_summary"] = None
+                    deps.append_trace(
+                        run_id,
+                        {
+                            "ts_ms": deps.now_ms(),
+                            "type": "dev_summary_rejected",
+                            "data": {
+                                "reason": "metrics_mismatch",
+                                "ctx_trades": {"all": _mt(ctx_all), "is": _mt(ctx_is), "holdout": _mt(ctx_holdout)},
+                                "dev_trades": {"all": _mt(dev_all), "is": _mt(dev_is), "holdout": _mt(dev_holdout)},
+                            },
+                        },
+                    )
         except Exception:
             dev_job_id = ""
 
     if ctx_job_id and dev_job_id and dev_job_id != ctx_job_id:
         completed = False
         outputs["dev_needs_retry"] = True
+        outputs["dev_summary"] = None
+        deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "dev_summary_rejected", "data": {"reason": "job_id_mismatch", "ctx_job_id": ctx_job_id, "dev_job_id": dev_job_id}})
 
     deps.append_trace(
         run_id,
@@ -634,6 +675,7 @@ DEV_SENIOR_PROMPT = (
     "PROIBIDO inventar métricas. Use somente os resultados reais do backtest do contexto.\n"
     "Ferramentas disponíveis para você: criar templates, codificar, rodar backtests e testar.\n"
     "O backtest já é executado pelo sistema e o backtest_job_id + métricas estão no contexto — use-os.\n"
+    "Se o backtest_job_id ou métricas não baterem com o contexto, sua resposta será descartada.\n"
     "NUNCA diga que não tem acesso às ferramentas.\n"
     "Responda sempre com JSON válido no schema acima (sem texto fora do JSON).\n"
     "Se não houver trades, explique isso e marque ready_for_trader=false.\n"
