@@ -342,6 +342,13 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
                 completed = False
                 outputs["dev_needs_retry"] = True
 
+            # Reject if dev did not provide a job_id.
+            if not dev_job_id:
+                completed = False
+                outputs["dev_needs_retry"] = True
+                outputs["dev_summary"] = None
+                deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "dev_summary_rejected", "data": {"reason": "missing_job_id"}})
+
             # Validate that dev used real metrics from context (not invented).
             dev_metrics = dev_obj.get("backtest_summary") or {}
             ctx_metrics = (context.get("walk_forward") or {})
@@ -675,7 +682,8 @@ DEV_SENIOR_PROMPT = (
     "PROIBIDO inventar métricas. Use somente os resultados reais do backtest do contexto.\n"
     "Ferramentas disponíveis para você: criar templates, codificar, rodar backtests e testar.\n"
     "O backtest já é executado pelo sistema e o backtest_job_id + métricas estão no contexto — use-os.\n"
-    "Se o backtest_job_id ou métricas não baterem com o contexto, sua resposta será descartada.\n"
+    "Se o backtest_job_id estiver vazio ou não bater com o contexto, sua resposta será descartada.\n"
+    "Se as métricas não baterem com o contexto, sua resposta será descartada.\n"
     "NUNCA diga que não tem acesso às ferramentas.\n"
     "Responda sempre com JSON válido no schema acima (sem texto fora do JSON).\n"
     "Se não houver trades, explique isso e marque ready_for_trader=false.\n"
