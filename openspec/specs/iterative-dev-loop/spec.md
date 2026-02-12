@@ -1,7 +1,8 @@
-# Spec: Iterative Dev Loop
+# iterative-dev-loop Specification
 
-## ADDED Requirements
-
+## Purpose
+TBD - created by archiving change iterative-dev-loop. Update Purpose after archive.
+## Requirements
 ### Requirement: dev_adjusts_before_trader
 **Description:** The system SHALL, after running a Dev backtest, automatically adjust the template and re-run the backtest when the result is not OK (e.g., zero trades or invalid metrics), before requesting Trader validation.
 
@@ -26,16 +27,3 @@ Given the system applies an adjustment
 When the adjustment completes
 Then a trace event is appended containing the attempt number and summary of changes.
 
-## MODIFIED Requirements
-
-### Requirement: trader_validation_after_dev_ok
-**Description:** The system SHALL only call the Trader validation step after the Dev backtest has produced an OK result (meets preflight criteria) or the adjustment limit is reached.
-
-#### Scenario: Dev OK before Trader
-Given a Dev backtest result that meets preflight criteria
-When the system finishes the Dev loop
-Then it calls Trader validation using the latest backtest results.
-
-## REMOVED Requirements
-
-None.
