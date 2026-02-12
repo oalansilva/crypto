@@ -394,6 +394,112 @@ def _ensure_unique_indicator_aliases(indicators: List[Dict[str, Any]]) -> bool:
     return changed
 
 
+def _template_uses_atr(entry_logic: Optional[str], exit_logic: Optional[str], stop_loss: Any) -> bool:
+    text = " ".join([str(entry_logic or ""), str(exit_logic or ""), str(stop_loss or "")]).lower()
+    return "atr" in text
+
+
+def _ensure_atr_indicator(indicators: List[Dict[str, Any]]) -> bool:
+    for ind in indicators:
+        if not isinstance(ind, dict):
+            continue
+        ind_type = str(ind.get("type") or ind.get("name") or "").strip().lower()
+        alias = str(ind.get("alias") or "").strip().lower()
+        if ind_type == "atr" or "atr" in alias:
+            return False
+
+    indicators.append({"type": "atr", "alias": "atr", "params": {"length": 14}})
+    return True
+
+
+def _relax_entry_logic(entry_logic: Optional[str]) -> Tuple[str, List[str]]:
+    if not isinstance(entry_logic, str):
+        return str(entry_logic or ""), []
+
+    updated = entry_logic
+    adjustments: List[str] = []
+
+    cross_patterns = [
+        r"cruza\s+acima\s+da\s+ema50",
+        r"cruza\s+acima\s+da\s+ema_50",
+        r"crossover\(.*ema50.*\)",
+    ]
+    for pattern in cross_patterns:
+        if re.search(pattern, updated, flags=re.IGNORECASE):
+            updated = re.sub(pattern, "close > ema50", updated, flags=re.IGNORECASE)
+            adjustments.append("remove_ema_cross")
+            break
+
+    cross_down_patterns = [
+        r"cruza\s+abaixo\s+da\s+ema50",
+        r"cruza\s+abaixo\s+da\s+ema_50",
+        r"crossunder\(.*ema50.*\)",
+    ]
+    for pattern in cross_down_patterns:
+        if re.search(pattern, updated, flags=re.IGNORECASE):
+            updated = re.sub(pattern, "close < ema50", updated, flags=re.IGNORECASE)
+            adjustments.append("remove_ema_cross_down")
+            break
+
+    if re.search(r"rsi\w*\s*<=\s*50", updated, flags=re.IGNORECASE):
+        updated = re.sub(r"(rsi\w*\s*<=\s*)50", r"\g<1>55", updated, flags=re.IGNORECASE)
+        adjustments.append("relax_rsi_upper")
+
+    if re.search(r"adx\w*\s*>\s*20", updated, flags=re.IGNORECASE):
+        updated = re.sub(r"(adx\w*\s*>\s*)20", r"\g<1>15", updated, flags=re.IGNORECASE)
+        adjustments.append("relax_adx_threshold")
+
+    return updated, adjustments
+
+
+def _apply_dev_adjustments(*, combo: Any, template_name: str, attempt: int, reason: Optional[str] = None) -> Tuple[bool, List[str]]:
+    try:
+        meta = combo.get_template_metadata(template_name)
+    except Exception:
+        meta = None
+
+    if not meta:
+        return False, []
+
+    template_data = {
+        "indicators": meta.get("indicators") or [],
+        "entry_logic": meta.get("entry_logic"),
+        "exit_logic": meta.get("exit_logic"),
+        "stop_loss": meta.get("stop_loss"),
+    }
+
+    changes: List[str] = []
+
+    updated_entry, entry_changes = _relax_entry_logic(template_data.get("entry_logic"))
+    if entry_changes:
+        template_data["entry_logic"] = updated_entry
+        changes.extend(entry_changes)
+
+    if _template_uses_atr(template_data.get("entry_logic"), template_data.get("exit_logic"), template_data.get("stop_loss")):
+        inds = template_data.get("indicators") or []
+        if isinstance(inds, list) and _ensure_atr_indicator(inds):
+            template_data["indicators"] = inds
+            changes.append("add_atr_indicator")
+
+    inds = template_data.get("indicators") or []
+    if isinstance(inds, list) and _ensure_unique_indicator_aliases(inds):
+        template_data["indicators"] = inds
+        changes.append("normalize_aliases")
+
+    if not changes:
+        return False, []
+
+    combo.update_template(template_name=template_name, template_data=template_data)
+    return True, changes
+
+
+def _needs_dev_adjustment(run: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
+    pre = _metrics_preflight(run=run)
+    sel = _cp10_selection_gate(run)
+    needs = (pre.get("ok") is False) or (not sel.get("approved"))
+    return needs, {"preflight": pre, "selection": sel}
+
+
 def _sanitize_upstream_messages(raw: Any) -> List[Dict[str, Any]]:
     if not isinstance(raw, list):
         return []
@@ -2465,6 +2571,60 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
 
         # Backtest candidate and overwrite run.backtest
         bt2 = _run_backtest_job(template_name=str(cand), label=f"iter{it}_candidate", iteration=it)
+
+        # Dev loop: if preflight/selection fail, adjust template and re-run before Trader
+        max_dev_adjustments = min(3, max_iterations)
+        adjust_count = 0
+        while True:
+            run = _load_run_json(run_id) or {}
+            needs_adjust, adjust_ctx = _needs_dev_adjustment(run)
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "metrics_preflight", "data": adjust_ctx.get("preflight") or {}})
+            if not needs_adjust:
+                break
+            if adjust_count >= max_dev_adjustments:
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "dev_adjustment_limit",
+                        "data": {"iteration": it, "limit": max_dev_adjustments},
+                    },
+                )
+                break
+
+            adjust_count += 1
+            changed, changes = _apply_dev_adjustments(combo=combo, template_name=str(cand), attempt=adjust_count, reason="metrics_invalid")
+            if not changed:
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "dev_adjustment_skipped",
+                        "data": {"iteration": it, "attempt": adjust_count, "template": str(cand)},
+                    },
+                )
+                break
+
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": _now_ms(),
+                    "type": "dev_adjustment_applied",
+                    "data": {"iteration": it, "attempt": adjust_count, "template": str(cand), "changes": changes},
+                },
+            )
+
+            bt2 = _run_backtest_job(template_name=str(cand), label=f"iter{it}_candidate_adj{adjust_count}", iteration=it)
+            if not bt2:
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "backtest_job_failed",
+                        "data": {"template": str(cand), "iteration": it, "attempt": adjust_count},
+                    },
+                )
+                break
 
         # Re-run validator on the candidate results (so verdict matches the tested candidate)
         try:
