@@ -441,6 +441,14 @@ def _relax_entry_logic(entry_logic: Optional[str]) -> Tuple[str, List[str]]:
             adjustments.append("remove_ema_cross_down")
             break
 
+    if re.search(r"rsi\w*\s*>\s*55", updated, flags=re.IGNORECASE):
+        updated = re.sub(r"(rsi\w*\s*>\s*)55", r"\g<1>50", updated, flags=re.IGNORECASE)
+        adjustments.append("relax_rsi_upper")
+
+    if re.search(r"rsi\w*\s*<\s*45", updated, flags=re.IGNORECASE):
+        updated = re.sub(r"(rsi\w*\s*<\s*)45", r"\g<1>50", updated, flags=re.IGNORECASE)
+        adjustments.append("relax_rsi_lower")
+
     if re.search(r"rsi\w*\s*<=\s*50", updated, flags=re.IGNORECASE):
         updated = re.sub(r"(rsi\w*\s*<=\s*)50", r"\g<1>55", updated, flags=re.IGNORECASE)
         adjustments.append("relax_rsi_upper")
@@ -448,6 +456,28 @@ def _relax_entry_logic(entry_logic: Optional[str]) -> Tuple[str, List[str]]:
     if re.search(r"adx\w*\s*>\s*20", updated, flags=re.IGNORECASE):
         updated = re.sub(r"(adx\w*\s*>\s*)20", r"\g<1>15", updated, flags=re.IGNORECASE)
         adjustments.append("relax_adx_threshold")
+
+    if re.search(r"atr\w*\s*/\s*close\s*>\s*0\.01", updated, flags=re.IGNORECASE):
+        updated = re.sub(r"(atr\w*\s*/\s*close\s*>\s*)0\.01", r"\g<1>0.005", updated, flags=re.IGNORECASE)
+        adjustments.append("relax_atr_filter")
+
+    return updated, adjustments
+
+
+def _relax_exit_logic(exit_logic: Optional[str]) -> Tuple[str, List[str]]:
+    if not isinstance(exit_logic, str):
+        return str(exit_logic or ""), []
+
+    updated = exit_logic
+    adjustments: List[str] = []
+
+    if re.search(r"rsi\w*\s*<\s*45", updated, flags=re.IGNORECASE):
+        updated = re.sub(r"(rsi\w*\s*<\s*)45", r"\g<1>50", updated, flags=re.IGNORECASE)
+        adjustments.append("relax_exit_rsi")
+
+    if re.search(r"ema\w*\s*<\s*ema\w*", updated, flags=re.IGNORECASE) and "close" not in updated.lower():
+        updated = updated + " OR close < ema20"
+        adjustments.append("add_exit_close_filter")
 
     return updated, adjustments
 
@@ -474,6 +504,11 @@ def _apply_dev_adjustments(*, combo: Any, template_name: str, attempt: int, reas
     if entry_changes:
         template_data["entry_logic"] = updated_entry
         changes.extend(entry_changes)
+
+    updated_exit, exit_changes = _relax_exit_logic(template_data.get("exit_logic"))
+    if exit_changes:
+        template_data["exit_logic"] = updated_exit
+        changes.extend(exit_changes)
 
     if _template_uses_atr(template_data.get("entry_logic"), template_data.get("exit_logic"), template_data.get("stop_loss")):
         inds = template_data.get("indicators") or []
