@@ -1,5 +1,9 @@
 schema: spec-driven
 
+rules:
+  tasks:
+    - Include a short note reminding to use project skills (.codex/skills) when applicable (architecture, tests, debugging, frontend).
+
 # Project context (optional)
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.
