@@ -632,7 +632,10 @@ DEV_SENIOR_PROMPT = (
     "reescreva para comparação numérica válida.\n\n"
     "IMPORTANTE: Se strategy_draft presente no contexto, USE-O como base.\n"
     "PROIBIDO inventar métricas. Use somente os resultados reais do backtest do contexto.\n"
-    "Você DEVE usar a tool de backtest e retornar o backtest_job_id.\n"
+    "Ferramentas disponíveis para você: criar templates, codificar, rodar backtests e testar.\n"
+    "O backtest já é executado pelo sistema e o backtest_job_id + métricas estão no contexto — use-os.\n"
+    "NUNCA diga que não tem acesso às ferramentas.\n"
+    "Responda sempre com JSON válido no schema acima (sem texto fora do JSON).\n"
     "Se não houver trades, explique isso e marque ready_for_trader=false.\n"
     "Idioma: pt-BR."
 )
