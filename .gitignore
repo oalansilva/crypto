@@ -35,7 +35,8 @@ full_execution_log.txt
 backend_log.txt
 
 # OpenSpec tool integrations (IDE/agent glue)
-.codex/
+# .codex/  (commented to allow versioning of skills)
+.codex/antigravity-skills/
 
 # Backend data (checkpoints, jobs, storage)
 backend/data/
