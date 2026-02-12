@@ -107,6 +107,8 @@ class LabRunCreateRequest(BaseModel):
 
     # Autonomous search limits
     max_iterations: int = 3
+    max_retries: int = 2
+    max_retries: int = 2
 
 
 class LabRunCreateResponse(BaseModel):
@@ -1929,13 +1931,13 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         )
         return
 
-    if outputs.get("dev_needs_retry"):
+    dev_needs_retry = bool(outputs.get("dev_needs_retry"))
+    if dev_needs_retry:
         # Dev must re-run backtest; skip trader/validator/gates for now.
         outputs.pop("trader_verdict", None)
         outputs.pop("validator_verdict", None)
         outputs.pop("selection", None)
         outputs.pop("gate_decision", None)
-        _update_run_json(run_id, {"outputs": outputs, "status": "needs_adjustment", "step": "personas", "phase": "execution"})
     else:
         # CP8: persist candidate template after Dev output exists
         if outputs.get("coordinator_summary") and outputs.get("dev_summary"):
@@ -1971,9 +1973,13 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         patch.update({"status": "done", "step": "done", "needs_user_confirm": False, "phase": "done"})
     elif graph_status == "failed":
         patch.update({"status": "failed", "step": "tests", "needs_user_confirm": False, "phase": "done"})
+    elif graph_status == "needs_adjustment":
+        patch.update({"status": "needs_adjustment", "step": "personas", "phase": phase or "execution"})
     elif needs_confirm:
         patch.update({"status": "needs_user_confirm", "step": "budget"})
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "budget_limit", "data": budget})
+    elif graph_status == "needs_adjustment" or dev_needs_retry:
+        patch.update({"status": "needs_adjustment", "step": "personas", "phase": phase or "execution"})
     else:
         patch.update({"status": "running", "step": "implementation", "phase": phase or "implementation"})
 

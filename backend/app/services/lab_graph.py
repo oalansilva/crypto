@@ -32,6 +32,7 @@ class LabGraphState(TypedDict, total=False):
     implementation_complete: bool
     tests_result: Dict[str, Any]
     implementation_rounds: int
+    trader_retry_count: int
 
 
 @dataclass
@@ -134,7 +135,7 @@ def _verdict_label(text: Optional[str]) -> str:
         try:
             obj = json.loads(raw)
             verdict = _normalize_str(obj.get("verdict")).lower()
-            if verdict in ("approved", "rejected", "metrics_invalid"):
+            if verdict in ("approved", "rejected", "needs_adjustment", "metrics_invalid"):
                 return verdict
         except Exception:
             pass
@@ -143,10 +144,38 @@ def _verdict_label(text: Optional[str]) -> str:
         return "rejected"
     if "approved" in lower or "aprovado" in lower:
         return "approved"
+    if "needs_adjustment" in lower or "needs adjustment" in lower:
+        return "needs_adjustment"
     if "metrics_invalid" in lower:
         return "metrics_invalid"
 
     return "unknown"
+
+
+def _parse_trader_verdict_payload(value: Any) -> tuple[str, List[str]]:
+    raw = _normalize_str(value)
+    parsed: Dict[str, Any] = {}
+
+    if isinstance(value, dict):
+        parsed = value
+        raw = json.dumps(value, ensure_ascii=False)
+    elif raw.startswith("{"):
+        try:
+            obj = json.loads(raw)
+            if isinstance(obj, dict):
+                parsed = obj
+        except Exception:
+            parsed = {}
+
+    if not parsed:
+        return _verdict_label(raw), []
+
+    verdict = _normalize_str(parsed.get("verdict")).lower()
+    if verdict not in ("approved", "rejected", "needs_adjustment", "metrics_invalid"):
+        verdict = _verdict_label(raw)
+
+    required_fixes = _ensure_str_list(parsed.get("required_fixes"))
+    return verdict or "unknown", required_fixes
 
 
 def _run_persona(
@@ -470,12 +499,53 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
     state["outputs"] = outputs
 
     verdict_obj = outputs.get("trader_verdict")
-    verdict = _verdict_label(verdict_obj)
+    verdict, required_fixes = _parse_trader_verdict_payload(verdict_obj)
     status = "needs_adjustment"
     if verdict == "approved":
         status = "approved"
     elif verdict == "rejected":
         status = "rejected"
+
+    try:
+        trader_retry_count = int(state.get("trader_retry_count") or outputs.get("trader_retry_count") or 0)
+    except Exception:
+        trader_retry_count = 0
+    if trader_retry_count < 0:
+        trader_retry_count = 0
+    outputs["trader_retry_count"] = trader_retry_count
+    outputs.pop("dev_needs_retry", None)
+
+    try:
+        max_retries = int(((context.get("input") or {}).get("max_retries") or 2))
+    except Exception:
+        max_retries = 2
+    if max_retries < 0:
+        max_retries = 0
+
+    if verdict in ("rejected", "needs_adjustment") and required_fixes:
+        if trader_retry_count < max_retries:
+            trader_retry_count += 1
+            outputs["trader_retry_count"] = trader_retry_count
+            outputs["dev_needs_retry"] = True
+            deps.append_trace(
+                run_id,
+                {
+                    "ts_ms": deps.now_ms(),
+                    "type": "trader_retry_started",
+                    "data": {"attempt": trader_retry_count, "limit": max_retries, "reasons": required_fixes},
+                },
+            )
+            status = "needs_adjustment"
+        else:
+            deps.append_trace(
+                run_id,
+                {
+                    "ts_ms": deps.now_ms(),
+                    "type": "trader_retry_limit",
+                    "data": {"attempt": trader_retry_count, "limit": max_retries, "reasons": required_fixes},
+                },
+            )
+            status = "needs_adjustment"
 
     # Hard stop to avoid infinite dev<->trader loops.
     max_iterations = int((context.get("input") or {}).get("max_iterations") or 3)
@@ -497,6 +567,7 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
         "outputs": outputs,
         "phase": "trader_validation",
         "status": status,
+        "trader_retry_count": trader_retry_count,
     }
 
 
@@ -505,6 +576,24 @@ def _after_trader_validation(state: LabGraphState) -> str:
     status = state.get("status") or ""
     if status in ("approved", "rejected", "needs_user_confirm"):
         return "end"
+    if status == "needs_adjustment":
+        outputs = state.get("outputs") or {}
+        if bool(outputs.get("dev_needs_retry")):
+            return "dev_implementation"
+
+        context = state.get("context") or {}
+        try:
+            max_retries = int(((context.get("input") or {}).get("max_retries") or 2))
+        except Exception:
+            max_retries = 2
+        if max_retries < 0:
+            max_retries = 0
+        try:
+            trader_retry_count = int(state.get("trader_retry_count") or outputs.get("trader_retry_count") or 0)
+        except Exception:
+            trader_retry_count = 0
+        if trader_retry_count >= max_retries:
+            return "end"
     return "dev_implementation"
 
 
@@ -705,6 +794,7 @@ TRADER_VALIDATION_PROMPT = (
     "{\n"
     "  \"verdict\": \"approved\" | \"needs_adjustment\" | \"rejected\",\n"
     "  \"reasons\": [\"...\"],\n"
+    "  \"required_fixes\": [\"...\"],\n"
     "  \"feedback_for_dev\": \"...\"\n"
     "}\n\n"
     "Idioma: pt-BR."

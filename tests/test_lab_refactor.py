@@ -507,3 +507,125 @@ def test_implementation_rejects_dev_summary_when_metrics_diverge_from_context():
     assert out.get("status") == "needs_adjustment"
     reasons = [e.get("data", {}).get("reason") for e in traces if e.get("type") == "dev_summary_rejected"]
     assert "metrics_mismatch" in reasons
+
+
+def test_trader_retry_started_when_rejected_with_required_fixes():
+    import app.services.lab_graph as lab_graph
+
+    traces = []
+
+    def _append_trace(run_id, event):
+        traces.append(event)
+
+    def _persona_call(run_id, session_key, persona, system_prompt, message, thinking):
+        assert persona == "trader"
+        return {
+            "text": json.dumps(
+                {
+                    "verdict": "rejected",
+                    "required_fixes": ["corrigir stop_loss", "reduzir overfitting"],
+                    "reasons": ["drawdown alto"],
+                },
+                ensure_ascii=False,
+            ),
+            "tokens": 7,
+        }
+
+    deps = lab_graph.LabGraphDeps(
+        persona_call=_persona_call,
+        append_trace=_append_trace,
+        now_ms=lambda: 1,
+        inc_budget=lambda budget, turns=0, tokens=0: {
+            **budget,
+            "turns_used": int(budget.get("turns_used", 0)) + int(turns),
+            "tokens_total": int(budget.get("tokens_total", 0)) + int(tokens),
+        },
+        budget_ok=lambda budget: int(budget.get("turns_used", 0)) < int(budget.get("turns_max", 0))
+        and int(budget.get("tokens_total", 0)) < int(budget.get("tokens_max", 0)),
+    )
+
+    out = lab_graph._trader_validation_node(
+        {
+            "run_id": "run-trader-retry-started",
+            "session_key": "lab-run-trader-retry-started",
+            "thinking": "low",
+            "deps": deps,
+            "budget": {"turns_used": 0, "turns_max": 10, "tokens_total": 0, "tokens_max": 1000},
+            "outputs": {},
+            "context": {"input": {"max_retries": 2, "max_iterations": 5}},
+            "upstream_contract": {},
+        }
+    )
+
+    outputs = out.get("outputs") or {}
+    assert out.get("status") == "needs_adjustment"
+    assert outputs.get("dev_needs_retry") is True
+    assert outputs.get("trader_retry_count") == 1
+
+    started = [e for e in traces if e.get("type") == "trader_retry_started"]
+    assert started
+    assert started[-1].get("data", {}).get("attempt") == 1
+    assert started[-1].get("data", {}).get("limit") == 2
+    assert started[-1].get("data", {}).get("reasons") == ["corrigir stop_loss", "reduzir overfitting"]
+
+
+def test_trader_retry_limit_trace_when_retries_exhausted():
+    import app.services.lab_graph as lab_graph
+
+    traces = []
+
+    def _append_trace(run_id, event):
+        traces.append(event)
+
+    def _persona_call(run_id, session_key, persona, system_prompt, message, thinking):
+        assert persona == "trader"
+        return {
+            "text": json.dumps(
+                {
+                    "verdict": "needs_adjustment",
+                    "required_fixes": ["melhorar robustez no holdout"],
+                    "reasons": ["consistência baixa"],
+                },
+                ensure_ascii=False,
+            ),
+            "tokens": 5,
+        }
+
+    deps = lab_graph.LabGraphDeps(
+        persona_call=_persona_call,
+        append_trace=_append_trace,
+        now_ms=lambda: 1,
+        inc_budget=lambda budget, turns=0, tokens=0: {
+            **budget,
+            "turns_used": int(budget.get("turns_used", 0)) + int(turns),
+            "tokens_total": int(budget.get("tokens_total", 0)) + int(tokens),
+        },
+        budget_ok=lambda budget: int(budget.get("turns_used", 0)) < int(budget.get("turns_max", 0))
+        and int(budget.get("tokens_total", 0)) < int(budget.get("tokens_max", 0)),
+    )
+
+    out = lab_graph._trader_validation_node(
+        {
+            "run_id": "run-trader-retry-limit",
+            "session_key": "lab-run-trader-retry-limit",
+            "thinking": "low",
+            "deps": deps,
+            "budget": {"turns_used": 0, "turns_max": 10, "tokens_total": 0, "tokens_max": 1000},
+            "outputs": {"trader_retry_count": 2},
+            "context": {"input": {"max_retries": 2, "max_iterations": 5}},
+            "upstream_contract": {},
+            "trader_retry_count": 2,
+        }
+    )
+
+    outputs = out.get("outputs") or {}
+    assert out.get("status") == "needs_adjustment"
+    assert outputs.get("trader_retry_count") == 2
+    assert outputs.get("dev_needs_retry") is not True
+
+    limit_events = [e for e in traces if e.get("type") == "trader_retry_limit"]
+    assert limit_events
+    assert limit_events[-1].get("data", {}).get("attempt") == 2
+    assert limit_events[-1].get("data", {}).get("limit") == 2
+    assert limit_events[-1].get("data", {}).get("reasons") == ["melhorar robustez no holdout"]
+
