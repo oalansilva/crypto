@@ -1,8 +1,10 @@
 import json
+import copy
 import sys
 import time
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
@@ -173,3 +175,460 @@ def test_needs_dev_adjustment_ok_when_metrics_pass():
     needs, ctx = lab_routes._needs_dev_adjustment(run)
     assert needs is False
     assert ctx["selection"]["approved"] is True
+
+
+def test_build_fallback_logic_uses_shortest_and_longest_ema():
+    entry, exit_logic = lab_routes._build_fallback_logic(
+        [
+            {"type": "ema", "alias": "ema200", "params": {"length": 200}},
+            {"type": "ema", "alias": "ema20", "params": {"length": 20}},
+            {"type": "ema", "alias": "ema50", "params": {"length": 50}},
+        ]
+    )
+
+    assert entry.startswith("ema20 > ema200")
+    assert exit_logic.startswith("ema20 < ema200")
+
+
+def test_logic_preflight_uses_length_based_sample_window():
+    class _SampleSpy:
+        def __init__(self):
+            self.tail_n = None
+
+        def tail(self, n):
+            self.tail_n = n
+            return self
+
+        def copy(self):
+            return self
+
+    class _FakeStrategy:
+        entry_logic = "close > ema20"
+        exit_logic = "close < ema20"
+
+        def calculate_indicators(self, sample):
+            return sample
+
+        def _evaluate_logic_vectorized(self, sample, logic):
+            return None
+
+    class _FakePreflightCombo:
+        def create_strategy(self, template_name):
+            return _FakeStrategy()
+
+        def get_template_metadata(self, template_name):
+            return {"indicators": [{"type": "ema", "params": {"length": 400}}]}
+
+    sample = _SampleSpy()
+    ok, errors = lab_routes._logic_preflight(combo=_FakePreflightCombo(), template_name="tpl", df_sample=sample)
+    assert ok is True
+    assert errors == []
+    assert sample.tail_n == 1200
+
+
+def test_run_lab_autonomous_emits_logic_preflight_and_correction_traces(monkeypatch):
+    import app.services.combo_optimizer as combo_optimizer
+    import app.services.combo_service as combo_service
+    import app.services.job_manager as job_manager
+    import app.services.lab_graph as lab_graph
+    import src.data.incremental_loader as incremental_loader
+
+    traces = []
+    run_state = {
+        "run_id": "run_logic_trace",
+        "status": "running",
+        "step": "execution",
+        "phase": "execution",
+        "input": {
+            "symbol": "BTC/USDT",
+            "timeframe": "1h",
+            "objective": "teste",
+            "thinking": "low",
+            "max_iterations": 1,
+            "constraints": {},
+        },
+        "budget": {"turns_used": 0, "turns_max": 20, "tokens_total": 0, "tokens_max": 100000},
+        "outputs": {"coordinator_summary": None, "dev_summary": None, "validator_verdict": None, "trader_verdict": None},
+        "upstream_contract": {"approved": True, "inputs": {"symbol": "BTC/USDT", "timeframe": "1h"}},
+    }
+
+    monkeypatch.setattr(lab_routes, "_append_trace", lambda run_id, event: traces.append(event))
+    monkeypatch.setattr(lab_routes, "_now_ms", lambda: 1)
+    monkeypatch.setattr(lab_routes, "_load_run_json", lambda run_id: copy.deepcopy(run_state))
+
+    def _fake_update_run(run_id, patch):
+        run_state.update(copy.deepcopy(patch))
+
+    monkeypatch.setattr(lab_routes, "_update_run_json", _fake_update_run)
+    monkeypatch.setattr(lab_routes, "_cp8_save_candidate_template", lambda run_id, run, outputs: {**outputs, "candidate_template_name": "seed_tpl"})
+    monkeypatch.setattr(lab_routes, "_cp5_autosave_if_approved", lambda run_id, run, outputs: outputs)
+    monkeypatch.setattr(lab_routes, "_needs_dev_adjustment", lambda run: (False, {"preflight": {"ok": True}}))
+    monkeypatch.setattr(lab_routes, "_metrics_preflight", lambda run: {"ok": True, "errors": []})
+    monkeypatch.setattr(lab_routes, "_cp10_selection_gate", lambda run: {"approved": False})
+    monkeypatch.setattr(lab_routes, "_gate_decision", lambda outputs, selection, preflight: {"verdict": "rejected"})
+    monkeypatch.setattr(lab_routes, "_persona_call_sync", lambda **kwargs: {"text": "{\"verdict\":\"rejected\"}", "tokens": 1})
+
+    preflight_calls = {"n": 0}
+
+    def _fake_logic_preflight(*, combo, template_name, df_sample):
+        preflight_calls["n"] += 1
+        if preflight_calls["n"] == 1:
+            return False, ["invalid_logic"]
+        return True, []
+
+    monkeypatch.setattr(lab_routes, "_logic_preflight", _fake_logic_preflight)
+    monkeypatch.setattr(lab_routes, "_apply_logic_correction", lambda **kwargs: (True, ["fallback_logic_applied"]))
+
+    class _FakeComboService:
+        def __init__(self):
+            base = {
+                "indicators": [
+                    {"type": "ema", "alias": "ema20", "params": {"length": 20}},
+                    {"type": "ema", "alias": "ema200", "params": {"length": 200}},
+                ],
+                "entry_logic": "ema20 > ema200",
+                "exit_logic": "ema20 < ema200",
+                "stop_loss": 0.03,
+            }
+            self.templates = {"seed_tpl": copy.deepcopy(base)}
+
+        def get_template_metadata(self, name):
+            return copy.deepcopy(self.templates.get(name) or self.templates["seed_tpl"])
+
+        def update_template(self, template_name, description=None, optimization_schema=None, template_data=None):
+            merged = self.get_template_metadata(template_name)
+            if template_data:
+                merged.update(template_data)
+            self.templates[template_name] = merged
+            return True
+
+    class _FakeJobManager:
+        def __init__(self):
+            self.states = {}
+            self._seq = 0
+
+        def create_job(self, payload):
+            self._seq += 1
+            job_id = f"job-{self._seq}"
+            self.states[job_id] = {"payload": payload}
+            return job_id
+
+        def load_state(self, job_id):
+            return copy.deepcopy(self.states.get(job_id, {}))
+
+        def save_state(self, job_id, state):
+            self.states[job_id] = copy.deepcopy(state)
+
+    class _FakeLoader:
+        def fetch_data(self, symbol, timeframe, since_str, until_str):
+            idx = pd.date_range("2024-01-01", periods=1200, freq="h")
+            return pd.DataFrame(
+                {
+                    "open": [100.0] * len(idx),
+                    "high": [101.0] * len(idx),
+                    "low": [99.0] * len(idx),
+                    "close": [100.0] * len(idx),
+                    "volume": [1000.0] * len(idx),
+                },
+                index=idx,
+            )
+
+    class _FakeGraph:
+        def invoke(self, state):
+            outputs = dict(state.get("outputs") or {})
+            outputs["coordinator_summary"] = "{\"needs_intervention\": false}"
+            outputs["dev_summary"] = json.dumps(
+                {
+                    "template_data": {"entry_logic": "ema20 > ema200", "exit_logic": "ema20 < ema200"},
+                    "backtest_job_id": "job-1",
+                    "backtest_summary": {
+                        "all": {"total_trades": 12},
+                        "in_sample": {"total_trades": 8},
+                        "holdout": {"total_trades": 4},
+                    },
+                },
+                ensure_ascii=False,
+            )
+            return {**state, "outputs": outputs, "status": "done", "phase": "done"}
+
+    monkeypatch.setattr(job_manager, "JobManager", _FakeJobManager)
+    monkeypatch.setattr(combo_service, "ComboService", _FakeComboService)
+    monkeypatch.setattr(incremental_loader, "IncrementalLoader", _FakeLoader)
+    monkeypatch.setattr(combo_optimizer, "_run_backtest_logic", lambda **kwargs: ({"total_trades": 12, "sharpe_ratio": 1.1, "max_drawdown": 0.1}, {"direction": "long"}))
+    monkeypatch.setattr(lab_graph, "build_trader_dev_graph", lambda: _FakeGraph())
+
+    lab_routes._run_lab_autonomous_sync(
+        "run_logic_trace",
+        {"symbol": "BTC/USDT", "timeframe": "1h", "objective": "teste", "base_template": "seed_tpl", "direction": "long", "deep_backtest": False},
+    )
+
+    trace_types = [evt.get("type") for evt in traces]
+    assert "logic_preflight_failed" in trace_types
+    assert "logic_correction_applied" in trace_types
+
+
+def test_implementation_rejects_dev_summary_when_backtest_job_id_is_empty():
+    import app.services.lab_graph as lab_graph
+
+    traces = []
+
+    def _append_trace(run_id, event):
+        traces.append(event)
+
+    def _persona_call(run_id, session_key, persona, system_prompt, message, thinking):
+        if persona == "coordinator":
+            return {"text": "{\"needs_intervention\": false}", "tokens": 1}
+        if persona == "dev_senior":
+            return {
+                "text": json.dumps(
+                    {
+                        "template_data": {"entry_logic": "ema20 > ema200", "exit_logic": "ema20 < ema200"},
+                        "backtest_job_id": "",
+                        "backtest_summary": {
+                            "all": {"total_trades": 10},
+                            "in_sample": {"total_trades": 6},
+                            "holdout": {"total_trades": 4},
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+                "tokens": 1,
+            }
+        raise AssertionError(f"Unexpected persona: {persona}")
+
+    deps = lab_graph.LabGraphDeps(
+        persona_call=_persona_call,
+        append_trace=_append_trace,
+        now_ms=lambda: 1,
+        inc_budget=lambda budget, turns=0, tokens=0: {
+            **budget,
+            "turns_used": int(budget.get("turns_used", 0)) + int(turns),
+            "tokens_total": int(budget.get("tokens_total", 0)) + int(tokens),
+        },
+        budget_ok=lambda budget: int(budget.get("turns_used", 0)) < int(budget.get("turns_max", 0))
+        and int(budget.get("tokens_total", 0)) < int(budget.get("tokens_max", 0)),
+    )
+
+    state = {
+        "run_id": "run-dev-missing-job",
+        "session_key": "lab-run-dev-missing-job",
+        "thinking": "low",
+        "deps": deps,
+        "budget": {"turns_used": 0, "turns_max": 10, "tokens_total": 0, "tokens_max": 1000},
+        "outputs": {},
+        "context": {
+            "backtest_job_id": "job-ctx",
+            "backtest_job_status": "COMPLETED",
+            "walk_forward": {
+                "metrics_all": {"total_trades": 10},
+                "metrics_in_sample": {"total_trades": 6},
+                "metrics_holdout": {"total_trades": 4},
+            },
+            "input": {"max_iterations": 3},
+        },
+    }
+
+    out = lab_graph._implementation_node(state)
+    outputs = out.get("outputs") or {}
+
+    assert outputs.get("dev_needs_retry") is True
+    assert outputs.get("dev_summary") is None
+    assert out.get("status") == "needs_adjustment"
+    reasons = [e.get("data", {}).get("reason") for e in traces if e.get("type") == "dev_summary_rejected"]
+    assert "missing_job_id" in reasons
+
+
+def test_implementation_rejects_dev_summary_when_metrics_diverge_from_context():
+    import app.services.lab_graph as lab_graph
+
+    traces = []
+
+    def _append_trace(run_id, event):
+        traces.append(event)
+
+    def _persona_call(run_id, session_key, persona, system_prompt, message, thinking):
+        if persona == "coordinator":
+            return {"text": "{\"needs_intervention\": false}", "tokens": 1}
+        if persona == "dev_senior":
+            return {
+                "text": json.dumps(
+                    {
+                        "template_data": {"entry_logic": "ema20 > ema200", "exit_logic": "ema20 < ema200"},
+                        "backtest_job_id": "job-ctx",
+                        "backtest_summary": {
+                            "all": {"total_trades": 99},
+                            "in_sample": {"total_trades": 88},
+                            "holdout": {"total_trades": 77},
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+                "tokens": 1,
+            }
+        raise AssertionError(f"Unexpected persona: {persona}")
+
+    deps = lab_graph.LabGraphDeps(
+        persona_call=_persona_call,
+        append_trace=_append_trace,
+        now_ms=lambda: 1,
+        inc_budget=lambda budget, turns=0, tokens=0: {
+            **budget,
+            "turns_used": int(budget.get("turns_used", 0)) + int(turns),
+            "tokens_total": int(budget.get("tokens_total", 0)) + int(tokens),
+        },
+        budget_ok=lambda budget: int(budget.get("turns_used", 0)) < int(budget.get("turns_max", 0))
+        and int(budget.get("tokens_total", 0)) < int(budget.get("tokens_max", 0)),
+    )
+
+    state = {
+        "run_id": "run-dev-metrics-mismatch",
+        "session_key": "lab-run-dev-metrics-mismatch",
+        "thinking": "low",
+        "deps": deps,
+        "budget": {"turns_used": 0, "turns_max": 10, "tokens_total": 0, "tokens_max": 1000},
+        "outputs": {},
+        "context": {
+            "backtest_job_id": "job-ctx",
+            "backtest_job_status": "COMPLETED",
+            "walk_forward": {
+                "metrics_all": {"total_trades": 10},
+                "metrics_in_sample": {"total_trades": 6},
+                "metrics_holdout": {"total_trades": 4},
+            },
+            "input": {"max_iterations": 3},
+        },
+    }
+
+    out = lab_graph._implementation_node(state)
+    outputs = out.get("outputs") or {}
+
+    assert outputs.get("dev_needs_retry") is True
+    assert outputs.get("dev_summary") is None
+    assert out.get("status") == "needs_adjustment"
+    reasons = [e.get("data", {}).get("reason") for e in traces if e.get("type") == "dev_summary_rejected"]
+    assert "metrics_mismatch" in reasons
+import pandas as pd
+from app.services import lab_graph as lab_graph
+
+
+def test_logic_preflight_applies_fallback_and_trace(monkeypatch, tmp_path):
+    traces = []
+    def _fake_append_trace(run_id, payload):
+        traces.append(payload)
+    monkeypatch.setattr(lab_routes, "_append_trace", _fake_append_trace)
+    monkeypatch.setattr(lab_routes, "_now_ms", lambda: 1)
+
+    df = pd.DataFrame({"open": [1]*1000, "high": [1]*1000, "low": [1]*1000, "close": [1]*1000, "volume": [1]*1000})
+
+    class _Combo:
+        def __init__(self):
+            self.meta = {
+                "indicators": [
+                    {"type": "ema", "alias": "ema20", "params": {"length": 20}},
+                    {"type": "ema", "alias": "ema50", "params": {"length": 50}},
+                    {"type": "rsi", "alias": "rsi14", "params": {"length": 14}},
+                ],
+                "entry_logic": "texto invalido",
+                "exit_logic": "texto invalido",
+                "stop_loss": 0.02,
+            }
+        def get_template_metadata(self, name):
+            return dict(self.meta)
+        def update_template(self, template_name, template_data=None, **kwargs):
+            self.meta.update(template_data or {})
+            return True
+        def create_strategy(self, template_name):
+            class _Strat:
+                def __init__(self, entry_logic, exit_logic):
+                    self.entry_logic = entry_logic
+                    self.exit_logic = exit_logic
+                def calculate_indicators(self, df):
+                    return df
+                def _evaluate_logic_vectorized(self, df, logic):
+                    if "texto invalido" in logic:
+                        raise RuntimeError("invalid logic")
+                    return pd.Series([True]*len(df))
+            return _Strat(self.meta.get("entry_logic"), self.meta.get("exit_logic"))
+
+    combo = _Combo()
+    ok, errors = lab_routes._logic_preflight(combo=combo, template_name="tpl", df_sample=df)
+    assert ok is False
+    changed, changes = lab_routes._apply_logic_correction(combo=combo, template_name="tpl", reason=errors)
+    assert changed is True
+    assert "fallback_logic_applied" in changes
+
+
+def _fake_deps(traces):
+    return lab_graph.LabGraphDeps(
+        persona_call=lambda *args, **kwargs: ("{}", 0),
+        append_trace=lambda run_id, payload: traces.append(payload),
+        now_ms=lambda: 1,
+        inc_budget=lambda b, **k: b,
+        budget_ok=lambda b: True,
+    )
+
+
+def test_dev_summary_rejected_when_job_id_missing():
+    traces = []
+    state = {
+        "deps": _fake_deps(traces),
+        "run_id": "run-1",
+        "context": {
+            "walk_forward": {
+                "metrics_all": {"total_trades": 10},
+                "metrics_in_sample": {"total_trades": 7},
+                "metrics_holdout": {"total_trades": 3},
+            },
+            "backtest_job_id": "job-1",
+            "backtest_job_status": "COMPLETED",
+        },
+        "outputs": {
+            "coordinator_summary": "{}",
+            "dev_summary": json.dumps({
+                "template_name": "t1",
+                "template_data": {"entry_logic": "close > open", "exit_logic": "close < open"},
+                "backtest_job_id": "",
+                "backtest_summary": {"all": {"total_trades": 10}, "in_sample": {"total_trades": 7}, "holdout": {"total_trades": 3}},
+                "iterations_done": 1,
+                "technical_notes": "",
+                "ready_for_trader": False,
+            }),
+        },
+        "budget": {"turns_used": 0, "turns_max": 10, "tokens_total": 0, "tokens_max": 1000},
+    }
+    out = lab_graph._implementation_node(state)
+    assert out.get("implementation_complete") is False
+    assert any(t.get("type") == "dev_summary_rejected" and t.get("data", {}).get("reason") == "missing_job_id" for t in traces)
+
+
+def test_dev_summary_rejected_when_metrics_mismatch():
+    traces = []
+    state = {
+        "deps": _fake_deps(traces),
+        "run_id": "run-2",
+        "context": {
+            "walk_forward": {
+                "metrics_all": {"total_trades": 10},
+                "metrics_in_sample": {"total_trades": 7},
+                "metrics_holdout": {"total_trades": 3},
+            },
+            "backtest_job_id": "job-2",
+            "backtest_job_status": "COMPLETED",
+        },
+        "outputs": {
+            "coordinator_summary": "{}",
+            "dev_summary": json.dumps({
+                "template_name": "t1",
+                "template_data": {"entry_logic": "close > open", "exit_logic": "close < open"},
+                "backtest_job_id": "job-2",
+                "backtest_summary": {"all": {"total_trades": 11}, "in_sample": {"total_trades": 7}, "holdout": {"total_trades": 3}},
+                "iterations_done": 1,
+                "technical_notes": "",
+                "ready_for_trader": False,
+            }),
+        },
+        "budget": {"turns_used": 0, "turns_max": 10, "tokens_total": 0, "tokens_max": 1000},
+    }
+    out = lab_graph._implementation_node(state)
+    assert out.get("implementation_complete") is False
+    assert any(t.get("type") == "dev_summary_rejected" and t.get("data", {}).get("reason") == "metrics_mismatch" for t in traces)

@@ -483,7 +483,25 @@ def _relax_exit_logic(exit_logic: Optional[str]) -> Tuple[str, List[str]]:
 
 
 def _build_fallback_logic(indicators: List[Dict[str, Any]]) -> Tuple[str, str]:
-    ema_inds = [i for i in indicators if str(i.get("type") or "").lower() == "ema"]
+    def _ema_length(ind: Dict[str, Any]) -> int:
+        params = ind.get("params") if isinstance(ind, dict) else {}
+        if isinstance(params, dict):
+            try:
+                length = int(params.get("length") or 0)
+                if length > 0:
+                    return length
+            except Exception:
+                pass
+        alias = str((ind or {}).get("alias") or "")
+        m = re.search(r"(\d+)", alias)
+        if m:
+            try:
+                return int(m.group(1))
+            except Exception:
+                pass
+        return 10**9
+
+    ema_inds = sorted([i for i in indicators if str(i.get("type") or "").lower() == "ema"], key=_ema_length)
     rsi_inds = [i for i in indicators if str(i.get("type") or "").lower() == "rsi"]
 
     def _alias_for(ind: Dict[str, Any], *, prefix: str) -> str:
@@ -500,7 +518,7 @@ def _build_fallback_logic(indicators: List[Dict[str, Any]]) -> Tuple[str, str]:
 
     if len(ema_inds) >= 2:
         ema_fast = _alias_for(ema_inds[0], prefix="EMA")
-        ema_slow = _alias_for(ema_inds[1], prefix="EMA")
+        ema_slow = _alias_for(ema_inds[-1], prefix="EMA")
         entry = f"{ema_fast} > {ema_slow} AND close > {ema_fast}"
         exit_logic = f"{ema_fast} < {ema_slow} OR close < {ema_fast}"
     elif len(ema_inds) == 1:
@@ -528,7 +546,30 @@ def _logic_preflight(*, combo: Any, template_name: str, df_sample: Any) -> Tuple
     try:
         if df_sample is None:
             return False, ["missing_dataframe"]
-        sample = df_sample.tail(400) if hasattr(df_sample, "tail") else df_sample
+
+        tail_n = 800
+        try:
+            meta = combo.get_template_metadata(template_name)
+            inds = (meta or {}).get("indicators") if isinstance(meta, dict) else []
+            max_len = 0
+            if isinstance(inds, list):
+                for ind in inds:
+                    if not isinstance(ind, dict):
+                        continue
+                    params = ind.get("params") or {}
+                    if not isinstance(params, dict):
+                        continue
+                    try:
+                        length = int(params.get("length") or 0)
+                    except Exception:
+                        length = 0
+                    if length > max_len:
+                        max_len = length
+            tail_n = max(tail_n, max_len * 3)
+        except Exception:
+            pass
+
+        sample = df_sample.tail(tail_n) if hasattr(df_sample, "tail") else df_sample
         sample = sample.copy() if hasattr(sample, "copy") else sample
         sample = strategy.calculate_indicators(sample)
         strategy._evaluate_logic_vectorized(sample, strategy.entry_logic)
