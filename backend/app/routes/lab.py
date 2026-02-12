@@ -344,10 +344,17 @@ def _classify_backtest_error(err: Exception) -> Dict[str, Any]:
             "details": text,
         }
 
-    if "invalid symbol" in lower or "symbol" in lower and "invalid" in lower:
+    if "invalid symbol" in lower or ("symbol" in lower and "invalid" in lower):
         return {
             "type": "invalid_symbol",
             "message": "Símbolo inválido para o exchange. Verifique o par (ex.: BTC/USDT).",
+            "details": text,
+        }
+
+    if "duplicate aliases" in lower:
+        return {
+            "type": "duplicate_indicator_alias",
+            "message": "Aliases duplicados em indicadores. Ajuste aliases (ex.: ema50/ema200).",
             "details": text,
         }
 
@@ -356,6 +363,34 @@ def _classify_backtest_error(err: Exception) -> Dict[str, Any]:
         "message": "Falha ao baixar dados do exchange. Tente novamente ou ajuste inputs.",
         "details": text,
     }
+
+
+def _ensure_unique_indicator_aliases(indicators: List[Dict[str, Any]]) -> bool:
+    changed = False
+    seen: Dict[str, int] = {}
+
+    for ind in indicators:
+        if not isinstance(ind, dict):
+            continue
+        ind_type = str(ind.get("type") or ind.get("name") or "").strip().lower()
+        params = ind.get("params") or {}
+        length = params.get("length") or params.get("period")
+        alias = str(ind.get("alias") or ind.get("name") or ind_type or "").strip().lower()
+
+        if not alias:
+            alias = f"{ind_type}{length}" if length else ind_type
+            ind["alias"] = alias
+            changed = True
+
+        count = seen.get(alias, 0)
+        if count > 0:
+            suffix = f"{alias}{count + 1}"
+            ind["alias"] = suffix
+            alias = suffix
+            changed = True
+        seen[alias] = count + 1
+
+    return changed
 
 
 def _sanitize_upstream_messages(raw: Any) -> List[Dict[str, Any]]:
@@ -1743,6 +1778,16 @@ def _create_template_from_strategy_draft(
             }
         )
 
+    if _ensure_unique_indicator_aliases(normalized_indicators):
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "template_alias_normalized",
+                "data": {"count": len(normalized_indicators)},
+            },
+        )
+
     entry_logic = _convert_idea_to_logic(entry_idea)
     exit_logic = _convert_idea_to_logic(exit_idea)
     stop_loss = _extract_stop_loss_from_plan(risk_plan) or 0.03
@@ -2028,6 +2073,18 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
             "stop_loss": meta.get("stop_loss"),
         }
 
+        inds = template_data.get("indicators") or []
+        if isinstance(inds, list) and _ensure_unique_indicator_aliases(inds):
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": _now_ms(),
+                    "type": "template_alias_normalized",
+                    "data": {"template": template_name, "count": len(inds)},
+                },
+            )
+            template_data["indicators"] = inds
+
         job_id = jm.create_job({"kind": "lab_backtest", "run_id": run_id, "iteration": iteration, "label": label, "template": template_name})
         _update_run_json(
             run_id,
@@ -2052,6 +2109,10 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
             since_str=since_str,
             until_str=until_str,
         )
+        if isinstance(metrics_all, dict) and metrics_all.get("error"):
+            diagnostic = _classify_backtest_error(Exception(str(metrics_all.get("error"))))
+            _update_run_json(run_id, {"diagnostic": diagnostic})
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "backtest_error", "data": {"diagnostic": diagnostic}})
 
         state = jm.load_state(job_id) or {}
         state.update({"status": "RUNNING", "progress": {"step": "backtest_in_sample", "pct": 60}})

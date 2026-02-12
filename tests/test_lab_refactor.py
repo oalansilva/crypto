@@ -53,6 +53,11 @@ def test_classify_invalid_interval_error():
     assert diagnostic["type"] == "invalid_interval"
 
 
+def test_classify_duplicate_alias_error():
+    diagnostic = lab_routes._classify_backtest_error(Exception("Duplicate aliases found: {'ema'}"))
+    assert diagnostic["type"] == "duplicate_indicator_alias"
+
+
 def test_create_template_from_strategy_draft(monkeypatch):
     combo = _FakeCombo()
 
