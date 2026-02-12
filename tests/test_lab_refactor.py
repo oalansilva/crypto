@@ -23,13 +23,16 @@ class _FakeCombo:
             "template_data": template_data,
             "category": category,
             "metadata": metadata,
+            "optimization_schema": None,
         }
 
     def get_template_metadata(self, name):
         item = self.templates.get(name)
         if not item:
             return None
-        return item.get("template_data")
+        data = copy.deepcopy(item.get("template_data") or {})
+        data["optimization_schema"] = copy.deepcopy(item.get("optimization_schema"))
+        return data
 
     def update_template(self, template_name, description=None, optimization_schema=None, template_data=None):
         if template_name not in self.templates:
@@ -38,6 +41,8 @@ class _FakeCombo:
         if template_data:
             merged = {**current, **template_data}
             self.templates[template_name]["template_data"] = merged
+        if optimization_schema is not None:
+            self.templates[template_name]["optimization_schema"] = copy.deepcopy(optimization_schema)
         return True
 
 
@@ -117,6 +122,75 @@ def test_create_template_from_strategy_draft(monkeypatch):
     assert meta["entry_logic"] == "rsi < 30 and close > ema"
     assert meta["exit_logic"] == "rsi > 70 or stop-loss 3%"
     assert meta["stop_loss"] == 0.03
+    schema = combo.templates[template_name]["optimization_schema"]
+    assert isinstance(schema, dict)
+    assert "parameters" in schema
+    assert "correlated_groups" in schema
+    assert isinstance(schema["correlated_groups"], list)
+    assert schema["parameters"]["stop_loss"]["min"] == 0.005
+    assert schema["parameters"]["stop_loss"]["max"] == 0.13
+    assert schema["parameters"]["stop_loss"]["step"] == 0.002
+
+
+def test_build_lab_optimization_schema_multi_ma_contract():
+    schema = lab_routes._build_lab_optimization_schema(
+        {
+            "indicators": [
+                {"type": "ema", "alias": "short", "params": {"length": 9}},
+                {"type": "sma", "alias": "medium", "params": {"length": 21}},
+                {"type": "sma", "alias": "long", "params": {"length": 50}},
+            ],
+            "entry_logic": "ema_short > sma_medium",
+            "exit_logic": "ema_short < sma_medium",
+            "stop_loss": 0.03,
+        }
+    )
+    params = schema["parameters"]
+    assert params["ema_short"] == {"default": 9, "min": 3, "max": 20, "step": 1}
+    assert params["sma_medium"] == {"default": 21, "min": 10, "max": 40, "step": 1}
+    assert params["sma_long"] == {"default": 50, "min": 20, "max": 100, "step": 1}
+    assert params["stop_loss"] == {"default": 0.0, "min": 0.005, "max": 0.13, "step": 0.002}
+    assert schema["correlated_groups"] == [["ema_short", "sma_medium", "sma_long", "stop_loss"]]
+
+
+def test_apply_best_parameters_only_updates_allowed_params_and_preserves_logic():
+    combo = _FakeCombo()
+    combo.create_template(
+        "tpl",
+        {
+            "indicators": [
+                {"type": "ema", "alias": "short", "params": {"length": 9}},
+                {"type": "sma", "alias": "long", "params": {"length": 50}},
+            ],
+            "entry_logic": "ema_short > sma_long",
+            "exit_logic": "ema_short < sma_long",
+            "stop_loss": 0.03,
+        },
+    )
+    schema = {
+        "parameters": {
+            "ema_short": {"default": 9, "min": 3, "max": 20, "step": 1},
+            "sma_long": {"default": 50, "min": 20, "max": 100, "step": 1},
+            "stop_loss": {"default": 0.03, "min": 0.005, "max": 0.13, "step": 0.002},
+        },
+        "correlated_groups": [["ema_short", "sma_long", "stop_loss"]],
+    }
+    combo.update_template("tpl", optimization_schema=schema)
+
+    applied = lab_routes._apply_best_parameters_to_template(
+        combo=combo,
+        template_name="tpl",
+        best_parameters={"ema_short": 12, "sma_long": 80, "stop_loss": 0.015, "direction": "short"},
+        allowed_parameters=schema["parameters"],
+    )
+    meta = combo.get_template_metadata("tpl")
+
+    assert applied == {"ema_short": 12, "sma_long": 80, "stop_loss": 0.015}
+    assert meta["entry_logic"] == "ema_short > sma_long"
+    assert meta["exit_logic"] == "ema_short < sma_long"
+    assert meta["indicators"][0]["params"]["length"] == 12
+    assert meta["indicators"][1]["params"]["length"] == 80
+    assert meta["stop_loss"] == 0.015
 
 
 def test_apply_dev_adjustments_relaxes_and_adds_atr():
@@ -355,6 +429,15 @@ def test_run_lab_autonomous_emits_logic_preflight_and_correction_traces(monkeypa
     monkeypatch.setattr(combo_service, "ComboService", _FakeComboService)
     monkeypatch.setattr(incremental_loader, "IncrementalLoader", _FakeLoader)
     monkeypatch.setattr(combo_optimizer, "_run_backtest_logic", lambda **kwargs: ({"total_trades": 12, "sharpe_ratio": 1.1, "max_drawdown": 0.1}, {"direction": "long"}))
+    class _FakeComboOptimizer:
+        def run_optimization(self, **kwargs):
+            return {
+                "best_parameters": {"ema_ema20": 18, "ema_ema200": 180, "stop_loss": 0.02, "direction": "long"},
+                "best_metrics": {"sharpe_ratio": 1.4, "total_trades": 18},
+                "stages": [{"stage_num": 1, "stage_name": "Grid Search"}],
+            }
+
+    monkeypatch.setattr(combo_optimizer, "ComboOptimizer", _FakeComboOptimizer)
     monkeypatch.setattr(lab_graph, "build_trader_dev_graph", lambda: _FakeGraph())
 
     lab_routes._run_lab_autonomous_sync(
@@ -365,6 +448,152 @@ def test_run_lab_autonomous_emits_logic_preflight_and_correction_traces(monkeypa
     trace_types = [evt.get("type") for evt in traces]
     assert "logic_preflight_failed" in trace_types
     assert "logic_correction_applied" in trace_types
+    assert "combo_optimization_started" in trace_types
+    assert "combo_optimization_applied" in trace_types
+    assert run_state["backtest"]["combo_optimization"]["status"] == "completed"
+    assert run_state["backtest"]["combo_optimization"]["best_parameters"]["stop_loss"] == 0.02
+
+
+def test_run_lab_autonomous_persists_combo_optimization_failure(monkeypatch):
+    import app.services.combo_optimizer as combo_optimizer
+    import app.services.combo_service as combo_service
+    import app.services.job_manager as job_manager
+    import app.services.lab_graph as lab_graph
+    import src.data.incremental_loader as incremental_loader
+
+    traces = []
+    run_state = {
+        "run_id": "run_combo_fail",
+        "status": "running",
+        "step": "execution",
+        "phase": "execution",
+        "input": {
+            "symbol": "BTC/USDT",
+            "timeframe": "1h",
+            "objective": "teste",
+            "thinking": "low",
+            "max_iterations": 1,
+            "constraints": {},
+        },
+        "budget": {"turns_used": 0, "turns_max": 20, "tokens_total": 0, "tokens_max": 100000},
+        "outputs": {"coordinator_summary": None, "dev_summary": None, "validator_verdict": None, "trader_verdict": None},
+        "upstream_contract": {"approved": True, "inputs": {"symbol": "BTC/USDT", "timeframe": "1h"}},
+    }
+
+    monkeypatch.setattr(lab_routes, "_append_trace", lambda run_id, event: traces.append(event))
+    monkeypatch.setattr(lab_routes, "_now_ms", lambda: 1)
+    monkeypatch.setattr(lab_routes, "_load_run_json", lambda run_id: copy.deepcopy(run_state))
+
+    def _fake_update_run(run_id, patch):
+        run_state.update(copy.deepcopy(patch))
+
+    monkeypatch.setattr(lab_routes, "_update_run_json", _fake_update_run)
+    monkeypatch.setattr(lab_routes, "_cp8_save_candidate_template", lambda run_id, run, outputs: {**outputs, "candidate_template_name": "seed_tpl"})
+    monkeypatch.setattr(lab_routes, "_cp5_autosave_if_approved", lambda run_id, run, outputs: outputs)
+    monkeypatch.setattr(lab_routes, "_needs_dev_adjustment", lambda run: (False, {"preflight": {"ok": True}}))
+    monkeypatch.setattr(lab_routes, "_metrics_preflight", lambda run: {"ok": True, "errors": []})
+    monkeypatch.setattr(lab_routes, "_cp10_selection_gate", lambda run: {"approved": False})
+    monkeypatch.setattr(lab_routes, "_gate_decision", lambda outputs, selection, preflight: {"verdict": "rejected"})
+    monkeypatch.setattr(lab_routes, "_persona_call_sync", lambda **kwargs: {"text": "{\"verdict\":\"rejected\"}", "tokens": 1})
+    monkeypatch.setattr(lab_routes, "_logic_preflight", lambda **kwargs: (True, []))
+
+    class _FakeComboService:
+        def __init__(self):
+            base = {
+                "indicators": [
+                    {"type": "ema", "alias": "ema20", "params": {"length": 20}},
+                    {"type": "ema", "alias": "ema200", "params": {"length": 200}},
+                ],
+                "entry_logic": "ema20 > ema200",
+                "exit_logic": "ema20 < ema200",
+                "stop_loss": 0.03,
+            }
+            self.templates = {"seed_tpl": copy.deepcopy(base)}
+
+        def get_template_metadata(self, name):
+            return copy.deepcopy(self.templates.get(name) or self.templates["seed_tpl"])
+
+        def update_template(self, template_name, description=None, optimization_schema=None, template_data=None):
+            merged = self.get_template_metadata(template_name)
+            if template_data:
+                merged.update(template_data)
+            if optimization_schema is not None:
+                merged["optimization_schema"] = optimization_schema
+            self.templates[template_name] = merged
+            return True
+
+    class _FakeJobManager:
+        def __init__(self):
+            self.states = {}
+            self._seq = 0
+
+        def create_job(self, payload):
+            self._seq += 1
+            job_id = f"job-{self._seq}"
+            self.states[job_id] = {"payload": payload}
+            return job_id
+
+        def load_state(self, job_id):
+            return copy.deepcopy(self.states.get(job_id, {}))
+
+        def save_state(self, job_id, state):
+            self.states[job_id] = copy.deepcopy(state)
+
+    class _FakeLoader:
+        def fetch_data(self, symbol, timeframe, since_str, until_str):
+            idx = pd.date_range("2024-01-01", periods=1200, freq="h")
+            return pd.DataFrame(
+                {
+                    "open": [100.0] * len(idx),
+                    "high": [101.0] * len(idx),
+                    "low": [99.0] * len(idx),
+                    "close": [100.0] * len(idx),
+                    "volume": [1000.0] * len(idx),
+                },
+                index=idx,
+            )
+
+    class _FakeGraph:
+        def invoke(self, state):
+            outputs = dict(state.get("outputs") or {})
+            outputs["coordinator_summary"] = "{\"needs_intervention\": false}"
+            outputs["dev_summary"] = json.dumps(
+                {
+                    "template_data": {"entry_logic": "ema20 > ema200", "exit_logic": "ema20 < ema200"},
+                    "backtest_job_id": "job-1",
+                    "backtest_summary": {
+                        "all": {"total_trades": 12},
+                        "in_sample": {"total_trades": 8},
+                        "holdout": {"total_trades": 4},
+                    },
+                },
+                ensure_ascii=False,
+            )
+            return {**state, "outputs": outputs, "status": "done", "phase": "done"}
+
+    class _BrokenComboOptimizer:
+        def run_optimization(self, **kwargs):
+            raise RuntimeError("optimizer down")
+
+    monkeypatch.setattr(job_manager, "JobManager", _FakeJobManager)
+    monkeypatch.setattr(combo_service, "ComboService", _FakeComboService)
+    monkeypatch.setattr(incremental_loader, "IncrementalLoader", _FakeLoader)
+    monkeypatch.setattr(combo_optimizer, "_run_backtest_logic", lambda **kwargs: ({"total_trades": 12, "sharpe_ratio": 1.1, "max_drawdown": 0.1}, {"direction": "long"}))
+    monkeypatch.setattr(combo_optimizer, "ComboOptimizer", _BrokenComboOptimizer)
+    monkeypatch.setattr(lab_graph, "build_trader_dev_graph", lambda: _FakeGraph())
+
+    lab_routes._run_lab_autonomous_sync(
+        "run_combo_fail",
+        {"symbol": "BTC/USDT", "timeframe": "1h", "objective": "teste", "base_template": "seed_tpl", "direction": "long", "deep_backtest": False},
+    )
+
+    assert run_state["status"] == "needs_adjustment"
+    assert run_state["step"] == "combo_optimization_failed"
+    assert run_state["backtest"]["combo_optimization"]["status"] == "failed"
+    assert "optimizer down" in run_state["backtest"]["combo_optimization"]["error"]
+    trace_types = [evt.get("type") for evt in traces]
+    assert "combo_optimization_started" in trace_types
+    assert "combo_optimization_failed" in trace_types
 
 
 def test_implementation_rejects_dev_summary_when_backtest_job_id_is_empty():
@@ -628,4 +857,3 @@ def test_trader_retry_limit_trace_when_retries_exhausted():
     assert limit_events[-1].get("data", {}).get("attempt") == 2
     assert limit_events[-1].get("data", {}).get("limit") == 2
     assert limit_events[-1].get("data", {}).get("reasons") == ["melhorar robustez no holdout"]
-

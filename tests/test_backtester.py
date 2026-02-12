@@ -261,3 +261,56 @@ def test_cp4_two_phase_approved_updates_phase_and_status(tmp_path, monkeypatch):
     assert updated["phase"] == "done"
     assert updated["upstream_contract"]["approved"] is True
     assert updated["outputs"]["tests_done"]["pass"] is True
+
+
+def test_get_run_returns_persisted_combo_optimization_payload(tmp_path, monkeypatch):
+    monkeypatch.setattr(lab_routes, "_run_path", lambda run_id: tmp_path / f"{run_id}.json")
+    monkeypatch.setattr(lab_routes, "_trace_path", lambda run_id: tmp_path / f"{run_id}.jsonl")
+
+    run_id = "run_combo_payload"
+    payload = {
+        "run_id": run_id,
+        "status": "running",
+        "step": "personas",
+        "phase": "execution",
+        "created_at_ms": 1,
+        "updated_at_ms": 2,
+        "trace_meta": {},
+        "budget": {},
+        "outputs": {},
+        "backtest_job": {"job_id": "job-1", "status": "COMPLETED"},
+        "backtest": {
+            "symbol": "BTC/USDT",
+            "timeframe": "1h",
+            "template": "lab_tpl",
+            "combo_optimization": {
+                "status": "completed",
+                "template_name": "lab_tpl",
+                "best_parameters": {"ema_short": 12, "stop_loss": 0.02},
+                "best_metrics": {"sharpe_ratio": 1.3},
+                "stages": [{"stage_num": 1, "stage_name": "Grid Search"}],
+                "limits_snapshot": {
+                    "optimization_schema": {
+                        "parameters": {
+                            "ema_short": {"default": 9, "min": 3, "max": 20, "step": 1},
+                            "stop_loss": {"default": 0.03, "min": 0.005, "max": 0.13, "step": 0.002},
+                        },
+                        "correlated_groups": [["ema_short", "stop_loss"]],
+                    }
+                },
+                "applied_at_ms": 3,
+                "error": None,
+            },
+        },
+        "upstream_contract": {"approved": True},
+        "upstream": {"messages": [], "pending_question": ""},
+        "input": {"symbol": "BTC/USDT", "timeframe": "1h"},
+    }
+    (tmp_path / f"{run_id}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    (tmp_path / f"{run_id}.jsonl").write_text("", encoding="utf-8")
+
+    resp = asyncio.run(lab_routes.get_run(run_id))
+
+    assert resp.backtest["combo_optimization"]["status"] == "completed"
+    assert resp.backtest["combo_optimization"]["best_parameters"]["stop_loss"] == 0.02
+    assert resp.backtest["combo_optimization"]["limits_snapshot"]["optimization_schema"]["correlated_groups"] == [["ema_short", "stop_loss"]]

@@ -211,6 +211,18 @@ const LabRunPage: React.FC = () => {
       holdoutRange: w?.holdout ? `${w.holdout.since} → ${w.holdout.until}` : undefined,
     };
   }, [data?.backtest]);
+  const comboOptimization = data?.backtest?.combo_optimization;
+  const comboStatus = String(comboOptimization?.status || '').toLowerCase();
+  const comboTemplateName = String(comboOptimization?.template_name || '');
+  const comboAppliedAt = typeof comboOptimization?.applied_at_ms === 'number'
+    ? new Date(comboOptimization.applied_at_ms).toISOString()
+    : '-';
+  const comboBestParameters = comboOptimization?.best_parameters || {};
+  const comboBestMetrics = comboOptimization?.best_metrics || {};
+  const comboLimitsSnapshot = comboOptimization?.limits_snapshot || {};
+  const comboStages = comboOptimization?.stages || [];
+  const comboError = String(comboOptimization?.error || '');
+  const backtestIsPostCombo = comboStatus === 'completed';
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
@@ -490,7 +502,11 @@ const LabRunPage: React.FC = () => {
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <div className="text-sm font-semibold">Backtest</div>
-                <div className="text-xs text-gray-500">CP6: walk-forward 70/30 (IS vs Holdout)</div>
+                <div className="text-xs text-gray-500">
+                  {backtestIsPostCombo
+                    ? 'Resultado final pós-Combo para validação do Trader • CP6: walk-forward 70/30 (IS vs Holdout)'
+                    : 'CP6: walk-forward 70/30 (IS vs Holdout)'}
+                </div>
               </div>
               <div className="text-xs text-gray-400">candles: <span className="font-mono text-gray-200">{data.backtest.candles ?? '-'}</span></div>
             </div>
@@ -506,6 +522,92 @@ const LabRunPage: React.FC = () => {
               <pre className="mt-3 text-xs text-gray-300 font-mono whitespace-pre-wrap">
                 {JSON.stringify(data.backtest, null, 2)}
               </pre>
+            </details>
+          </div>
+        ) : null}
+
+        {comboOptimization ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">Combo Optimization</div>
+                <div className="text-xs text-gray-500">Parâmetros aplicados automaticamente antes do backtest final.</div>
+              </div>
+              <div className={`text-xs px-2 py-1 rounded-full border ${
+                comboStatus === 'completed'
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                  : comboStatus === 'failed'
+                    ? 'border-red-500/40 bg-red-500/10 text-red-200'
+                    : 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'
+              }`}>
+                status: {comboStatus || '-'}
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <div className="text-gray-500">template</div>
+                <div className="mt-1 text-gray-100 font-mono break-all">{comboTemplateName || '-'}</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <div className="text-gray-500">applied_at</div>
+                <div className="mt-1 text-gray-100 font-mono">{comboAppliedAt}</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <div className="text-gray-500">final context</div>
+                <div className="mt-1 text-gray-100">
+                  {comboStatus === 'completed'
+                    ? 'Backtest final pós-Combo (sem etapa manual de aprovação de parâmetros).'
+                    : 'Etapa Combo não concluída; revisar estado abaixo.'}
+                </div>
+              </div>
+            </div>
+
+            {comboStatus === 'failed' ? (
+              <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                Falha na otimização do Combo: {comboError || 'erro não informado'}
+              </div>
+            ) : null}
+
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm text-gray-300 hover:text-white">ver detalhes (parâmetros, métricas, limites)</summary>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="text-xs text-gray-400 mb-2">Best parameters aplicados</div>
+                  {Object.keys(comboBestParameters).length ? (
+                    <div className="space-y-1">
+                      {Object.entries(comboBestParameters).map(([key, value]) => (
+                        <div key={key} className="flex items-start justify-between gap-3 text-xs">
+                          <span className="text-gray-400 font-mono">{key}</span>
+                          <span className="text-gray-100 font-mono break-all">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500">Sem parâmetros aplicados.</div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="text-xs text-gray-400 mb-2">Best metrics</div>
+                  <pre className="text-[11px] text-gray-200 whitespace-pre-wrap font-mono">
+                    {JSON.stringify(comboBestMetrics, null, 2)}
+                  </pre>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="text-xs text-gray-400 mb-2">Limits snapshot</div>
+                  <pre className="text-[11px] text-gray-200 whitespace-pre-wrap font-mono">
+                    {JSON.stringify(comboLimitsSnapshot, null, 2)}
+                  </pre>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="text-xs text-gray-400 mb-2">Stages</div>
+                  <pre className="text-[11px] text-gray-200 whitespace-pre-wrap font-mono">
+                    {JSON.stringify(comboStages, null, 2)}
+                  </pre>
+                </div>
+              </div>
             </details>
           </div>
         ) : null}

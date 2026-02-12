@@ -20,6 +20,7 @@ import re
 import time
 import threading
 import uuid
+import copy
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -1554,6 +1555,12 @@ def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict
             desc = f"Lab candidate from {run_id}"
 
         combo.update_template(template_name=name, description=desc, template_data=candidate_data)
+        _ensure_template_optimization_schema(
+            combo=combo,
+            template_name=name,
+            run_id=run_id,
+            force=True,
+        )
 
         outputs["candidate_template_name"] = name
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_saved", "data": {"template": name}})
@@ -1770,6 +1777,12 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
         cloned = combo.clone_template(template_name=template_to_save, new_name=new_name)
         if not cloned:
             raise RuntimeError("failed to clone template")
+        _ensure_template_optimization_schema(
+            combo=combo,
+            template_name=new_name,
+            run_id=run_id,
+            force=False,
+        )
 
         # Create favorite pointing to the cloned template
         params = backtest.get("params") or {}
@@ -2017,6 +2030,273 @@ def _extract_stop_loss_from_plan(plan: str) -> Optional[float]:
     return min(0.1, max(0.005, value))
 
 
+def _to_number(value: Any) -> Optional[float]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        out = float(value)
+        if out != out:  # NaN
+            return None
+        return out
+    return None
+
+
+def _build_param_range(param_name: str, default_value: float) -> Dict[str, Any]:
+    if param_name == "ema_short":
+        return {"default": 9, "min": 3, "max": 20, "step": 1}
+    if param_name == "sma_medium":
+        return {"default": 21, "min": 10, "max": 40, "step": 1}
+    if param_name == "sma_long":
+        return {"default": 50, "min": 20, "max": 100, "step": 1}
+
+    if float(default_value).is_integer():
+        default_int = int(round(default_value))
+        min_val = max(2, int(round(default_int * 0.5)))
+        max_val = max(min_val + 1, int(round(default_int * 2.0)))
+        return {
+            "default": default_int,
+            "min": min_val,
+            "max": max_val,
+            "step": 1,
+        }
+
+    default_float = round(float(default_value), 6)
+    min_val = round(max(0.001, default_float * 0.5), 6)
+    max_val = round(max(min_val + 0.001, default_float * 2.0), 6)
+    step = 0.001
+    return {
+        "default": default_float,
+        "min": min_val,
+        "max": max_val,
+        "step": step,
+    }
+
+
+def _extract_template_data(meta: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "indicators": copy.deepcopy(meta.get("indicators") or []),
+        "entry_logic": meta.get("entry_logic"),
+        "exit_logic": meta.get("exit_logic"),
+        "stop_loss": copy.deepcopy(meta.get("stop_loss")),
+    }
+
+
+def _build_lab_optimization_schema(template_data: Dict[str, Any]) -> Dict[str, Any]:
+    parameters: Dict[str, Dict[str, Any]] = {}
+    indicators = template_data.get("indicators") if isinstance(template_data, dict) else []
+    if not isinstance(indicators, list):
+        indicators = []
+
+    for ind in indicators:
+        if not isinstance(ind, dict):
+            continue
+        ind_type = str(ind.get("type") or ind.get("name") or "").strip().lower()
+        alias = str(ind.get("alias") or ind_type or "").strip().lower()
+        if not ind_type or not alias:
+            continue
+        params = ind.get("params") or {}
+        if not isinstance(params, dict):
+            continue
+
+        numeric_base = None
+        if "length" in params:
+            numeric_base = _to_number(params.get("length"))
+        if numeric_base is None and "period" in params:
+            numeric_base = _to_number(params.get("period"))
+        if numeric_base is None:
+            continue
+
+        param_name = f"{ind_type}_{alias}"
+        parameters[param_name] = _build_param_range(param_name, numeric_base)
+
+    stop_loss_value = template_data.get("stop_loss") if isinstance(template_data, dict) else None
+    if isinstance(stop_loss_value, dict):
+        stop_loss_value = stop_loss_value.get("default")
+    stop_loss_default = _to_number(stop_loss_value)
+    if stop_loss_default is None:
+        stop_loss_default = 0.03
+
+    is_multi_ma_shape = all(k in parameters for k in ("ema_short", "sma_medium", "sma_long"))
+    parameters["stop_loss"] = {
+        "default": 0.0 if is_multi_ma_shape else round(float(stop_loss_default), 6),
+        "min": 0.005,
+        "max": 0.13,
+        "step": 0.002,
+    }
+
+    ordered_keys = list(parameters.keys())
+    correlated_groups = [ordered_keys] if ordered_keys else []
+    return {
+        "parameters": parameters,
+        "correlated_groups": correlated_groups,
+    }
+
+
+def _is_valid_optimization_schema_contract(schema: Any) -> bool:
+    if not isinstance(schema, dict):
+        return False
+    parameters = schema.get("parameters")
+    correlated_groups = schema.get("correlated_groups")
+    if not isinstance(parameters, dict) or not parameters:
+        return False
+    if not isinstance(correlated_groups, list) or not correlated_groups:
+        return False
+
+    for param_name, cfg in parameters.items():
+        if not isinstance(param_name, str) or not param_name:
+            return False
+        if not isinstance(cfg, dict):
+            return False
+        min_val = _to_number(cfg.get("min"))
+        max_val = _to_number(cfg.get("max"))
+        step_val = _to_number(cfg.get("step"))
+        if min_val is None or max_val is None or step_val is None:
+            return False
+        if min_val >= max_val:
+            return False
+        if step_val <= 0:
+            return False
+
+    valid_keys = set(parameters.keys())
+    for group in correlated_groups:
+        if not isinstance(group, list) or not group:
+            return False
+        for name in group:
+            if name not in valid_keys:
+                return False
+    return True
+
+
+def _ensure_template_optimization_schema(
+    *,
+    combo: Any,
+    template_name: str,
+    run_id: Optional[str] = None,
+    force: bool = False,
+) -> Dict[str, Any]:
+    meta = combo.get_template_metadata(template_name)
+    if not meta:
+        raise ValueError(f"template not found: {template_name}")
+
+    current = meta.get("optimization_schema")
+    if not force and _is_valid_optimization_schema_contract(current):
+        return current
+
+    template_data = _extract_template_data(meta)
+    schema = _build_lab_optimization_schema(template_data)
+    combo.update_template(template_name=template_name, optimization_schema=schema)
+
+    if run_id:
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "template_optimization_schema_updated",
+                "data": {
+                    "template": template_name,
+                    "parameters": list((schema.get("parameters") or {}).keys()),
+                },
+            },
+        )
+
+    return schema
+
+
+def _apply_best_parameters_to_template(
+    *,
+    combo: Any,
+    template_name: str,
+    best_parameters: Dict[str, Any],
+    allowed_parameters: Dict[str, Any],
+) -> Dict[str, Any]:
+    meta = combo.get_template_metadata(template_name)
+    if not meta:
+        raise ValueError(f"template not found: {template_name}")
+
+    template_data = _extract_template_data(meta)
+    indicators = template_data.get("indicators") or []
+    applied: Dict[str, Any] = {}
+    allowed_keys = set(allowed_parameters.keys())
+
+    for ind in indicators:
+        if not isinstance(ind, dict):
+            continue
+        ind_type = str(ind.get("type") or ind.get("name") or "").strip().lower()
+        alias = str(ind.get("alias") or ind_type or "").strip().lower()
+        if not ind_type or not alias:
+            continue
+        params = ind.get("params") or {}
+        if not isinstance(params, dict):
+            continue
+
+        for key, cur in list(params.items()):
+            std_key = f"{alias}_{key}"
+            opt_key = f"{ind_type}_{alias}"
+
+            chosen_key = None
+            if std_key in allowed_keys and std_key in best_parameters:
+                chosen_key = std_key
+            elif key in ("length", "period") and opt_key in allowed_keys and opt_key in best_parameters:
+                chosen_key = opt_key
+
+            if not chosen_key:
+                continue
+
+            next_value = best_parameters.get(chosen_key)
+            if isinstance(cur, int):
+                try:
+                    params[key] = int(round(float(next_value)))
+                    applied[chosen_key] = params[key]
+                except Exception:
+                    continue
+            elif isinstance(cur, (int, float)):
+                num = _to_number(next_value)
+                if num is None:
+                    continue
+                params[key] = float(num)
+                applied[chosen_key] = params[key]
+            else:
+                num = _to_number(next_value)
+                if num is None:
+                    continue
+                params[key] = float(num)
+                applied[chosen_key] = params[key]
+
+    if "stop_loss" in allowed_keys and "stop_loss" in best_parameters:
+        stop_loss = _to_number(best_parameters.get("stop_loss"))
+        if stop_loss is not None:
+            template_data["stop_loss"] = float(stop_loss)
+            applied["stop_loss"] = template_data["stop_loss"]
+
+    if applied:
+        combo.update_template(template_name=template_name, template_data=template_data)
+
+    return applied
+
+
+def _build_combo_optimization_payload(
+    *,
+    status: str,
+    template_name: str,
+    best_parameters: Optional[Dict[str, Any]] = None,
+    best_metrics: Optional[Dict[str, Any]] = None,
+    stages: Optional[List[Dict[str, Any]]] = None,
+    limits_snapshot: Optional[Dict[str, Any]] = None,
+    applied_at_ms: Optional[int] = None,
+    error: Optional[str] = None,
+) -> Dict[str, Any]:
+    return {
+        "status": status,
+        "template_name": template_name,
+        "best_parameters": best_parameters or {},
+        "best_metrics": best_metrics or {},
+        "stages": stages or [],
+        "limits_snapshot": limits_snapshot or {},
+        "applied_at_ms": applied_at_ms,
+        "error": error,
+    }
+
+
 def _create_template_from_strategy_draft(
     *,
     combo: Any,
@@ -2080,6 +2360,12 @@ def _create_template_from_strategy_draft(
             "timeframe": timeframe,
             "one_liner": strategy_draft.get("one_liner") or "Estratégia do Trader",
         },
+    )
+    _ensure_template_optimization_schema(
+        combo=combo,
+        template_name=template_name,
+        run_id=run_id,
+        force=True,
     )
     _append_trace(
         run_id,
@@ -2150,9 +2436,9 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
 
     from app.services.job_manager import JobManager
     from app.services.combo_service import ComboService
-    from src.data.incremental_loader import IncrementalLoader
-    from app.services.combo_optimizer import _run_backtest_logic
+    from app.services.combo_optimizer import ComboOptimizer, _run_backtest_logic
     from app.services.lab_graph import build_upstream_contract
+    from src.data.incremental_loader import IncrementalLoader
 
     run = _load_run_json(run_id) or {}
     inp = run.get("input") or {}
@@ -2319,6 +2605,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             "symbol": bt.get("symbol"),
             "timeframe": bt.get("timeframe"),
             "template": bt.get("template"),
+            "combo_optimization": bt.get("combo_optimization") or {},
             "strategy_draft": strategy_draft,
             "walk_forward": {
                 "split": (wf.get("split") or "70/30"),
@@ -2328,7 +2615,13 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             },
         }
 
-    def _run_backtest_job(*, template_name: str, label: str, iteration: int) -> Dict[str, Any]:
+    def _run_backtest_job(
+        *,
+        template_name: str,
+        label: str,
+        iteration: int,
+        combo_optimization: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         meta = combo.get_template_metadata(template_name)
         if not meta:
             raise RuntimeError(f"template not found: {template_name}")
@@ -2533,6 +2826,8 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             "label": label,
             "iteration": iteration,
         }
+        if combo_optimization is not None:
+            out["combo_optimization"] = combo_optimization
 
         _append_trace(
             run_id,
@@ -2557,6 +2852,116 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             },
         )
         return out
+
+    def _run_combo_optimization_stage(*, template_name: str, iteration: int) -> Dict[str, Any]:
+        _update_run_json(
+            run_id,
+            {
+                "status": "running",
+                "step": "combo_optimization",
+            },
+        )
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "combo_optimization_started",
+                "data": {"template": template_name, "iteration": iteration},
+            },
+        )
+
+        limits_snapshot: Dict[str, Any] = {}
+        try:
+            schema = _ensure_template_optimization_schema(
+                combo=combo,
+                template_name=template_name,
+                run_id=run_id,
+                force=False,
+            )
+            limits_snapshot = {
+                "optimization_schema": schema,
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "since": since_str,
+                "until": until_str,
+                "deep_backtest": deep_backtest,
+                "direction": direction,
+            }
+
+            optimizer = ComboOptimizer()
+            opt_since = str(since_str or "").strip().split(" ")[0] or None
+            opt_until = str(until_str or "").strip().split(" ")[0] or None
+            result = optimizer.run_optimization(
+                template_name=template_name,
+                symbol=symbol,
+                timeframe=timeframe,
+                start_date=opt_since,
+                end_date=opt_until,
+                deep_backtest=deep_backtest,
+                direction=direction,
+            )
+            best_parameters = result.get("best_parameters") if isinstance(result, dict) else {}
+            if not isinstance(best_parameters, dict):
+                best_parameters = {}
+
+            allowed_parameters = schema.get("parameters") if isinstance(schema, dict) else {}
+            if not isinstance(allowed_parameters, dict):
+                allowed_parameters = {}
+
+            applied_parameters = _apply_best_parameters_to_template(
+                combo=combo,
+                template_name=template_name,
+                best_parameters=best_parameters,
+                allowed_parameters=allowed_parameters,
+            )
+            if not applied_parameters:
+                raise RuntimeError("combo returned no applicable parameters for this template")
+
+            applied_at_ms = _now_ms()
+            payload = _build_combo_optimization_payload(
+                status="completed",
+                template_name=template_name,
+                best_parameters=applied_parameters,
+                best_metrics=result.get("best_metrics") if isinstance(result, dict) else {},
+                stages=result.get("stages") if isinstance(result, dict) else [],
+                limits_snapshot=limits_snapshot,
+                applied_at_ms=applied_at_ms,
+                error=None,
+            )
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": applied_at_ms,
+                    "type": "combo_optimization_applied",
+                    "data": {
+                        "template": template_name,
+                        "iteration": iteration,
+                        "best_parameters": applied_parameters,
+                        "best_metrics": payload.get("best_metrics") or {},
+                    },
+                },
+            )
+            return payload
+        except Exception as e:
+            payload = _build_combo_optimization_payload(
+                status="failed",
+                template_name=template_name,
+                best_parameters={},
+                best_metrics={},
+                stages=[],
+                limits_snapshot=limits_snapshot,
+                applied_at_ms=None,
+                error=str(e),
+            )
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": _now_ms(),
+                    "type": "combo_optimization_failed",
+                    "data": {"template": template_name, "iteration": iteration, "error": str(e)},
+                },
+            )
+            return payload
 
     def _quick_tune_candidate_params(template_name: str, iteration: int) -> None:
         """Lightweight parameter tuning on IN-SAMPLE using tool backtests.
@@ -2777,8 +3182,28 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         # Tool-based quick parameter tuning on candidate (IN-SAMPLE)
         _quick_tune_candidate_params(str(cand), it)
 
+        combo_optimization_payload = _run_combo_optimization_stage(template_name=str(cand), iteration=it)
+        if combo_optimization_payload.get("status") != "completed":
+            run_snapshot = _load_run_json(run_id) or {}
+            current_bt = copy.deepcopy(run_snapshot.get("backtest") or {})
+            current_bt["combo_optimization"] = combo_optimization_payload
+            _update_run_json(
+                run_id,
+                {
+                    "status": "needs_adjustment",
+                    "step": "combo_optimization_failed",
+                    "backtest": current_bt,
+                },
+            )
+            return
+
         # Backtest candidate and overwrite run.backtest
-        bt2 = _run_backtest_job(template_name=str(cand), label=f"iter{it}_candidate", iteration=it)
+        bt2 = _run_backtest_job(
+            template_name=str(cand),
+            label=f"iter{it}_candidate",
+            iteration=it,
+            combo_optimization=combo_optimization_payload,
+        )
 
         # Dev loop: if preflight/selection fail, adjust template and re-run before Trader
         max_dev_adjustments = min(3, max_iterations)
@@ -2822,7 +3247,27 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 },
             )
 
-            bt2 = _run_backtest_job(template_name=str(cand), label=f"iter{it}_candidate_adj{adjust_count}", iteration=it)
+            combo_optimization_payload = _run_combo_optimization_stage(template_name=str(cand), iteration=it)
+            if combo_optimization_payload.get("status") != "completed":
+                run_snapshot = _load_run_json(run_id) or {}
+                current_bt = copy.deepcopy(run_snapshot.get("backtest") or {})
+                current_bt["combo_optimization"] = combo_optimization_payload
+                _update_run_json(
+                    run_id,
+                    {
+                        "status": "needs_adjustment",
+                        "step": "combo_optimization_failed",
+                        "backtest": current_bt,
+                    },
+                )
+                return
+
+            bt2 = _run_backtest_job(
+                template_name=str(cand),
+                label=f"iter{it}_candidate_adj{adjust_count}",
+                iteration=it,
+                combo_optimization=combo_optimization_payload,
+            )
             if not bt2:
                 _append_trace(
                     run_id,
