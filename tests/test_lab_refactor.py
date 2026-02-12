@@ -35,6 +35,24 @@ def test_extract_stop_loss_from_plan():
     assert lab_routes._extract_stop_loss_from_plan("sem stop") is None
 
 
+def test_normalize_timeframe_uppercase():
+    normalized, changed = lab_routes._normalize_timeframe("4H")
+    assert normalized == "4h"
+    assert changed is True
+
+
+def test_normalize_symbol_slash():
+    normalized, exchange_symbol, changed = lab_routes._normalize_symbol("btc/usdt")
+    assert normalized == "BTC/USDT"
+    assert exchange_symbol == "BTCUSDT"
+    assert changed is True
+
+
+def test_classify_invalid_interval_error():
+    diagnostic = lab_routes._classify_backtest_error(Exception("Invalid interval"))
+    assert diagnostic["type"] == "invalid_interval"
+
+
 def test_create_template_from_strategy_draft(monkeypatch):
     combo = _FakeCombo()
 

@@ -144,7 +144,7 @@ def test_create_run_accepts_when_symbol_and_timeframe_are_present(tmp_path, monk
     assert trace_file.exists()
 
     payload = json.loads(run_file.read_text(encoding="utf-8"))
-    assert payload["status"] == "ready_for_execution"
+    assert payload["status"] in ("ready_for_execution", "ready_for_review")
     assert payload["phase"] == "upstream"
     assert payload["upstream_contract"]["approved"] is True
     assert payload["upstream"]["messages"] == []

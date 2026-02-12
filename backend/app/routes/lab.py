@@ -194,6 +194,9 @@ class LabRunStatusResponse(BaseModel):
     budget: LabRunBudget = Field(default_factory=LabRunBudget)
     outputs: LabRunOutputs = Field(default_factory=LabRunOutputs)
 
+    # Diagnostic summary for runtime errors (when available)
+    diagnostic: Optional[Dict[str, Any]] = None
+
     # CP9: job pipeline info for backtest execution
     backtest_job: Optional[Dict[str, Any]] = None
 
@@ -282,6 +285,77 @@ def _parse_symbol_timeframe_from_text(text: Optional[str]) -> Dict[str, str]:
         out["timeframe"] = str(timeframe_only_match.group(1) or "").strip()
 
     return out
+
+
+def _normalize_timeframe(raw: Optional[str]) -> tuple[str, bool]:
+    value = str(raw or "").strip()
+    if not value:
+        return "", False
+
+    cleaned = value.replace(" ", "")
+    match = re.match(r"^(\d+)([A-Za-z]+)$", cleaned)
+    if not match:
+        return cleaned, cleaned != value
+
+    qty = match.group(1)
+    unit = match.group(2).lower()
+
+    unit_map = {
+        "minuto": "m",
+        "minutos": "m",
+        "minute": "m",
+        "minutes": "m",
+        "min": "m",
+        "mins": "m",
+        "hora": "h",
+        "horas": "h",
+        "day": "d",
+        "days": "d",
+        "dia": "d",
+        "dias": "d",
+        "week": "w",
+        "weeks": "w",
+        "semana": "w",
+        "semanas": "w",
+    }
+    unit = unit_map.get(unit, unit)
+    normalized = f"{qty}{unit}"
+    return normalized, normalized != value
+
+
+def _normalize_symbol(raw: Optional[str]) -> tuple[str, str, bool]:
+    value = str(raw or "").strip()
+    if not value:
+        return "", "", False
+
+    normalized = value.upper()
+    exchange_symbol = normalized.replace("/", "")
+    return normalized, exchange_symbol, normalized != value
+
+
+def _classify_backtest_error(err: Exception) -> Dict[str, Any]:
+    text = str(err or "").strip()
+    lower = text.lower()
+
+    if "invalid interval" in lower or "interval=" in lower:
+        return {
+            "type": "invalid_interval",
+            "message": "Intervalo inválido para o exchange. Ajuste o timeframe (ex.: 4H -> 4h).",
+            "details": text,
+        }
+
+    if "invalid symbol" in lower or "symbol" in lower and "invalid" in lower:
+        return {
+            "type": "invalid_symbol",
+            "message": "Símbolo inválido para o exchange. Verifique o par (ex.: BTC/USDT).",
+            "details": text,
+        }
+
+    return {
+        "type": "download_error",
+        "message": "Falha ao baixar dados do exchange. Tente novamente ou ajuste inputs.",
+        "details": text,
+    }
 
 
 def _sanitize_upstream_messages(raw: Any) -> List[Dict[str, Any]]:
@@ -1828,6 +1902,37 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
     inputs = upstream_contract.get("inputs") or {}
     symbol = str(inputs.get("symbol") or "").strip()
     timeframe = str(inputs.get("timeframe") or "").strip()
+
+    normalized_symbol, exchange_symbol, symbol_changed = _normalize_symbol(symbol)
+    normalized_timeframe, timeframe_changed = _normalize_timeframe(timeframe)
+    if normalized_symbol:
+        symbol = normalized_symbol
+    if normalized_timeframe:
+        timeframe = normalized_timeframe
+
+    if symbol_changed or timeframe_changed:
+        run_snapshot = _load_run_json(run_id) or {}
+        run_input = run_snapshot.get("input") or {}
+        if isinstance(run_input, dict):
+            run_input["symbol"] = symbol
+            run_input["timeframe"] = timeframe
+        contract_inputs = (run_snapshot.get("upstream_contract") or {}).get("inputs")
+        if isinstance(contract_inputs, dict):
+            contract_inputs["symbol"] = symbol
+            contract_inputs["timeframe"] = timeframe
+        _update_run_json(run_id, {"input": run_input, "upstream_contract": run_snapshot.get("upstream_contract")})
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "dev_input_normalized",
+                "data": {
+                    "symbol": symbol,
+                    "exchange_symbol": exchange_symbol,
+                    "timeframe": timeframe,
+                },
+            },
+        )
     deep_backtest = bool(req_dict.get("deep_backtest", True))
     direction = str(req_dict.get("direction") or "long")
     if direction not in ("long", "short"):
@@ -1844,7 +1949,26 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 
     # Load candles ONCE for the run (full history by default)
     loader = IncrementalLoader()
-    df = loader.fetch_data(symbol=symbol, timeframe=timeframe, since_str=since_str, until_str=until_str)
+    attempt = 0
+    while True:
+        try:
+            df = loader.fetch_data(symbol=symbol, timeframe=timeframe, since_str=since_str, until_str=until_str)
+            break
+        except Exception as e:
+            diagnostic = _classify_backtest_error(e)
+            _update_run_json(run_id, {"diagnostic": diagnostic})
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "backtest_error", "data": {"diagnostic": diagnostic}})
+
+            if attempt == 0 and diagnostic.get("type") == "invalid_interval":
+                fallback_tf, _ = _normalize_timeframe(timeframe.lower())
+                if fallback_tf and fallback_tf != timeframe:
+                    timeframe = fallback_tf
+                    attempt += 1
+                    continue
+
+            _update_run_json(run_id, {"status": "error", "step": "error", "error": diagnostic.get("message")})
+            return
+
     if getattr(df, "empty", False) or len(df) == 0:
         _update_run_json(run_id, {"status": "error", "step": "error", "error": "no candles loaded"})
         return
@@ -2547,6 +2671,7 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         events=trace_events,
         budget=data.get("budget") or {},
         outputs=data.get("outputs") or {},
+        diagnostic=data.get("diagnostic"),
         backtest_job=data.get("backtest_job"),
         backtest=data.get("backtest"),
         needs_user_confirm=bool(data.get("needs_user_confirm")),
