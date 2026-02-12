@@ -193,6 +193,7 @@ Rules:
 - Only modify files under: backend/, frontend/, src/, tests/, openspec/
 - After implementation, run tests: ./backend/.venv/bin/python -m pytest -q
 - If tests fail, fix them and rerun.
+- Use skills do projeto quando aplicável (ex.: ticket-breakdown para dividir tarefas; system-design-draft para arquitetura; unit-test-starter/integration-test-planner para testes; debugging-checklist/error-message-explainer para erros; css-layout-helper/accessibility-basic-check para frontend).
 
 Enriched apply instruction (from OpenSpec):
 ${APPLY_INSTRUCTION}
