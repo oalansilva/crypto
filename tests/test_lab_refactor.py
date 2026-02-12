@@ -1,5 +1,6 @@
 import json
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -56,6 +57,18 @@ def test_classify_invalid_interval_error():
 def test_classify_duplicate_alias_error():
     diagnostic = lab_routes._classify_backtest_error(Exception("Duplicate aliases found: {'ema'}"))
     assert diagnostic["type"] == "duplicate_indicator_alias"
+
+
+def test_run_lab_autonomous_async_wrapper(monkeypatch):
+    called = {}
+
+    def _fake_sync(run_id, req_dict):
+        called["run_id"] = run_id
+
+    monkeypatch.setattr(lab_routes, "_run_lab_autonomous_sync", _fake_sync)
+    lab_routes._run_lab_autonomous("run-123", {"symbol": "BTC/USDT"})
+    time.sleep(0.01)
+    assert called.get("run_id") == "run-123"
 
 
 def test_create_template_from_strategy_draft(monkeypatch):

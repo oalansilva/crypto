@@ -18,6 +18,7 @@ import json
 import os
 import re
 import time
+import threading
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -1866,7 +1867,7 @@ def _choose_seed_template(
     return "", conversion_error
 
 
-def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
+def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
     """Autonomous Lab loop.
 
     Implements:
@@ -2096,23 +2097,78 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
         )
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "job_created", "data": {"job_id": job_id, "label": label, "template": template_name, "iteration": iteration}})
 
-        # ALL / IS / HOLDOUT metrics
-        state = jm.load_state(job_id) or {}
-        state.update({"status": "RUNNING", "progress": {"step": "backtest_all", "pct": 35}})
-        jm.save_state(job_id, state)
-        metrics_all, full_params = _run_backtest_logic(
-            template_data=template_data,
-            params={"direction": direction},
-            df=df,
-            deep_backtest=deep_backtest,
-            symbol=symbol,
-            since_str=since_str,
-            until_str=until_str,
-        )
-        if isinstance(metrics_all, dict) and metrics_all.get("error"):
-            diagnostic = _classify_backtest_error(Exception(str(metrics_all.get("error"))))
+        try:
+            # ALL / IS / HOLDOUT metrics
+            state = jm.load_state(job_id) or {}
+            state.update({"status": "RUNNING", "progress": {"step": "backtest_all", "pct": 35}})
+            jm.save_state(job_id, state)
+            metrics_all, full_params = _run_backtest_logic(
+                template_data=template_data,
+                params={"direction": direction},
+                df=df,
+                deep_backtest=deep_backtest,
+                symbol=symbol,
+                since_str=since_str,
+                until_str=until_str,
+            )
+            if isinstance(metrics_all, dict) and metrics_all.get("error"):
+                diagnostic = _classify_backtest_error(Exception(str(metrics_all.get("error"))))
+                _update_run_json(run_id, {"diagnostic": diagnostic})
+                _append_trace(run_id, {"ts_ms": _now_ms(), "type": "backtest_error", "data": {"diagnostic": diagnostic}})
+                state = jm.load_state(job_id) or {}
+                state.update({"status": "FAILED", "progress": {"step": "error", "pct": 100}, "error": diagnostic})
+                jm.save_state(job_id, state)
+                _update_run_json(
+                    run_id,
+                    {
+                        "status": "needs_adjustment",
+                        "step": "backtest_job_failed",
+                        "backtest_job": {"job_id": job_id, "status": "FAILED", "progress": {"step": "error", "pct": 100}},
+                    },
+                )
+                return None
+
+            state = jm.load_state(job_id) or {}
+            state.update({"status": "RUNNING", "progress": {"step": "backtest_in_sample", "pct": 60}})
+            jm.save_state(job_id, state)
+            metrics_is, _ = _run_backtest_logic(
+                template_data=template_data,
+                params={"direction": direction},
+                df=df_is,
+                deep_backtest=deep_backtest,
+                symbol=symbol,
+                since_str=is_since or since_str,
+                until_str=is_until,
+            )
+
+            state = jm.load_state(job_id) or {}
+            state.update({"status": "RUNNING", "progress": {"step": "backtest_holdout", "pct": 85}})
+            jm.save_state(job_id, state)
+            metrics_oos, _ = _run_backtest_logic(
+                template_data=template_data,
+                params={"direction": direction},
+                df=df_oos,
+                deep_backtest=deep_backtest,
+                symbol=symbol,
+                since_str=oos_since or since_str,
+                until_str=oos_until,
+            )
+        except Exception as e:
+            diagnostic = _classify_backtest_error(e)
             _update_run_json(run_id, {"diagnostic": diagnostic})
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "backtest_error", "data": {"diagnostic": diagnostic}})
+            state = jm.load_state(job_id) or {}
+            state.update({"status": "FAILED", "progress": {"step": "error", "pct": 100}, "error": diagnostic})
+            jm.save_state(job_id, state)
+            _update_run_json(
+                run_id,
+                {
+                    "status": "needs_adjustment",
+                    "step": "backtest_job_failed",
+                    "backtest_job": {"job_id": job_id, "status": "FAILED", "progress": {"step": "error", "pct": 100}},
+                },
+            )
+            return None
 
         state = jm.load_state(job_id) or {}
         state.update({"status": "RUNNING", "progress": {"step": "backtest_in_sample", "pct": 60}})
@@ -2327,6 +2383,9 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 
         # Backtest current template
         bt = _run_backtest_job(template_name=current_template, label=f"iter{it}_current", iteration=it)
+        if not bt:
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "backtest_job_failed", "data": {"template": current_template, "iteration": it}})
+            continue
 
         # Run CP7 personas (coordinator+dev+validator) on current results to get a candidate
         try:
@@ -2484,6 +2543,11 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 
     # If we exit the loop, we're done (rejected after max iterations)
     _update_run_json(run_id, {"status": "done", "step": "done", "phase": "done"})
+
+
+def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
+    worker = threading.Thread(target=_run_lab_autonomous_sync, args=(run_id, req_dict), daemon=True)
+    worker.start()
 
 
 @router.post("/run", response_model=Union[LabRunCreateResponse, LabRunNeedsUserInputResponse])
