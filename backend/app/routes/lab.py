@@ -482,6 +482,85 @@ def _relax_exit_logic(exit_logic: Optional[str]) -> Tuple[str, List[str]]:
     return updated, adjustments
 
 
+def _build_fallback_logic(indicators: List[Dict[str, Any]]) -> Tuple[str, str]:
+    ema_inds = [i for i in indicators if str(i.get("type") or "").lower() == "ema"]
+    rsi_inds = [i for i in indicators if str(i.get("type") or "").lower() == "rsi"]
+
+    def _alias_for(ind: Dict[str, Any], *, prefix: str) -> str:
+        alias = str(ind.get("alias") or "").strip()
+        if alias:
+            return alias
+        try:
+            length = int((ind.get("params") or {}).get("length") or 0)
+        except Exception:
+            length = 0
+        if length > 0:
+            return f"{prefix}_{length}"
+        return prefix.lower()
+
+    if len(ema_inds) >= 2:
+        ema_fast = _alias_for(ema_inds[0], prefix="EMA")
+        ema_slow = _alias_for(ema_inds[1], prefix="EMA")
+        entry = f"{ema_fast} > {ema_slow} AND close > {ema_fast}"
+        exit_logic = f"{ema_fast} < {ema_slow} OR close < {ema_fast}"
+    elif len(ema_inds) == 1:
+        ema = _alias_for(ema_inds[0], prefix="EMA")
+        entry = f"close > {ema}"
+        exit_logic = f"close < {ema}"
+    else:
+        entry = "close > open"
+        exit_logic = "close < open"
+
+    if rsi_inds:
+        rsi = _alias_for(rsi_inds[0], prefix="RSI")
+        entry = f"{entry} AND {rsi} > 50"
+        exit_logic = f"{exit_logic} OR {rsi} < 45"
+
+    return entry, exit_logic
+
+
+def _logic_preflight(*, combo: Any, template_name: str, df_sample: Any) -> Tuple[bool, List[str]]:
+    try:
+        strategy = combo.create_strategy(template_name)
+    except Exception as e:
+        return False, [f"strategy_create_failed: {e}"]
+
+    try:
+        if df_sample is None:
+            return False, ["missing_dataframe"]
+        sample = df_sample.tail(400) if hasattr(df_sample, "tail") else df_sample
+        sample = sample.copy() if hasattr(sample, "copy") else sample
+        sample = strategy.calculate_indicators(sample)
+        strategy._evaluate_logic_vectorized(sample, strategy.entry_logic)
+        strategy._evaluate_logic_vectorized(sample, strategy.exit_logic)
+        return True, []
+    except Exception as e:
+        return False, [str(e)]
+
+
+def _apply_logic_correction(*, combo: Any, template_name: str, reason: Optional[List[str]] = None) -> Tuple[bool, List[str]]:
+    try:
+        meta = combo.get_template_metadata(template_name)
+    except Exception:
+        meta = None
+
+    if not meta:
+        return False, []
+
+    indicators = meta.get("indicators") or []
+    entry_logic, exit_logic = _build_fallback_logic(indicators)
+
+    template_data = {
+        "indicators": indicators,
+        "entry_logic": entry_logic,
+        "exit_logic": exit_logic,
+        "stop_loss": meta.get("stop_loss"),
+    }
+
+    combo.update_template(template_name=template_name, template_data=template_data)
+    return True, ["fallback_logic_applied"]
+
+
 def _apply_dev_adjustments(*, combo: Any, template_name: str, attempt: int, reason: Optional[str] = None) -> Tuple[bool, List[str]]:
     try:
         meta = combo.get_template_metadata(template_name)
@@ -2226,6 +2305,54 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 },
             )
             template_data["indicators"] = inds
+
+        max_logic_corrections = 2
+        logic_attempt = 0
+        while True:
+            ok, errors = _logic_preflight(combo=combo, template_name=template_name, df_sample=df)
+            if ok:
+                break
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": _now_ms(),
+                    "type": "logic_preflight_failed",
+                    "data": {"template": template_name, "errors": errors, "attempt": logic_attempt},
+                },
+            )
+            if logic_attempt >= max_logic_corrections:
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "logic_correction_failed",
+                        "data": {"template": template_name, "errors": errors, "attempt": logic_attempt},
+                    },
+                )
+                _update_run_json(run_id, {"status": "error", "step": "error", "error": "logic_preflight_failed"})
+                return None
+
+            logic_attempt += 1
+            changed, changes = _apply_logic_correction(combo=combo, template_name=template_name, reason=errors)
+            if not changed:
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "logic_correction_failed",
+                        "data": {"template": template_name, "errors": errors, "attempt": logic_attempt},
+                    },
+                )
+                _update_run_json(run_id, {"status": "error", "step": "error", "error": "logic_correction_failed"})
+                return None
+            _append_trace(
+                run_id,
+                {
+                    "ts_ms": _now_ms(),
+                    "type": "logic_correction_applied",
+                    "data": {"template": template_name, "changes": changes, "attempt": logic_attempt},
+                },
+            )
 
         job_id = jm.create_job({"kind": "lab_backtest", "run_id": run_id, "iteration": iteration, "label": label, "template": template_name})
         _update_run_json(
