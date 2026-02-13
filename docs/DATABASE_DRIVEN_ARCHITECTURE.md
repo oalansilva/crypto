@@ -148,8 +148,8 @@ python backend/app/migrations/seed_prebuilt_strategies.py
 python test_database_driven.py
 
 # 4. Restart services
-.\stop.ps1
-.\start.ps1
+./stop.sh
+./start.sh
 ```
 
 See [MIGRATION_DATABASE_DRIVEN.md](./docs/MIGRATION_DATABASE_DRIVEN.md) for detailed migration guide.

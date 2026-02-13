@@ -106,6 +106,20 @@ crypto/
 
    Frontend will be available at: http://localhost:5173
 
+### Start/Stop Scripts (Ubuntu)
+
+From the repo root:
+```bash
+./stop.sh
+./start.sh
+```
+
+`start.sh` checks `backend/.venv`, runs `backend/init_db.py`, starts backend and frontend with systemd services (`crypto-backend.service`, `crypto-frontend.service`) when available, and falls back to `nohup` (`uvicorn`/`vite`) when services are not present.
+
+`stop.sh` stops those systemd services when available and falls back to stopping `uvicorn`/`vite` processes.
+
+`start.ps1` and `stop.ps1` are kept only for legacy Windows workflows and are deprecated.
+
 ## Usage
 
 ### Running Presets
