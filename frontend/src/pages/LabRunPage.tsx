@@ -90,6 +90,10 @@ const LabRunPage: React.FC = () => {
   const [draftFeedback, setDraftFeedback] = useState('');
   const [sendingDraftFeedback, setSendingDraftFeedback] = useState(false);
   const [approvingDraft, setApprovingDraft] = useState(false);
+  const [approvingReview, setApprovingReview] = useState(false);
+  const [rejectingReview, setRejectingReview] = useState(false);
+  const [reviewReason, setReviewReason] = useState('');
+  const [reviewFeedback, setReviewFeedback] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const [logsOpen, setLogsOpen] = useState(false);
   const [logStep, setLogStep] = useState('');
 
@@ -195,8 +199,57 @@ const LabRunPage: React.FC = () => {
     }
   };
 
+  const approveReview = async () => {
+    if (!id) return;
+    setApprovingReview(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
+      const templateName = String(j?.template_name || '');
+      setReviewFeedback({
+        kind: 'success',
+        text: templateName ? `Template aprovado e salvo: ${templateName}` : 'Template aprovado e salvo com sucesso.',
+      });
+      setError(null);
+    } catch (e: any) {
+      const msg = e?.message || 'Falha ao aprovar estratégia';
+      setReviewFeedback({ kind: 'error', text: msg });
+      setError(msg);
+    } finally {
+      setApprovingReview(false);
+    }
+  };
+
+  const rejectReview = async () => {
+    if (!id) return;
+    setRejectingReview(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reviewReason.trim() || undefined }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
+      setReviewFeedback({ kind: 'success', text: 'Estratégia rejeitada. Nenhum template foi salvo.' });
+      setReviewReason('');
+      setError(null);
+    } catch (e: any) {
+      const msg = e?.message || 'Falha ao rejeitar estratégia';
+      setReviewFeedback({ kind: 'error', text: msg });
+      setError(msg);
+    } finally {
+      setRejectingReview(false);
+    }
+  };
+
   const selection = data?.outputs?.selection;
   const gateApproved = selection?.approved === true;
+  const reviewStatus = String(data?.status || '').toLowerCase();
+  const readyForTraderReview = reviewStatus === 'ready_for_review' && gateApproved && Boolean(data?.outputs?.candidate_template_name);
+  const reviewDecision = String(data?.outputs?.trader_review_decision || '');
+  const savedTemplateName = String(data?.outputs?.saved_template_name || '');
   const upstreamApproved = data?.upstream_contract?.approved === true;
   const upstreamMessages = Array.isArray(data?.upstream?.messages) ? data?.upstream?.messages : [];
   const upstreamPendingQuestion = String(data?.upstream?.pending_question || '');
@@ -700,9 +753,19 @@ const LabRunPage: React.FC = () => {
                 <div className="text-xs text-gray-400">Candidate template (CP8)</div>
                 <div className="mt-1 flex items-center gap-3">
                   <div className="text-xs text-gray-200 font-mono break-all">{data.outputs.candidate_template_name}</div>
+                </div>
+                <div className="mt-2 text-xs text-gray-500">Rascunho em contexto da run. Só persiste no banco após aprovação do Trader.</div>
+              </div>
+            ) : null}
+
+            {savedTemplateName ? (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 mb-3">
+                <div className="text-xs text-emerald-200">Template aprovado</div>
+                <div className="mt-1 flex items-center gap-3">
+                  <div className="text-xs text-emerald-100 font-mono break-all">{savedTemplateName}</div>
                   <a
-                    className="text-xs text-gray-300 hover:text-white underline underline-offset-4"
-                    href={`/combo/edit/${encodeURIComponent(data.outputs.candidate_template_name)}`}
+                    className="text-xs text-emerald-100 hover:text-white underline underline-offset-4"
+                    href={`/combo/edit/${encodeURIComponent(savedTemplateName)}`}
                   >
                     abrir no editor
                   </a>
@@ -722,6 +785,51 @@ const LabRunPage: React.FC = () => {
                     ))}
                   </ul>
                 )}
+              </div>
+            ) : null}
+
+            {reviewFeedback ? (
+              <div className={`mt-3 rounded-xl border p-3 text-sm ${
+                reviewFeedback.kind === 'success'
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                  : 'border-red-500/30 bg-red-500/10 text-red-200'
+              }`}>
+                {reviewFeedback.text}
+              </div>
+            ) : null}
+
+            {readyForTraderReview ? (
+              <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3 space-y-3">
+                <div className="text-sm text-gray-100 font-semibold">Decisão final do Trader</div>
+                <textarea
+                  value={reviewReason}
+                  onChange={(e) => setReviewReason(e.target.value)}
+                  rows={2}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                  placeholder="Motivo da rejeição (opcional)"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={approveReview}
+                    disabled={approvingReview || rejectingReview}
+                    className="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-bold disabled:opacity-50"
+                  >
+                    {approvingReview ? 'Aprovando…' : 'Aprovar estratégia'}
+                  </button>
+                  <button
+                    onClick={rejectReview}
+                    disabled={approvingReview || rejectingReview}
+                    className="px-4 py-2 rounded-lg bg-red-500 text-black text-sm font-bold disabled:opacity-50"
+                  >
+                    {rejectingReview ? 'Rejeitando…' : 'Rejeitar estratégia'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {reviewDecision ? (
+              <div className="mt-3 text-xs text-gray-400">
+                decisão do Trader: <span className="font-mono text-gray-200">{reviewDecision}</span>
               </div>
             ) : null}
 

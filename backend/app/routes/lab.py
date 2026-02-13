@@ -225,10 +225,14 @@ class LabRunOutputs(BaseModel):
 
     # CP8
     candidate_template_name: Optional[str] = None
+    candidate_template_data: Optional[Dict[str, Any]] = None
+    candidate_template_description: Optional[str] = None
 
     # CP5
     saved_template_name: Optional[str] = None
     saved_favorite_id: Optional[int] = None
+    trader_review_decision: Optional[str] = None
+    trader_review_at_ms: Optional[int] = None
 
 
 class LabRunStatusResponse(BaseModel):
@@ -303,6 +307,17 @@ class LabRunUpstreamFeedbackResponse(BaseModel):
     phase: str
     upstream_contract: Dict[str, Any]
     upstream: Dict[str, Any]
+
+
+class LabRunReviewDecisionResponse(BaseModel):
+    status: str
+    run_id: str
+    decision: str
+    template_name: Optional[str] = None
+
+
+class LabRunRejectRequest(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=2000)
 
 
 def _parse_symbol_timeframe_from_text(text: Optional[str]) -> Dict[str, str]:
@@ -591,11 +606,37 @@ def _build_fallback_logic(indicators: List[Dict[str, Any]]) -> Tuple[str, str]:
     return entry, exit_logic
 
 
-def _logic_preflight(*, combo: Any, template_name: str, df_sample: Any) -> Tuple[bool, List[str]]:
-    try:
-        strategy = combo.create_strategy(template_name)
-    except Exception as e:
-        return False, [f"strategy_create_failed: {e}"]
+def _logic_preflight(
+    *,
+    combo: Any,
+    template_name: str,
+    df_sample: Any,
+    template_data: Optional[Dict[str, Any]] = None,
+) -> Tuple[bool, List[str]]:
+    strategy = None
+    indicators: List[Dict[str, Any]] = []
+    if isinstance(template_data, dict):
+        try:
+            from app.strategies.combos import ComboStrategy
+
+            indicators = copy.deepcopy(template_data.get("indicators") or [])
+            stop_loss = template_data.get("stop_loss", 0.03)
+            if isinstance(stop_loss, dict):
+                stop_loss = stop_loss.get("default", 0.03)
+
+            strategy = ComboStrategy(
+                indicators=indicators,
+                entry_logic=str(template_data.get("entry_logic") or ""),
+                exit_logic=str(template_data.get("exit_logic") or ""),
+                stop_loss=float(stop_loss if isinstance(stop_loss, (int, float)) else 0.03),
+            )
+        except Exception as e:
+            return False, [f"strategy_create_failed: {e}"]
+    else:
+        try:
+            strategy = combo.create_strategy(template_name)
+        except Exception as e:
+            return False, [f"strategy_create_failed: {e}"]
 
     try:
         if df_sample is None:
@@ -603,8 +644,11 @@ def _logic_preflight(*, combo: Any, template_name: str, df_sample: Any) -> Tuple
 
         tail_n = 800
         try:
-            meta = combo.get_template_metadata(template_name)
-            inds = (meta or {}).get("indicators") if isinstance(meta, dict) else []
+            if isinstance(template_data, dict):
+                inds = indicators
+            else:
+                meta = combo.get_template_metadata(template_name)
+                inds = (meta or {}).get("indicators") if isinstance(meta, dict) else []
             max_len = 0
             if isinstance(inds, list):
                 for ind in inds:
@@ -700,6 +744,69 @@ def _apply_dev_adjustments(*, combo: Any, template_name: str, attempt: int, reas
 
     combo.update_template(template_name=template_name, template_data=template_data)
     return True, changes
+
+
+def _apply_logic_correction_to_template_data(
+    template_data: Dict[str, Any],
+    reason: Optional[List[str]] = None,
+) -> Tuple[bool, List[str], Dict[str, Any]]:
+    if not isinstance(template_data, dict):
+        return False, [], {}
+
+    updated = {
+        "indicators": copy.deepcopy(template_data.get("indicators") or []),
+        "entry_logic": template_data.get("entry_logic"),
+        "exit_logic": template_data.get("exit_logic"),
+        "stop_loss": template_data.get("stop_loss"),
+    }
+    entry_logic, exit_logic = _build_fallback_logic(updated.get("indicators") or [])
+    updated["entry_logic"] = entry_logic
+    updated["exit_logic"] = exit_logic
+    return True, ["fallback_logic_applied"], updated
+
+
+def _apply_dev_adjustments_to_template_data(
+    template_data: Dict[str, Any],
+    attempt: int,
+    reason: Optional[str] = None,
+) -> Tuple[bool, List[str], Dict[str, Any]]:
+    if not isinstance(template_data, dict):
+        return False, [], {}
+
+    updated = {
+        "indicators": copy.deepcopy(template_data.get("indicators") or []),
+        "entry_logic": template_data.get("entry_logic"),
+        "exit_logic": template_data.get("exit_logic"),
+        "stop_loss": template_data.get("stop_loss"),
+    }
+
+    changes: List[str] = []
+
+    next_entry, entry_changes = _relax_entry_logic(updated.get("entry_logic"))
+    if entry_changes:
+        updated["entry_logic"] = next_entry
+        changes.extend(entry_changes)
+
+    next_exit, exit_changes = _relax_exit_logic(updated.get("exit_logic"))
+    if exit_changes:
+        updated["exit_logic"] = next_exit
+        changes.extend(exit_changes)
+
+    if _template_uses_atr(updated.get("entry_logic"), updated.get("exit_logic"), updated.get("stop_loss")):
+        inds = updated.get("indicators") or []
+        if isinstance(inds, list) and _ensure_atr_indicator(inds):
+            updated["indicators"] = inds
+            changes.append("add_atr_indicator")
+
+    inds = updated.get("indicators") or []
+    if isinstance(inds, list) and _ensure_unique_indicator_aliases(inds):
+        updated["indicators"] = inds
+        changes.append("normalize_aliases")
+
+    if not changes:
+        return False, [], updated
+
+    return True, changes, updated
 
 
 def _needs_dev_adjustment(run: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
@@ -1530,10 +1637,7 @@ def _make_candidate_name(*, run_id: str, base_template: str, symbol: str, timefr
 
 
 def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict[str, Any]) -> Dict[str, Any]:
-    """CP8: save a real candidate template based on dev output JSON."""
-
-    if outputs.get("candidate_template_name"):
-        return outputs
+    """CP8: stage candidate template in run context only (no DB persistence)."""
 
     dev_text = outputs.get("dev_summary")
     blob = _extract_json_object(dev_text or "")
@@ -1579,48 +1683,25 @@ def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"indicator[{idx}].params must be object"}})
             return outputs
 
-    try:
-        from app.services.combo_service import ComboService
+    inp = run.get("input") or {}
+    backtest = run.get("backtest") or {}
+    base_template = str(inp.get("base_template") or backtest.get("template") or "strategy")
+    symbol = str(backtest.get("symbol") or inp.get("symbol") or "")
+    timeframe = str(backtest.get("timeframe") or inp.get("timeframe") or "")
 
-        inp = run.get("input") or {}
-        backtest = run.get("backtest") or {}
-        base_template = str(inp.get("base_template") or backtest.get("template") or "")
-        symbol = str(backtest.get("symbol") or inp.get("symbol") or "")
-        timeframe = str(backtest.get("timeframe") or inp.get("timeframe") or "")
+    n = int(outputs.get("candidate_template_version") or 0) + 1
+    name = _make_candidate_name(run_id=run_id, base_template=base_template, symbol=symbol, timeframe=timeframe, n=n)
 
-        combo = ComboService()
+    desc = blob.get("description")
+    if not isinstance(desc, str):
+        desc = f"Lab candidate from {run_id}"
 
-        # find next available candidate name
-        n = 1
-        while True:
-            name = _make_candidate_name(run_id=run_id, base_template=base_template, symbol=symbol, timeframe=timeframe, n=n)
-            if not combo.get_template_metadata(name):
-                break
-            n += 1
-            if n > 50:
-                raise RuntimeError("too many candidates")
-
-        # clone base, then overwrite template_data
-        combo.clone_template(template_name=base_template, new_name=name)
-        desc = blob.get("description")
-        if not isinstance(desc, str):
-            desc = f"Lab candidate from {run_id}"
-
-        combo.update_template(template_name=name, description=desc, template_data=candidate_data)
-        _ensure_template_optimization_schema(
-            combo=combo,
-            template_name=name,
-            run_id=run_id,
-            force=True,
-        )
-
-        outputs["candidate_template_name"] = name
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_saved", "data": {"template": name}})
-        return outputs
-
-    except Exception as e:
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": str(e)}})
-        return outputs
+    outputs["candidate_template_version"] = n
+    outputs["candidate_template_name"] = name
+    outputs["candidate_template_description"] = desc
+    outputs["candidate_template_data"] = copy.deepcopy(candidate_data)
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_staged", "data": {"template": name}})
+    return outputs
 
 
 def _cp10_selection_gate(run: Dict[str, Any]) -> Dict[str, Any]:
@@ -1878,6 +1959,54 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
         return outputs
 
 
+def _persist_approved_template(run_id: str, run: Dict[str, Any]) -> str:
+    from app.services.combo_service import ComboService
+
+    outputs = run.get("outputs") or {}
+    inp = run.get("input") or {}
+    backtest = run.get("backtest") or {}
+
+    candidate_name = str(outputs.get("candidate_template_name") or "")
+    candidate_data = outputs.get("candidate_template_data")
+    description = str(outputs.get("candidate_template_description") or "").strip()
+
+    symbol = str(backtest.get("symbol") or inp.get("symbol") or "")
+    timeframe = str(backtest.get("timeframe") or inp.get("timeframe") or "")
+    base_for_name = candidate_name or str(inp.get("base_template") or backtest.get("template") or "strategy")
+
+    combo = ComboService()
+    template_name = _make_autosave_name(run_id=run_id, base_template=base_for_name, symbol=symbol, timeframe=timeframe)
+    template_name = _ensure_unique_template_name(combo, template_name)
+
+    if isinstance(candidate_data, dict):
+        metadata = {"description": description} if description else {}
+        combo.create_template(
+            name=template_name,
+            template_data=candidate_data,
+            category="custom",
+            metadata=metadata,
+        )
+    else:
+        source_name = candidate_name or str(backtest.get("template") or inp.get("base_template") or "")
+        if not source_name:
+            raise RuntimeError("candidate template data not available")
+        cloned = combo.clone_template(template_name=source_name, new_name=template_name)
+        if not cloned:
+            raise RuntimeError("failed to clone approved template")
+
+    try:
+        _ensure_template_optimization_schema(
+            combo=combo,
+            template_name=template_name,
+            run_id=run_id,
+            force=False,
+        )
+    except Exception:
+        pass
+
+    return template_name
+
+
 def _cp4_run_personas_if_possible(run_id: str) -> None:
     """Run two-phase Lab graph, persisting upstream contract + phase."""
 
@@ -2019,9 +2148,8 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "gate_decision", "data": gate})
             _update_run_json(run_id, {"outputs": outputs})
 
-        # CP5/CP10: autosave only if approved
-        if outputs.get("coordinator_summary") and outputs.get("dev_summary") and (outputs.get("trader_verdict") or outputs.get("validator_verdict")):
-            outputs = _cp5_autosave_if_approved(run_id, _load_run_json(run_id) or run, outputs)
+    gate_decision = outputs.get("gate_decision") if isinstance(outputs, dict) else None
+    ready_for_review = bool(isinstance(gate_decision, dict) and gate_decision.get("approved"))
 
     needs_confirm = not _budget_ok(budget) and graph_status not in ("done", "failed")
     patch: Dict[str, Any] = {
@@ -2033,7 +2161,9 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         "upstream_contract": upstream_contract,
     }
 
-    if graph_status == "done":
+    if ready_for_review:
+        patch.update({"status": "ready_for_review", "step": "trader_review", "phase": "execution", "needs_user_confirm": False})
+    elif graph_status == "done":
         patch.update({"status": "done", "step": "done", "needs_user_confirm": False, "phase": "done"})
     elif graph_status == "failed":
         patch.update({"status": "failed", "step": "tests", "needs_user_confirm": False, "phase": "done"})
@@ -2349,14 +2479,7 @@ def _build_combo_optimization_payload(
     }
 
 
-def _create_template_from_strategy_draft(
-    *,
-    combo: Any,
-    strategy_draft: Dict[str, Any],
-    symbol: str,
-    timeframe: str,
-    run_id: str,
-) -> str:
+def _build_template_data_from_strategy_draft(strategy_draft: Dict[str, Any], run_id: str) -> Tuple[Dict[str, Any], int]:
     indicators = strategy_draft.get("indicators") or []
     entry_idea = strategy_draft.get("entry_idea") or ""
     exit_idea = strategy_draft.get("exit_idea") or ""
@@ -2397,6 +2520,18 @@ def _create_template_from_strategy_draft(
         "exit_logic": exit_logic,
         "stop_loss": float(stop_loss),
     }
+    return template_data, len(normalized_indicators)
+
+
+def _create_template_from_strategy_draft(
+    *,
+    combo: Any,
+    strategy_draft: Dict[str, Any],
+    symbol: str,
+    timeframe: str,
+    run_id: str,
+) -> str:
+    template_data, indicators_count = _build_template_data_from_strategy_draft(strategy_draft, run_id)
 
     symbol_clean = symbol.replace("/", "_").replace("-", "_")
     template_name = f"lab_{run_id[:8]}_draft_{symbol_clean}_{timeframe}"
@@ -2424,7 +2559,7 @@ def _create_template_from_strategy_draft(
         {
             "ts_ms": _now_ms(),
             "type": "template_created_from_draft",
-            "data": {"template_name": template_name, "indicators_count": len(normalized_indicators)},
+            "data": {"template_name": template_name, "indicators_count": indicators_count},
         },
     )
 
@@ -2673,17 +2808,25 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         label: str,
         iteration: int,
         combo_optimization: Optional[Dict[str, Any]] = None,
+        template_data_override: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        meta = combo.get_template_metadata(template_name)
-        if not meta:
-            raise RuntimeError(f"template not found: {template_name}")
-
-        template_data = {
-            "indicators": meta.get("indicators"),
-            "entry_logic": meta.get("entry_logic"),
-            "exit_logic": meta.get("exit_logic"),
-            "stop_loss": meta.get("stop_loss"),
-        }
+        if isinstance(template_data_override, dict):
+            template_data = {
+                "indicators": copy.deepcopy(template_data_override.get("indicators") or []),
+                "entry_logic": template_data_override.get("entry_logic"),
+                "exit_logic": template_data_override.get("exit_logic"),
+                "stop_loss": template_data_override.get("stop_loss"),
+            }
+        else:
+            meta = combo.get_template_metadata(template_name)
+            if not meta:
+                raise RuntimeError(f"template not found: {template_name}")
+            template_data = {
+                "indicators": meta.get("indicators"),
+                "entry_logic": meta.get("entry_logic"),
+                "exit_logic": meta.get("exit_logic"),
+                "stop_loss": meta.get("stop_loss"),
+            }
 
         inds = template_data.get("indicators") or []
         if isinstance(inds, list) and _ensure_unique_indicator_aliases(inds):
@@ -2700,7 +2843,15 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         max_logic_corrections = 2
         logic_attempt = 0
         while True:
-            ok, errors = _logic_preflight(combo=combo, template_name=template_name, df_sample=df)
+            if isinstance(template_data_override, dict):
+                ok, errors = _logic_preflight(
+                    combo=combo,
+                    template_name=template_name,
+                    df_sample=df,
+                    template_data=template_data,
+                )
+            else:
+                ok, errors = _logic_preflight(combo=combo, template_name=template_name, df_sample=df)
             if ok:
                 break
             _append_trace(
@@ -2724,7 +2875,13 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 return None
 
             logic_attempt += 1
-            changed, changes = _apply_logic_correction(combo=combo, template_name=template_name, reason=errors)
+            if isinstance(template_data_override, dict):
+                changed, changes, next_template_data = _apply_logic_correction_to_template_data(template_data=template_data, reason=errors)
+                if changed:
+                    template_data = next_template_data
+                    template_data_override = copy.deepcopy(next_template_data)
+            else:
+                changed, changes = _apply_logic_correction(combo=combo, template_name=template_name, reason=errors)
             if not changed:
                 _append_trace(
                     run_id,
@@ -2880,6 +3037,8 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         }
         if combo_optimization is not None:
             out["combo_optimization"] = combo_optimization
+        if isinstance(template_data_override, dict):
+            out["template_data"] = copy.deepcopy(template_data)
 
         _append_trace(
             run_id,
@@ -2905,7 +3064,95 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         )
         return out
 
-    def _run_combo_optimization_stage(*, template_name: str, iteration: int) -> Dict[str, Any]:
+    def _optimize_template_data_quick(template_data: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+        base = {
+            "indicators": copy.deepcopy(template_data.get("indicators") or []),
+            "entry_logic": template_data.get("entry_logic"),
+            "exit_logic": template_data.get("exit_logic"),
+            "stop_loss": template_data.get("stop_loss"),
+        }
+
+        candidates: List[Dict[str, Any]] = [copy.deepcopy(base)]
+        indicators = base.get("indicators") or []
+        if isinstance(indicators, list):
+            for idx, ind in enumerate(indicators):
+                if not isinstance(ind, dict):
+                    continue
+                params = ind.get("params") or {}
+                if not isinstance(params, dict):
+                    continue
+                for key in ("length", "period"):
+                    val = params.get(key)
+                    if not isinstance(val, (int, float)):
+                        continue
+                    for mul in (0.8, 1.2):
+                        cand = copy.deepcopy(base)
+                        cand_ind = cand["indicators"][idx]
+                        cand_params = cand_ind.get("params") or {}
+                        cand_params[key] = int(max(2, round(float(val) * mul)))
+                        cand_ind["params"] = cand_params
+                        candidates.append(cand)
+
+        sl_raw = base.get("stop_loss")
+        if isinstance(sl_raw, dict):
+            sl_raw = sl_raw.get("default")
+        if not isinstance(sl_raw, (int, float)):
+            sl_raw = 0.03
+        for mul in (0.8, 1.2):
+            cand = copy.deepcopy(base)
+            cand["stop_loss"] = float(min(0.13, max(0.005, float(sl_raw) * mul)))
+            candidates.append(cand)
+
+        best_template = copy.deepcopy(base)
+        best_metrics: Dict[str, Any] = {}
+        best_score = float("-inf")
+
+        for cand in candidates:
+            metrics, _ = _run_backtest_logic(
+                template_data=cand,
+                params={"direction": direction},
+                df=df_is,
+                deep_backtest=False,
+                symbol=symbol,
+                since_str=is_since or since_str,
+                until_str=is_until,
+            )
+            sharpe = (metrics or {}).get("sharpe_ratio")
+            try:
+                score = float(sharpe)
+            except Exception:
+                score = float("-inf")
+            if score > best_score:
+                best_score = score
+                best_template = cand
+                best_metrics = metrics or {}
+
+        applied_parameters: Dict[str, Any] = {}
+        base_inds = base.get("indicators") or []
+        best_inds = best_template.get("indicators") or []
+        if isinstance(base_inds, list) and isinstance(best_inds, list):
+            for base_ind, best_ind in zip(base_inds, best_inds):
+                if not isinstance(base_ind, dict) or not isinstance(best_ind, dict):
+                    continue
+                ind_type = str(best_ind.get("type") or "")
+                alias = str(best_ind.get("alias") or ind_type)
+                b_params = base_ind.get("params") or {}
+                a_params = best_ind.get("params") or {}
+                for key in ("length", "period"):
+                    if b_params.get(key) != a_params.get(key):
+                        applied_parameters[f"{ind_type}_{alias}"] = a_params.get(key)
+
+        if base.get("stop_loss") != best_template.get("stop_loss"):
+            applied_parameters["stop_loss"] = best_template.get("stop_loss")
+
+        return best_template, applied_parameters, best_metrics
+
+    def _run_combo_optimization_stage(
+        *,
+        template_name: str,
+        iteration: int,
+        template_data_override: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         _update_run_json(
             run_id,
             {
@@ -2921,6 +3168,55 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 "data": {"template": template_name, "iteration": iteration},
             },
         )
+
+        if isinstance(template_data_override, dict):
+            try:
+                optimized_template, applied_parameters, best_metrics = _optimize_template_data_quick(template_data_override)
+                payload = _build_combo_optimization_payload(
+                    status="completed",
+                    template_name=template_name,
+                    best_parameters=applied_parameters,
+                    best_metrics=best_metrics,
+                    stages=[{"stage_num": 1, "stage_name": "Quick Tune"}],
+                    limits_snapshot={},
+                    applied_at_ms=_now_ms(),
+                    error=None,
+                )
+                payload["template_data"] = optimized_template
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "combo_optimization_applied",
+                        "data": {
+                            "template": template_name,
+                            "iteration": iteration,
+                            "best_parameters": applied_parameters,
+                            "best_metrics": payload.get("best_metrics") or {},
+                        },
+                    },
+                )
+                return payload
+            except Exception as e:
+                payload = _build_combo_optimization_payload(
+                    status="failed",
+                    template_name=template_name,
+                    best_parameters={},
+                    best_metrics={},
+                    stages=[],
+                    limits_snapshot={},
+                    applied_at_ms=None,
+                    error=str(e),
+                )
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "combo_optimization_failed",
+                        "data": {"template": template_name, "iteration": iteration, "error": str(e)},
+                    },
+                )
+                return payload
 
         limits_snapshot: Dict[str, Any] = {}
         try:
@@ -3116,15 +3412,27 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
     run = _load_run_json(run_id) or {}
     upstream = run.get("upstream") or {}
     strategy_draft = upstream.get("strategy_draft")
+    preferred_template = req_dict.get("base_template")
+    current_template_data: Optional[Dict[str, Any]] = None
+    seed_error: Optional[str] = None
 
-    current_template, seed_error = _choose_seed_template(
-        combo=combo,
-        preferred=req_dict.get("base_template"),
-        strategy_draft=strategy_draft,
-        symbol=symbol,
-        timeframe=timeframe,
-        run_id=run_id,
-    )
+    if not preferred_template and isinstance(strategy_draft, dict) and strategy_draft:
+        try:
+            current_template_data, _ = _build_template_data_from_strategy_draft(strategy_draft, run_id)
+            symbol_clean = str(symbol or "").replace("/", "_").replace("-", "_")
+            current_template = f"lab_{run_id[:8]}_draft_{symbol_clean}_{timeframe}"
+        except Exception as e:
+            current_template = ""
+            seed_error = f"strategy_draft_conversion_error: {e}"
+    else:
+        current_template, seed_error = _choose_seed_template(
+            combo=combo,
+            preferred=preferred_template,
+            strategy_draft=None,
+            symbol=symbol,
+            timeframe=timeframe,
+            run_id=run_id,
+        )
 
     if not current_template:
         _append_trace(
@@ -3166,7 +3474,12 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_started", "data": {"iteration": it, "template": current_template}})
 
         # Backtest current template
-        bt = _run_backtest_job(template_name=current_template, label=f"iter{it}_current", iteration=it)
+        bt = _run_backtest_job(
+            template_name=current_template,
+            label=f"iter{it}_current",
+            iteration=it,
+            template_data_override=(current_template_data if isinstance(current_template_data, dict) else None),
+        )
         if not bt:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "backtest_job_failed", "data": {"template": current_template, "iteration": it}})
             continue
@@ -3240,14 +3553,26 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         run = _load_run_json(run_id) or {}
         outputs = run.get("outputs") or {}
         cand = outputs.get("candidate_template_name")
+        cand_template_data = outputs.get("candidate_template_data")
         if not cand:
             _update_run_json(run_id, {"status": "error", "step": "error", "error": "candidate not created"})
             return
 
-        # Tool-based quick parameter tuning on candidate (IN-SAMPLE)
-        _quick_tune_candidate_params(str(cand), it)
-
-        combo_optimization_payload = _run_combo_optimization_stage(template_name=str(cand), iteration=it)
+        if isinstance(cand_template_data, dict):
+            combo_optimization_payload = _run_combo_optimization_stage(
+                template_name=str(cand),
+                iteration=it,
+                template_data_override=cand_template_data,
+            )
+            maybe_template_data = combo_optimization_payload.get("template_data")
+            if isinstance(maybe_template_data, dict):
+                cand_template_data = maybe_template_data
+                outputs["candidate_template_data"] = copy.deepcopy(cand_template_data)
+                _update_run_json(run_id, {"outputs": outputs})
+        else:
+            # Legacy path for persisted candidate templates.
+            _quick_tune_candidate_params(str(cand), it)
+            combo_optimization_payload = _run_combo_optimization_stage(template_name=str(cand), iteration=it)
         if combo_optimization_payload.get("status") != "completed":
             run_snapshot = _load_run_json(run_id) or {}
             current_bt = copy.deepcopy(run_snapshot.get("backtest") or {})
@@ -3268,6 +3593,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             label=f"iter{it}_candidate",
             iteration=it,
             combo_optimization=combo_optimization_payload,
+            template_data_override=(cand_template_data if isinstance(cand_template_data, dict) else None),
         )
 
         # Dev loop: if preflight/selection fail, adjust template and re-run before Trader
@@ -3291,7 +3617,20 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 break
 
             adjust_count += 1
-            changed, changes = _apply_dev_adjustments(combo=combo, template_name=str(cand), attempt=adjust_count, reason="metrics_invalid")
+            if isinstance(cand_template_data, dict):
+                changed, changes, next_template_data = _apply_dev_adjustments_to_template_data(
+                    cand_template_data,
+                    attempt=adjust_count,
+                    reason="metrics_invalid",
+                )
+                if changed:
+                    cand_template_data = next_template_data
+                    run_snapshot = _load_run_json(run_id) or {}
+                    outputs_snapshot = run_snapshot.get("outputs") or {}
+                    outputs_snapshot["candidate_template_data"] = copy.deepcopy(cand_template_data)
+                    _update_run_json(run_id, {"outputs": outputs_snapshot})
+            else:
+                changed, changes = _apply_dev_adjustments(combo=combo, template_name=str(cand), attempt=adjust_count, reason="metrics_invalid")
             if not changed:
                 _append_trace(
                     run_id,
@@ -3312,7 +3651,18 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 },
             )
 
-            combo_optimization_payload = _run_combo_optimization_stage(template_name=str(cand), iteration=it)
+            combo_optimization_payload = _run_combo_optimization_stage(
+                template_name=str(cand),
+                iteration=it,
+                template_data_override=(cand_template_data if isinstance(cand_template_data, dict) else None),
+            )
+            maybe_template_data = combo_optimization_payload.get("template_data")
+            if isinstance(maybe_template_data, dict):
+                cand_template_data = maybe_template_data
+                run_snapshot = _load_run_json(run_id) or {}
+                outputs_snapshot = run_snapshot.get("outputs") or {}
+                outputs_snapshot["candidate_template_data"] = copy.deepcopy(cand_template_data)
+                _update_run_json(run_id, {"outputs": outputs_snapshot})
             if combo_optimization_payload.get("status") != "completed":
                 run_snapshot = _load_run_json(run_id) or {}
                 current_bt = copy.deepcopy(run_snapshot.get("backtest") or {})
@@ -3332,6 +3682,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 label=f"iter{it}_candidate_adj{adjust_count}",
                 iteration=it,
                 combo_optimization=combo_optimization_payload,
+                template_data_override=(cand_template_data if isinstance(cand_template_data, dict) else None),
             )
             if not bt2:
                 _append_trace(
@@ -3391,7 +3742,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         except Exception as e:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "validator_error", "data": {"error": str(e), "iteration": it}})
 
-        # Gate + autosave (based on candidate backtest)
+        # Gate decision (candidate is kept in run context until Trader approve/reject)
         run = _load_run_json(run_id) or {}
         outputs = run.get("outputs") or {}
         sel = _cp10_selection_gate(run)
@@ -3406,18 +3757,27 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
 
         _update_run_json(run_id, {"outputs": outputs})
 
-        outputs = _cp5_autosave_if_approved(run_id, run, outputs)
-        _update_run_json(run_id, {"outputs": outputs})
-
-        if outputs.get("saved_favorite_id"):
-            _update_run_json(run_id, {"status": "done", "step": "done", "phase": "done", "needs_user_confirm": False})
-            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": "approved_and_saved"}})
+        if bool(gate.get("approved")):
+            _update_run_json(
+                run_id,
+                {
+                    "status": "ready_for_review",
+                    "step": "trader_review",
+                    "phase": "execution",
+                    "needs_user_confirm": False,
+                    "outputs": outputs,
+                },
+            )
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "ready_for_trader_review", "data": {"iteration": it, "template": str(cand)}})
             return
 
-        gd = (outputs.get("gate_decision") or {}) if isinstance(outputs, dict) else {}
-        res = str(gd.get("verdict") or "rejected")
+        res = str(gate.get("verdict") or "rejected")
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": res}})
         current_template = str(cand)
+        if isinstance(cand_template_data, dict):
+            current_template_data = copy.deepcopy(cand_template_data)
+        else:
+            current_template_data = None
 
     # If we exit the loop, we're done (rejected after max iterations)
     _update_run_json(run_id, {"status": "done", "step": "done", "phase": "done"})
@@ -3575,8 +3935,12 @@ async def create_run(
             "final_decision": None,
             "selection": None,
             "candidate_template_name": None,
+            "candidate_template_data": None,
+            "candidate_template_description": None,
             "saved_template_name": None,
             "saved_favorite_id": None,
+            "trader_review_decision": None,
+            "trader_review_at_ms": None,
         },
         "backtest_job": None,
         "needs_user_confirm": False,
@@ -3880,6 +4244,98 @@ async def post_upstream_approve(run_id: str, background_tasks: BackgroundTasks) 
     background_tasks.add_task(_run_lab_autonomous, run_id, inp)
 
     return LabRunUpstreamApproveResponse(status="ok", run_id=run_id, phase="execution")
+
+
+@router.post("/runs/{run_id}/approve", response_model=LabRunReviewDecisionResponse)
+async def post_run_approve(run_id: str) -> LabRunReviewDecisionResponse:
+    p = _run_path(run_id)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="run not found")
+
+    run = _load_run_json(run_id)
+    outputs = run.get("outputs") or {}
+
+    if str(run.get("status") or "").strip() == "approved" and outputs.get("saved_template_name"):
+        return LabRunReviewDecisionResponse(
+            status="ok",
+            run_id=run_id,
+            decision="approved",
+            template_name=str(outputs.get("saved_template_name")),
+        )
+
+    gate = outputs.get("gate_decision") or {}
+    if not (isinstance(gate, dict) and bool(gate.get("approved"))):
+        raise HTTPException(status_code=409, detail="run is not ready for trader approval")
+
+    try:
+        saved_template_name = _persist_approved_template(run_id, run)
+    except Exception as e:
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "trader_approve_error", "data": {"error": str(e)}})
+        raise HTTPException(status_code=500, detail=f"failed to persist approved template: {e}")
+
+    outputs["saved_template_name"] = saved_template_name
+    outputs["trader_review_decision"] = "approved"
+    outputs["trader_review_at_ms"] = _now_ms()
+
+    _update_run_json(
+        run_id,
+        {
+            "status": "approved",
+            "step": "done",
+            "phase": "done",
+            "needs_user_confirm": False,
+            "outputs": outputs,
+        },
+    )
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": _now_ms(),
+            "type": "trader_approved",
+            "data": {"template_name": saved_template_name},
+        },
+    )
+
+    return LabRunReviewDecisionResponse(
+        status="ok",
+        run_id=run_id,
+        decision="approved",
+        template_name=saved_template_name,
+    )
+
+
+@router.post("/runs/{run_id}/reject", response_model=LabRunReviewDecisionResponse)
+async def post_run_reject(run_id: str, req: Optional[LabRunRejectRequest] = None) -> LabRunReviewDecisionResponse:
+    p = _run_path(run_id)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="run not found")
+
+    run = _load_run_json(run_id)
+    outputs = run.get("outputs") or {}
+
+    outputs["trader_review_decision"] = "rejected"
+    outputs["trader_review_at_ms"] = _now_ms()
+
+    _update_run_json(
+        run_id,
+        {
+            "status": "rejected",
+            "step": "done",
+            "phase": "done",
+            "needs_user_confirm": False,
+            "outputs": outputs,
+        },
+    )
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": _now_ms(),
+            "type": "trader_rejected",
+            "data": {"reason": str((req.reason if req else "") or "")[:2000]},
+        },
+    )
+
+    return LabRunReviewDecisionResponse(status="ok", run_id=run_id, decision="rejected", template_name=None)
 
 
 @router.post("/runs/{run_id}/continue")

@@ -132,6 +132,163 @@ def test_create_template_from_strategy_draft(monkeypatch):
     assert schema["parameters"]["stop_loss"]["step"] == 0.002
 
 
+def test_cp8_save_candidate_template_stages_in_run_outputs_only(monkeypatch):
+    traces = []
+    monkeypatch.setattr(lab_routes, "_append_trace", lambda run_id, event: traces.append(event))
+    monkeypatch.setattr(lab_routes, "_now_ms", lambda: 1)
+
+    run = {
+        "input": {"base_template": "seed_tpl", "symbol": "BTC/USDT", "timeframe": "1h"},
+        "backtest": {"template": "seed_tpl", "symbol": "BTC/USDT", "timeframe": "1h"},
+    }
+    outputs = {
+        "dev_summary": json.dumps(
+            {
+                "candidate_template_data": {
+                    "indicators": [{"type": "ema", "alias": "ema20", "params": {"length": 20}}],
+                    "entry_logic": "close > ema20",
+                    "exit_logic": "close < ema20",
+                    "stop_loss": 0.03,
+                },
+                "description": "candidate memory-only",
+            },
+            ensure_ascii=False,
+        )
+    }
+
+    result = lab_routes._cp8_save_candidate_template("run-cp8", run, outputs)
+
+    assert result["candidate_template_name"].startswith("lab_run-cp8")
+    assert isinstance(result.get("candidate_template_data"), dict)
+    assert result["candidate_template_data"]["entry_logic"] == "close > ema20"
+    assert result.get("saved_template_name") is None
+    assert any(evt.get("type") == "candidate_staged" for evt in traces)
+
+
+@pytest.mark.asyncio
+async def test_post_run_approve_persists_template_on_explicit_trader_approval(monkeypatch, tmp_path):
+    import app.services.combo_service as combo_service
+
+    class _FakeComboService:
+        created: dict = {}
+
+        def __init__(self):
+            pass
+
+        def get_template_metadata(self, name):
+            return copy.deepcopy(self.created.get(name))
+
+        def create_template(self, name, template_data, category="custom", metadata=None):
+            payload = copy.deepcopy(template_data)
+            payload["name"] = name
+            payload["description"] = (metadata or {}).get("description", "")
+            self.created[name] = payload
+            return payload
+
+        def clone_template(self, template_name, new_name):
+            if template_name not in self.created:
+                raise ValueError("missing source")
+            cloned = copy.deepcopy(self.created[template_name])
+            cloned["name"] = new_name
+            self.created[new_name] = cloned
+            return cloned
+
+        def update_template(self, template_name, description=None, optimization_schema=None, template_data=None):
+            payload = self.created.get(template_name)
+            if not payload:
+                raise ValueError("missing")
+            if isinstance(template_data, dict):
+                payload.update(copy.deepcopy(template_data))
+            if optimization_schema is not None:
+                payload["optimization_schema"] = copy.deepcopy(optimization_schema)
+            self.created[template_name] = payload
+            return True
+
+    monkeypatch.setattr(combo_service, "ComboService", _FakeComboService)
+    monkeypatch.setattr(lab_routes, "_append_trace", lambda *args, **kwargs: None)
+    monkeypatch.setattr(lab_routes, "_runs_dir", lambda: tmp_path)
+
+    run_id = "run_approve_only"
+    payload = {
+        "run_id": run_id,
+        "status": "ready_for_review",
+        "step": "trader_review",
+        "phase": "execution",
+        "created_at_ms": 1,
+        "updated_at_ms": 1,
+        "input": {"symbol": "BTC/USDT", "timeframe": "1h", "base_template": "seed_tpl"},
+        "backtest": {"symbol": "BTC/USDT", "timeframe": "1h", "template": "seed_tpl"},
+        "outputs": {
+            "gate_decision": {"approved": True, "verdict": "approved"},
+            "candidate_template_name": "lab_seed_candidate",
+            "candidate_template_description": "approved candidate",
+            "candidate_template_data": {
+                "indicators": [{"type": "ema", "alias": "ema20", "params": {"length": 20}}],
+                "entry_logic": "close > ema20",
+                "exit_logic": "close < ema20",
+                "stop_loss": 0.03,
+            },
+            "saved_template_name": None,
+        },
+    }
+    (tmp_path / f"{run_id}.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    response = await lab_routes.post_run_approve(run_id)
+
+    assert response.decision == "approved"
+    assert response.template_name
+
+    updated = json.loads((tmp_path / f"{run_id}.json").read_text(encoding="utf-8"))
+    assert updated["status"] == "approved"
+    assert updated["outputs"]["saved_template_name"] == response.template_name
+    assert updated["outputs"]["trader_review_decision"] == "approved"
+    assert response.template_name in _FakeComboService.created
+
+
+@pytest.mark.asyncio
+async def test_post_run_reject_marks_rejected_without_persisting_template(monkeypatch, tmp_path):
+    import app.services.combo_service as combo_service
+
+    class _FailComboService:
+        def __init__(self):
+            raise AssertionError("ComboService should not be instantiated on reject")
+
+    monkeypatch.setattr(combo_service, "ComboService", _FailComboService)
+    monkeypatch.setattr(lab_routes, "_append_trace", lambda *args, **kwargs: None)
+    monkeypatch.setattr(lab_routes, "_runs_dir", lambda: tmp_path)
+
+    run_id = "run_reject_only"
+    payload = {
+        "run_id": run_id,
+        "status": "ready_for_review",
+        "step": "trader_review",
+        "phase": "execution",
+        "created_at_ms": 1,
+        "updated_at_ms": 1,
+        "input": {"symbol": "BTC/USDT", "timeframe": "1h"},
+        "outputs": {
+            "gate_decision": {"approved": True, "verdict": "approved"},
+            "candidate_template_name": "lab_seed_candidate",
+            "candidate_template_data": {
+                "indicators": [{"type": "ema", "alias": "ema20", "params": {"length": 20}}],
+                "entry_logic": "close > ema20",
+                "exit_logic": "close < ema20",
+                "stop_loss": 0.03,
+            },
+            "saved_template_name": None,
+        },
+    }
+    (tmp_path / f"{run_id}.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    response = await lab_routes.post_run_reject(run_id, lab_routes.LabRunRejectRequest(reason="risk too high"))
+
+    assert response.decision == "rejected"
+    updated = json.loads((tmp_path / f"{run_id}.json").read_text(encoding="utf-8"))
+    assert updated["status"] == "rejected"
+    assert updated["outputs"].get("saved_template_name") is None
+    assert updated["outputs"]["trader_review_decision"] == "rejected"
+
+
 def test_build_lab_optimization_schema_multi_ma_contract():
     schema = lab_routes._build_lab_optimization_schema(
         {
