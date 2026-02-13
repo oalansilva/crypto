@@ -378,6 +378,76 @@ def test_apply_dev_adjustments_relaxes_and_adds_atr():
     assert "rsi14 <= 55" in meta.get("entry_logic")
 
 
+def test_relax_exit_logic_uses_shortest_available_ema_alias():
+    updated, changes = lab_routes._relax_exit_logic(
+        "Sair quando: ema200 < ema500",
+        indicators=[
+            {"type": "ema", "alias": "ema200", "params": {"length": 200}},
+            {"type": "ema", "alias": "ema34", "params": {"length": 34}},
+            {"type": "rsi", "alias": "rsi14", "params": {"length": 14}},
+        ],
+    )
+
+    assert "add_exit_close_filter" in changes
+    assert "close < ema34" in updated
+    assert "close < ema20" not in updated
+
+
+def test_relax_exit_logic_skips_close_filter_without_ema_indicators():
+    original = "Sair quando: ema200 < ema500"
+    updated, changes = lab_routes._relax_exit_logic(
+        original,
+        indicators=[{"type": "rsi", "alias": "rsi14", "params": {"length": 14}}],
+    )
+
+    assert updated == original
+    assert "add_exit_close_filter" not in changes
+
+
+def test_apply_dev_adjustments_uses_existing_ema_alias_for_exit_close_filter():
+    combo = _FakeCombo()
+    combo.create_template(
+        "tpl",
+        {
+            "indicators": [
+                {"type": "ema", "alias": "ema200", "params": {"length": 200}},
+                {"type": "ema", "alias": "ema34", "params": {"length": 34}},
+            ],
+            "entry_logic": "close > ema200",
+            "exit_logic": "Sair quando: ema34 < ema200",
+            "stop_loss": 0.03,
+        },
+    )
+
+    changed, changes = lab_routes._apply_dev_adjustments(combo=combo, template_name="tpl", attempt=1)
+    assert changed is True
+    assert "add_exit_close_filter" in changes
+
+    meta = combo.get_template_metadata("tpl")
+    assert "close < ema34" in str(meta.get("exit_logic") or "")
+    assert "close < ema20" not in str(meta.get("exit_logic") or "")
+
+
+def test_apply_dev_adjustments_to_template_data_uses_existing_ema_alias_for_exit_close_filter():
+    changed, changes, updated = lab_routes._apply_dev_adjustments_to_template_data(
+        {
+            "indicators": [
+                {"type": "ema", "alias": "ema89", "params": {"length": 89}},
+                {"type": "ema", "alias": "ema21", "params": {"length": 21}},
+            ],
+            "entry_logic": "close > ema89",
+            "exit_logic": "Sair quando: ema21 < ema89",
+            "stop_loss": 0.03,
+        },
+        attempt=1,
+    )
+
+    assert changed is True
+    assert "add_exit_close_filter" in changes
+    assert "close < ema21" in str(updated.get("exit_logic") or "")
+    assert "close < ema20" not in str(updated.get("exit_logic") or "")
+
+
 def test_needs_dev_adjustment_on_zero_trades():
     run = {
         "input": {"constraints": {"min_holdout_trades": 10, "min_sharpe": 0.4}},

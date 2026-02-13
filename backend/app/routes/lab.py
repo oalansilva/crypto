@@ -481,6 +481,46 @@ def _ensure_atr_indicator(indicators: List[Dict[str, Any]]) -> bool:
     return True
 
 
+def _indicator_length_hint(indicator: Dict[str, Any]) -> int:
+    params = indicator.get("params") if isinstance(indicator, dict) else {}
+    if isinstance(params, dict):
+        try:
+            length = int(params.get("length") or 0)
+            if length > 0:
+                return length
+        except Exception:
+            pass
+
+    alias = str((indicator or {}).get("alias") or "")
+    m = re.search(r"(\d+)", alias)
+    if m:
+        try:
+            return int(m.group(1))
+        except Exception:
+            pass
+
+    return 10**9
+
+
+def _pick_shortest_ema_alias(indicators: Optional[List[Dict[str, Any]]]) -> Optional[str]:
+    if not isinstance(indicators, list):
+        return None
+
+    ema_indicators = [
+        ind
+        for ind in indicators
+        if isinstance(ind, dict) and str(ind.get("type") or ind.get("name") or "").strip().lower() == "ema"
+    ]
+    if not ema_indicators:
+        return None
+
+    for ind in sorted(ema_indicators, key=_indicator_length_hint):
+        alias = str(ind.get("alias") or "").strip()
+        if alias:
+            return alias
+    return None
+
+
 def _relax_entry_logic(entry_logic: Optional[str]) -> Tuple[str, List[str]]:
     if not isinstance(entry_logic, str):
         return str(entry_logic or ""), []
@@ -533,7 +573,10 @@ def _relax_entry_logic(entry_logic: Optional[str]) -> Tuple[str, List[str]]:
     return updated, adjustments
 
 
-def _relax_exit_logic(exit_logic: Optional[str]) -> Tuple[str, List[str]]:
+def _relax_exit_logic(
+    exit_logic: Optional[str],
+    indicators: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[str, List[str]]:
     if not isinstance(exit_logic, str):
         return str(exit_logic or ""), []
 
@@ -545,8 +588,10 @@ def _relax_exit_logic(exit_logic: Optional[str]) -> Tuple[str, List[str]]:
         adjustments.append("relax_exit_rsi")
 
     if re.search(r"ema\w*\s*<\s*ema\w*", updated, flags=re.IGNORECASE) and "close" not in updated.lower():
-        updated = updated + " OR close < ema20"
-        adjustments.append("add_exit_close_filter")
+        ema_alias = _pick_shortest_ema_alias(indicators)
+        if ema_alias:
+            updated = updated + f" OR close < {ema_alias}"
+            adjustments.append("add_exit_close_filter")
 
     return updated, adjustments
 
@@ -723,7 +768,10 @@ def _apply_dev_adjustments(*, combo: Any, template_name: str, attempt: int, reas
         template_data["entry_logic"] = updated_entry
         changes.extend(entry_changes)
 
-    updated_exit, exit_changes = _relax_exit_logic(template_data.get("exit_logic"))
+    updated_exit, exit_changes = _relax_exit_logic(
+        template_data.get("exit_logic"),
+        template_data.get("indicators") if isinstance(template_data.get("indicators"), list) else None,
+    )
     if exit_changes:
         template_data["exit_logic"] = updated_exit
         changes.extend(exit_changes)
@@ -787,7 +835,10 @@ def _apply_dev_adjustments_to_template_data(
         updated["entry_logic"] = next_entry
         changes.extend(entry_changes)
 
-    next_exit, exit_changes = _relax_exit_logic(updated.get("exit_logic"))
+    next_exit, exit_changes = _relax_exit_logic(
+        updated.get("exit_logic"),
+        updated.get("indicators") if isinstance(updated.get("indicators"), list) else None,
+    )
     if exit_changes:
         updated["exit_logic"] = next_exit
         changes.extend(exit_changes)
