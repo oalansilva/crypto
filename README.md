@@ -114,7 +114,7 @@ From the repo root:
 ./start.sh
 ```
 
-`start.sh` checks `backend/.venv`, runs `backend/init_db.py`, starts backend and frontend with systemd services (`crypto-backend.service`, `crypto-frontend.service`) when available, and falls back to `nohup` (`uvicorn`/`vite`) when services are not present.
+`start.sh` checks `backend/.venv`, runs `backend/init_db.py`, starts backend and frontend with systemd services (`crypto-backend.service`, `crypto-frontend.service`) when available, falls back to `nohup` (`uvicorn`/`vite`) when services are not present, and runs a quick health check on `http://127.0.0.1:8000/api/health`.
 
 `stop.sh` stops those systemd services when available and falls back to stopping `uvicorn`/`vite` processes.
 

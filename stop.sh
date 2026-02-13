@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_SERVICE="crypto-backend.service"
 FRONTEND_SERVICE="crypto-frontend.service"
 BACKEND_PID_FILE="/tmp/crypto-backend.pid"
