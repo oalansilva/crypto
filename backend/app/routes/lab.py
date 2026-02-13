@@ -3704,7 +3704,7 @@ def _resolve_step_for_log_stream(run_id: str, run: Dict[str, Any], requested_ste
     raise HTTPException(status_code=404, detail="No logs available for this run")
 
 
-@router.get("/{run_id}/logs/stream")
+@router.get("/runs/{run_id}/logs/stream")
 async def stream_run_logs(
     run_id: str,
     request: Request,
