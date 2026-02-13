@@ -15,6 +15,7 @@ Security:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
@@ -22,12 +23,23 @@ import threading
 import uuid
 import copy
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Union
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.routes.lab_logs_sse import (
+    append_lab_log_line,
+    authenticate_log_stream,
+    capture_step_logs,
+    get_log_path,
+    latest_step_with_logs,
+    stream_lab_logs,
+)
+
 router = APIRouter(prefix="/api/lab", tags=["lab"])
+logger = logging.getLogger(__name__)
 
 
 def _runs_dir() -> Path:
@@ -46,6 +58,34 @@ def _trace_path(run_id: str) -> Path:
     return _runs_dir() / f"{run_id}.jsonl"
 
 
+def _trace_level(event_type: str) -> str:
+    et = str(event_type or "").strip().lower()
+    if et.endswith("error") or et.endswith("failed"):
+        return "ERROR"
+    if "warn" in et:
+        return "WARN"
+    if et in {"run_created", "upstream_message", "upstream_contract_updated"}:
+        return "DEBUG"
+    return "INFO"
+
+
+def _trace_message(event: Dict[str, Any]) -> str:
+    et = str(event.get("type") or "event").strip()
+    data = event.get("data")
+    if isinstance(data, dict) and data:
+        compact = ", ".join(f"{k}={data[k]!r}" for k in list(data.keys())[:4])
+        return f"{et}: {compact}"
+    if data not in (None, "", {}):
+        return f"{et}: {data!r}"
+    return et
+
+
+def _trace_step(run_id: str) -> str:
+    run = _load_run_json(run_id) or {}
+    step = str(run.get("step") or "").strip()
+    return step or "execution"
+
+
 def _append_trace(run_id: str, event: Dict[str, Any]) -> None:
     """Append one JSONL trace event for this run."""
 
@@ -55,6 +95,18 @@ def _append_trace(run_id: str, event: Dict[str, Any]) -> None:
     with p.open("a", encoding="utf-8") as f:
         f.write(line)
         f.write("\n")
+
+    try:
+        append_lab_log_line(
+            run_id=run_id,
+            step=_trace_step(run_id),
+            level=_trace_level(str(event.get("type") or "")),
+            message=_trace_message(event),
+            timestamp_ms=int(event.get("ts_ms")) if isinstance(event.get("ts_ms"), int) else None,
+        )
+    except Exception:
+        # Never break trace persistence due to optional step log write failures.
+        pass
 
 
 def _read_trace_tail(run_id: str, limit: int = 200) -> List[Dict[str, Any]]:
@@ -2891,15 +2943,28 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             optimizer = ComboOptimizer()
             opt_since = str(since_str or "").strip().split(" ")[0] or None
             opt_until = str(until_str or "").strip().split(" ")[0] or None
-            result = optimizer.run_optimization(
-                template_name=template_name,
-                symbol=symbol,
-                timeframe=timeframe,
-                start_date=opt_since,
-                end_date=opt_until,
-                deep_backtest=deep_backtest,
-                direction=direction,
-            )
+            with capture_step_logs(run_id=run_id, step="combo_optimization"):
+                logger.info(
+                    "Lab combo optimization started run_id=%s template=%s iteration=%s",
+                    run_id,
+                    template_name,
+                    iteration,
+                )
+                result = optimizer.run_optimization(
+                    template_name=template_name,
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    start_date=opt_since,
+                    end_date=opt_until,
+                    deep_backtest=deep_backtest,
+                    direction=direction,
+                )
+                logger.info(
+                    "Lab combo optimization completed run_id=%s template=%s iteration=%s",
+                    run_id,
+                    template_name,
+                    iteration,
+                )
             best_parameters = result.get("best_parameters") if isinstance(result, dict) else {}
             if not isinstance(best_parameters, dict):
                 best_parameters = {}
@@ -3617,6 +3682,70 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         upstream_contract=data.get("upstream_contract"),
         upstream=data.get("upstream") or {"messages": [], "pending_question": ""},
         input=data.get("input") or {},
+    )
+
+
+def _resolve_step_for_log_stream(run_id: str, run: Dict[str, Any], requested_step: Optional[str]) -> str:
+    step = str(requested_step or "").strip()
+    if step:
+        return step
+
+    current_step = str(run.get("step") or "").strip()
+    if current_step and get_log_path(run_id, current_step).exists():
+        return current_step
+
+    latest = latest_step_with_logs(run_id)
+    if latest:
+        return latest
+
+    if current_step:
+        return current_step
+
+    raise HTTPException(status_code=404, detail="No logs available for this run")
+
+
+@router.get("/{run_id}/logs/stream")
+async def stream_run_logs(
+    run_id: str,
+    request: Request,
+    step: Optional[str] = Query(default=None),
+    token: Optional[str] = Query(default=None),
+) -> StreamingResponse:
+    if not _run_path(run_id).exists():
+        raise HTTPException(status_code=404, detail="run not found")
+
+    run = _load_run_json(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    resolved_step = _resolve_step_for_log_stream(run_id, run, step)
+    log_path = get_log_path(run_id, resolved_step)
+    if not log_path.exists():
+        raise HTTPException(status_code=404, detail=f"log file not found for step '{resolved_step}'")
+
+    authenticate_log_stream(
+        authorization_header=request.headers.get("authorization"),
+        query_token=token,
+    )
+
+    async def _event_stream() -> AsyncIterator[str]:
+        async for chunk in stream_lab_logs(
+            run_id,
+            resolved_step,
+            run_state_reader=lambda: _load_run_json(run_id) or {},
+        ):
+            if await request.is_disconnected():
+                return
+            yield chunk
+
+    return StreamingResponse(
+        _event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

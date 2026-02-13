@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { API_BASE_URL } from '@/lib/apiBase';
 import RunChatView, { type TraceEvent } from '@/components/lab/RunChatView';
+import LogPanel from '@/components/lab/LogPanel';
+import { useLogSSE } from '@/hooks/useLogSSE';
 
 // TraceEvent type moved to RunChatView
 
@@ -88,6 +90,8 @@ const LabRunPage: React.FC = () => {
   const [draftFeedback, setDraftFeedback] = useState('');
   const [sendingDraftFeedback, setSendingDraftFeedback] = useState(false);
   const [approvingDraft, setApprovingDraft] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
+  const [logStep, setLogStep] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -223,6 +227,34 @@ const LabRunPage: React.FC = () => {
   const comboStages = comboOptimization?.stages || [];
   const comboError = String(comboOptimization?.error || '');
   const backtestIsPostCombo = comboStatus === 'completed';
+  const canOpenLogs = String(data?.status || '').toLowerCase() === 'running' && Boolean(data?.step);
+
+  useEffect(() => {
+    if (!logsOpen) return;
+    if (String(data?.status || '').toLowerCase() !== 'running') return;
+    const currentStep = String(data?.step || '').trim();
+    if (!currentStep) return;
+    if (currentStep !== logStep) setLogStep(currentStep);
+  }, [logsOpen, data?.status, data?.step, logStep]);
+
+  const {
+    logs: liveLogs,
+    connectionState: logConnectionState,
+    isConnected: logsConnected,
+    error: logError,
+    reconnect: reconnectLogs,
+  } = useLogSSE({
+    runId: id,
+    step: logStep || (data?.step ? String(data.step) : ''),
+    enabled: logsOpen && Boolean(id),
+  });
+
+  const logConnectionLabel = (() => {
+    if (logConnectionState === 'connected') return 'conectado';
+    if (logConnectionState === 'connecting') return 'conectando';
+    if (logConnectionState === 'error') return 'erro';
+    return 'fechado';
+  })();
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
@@ -265,6 +297,33 @@ const LabRunPage: React.FC = () => {
               ) : null}
 
               <div className="mt-2 text-[10px] text-gray-500">Polling a cada 2s</div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {canOpenLogs ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentStep = String(data?.step || '').trim();
+                      if (!logsOpen && currentStep) setLogStep(currentStep);
+                      setLogsOpen((prev) => !prev);
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-200"
+                  >
+                    {logsOpen ? 'Ocultar Logs' : 'Ver Logs'}
+                  </button>
+                ) : null}
+                {logsOpen ? (
+                  <div className={`text-[11px] px-2 py-1 rounded-full border ${
+                    logConnectionState === 'connected'
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                      : logConnectionState === 'error'
+                        ? 'border-red-500/40 bg-red-500/10 text-red-200'
+                        : 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'
+                  }`}>
+                    logs: {logConnectionLabel}
+                  </div>
+                ) : null}
+              </div>
 
               {data?.needs_user_confirm ? (
                 <div className="mt-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3">
@@ -335,6 +394,19 @@ const LabRunPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {logsOpen ? (
+          <div className="mt-4">
+            <LogPanel
+              logs={liveLogs}
+              isLoading={logConnectionState === 'connecting' && liveLogs.length === 0}
+              isConnected={logsConnected}
+              error={logError?.message || null}
+              onRetry={reconnectLogs}
+              onClose={() => setLogsOpen(false)}
+            />
+          </div>
+        ) : null}
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
           <details open={inUpstreamPhase}>
