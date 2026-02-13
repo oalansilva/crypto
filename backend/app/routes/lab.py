@@ -2202,6 +2202,11 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
     gate_decision = outputs.get("gate_decision") if isinstance(outputs, dict) else None
     ready_for_review = bool(isinstance(gate_decision, dict) and gate_decision.get("approved"))
 
+    # Auto-save when trader approves (no human confirmation needed)
+    if ready_for_review and not dev_needs_retry:
+        outputs = _cp5_autosave_if_approved(run_id, _load_run_json(run_id) or run, outputs)
+        graph_status = "done"  # Mark as done after auto-save
+
     needs_confirm = not _budget_ok(budget) and graph_status not in ("done", "failed")
     patch: Dict[str, Any] = {
         "budget": budget,
@@ -2212,7 +2217,7 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         "upstream_contract": upstream_contract,
     }
 
-    if ready_for_review:
+    if ready_for_review and graph_status != "done":
         patch.update({"status": "ready_for_review", "step": "trader_review", "phase": "execution", "needs_user_confirm": False})
     elif graph_status == "done":
         patch.update({"status": "done", "step": "done", "needs_user_confirm": False, "phase": "done"})
