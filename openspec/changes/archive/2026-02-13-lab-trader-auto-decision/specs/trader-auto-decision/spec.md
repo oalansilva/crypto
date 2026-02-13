@@ -60,7 +60,7 @@ And o fluxo DEVE voltar para "dev_implementation"
 And trader_retry_count DEVE incrementar
 And NÃO DEVE salvar nos favoritos ainda
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Remover verificação de trader_verdict em lab.py
 

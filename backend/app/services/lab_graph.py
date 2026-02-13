@@ -300,6 +300,29 @@ def _after_upstream(state: LabGraphState) -> str:
     return "implementation" if bool(contract.get("approved")) else "end"
 
 
+def _build_dev_retry_message(
+    *,
+    context: Dict[str, Any],
+    required_fixes: List[str],
+    trader_reasons: str,
+) -> str:
+    """Build a custom message for Dev Senior including Trader feedback."""
+    fixes_text = "\n".join([f"{i+1}. {fix}" for i, fix in enumerate(required_fixes)])
+    
+    message = f"""O Trader rejeitou a estratégia anterior pelos seguintes motivos:
+{trader_reasons}
+
+AJUSTES REQUERIDOS (implemente no novo template):
+{fixes_text}
+
+Contexto completo do run:
+"""
+    message += json.dumps(context, ensure_ascii=False, indent=2)
+    message += "\n\nGere um NOVO template de estratégia implementando os ajustes acima. NÃO apenas otimize parâmetros - faça as mudanças estruturais solicitadas."
+    
+    return message
+
+
 def _implementation_node(state: LabGraphState) -> LabGraphState:
     deps: LabGraphDeps = state.get("deps")
     if deps is None:
@@ -321,12 +344,47 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
     state["outputs"] = outputs
 
     if ok:
-        budget, outputs, ok = _run_persona(
-            state=state,
-            persona="dev_senior",
-            output_key="dev_summary",
-            system_prompt=DEV_SENIOR_PROMPT,
-        )
+        # Check if this is a retry with trader feedback
+        outputs = state.get("outputs") or {}
+        context = state.get("context") or {}
+        
+        if outputs.get("dev_needs_retry") and outputs.get("trader_verdict"):
+            # Extract trader feedback
+            verdict_obj = outputs.get("trader_verdict")
+            verdict, required_fixes = _parse_trader_verdict_payload(verdict_obj)
+            
+            # Build custom message with trader feedback
+            message = _build_dev_retry_message(
+                context=context,
+                required_fixes=required_fixes,
+                trader_reasons=verdict,
+            )
+            
+            deps.append_trace(
+                run_id,
+                {
+                    "ts_ms": deps.now_ms(),
+                    "type": "dev_retry_with_trader_feedback",
+                    "data": {"verdict": verdict, "required_fixes": required_fixes},
+                },
+            )
+            
+            budget, outputs, ok = _run_persona(
+                state=state,
+                persona="dev_senior",
+                output_key="dev_summary",
+                system_prompt=DEV_SENIOR_PROMPT,
+                message=message,  # Custom message with trader feedback
+            )
+        else:
+            # Normal flow
+            budget, outputs, ok = _run_persona(
+                state=state,
+                persona="dev_senior",
+                output_key="dev_summary",
+                system_prompt=DEV_SENIOR_PROMPT,
+            )
+        
         state["budget"] = budget
         state["outputs"] = outputs
 
