@@ -3,12 +3,14 @@ set -euo pipefail
 
 # OpenSpec → Codex CLI wrapper with guardrails.
 # Usage:
-#   ./scripts/openspec_codex_task.sh <change_id> [--confirm] [--model gpt-5-codex] [--include-repo-docs] [--specs-mode <full|requirements|requirements-no-scenarios>]
+#   ./scripts/openspec_codex_task.sh <change_id> [--confirm] [--model gpt-5-codex] [--include-repo-docs] [--specs-mode <full|requirements|requirements-no-scenarios>] [--ephemeral] [--codex-json|--json]
 #
 # Defaults are intentionally conservative:
 # - FILE_CHAR_LIMIT=6000 (override via env var)
 # - --include-repo-docs=false (AGENTS.md/README.md are not attached unless requested)
 # - --specs-mode=requirements
+# - --ephemeral=false
+# - --codex-json/--json=false
 # - restrict intended edits to selected paths (prompt-level)
 # - run tests after Codex
 # - enforce diff limits (files + changed lines)
@@ -20,6 +22,8 @@ CONFIRM="false"
 MODEL=""
 INCLUDE_REPO_DOCS="false"
 SPECS_MODE="requirements"
+EPHEMERAL="false"
+CODEX_JSON="false"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -40,6 +44,10 @@ while [[ $# -gt 0 ]]; do
           ;;
       esac
       ;;
+    --ephemeral)
+      EPHEMERAL="true"; shift ;;
+    --codex-json|--json)
+      CODEX_JSON="true"; shift ;;
     -h|--help)
       sed -n '1,120p' "$0"; exit 0 ;;
     *)
@@ -335,6 +343,12 @@ PROMPT="${PROMPT//\$\{CHANGE_ID\}/$CHANGE_ID}"
 CODex_ARGS=(exec --full-auto --cd "$REPO_ROOT")
 if [[ -n "$MODEL" ]]; then
   CODex_ARGS+=(--model "$MODEL")
+fi
+if [[ "$EPHEMERAL" == "true" ]]; then
+  CODex_ARGS+=(--ephemeral)
+fi
+if [[ "$CODEX_JSON" == "true" ]]; then
+  CODex_ARGS+=(--json)
 fi
 
 echo "[codex] running"
