@@ -3,9 +3,12 @@ set -euo pipefail
 
 # OpenSpec → Codex CLI wrapper with guardrails.
 # Usage:
-#   ./scripts/openspec_codex_task.sh <spec_id> [--confirm] [--model gpt-5-codex]
+#   ./scripts/openspec_codex_task.sh <change_id> [--confirm] [--model gpt-5-codex] [--include-repo-docs] [--specs-mode <full|requirements|requirements-no-scenarios>]
 #
 # Defaults are intentionally conservative:
+# - FILE_CHAR_LIMIT=6000 (override via env var)
+# - --include-repo-docs=false (AGENTS.md/README.md are not attached unless requested)
+# - --specs-mode=requirements
 # - restrict intended edits to selected paths (prompt-level)
 # - run tests after Codex
 # - enforce diff limits (files + changed lines)
@@ -15,6 +18,8 @@ shift || true
 
 CONFIRM="false"
 MODEL=""
+INCLUDE_REPO_DOCS="false"
+SPECS_MODE="requirements"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -22,6 +27,19 @@ while [[ $# -gt 0 ]]; do
       CONFIRM="true"; shift ;;
     --model)
       MODEL="${2:-}"; shift 2 ;;
+    --include-repo-docs)
+      INCLUDE_REPO_DOCS="true"; shift ;;
+    --specs-mode)
+      case "${2:-}" in
+        full|requirements|requirements-no-scenarios)
+          SPECS_MODE="${2:-}"; shift 2 ;;
+        *)
+          echo "Invalid value for --specs-mode: ${2:-}" >&2
+          echo "Allowed: full | requirements | requirements-no-scenarios" >&2
+          exit 2
+          ;;
+      esac
+      ;;
     -h|--help)
       sed -n '1,120p' "$0"; exit 0 ;;
     *)
@@ -137,7 +155,7 @@ print((obj.get("contextFiles") or {}).get("specs") or "")
 # 3) Run Codex
 ALLOWED_PATHS=("backend/" "frontend/" "src/" "tests/" "openspec/")
 
-FILE_CHAR_LIMIT="${FILE_CHAR_LIMIT:-12000}"
+FILE_CHAR_LIMIT="${FILE_CHAR_LIMIT:-6000}"
 
 _file_len() {
   local path="$1"
@@ -181,6 +199,46 @@ for p in sorted(glob.glob(expr, recursive=True)):
 ' "$glob_expr"
 }
 
+_spec_name_from_path() {
+  local path="$1"
+  python3 -c 'import re, sys
+p=sys.argv[1].replace("\\\\", "/")
+m=re.search(r"(?:^|.*/)openspec/changes/[^/]+/specs/([^/]+)/spec\\.md$", p)
+print(m.group(1) if m else "")
+' "$path"
+}
+
+_attach_spec_requirements_json() {
+  local spec_name="$1"
+  local spec_path="$2"
+  local json_payload=""
+  local n=0
+
+  if [[ "$SPECS_MODE" == "requirements-no-scenarios" ]]; then
+    json_payload="$(openspec show "$spec_name" --type spec --requirements --no-scenarios --json)"
+  else
+    json_payload="$(openspec show "$spec_name" --type spec --requirements --json)"
+  fi
+
+  n="${#json_payload}"
+  if [[ "$FILE_CHAR_LIMIT" -gt 0 && "$n" -gt "$FILE_CHAR_LIMIT" ]]; then
+    TRUNCATED_REPORT+=("spec:$spec_name requirements-json ($n chars)")
+  fi
+
+  PROMPT+=$'\n[CHANGE SPEC REQUIREMENTS JSON] '
+  PROMPT+="$spec_name"
+  PROMPT+=" ($spec_path)"
+  PROMPT+=$'\n'
+  if [[ "$FILE_CHAR_LIMIT" -gt 0 && "$n" -gt "$FILE_CHAR_LIMIT" ]]; then
+    PROMPT+="${json_payload:0:FILE_CHAR_LIMIT}"
+    PROMPT+=$'\n'
+    PROMPT+="[TRUNCATED to ${FILE_CHAR_LIMIT} chars]"
+    PROMPT+=$'\n'
+  else
+    PROMPT+="$json_payload"
+  fi
+}
+
 PROMPT=$(cat <<'EOF'
 You are implementing an OpenSpec **change** in this repo.
 
@@ -203,7 +261,7 @@ CHANGE ARTIFACTS (verbatim, may be truncated per-file):
 EOF
 )
 
-# Attach proposal/design/specs/tasks (+ repo AGENTS.md / README.md)
+# Attach proposal/design/specs/tasks (+ optional repo AGENTS.md / README.md)
 TRUNCATED_REPORT=()
 
 _attach_file() {
@@ -223,9 +281,11 @@ _attach_file() {
   PROMPT+="$(_read_capped "$p" "$FILE_CHAR_LIMIT")"
 }
 
-# Repo-level instructions for agents (kept small). These are additive context.
-_attach_file "$REPO_ROOT/AGENTS.md"
-_attach_file "$REPO_ROOT/README.md"
+if [[ "$INCLUDE_REPO_DOCS" == "true" ]]; then
+  # Repo-level instructions for agents (kept small). These are additive context.
+  _attach_file "$REPO_ROOT/AGENTS.md"
+  _attach_file "$REPO_ROOT/README.md"
+fi
 
 _attach_file "$CONTEXT_PROPOSAL"
 _attach_file "$CONTEXT_DESIGN"
@@ -233,7 +293,18 @@ _attach_file "$CONTEXT_DESIGN"
 if [[ -n "$CONTEXT_SPECS_GLOB" ]]; then
   while IFS= read -r spec_path; do
     [[ -z "$spec_path" ]] && continue
-    _attach_file "$spec_path"
+    if [[ "$SPECS_MODE" == "full" ]]; then
+      _attach_file "$spec_path"
+      continue
+    fi
+
+    spec_name="$(_spec_name_from_path "$spec_path")"
+    if [[ -z "$spec_name" ]]; then
+      echo "[warn] Could not derive spec name from path, attaching full file instead: $spec_path" >&2
+      _attach_file "$spec_path"
+      continue
+    fi
+    _attach_spec_requirements_json "$spec_name" "$spec_path"
   done < <(_spec_files_from_glob "$CONTEXT_SPECS_GLOB")
 fi
 
