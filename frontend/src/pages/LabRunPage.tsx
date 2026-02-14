@@ -244,10 +244,8 @@ const LabRunPage: React.FC = () => {
     }
   };
 
-  const selection = data?.outputs?.selection;
-  const gateApproved = selection?.approved === true;
   const reviewStatus = String(data?.status || '').toLowerCase();
-  const readyForTraderReview = reviewStatus === 'ready_for_review' && gateApproved && Boolean(data?.outputs?.candidate_template_name);
+  const readyForTraderReview = reviewStatus === 'ready_for_review' && Boolean(data?.outputs?.candidate_template_name);
   const reviewDecision = String(data?.outputs?.trader_review_decision || '');
   const savedTemplateName = String(data?.outputs?.saved_template_name || '');
   const upstreamApproved = data?.upstream_contract?.approved === true;
@@ -336,11 +334,6 @@ const LabRunPage: React.FC = () => {
                 <div className="text-sm font-semibold">{data?.status || '…'}</div>
                 <div className="text-xs text-gray-400">step: <span className="font-mono text-gray-200">{data?.step || '-'}</span></div>
                 <div className="text-xs text-gray-400">phase: <span className="font-mono text-gray-200">{data?.phase || '-'}</span></div>
-                {selection ? (
-                  <div className={`text-xs px-2 py-1 rounded-full border ${gateApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-red-500/40 bg-red-500/10 text-red-200'}`}>
-                    gate: {gateApproved ? 'approved' : 'blocked'}
-                  </div>
-                ) : null}
               </div>
 
               {data?.backtest ? (
@@ -740,12 +733,7 @@ const LabRunPage: React.FC = () => {
         {data?.outputs ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="text-sm font-semibold">Decisão (personas + gate)</div>
-              {selection ? (
-                <div className={`text-xs px-2 py-1 rounded-full border ${gateApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-red-500/40 bg-red-500/10 text-red-200'}`}>
-                  {gateApproved ? 'APROVADO (gate)' : 'REJEITADO (gate)'}
-                </div>
-              ) : null}
+              <div className="text-sm font-semibold">Decisão do Trader</div>
             </div>
 
             {data.outputs.candidate_template_name ? (
@@ -770,21 +758,6 @@ const LabRunPage: React.FC = () => {
                     abrir no editor
                   </a>
                 </div>
-              </div>
-            ) : null}
-
-            {selection ? (
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                <div className="text-xs text-gray-400">Selection gate (CP10) — motivos</div>
-                {selection.approved ? (
-                  <div className="text-sm text-emerald-200">Passou no gate.</div>
-                ) : (
-                  <ul className="mt-2 list-disc pl-5 text-sm text-gray-200 space-y-1">
-                    {(selection.reasons || []).map((r: string) => (
-                      <li key={r} className="font-mono text-xs">{r}</li>
-                    ))}
-                  </ul>
-                )}
               </div>
             ) : null}
 
@@ -833,7 +806,7 @@ const LabRunPage: React.FC = () => {
               </div>
             ) : null}
 
-            {!data.outputs.coordinator_summary && !data.outputs.dev_summary && !data.outputs.validator_verdict ? (
+            {!data.outputs.coordinator_summary && !data.outputs.dev_summary && !data.outputs.trader_verdict ? (
               <div className="text-sm text-gray-400">Aguardando execução das personas…</div>
             ) : null}
           </div>

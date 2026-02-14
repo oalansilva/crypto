@@ -42,17 +42,17 @@ const getArrStr = (o: Record<string, unknown> | null, k: string): string[] => {
 const normalizePersona = (p: string) => {
   const s = String(p || '').trim();
   if (!s) return 'agent';
+  if (s === 'validator') return 'trader';
   return s;
 };
 
 const personaUiLabel = (p: string) => {
-  if (p === 'validator') return 'Trader';
   return p;
 };
 
 const bubbleClassForPersona = (who: string) => {
   if (who === 'dev_senior') return 'bg-blue-500/10 border-blue-500/20';
-  if (who === 'validator') return 'bg-purple-500/10 border-purple-500/20';
+  if (who === 'trader') return 'bg-purple-500/10 border-purple-500/20';
   if (who === 'coordinator') return 'bg-emerald-500/10 border-emerald-500/20';
   return 'bg-black/30 border-white/10';
 };
@@ -68,7 +68,7 @@ const fmtTs = (ts: number) => {
 export const RunChatView: React.FC<{ traceEvents?: TraceEvent[] }> = ({ traceEvents }) => {
   const events = (traceEvents || []).slice().sort((a, b) => a.ts_ms - b.ts_ms);
 
-  const personas = ['coordinator', 'dev_senior', 'validator', 'system'] as const;
+  const personas = ['coordinator', 'dev_senior', 'trader', 'system'] as const;
   type Persona = (typeof personas)[number];
 
   const [selected, setSelected] = useState<Set<Persona>>(new Set(personas));
@@ -99,7 +99,7 @@ export const RunChatView: React.FC<{ traceEvents?: TraceEvent[] }> = ({ traceEve
       'node_done',
     ]);
 
-    const keyTypes = new Set(['selection_gate', 'backtest_done', 'final_decision', 'upstream_done']);
+    const keyTypes = new Set(['backtest_done', 'final_decision', 'upstream_done']);
 
     let sawUpstream = false;
     let sawExecution = false;
@@ -145,7 +145,6 @@ export const RunChatView: React.FC<{ traceEvents?: TraceEvent[] }> = ({ traceEve
 
       if (keyTypes.has(ev.type)) {
         let label = ev.type;
-        if (ev.type === 'selection_gate') label = 'selection_gate (gate)';
         if (ev.type === 'backtest_done') label = 'backtest_done';
         if (ev.type === 'final_decision') label = 'final_decision';
         if (ev.type === 'upstream_done') label = 'upstream_done';
@@ -167,9 +166,9 @@ export const RunChatView: React.FC<{ traceEvents?: TraceEvent[] }> = ({ traceEve
       if (it.kind === 'agent_message') {
         if (it.persona === 'coordinator' && !allowed.has('coordinator')) return false;
         if (it.persona === 'dev_senior' && !allowed.has('dev_senior')) return false;
-        if (it.persona === 'validator' && !allowed.has('validator')) return false;
+        if (it.persona === 'trader' && !allowed.has('trader')) return false;
         // other personas treated as system
-        if (!['coordinator', 'dev_senior', 'validator'].includes(it.persona) && !allowed.has('system')) return false;
+        if (!['coordinator', 'dev_senior', 'trader'].includes(it.persona) && !allowed.has('system')) return false;
       }
       if (it.kind === 'key_event' || it.kind === 'debug_event') {
         // key/debug are “system-ish”

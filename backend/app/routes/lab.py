@@ -220,9 +220,6 @@ class LabRunOutputs(BaseModel):
     tests_done: Optional[Dict[str, Any]] = None
     final_decision: Optional[Dict[str, Any]] = None
 
-    # CP10 selection gate summary
-    selection: Optional[Dict[str, Any]] = None
-
     # CP8
     candidate_template_name: Optional[str] = None
     candidate_template_data: Optional[Dict[str, Any]] = None
@@ -862,9 +859,8 @@ def _apply_dev_adjustments_to_template_data(
 
 def _needs_dev_adjustment(run: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
     pre = _metrics_preflight(run=run)
-    sel = _cp10_selection_gate(run)
-    needs = (pre.get("ok") is False) or (not sel.get("approved"))
-    return needs, {"preflight": pre, "selection": sel}
+    needs = pre.get("ok") is False
+    return needs, {"preflight": pre}
 
 
 def _sanitize_upstream_messages(raw: Any) -> List[Dict[str, Any]]:
@@ -1755,61 +1751,6 @@ def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict
     return outputs
 
 
-def _cp10_selection_gate(run: Dict[str, Any]) -> Dict[str, Any]:
-    """CP10: deterministic approval gate based on holdout metrics.
-
-    This gate is evaluated before autosave.
-    """
-
-    inp = run.get("input") or {}
-    constraints = inp.get("constraints") or {}
-    max_dd = constraints.get("max_drawdown")
-    min_sharpe = constraints.get("min_sharpe")
-
-    backtest = run.get("backtest") or {}
-    wf = backtest.get("walk_forward") or {}
-    hold = (wf.get("holdout") or {}).get("metrics") or {}
-
-    total_trades = hold.get("total_trades")
-    sharpe = hold.get("sharpe_ratio")
-    dd = hold.get("max_drawdown")
-    # Some parts store pct; accept both
-    dd_pct = hold.get("max_drawdown_pct")
-
-    reasons: list[str] = []
-
-    # Minimum trades on holdout (default 10)
-    min_holdout_trades = int(constraints.get("min_holdout_trades") or 10)
-    if not isinstance(total_trades, (int, float)) or int(total_trades) < min_holdout_trades:
-        reasons.append(f"holdout_total_trades<{min_holdout_trades} ({total_trades})")
-
-    if min_sharpe is not None:
-        try:
-            if sharpe is None or float(sharpe) < float(min_sharpe):
-                reasons.append(f"holdout_sharpe<{min_sharpe} ({sharpe})")
-        except Exception:
-            reasons.append("holdout_sharpe_invalid")
-
-    if max_dd is not None:
-        # compare against decimal dd if available else pct
-        try:
-            if dd is not None:
-                if float(dd) > float(max_dd):
-                    reasons.append(f"holdout_max_drawdown>{max_dd} ({dd})")
-            elif dd_pct is not None:
-                if float(dd_pct) / 100.0 > float(max_dd):
-                    reasons.append(f"holdout_max_drawdown_pct>{max_dd} ({dd_pct})")
-        except Exception:
-            reasons.append("holdout_max_drawdown_invalid")
-
-    return {
-        "approved": len(reasons) == 0,
-        "reasons": reasons,
-        "min_holdout_trades": min_holdout_trades,
-        "holdout": {"total_trades": total_trades, "sharpe_ratio": sharpe, "max_drawdown": dd, "max_drawdown_pct": dd_pct},
-    }
-
-
 def _metrics_preflight(*, run: Dict[str, Any]) -> Dict[str, Any]:
     """Deterministic preflight for metrics integrity.
 
@@ -1880,56 +1821,16 @@ def _metrics_preflight(*, run: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _gate_decision(*, outputs: Dict[str, Any], selection: Dict[str, Any], preflight: Dict[str, Any]) -> Dict[str, Any]:
-    """Consolidate final verdict into a single, consistent decision object."""
+def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[str, Any]) -> Dict[str, Any]:
+    """CP5: autosave (template + favorite) only when Trader verdict is approved."""
 
     verdict = _verdict_label(outputs.get("trader_verdict") or outputs.get("validator_verdict"))
-
-    reasons: list[str] = []
-    if isinstance(preflight, dict) and preflight.get("ok") is False:
-        reasons.append("metrics_preflight_failed")
-
-    if isinstance(selection, dict) and not selection.get("approved"):
-        reasons.extend(selection.get("reasons") or [])
-
-    if verdict in ("unknown", "metrics_invalid"):
-        if verdict == "metrics_invalid":
-            reasons.append("validator_metrics_invalid")
-        else:
-            reasons.append("validator_unknown")
-
-    approved = (verdict == "approved") and bool(selection.get("approved")) and not (isinstance(preflight, dict) and preflight.get("ok") is False)
-
-    final = {
-        "verdict": "approved" if approved else ("metrics_invalid" if (verdict == "metrics_invalid" or (isinstance(preflight, dict) and preflight.get("ok") is False)) else "rejected"),
-        "approved": bool(approved),
-        "reasons": reasons,
-        "validator_verdict": verdict,
-        "trader_verdict": verdict,
-        "selection_gate": selection,
-        "metrics_preflight": preflight,
-    }
-    return final
-
-
-def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[str, Any]) -> Dict[str, Any]:
-    """CP5/CP10: autosave (template + favorite) only when validator says approved AND selection gate passes."""
-
-    # Prefer consolidated gate decision when available
-    gate = outputs.get("gate_decision") if isinstance(outputs, dict) else None
-    if isinstance(gate, dict):
-        if not gate.get("approved"):
-            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "autosave_blocked", "data": {"reason": "gate_decision", "gate_decision": gate}})
-            return outputs
-        selection = (gate.get("selection_gate") or {}) if isinstance(gate.get("selection_gate"), dict) else (outputs.get("selection") or {})
-    else:
-        verdict = _verdict_label(outputs.get("trader_verdict") or outputs.get("validator_verdict"))
-        selection = outputs.get("selection") or {}
-        if verdict != "approved":
-            return outputs
-        if not selection or not selection.get("approved"):
-            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "autosave_blocked", "data": {"reason": "selection_gate", "selection": selection}})
-            return outputs
+    if verdict != "approved":
+        _append_trace(
+            run_id,
+            {"ts_ms": _now_ms(), "type": "autosave_blocked", "data": {"reason": "trader_verdict", "trader_verdict": verdict}},
+        )
+        return outputs
 
     try:
         from app.services.combo_service import ComboService
@@ -1939,7 +1840,7 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
         inp = run.get("input") or {}
         backtest = run.get("backtest") or {}
         base_template = str(inp.get("base_template") or backtest.get("template") or "")
-        # CP10: if we have a candidate template, autosave should be based on it.
+        # If we have a candidate template, autosave should be based on it.
         candidate_template = outputs.get("candidate_template_name")
         template_to_save = str(candidate_template or base_template)
 
@@ -2177,35 +2078,25 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
 
     dev_needs_retry = bool(outputs.get("dev_needs_retry"))
     if dev_needs_retry:
-        # Dev must re-run backtest; skip trader/validator/gates for now.
+        # Dev must re-run backtest; skip trader/validator final decision for now.
         outputs.pop("trader_verdict", None)
         outputs.pop("validator_verdict", None)
+        # Legacy cleanup: remove obsolete CP10 artifacts.
         outputs.pop("selection", None)
         outputs.pop("gate_decision", None)
     else:
         # CP8: persist candidate template after Dev output exists
         if outputs.get("coordinator_summary") and outputs.get("dev_summary"):
             outputs = _cp8_save_candidate_template(run_id, _load_run_json(run_id) or run, outputs)
+        # Legacy cleanup: remove obsolete CP10 artifacts.
+        outputs.pop("selection", None)
+        outputs.pop("gate_decision", None)
+        _update_run_json(run_id, {"outputs": outputs})
 
-        # CP10: deterministic selection gate (holdout-based)
-        if outputs.get("coordinator_summary") and (outputs.get("trader_verdict") or outputs.get("validator_verdict")):
-            sel = _cp10_selection_gate(_load_run_json(run_id) or run)
-            outputs["selection"] = sel
-            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
-
-            pre = (context.get("metrics_preflight") or {}) if isinstance(context, dict) else {}
-            gate = _gate_decision(outputs=outputs, selection=sel, preflight=pre)
-            outputs["gate_decision"] = gate
-            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "gate_decision", "data": gate})
-            _update_run_json(run_id, {"outputs": outputs})
-
-    gate_decision = outputs.get("gate_decision") if isinstance(outputs, dict) else None
-    ready_for_review = bool(isinstance(gate_decision, dict) and gate_decision.get("approved"))
-
-    # Auto-save when trader approves (no human confirmation needed)
-    if ready_for_review and not dev_needs_retry:
-        outputs = _cp5_autosave_if_approved(run_id, _load_run_json(run_id) or run, outputs)
-        graph_status = "done"  # Mark as done after auto-save
+    verdict = _verdict_label(outputs.get("trader_verdict") or outputs.get("validator_verdict"))
+    ready_for_review = (not dev_needs_retry) and (
+        verdict == "approved" or graph_status == "approved"
+    )
 
     needs_confirm = not _budget_ok(budget) and graph_status not in ("done", "failed")
     patch: Dict[str, Any] = {
@@ -2221,6 +2112,8 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         patch.update({"status": "ready_for_review", "step": "trader_review", "phase": "execution", "needs_user_confirm": False})
     elif graph_status == "done":
         patch.update({"status": "done", "step": "done", "needs_user_confirm": False, "phase": "done"})
+    elif graph_status == "rejected":
+        patch.update({"status": "rejected", "step": "done", "needs_user_confirm": False, "phase": "done"})
     elif graph_status == "failed":
         patch.update({"status": "failed", "step": "tests", "needs_user_confirm": False, "phase": "done"})
     elif graph_status == "needs_adjustment":
@@ -3526,6 +3419,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         },
     )
 
+    last_trader_verdict = "unknown"
     for it in range(1, max_iterations + 1):
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_started", "data": {"iteration": it, "template": current_template}})
 
@@ -3652,7 +3546,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             template_data_override=(cand_template_data if isinstance(cand_template_data, dict) else None),
         )
 
-        # Dev loop: if preflight/selection fail, adjust template and re-run before Trader
+        # Dev loop: if metrics preflight fails, adjust template and re-run before Trader
         max_dev_adjustments = min(3, max_iterations)
         adjust_count = 0
         while True:
@@ -3781,7 +3675,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                         persona="trader",
                         system_prompt=(
                             "Papel: Trader (Profissional de Mercado Financeiro). "
-                            "Você é o gate final de decisão do Strategy Lab. "
+                            "Você é o decisor final de execução do Strategy Lab. "
                             "Responda EXCLUSIVAMENTE com JSON válido (sem markdown/texto fora do JSON) no formato: "
                             "{\"verdict\":\"approved\"|\"rejected\"|\"metrics_invalid\",\"reasons\":[...],\"required_fixes\":[...],\"notes\":\"...\"}. "
                             "Baseie o veredito principalmente no HOLDOUT (30% mais recente). "
@@ -3798,22 +3692,17 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         except Exception as e:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "validator_error", "data": {"error": str(e), "iteration": it}})
 
-        # Gate decision (candidate is kept in run context until Trader approve/reject)
+        # Trader-only decision (candidate is kept in run context until explicit review action)
         run = _load_run_json(run_id) or {}
         outputs = run.get("outputs") or {}
-        sel = _cp10_selection_gate(run)
-        outputs["selection"] = sel
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "selection_gate", "data": sel})
-
-        # Consolidated gate decision
-        pre = _metrics_preflight(run=run)
-        gate = _gate_decision(outputs=outputs, selection=sel, preflight=pre)
-        outputs["gate_decision"] = gate
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "gate_decision", "data": gate})
+        outputs.pop("selection", None)
+        outputs.pop("gate_decision", None)
 
         _update_run_json(run_id, {"outputs": outputs})
 
-        if bool(gate.get("approved")):
+        verdict = _verdict_label(outputs.get("trader_verdict") or outputs.get("validator_verdict"))
+        last_trader_verdict = verdict
+        if verdict == "approved":
             _update_run_json(
                 run_id,
                 {
@@ -3827,7 +3716,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "ready_for_trader_review", "data": {"iteration": it, "template": str(cand)}})
             return
 
-        res = str(gate.get("verdict") or "rejected")
+        res = verdict if verdict in ("rejected", "needs_adjustment", "metrics_invalid") else "rejected"
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_done", "data": {"iteration": it, "result": res}})
         current_template = str(cand)
         if isinstance(cand_template_data, dict):
@@ -3835,8 +3724,11 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         else:
             current_template_data = None
 
-    # If we exit the loop, we're done (rejected after max iterations)
-    _update_run_json(run_id, {"status": "done", "step": "done", "phase": "done"})
+    # If we exit the loop, keep status aligned with the latest Trader verdict.
+    if last_trader_verdict == "rejected":
+        _update_run_json(run_id, {"status": "rejected", "step": "done", "phase": "done"})
+    else:
+        _update_run_json(run_id, {"status": "needs_adjustment", "step": "personas", "phase": "execution"})
 
 
 def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
@@ -3989,7 +3881,6 @@ async def create_run(
             "trader_verdict": None,
             "tests_done": None,
             "final_decision": None,
-            "selection": None,
             "candidate_template_name": None,
             "candidate_template_data": None,
             "candidate_template_description": None,
@@ -4319,8 +4210,8 @@ async def post_run_approve(run_id: str) -> LabRunReviewDecisionResponse:
             template_name=str(outputs.get("saved_template_name")),
         )
 
-    gate = outputs.get("gate_decision") or {}
-    if not (isinstance(gate, dict) and bool(gate.get("approved"))):
+    trader_verdict = _verdict_label(outputs.get("trader_verdict") or outputs.get("validator_verdict"))
+    if str(run.get("status") or "").strip() != "ready_for_review" or trader_verdict != "approved":
         raise HTTPException(status_code=409, detail="run is not ready for trader approval")
 
     try:

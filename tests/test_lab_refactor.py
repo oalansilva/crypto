@@ -219,7 +219,7 @@ async def test_post_run_approve_persists_template_on_explicit_trader_approval(mo
         "input": {"symbol": "BTC/USDT", "timeframe": "1h", "base_template": "seed_tpl"},
         "backtest": {"symbol": "BTC/USDT", "timeframe": "1h", "template": "seed_tpl"},
         "outputs": {
-            "gate_decision": {"approved": True, "verdict": "approved"},
+            "trader_verdict": "{\"verdict\":\"approved\"}",
             "candidate_template_name": "lab_seed_candidate",
             "candidate_template_description": "approved candidate",
             "candidate_template_data": {
@@ -267,7 +267,7 @@ async def test_post_run_reject_marks_rejected_without_persisting_template(monkey
         "updated_at_ms": 1,
         "input": {"symbol": "BTC/USDT", "timeframe": "1h"},
         "outputs": {
-            "gate_decision": {"approved": True, "verdict": "approved"},
+            "trader_verdict": "{\"verdict\":\"approved\"}",
             "candidate_template_name": "lab_seed_candidate",
             "candidate_template_data": {
                 "indicators": [{"type": "ema", "alias": "ema20", "params": {"length": 20}}],
@@ -287,6 +287,38 @@ async def test_post_run_reject_marks_rejected_without_persisting_template(monkey
     assert updated["status"] == "rejected"
     assert updated["outputs"].get("saved_template_name") is None
     assert updated["outputs"]["trader_review_decision"] == "rejected"
+
+
+@pytest.mark.asyncio
+async def test_post_run_approve_requires_trader_approved_status(monkeypatch, tmp_path):
+    monkeypatch.setattr(lab_routes, "_append_trace", lambda *args, **kwargs: None)
+    monkeypatch.setattr(lab_routes, "_runs_dir", lambda: tmp_path)
+
+    run_id = "run_not_ready_for_approval"
+    payload = {
+        "run_id": run_id,
+        "status": "running",
+        "step": "execution",
+        "phase": "execution",
+        "created_at_ms": 1,
+        "updated_at_ms": 1,
+        "outputs": {
+            "trader_verdict": "{\"verdict\":\"rejected\"}",
+            "candidate_template_name": "lab_seed_candidate",
+            "candidate_template_data": {
+                "indicators": [{"type": "ema", "alias": "ema20", "params": {"length": 20}}],
+                "entry_logic": "close > ema20",
+                "exit_logic": "close < ema20",
+                "stop_loss": 0.03,
+            },
+        },
+    }
+    (tmp_path / f"{run_id}.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(lab_routes.HTTPException) as exc:
+        await lab_routes.post_run_approve(run_id)
+
+    assert exc.value.status_code == 409
 
 
 def test_build_lab_optimization_schema_multi_ma_contract():
@@ -448,7 +480,7 @@ def test_apply_dev_adjustments_to_template_data_uses_existing_ema_alias_for_exit
     assert "close < ema20" not in str(updated.get("exit_logic") or "")
 
 
-def test_needs_dev_adjustment_on_zero_trades():
+def test_needs_dev_adjustment_on_zero_trades_without_preflight_errors():
     run = {
         "input": {"constraints": {"min_holdout_trades": 10, "min_sharpe": 0.4}},
         "backtest": {
@@ -459,8 +491,8 @@ def test_needs_dev_adjustment_on_zero_trades():
         },
     }
     needs, ctx = lab_routes._needs_dev_adjustment(run)
-    assert needs is True
-    assert ctx["selection"]["approved"] is False
+    assert needs is False
+    assert ctx["preflight"]["ok"] is True
 
 
 def test_needs_dev_adjustment_ok_when_metrics_pass():
@@ -475,7 +507,22 @@ def test_needs_dev_adjustment_ok_when_metrics_pass():
     }
     needs, ctx = lab_routes._needs_dev_adjustment(run)
     assert needs is False
-    assert ctx["selection"]["approved"] is True
+    assert ctx["preflight"]["ok"] is True
+
+
+def test_needs_dev_adjustment_when_metrics_preflight_fails():
+    run = {
+        "input": {"constraints": {"min_holdout_trades": 10, "min_sharpe": 0.4}},
+        "backtest": {
+            "walk_forward": {
+                "holdout": {"metrics": {"total_trades": 12, "sharpe_ratio": 0.6, "max_drawdown": 5.0}},
+                "in_sample": {"metrics": {"total_trades": 20}},
+            }
+        },
+    }
+    needs, ctx = lab_routes._needs_dev_adjustment(run)
+    assert needs is True
+    assert ctx["preflight"]["ok"] is False
 
 
 def test_build_fallback_logic_uses_shortest_and_longest_ema():
@@ -562,11 +609,8 @@ def test_run_lab_autonomous_emits_logic_preflight_and_correction_traces(monkeypa
 
     monkeypatch.setattr(lab_routes, "_update_run_json", _fake_update_run)
     monkeypatch.setattr(lab_routes, "_cp8_save_candidate_template", lambda run_id, run, outputs: {**outputs, "candidate_template_name": "seed_tpl"})
-    monkeypatch.setattr(lab_routes, "_cp5_autosave_if_approved", lambda run_id, run, outputs: outputs)
     monkeypatch.setattr(lab_routes, "_needs_dev_adjustment", lambda run: (False, {"preflight": {"ok": True}}))
     monkeypatch.setattr(lab_routes, "_metrics_preflight", lambda run: {"ok": True, "errors": []})
-    monkeypatch.setattr(lab_routes, "_cp10_selection_gate", lambda run: {"approved": False})
-    monkeypatch.setattr(lab_routes, "_gate_decision", lambda outputs, selection, preflight: {"verdict": "rejected"})
     monkeypatch.setattr(lab_routes, "_persona_call_sync", lambda **kwargs: {"text": "{\"verdict\":\"rejected\"}", "tokens": 1})
 
     preflight_calls = {"n": 0}
@@ -716,11 +760,8 @@ def test_run_lab_autonomous_persists_combo_optimization_failure(monkeypatch):
 
     monkeypatch.setattr(lab_routes, "_update_run_json", _fake_update_run)
     monkeypatch.setattr(lab_routes, "_cp8_save_candidate_template", lambda run_id, run, outputs: {**outputs, "candidate_template_name": "seed_tpl"})
-    monkeypatch.setattr(lab_routes, "_cp5_autosave_if_approved", lambda run_id, run, outputs: outputs)
     monkeypatch.setattr(lab_routes, "_needs_dev_adjustment", lambda run: (False, {"preflight": {"ok": True}}))
     monkeypatch.setattr(lab_routes, "_metrics_preflight", lambda run: {"ok": True, "errors": []})
-    monkeypatch.setattr(lab_routes, "_cp10_selection_gate", lambda run: {"approved": False})
-    monkeypatch.setattr(lab_routes, "_gate_decision", lambda outputs, selection, preflight: {"verdict": "rejected"})
     monkeypatch.setattr(lab_routes, "_persona_call_sync", lambda **kwargs: {"text": "{\"verdict\":\"rejected\"}", "tokens": 1})
     monkeypatch.setattr(lab_routes, "_logic_preflight", lambda **kwargs: (True, []))
 
