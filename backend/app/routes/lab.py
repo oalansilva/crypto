@@ -1561,6 +1561,70 @@ def _persona_call_sync(*,
     )
 
 
+DEV_LOGIC_FIX_PROMPT = (
+    "Papel: Dev (Dev Sênior) - Correção de Lógica\n"
+    "Objetivo: corrigir entry_logic/exit_logic inválidas usando PythonREPLTool.\n\n"
+    "Use PythonREPLTool para validar as expressões.\n"
+    "Responda EXCLUSIVAMENTE com JSON válido:\n"
+    "{\n"
+    "  \"entry_logic\": \"...\",\n"
+    "  \"exit_logic\": \"...\",\n"
+    "  \"notes\": \"...\"\n"
+    "}\n\n"
+    "Regras:\n"
+    "- entry_logic/exit_logic DEVEM ser expressões booleanas válidas\n"
+    "- Use apenas colunas válidas (close, ema*, rsi*, bb_upper, adx, atr, etc.)\n"
+    "- Não use texto livre (ex: 'cruza acima', 'quando', 'retorna')\n"
+    "Idioma: pt-BR."
+)
+
+
+def _request_dev_logic_correction(*,
+                                  run_id: str,
+                                  session_key: str,
+                                  thinking: str,
+                                  template_name: str,
+                                  template_data: Dict[str, Any],
+                                  errors: List[str]) -> Optional[Dict[str, Any]]:
+    payload = {
+        "template_name": template_name,
+        "template_data": template_data,
+        "errors": errors,
+    }
+    message = "Corrija a lógica inválida. Contexto (JSON):\n" + json.dumps(payload, ensure_ascii=False, indent=2)
+
+    try:
+        response = _persona_call_sync(
+            run_id=run_id,
+            session_key=session_key,
+            persona="dev_senior",
+            system_prompt=DEV_LOGIC_FIX_PROMPT,
+            message=message,
+            thinking=thinking or "low",
+            timeout_s=120,
+        )
+    except Exception as e:
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "dev_logic_correction_failed", "data": {"error": str(e)}})
+        return None
+
+    obj = _extract_json_object(response.get("text") or "")
+    if not isinstance(obj, dict):
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "dev_logic_correction_failed", "data": {"error": "invalid_json"}})
+        return None
+
+    entry_logic = obj.get("entry_logic")
+    exit_logic = obj.get("exit_logic")
+    if not isinstance(entry_logic, str) or not isinstance(exit_logic, str):
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "dev_logic_correction_failed", "data": {"error": "missing_logic"}})
+        return None
+
+    return {
+        "entry_logic": entry_logic.strip(),
+        "exit_logic": exit_logic.strip(),
+        "notes": obj.get("notes"),
+    }
+
+
 def _budget_ok(budget: Dict[str, Any]) -> bool:
     return int(budget.get("turns_used", 0)) < int(budget.get("turns_max", 0)) and int(budget.get("tokens_total", 0)) < int(
         budget.get("tokens_max", 0)
@@ -2824,13 +2888,70 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 return None
 
             logic_attempt += 1
-            if isinstance(template_data_override, dict):
-                changed, changes, next_template_data = _apply_logic_correction_to_template_data(template_data=template_data, reason=errors)
-                if changed:
-                    template_data = next_template_data
-                    template_data_override = copy.deepcopy(next_template_data)
-            else:
-                changed, changes = _apply_logic_correction(combo=combo, template_name=template_name, reason=errors)
+
+            run_snapshot = _load_run_json(run_id) or {}
+            session_key = str(run_snapshot.get("session_key") or f"lab-{run_id}")
+            thinking_level = str((run_snapshot.get("input") or {}).get("thinking") or "low")
+
+            original_entry = template_data.get("entry_logic")
+            original_exit = template_data.get("exit_logic")
+
+            dev_fix = _request_dev_logic_correction(
+                run_id=run_id,
+                session_key=session_key,
+                thinking=thinking_level,
+                template_name=template_name,
+                template_data=template_data,
+                errors=errors,
+            )
+
+            changed = False
+            changes: List[str] = []
+            if dev_fix:
+                next_entry = dev_fix.get("entry_logic")
+                next_exit = dev_fix.get("exit_logic")
+                if next_entry or next_exit:
+                    if isinstance(next_entry, str) and next_entry.strip():
+                        template_data["entry_logic"] = next_entry.strip()
+                    if isinstance(next_exit, str) and next_exit.strip():
+                        template_data["exit_logic"] = next_exit.strip()
+
+                    if template_data.get("entry_logic") != original_entry or template_data.get("exit_logic") != original_exit:
+                        if isinstance(template_data_override, dict):
+                            template_data_override = copy.deepcopy(template_data)
+                        else:
+                            combo.update_template(template_name=template_name, template_data=template_data)
+
+                        changed = True
+                        changes = ["dev_logic_correction"]
+
+                        _append_trace(
+                            run_id,
+                            {
+                                "ts_ms": _now_ms(),
+                                "type": "dev_logic_correction_applied",
+                                "data": {
+                                    "template": template_name,
+                                    "errors": errors,
+                                    "attempt": logic_attempt,
+                                    "original_entry_logic": original_entry,
+                                    "original_exit_logic": original_exit,
+                                    "entry_logic": template_data.get("entry_logic"),
+                                    "exit_logic": template_data.get("exit_logic"),
+                                    "notes": dev_fix.get("notes"),
+                                },
+                            },
+                        )
+
+            if not changed:
+                if isinstance(template_data_override, dict):
+                    changed, changes, next_template_data = _apply_logic_correction_to_template_data(template_data=template_data, reason=errors)
+                    if changed:
+                        template_data = next_template_data
+                        template_data_override = copy.deepcopy(next_template_data)
+                else:
+                    changed, changes = _apply_logic_correction(combo=combo, template_name=template_name, reason=errors)
+
             if not changed:
                 _append_trace(
                     run_id,
