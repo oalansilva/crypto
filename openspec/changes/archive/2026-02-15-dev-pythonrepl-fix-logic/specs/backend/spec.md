@@ -1,6 +1,6 @@
 # Δ backend Specification — dev-pythonrepl-fix-logic
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Dev Agent must include PythonREPLTool
 **Description:** The system MUST enable PythonREPLTool in the Dev agent so it can execute Python for validating and correcting logic expressions.
