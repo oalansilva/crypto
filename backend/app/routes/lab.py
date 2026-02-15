@@ -810,6 +810,57 @@ def _apply_logic_correction_to_template_data(
     return True, ["fallback_logic_applied"], updated
 
 
+def _apply_missing_indicator_fix(
+    *,
+    template_data: Dict[str, Any],
+    errors: List[str],
+) -> Tuple[bool, List[str], Dict[str, Any]]:
+    if not isinstance(template_data, dict):
+        return False, [], {}
+
+    indicators = copy.deepcopy(template_data.get("indicators") or [])
+    if not isinstance(indicators, list):
+        indicators = []
+
+    added: List[str] = []
+
+    def _has_alias(alias: str) -> bool:
+        return any(isinstance(ind, dict) and ind.get("alias") == alias for ind in indicators)
+
+    # Parse unknown columns/functions list
+    missing_tokens: List[str] = []
+    for err in errors or []:
+        if "unknown columns/functions" in err:
+            try:
+                part = err.split("unknown columns/functions:", 1)[1]
+                missing = part.split(". Available", 1)[0]
+                tokens = [t.strip() for t in missing.split(",") if t.strip()]
+                missing_tokens.extend(tokens)
+            except Exception:
+                continue
+
+    for token in missing_tokens:
+        m = re.match(r"^roc(\d+)$", token, flags=re.IGNORECASE)
+        if m:
+            length = int(m.group(1))
+            alias = token
+            if not _has_alias(alias):
+                indicators.append({"type": "roc", "alias": alias, "params": {"length": length}})
+                added.append(alias)
+
+    if not added:
+        return False, [], template_data
+
+    updated = {
+        "indicators": indicators,
+        "entry_logic": template_data.get("entry_logic"),
+        "exit_logic": template_data.get("exit_logic"),
+        "stop_loss": template_data.get("stop_loss"),
+    }
+
+    return True, added, updated
+
+
 def _apply_dev_adjustments_to_template_data(
     template_data: Dict[str, Any],
     attempt: int,
@@ -2896,6 +2947,35 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             original_entry = template_data.get("entry_logic")
             original_exit = template_data.get("exit_logic")
 
+            changed = False
+            changes: List[str] = []
+
+            indicator_fixed, indicator_changes, next_template_data = _apply_missing_indicator_fix(
+                template_data=template_data,
+                errors=errors,
+            )
+            if indicator_fixed:
+                template_data = next_template_data
+                if isinstance(template_data_override, dict):
+                    template_data_override = copy.deepcopy(next_template_data)
+                else:
+                    combo.update_template(template_name=template_name, template_data=template_data)
+                changes.extend([f"indicator_added:{name}" for name in indicator_changes])
+                changed = True
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "dev_indicator_added",
+                        "data": {
+                            "template": template_name,
+                            "errors": errors,
+                            "added": indicator_changes,
+                            "attempt": logic_attempt,
+                        },
+                    },
+                )
+
             dev_fix = _request_dev_logic_correction(
                 run_id=run_id,
                 session_key=session_key,
@@ -2905,8 +2985,6 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 errors=errors,
             )
 
-            changed = False
-            changes: List[str] = []
             if dev_fix:
                 next_entry = dev_fix.get("entry_logic")
                 next_exit = dev_fix.get("exit_logic")
@@ -2923,7 +3001,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                             combo.update_template(template_name=template_name, template_data=template_data)
 
                         changed = True
-                        changes = ["dev_logic_correction"]
+                        changes = changes + ["dev_logic_correction"]
 
                         _append_trace(
                             run_id,
