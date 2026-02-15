@@ -160,6 +160,56 @@ class ComboStrategy:
                     col_name = alias if alias else f'VOL_SMA_{length}'
                     df[col_name] = ta.sma(df['volume'], length=length)
 
+                else:
+                    # Generic pandas_ta indicator support
+                    func = getattr(ta, ind_type, None)
+                    if func is None:
+                        raise RuntimeError(f"Unsupported indicator type: {ind_type}")
+
+                    import inspect
+
+                    sig = None
+                    try:
+                        sig = inspect.signature(func)
+                    except Exception:
+                        sig = None
+
+                    kwargs = dict(params or {})
+                    if sig is not None:
+                        for name in sig.parameters:
+                            if name in ("open", "high", "low", "close", "volume") and name not in kwargs:
+                                if name in df.columns:
+                                    kwargs[name] = df[name]
+
+                    result = None
+                    try:
+                        if any(k in kwargs for k in ("open", "high", "low", "close", "volume")):
+                            result = func(**kwargs)
+                        else:
+                            result = func(df["close"], **kwargs)
+                    except Exception as e:
+                        raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
+
+                    if isinstance(result, pd.DataFrame):
+                        if alias and alias in result.columns:
+                            series = result[alias]
+                            col_name = alias
+                        else:
+                            col_name = alias or str(result.columns[0])
+                            series = result.iloc[:, 0]
+                        df[col_name] = series
+                    else:
+                        col_name = alias if alias else ind_type
+                        df[col_name] = result
+
+                    if alias and alias != col_name:
+                        df[alias] = df[col_name]
+
+                
+                    length = params.get('length', 20)
+                    col_name = alias if alias else f'VOL_SMA_{length}'
+                    df[col_name] = ta.sma(df['volume'], length=length)
+
             except Exception as e:
                 raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
 

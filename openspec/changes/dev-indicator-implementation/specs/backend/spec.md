@@ -6,7 +6,7 @@
 **Description:** The system SHALL allow the Dev to add new indicators by modifying backend engine code (e.g., ComboStrategy), without touching frontend/interface code.
 
 #### Scenario: Missing indicator is added
-- **GIVEN** the Dev needs an indicator not supported (e.g., ROC)
+- **GIVEN** the Dev needs an indicator not supported (e.g., any pandas_ta indicator)
 - **WHEN** the Dev updates the backend engine
 - **THEN** the new indicator MUST be available as a column for logic evaluation
 - **AND** no frontend/interface files are modified

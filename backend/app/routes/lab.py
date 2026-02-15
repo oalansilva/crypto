@@ -841,27 +841,43 @@ def _apply_missing_indicator_fix(
 
     for token in missing_tokens:
         token_norm = token.strip()
-        m = re.match(r"^(ema|sma|rsi|adx|atr|roc)(\d+)$", token_norm, flags=re.IGNORECASE)
-        if m:
-            ind_type = m.group(1).lower()
-            length = int(m.group(2))
-            alias = token_norm
-            if not _has_alias(alias):
-                indicators.append({"type": ind_type, "alias": alias, "params": {"length": length}})
-                added.append(alias)
-            continue
+        base = token_norm
+        length = None
 
-        if token_norm.lower() in ("bb_upper", "bb_lower", "bb_middle", "bb_upper_", "bb_lower_", "bb_middle_") or token_norm.lower().startswith("bb_"):
+        m = re.match(r"^([a-zA-Z_]+)(\d+)$", token_norm)
+        if m:
+            base = m.group(1)
+            length = int(m.group(2))
+
+        # Common aliases for BB/macd families
+        if base.lower() in ("bb_upper", "bb_lower", "bb_middle") or base.lower().startswith("bb_"):
             alias = "bb"
             if not _has_alias(alias):
                 indicators.append({"type": "bbands", "alias": alias, "params": {"length": 20, "std": 2}})
                 added.append(alias)
             continue
 
-        if token_norm.lower().startswith("macd"):
+        if base.lower().startswith("macd"):
             alias = "macd"
             if not _has_alias(alias):
                 indicators.append({"type": "macd", "alias": alias, "params": {"fast": 12, "slow": 26, "signal": 9}})
+                added.append(alias)
+            continue
+
+        # Generic pandas_ta indicator support
+        try:
+            import pandas_ta as ta
+            indicators_list = set(getattr(ta, "indicators", []) or [])
+        except Exception:
+            indicators_list = set()
+
+        if base.lower() in indicators_list:
+            alias = token_norm
+            params = {}
+            if length is not None:
+                params["length"] = length
+            if not _has_alias(alias):
+                indicators.append({"type": base.lower(), "alias": alias, "params": params})
                 added.append(alias)
             continue
 

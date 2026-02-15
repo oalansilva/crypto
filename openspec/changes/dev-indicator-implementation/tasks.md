@@ -1,6 +1,6 @@
 # Tasks
 
-- [ ] Definir lista mínima de indicadores suportados para expansão (ex.: ROC).
+- [ ] Definir suporte para qualquer indicador do pandas_ta.
 - [ ] Implementar indicador(es) no engine (ComboStrategy/serviços).
 - [ ] Atualizar aliases/colunas expostas para lógica.
 - [ ] Logar no trace quando indicador novo é habilitado ou correção aplicada.
