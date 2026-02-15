@@ -840,13 +840,30 @@ def _apply_missing_indicator_fix(
                 continue
 
     for token in missing_tokens:
-        m = re.match(r"^roc(\d+)$", token, flags=re.IGNORECASE)
+        token_norm = token.strip()
+        m = re.match(r"^(ema|sma|rsi|adx|atr|roc)(\d+)$", token_norm, flags=re.IGNORECASE)
         if m:
-            length = int(m.group(1))
-            alias = token
+            ind_type = m.group(1).lower()
+            length = int(m.group(2))
+            alias = token_norm
             if not _has_alias(alias):
-                indicators.append({"type": "roc", "alias": alias, "params": {"length": length}})
+                indicators.append({"type": ind_type, "alias": alias, "params": {"length": length}})
                 added.append(alias)
+            continue
+
+        if token_norm.lower() in ("bb_upper", "bb_lower", "bb_middle", "bb_upper_", "bb_lower_", "bb_middle_") or token_norm.lower().startswith("bb_"):
+            alias = "bb"
+            if not _has_alias(alias):
+                indicators.append({"type": "bbands", "alias": alias, "params": {"length": 20, "std": 2}})
+                added.append(alias)
+            continue
+
+        if token_norm.lower().startswith("macd"):
+            alias = "macd"
+            if not _has_alias(alias):
+                indicators.append({"type": "macd", "alias": alias, "params": {"fast": 12, "slow": 26, "signal": 9}})
+                added.append(alias)
+            continue
 
     if not added:
         return False, [], template_data
