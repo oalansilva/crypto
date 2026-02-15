@@ -90,7 +90,7 @@ fi
 
 # 2) Status check (OpenSpec gate)
 echo "[openspec] status check (json)"
-openspec status --json >/dev/null
+openspec status --json --change "$CHANGE_ID" >/dev/null
 
 # 3) Validate the change (OpenSpec gate)
 echo "[openspec] validating change: $CHANGE_ID"
