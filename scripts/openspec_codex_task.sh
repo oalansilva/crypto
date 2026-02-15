@@ -88,7 +88,11 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 2
 fi
 
-# 2) Validate the change (OpenSpec gate)
+# 2) Status check (OpenSpec gate)
+echo "[openspec] status check (json)"
+openspec status --json >/dev/null
+
+# 3) Validate the change (OpenSpec gate)
 echo "[openspec] validating change: $CHANGE_ID"
 openspec validate "$CHANGE_ID" --type change
 
