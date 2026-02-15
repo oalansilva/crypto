@@ -593,61 +593,6 @@ def _relax_exit_logic(
     return updated, adjustments
 
 
-def _build_fallback_logic(indicators: List[Dict[str, Any]]) -> Tuple[str, str]:
-    def _ema_length(ind: Dict[str, Any]) -> int:
-        params = ind.get("params") if isinstance(ind, dict) else {}
-        if isinstance(params, dict):
-            try:
-                length = int(params.get("length") or 0)
-                if length > 0:
-                    return length
-            except Exception:
-                pass
-        alias = str((ind or {}).get("alias") or "")
-        m = re.search(r"(\d+)", alias)
-        if m:
-            try:
-                return int(m.group(1))
-            except Exception:
-                pass
-        return 10**9
-
-    ema_inds = sorted([i for i in indicators if str(i.get("type") or "").lower() == "ema"], key=_ema_length)
-    rsi_inds = [i for i in indicators if str(i.get("type") or "").lower() == "rsi"]
-
-    def _alias_for(ind: Dict[str, Any], *, prefix: str) -> str:
-        alias = str(ind.get("alias") or "").strip()
-        if alias:
-            return alias
-        try:
-            length = int((ind.get("params") or {}).get("length") or 0)
-        except Exception:
-            length = 0
-        if length > 0:
-            return f"{prefix}_{length}"
-        return prefix.lower()
-
-    if len(ema_inds) >= 2:
-        ema_fast = _alias_for(ema_inds[0], prefix="EMA")
-        ema_slow = _alias_for(ema_inds[-1], prefix="EMA")
-        entry = f"{ema_fast} > {ema_slow} AND close > {ema_fast}"
-        exit_logic = f"{ema_fast} < {ema_slow} OR close < {ema_fast}"
-    elif len(ema_inds) == 1:
-        ema = _alias_for(ema_inds[0], prefix="EMA")
-        entry = f"close > {ema}"
-        exit_logic = f"close < {ema}"
-    else:
-        entry = "close > open"
-        exit_logic = "close < open"
-
-    if rsi_inds:
-        rsi = _alias_for(rsi_inds[0], prefix="RSI")
-        entry = f"{entry} AND {rsi} > 50"
-        exit_logic = f"{exit_logic} OR {rsi} < 45"
-
-    return entry, exit_logic
-
-
 def _logic_preflight(
     *,
     combo: Any,
@@ -719,29 +664,6 @@ def _logic_preflight(
         return False, [str(e)]
 
 
-def _apply_logic_correction(*, combo: Any, template_name: str, reason: Optional[List[str]] = None) -> Tuple[bool, List[str]]:
-    try:
-        meta = combo.get_template_metadata(template_name)
-    except Exception:
-        meta = None
-
-    if not meta:
-        return False, []
-
-    indicators = meta.get("indicators") or []
-    entry_logic, exit_logic = _build_fallback_logic(indicators)
-
-    template_data = {
-        "indicators": indicators,
-        "entry_logic": entry_logic,
-        "exit_logic": exit_logic,
-        "stop_loss": meta.get("stop_loss"),
-    }
-
-    combo.update_template(template_name=template_name, template_data=template_data)
-    return True, ["fallback_logic_applied"]
-
-
 def _apply_dev_adjustments(*, combo: Any, template_name: str, attempt: int, reason: Optional[str] = None) -> Tuple[bool, List[str]]:
     try:
         meta = combo.get_template_metadata(template_name)
@@ -789,25 +711,6 @@ def _apply_dev_adjustments(*, combo: Any, template_name: str, attempt: int, reas
 
     combo.update_template(template_name=template_name, template_data=template_data)
     return True, changes
-
-
-def _apply_logic_correction_to_template_data(
-    template_data: Dict[str, Any],
-    reason: Optional[List[str]] = None,
-) -> Tuple[bool, List[str], Dict[str, Any]]:
-    if not isinstance(template_data, dict):
-        return False, [], {}
-
-    updated = {
-        "indicators": copy.deepcopy(template_data.get("indicators") or []),
-        "entry_logic": template_data.get("entry_logic"),
-        "exit_logic": template_data.get("exit_logic"),
-        "stop_loss": template_data.get("stop_loss"),
-    }
-    entry_logic, exit_logic = _build_fallback_logic(updated.get("indicators") or [])
-    updated["entry_logic"] = entry_logic
-    updated["exit_logic"] = exit_logic
-    return True, ["fallback_logic_applied"], updated
 
 
 def _apply_missing_indicator_fix(
@@ -2956,7 +2859,13 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 {
                     "ts_ms": _now_ms(),
                     "type": "logic_preflight_failed",
-                    "data": {"template": template_name, "errors": errors, "attempt": logic_attempt},
+                    "data": {
+                        "template": template_name,
+                        "errors": errors,
+                        "attempt": logic_attempt,
+                        "no_fallback_applied": True,
+                        "fallback_strategy_applied": False,
+                    },
                 },
             )
             if logic_attempt >= max_logic_corrections:
@@ -2965,7 +2874,20 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                     {
                         "ts_ms": _now_ms(),
                         "type": "logic_correction_failed",
-                        "data": {"template": template_name, "errors": errors, "attempt": logic_attempt},
+                        "data": {
+                            "template": template_name,
+                            "attempt": logic_attempt,
+                            "actor": "dev",
+                            "reason": errors,
+                            "original_entry_logic": template_data.get("entry_logic"),
+                            "original_exit_logic": template_data.get("exit_logic"),
+                            "rewritten_entry_logic": template_data.get("entry_logic"),
+                            "rewritten_exit_logic": template_data.get("exit_logic"),
+                            "validation_result": "invalid",
+                            "validation_errors": errors,
+                            "no_fallback_applied": True,
+                            "fallback_strategy_applied": False,
+                        },
                     },
                 )
                 _update_run_json(run_id, {"status": "error", "step": "error", "error": "logic_preflight_failed"})
@@ -2980,21 +2902,12 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             original_entry = template_data.get("entry_logic")
             original_exit = template_data.get("exit_logic")
 
-            changed = False
-            changes: List[str] = []
-
             indicator_fixed, indicator_changes, next_template_data = _apply_missing_indicator_fix(
                 template_data=template_data,
                 errors=errors,
             )
             if indicator_fixed:
                 template_data = next_template_data
-                if isinstance(template_data_override, dict):
-                    template_data_override = copy.deepcopy(next_template_data)
-                else:
-                    combo.update_template(template_name=template_name, template_data=template_data)
-                changes.extend([f"indicator_added:{name}" for name in indicator_changes])
-                changed = True
                 _append_trace(
                     run_id,
                     {
@@ -3018,70 +2931,81 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 errors=errors,
             )
 
+            rewritten_entry = template_data.get("entry_logic")
+            rewritten_exit = template_data.get("exit_logic")
+            notes = None
             if dev_fix:
                 next_entry = dev_fix.get("entry_logic")
                 next_exit = dev_fix.get("exit_logic")
-                if next_entry or next_exit:
-                    if isinstance(next_entry, str) and next_entry.strip():
-                        template_data["entry_logic"] = next_entry.strip()
-                    if isinstance(next_exit, str) and next_exit.strip():
-                        template_data["exit_logic"] = next_exit.strip()
+                if isinstance(next_entry, str) and next_entry.strip():
+                    template_data["entry_logic"] = next_entry.strip()
+                if isinstance(next_exit, str) and next_exit.strip():
+                    template_data["exit_logic"] = next_exit.strip()
+                rewritten_entry = template_data.get("entry_logic")
+                rewritten_exit = template_data.get("exit_logic")
+                notes = dev_fix.get("notes")
 
-                    if template_data.get("entry_logic") != original_entry or template_data.get("exit_logic") != original_exit:
-                        if isinstance(template_data_override, dict):
-                            template_data_override = copy.deepcopy(template_data)
-                        else:
-                            combo.update_template(template_name=template_name, template_data=template_data)
-
-                        changed = True
-                        changes = changes + ["dev_logic_correction"]
-
-                        _append_trace(
-                            run_id,
-                            {
-                                "ts_ms": _now_ms(),
-                                "type": "dev_logic_correction_applied",
-                                "data": {
-                                    "template": template_name,
-                                    "errors": errors,
-                                    "attempt": logic_attempt,
-                                    "original_entry_logic": original_entry,
-                                    "original_exit_logic": original_exit,
-                                    "entry_logic": template_data.get("entry_logic"),
-                                    "exit_logic": template_data.get("exit_logic"),
-                                    "notes": dev_fix.get("notes"),
-                                },
-                            },
-                        )
-
-            if not changed:
+            correction_ok = False
+            correction_errors: List[str] = ["dev_logic_correction_unavailable"]
+            if dev_fix:
                 if isinstance(template_data_override, dict):
-                    changed, changes, next_template_data = _apply_logic_correction_to_template_data(template_data=template_data, reason=errors)
-                    if changed:
-                        template_data = next_template_data
-                        template_data_override = copy.deepcopy(next_template_data)
+                    correction_ok, correction_errors = _logic_preflight(
+                        combo=combo,
+                        template_name=template_name,
+                        df_sample=df,
+                        template_data=template_data,
+                    )
                 else:
-                    changed, changes = _apply_logic_correction(combo=combo, template_name=template_name, reason=errors)
+                    combo.update_template(template_name=template_name, template_data=template_data)
+                    correction_ok, correction_errors = _logic_preflight(combo=combo, template_name=template_name, df_sample=df)
 
-            if not changed:
-                _append_trace(
-                    run_id,
-                    {
-                        "ts_ms": _now_ms(),
-                        "type": "logic_correction_failed",
-                        "data": {"template": template_name, "errors": errors, "attempt": logic_attempt},
-                    },
-                )
-                _update_run_json(run_id, {"status": "error", "step": "error", "error": "logic_correction_failed"})
-                return None
+            if isinstance(template_data_override, dict):
+                template_data_override = copy.deepcopy(template_data)
+
             _append_trace(
                 run_id,
                 {
                     "ts_ms": _now_ms(),
                     "type": "logic_correction_applied",
-                    "data": {"template": template_name, "changes": changes, "attempt": logic_attempt},
+                    "data": {
+                        "template": template_name,
+                        "attempt": logic_attempt,
+                        "actor": "dev",
+                        "reason": errors,
+                        "original_entry_logic": original_entry,
+                        "original_exit_logic": original_exit,
+                        "rewritten_entry_logic": rewritten_entry,
+                        "rewritten_exit_logic": rewritten_exit,
+                        "indicator_changes": indicator_changes,
+                        "validation_result": "valid" if correction_ok else "invalid",
+                        "validation_errors": correction_errors,
+                        "notes": notes,
+                        "no_fallback_applied": True,
+                        "fallback_strategy_applied": False,
+                    },
                 },
             )
+            if correction_ok:
+                _append_trace(
+                    run_id,
+                    {
+                        "ts_ms": _now_ms(),
+                        "type": "dev_logic_correction_applied",
+                        "data": {
+                            "template": template_name,
+                            "errors": errors,
+                            "attempt": logic_attempt,
+                            "original_entry_logic": original_entry,
+                            "original_exit_logic": original_exit,
+                            "entry_logic": rewritten_entry,
+                            "exit_logic": rewritten_exit,
+                            "notes": notes,
+                            "no_fallback_applied": True,
+                            "fallback_strategy_applied": False,
+                        },
+                    },
+                )
+                break
 
         job_id = jm.create_job({"kind": "lab_backtest", "run_id": run_id, "iteration": iteration, "label": label, "template": template_name})
         _update_run_json(

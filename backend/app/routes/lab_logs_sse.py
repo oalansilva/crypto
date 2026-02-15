@@ -270,7 +270,9 @@ async def _read_from_offset(path: Path, offset: int) -> tuple[str, int]:
             new_offset = await handle.tell()
         return chunk, new_offset
 
-    return await asyncio.to_thread(_read_from_offset_sync, path, offset)
+    # Some constrained runtimes do not allow threadpool workers reliably.
+    # Keep a deterministic synchronous fallback when aiofiles is unavailable.
+    return _read_from_offset_sync(path, offset)
 
 
 async def stream_lab_logs(
@@ -322,4 +324,3 @@ async def stream_lab_logs(
             return
 
         await asyncio.sleep(poll_interval)
-

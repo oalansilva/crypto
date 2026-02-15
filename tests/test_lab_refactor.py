@@ -525,19 +525,6 @@ def test_needs_dev_adjustment_when_metrics_preflight_fails():
     assert ctx["preflight"]["ok"] is False
 
 
-def test_build_fallback_logic_uses_shortest_and_longest_ema():
-    entry, exit_logic = lab_routes._build_fallback_logic(
-        [
-            {"type": "ema", "alias": "ema200", "params": {"length": 200}},
-            {"type": "ema", "alias": "ema20", "params": {"length": 20}},
-            {"type": "ema", "alias": "ema50", "params": {"length": 50}},
-        ]
-    )
-
-    assert entry.startswith("ema20 > ema200")
-    assert exit_logic.startswith("ema20 < ema200")
-
-
 def test_logic_preflight_uses_length_based_sample_window():
     class _SampleSpy:
         def __init__(self):
@@ -622,7 +609,15 @@ def test_run_lab_autonomous_emits_logic_preflight_and_correction_traces(monkeypa
         return True, []
 
     monkeypatch.setattr(lab_routes, "_logic_preflight", _fake_logic_preflight)
-    monkeypatch.setattr(lab_routes, "_apply_logic_correction", lambda **kwargs: (True, ["fallback_logic_applied"]))
+    monkeypatch.setattr(
+        lab_routes,
+        "_request_dev_logic_correction",
+        lambda **kwargs: {
+            "entry_logic": "close > ema20 and rsi14 > 50",
+            "exit_logic": "close < ema20 or rsi14 < 45",
+            "notes": "normalized boolean logic",
+        },
+    )
 
     class _FakeComboService:
         def __init__(self):
@@ -721,8 +716,125 @@ def test_run_lab_autonomous_emits_logic_preflight_and_correction_traces(monkeypa
     assert "logic_correction_applied" in trace_types
     assert "combo_optimization_started" in trace_types
     assert "combo_optimization_applied" in trace_types
+    logic_events = [evt for evt in traces if evt.get("type") == "logic_correction_applied"]
+    assert logic_events
+    correction_data = logic_events[-1]["data"]
+    assert correction_data["actor"] == "dev"
+    assert correction_data["validation_result"] == "valid"
+    assert correction_data["rewritten_entry_logic"] == "close > ema20 and rsi14 > 50"
+    assert correction_data["rewritten_exit_logic"] == "close < ema20 or rsi14 < 45"
+    assert correction_data["no_fallback_applied"] is True
+    assert correction_data["fallback_strategy_applied"] is False
     assert run_state["backtest"]["combo_optimization"]["status"] == "completed"
     assert run_state["backtest"]["combo_optimization"]["best_parameters"]["stop_loss"] == 0.02
+
+
+def test_run_lab_autonomous_stops_when_dev_rewrite_does_not_validate(monkeypatch):
+    import app.services.combo_optimizer as combo_optimizer
+    import app.services.combo_service as combo_service
+    import app.services.job_manager as job_manager
+    import src.data.incremental_loader as incremental_loader
+
+    traces = []
+    run_state = {
+        "run_id": "run_logic_fail",
+        "status": "running",
+        "step": "execution",
+        "phase": "execution",
+        "input": {
+            "symbol": "BTC/USDT",
+            "timeframe": "1h",
+            "objective": "teste",
+            "thinking": "low",
+            "max_iterations": 1,
+            "constraints": {},
+        },
+        "budget": {"turns_used": 0, "turns_max": 20, "tokens_total": 0, "tokens_max": 100000},
+        "outputs": {"coordinator_summary": None, "dev_summary": None, "validator_verdict": None, "trader_verdict": None},
+        "upstream_contract": {"approved": True, "inputs": {"symbol": "BTC/USDT", "timeframe": "1h"}},
+    }
+
+    monkeypatch.setattr(lab_routes, "_append_trace", lambda run_id, event: traces.append(event))
+    monkeypatch.setattr(lab_routes, "_now_ms", lambda: 1)
+    monkeypatch.setattr(lab_routes, "_load_run_json", lambda run_id: copy.deepcopy(run_state))
+
+    def _fake_update_run(run_id, patch):
+        run_state.update(copy.deepcopy(patch))
+
+    monkeypatch.setattr(lab_routes, "_update_run_json", _fake_update_run)
+    monkeypatch.setattr(lab_routes, "_cp8_save_candidate_template", lambda run_id, run, outputs: {**outputs, "candidate_template_name": "seed_tpl"})
+    monkeypatch.setattr(lab_routes, "_needs_dev_adjustment", lambda run: (False, {"preflight": {"ok": True}}))
+    monkeypatch.setattr(lab_routes, "_metrics_preflight", lambda run: {"ok": True, "errors": []})
+    monkeypatch.setattr(lab_routes, "_persona_call_sync", lambda **kwargs: {"text": "{\"verdict\":\"rejected\"}", "tokens": 1})
+    monkeypatch.setattr(lab_routes, "_logic_preflight", lambda **kwargs: (False, ["invalid_logic"]))
+    monkeypatch.setattr(lab_routes, "_request_dev_logic_correction", lambda **kwargs: None)
+
+    class _FakeComboService:
+        def __init__(self):
+            base = {
+                "indicators": [
+                    {"type": "ema", "alias": "ema20", "params": {"length": 20}},
+                    {"type": "ema", "alias": "ema200", "params": {"length": 200}},
+                ],
+                "entry_logic": "ema20 > ema200",
+                "exit_logic": "ema20 < ema200",
+                "stop_loss": 0.03,
+            }
+            self.templates = {"seed_tpl": copy.deepcopy(base)}
+
+        def get_template_metadata(self, name):
+            return copy.deepcopy(self.templates.get(name) or self.templates["seed_tpl"])
+
+        def update_template(self, template_name, description=None, optimization_schema=None, template_data=None):
+            merged = self.get_template_metadata(template_name)
+            if template_data:
+                merged.update(template_data)
+            self.templates[template_name] = merged
+            return True
+
+    class _FakeJobManager:
+        def __init__(self):
+            self.states = {}
+
+    class _FakeLoader:
+        def fetch_data(self, symbol, timeframe, since_str, until_str):
+            idx = pd.date_range("2024-01-01", periods=1200, freq="h")
+            return pd.DataFrame(
+                {
+                    "open": [100.0] * len(idx),
+                    "high": [101.0] * len(idx),
+                    "low": [99.0] * len(idx),
+                    "close": [100.0] * len(idx),
+                    "volume": [1000.0] * len(idx),
+                },
+                index=idx,
+            )
+
+    monkeypatch.setattr(job_manager, "JobManager", _FakeJobManager)
+    monkeypatch.setattr(combo_service, "ComboService", _FakeComboService)
+    monkeypatch.setattr(incremental_loader, "IncrementalLoader", _FakeLoader)
+    monkeypatch.setattr(combo_optimizer, "_run_backtest_logic", lambda **kwargs: ({}, {}))
+
+    lab_routes._run_lab_autonomous_sync(
+        "run_logic_fail",
+        {"symbol": "BTC/USDT", "timeframe": "1h", "objective": "teste", "base_template": "seed_tpl", "direction": "long", "deep_backtest": False},
+    )
+
+    trace_types = [evt.get("type") for evt in traces]
+    assert "logic_preflight_failed" in trace_types
+    assert "logic_correction_applied" in trace_types
+    assert "logic_correction_failed" in trace_types
+    last_correction = [evt for evt in traces if evt.get("type") == "logic_correction_applied"][-1]["data"]
+    assert last_correction["validation_result"] == "invalid"
+    assert "dev_logic_correction_unavailable" in (last_correction.get("validation_errors") or [])
+    assert last_correction["no_fallback_applied"] is True
+    assert last_correction["fallback_strategy_applied"] is False
+    failed_data = [evt for evt in traces if evt.get("type") == "logic_correction_failed"][-1]["data"]
+    assert failed_data["no_fallback_applied"] is True
+    assert failed_data["fallback_strategy_applied"] is False
+    assert "fallback_logic_applied" not in json.dumps(traces, ensure_ascii=False)
+    assert run_state.get("error") == "logic_preflight_failed"
+    assert run_state.get("status") in {"error", "needs_adjustment"}
 
 
 def test_run_lab_autonomous_persists_combo_optimization_failure(monkeypatch):
