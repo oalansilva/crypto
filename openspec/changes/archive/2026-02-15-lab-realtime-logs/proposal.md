@@ -6,7 +6,7 @@ Atualmente, quando um step do Lab está em execução (ex: `combo_optimization` 
 
 A tela de configuração de combo (`/combo/configure`) já possui um botão "Ver Logs" que mostra logs em tempo real durante a otimização. O Lab precisa da mesma funcionalidade para proporcionar transparência e melhor UX durante a execução de steps.
 
-## What
+## What Changes
 
 Adicionar visualização de logs em tempo real na tela do Lab durante a execução de steps, similar ao botão "Ver Logs" da tela de configuração de combo.
 

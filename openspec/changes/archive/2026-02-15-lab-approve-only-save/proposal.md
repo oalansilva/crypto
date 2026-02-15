@@ -11,7 +11,7 @@ Atualmente, o Lab cria e salva templates no banco de dados `combo_templates` dur
 
 A solução é **só persistir o template no banco quando o trader aprovar explicitamente**. Templates em draft ou rejeitados devem ser mantidos apenas em memória ou em estruturas temporárias (ex: `lab_runs` logs), não no `combo_templates`.
 
-## What
+## What Changes
 
 Modificar o fluxo do Lab para:
 1. Durante desenvolvimento: Template existe apenas no contexto da run do Lab (não salvo no banco)
