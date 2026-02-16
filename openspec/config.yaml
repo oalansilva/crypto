@@ -1,17 +1,29 @@
 schema: spec-driven
 
+context: |
+  Purpose: Build a cryptocurrency backtester to fetch historical data, simulate trading strategies, and visualize performance (ROI, Drawdown).
+
+  Tech Stack:
+  - Python 3.x
+  - pandas (Data manipulation)
+  - ccxt (Crypto data fetching)
+  - matplotlib (Visualization)
+
+  Project Conventions:
+  - PEP 8
+  - Type hinting for all function signatures
+  - Docstrings for all classes and methods
+
+  Architecture Patterns:
+  - Modular design: DataLoader, Strategy, Backtester, Visualization
+  - Strategy Pattern for different trading strategies
+
+  External Dependencies:
+  - CCXT (Exchange APIs)
+
 rules:
   tasks:
     - Include a short note reminding to use project skills (.codex/skills) when applicable (architecture, tests, debugging, frontend).
-
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
