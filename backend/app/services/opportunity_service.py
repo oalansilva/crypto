@@ -472,6 +472,40 @@ class OpportunityService:
                 # Ignore stop loss history - if conditions are met NOW, we're in HOLD
                 is_holding = short_above_medium
                 
+                
+                # Compute entry distance override based on trend gate
+                # - If trend up is false (short <= long): use short -> long distance
+                # - If trend up is true (short > long): use short -> medium distance
+                entry_distance_override = None
+                if not df_for_distance.empty:
+                    row_used = df_for_distance.iloc[-1]
+                    if all(k in row_used for k in ('short', 'medium', 'long')):
+                        try:
+                            short_val = float(row_used['short'])
+                            medium_val = float(row_used['medium'])
+                            long_val = float(row_used['long'])
+                            if short_above_long:
+                                # Trend up true -> distance to short crossing medium (red -> orange)
+                                if short_val < medium_val:
+                                    denom = min(short_val, medium_val)
+                                    if denom > 0:
+                                        entry_distance_override = (medium_val - short_val) / denom * 100
+                                    else:
+                                        entry_distance_override = 0
+                                else:
+                                    entry_distance_override = 0
+                            else:
+                                # Trend up false -> distance to short crossing long (red -> blue)
+                                if short_val < long_val:
+                                    denom = min(short_val, long_val)
+                                    if denom > 0:
+                                        entry_distance_override = (long_val - short_val) / denom * 100
+                                    else:
+                                        entry_distance_override = 0
+                                else:
+                                    entry_distance_override = 0
+                        except (TypeError, ValueError):
+                            entry_distance_override = None
                 # Run backtest logic on closed candles for reference (but don't use for HOLD determination)
                 df_signals = strategy.generate_signals(df_closed)
                 
@@ -569,6 +603,7 @@ class OpportunityService:
                 # All cases where short > long are treated as HOLD
                 # -------------------------------------------------------------------------
                 
+                
                 # Standardize Entry Status Names for frontend clarity
                 # BUT: If we're in HOLD, set status to HOLDING
                 if is_holding:
@@ -576,9 +611,24 @@ class OpportunityService:
                     analysis['badge'] = 'info'
                 elif analysis['status'] == 'SIGNAL':
                     analysis['status'] = 'BUY_SIGNAL'
-                elif analysis['status'] == 'NEAR':
-                    analysis['status'] = 'BUY_NEAR'
-                
+                else:
+                    # Override entry distance and proximity when not holding
+                    if entry_distance_override is not None:
+                        threshold_pct = self.analyzer.threshold * 100
+                        if entry_distance_override <= threshold_pct:
+                            analysis['status'] = 'BUY_NEAR'
+                            analysis['badge'] = 'warning'
+                            if short_above_long:
+                                analysis['message'] = 'Approaching short crossing medium'
+                            else:
+                                analysis['message'] = 'Approaching short crossing long'
+                        else:
+                            analysis['status'] = 'NEUTRAL'
+                            analysis['badge'] = 'neutral'
+                            analysis['message'] = 'Waiting for setup'
+                        analysis['distance'] = round(entry_distance_override, 2)
+                    elif analysis['status'] == 'NEAR':
+                        analysis['status'] = 'BUY_NEAR'
                 # -------------------------------------------------------------------------
                 # NEW: Stateful Check (Stop Loss / Confirmed Signals)
                 # Proximity Analyzer is stateless (doesn't know if we hit -5% SL logic).
