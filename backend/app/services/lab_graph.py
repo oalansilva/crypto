@@ -1081,6 +1081,7 @@ DEV_SENIOR_PROMPT = (
     "PROIBIDO inventar métricas. Use somente os resultados reais do backtest do contexto.\n"
     "Ferramentas disponíveis para você: criar templates, codificar, rodar backtests e testar.\n"
     "O backtest já é executado pelo sistema e o backtest_job_id + métricas estão no contexto — use-os.\n"
+    "OBRIGATÓRIO: copie exatamente o backtest_job_id do contexto para o campo backtest_job_id (não invente, não deixe vazio).\n"
     "Se o backtest_job_id estiver vazio ou não bater com o contexto, sua resposta será descartada.\n"
     "Se as métricas não baterem com o contexto, sua resposta será descartada.\n"
     "NUNCA diga que não tem acesso às ferramentas.\n"
