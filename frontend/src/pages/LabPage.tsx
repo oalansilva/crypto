@@ -80,7 +80,7 @@ const LabPage: React.FC = () => {
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Strategy Lab</h1>
+            <h1 className="text-2xl font-bold">Agent Trader</h1>
             <div className="text-xs text-gray-500 mt-1">
               Spec v2: <a href="/openspec/07-strategy-lab-langgraph-v2" className="underline underline-offset-4 text-gray-300 hover:text-white">openspec/07-strategy-lab-langgraph-v2</a>
             </div>

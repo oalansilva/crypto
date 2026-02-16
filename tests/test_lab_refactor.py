@@ -1175,7 +1175,8 @@ def test_trader_retry_started_when_rejected_with_required_fixes():
     assert started
     assert started[-1].get("data", {}).get("attempt") == 1
     assert started[-1].get("data", {}).get("limit") == 2
-    assert started[-1].get("data", {}).get("reasons") == ["corrigir stop_loss", "reduzir overfitting"]
+    assert started[-1].get("data", {}).get("required_fixes") == ["corrigir stop_loss", "reduzir overfitting"]
+    assert started[-1].get("data", {}).get("reasons") == ["drawdown alto"]
 
 
 def test_trader_retry_limit_trace_when_retries_exhausted():
@@ -1236,4 +1237,5 @@ def test_trader_retry_limit_trace_when_retries_exhausted():
     assert limit_events
     assert limit_events[-1].get("data", {}).get("attempt") == 2
     assert limit_events[-1].get("data", {}).get("limit") == 2
-    assert limit_events[-1].get("data", {}).get("reasons") == ["melhorar robustez no holdout"]
+    assert limit_events[-1].get("data", {}).get("required_fixes") == ["melhorar robustez no holdout"]
+    assert limit_events[-1].get("data", {}).get("reasons") == ["consistência baixa"]
