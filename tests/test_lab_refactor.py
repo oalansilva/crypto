@@ -2,10 +2,12 @@ import json
 import copy
 import sys
 import time
+import concurrent.futures
 from pathlib import Path
 
 import pandas as pd
 import pytest
+from fastapi import BackgroundTasks
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
 if str(BACKEND_ROOT) not in sys.path:
@@ -1239,3 +1241,153 @@ def test_trader_retry_limit_trace_when_retries_exhausted():
     assert limit_events[-1].get("data", {}).get("limit") == 2
     assert limit_events[-1].get("data", {}).get("required_fixes") == ["melhorar robustez no holdout"]
     assert limit_events[-1].get("data", {}).get("reasons") == ["consistência baixa"]
+
+
+def test_trader_retry_uses_reasons_when_required_fixes_missing():
+    import app.services.lab_graph as lab_graph
+
+    traces = []
+
+    def _append_trace(run_id, event):
+        traces.append(event)
+
+    def _persona_call(run_id, session_key, persona, system_prompt, message, thinking):
+        assert persona == "trader"
+        return {
+            "text": json.dumps(
+                {
+                    "verdict": "rejected",
+                    "required_fixes": [],
+                    "reasons": ["ajustar risco"],
+                },
+                ensure_ascii=False,
+            ),
+            "tokens": 4,
+        }
+
+    deps = lab_graph.LabGraphDeps(
+        persona_call=_persona_call,
+        append_trace=_append_trace,
+        now_ms=lambda: 1,
+        inc_budget=lambda budget, turns=0, tokens=0: {
+            **budget,
+            "turns_used": int(budget.get("turns_used", 0)) + int(turns),
+            "tokens_total": int(budget.get("tokens_total", 0)) + int(tokens),
+        },
+        budget_ok=lambda budget: int(budget.get("turns_used", 0)) < int(budget.get("turns_max", 0))
+        and int(budget.get("tokens_total", 0)) < int(budget.get("tokens_max", 0)),
+    )
+
+    out = lab_graph._trader_validation_node(
+        {
+            "run_id": "run-trader-retry-reasons-fallback",
+            "session_key": "lab-run-trader-retry-reasons-fallback",
+            "thinking": "low",
+            "deps": deps,
+            "budget": {"turns_used": 0, "turns_max": 10, "tokens_total": 0, "tokens_max": 1000},
+            "outputs": {},
+            "context": {"input": {"max_retries": 2, "max_iterations": 5}},
+            "upstream_contract": {},
+        }
+    )
+
+    outputs = out.get("outputs") or {}
+    assert out.get("status") == "needs_adjustment"
+    assert outputs.get("dev_needs_retry") is True
+    assert outputs.get("trader_retry_count") == 1
+
+    started = [e for e in traces if e.get("type") == "trader_retry_started"]
+    assert started
+    assert started[-1].get("data", {}).get("required_fixes") == ["ajustar risco"]
+
+
+def test_run_persona_node_timeout():
+    import app.services.lab_graph as lab_graph
+
+    traces = []
+
+    def _append_trace(run_id, event):
+        traces.append(event)
+
+    def _persona_call(run_id, session_key, persona, system_prompt, message, thinking, timeout_s=None):
+        _ = timeout_s
+        time.sleep(1.2)
+        return {"text": "{}", "tokens": 0}
+
+    deps = lab_graph.LabGraphDeps(
+        persona_call=_persona_call,
+        append_trace=_append_trace,
+        now_ms=lambda: 1,
+        inc_budget=lambda budget, turns=0, tokens=0: {
+            **budget,
+            "turns_used": int(budget.get("turns_used", 0)) + int(turns),
+            "tokens_total": int(budget.get("tokens_total", 0)) + int(tokens),
+        },
+        budget_ok=lambda budget: int(budget.get("turns_used", 0)) < int(budget.get("turns_max", 0))
+        and int(budget.get("tokens_total", 0)) < int(budget.get("tokens_max", 0)),
+    )
+
+    state = {
+        "run_id": "run-node-timeout",
+        "session_key": "lab-run-node-timeout",
+        "thinking": "low",
+        "deps": deps,
+        "budget": {"turns_used": 0, "turns_max": 10, "tokens_total": 0, "tokens_max": 1000},
+        "outputs": {},
+        "context": {"input": {"node_timeout_s": 1}},
+    }
+
+    with pytest.raises(lab_graph.LabGraphNodeTimeoutError):
+        lab_graph._run_persona(
+            state=state,
+            persona="trader",
+            system_prompt="x",
+            output_key="trader_verdict",
+            message="{}",
+        )
+
+
+@pytest.mark.asyncio
+async def test_upstream_approve_sets_ready_for_execution_before_worker_runs(monkeypatch, tmp_path):
+    run_id = "run_queue_before_running"
+    payload = {
+        "run_id": run_id,
+        "status": "ready_for_review",
+        "step": "upstream",
+        "phase": "upstream",
+        "created_at_ms": 1,
+        "updated_at_ms": 1,
+        "input": {"symbol": "BTC/USDT", "timeframe": "1h"},
+        "upstream_contract": {"approved": True, "inputs": {"symbol": "BTC/USDT", "timeframe": "1h"}},
+        "upstream": {
+            "messages": [],
+            "pending_question": "",
+            "strategy_draft": {"one_liner": "x"},
+            "ready_for_user_review": True,
+            "user_approved": False,
+            "user_feedback": "",
+        },
+        "outputs": {},
+    }
+    (tmp_path / f"{run_id}.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    monkeypatch.setattr(lab_routes, "_runs_dir", lambda: tmp_path)
+
+    response = await lab_routes.post_upstream_approve(run_id, BackgroundTasks())
+
+    assert response.status == "ok"
+    updated = json.loads((tmp_path / f"{run_id}.json").read_text(encoding="utf-8"))
+    assert updated["status"] == "ready_for_execution"
+    assert updated["step"] == "execution_queue"
+    assert updated["phase"] == "execution"
+
+
+def test_invoke_graph_with_timeout_raises():
+    class _SlowGraph:
+        def invoke(self, state):
+            _ = state
+            time.sleep(0.2)
+            return {"status": "done"}
+
+    with pytest.raises(concurrent.futures.TimeoutError):
+        lab_routes._invoke_graph_with_timeout(_SlowGraph(), {}, timeout_s=0.05)

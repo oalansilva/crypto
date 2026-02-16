@@ -6,12 +6,15 @@ upstream contract before implementation.
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
+import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Literal, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
 class LabGraphState(TypedDict, total=False):
@@ -33,6 +36,7 @@ class LabGraphState(TypedDict, total=False):
     tests_result: Dict[str, Any]
     implementation_rounds: int
     trader_retry_count: int
+    diagnostic: Dict[str, Any]
 
 
 @dataclass
@@ -42,6 +46,102 @@ class LabGraphDeps:
     now_ms: Any  # callable
     inc_budget: Any  # callable
     budget_ok: Any  # callable
+
+
+class LabGraphNodeTimeoutError(TimeoutError):
+    def __init__(self, *, node: str, timeout_s: int):
+        super().__init__(f"node '{node}' exceeded timeout of {timeout_s}s")
+        self.node = node
+        self.timeout_s = timeout_s
+
+
+class TraderVerdictOutput(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    verdict: Literal["approved", "rejected", "needs_adjustment", "metrics_invalid"]
+    reasons: List[str] = Field(default_factory=list)
+    required_fixes: List[str] = Field(default_factory=list)
+    feedback_for_dev: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class DevTemplateOutput(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    indicators: List[Dict[str, Any]] = Field(default_factory=list)
+    entry_logic: str
+    exit_logic: str
+    stop_loss: Optional[float] = None
+
+
+class DevBacktestSummaryOutput(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    all: Dict[str, Any] = Field(default_factory=dict)
+    in_sample: Dict[str, Any] = Field(default_factory=dict)
+    holdout: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DevSummaryOutput(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    template_data: DevTemplateOutput
+    backtest_job_id: str
+    backtest_summary: DevBacktestSummaryOutput
+    ready_for_trader: Optional[bool] = None
+
+
+def _env_int(name: str, default: int, minimum: int = 1) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(str(raw).strip())
+    except Exception:
+        return default
+    return max(minimum, value)
+
+
+def _node_timeout_s(state: LabGraphState) -> int:
+    default = _env_int("LAB_NODE_TIMEOUT_S", 180, minimum=1)
+    context = state.get("context") or {}
+    inp = context.get("input") if isinstance(context.get("input"), dict) else {}
+    if not isinstance(inp, dict):
+        return default
+    try:
+        raw = int(inp.get("node_timeout_s") or default)
+    except Exception:
+        return default
+    return max(1, raw)
+
+
+def _mk_output_diag(*, node: str, reason: str, details: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "type": "invalid_output",
+        "scope": "persona",
+        "node": node,
+        "reason": reason,
+    }
+    if isinstance(details, dict) and details:
+        payload["details"] = details
+    return payload
+
+
+def _parse_json_object(value: Any) -> tuple[str, Dict[str, Any], Optional[str]]:
+    raw = _normalize_str(value)
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False), value, None
+    if not raw:
+        return raw, {}, "empty_output"
+    if not raw.startswith("{"):
+        return raw, {}, "not_json_object"
+    try:
+        obj = json.loads(raw)
+    except Exception:
+        return raw, {}, "malformed_json"
+    if not isinstance(obj, dict):
+        return raw, {}, "not_json_object"
+    return raw, obj, None
 
 
 def _normalize_str(value: Any) -> str:
@@ -152,31 +252,45 @@ def _verdict_label(text: Optional[str]) -> str:
     return "unknown"
 
 
-def _parse_trader_verdict_payload(value: Any) -> tuple[str, List[str], List[str]]:
-    raw = _normalize_str(value)
-    parsed: Dict[str, Any] = {}
+def _parse_trader_verdict_payload(value: Any) -> tuple[str, List[str], List[str], Optional[Dict[str, Any]]]:
+    raw, parsed, parse_error = _parse_json_object(value)
+    if parse_error:
+        fallback = _verdict_label(raw)
+        if fallback == "unknown":
+            fallback = "needs_adjustment"
+        diag = _mk_output_diag(
+            node="trader",
+            reason=parse_error,
+            details={"raw_preview": raw[:600]},
+        )
+        return fallback, [], [], diag
 
-    if isinstance(value, dict):
-        parsed = value
-        raw = json.dumps(value, ensure_ascii=False)
-    elif raw.startswith("{"):
-        try:
-            obj = json.loads(raw)
-            if isinstance(obj, dict):
-                parsed = obj
-        except Exception:
-            parsed = {}
+    try:
+        payload = TraderVerdictOutput.model_validate(parsed)
+    except ValidationError as exc:
+        fallback = _verdict_label(raw)
+        if fallback == "unknown":
+            fallback = "needs_adjustment"
+        diag = _mk_output_diag(
+            node="trader",
+            reason="schema_validation_error",
+            details={"errors": exc.errors()[:8], "raw_preview": raw[:600]},
+        )
+        return fallback, [], [], diag
 
-    if not parsed:
-        return _verdict_label(raw), [], []
-
-    verdict = _normalize_str(parsed.get("verdict")).lower()
+    verdict = _normalize_str(payload.verdict).lower()
     if verdict not in ("approved", "rejected", "needs_adjustment", "metrics_invalid"):
         verdict = _verdict_label(raw)
+        if verdict == "unknown":
+            verdict = "needs_adjustment"
 
-    required_fixes = _ensure_str_list(parsed.get("required_fixes"))
-    reasons = _ensure_str_list(parsed.get("reasons"))
-    return verdict or "unknown", required_fixes, reasons
+    reasons = _ensure_str_list(payload.reasons)
+    required_fixes = _ensure_str_list(payload.required_fixes)
+    if not required_fixes and reasons:
+        # Hardening: reasons become retry guidance when required_fixes is absent.
+        required_fixes = list(reasons)
+
+    return verdict or "needs_adjustment", required_fixes, reasons, None
 
 
 def _run_persona(
@@ -227,15 +341,57 @@ def _run_persona(
     deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "node_started", "data": {"node": persona}})
 
     msg = message or ("Contexto do run (JSON):\n" + json.dumps(state.get("context") or {}, ensure_ascii=False, indent=2) + "\n")
+    timeout_s = _node_timeout_s(state)
 
-    response = deps.persona_call(
-        run_id=run_id,
-        session_key=state.get("session_key"),
-        persona=persona,
-        system_prompt=system_prompt,
-        message=msg,
-        thinking=state.get("thinking") or "low",
-    )
+    def _call_persona() -> Dict[str, Any]:
+        try:
+            return deps.persona_call(
+                run_id=run_id,
+                session_key=state.get("session_key"),
+                persona=persona,
+                system_prompt=system_prompt,
+                message=msg,
+                thinking=state.get("thinking") or "low",
+                timeout_s=timeout_s,
+            )
+        except TypeError as exc:
+            # Backward-compatible fallback for older test doubles/callables
+            # that do not accept timeout_s.
+            if "timeout_s" not in str(exc):
+                raise
+            return deps.persona_call(
+                run_id=run_id,
+                session_key=state.get("session_key"),
+                persona=persona,
+                system_prompt=system_prompt,
+                message=msg,
+                thinking=state.get("thinking") or "low",
+            )
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_call_persona)
+            response = future.result(timeout=timeout_s)
+    except concurrent.futures.TimeoutError as exc:
+        deps.append_trace(
+            run_id,
+            {
+                "ts_ms": deps.now_ms(),
+                "type": "node_timeout",
+                "data": {"node": persona, "timeout_s": timeout_s},
+            },
+        )
+        raise LabGraphNodeTimeoutError(node=persona, timeout_s=timeout_s) from exc
+    except Exception as exc:
+        deps.append_trace(
+            run_id,
+            {
+                "ts_ms": deps.now_ms(),
+                "type": "node_error",
+                "data": {"node": persona, "error": str(exc)},
+            },
+        )
+        raise
 
     outputs[output_key] = response.get("text")
     budget = deps.inc_budget(budget, turns=1, tokens=response.get("tokens", 0) or 0)
@@ -292,7 +448,7 @@ def _upstream_node(state: LabGraphState) -> LabGraphState:
     return {
         "upstream_contract": contract,
         "phase": "upstream",
-        "status": "implementation_running" if bool(contract.get("approved")) else "needs_user_input",
+        "status": "ready_for_execution" if bool(contract.get("approved")) else "needs_user_input",
     }
 
 
@@ -353,7 +509,17 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         if outputs.get("dev_needs_retry") and outputs.get("trader_verdict"):
             # Extract trader feedback
             verdict_obj = outputs.get("trader_verdict")
-            verdict, required_fixes, reasons = _parse_trader_verdict_payload(verdict_obj)
+            verdict, required_fixes, reasons, trader_diag = _parse_trader_verdict_payload(verdict_obj)
+            if trader_diag:
+                state["diagnostic"] = trader_diag
+                deps.append_trace(
+                    run_id,
+                    {
+                        "ts_ms": deps.now_ms(),
+                        "type": "invalid_output",
+                        "data": trader_diag,
+                    },
+                )
 
             # Build custom message with trader feedback
             message = _build_dev_retry_message(
@@ -423,65 +589,101 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
     # Ensure dev used the same backtest job id from context and template is valid.
     ctx_job_id = str(context.get("backtest_job_id") or "").strip()
     dev_job_id = ""
+    diagnostic = state.get("diagnostic") if isinstance(state.get("diagnostic"), dict) else None
     dev_summary_raw = outputs.get("dev_summary")
     if dev_summary_raw:
-        try:
-            dev_obj = json.loads(dev_summary_raw)
-            dev_job_id = str(dev_obj.get("backtest_job_id") or "").strip()
-            template_data = dev_obj.get("template_data") or {}
-            entry_logic = template_data.get("entry_logic")
-            exit_logic = template_data.get("exit_logic")
-            if not isinstance(entry_logic, str) or not isinstance(exit_logic, str):
-                completed = False
-                outputs["dev_needs_retry"] = True
-
-            # Reject if dev did not provide a job_id.
-            if not dev_job_id:
-                completed = False
-                outputs["dev_needs_retry"] = True
-                outputs["dev_summary"] = None
-                deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "dev_summary_rejected", "data": {"reason": "missing_job_id"}})
-
-            # Validate that dev used real metrics from context (not invented).
-            dev_metrics = dev_obj.get("backtest_summary") or {}
-            ctx_metrics = (context.get("walk_forward") or {})
-            ctx_all = (ctx_metrics.get("metrics_all") or {})
-            ctx_is = (ctx_metrics.get("metrics_in_sample") or {})
-            ctx_holdout = (ctx_metrics.get("metrics_holdout") or {})
-
-            def _mt(m):
-                try:
-                    return int((m or {}).get("total_trades") or 0)
-                except Exception:
-                    return 0
-
-            if not dev_metrics:
+        raw, dev_obj_raw, parse_error = _parse_json_object(dev_summary_raw)
+        dev_obj: Dict[str, Any] = {}
+        if parse_error:
+            dev_job_id = ""
+            completed = False
+            outputs["dev_needs_retry"] = True
+            outputs["dev_summary"] = None
+            diagnostic = _mk_output_diag(
+                node="dev_senior",
+                reason=parse_error,
+                details={"raw_preview": raw[:600]},
+            )
+            deps.append_trace(
+                run_id,
+                {"ts_ms": deps.now_ms(), "type": "dev_summary_rejected", "data": {"reason": parse_error}},
+            )
+        else:
+            try:
+                parsed_dev = DevSummaryOutput.model_validate(dev_obj_raw)
+                dev_obj = parsed_dev.model_dump()
+            except ValidationError as exc:
+                dev_job_id = ""
                 completed = False
                 outputs["dev_needs_retry"] = True
                 outputs["dev_summary"] = None
-                deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "dev_summary_rejected", "data": {"reason": "missing_backtest_summary"}})
+                diagnostic = _mk_output_diag(
+                    node="dev_senior",
+                    reason="schema_validation_error",
+                    details={"errors": exc.errors()[:8], "raw_preview": raw[:600]},
+                )
+                deps.append_trace(
+                    run_id,
+                    {
+                        "ts_ms": deps.now_ms(),
+                        "type": "dev_summary_rejected",
+                        "data": {"reason": "schema_validation_error"},
+                    },
+                )
             else:
-                dev_all = dev_metrics.get("all") or {}
-                dev_is = dev_metrics.get("in_sample") or {}
-                dev_holdout = dev_metrics.get("holdout") or {}
-                if _mt(dev_all) != _mt(ctx_all) or _mt(dev_is) != _mt(ctx_is) or _mt(dev_holdout) != _mt(ctx_holdout):
+                dev_job_id = str(dev_obj.get("backtest_job_id") or "").strip()
+                template_data = dev_obj.get("template_data") or {}
+                entry_logic = template_data.get("entry_logic")
+                exit_logic = template_data.get("exit_logic")
+                if not isinstance(entry_logic, str) or not isinstance(exit_logic, str):
+                    completed = False
+                    outputs["dev_needs_retry"] = True
+
+                # Reject if dev did not provide a job_id.
+                if not dev_job_id:
                     completed = False
                     outputs["dev_needs_retry"] = True
                     outputs["dev_summary"] = None
-                    deps.append_trace(
-                        run_id,
-                        {
-                            "ts_ms": deps.now_ms(),
-                            "type": "dev_summary_rejected",
-                            "data": {
-                                "reason": "metrics_mismatch",
-                                "ctx_trades": {"all": _mt(ctx_all), "is": _mt(ctx_is), "holdout": _mt(ctx_holdout)},
-                                "dev_trades": {"all": _mt(dev_all), "is": _mt(dev_is), "holdout": _mt(dev_holdout)},
+                    deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "dev_summary_rejected", "data": {"reason": "missing_job_id"}})
+
+                # Validate that dev used real metrics from context (not invented).
+                dev_metrics = dev_obj.get("backtest_summary") or {}
+                ctx_metrics = (context.get("walk_forward") or {})
+                ctx_all = (ctx_metrics.get("metrics_all") or {})
+                ctx_is = (ctx_metrics.get("metrics_in_sample") or {})
+                ctx_holdout = (ctx_metrics.get("metrics_holdout") or {})
+
+                def _mt(m):
+                    try:
+                        return int((m or {}).get("total_trades") or 0)
+                    except Exception:
+                        return 0
+
+                if not dev_metrics:
+                    completed = False
+                    outputs["dev_needs_retry"] = True
+                    outputs["dev_summary"] = None
+                    deps.append_trace(run_id, {"ts_ms": deps.now_ms(), "type": "dev_summary_rejected", "data": {"reason": "missing_backtest_summary"}})
+                else:
+                    dev_all = dev_metrics.get("all") or {}
+                    dev_is = dev_metrics.get("in_sample") or {}
+                    dev_holdout = dev_metrics.get("holdout") or {}
+                    if _mt(dev_all) != _mt(ctx_all) or _mt(dev_is) != _mt(ctx_is) or _mt(dev_holdout) != _mt(ctx_holdout):
+                        completed = False
+                        outputs["dev_needs_retry"] = True
+                        outputs["dev_summary"] = None
+                        deps.append_trace(
+                            run_id,
+                            {
+                                "ts_ms": deps.now_ms(),
+                                "type": "dev_summary_rejected",
+                                "data": {
+                                    "reason": "metrics_mismatch",
+                                    "ctx_trades": {"all": _mt(ctx_all), "is": _mt(ctx_is), "holdout": _mt(ctx_holdout)},
+                                    "dev_trades": {"all": _mt(dev_all), "is": _mt(dev_is), "holdout": _mt(dev_holdout)},
+                                },
                             },
-                        },
-                    )
-        except Exception:
-            dev_job_id = ""
+                        )
 
     if ctx_job_id and dev_job_id and dev_job_id != ctx_job_id:
         completed = False
@@ -507,7 +709,8 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         "phase": "implementation",
         "implementation_complete": completed,
         "implementation_rounds": int(state.get("implementation_rounds") or 0),
-        "status": "implementation_running" if completed else "needs_adjustment",
+        "status": "running" if completed else "needs_adjustment",
+        "diagnostic": diagnostic or {},
     }
 
 
@@ -563,7 +766,14 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
     state["outputs"] = outputs
 
     verdict_obj = outputs.get("trader_verdict")
-    verdict, required_fixes, reasons = _parse_trader_verdict_payload(verdict_obj)
+    verdict, required_fixes, reasons, verdict_diag = _parse_trader_verdict_payload(verdict_obj)
+    diagnostic = state.get("diagnostic") if isinstance(state.get("diagnostic"), dict) else {}
+    if verdict_diag:
+        diagnostic = verdict_diag
+        deps.append_trace(
+            run_id,
+            {"ts_ms": deps.now_ms(), "type": "invalid_output", "data": verdict_diag},
+        )
     status = "needs_adjustment"
     if verdict == "approved":
         status = "approved"
@@ -586,7 +796,8 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
     if max_retries < 0:
         max_retries = 0
 
-    if verdict in ("rejected", "needs_adjustment") and required_fixes:
+    retry_fixes = required_fixes or reasons
+    if verdict in ("rejected", "needs_adjustment") and retry_fixes:
         if trader_retry_count < max_retries:
             trader_retry_count += 1
             outputs["trader_retry_count"] = trader_retry_count
@@ -599,7 +810,7 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
                     "data": {
                         "attempt": trader_retry_count,
                         "limit": max_retries,
-                        "required_fixes": required_fixes,
+                        "required_fixes": retry_fixes,
                         "reasons": reasons,
                     },
                 },
@@ -614,7 +825,7 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
                     "data": {
                         "attempt": trader_retry_count,
                         "limit": max_retries,
-                        "required_fixes": required_fixes,
+                        "required_fixes": retry_fixes,
                         "reasons": reasons,
                     },
                 },
@@ -663,6 +874,7 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
         "phase": "trader_validation",
         "status": status,
         "trader_retry_count": trader_retry_count,
+        "diagnostic": diagnostic,
     }
 
 

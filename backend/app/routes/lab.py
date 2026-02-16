@@ -20,6 +20,7 @@ import os
 import re
 import time
 import threading
+import concurrent.futures
 import uuid
 import copy
 from pathlib import Path
@@ -149,6 +150,54 @@ def _read_trace_tail(run_id: str, limit: int = 200) -> List[Dict[str, Any]]:
 
 def _now_ms() -> int:
     return int(time.time() * 1000)
+
+
+def _env_int(name: str, default: int, minimum: int = 1) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(str(raw).strip())
+    except Exception:
+        return default
+    return max(minimum, value)
+
+
+def _graph_total_timeout_s(run_input: Optional[Dict[str, Any]] = None) -> int:
+    default = _env_int("LAB_GRAPH_TOTAL_TIMEOUT_S", 600, minimum=30)
+    if not isinstance(run_input, dict):
+        return default
+    try:
+        value = int(run_input.get("graph_timeout_s") or default)
+    except Exception:
+        return default
+    return max(30, value)
+
+
+def _execution_total_timeout_s(run_input: Optional[Dict[str, Any]] = None) -> int:
+    default = _env_int("LAB_RUN_TOTAL_TIMEOUT_S", 1800, minimum=60)
+    if not isinstance(run_input, dict):
+        return default
+    try:
+        value = int(run_input.get("run_timeout_s") or default)
+    except Exception:
+        return default
+    return max(60, value)
+
+
+def _normalize_phase(phase: Optional[str]) -> str:
+    p = str(phase or "").strip().lower()
+    if p in ("upstream", "execution", "done"):
+        return p
+    if p in ("implementation", "trader_validation", "tests"):
+        return "execution"
+    return "upstream"
+
+
+def _invoke_graph_with_timeout(graph: Any, state_in: Dict[str, Any], timeout_s: int) -> Dict[str, Any]:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(graph.invoke, state_in)
+        return future.result(timeout=timeout_s)
 
 
 def _read_tail_lines(path: Path, limit: int) -> List[str]:
@@ -2113,8 +2162,9 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         pass
 
     graph_status = ""
+    graph_diagnostic: Optional[Dict[str, Any]] = None
     try:
-        from app.services.lab_graph import LabGraphDeps, build_trader_dev_graph
+        from app.services.lab_graph import LabGraphDeps, LabGraphNodeTimeoutError, build_trader_dev_graph
         from app.services.exchange_service import ExchangeService
 
         graph = build_trader_dev_graph()
@@ -2138,12 +2188,14 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
             "phase": phase,
         }
 
-        state_out = graph.invoke(state_in)
+        state_out = _invoke_graph_with_timeout(graph, state_in, timeout_s=_graph_total_timeout_s(inp))
         budget = state_out.get("budget") or budget
         outputs = state_out.get("outputs") or outputs
         upstream_contract = state_out.get("upstream_contract") or upstream_contract
-        phase = str(state_out.get("phase") or phase)
+        phase = _normalize_phase(state_out.get("phase") or phase)
         graph_status = str(state_out.get("status") or "").strip()
+        if isinstance(state_out.get("diagnostic"), dict) and state_out.get("diagnostic"):
+            graph_diagnostic = dict(state_out.get("diagnostic") or {})
 
         _update_run_json(
             run_id,
@@ -2152,9 +2204,36 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
                 "outputs": outputs,
                 "upstream_contract": upstream_contract,
                 "phase": phase,
+                "diagnostic": graph_diagnostic,
             },
         )
+    except LabGraphNodeTimeoutError as e:
+        graph_status = "failed"
+        graph_diagnostic = {
+            "type": "node_timeout",
+            "scope": "graph_node",
+            "node": str(getattr(e, "node", "unknown")),
+            "timeout_s": int(getattr(e, "timeout_s", 0) or 0),
+            "message": str(e),
+        }
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "node_timeout", "data": graph_diagnostic})
+    except concurrent.futures.TimeoutError:
+        graph_status = "failed"
+        timeout_s = _graph_total_timeout_s(inp)
+        graph_diagnostic = {
+            "type": "total_timeout",
+            "scope": "graph",
+            "timeout_s": timeout_s,
+            "message": f"graph execution exceeded timeout ({timeout_s}s)",
+        }
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "graph_timeout", "data": graph_diagnostic})
     except Exception as e:
+        graph_status = "failed"
+        graph_diagnostic = {
+            "type": "graph_error",
+            "scope": "graph",
+            "message": str(e),
+        }
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "langgraph_error", "data": {"error": str(e)}})
 
     if isinstance(upstream_contract, dict) and not bool(upstream_contract.get("approved")):
@@ -2203,6 +2282,7 @@ def _cp4_run_personas_if_possible(run_id: str) -> None:
         "needs_user_confirm": bool(needs_confirm),
         "phase": phase,
         "upstream_contract": upstream_contract,
+        "diagnostic": graph_diagnostic,
     }
 
     if ready_for_review and graph_status != "done":
@@ -2676,6 +2756,12 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
     run = _load_run_json(run_id) or {}
     inp = run.get("input") or {}
     upstream_contract = run.get("upstream_contract") or {}
+    execution_deadline = time.monotonic() + _execution_total_timeout_s(inp)
+
+    def _check_total_timeout(stage: str) -> None:
+        if time.monotonic() <= execution_deadline:
+            return
+        raise TimeoutError(f"execution timeout reached during {stage}")
 
     if not bool(upstream_contract.get("approved")):
         upstream_contract = build_upstream_contract(
@@ -2707,7 +2793,15 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 "data": _contract_trace_data(upstream_contract),
             },
         )
-        _update_run_json(run_id, {"phase": "upstream", "upstream_contract": upstream_contract, "status": "running", "step": "upstream"})
+        _update_run_json(
+            run_id,
+            {
+                "phase": "upstream",
+                "upstream_contract": upstream_contract,
+                "status": ("ready_for_execution" if bool(upstream_contract.get("approved")) else "needs_user_input"),
+                "step": "upstream",
+            },
+        )
         if not bool(upstream_contract.get("approved")):
             _append_trace(
                 run_id,
@@ -2782,6 +2876,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
     loader = IncrementalLoader()
     attempt = 0
     while True:
+        _check_total_timeout("load_candles")
         try:
             df = loader.fetch_data(symbol=symbol, timeframe=timeframe, since_str=since_str, until_str=until_str)
             break
@@ -3623,9 +3718,11 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
 
     last_trader_verdict = "unknown"
     for it in range(1, max_iterations + 1):
+        _check_total_timeout(f"iteration_{it}_start")
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "iteration_started", "data": {"iteration": it, "template": current_template}})
 
         # Backtest current template
+        _check_total_timeout(f"iteration_{it}_backtest_current")
         bt = _run_backtest_job(
             template_name=current_template,
             label=f"iter{it}_current",
@@ -3637,8 +3734,9 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             continue
 
         # Run CP7 personas (coordinator+dev+validator) on current results to get a candidate
+        _check_total_timeout(f"iteration_{it}_personas")
         try:
-            from app.services.lab_graph import LabGraphDeps, build_trader_dev_graph
+            from app.services.lab_graph import LabGraphDeps, LabGraphNodeTimeoutError, build_trader_dev_graph
 
             run = _load_run_json(run_id) or {}
             budget = run.get("budget") or {}
@@ -3664,12 +3762,13 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 "upstream_contract": run.get("upstream_contract") or {},
                 "phase": run.get("phase") or "upstream",
             }
-            final = graph.invoke(state)
+            final = _invoke_graph_with_timeout(graph, state, timeout_s=_graph_total_timeout_s(inp))
             budget = final.get("budget") or budget
             outputs = final.get("outputs") or outputs
-            phase = final.get("phase") or run.get("phase") or "upstream"
+            phase = _normalize_phase(final.get("phase") or run.get("phase") or "upstream")
             upstream_contract = final.get("upstream_contract") or run.get("upstream_contract") or {}
             graph_status = str(final.get("status") or "").strip()
+            diagnostic = final.get("diagnostic") if isinstance(final.get("diagnostic"), dict) else None
 
             _update_run_json(
                 run_id,
@@ -3678,6 +3777,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                     "outputs": outputs,
                     "phase": phase,
                     "upstream_contract": upstream_contract,
+                    "diagnostic": diagnostic,
                 },
             )
 
@@ -3686,7 +3786,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                 return
 
             if graph_status == "failed":
-                _update_run_json(run_id, {"status": "failed", "step": "tests", "phase": "done"})
+                _update_run_json(run_id, {"status": "failed", "step": "tests", "phase": "done", "diagnostic": diagnostic})
                 return
 
             if not _budget_ok(budget):
@@ -3697,9 +3797,40 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             outputs = _cp8_save_candidate_template(run_id, _load_run_json(run_id) or {}, outputs)
             _update_run_json(run_id, {"outputs": outputs})
 
+        except LabGraphNodeTimeoutError as e:
+            diagnostic = {
+                "type": "node_timeout",
+                "scope": "graph_node",
+                "node": str(getattr(e, "node", "unknown")),
+                "timeout_s": int(getattr(e, "timeout_s", 0) or 0),
+                "message": str(e),
+            }
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "node_timeout", "data": {"iteration": it, **diagnostic}})
+            _update_run_json(run_id, {"status": "failed", "step": "tests", "phase": "done", "diagnostic": diagnostic, "error": diagnostic["message"]})
+            return
+        except concurrent.futures.TimeoutError:
+            timeout_s = _graph_total_timeout_s(inp)
+            diagnostic = {
+                "type": "total_timeout",
+                "scope": "graph",
+                "timeout_s": timeout_s,
+                "message": f"graph execution exceeded timeout ({timeout_s}s)",
+            }
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "graph_timeout", "data": {"iteration": it, **diagnostic}})
+            _update_run_json(run_id, {"status": "failed", "step": "tests", "phase": "done", "diagnostic": diagnostic, "error": diagnostic["message"]})
+            return
         except Exception as e:
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "personas_error", "data": {"error": str(e), "iteration": it}})
-            _update_run_json(run_id, {"status": "error", "step": "error", "error": str(e)})
+            _update_run_json(
+                run_id,
+                {
+                    "status": "failed",
+                    "step": "tests",
+                    "phase": "done",
+                    "diagnostic": {"type": "graph_error", "scope": "graph", "message": str(e)},
+                    "error": str(e),
+                },
+            )
             return
 
         run = _load_run_json(run_id) or {}
@@ -3740,6 +3871,7 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
             return
 
         # Backtest candidate and overwrite run.backtest
+        _check_total_timeout(f"iteration_{it}_backtest_candidate")
         bt2 = _run_backtest_job(
             template_name=str(cand),
             label=f"iter{it}_candidate",
@@ -3933,9 +4065,147 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
         _update_run_json(run_id, {"status": "needs_adjustment", "step": "personas", "phase": "execution"})
 
 
+def _run_lab_execution_job(run_id: str, req_dict: Dict[str, Any], execution_job_id: str) -> None:
+    from app.services.job_manager import JobManager
+
+    jm = JobManager()
+    state = jm.load_state(execution_job_id) or {"job_id": execution_job_id}
+    state.update({"status": "RUNNING", "progress": {"step": "execution", "pct": 5}})
+    jm.save_state(execution_job_id, state)
+
+    _update_run_json(
+        run_id,
+        {
+            "status": "running",
+            "step": "execution",
+            "phase": "execution",
+            "needs_user_confirm": False,
+            "execution_job": {"job_id": execution_job_id, "status": "RUNNING"},
+        },
+    )
+    _append_trace(
+        run_id,
+        {
+            "ts_ms": _now_ms(),
+            "type": "execution_started_managed",
+            "data": {"execution_job_id": execution_job_id},
+        },
+    )
+
+    run_snapshot = _load_run_json(run_id) or {}
+    timeout_s = _execution_total_timeout_s(run_snapshot.get("input") or req_dict)
+    started = time.monotonic()
+
+    try:
+        _run_lab_autonomous_sync(run_id, req_dict)
+    except TimeoutError as exc:
+        diagnostic = {
+            "type": "total_timeout",
+            "scope": "execution",
+            "timeout_s": timeout_s,
+            "message": str(exc) or f"execution exceeded timeout ({timeout_s}s)",
+        }
+        _append_trace(
+            run_id,
+            {
+                "ts_ms": _now_ms(),
+                "type": "execution_timeout",
+                "data": {"execution_job_id": execution_job_id, **diagnostic},
+            },
+        )
+        _update_run_json(
+            run_id,
+            {
+                "status": "failed",
+                "step": "error",
+                "phase": "done",
+                "diagnostic": diagnostic,
+                "error": diagnostic["message"],
+                "execution_job": {"job_id": execution_job_id, "status": "FAILED"},
+            },
+        )
+        state = jm.load_state(execution_job_id) or {"job_id": execution_job_id}
+        state.update({"status": "FAILED", "error": diagnostic})
+        jm.save_state(execution_job_id, state)
+        return
+    except Exception as exc:
+        diagnostic = {
+            "type": "execution_error",
+            "scope": "execution",
+            "message": str(exc),
+        }
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_failed", "data": {"execution_job_id": execution_job_id, "error": str(exc)}})
+        _update_run_json(
+            run_id,
+            {
+                "status": "failed",
+                "step": "error",
+                "phase": "done",
+                "diagnostic": diagnostic,
+                "error": str(exc),
+                "execution_job": {"job_id": execution_job_id, "status": "FAILED"},
+            },
+        )
+        state = jm.load_state(execution_job_id) or {"job_id": execution_job_id}
+        state.update({"status": "FAILED", "error": diagnostic})
+        jm.save_state(execution_job_id, state)
+        return
+
+    elapsed = max(0, int(time.monotonic() - started))
+    run_final = _load_run_json(run_id) or {}
+    final_status = str(run_final.get("status") or "").strip().lower()
+    timed_out = elapsed > timeout_s
+    failed = final_status in ("failed", "error")
+    if timed_out:
+        failed = True
+        diagnostic = {
+            "type": "total_timeout",
+            "scope": "execution",
+            "timeout_s": timeout_s,
+            "elapsed_s": elapsed,
+            "message": f"execution exceeded timeout ({timeout_s}s)",
+        }
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_timeout", "data": diagnostic})
+        _update_run_json(
+            run_id,
+            {
+                "status": "failed",
+                "step": "error",
+                "phase": "done",
+                "diagnostic": diagnostic,
+                "error": diagnostic["message"],
+            },
+        )
+
+    state = jm.load_state(execution_job_id) or {"job_id": execution_job_id}
+    state.update(
+        {
+            "status": "FAILED" if failed else "COMPLETED",
+            "progress": {"step": "done", "pct": 100},
+            "final_status": _load_run_json(run_id).get("status"),
+        }
+    )
+    jm.save_state(execution_job_id, state)
+    _update_run_json(run_id, {"execution_job": {"job_id": execution_job_id, "status": state.get("status")}})
+
+
 def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
-    worker = threading.Thread(target=_run_lab_autonomous_sync, args=(run_id, req_dict), daemon=True)
-    worker.start()
+    """Managed execution wrapper backed by JobManager (no raw threads)."""
+    from app.services.job_manager import JobManager
+
+    jm = JobManager()
+    execution_job_id = jm.create_job({"kind": "lab_execution", "run_id": run_id})
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_enqueued", "data": {"execution_job_id": execution_job_id}})
+    _update_run_json(
+        run_id,
+        {
+            "status": "ready_for_execution",
+            "step": "execution_queue",
+            "phase": "execution",
+            "execution_job": {"job_id": execution_job_id, "status": "QUEUED"},
+        },
+    )
+    _run_lab_execution_job(run_id, req_dict, execution_job_id)
 
 
 @router.post("/run", response_model=Union[LabRunCreateResponse, LabRunNeedsUserInputResponse])
@@ -4092,6 +4362,7 @@ async def create_run(
             "trader_review_at_ms": None,
         },
         "backtest_job": None,
+        "execution_job": None,
         "needs_user_confirm": False,
     }
 
@@ -4325,14 +4596,15 @@ async def post_upstream_message(run_id: str, req: LabRunUpstreamMessageRequest, 
         _update_run_json(
             run_id,
             {
-                "status": "running",
-                "step": "execution",
+                "status": "ready_for_execution",
+                "step": "execution_queue",
                 "phase": "execution",
                 "needs_user_confirm": False,
             },
         )
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_started_by_user", "data": {"via": "auto_suggest"}})
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_enqueued_by_user", "data": {"via": "auto_suggest"}})
         background_tasks.add_task(_run_lab_autonomous, run_id, inp)
+        updated = _load_run_json(run_id)
 
     return LabRunUpstreamMessageResponse(
         status=str(updated.get("status") or patch.get("status") or "needs_user_input"),
@@ -4412,13 +4684,13 @@ async def post_upstream_approve(run_id: str, background_tasks: BackgroundTasks) 
     _update_run_json(
         run_id,
         {
-            "status": "running",
-            "step": "execution",
+            "status": "ready_for_execution",
+            "step": "execution_queue",
             "phase": "execution",
             "needs_user_confirm": False,
         },
     )
-    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_started_by_user", "data": {"via": "upstream_approve"}})
+    _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_enqueued_by_user", "data": {"via": "upstream_approve"}})
     background_tasks.add_task(_run_lab_autonomous, run_id, inp)
 
     return LabRunUpstreamApproveResponse(status="ok", run_id=run_id, phase="execution")
@@ -4536,20 +4808,20 @@ async def continue_run(
         if not bool(upstream_contract.get("approved")):
             raise HTTPException(status_code=409, detail="upstream contract not approved")
 
-        if str(run.get("status") or "").strip() in ("running", "done"):
+        if str(run.get("status") or "").strip() in ("running", "done", "ready_for_execution"):
             return {"status": "ok", "run_id": run_id, "phase": "execution"}
 
         inp = run.get("input") or {}
         _update_run_json(
             run_id,
             {
-                "status": "running",
-                "step": "execution",
+                "status": "ready_for_execution",
+                "step": "execution_queue",
                 "phase": "execution",
                 "needs_user_confirm": False,
             },
         )
-        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_started_by_user", "data": {}})
+        _append_trace(run_id, {"ts_ms": _now_ms(), "type": "execution_enqueued_by_user", "data": {}})
         background_tasks.add_task(_run_lab_autonomous, run_id, inp)
         return {"status": "ok", "run_id": run_id, "phase": "execution"}
 
