@@ -468,9 +468,9 @@ class OpportunityService:
                 # Stop loss is NOT used to determine HOLD status - it's just historical info
                 # -------------------------------------------------------------------------
                 
-                # Determine if holding based ONLY on entry conditions (short > medium)
-                # Ignore stop loss history - if conditions are met NOW, we're in HOLD
-                is_holding = short_above_medium
+                # Determine if holding based ONLY on entry conditions (short > long)
+                # Ignore stop loss history - if trend up is met NOW, we're in HOLD
+                is_holding = short_above_long
                 
                 
                 # Compute entry distance override based on trend gate
@@ -517,7 +517,7 @@ class OpportunityService:
                 
                 # Debug for TRX
                 if symbol == 'TRX/USDT':
-                    logger.info(f"TRX/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > medium, ignoring stop loss)")
+                    logger.info(f"TRX/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > long, ignoring stop loss)")
                     if current_row is not None:
                         if 'short' in current_row and 'medium' in current_row:
                             logger.info(f"TRX/USDT - Current candle: short={current_row['short']:.4f}, medium={current_row['medium']:.4f}")
@@ -526,7 +526,7 @@ class OpportunityService:
                 
                 # Debug for ETH
                 if symbol == 'ETH/USDT':
-                    logger.info(f"ETH/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > medium, ignoring stop loss)")
+                    logger.info(f"ETH/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > long, ignoring stop loss)")
                     if current_row is not None:
                         if 'short' in current_row and 'medium' in current_row:
                             logger.info(f"ETH/USDT - short={current_row['short']:.4f}, medium={current_row['medium']:.4f}")
