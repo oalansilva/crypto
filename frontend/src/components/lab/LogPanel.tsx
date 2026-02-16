@@ -6,6 +6,7 @@ interface LogPanelProps {
   isLoading: boolean
   isConnected: boolean
   error: string | null
+  fullLogUrl?: string | null
   onRetry?: () => void
   onClose?: () => void
 }
@@ -29,6 +30,7 @@ export default function LogPanel({
   isLoading,
   isConnected,
   error,
+  fullLogUrl,
   onRetry,
   onClose,
 }: LogPanelProps) {
@@ -70,6 +72,16 @@ export default function LogPanel({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {fullLogUrl ? (
+            <a
+              href={fullLogUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 text-xs rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-200"
+            >
+              Log completo
+            </a>
+          ) : null}
           <button
             type="button"
             onClick={() => setAutoScroll((prev) => !prev)}
@@ -133,4 +145,3 @@ export default function LogPanel({
     </div>
   )
 }
-

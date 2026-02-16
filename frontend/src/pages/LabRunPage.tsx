@@ -16,6 +16,7 @@ type RunStatus = {
   updated_at_ms: number;
   trace: { viewer_url: string; api_url: string; enabled?: boolean; provider?: string; thread_id?: string; trace_id?: string; trace_url?: string | null };
   trace_events?: TraceEvent[];
+  step_logs?: Record<string, string>;
   backtest_job?: any;
   backtest?: any;
   budget?: any;
@@ -31,6 +32,19 @@ type RunStatus = {
   };
   needs_user_confirm?: boolean;
 };
+
+function toAbsoluteApiUrl(url: string): string {
+  const value = String(url || '').trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  try {
+    const base = new URL(API_BASE_URL)
+    if (value.startsWith('/')) return `${base.origin}${value}`
+    return `${base.origin}/${value}`
+  } catch {
+    return value
+  }
+}
 
 const fmtPct = (v: any) => {
   if (v === null || v === undefined || Number.isNaN(Number(v))) return '-';
@@ -299,6 +313,9 @@ const LabRunPage: React.FC = () => {
     step: logStep || (data?.step ? String(data.step) : ''),
     enabled: logsOpen && Boolean(id),
   });
+  const stepLogs = (data?.step_logs && typeof data.step_logs === 'object') ? data.step_logs : {};
+  const currentLogStep = String(logStep || data?.step || '').trim();
+  const currentFullLogUrl = currentLogStep ? toAbsoluteApiUrl(String(stepLogs[currentLogStep] || '')) : '';
 
   const logConnectionLabel = (() => {
     if (logConnectionState === 'connected') return 'conectado';
@@ -448,6 +465,7 @@ const LabRunPage: React.FC = () => {
               isLoading={logConnectionState === 'connecting' && liveLogs.length === 0}
               isConnected={logsConnected}
               error={logError?.message || null}
+              fullLogUrl={currentFullLogUrl || null}
               onRetry={reconnectLogs}
               onClose={() => setLogsOpen(false)}
             />

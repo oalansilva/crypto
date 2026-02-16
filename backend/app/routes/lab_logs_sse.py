@@ -27,7 +27,7 @@ except Exception:  # pragma: no cover - optional dependency
 _LOG_LINE_RE = re.compile(r"^\[(?P<timestamp>[^\]]+)\]\s+\[(?P<level>[A-Z]+)\]\s+(?P<message>.*)$")
 _SAFE_SEGMENT_RE = re.compile(r"[^A-Za-z0-9._-]+")
 _JWT_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_-]+$")
-_LOG_DIR = Path("/tmp")
+_LEGACY_LOG_DIR = Path("/tmp")
 _VALID_LEVELS = {"INFO", "WARN", "ERROR", "DEBUG"}
 
 
@@ -35,25 +35,82 @@ def _sanitize_segment(raw: str) -> str:
     return _SAFE_SEGMENT_RE.sub("_", str(raw or "").strip()).strip("._") or "unknown"
 
 
+def _persistent_logs_dir() -> Path:
+    # backend/app/routes/lab_logs_sse.py -> backend/app/routes -> backend/app -> backend
+    base = Path(__file__).resolve().parents[2]
+    logs_dir = base / "logs" / "lab_runs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    return logs_dir
+
+
+def _step_logs_dir(run_id: str) -> Path:
+    run_safe = _sanitize_segment(run_id)
+    step_dir = _persistent_logs_dir() / f"{run_safe}_steps"
+    step_dir.mkdir(parents=True, exist_ok=True)
+    return step_dir
+
+
 def get_log_path(run_id: str, step: str) -> Path:
+    step_safe = _sanitize_segment(step)
+    return _step_logs_dir(run_id) / f"{step_safe}.log"
+
+
+def get_legacy_log_path(run_id: str, step: str) -> Path:
     run_safe = _sanitize_segment(run_id)
     step_safe = _sanitize_segment(step)
-    return _LOG_DIR / f"lab_{run_safe}_{step_safe}.log"
+    return _LEGACY_LOG_DIR / f"lab_{run_safe}_{step_safe}.log"
+
+
+def resolve_log_path(run_id: str, step: str) -> Path:
+    persistent = get_log_path(run_id, step)
+    if persistent.exists():
+        return persistent
+    legacy = get_legacy_log_path(run_id, step)
+    if legacy.exists():
+        return legacy
+    return persistent
+
+
+def step_from_log_path(run_id: str, path: Path) -> Optional[str]:
+    run_safe = _sanitize_segment(run_id)
+
+    # Preferred layout: backend/logs/lab_runs/<run_id>_steps/<step>.log
+    if path.parent.name == f"{run_safe}_steps" and path.suffix == ".log":
+        step = _sanitize_segment(path.stem)
+        return step if step else None
+
+    # Legacy layout: /tmp/lab_<run_id>_<step>.log
+    prefix = f"lab_{run_safe}_"
+    name = path.name
+    if name.startswith(prefix) and name.endswith(".log"):
+        step = _sanitize_segment(name[len(prefix) : -len(".log")])
+        return step if step else None
+
+    return None
 
 
 def list_log_paths(run_id: str) -> list[Path]:
     run_safe = _sanitize_segment(run_id)
-    return sorted(_LOG_DIR.glob(f"lab_{run_safe}_*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+    candidates: list[Path] = []
+
+    step_dir = _persistent_logs_dir() / f"{run_safe}_steps"
+    if step_dir.exists():
+        candidates.extend(step_dir.glob("*.log"))
+    candidates.extend(_LEGACY_LOG_DIR.glob(f"lab_{run_safe}_*.log"))
+
+    unique_by_step: Dict[str, Path] = {}
+    for path in sorted(candidates, key=lambda p: p.stat().st_mtime, reverse=True):
+        step = step_from_log_path(run_id, path)
+        if not step or step in unique_by_step:
+            continue
+        unique_by_step[step] = path
+
+    return list(unique_by_step.values())
 
 
 def latest_step_with_logs(run_id: str) -> Optional[str]:
-    run_safe = _sanitize_segment(run_id)
-    prefix = f"lab_{run_safe}_"
     for path in list_log_paths(run_id):
-        name = path.name
-        if not name.startswith(prefix) or not name.endswith(".log"):
-            continue
-        step = name[len(prefix) : -len(".log")]
+        step = step_from_log_path(run_id, path)
         if step:
             return step
     return None
@@ -286,7 +343,7 @@ async def stream_lab_logs(
 ) -> AsyncIterator[str]:
     """Tail Lab step logs and emit SSE messages."""
 
-    path = get_log_path(run_id, step)
+    path = resolve_log_path(run_id, step)
     if not path.exists():
         raise FileNotFoundError(str(path))
 

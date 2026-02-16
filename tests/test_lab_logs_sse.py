@@ -148,3 +148,64 @@ def test_lab_logs_stream_endpoint_with_jwt_auth(tmp_path, monkeypatch):
         assert payload["step"] == step
 
     log_path.unlink(missing_ok=True)
+
+
+def test_get_run_includes_step_log_urls(tmp_path, monkeypatch):
+    run_id = "run_step_logs_map"
+    step = "combo_optimization"
+
+    run_payload = {
+        "run_id": run_id,
+        "status": "running",
+        "step": step,
+        "phase": "execution",
+        "created_at_ms": 1,
+        "updated_at_ms": 1,
+    }
+    (tmp_path / f"{run_id}.json").write_text(json.dumps(run_payload), encoding="utf-8")
+    monkeypatch.setattr(lab_routes, "_run_path", lambda rid: tmp_path / f"{rid}.json")
+
+    log_path = get_log_path(run_id, step)
+    log_path.write_text("[2026-02-16T01:00:00Z] [INFO] full step log line\n", encoding="utf-8")
+
+    app = FastAPI()
+    app.include_router(lab_routes.router)
+    client = TestClient(app)
+
+    response = client.get(f"/api/lab/runs/{run_id}")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["step_logs"][step] == f"/api/lab/runs/{run_id}/logs/{step}"
+
+    log_path.unlink(missing_ok=True)
+
+
+def test_get_run_step_log_endpoint_returns_content(tmp_path, monkeypatch):
+    run_id = "run_step_log_download"
+    step = "execution"
+
+    run_payload = {
+        "run_id": run_id,
+        "status": "done",
+        "step": "done",
+        "phase": "done",
+        "created_at_ms": 1,
+        "updated_at_ms": 1,
+    }
+    (tmp_path / f"{run_id}.json").write_text(json.dumps(run_payload), encoding="utf-8")
+    monkeypatch.setattr(lab_routes, "_run_path", lambda rid: tmp_path / f"{rid}.json")
+
+    log_path = get_log_path(run_id, step)
+    line = "[2026-02-16T01:01:00Z] [INFO] persisted line"
+    log_path.write_text(f"{line}\n", encoding="utf-8")
+
+    app = FastAPI()
+    app.include_router(lab_routes.router)
+    client = TestClient(app)
+
+    response = client.get(f"/api/lab/runs/{run_id}/logs/{step}")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert line in response.text
+
+    log_path.unlink(missing_ok=True)

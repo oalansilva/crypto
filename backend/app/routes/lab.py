@@ -24,17 +24,20 @@ import uuid
 import copy
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Union
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.routes.lab_logs_sse import (
     append_lab_log_line,
     authenticate_log_stream,
     capture_step_logs,
-    get_log_path,
+    list_log_paths,
     latest_step_with_logs,
+    resolve_log_path,
+    step_from_log_path,
     stream_lab_logs,
 )
 
@@ -246,6 +249,7 @@ class LabRunStatusResponse(BaseModel):
     # Back-compat: keep trace_events, but also provide events as alias.
     trace_events: List[LabRunTraceEvent] = Field(default_factory=list)
     events: List[LabRunTraceEvent] = Field(default_factory=list)
+    step_logs: Dict[str, str] = Field(default_factory=dict)
 
     budget: LabRunBudget = Field(default_factory=LabRunBudget)
     outputs: LabRunOutputs = Field(default_factory=LabRunOutputs)
@@ -4121,6 +4125,13 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
     thread_id = trace_meta.get("thread_id")
     trace_id = trace_meta.get("trace_id")
     trace_url = trace_meta.get("trace_url")
+    step_logs: Dict[str, str] = {}
+    run_id_url = quote(run_id, safe="")
+    for path in list_log_paths(run_id):
+        step_name = step_from_log_path(run_id, path)
+        if not step_name or step_name in step_logs:
+            continue
+        step_logs[step_name] = f"/api/lab/runs/{run_id_url}/logs/{quote(step_name, safe='')}"
 
     return LabRunStatusResponse(
         run_id=data.get("run_id") or run_id,
@@ -4139,6 +4150,7 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         },
         trace_events=trace_events,
         events=trace_events,
+        step_logs=step_logs,
         budget=data.get("budget") or {},
         outputs=data.get("outputs") or {},
         diagnostic=data.get("diagnostic"),
@@ -4158,7 +4170,7 @@ def _resolve_step_for_log_stream(run_id: str, run: Dict[str, Any], requested_ste
         return step
 
     current_step = str(run.get("step") or "").strip()
-    if current_step and get_log_path(run_id, current_step).exists():
+    if current_step and resolve_log_path(run_id, current_step).exists():
         return current_step
 
     latest = latest_step_with_logs(run_id)
@@ -4186,7 +4198,7 @@ async def stream_run_logs(
         raise HTTPException(status_code=404, detail="run not found")
 
     resolved_step = _resolve_step_for_log_stream(run_id, run, step)
-    log_path = get_log_path(run_id, resolved_step)
+    log_path = resolve_log_path(run_id, resolved_step)
     if not log_path.exists():
         raise HTTPException(status_code=404, detail=f"log file not found for step '{resolved_step}'")
 
@@ -4213,6 +4225,27 @@ async def stream_run_logs(
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@router.get("/runs/{run_id}/logs/{step}")
+async def get_run_step_log(run_id: str, step: str) -> FileResponse:
+    if not _run_path(run_id).exists():
+        raise HTTPException(status_code=404, detail="run not found")
+
+    step_name = str(step or "").strip()
+    if not step_name:
+        raise HTTPException(status_code=400, detail="step is required")
+
+    log_path = resolve_log_path(run_id, step_name)
+    if not log_path.exists():
+        raise HTTPException(status_code=404, detail=f"log file not found for step '{step_name}'")
+
+    resolved_step = step_from_log_path(run_id, log_path) or "step"
+    return FileResponse(
+        path=log_path,
+        media_type="text/plain; charset=utf-8",
+        filename=f"{resolved_step}.log",
     )
 
 
