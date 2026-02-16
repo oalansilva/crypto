@@ -152,7 +152,7 @@ def _verdict_label(text: Optional[str]) -> str:
     return "unknown"
 
 
-def _parse_trader_verdict_payload(value: Any) -> tuple[str, List[str]]:
+def _parse_trader_verdict_payload(value: Any) -> tuple[str, List[str], List[str]]:
     raw = _normalize_str(value)
     parsed: Dict[str, Any] = {}
 
@@ -168,14 +168,15 @@ def _parse_trader_verdict_payload(value: Any) -> tuple[str, List[str]]:
             parsed = {}
 
     if not parsed:
-        return _verdict_label(raw), []
+        return _verdict_label(raw), [], []
 
     verdict = _normalize_str(parsed.get("verdict")).lower()
     if verdict not in ("approved", "rejected", "needs_adjustment", "metrics_invalid"):
         verdict = _verdict_label(raw)
 
     required_fixes = _ensure_str_list(parsed.get("required_fixes"))
-    return verdict or "unknown", required_fixes
+    reasons = _ensure_str_list(parsed.get("reasons"))
+    return verdict or "unknown", required_fixes, reasons
 
 
 def _run_persona(
@@ -304,13 +305,14 @@ def _build_dev_retry_message(
     *,
     context: Dict[str, Any],
     required_fixes: List[str],
-    trader_reasons: str,
+    trader_reasons: List[str],
 ) -> str:
     """Build a custom message for Dev Senior including Trader feedback."""
-    fixes_text = "\n".join([f"{i+1}. {fix}" for i, fix in enumerate(required_fixes)])
-    
+    fixes_text = "\n".join([f"{i+1}. {fix}" for i, fix in enumerate(required_fixes)]) or "(nenhum)"
+    reasons_text = "\n".join([f"{i+1}. {reason}" for i, reason in enumerate(trader_reasons)]) or "(não informado)"
+
     message = f"""O Trader rejeitou a estratégia anterior pelos seguintes motivos:
-{trader_reasons}
+{reasons_text}
 
 AJUSTES REQUERIDOS (implemente no novo template):
 {fixes_text}
@@ -319,7 +321,7 @@ Contexto completo do run:
 """
     message += json.dumps(context, ensure_ascii=False, indent=2)
     message += "\n\nGere um NOVO template de estratégia implementando os ajustes acima. NÃO apenas otimize parâmetros - faça as mudanças estruturais solicitadas."
-    
+
     return message
 
 
@@ -351,13 +353,13 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
         if outputs.get("dev_needs_retry") and outputs.get("trader_verdict"):
             # Extract trader feedback
             verdict_obj = outputs.get("trader_verdict")
-            verdict, required_fixes = _parse_trader_verdict_payload(verdict_obj)
-            
+            verdict, required_fixes, reasons = _parse_trader_verdict_payload(verdict_obj)
+
             # Build custom message with trader feedback
             message = _build_dev_retry_message(
                 context=context,
                 required_fixes=required_fixes,
-                trader_reasons=verdict,
+                trader_reasons=reasons,
             )
             
             deps.append_trace(
@@ -365,7 +367,11 @@ def _implementation_node(state: LabGraphState) -> LabGraphState:
                 {
                     "ts_ms": deps.now_ms(),
                     "type": "dev_retry_with_trader_feedback",
-                    "data": {"verdict": verdict, "required_fixes": required_fixes},
+                    "data": {
+                        "verdict": verdict,
+                        "required_fixes": required_fixes,
+                        "reasons": reasons,
+                    },
                 },
             )
             
@@ -557,7 +563,7 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
     state["outputs"] = outputs
 
     verdict_obj = outputs.get("trader_verdict")
-    verdict, required_fixes = _parse_trader_verdict_payload(verdict_obj)
+    verdict, required_fixes, reasons = _parse_trader_verdict_payload(verdict_obj)
     status = "needs_adjustment"
     if verdict == "approved":
         status = "approved"
@@ -590,7 +596,12 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
                 {
                     "ts_ms": deps.now_ms(),
                     "type": "trader_retry_started",
-                    "data": {"attempt": trader_retry_count, "limit": max_retries, "reasons": required_fixes},
+                    "data": {
+                        "attempt": trader_retry_count,
+                        "limit": max_retries,
+                        "required_fixes": required_fixes,
+                        "reasons": reasons,
+                    },
                 },
             )
             status = "needs_adjustment"
@@ -600,7 +611,12 @@ def _trader_validation_node(state: LabGraphState) -> LabGraphState:
                 {
                     "ts_ms": deps.now_ms(),
                     "type": "trader_retry_limit",
-                    "data": {"attempt": trader_retry_count, "limit": max_retries, "reasons": required_fixes},
+                    "data": {
+                        "attempt": trader_retry_count,
+                        "limit": max_retries,
+                        "required_fixes": required_fixes,
+                        "reasons": reasons,
+                    },
                 },
             )
             status = "needs_adjustment"

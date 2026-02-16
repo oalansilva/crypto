@@ -44,6 +44,16 @@ from app.routes.lab_logs_sse import (
 router = APIRouter(prefix="/api/lab", tags=["lab"])
 logger = logging.getLogger(__name__)
 
+_RUN_LOCKS: Dict[str, threading.RLock] = {}
+
+
+def _run_lock(run_id: str) -> threading.RLock:
+    lock = _RUN_LOCKS.get(run_id)
+    if lock is None:
+        lock = threading.RLock()
+        _RUN_LOCKS[run_id] = lock
+    return lock
+
 
 def _runs_dir() -> Path:
     # backend/app/routes/lab.py -> backend/app/routes -> backend/app -> backend
@@ -120,12 +130,12 @@ def _read_trace_tail(run_id: str, limit: int = 200) -> List[Dict[str, Any]]:
         return []
 
     try:
-        lines = p.read_text(encoding="utf-8").splitlines()
+        lines = _read_tail_lines(p, limit)
     except Exception:
         return []
 
     out: List[Dict[str, Any]] = []
-    for line in lines[-limit:]:
+    for line in lines:
         line = (line or "").strip()
         if not line:
             continue
@@ -139,6 +149,34 @@ def _read_trace_tail(run_id: str, limit: int = 200) -> List[Dict[str, Any]]:
 
 def _now_ms() -> int:
     return int(time.time() * 1000)
+
+
+def _read_tail_lines(path: Path, limit: int) -> List[str]:
+    if limit <= 0:
+        return []
+
+    chunk_size = 8192
+    data = bytearray()
+    with path.open("rb") as f:
+        f.seek(0, os.SEEK_END)
+        file_size = f.tell()
+        offset = 0
+        lines_found = 0
+
+        while file_size > 0 and lines_found <= limit:
+            offset = min(file_size, chunk_size)
+            file_size -= offset
+            f.seek(file_size)
+            data = f.read(offset) + data
+            lines_found = data.count(b"\n")
+            if file_size == 0:
+                break
+
+    text = data.decode("utf-8", errors="ignore")
+    lines = text.splitlines()
+    if len(lines) > limit:
+        return lines[-limit:]
+    return lines
 
 
 class LabRunCreateRequest(BaseModel):
@@ -1396,10 +1434,11 @@ def _load_run_json(run_id: str) -> Dict[str, Any]:
     p = _run_path(run_id)
     if not p.exists():
         return {}
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    with _run_lock(run_id):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
     if not isinstance(data, dict):
         return {}
     _ensure_upstream_state(data)
@@ -1410,11 +1449,14 @@ def _update_run_json(run_id: str, patch: Dict[str, Any]) -> None:
     p = _run_path(run_id)
     if not p.exists():
         return
-    cur = _load_run_json(run_id)
-    cur.update(patch)
-    _ensure_upstream_state(cur)
-    cur["updated_at_ms"] = _now_ms()
-    p.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
+    with _run_lock(run_id):
+        cur = _load_run_json(run_id)
+        cur.update(patch)
+        _ensure_upstream_state(cur)
+        cur["updated_at_ms"] = _now_ms()
+        tmp_path = p.with_suffix(".json.tmp")
+        tmp_path.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp_path.replace(p)
 
 
 def _cp3_default_since(timeframe: str, full_history: bool = True) -> str:
