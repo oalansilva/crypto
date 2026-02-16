@@ -6,11 +6,11 @@ BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
 BACKEND_SERVICE="crypto-backend.service"
 FRONTEND_SERVICE="crypto-frontend.service"
-BACKEND_LOG="/tmp/uvicorn-8000.log"
+BACKEND_LOG="/tmp/uvicorn-8003.log"
 FRONTEND_LOG="/tmp/vite-5173.log"
 BACKEND_PID_FILE="/tmp/crypto-backend.pid"
 FRONTEND_PID_FILE="/tmp/crypto-frontend.pid"
-HEALTH_URL="http://127.0.0.1:8000/api/health"
+HEALTH_URL="http://127.0.0.1:8003/api/health"
 VENV_PYTHON="$BACKEND_DIR/.venv/bin/python"
 
 has_systemd_service() {
@@ -20,14 +20,14 @@ has_systemd_service() {
 }
 
 start_backend_with_nohup() {
-  if pgrep -f "uvicorn app.main:app.*--port 8000" >/dev/null 2>&1; then
-    echo "Backend already running on port 8000."
+  if pgrep -f "uvicorn app.main:app.*--port 8003" >/dev/null 2>&1; then
+    echo "Backend already running on port 8003."
     return
   fi
 
   (
     cd "$BACKEND_DIR"
-    nohup "$VENV_PYTHON" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 >"$BACKEND_LOG" 2>&1 &
+    nohup "$VENV_PYTHON" -m uvicorn app.main:app --host 127.0.0.1 --port 8003 >"$BACKEND_LOG" 2>&1 &
     echo "$!" >"$BACKEND_PID_FILE"
   )
   echo "Backend started with nohup (log: $BACKEND_LOG)."
@@ -86,7 +86,7 @@ if command -v curl >/dev/null 2>&1; then
   for _ in {1..10}; do
     if curl -fsS --max-time 2 "$HEALTH_URL" >/dev/null; then
       echo "Health check passed."
-      echo "Backend:  http://127.0.0.1:8000"
+      echo "Backend:  http://127.0.0.1:8003"
       echo "Frontend: http://127.0.0.1:5173"
       exit 0
     fi

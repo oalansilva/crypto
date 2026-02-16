@@ -59,8 +59,8 @@ kill_by_pattern() {
 stop_backend_fallback() {
   echo "Stopping backend via process fallback..."
   kill_pid_file "$BACKEND_PID_FILE"
-  kill_by_port 8000
-  kill_by_pattern "uvicorn app.main:app.*--port 8000"
+  kill_by_port 8003
+  kill_by_pattern "uvicorn app.main:app.*--port 8003"
 }
 
 stop_frontend_fallback() {
