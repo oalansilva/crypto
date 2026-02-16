@@ -1,8 +1,5 @@
-# opportunity-monitor Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by syncing delta from change improve-opportunity-monitor. Dashboard for favorite strategies with hold status and distance to next signal.
-## Requirements
 ### Requirement: Simplified Hold Status Display
 **Description:** The system SHALL display a clear binary indicator: HOLD (active position) or WAIT (no position). When holding, show distance to exit; when not holding, show distance to entry.
 
@@ -35,4 +32,3 @@ TBD - created by syncing delta from change improve-opportunity-monitor. Dashboar
 #### Scenario: Sorted by distance
 - **WHEN** multiple strategies are listed
 - **THEN** the cards are sorted by closest distance first
-
