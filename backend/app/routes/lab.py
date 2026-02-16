@@ -707,6 +707,7 @@ def _logic_preflight(
                 entry_logic=str(template_data.get("entry_logic") or ""),
                 exit_logic=str(template_data.get("exit_logic") or ""),
                 stop_loss=float(stop_loss if isinstance(stop_loss, (int, float)) else 0.03),
+                derived_features=(template_data.get("derived_features") or []),
             )
         except Exception as e:
             return False, [f"strategy_create_failed: {e}"]
@@ -766,6 +767,7 @@ def _apply_dev_adjustments(*, combo: Any, template_name: str, attempt: int, reas
 
     template_data = {
         "indicators": meta.get("indicators") or [],
+        "derived_features": meta.get("derived_features") or [],
         "entry_logic": meta.get("entry_logic"),
         "exit_logic": meta.get("exit_logic"),
         "stop_loss": meta.get("stop_loss"),
@@ -816,10 +818,17 @@ def _apply_missing_indicator_fix(
     if not isinstance(indicators, list):
         indicators = []
 
+    derived_features = copy.deepcopy(template_data.get("derived_features") or [])
+    if not isinstance(derived_features, list):
+        derived_features = []
+
     added: List[str] = []
 
     def _has_alias(alias: str) -> bool:
         return any(isinstance(ind, dict) and ind.get("alias") == alias for ind in indicators)
+
+    def _has_derived(name: str) -> bool:
+        return any(isinstance(item, dict) and item.get("name") == name for item in derived_features)
 
     # Parse unknown columns/functions list
     missing_tokens: List[str] = []
@@ -842,6 +851,30 @@ def _apply_missing_indicator_fix(
         if m:
             base = m.group(1)
             length = int(m.group(2))
+
+        derived_match = re.match(
+            r"^(?P<source>[A-Za-z_][A-Za-z0-9_]*)_(?P<suffix>prev|lag|shift|slope|mean|rolling_mean|pct_change)(?P<num>\d+)?$",
+            token_norm,
+        )
+        if derived_match:
+            source = derived_match.group("source")
+            suffix = derived_match.group("suffix")
+            num = derived_match.group("num")
+            period = int(num) if num else 1
+            transform = "lag" if suffix in ("prev", "lag", "shift") else suffix
+            if transform == "mean":
+                transform = "rolling_mean"
+            if not _has_derived(token_norm):
+                derived_features.append(
+                    {
+                        "name": token_norm,
+                        "source": source,
+                        "transform": transform,
+                        "params": {"period": period},
+                    }
+                )
+                added.append(f"derived:{token_norm}")
+            continue
 
         # Common aliases for BB/macd families
         if base.lower() in ("bb_upper", "bb_lower", "bb_middle") or base.lower().startswith("bb_"):
@@ -880,6 +913,7 @@ def _apply_missing_indicator_fix(
 
     updated = {
         "indicators": indicators,
+        "derived_features": derived_features,
         "entry_logic": template_data.get("entry_logic"),
         "exit_logic": template_data.get("exit_logic"),
         "stop_loss": template_data.get("stop_loss"),
@@ -898,6 +932,7 @@ def _apply_dev_adjustments_to_template_data(
 
     updated = {
         "indicators": copy.deepcopy(template_data.get("indicators") or []),
+        "derived_features": copy.deepcopy(template_data.get("derived_features") or []),
         "entry_logic": template_data.get("entry_logic"),
         "exit_logic": template_data.get("exit_logic"),
         "stop_loss": template_data.get("stop_loss"),
@@ -1651,11 +1686,15 @@ DEV_LOGIC_FIX_PROMPT = (
     "{\n"
     "  \"entry_logic\": \"...\",\n"
     "  \"exit_logic\": \"...\",\n"
+    "  \"derived_features\": [\n"
+    "    {\"name\": \"rsi_prev\", \"source\": \"rsi\", \"transform\": \"lag\", \"params\": {\"period\": 1}}\n"
+    "  ],\n"
     "  \"notes\": \"...\"\n"
     "}\n\n"
     "Regras:\n"
     "- entry_logic/exit_logic DEVEM ser expressões booleanas válidas\n"
     "- Use apenas colunas válidas (close, ema*, rsi*, bb_upper, adx, atr, etc.)\n"
+    "- Derived features permitidas: lag/prev, slope, rolling_mean, pct_change (com period)\n"
     "- Não use texto livre (ex: 'cruza acima', 'quando', 'retorna')\n"
     "Idioma: pt-BR."
 )
@@ -1700,9 +1739,14 @@ def _request_dev_logic_correction(*,
         _append_trace(run_id, {"ts_ms": _now_ms(), "type": "dev_logic_correction_failed", "data": {"error": "missing_logic"}})
         return None
 
+    derived_features = obj.get("derived_features")
+    if not isinstance(derived_features, list):
+        derived_features = None
+
     return {
         "entry_logic": entry_logic.strip(),
         "exit_logic": exit_logic.strip(),
+        "derived_features": derived_features,
         "notes": obj.get("notes"),
     }
 
@@ -1875,6 +1919,25 @@ def _cp8_save_candidate_template(run_id: str, run: Dict[str, Any], outputs: Dict
         if not isinstance(ind.get("params"), dict):
             _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"indicator[{idx}].params must be object"}})
             return outputs
+
+    derived = candidate_data.get("derived_features")
+    if derived is not None:
+        if not isinstance(derived, list):
+            _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": "derived_features must be a list"}})
+            return outputs
+        for idx, item in enumerate(derived):
+            if not isinstance(item, dict):
+                _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"derived_features[{idx}] must be an object"}})
+                return outputs
+            if not isinstance(item.get("name"), str) or not item.get("name"):
+                _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"derived_features[{idx}].name missing"}})
+                return outputs
+            if not isinstance(item.get("source"), str) or not item.get("source"):
+                _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"derived_features[{idx}].source missing"}})
+                return outputs
+            if not isinstance(item.get("transform"), str) or not item.get("transform"):
+                _append_trace(run_id, {"ts_ms": _now_ms(), "type": "candidate_error", "data": {"error": f"derived_features[{idx}].transform missing"}})
+                return outputs
 
     inp = run.get("input") or {}
     backtest = run.get("backtest") or {}
@@ -3082,6 +3145,9 @@ def _run_lab_autonomous_sync(run_id: str, req_dict: Dict[str, Any]) -> None:
                     template_data["entry_logic"] = next_entry.strip()
                 if isinstance(next_exit, str) and next_exit.strip():
                     template_data["exit_logic"] = next_exit.strip()
+                derived = dev_fix.get("derived_features")
+                if isinstance(derived, list):
+                    template_data["derived_features"] = derived
                 rewritten_entry = template_data.get("entry_logic")
                 rewritten_exit = template_data.get("exit_logic")
                 notes = dev_fix.get("notes")

@@ -69,6 +69,7 @@ class DevTemplateOutput(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     indicators: List[Dict[str, Any]] = Field(default_factory=list)
+    derived_features: List[Dict[str, Any]] = Field(default_factory=list)
     entry_logic: str
     exit_logic: str
     stop_loss: Optional[float] = None
@@ -1054,7 +1055,7 @@ DEV_SENIOR_PROMPT = (
     "Entregável (JSON válido):\n"
     "{\n"
     "  \"template_name\": \"...\",\n"
-    "  \"template_data\": { indicators, entry_logic, exit_logic, stop_loss },\n"
+    "  \"template_data\": { indicators, derived_features, entry_logic, exit_logic, stop_loss },\n"
     "  (entry_logic e exit_logic DEVEM ser strings, nunca dict)\n"
     "  \"backtest_job_id\": \"...\",\n"
     "  \"backtest_summary\": { all, in_sample, holdout },\n"
@@ -1065,6 +1066,8 @@ DEV_SENIOR_PROMPT = (
     "Regras estruturais (obrigatórias):\n"
     "- Máximo de 4 indicadores\n"
     "- Cada indicador: type, alias, params\n"
+    "- derived_features (opcional): lista de {name, source, transform, params}\n"
+    "- transforms permitidos: lag/prev, slope, rolling_mean, pct_change\n"
     "- Use apenas colunas válidas (bb_upper, adx, atr, close, etc.)\n"
     "- entry_logic/exit_logic DEVEM ser expressões booleanas válidas\n"
     "  (ex: rsi14 > 55 AND close > ema50).\n"

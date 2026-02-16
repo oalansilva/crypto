@@ -143,6 +143,7 @@ class ComboService:
         entry_logic = metadata["entry_logic"]
         exit_logic = metadata["exit_logic"]
         stop_loss = metadata.get("stop_loss", 0.015)
+        derived_features = metadata.get("derived_features")
         
         # Handle stop_loss if it's a dict with 'default' key
         if isinstance(stop_loss, dict):
@@ -179,7 +180,8 @@ class ComboService:
             indicators=indicators,
             entry_logic=entry_logic,
             exit_logic=exit_logic,
-            stop_loss=stop_loss
+            stop_loss=stop_loss,
+            derived_features=derived_features
         )
     
     def save_template(

@@ -31,7 +31,8 @@ class ComboStrategy:
         entry_logic: str,
         exit_logic: str,
         stop_loss: float = 0.015,
-        stop_gain: Optional[float] = None
+        stop_gain: Optional[float] = None,
+        derived_features: Optional[List[Dict[str, Any]]] = None
     ):
         """
         Initialize combo strategy.
@@ -48,6 +49,7 @@ class ComboStrategy:
         self.exit_logic = exit_logic
         self.stop_loss = stop_loss
         self.stop_gain = stop_gain
+        self.derived_features = derived_features or []
 
         self._indicator_cache = {}
         self._validate_aliases()
@@ -58,6 +60,101 @@ class ComboStrategy:
         if len(aliases) != len(set(aliases)):
             duplicates = [a for a in aliases if aliases.count(a) > 1]
             raise ValueError(f"Duplicate aliases found: {set(duplicates)}")
+
+    def _normalize_derived_feature(self, item: Any) -> Optional[Dict[str, Any]]:
+        if isinstance(item, str):
+            token = item.strip()
+            if not token:
+                return None
+            m = re.match(r"^(?P<source>[A-Za-z_][A-Za-z0-9_]*)_(?P<suffix>prev|lag|shift|slope|mean|rolling_mean|pct_change)(?P<num>\d+)?$", token)
+            if not m:
+                return None
+            source = m.group("source")
+            suffix = m.group("suffix")
+            num = m.group("num")
+            period = int(num) if num else 1
+            transform = "lag" if suffix in ("prev", "lag", "shift") else suffix
+            if transform == "mean":
+                transform = "rolling_mean"
+            return {
+                "name": token,
+                "source": source,
+                "transform": transform,
+                "params": {"period": period} if period else {},
+            }
+
+        if not isinstance(item, dict):
+            return None
+
+        name = str(item.get("name") or item.get("alias") or "").strip()
+        source = str(item.get("source") or item.get("base") or "").strip()
+        transform = str(item.get("transform") or "").strip().lower()
+        params = item.get("params") if isinstance(item.get("params"), dict) else {}
+
+        if not source or not transform:
+            return None
+
+        if not name:
+            if transform in ("lag", "prev", "shift"):
+                name = f"{source}_prev"
+            elif transform == "rolling_mean":
+                name = f"{source}_mean"
+            else:
+                name = f"{source}_{transform}"
+
+        if transform == "prev":
+            transform = "lag"
+        if transform == "shift":
+            transform = "lag"
+        if transform == "mean":
+            transform = "rolling_mean"
+
+        return {
+            "name": name,
+            "source": source,
+            "transform": transform,
+            "params": params,
+        }
+
+    def _apply_derived_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        if not self.derived_features:
+            return df
+
+        allowed = {"lag", "slope", "rolling_mean", "pct_change"}
+        for raw in self.derived_features:
+            spec = self._normalize_derived_feature(raw)
+            if not spec:
+                raise RuntimeError(f"Invalid derived feature declaration: {raw}")
+
+            name = spec.get("name")
+            source = spec.get("source")
+            transform = spec.get("transform")
+            params = spec.get("params") or {}
+
+            if transform not in allowed:
+                raise RuntimeError(f"Unsupported derived transform: {transform}")
+
+            if source not in df.columns:
+                raise RuntimeError(f"Derived feature source not found: {source}")
+
+            period = 1
+            try:
+                period = int(params.get("period") or params.get("window") or 1)
+            except Exception:
+                period = 1
+            period = max(1, period)
+
+            series = df[source]
+            if transform == "lag":
+                df[name] = series.shift(period)
+            elif transform == "slope":
+                df[name] = (series - series.shift(period)) / float(period)
+            elif transform == "rolling_mean":
+                df[name] = series.rolling(window=period).mean()
+            elif transform == "pct_change":
+                df[name] = series.pct_change(periods=period)
+
+        return df
 
     def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -212,6 +309,8 @@ class ComboStrategy:
 
             except Exception as e:
                 raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
+
+        df = self._apply_derived_features(df)
 
         # Ensure all columns are numeric to prevent NoneType errors in eval evaluation
         # This handles cases where pandas-ta might return object types with None
