@@ -16,6 +16,7 @@ interface ApiResponse {
   symbol: string
   threshold: number
   exchanges: string[]
+  spreads: Opportunity[]
   opportunities: Opportunity[]
 }
 
@@ -130,9 +131,12 @@ export default function ArbitragePage() {
 
         <section className="glass rounded-2xl border border-white/10 overflow-hidden">
           <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Oportunidades</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Spreads atuais</h2>
+              <p className="text-xs text-gray-400">Exibe todos os pares (mesmo abaixo do threshold).</p>
+            </div>
             <span className="text-xs text-gray-400">
-              {data?.opportunities?.length ?? 0} resultados
+              {data?.spreads?.length ?? 0} pares
             </span>
           </div>
           <div className="overflow-x-auto">
@@ -144,26 +148,34 @@ export default function ArbitragePage() {
                   <th className="px-6 py-3">Buy Price</th>
                   <th className="px-6 py-3">Sell Price</th>
                   <th className="px-6 py-3">Spread %</th>
+                  <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3">Timestamp</th>
                 </tr>
               </thead>
               <tbody>
-                {(data?.opportunities ?? []).map((item, index) => (
+                {(data?.spreads ?? []).map((item, index) => (
                   <tr key={`${item.buy_exchange}-${item.sell_exchange}-${index}`} className="border-b border-white/5">
                     <td className="px-6 py-4 font-semibold text-white">{item.buy_exchange}</td>
                     <td className="px-6 py-4 font-semibold text-white">{item.sell_exchange}</td>
                     <td className="px-6 py-4">{item.buy_price.toFixed(6)}</td>
                     <td className="px-6 py-4">{item.sell_price.toFixed(6)}</td>
                     <td className="px-6 py-4 text-emerald-400 font-semibold">{item.spread_pct.toFixed(4)}</td>
+                    <td className="px-6 py-4">
+                      {item.meets_threshold ? (
+                        <span className="text-emerald-400 font-semibold">OPORTUNIDADE</span>
+                      ) : (
+                        <span className="text-gray-500">abaixo do threshold</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-gray-400">
                       {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : '-'}
                     </td>
                   </tr>
                 ))}
-                {!data?.opportunities?.length && !loading && (
+                {!data?.spreads?.length && !loading && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-6 text-center text-gray-500">
-                      Nenhuma oportunidade no momento.
+                    <td colSpan={7} className="px-6 py-6 text-center text-gray-500">
+                      Nenhum spread encontrado no momento.
                     </td>
                   </tr>
                 )}

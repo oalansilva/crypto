@@ -124,7 +124,7 @@ async def get_arbitrage_spreads(
 
     exchange_list = [e.strip() for e in exchanges.split(",") if e.strip()]
     try:
-        opportunities = await get_spread_opportunities(
+        result = await get_spread_opportunities(
             symbol=symbol,
             exchanges=exchange_list,
             threshold_pct=threshold,
@@ -138,5 +138,6 @@ async def get_arbitrage_spreads(
         "symbol": symbol,
         "threshold": threshold,
         "exchanges": exchange_list,
-        "opportunities": opportunities,
+        "spreads": result["spreads"],
+        "opportunities": result["opportunities"],
     }

@@ -10,9 +10,10 @@ def test_calculate_spreads_applies_threshold():
     }
 
     results = calculate_spreads(quotes, threshold_pct=0.2)
-    assert len(results) == 1
+    assert len(results["spreads"]) == 2
+    assert len(results["opportunities"]) == 1
 
-    opportunity = results[0]
+    opportunity = results["opportunities"][0]
     assert opportunity["buy_exchange"] == "binance"
     assert opportunity["sell_exchange"] == "okx"
     assert opportunity["buy_price"] == pytest.approx(1.0)

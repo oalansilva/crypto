@@ -75,7 +75,8 @@ async def _fetch_top_of_book_ws(exchange_id: str, symbol: str, timeout_sec: int 
         await exchange.close()
 
 
-def calculate_spreads(quotes: Dict[str, Dict[str, Any]], threshold_pct: float) -> List[Dict[str, Any]]:
+def calculate_spreads(quotes: Dict[str, Dict[str, Any]], threshold_pct: float) -> Dict[str, List[Dict[str, Any]]]:
+    spreads: List[Dict[str, Any]] = []
     opportunities: List[Dict[str, Any]] = []
     exchanges = list(quotes.keys())
 
@@ -88,19 +89,22 @@ def calculate_spreads(quotes: Dict[str, Dict[str, Any]], threshold_pct: float) -
             sell_quote = quotes[sell_exchange]
             sell_bid = sell_quote["best_bid"]
             spread_pct = (sell_bid - buy_ask) / buy_ask * 100
-            if spread_pct < threshold_pct:
-                continue
-            opportunities.append({
+            item = {
                 "buy_exchange": buy_exchange,
                 "sell_exchange": sell_exchange,
                 "buy_price": buy_ask,
                 "sell_price": sell_bid,
                 "spread_pct": round(spread_pct, 4),
                 "timestamp": max(buy_quote["timestamp"], sell_quote["timestamp"]),
-            })
+                "meets_threshold": spread_pct >= threshold_pct,
+            }
+            spreads.append(item)
+            if spread_pct >= threshold_pct:
+                opportunities.append(item)
 
+    spreads.sort(key=lambda item: item["spread_pct"], reverse=True)
     opportunities.sort(key=lambda item: item["spread_pct"], reverse=True)
-    return opportunities
+    return {"spreads": spreads, "opportunities": opportunities}
 
 
 async def get_spread_opportunities(
