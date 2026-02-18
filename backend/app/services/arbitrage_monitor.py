@@ -8,7 +8,7 @@ from app.services.arbitrage_spread_service import get_spreads_for_symbols
 LOG_PATH = Path(__file__).resolve().parents[2] / "logs" / "arbitrage_opportunities.log"
 DEFAULT_SYMBOLS = ["USDT/USDC", "USDT/DAI", "USDC/DAI"]
 DEFAULT_EXCHANGES = ["binance", "okx", "bybit"]
-DEFAULT_THRESHOLD = 0.02
+DEFAULT_THRESHOLD = 0.30
 DEFAULT_INTERVAL_SECONDS = 3
 
 
