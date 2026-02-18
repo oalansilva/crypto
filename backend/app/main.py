@@ -9,6 +9,7 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 import logging
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
@@ -44,6 +45,7 @@ logger.info("=" * 80)
 
 from contextlib import asynccontextmanager
 from app.database import Base, engine
+from app.services.arbitrage_monitor import monitor_arbitrage_opportunities
 # Import models to register them with Base
 import app.models
 
@@ -135,13 +137,28 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database initialized successfully.")
-        
+
         # Seed combo_templates if empty
         seed_combo_templates_if_empty()
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
+
+    stop_event = asyncio.Event()
+    app.state.arbitrage_task = asyncio.create_task(
+        monitor_arbitrage_opportunities(stop_event=stop_event)
+    )
+    app.state.arbitrage_stop_event = stop_event
+
     yield
-    # Cleanup if needed
+
+    stop_event.set()
+    task = getattr(app.state, "arbitrage_task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 settings = get_settings()
 
