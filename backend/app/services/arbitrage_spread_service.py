@@ -133,19 +133,21 @@ async def get_spreads_for_symbols(
     threshold_pct: float,
     timeout_sec: int = 10,
 ) -> Dict[str, Dict[str, Any]]:
-    responses: Dict[str, Dict[str, Any]] = {}
-    for symbol in symbols:
+    async def _fetch(symbol: str) -> tuple[str, Dict[str, Any]]:
         try:
-            responses[symbol] = await get_spread_opportunities(
+            result = await get_spread_opportunities(
                 symbol=symbol,
                 exchanges=exchanges,
                 threshold_pct=threshold_pct,
                 timeout_sec=timeout_sec,
             )
+            return symbol, result
         except (ValueError, RuntimeError) as exc:
-            responses[symbol] = {
+            return symbol, {
                 "spreads": [],
                 "opportunities": [],
                 "error": str(exc),
             }
-    return responses
+
+    results = await asyncio.gather(*[_fetch(symbol) for symbol in symbols])
+    return {symbol: payload for symbol, payload in results}
