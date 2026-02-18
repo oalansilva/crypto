@@ -115,17 +115,21 @@ async def get_indicator_schema_endpoint(strategy_name: str):
 
 @router.get("/arbitrage/spreads")
 async def get_arbitrage_spreads(
-    symbol: str = "USDT/USDC",
+    symbols: str = Query(
+        "USDT/USDC,USDT/DAI,USDC/DAI",
+        description="Lista de símbolos separados por vírgula",
+    ),
     exchanges: str = Query("binance,okx,bybit", description="Lista de exchanges separadas por vírgula"),
     threshold: float = Query(0.0, description="Spread mínimo em %"),
 ):
-    """Detecta spreads USDT/USDC entre exchanges via WebSocket (sem executar trades)."""
-    from app.services.arbitrage_spread_service import get_spread_opportunities
+    """Detecta spreads entre exchanges via WebSocket (sem executar trades)."""
+    from app.services.arbitrage_spread_service import get_spreads_for_symbols
 
     exchange_list = [e.strip() for e in exchanges.split(",") if e.strip()]
+    symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
     try:
-        result = await get_spread_opportunities(
-            symbol=symbol,
+        results = await get_spreads_for_symbols(
+            symbols=symbol_list,
             exchanges=exchange_list,
             threshold_pct=threshold,
         )
@@ -135,9 +139,8 @@ async def get_arbitrage_spreads(
         raise HTTPException(status_code=500, detail=str(exc))
 
     return {
-        "symbol": symbol,
+        "symbols": symbol_list,
         "threshold": threshold,
         "exchanges": exchange_list,
-        "spreads": result["spreads"],
-        "opportunities": result["opportunities"],
+        "results": results,
     }

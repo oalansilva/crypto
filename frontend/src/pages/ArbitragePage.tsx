@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 const DEFAULT_EXCHANGES = ['binance', 'okx', 'bybit']
-const DEFAULT_SYMBOL = 'USDT/USDC'
+const DEFAULT_SYMBOLS = 'USDT/USDC,USDT/DAI,USDC/DAI'
 
 interface Opportunity {
   buy_exchange: string
@@ -13,15 +13,14 @@ interface Opportunity {
 }
 
 interface ApiResponse {
-  symbol: string
+  symbols: string[]
   threshold: number
   exchanges: string[]
-  spreads: Opportunity[]
-  opportunities: Opportunity[]
+  results: Record<string, { spreads: Opportunity[]; opportunities: Opportunity[] }>
 }
 
 export default function ArbitragePage() {
-  const [symbol, setSymbol] = useState(DEFAULT_SYMBOL)
+  const [symbols, setSymbols] = useState(DEFAULT_SYMBOLS)
   const [threshold, setThreshold] = useState('0.1')
   const [exchanges, setExchanges] = useState(DEFAULT_EXCHANGES.join(','))
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -31,7 +30,7 @@ export default function ArbitragePage() {
 
   const query = useMemo(() => {
     const params = new URLSearchParams({
-      symbol: symbol.trim() || DEFAULT_SYMBOL,
+      symbols: symbols.trim() || DEFAULT_SYMBOLS,
       threshold: threshold.trim() || '0',
       exchanges: exchanges.trim() || DEFAULT_EXCHANGES.join(','),
     })
@@ -80,12 +79,12 @@ export default function ArbitragePage() {
         <section className="glass-strong rounded-2xl p-6 border border-white/10 space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <label className="flex flex-col gap-2 text-sm text-gray-300">
-              Símbolo
+              Símbolos (csv)
               <input
-                value={symbol}
-                onChange={(event) => setSymbol(event.target.value)}
+                value={symbols}
+                onChange={(event) => setSymbols(event.target.value)}
                 className="rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                placeholder="USDT/USDC"
+                placeholder="USDT/USDC,USDT/DAI,USDC/DAI"
               />
             </label>
             <label className="flex flex-col gap-2 text-sm text-gray-300">
@@ -136,51 +135,67 @@ export default function ArbitragePage() {
               <p className="text-xs text-gray-400">Exibe todos os pares (mesmo abaixo do threshold).</p>
             </div>
             <span className="text-xs text-gray-400">
-              {data?.spreads?.length ?? 0} pares
+              {data?.symbols?.length ?? 0} símbolos
             </span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-300">
-              <thead className="text-xs uppercase text-gray-400 border-b border-white/10">
-                <tr>
-                  <th className="px-6 py-3">Buy</th>
-                  <th className="px-6 py-3">Sell</th>
-                  <th className="px-6 py-3">Buy Price</th>
-                  <th className="px-6 py-3">Sell Price</th>
-                  <th className="px-6 py-3">Spread %</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data?.spreads ?? []).map((item, index) => (
-                  <tr key={`${item.buy_exchange}-${item.sell_exchange}-${index}`} className="border-b border-white/5">
-                    <td className="px-6 py-4 font-semibold text-white">{item.buy_exchange}</td>
-                    <td className="px-6 py-4 font-semibold text-white">{item.sell_exchange}</td>
-                    <td className="px-6 py-4">{item.buy_price.toFixed(6)}</td>
-                    <td className="px-6 py-4">{item.sell_price.toFixed(6)}</td>
-                    <td className="px-6 py-4 text-emerald-400 font-semibold">{item.spread_pct.toFixed(4)}</td>
-                    <td className="px-6 py-4">
-                      {item.meets_threshold ? (
-                        <span className="text-emerald-400 font-semibold">OPORTUNIDADE</span>
-                      ) : (
-                        <span className="text-gray-500">abaixo do threshold</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-gray-400">
-                      {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : '-'}
-                    </td>
-                  </tr>
-                ))}
-                {!data?.spreads?.length && !loading && (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-6 text-center text-gray-500">
-                      Nenhum spread encontrado no momento.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="space-y-6 p-6">
+            {data?.symbols?.map((sym) => {
+              const spreads = data?.results?.[sym]?.spreads ?? []
+              return (
+                <div key={sym} className="rounded-xl border border-white/10 overflow-hidden">
+                  <div className="px-4 py-3 bg-white/5 flex items-center justify-between">
+                    <span className="font-semibold text-white">{sym}</span>
+                    <span className="text-xs text-gray-400">{spreads.length} pares</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-300">
+                      <thead className="text-xs uppercase text-gray-400 border-b border-white/10">
+                        <tr>
+                          <th className="px-4 py-3">Buy</th>
+                          <th className="px-4 py-3">Sell</th>
+                          <th className="px-4 py-3">Buy Price</th>
+                          <th className="px-4 py-3">Sell Price</th>
+                          <th className="px-4 py-3">Spread %</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Timestamp</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {spreads.map((item, index) => (
+                          <tr key={`${sym}-${item.buy_exchange}-${item.sell_exchange}-${index}`} className="border-b border-white/5">
+                            <td className="px-4 py-3 font-semibold text-white">{item.buy_exchange}</td>
+                            <td className="px-4 py-3 font-semibold text-white">{item.sell_exchange}</td>
+                            <td className="px-4 py-3">{item.buy_price.toFixed(6)}</td>
+                            <td className="px-4 py-3">{item.sell_price.toFixed(6)}</td>
+                            <td className="px-4 py-3 text-emerald-400 font-semibold">{item.spread_pct.toFixed(4)}</td>
+                            <td className="px-4 py-3">
+                              {item.meets_threshold ? (
+                                <span className="text-emerald-400 font-semibold">OPORTUNIDADE</span>
+                              ) : (
+                                <span className="text-gray-500">abaixo do threshold</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-400">
+                              {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                        {!spreads.length && !loading && (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                              Nenhum spread encontrado no momento.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })}
+            {!data?.symbols?.length && !loading && (
+              <div className="text-center text-gray-500">Nenhum spread encontrado no momento.</div>
+            )}
           </div>
         </section>
       </div>

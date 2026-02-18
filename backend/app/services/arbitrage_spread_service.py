@@ -112,7 +112,7 @@ async def get_spread_opportunities(
     exchanges: List[str],
     threshold_pct: float,
     timeout_sec: int = 10,
-) -> List[Dict[str, Any]]:
+) -> Dict[str, List[Dict[str, Any]]]:
     if threshold_pct < 0:
         raise ValueError("Threshold deve ser >= 0")
 
@@ -125,3 +125,20 @@ async def get_spread_opportunities(
 
     quotes = {result["exchange"]: result for result in results}
     return calculate_spreads(quotes, threshold_pct)
+
+
+async def get_spreads_for_symbols(
+    symbols: List[str],
+    exchanges: List[str],
+    threshold_pct: float,
+    timeout_sec: int = 10,
+) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
+    responses: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+    for symbol in symbols:
+        responses[symbol] = await get_spread_opportunities(
+            symbol=symbol,
+            exchanges=exchanges,
+            threshold_pct=threshold_pct,
+            timeout_sec=timeout_sec,
+        )
+    return responses
