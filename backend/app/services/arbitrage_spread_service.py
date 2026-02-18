@@ -132,13 +132,20 @@ async def get_spreads_for_symbols(
     exchanges: List[str],
     threshold_pct: float,
     timeout_sec: int = 10,
-) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
-    responses: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+) -> Dict[str, Dict[str, Any]]:
+    responses: Dict[str, Dict[str, Any]] = {}
     for symbol in symbols:
-        responses[symbol] = await get_spread_opportunities(
-            symbol=symbol,
-            exchanges=exchanges,
-            threshold_pct=threshold_pct,
-            timeout_sec=timeout_sec,
-        )
+        try:
+            responses[symbol] = await get_spread_opportunities(
+                symbol=symbol,
+                exchanges=exchanges,
+                threshold_pct=threshold_pct,
+                timeout_sec=timeout_sec,
+            )
+        except (ValueError, RuntimeError) as exc:
+            responses[symbol] = {
+                "spreads": [],
+                "opportunities": [],
+                "error": str(exc),
+            }
     return responses

@@ -16,7 +16,7 @@ interface ApiResponse {
   symbols: string[]
   threshold: number
   exchanges: string[]
-  results: Record<string, { spreads: Opportunity[]; opportunities: Opportunity[] }>
+  results: Record<string, { spreads: Opportunity[]; opportunities: Opportunity[]; error?: string }>
 }
 
 export default function ArbitragePage() {
@@ -140,56 +140,62 @@ export default function ArbitragePage() {
           </div>
           <div className="space-y-6 p-6">
             {data?.symbols?.map((sym) => {
-              const spreads = data?.results?.[sym]?.spreads ?? []
+              const symbolResult = data?.results?.[sym]
+              const spreads = symbolResult?.spreads ?? []
+              const symbolError = symbolResult?.error
               return (
                 <div key={sym} className="rounded-xl border border-white/10 overflow-hidden">
                   <div className="px-4 py-3 bg-white/5 flex items-center justify-between">
                     <span className="font-semibold text-white">{sym}</span>
                     <span className="text-xs text-gray-400">{spreads.length} pares</span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-300">
-                      <thead className="text-xs uppercase text-gray-400 border-b border-white/10">
-                        <tr>
-                          <th className="px-4 py-3">Buy</th>
-                          <th className="px-4 py-3">Sell</th>
-                          <th className="px-4 py-3">Buy Price</th>
-                          <th className="px-4 py-3">Sell Price</th>
-                          <th className="px-4 py-3">Spread %</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3">Timestamp</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {spreads.map((item, index) => (
-                          <tr key={`${sym}-${item.buy_exchange}-${item.sell_exchange}-${index}`} className="border-b border-white/5">
-                            <td className="px-4 py-3 font-semibold text-white">{item.buy_exchange}</td>
-                            <td className="px-4 py-3 font-semibold text-white">{item.sell_exchange}</td>
-                            <td className="px-4 py-3">{item.buy_price.toFixed(6)}</td>
-                            <td className="px-4 py-3">{item.sell_price.toFixed(6)}</td>
-                            <td className="px-4 py-3 text-emerald-400 font-semibold">{item.spread_pct.toFixed(4)}</td>
-                            <td className="px-4 py-3">
-                              {item.meets_threshold ? (
-                                <span className="text-emerald-400 font-semibold">OPORTUNIDADE</span>
-                              ) : (
-                                <span className="text-gray-500">abaixo do threshold</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-gray-400">
-                              {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                        {!spreads.length && !loading && (
+                  {symbolError ? (
+                    <div className="px-4 py-4 text-sm text-red-400">{symbolError}</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left text-gray-300">
+                        <thead className="text-xs uppercase text-gray-400 border-b border-white/10">
                           <tr>
-                            <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
-                              Nenhum spread encontrado no momento.
-                            </td>
+                            <th className="px-4 py-3">Buy</th>
+                            <th className="px-4 py-3">Sell</th>
+                            <th className="px-4 py-3">Buy Price</th>
+                            <th className="px-4 py-3">Sell Price</th>
+                            <th className="px-4 py-3">Spread %</th>
+                            <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Timestamp</th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {spreads.map((item, index) => (
+                            <tr key={`${sym}-${item.buy_exchange}-${item.sell_exchange}-${index}`} className="border-b border-white/5">
+                              <td className="px-4 py-3 font-semibold text-white">{item.buy_exchange}</td>
+                              <td className="px-4 py-3 font-semibold text-white">{item.sell_exchange}</td>
+                              <td className="px-4 py-3">{item.buy_price.toFixed(6)}</td>
+                              <td className="px-4 py-3">{item.sell_price.toFixed(6)}</td>
+                              <td className="px-4 py-3 text-emerald-400 font-semibold">{item.spread_pct.toFixed(4)}</td>
+                              <td className="px-4 py-3">
+                                {item.meets_threshold ? (
+                                  <span className="text-emerald-400 font-semibold">OPORTUNIDADE</span>
+                                ) : (
+                                  <span className="text-gray-500">abaixo do threshold</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-gray-400">
+                                {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                          {!spreads.length && !loading && (
+                            <tr>
+                              <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                                Nenhum spread encontrado no momento.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )
             })}
