@@ -5,7 +5,7 @@
 
 ## 2. Backend Implementation
 
-- [ ] 2.1 Implement CCXT price fetcher for USDT/USDC top-of-book per exchange
+- [ ] 2.1 Implement CCXT WebSocket order-book streamer for USDT/USDC per exchange
 - [ ] 2.2 Implement spread calculation across exchanges (best-ask buy, best-bid sell)
 - [ ] 2.3 Apply threshold filtering and sort opportunities by spread desc
 

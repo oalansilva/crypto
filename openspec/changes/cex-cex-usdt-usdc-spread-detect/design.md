@@ -16,8 +16,8 @@ We need a lightweight capability to detect USDT/USDC price deviations across cen
 
 ## Decisions
 
-- **Price source:** Use CCXT `fetch_order_book` and compute best ask/bid for USDT/USDC to avoid stale last-trade prices.
-  - *Alternative:* Use `fetch_ticker` last price; rejected due to potential lag and non-actionable pricing.
+- **Price source:** Use CCXT WebSocket order-book streams for USDT/USDC to get real-time best ask/bid updates.
+  - *Alternative:* REST `fetch_order_book`; rejected due to slower refresh and potential lag.
 - **API shape:** Provide a single endpoint (e.g., `GET /api/arbitrage/spreads`) returning computed opportunities with buy/sell venues, prices, spread %, and timestamp.
   - *Alternative:* Multiple endpoints per exchange; rejected for simplicity and reduced round trips.
 - **Computation:** Compute all pairwise spreads across configured exchanges and return only best buy/sell combinations per opportunity.

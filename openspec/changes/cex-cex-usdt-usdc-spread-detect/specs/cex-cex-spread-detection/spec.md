@@ -1,10 +1,10 @@
 ## ADDED Requirements
 
 ### Requirement: Detect cross-exchange USDT/USDC spreads
-The system SHALL fetch top-of-book prices for USDT/USDC from each configured exchange and compute cross-exchange spreads using best-ask as the buy price and best-bid as the sell price.
+The system SHALL stream top-of-book prices for USDT/USDC from each configured exchange via WebSocket and compute cross-exchange spreads using best-ask as the buy price and best-bid as the sell price.
 
 #### Scenario: Spread computation across two exchanges
-- **WHEN** the system receives prices for USDT/USDC from Binance and OKX
+- **WHEN** the system receives streamed order-book updates for USDT/USDC from Binance and OKX
 - **THEN** it computes spread = (best_bid_okx - best_ask_binance) / best_ask_binance
 
 ### Requirement: Provide spread detection API response
