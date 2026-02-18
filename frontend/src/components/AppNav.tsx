@@ -1,11 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { Activity, TrendingUp, Sparkles, Bookmark, Layers } from 'lucide-react'
+import { Activity, TrendingUp, Sparkles, Bookmark, Layers, Shuffle } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Playground', icon: Sparkles },
   { to: '/favorites', label: 'Favorites', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
   { to: '/lab', label: 'Lab', icon: Sparkles },
+  { to: '/arbitrage', label: 'Arbitragem', icon: Shuffle },
   { to: '/combo/select', label: 'Combo', icon: Layers },
 ] as const
 

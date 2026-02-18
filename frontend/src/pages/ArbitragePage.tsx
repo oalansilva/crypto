@@ -1,0 +1,177 @@
+import { useEffect, useMemo, useState } from 'react'
+
+const DEFAULT_EXCHANGES = ['binance', 'okx', 'bybit']
+const DEFAULT_SYMBOL = 'USDT/USDC'
+
+interface Opportunity {
+  buy_exchange: string
+  sell_exchange: string
+  buy_price: number
+  sell_price: number
+  spread_pct: number
+  timestamp: number
+}
+
+interface ApiResponse {
+  symbol: string
+  threshold: number
+  exchanges: string[]
+  opportunities: Opportunity[]
+}
+
+export default function ArbitragePage() {
+  const [symbol, setSymbol] = useState(DEFAULT_SYMBOL)
+  const [threshold, setThreshold] = useState('0.1')
+  const [exchanges, setExchanges] = useState(DEFAULT_EXCHANGES.join(','))
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<ApiResponse | null>(null)
+
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      symbol: symbol.trim() || DEFAULT_SYMBOL,
+      threshold: threshold.trim() || '0',
+      exchanges: exchanges.trim() || DEFAULT_EXCHANGES.join(','),
+    })
+    return `/api/arbitrage/spreads?${params.toString()}`
+  }, [symbol, threshold, exchanges])
+
+  const fetchData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(query)
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || 'Erro ao buscar spreads')
+      }
+      const payload = (await response.json()) as ApiResponse
+      setData(payload)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro inesperado')
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [query])
+
+  useEffect(() => {
+    if (!autoRefresh) return
+    const id = setInterval(fetchData, 5000)
+    return () => clearInterval(id)
+  }, [autoRefresh, query])
+
+  return (
+    <main className="container mx-auto px-6 py-10">
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-3xl font-bold text-white">Arbitragem CEX ↔ CEX</h1>
+          <p className="text-gray-400 mt-1">
+            Monitoramento em tempo real de spreads USDT/USDC via WebSocket (sem execução de trades).
+          </p>
+        </header>
+
+        <section className="glass-strong rounded-2xl p-6 border border-white/10 space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className="flex flex-col gap-2 text-sm text-gray-300">
+              Símbolo
+              <input
+                value={symbol}
+                onChange={(event) => setSymbol(event.target.value)}
+                className="rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                placeholder="USDT/USDC"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm text-gray-300">
+              Threshold (%)
+              <input
+                value={threshold}
+                onChange={(event) => setThreshold(event.target.value)}
+                className="rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                placeholder="0.1"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm text-gray-300">
+              Exchanges (csv)
+              <input
+                value={exchanges}
+                onChange={(event) => setExchanges(event.target.value)}
+                className="rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                placeholder="binance,okx,bybit"
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              onClick={fetchData}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2 rounded-lg transition"
+            >
+              Atualizar
+            </button>
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(event) => setAutoRefresh(event.target.checked)}
+                className="h-4 w-4 rounded border-white/20 bg-white/10 text-emerald-500"
+              />
+              Auto refresh (5s)
+            </label>
+            {loading && <span className="text-xs text-gray-400">Carregando...</span>}
+            {error && <span className="text-xs text-red-400">{error}</span>}
+          </div>
+        </section>
+
+        <section className="glass rounded-2xl border border-white/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">Oportunidades</h2>
+            <span className="text-xs text-gray-400">
+              {data?.opportunities?.length ?? 0} resultados
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-300">
+              <thead className="text-xs uppercase text-gray-400 border-b border-white/10">
+                <tr>
+                  <th className="px-6 py-3">Buy</th>
+                  <th className="px-6 py-3">Sell</th>
+                  <th className="px-6 py-3">Buy Price</th>
+                  <th className="px-6 py-3">Sell Price</th>
+                  <th className="px-6 py-3">Spread %</th>
+                  <th className="px-6 py-3">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.opportunities ?? []).map((item, index) => (
+                  <tr key={`${item.buy_exchange}-${item.sell_exchange}-${index}`} className="border-b border-white/5">
+                    <td className="px-6 py-4 font-semibold text-white">{item.buy_exchange}</td>
+                    <td className="px-6 py-4 font-semibold text-white">{item.sell_exchange}</td>
+                    <td className="px-6 py-4">{item.buy_price.toFixed(6)}</td>
+                    <td className="px-6 py-4">{item.sell_price.toFixed(6)}</td>
+                    <td className="px-6 py-4 text-emerald-400 font-semibold">{item.spread_pct.toFixed(4)}</td>
+                    <td className="px-6 py-4 text-gray-400">
+                      {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : '-'}
+                    </td>
+                  </tr>
+                ))}
+                {!data?.opportunities?.length && !loading && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-6 text-center text-gray-500">
+                      Nenhuma oportunidade no momento.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  )
+}
