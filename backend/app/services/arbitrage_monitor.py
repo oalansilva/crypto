@@ -9,7 +9,7 @@ LOG_PATH = Path(__file__).resolve().parents[2] / "logs" / "arbitrage_opportuniti
 DEFAULT_SYMBOLS = ["USDT/USDC", "USDT/DAI", "USDC/DAI"]
 DEFAULT_EXCHANGES = ["binance", "okx", "bybit"]
 DEFAULT_THRESHOLD = 0.02
-DEFAULT_INTERVAL_SECONDS = 300
+DEFAULT_INTERVAL_SECONDS = 3
 
 
 def _get_logger() -> logging.Logger:
