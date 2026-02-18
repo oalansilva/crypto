@@ -53,6 +53,7 @@ async def monitor_arbitrage_opportunities(
             for symbol, payload in results.items():
                 opportunities = payload.get("opportunities", [])
                 if not opportunities:
+                    logger.info("NO_OPPORTUNITY %s", symbol)
                     continue
                 for opp in opportunities:
                     logger.info(
