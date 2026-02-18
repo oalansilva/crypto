@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +10,13 @@ except Exception:  # pragma: no cover - handled by runtime checks
     ccxtpro = None
 
 SUPPORTED_EXCHANGES = {"binance", "okx", "bybit"}
+
+_quote_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+_quote_events: Dict[Tuple[str, str], asyncio.Event] = {}
+_ws_tasks: Dict[Tuple[str, str], asyncio.Task] = {}
+_exchange_clients: Dict[str, Any] = {}
+_exchange_lock = asyncio.Lock()
+_symbol_meta: Dict[Tuple[str, str], Tuple[str, bool]] = {}
 
 
 def _resolve_symbol(exchange, symbol: str) -> tuple[str, bool]:
@@ -43,36 +50,73 @@ def _normalize_exchanges(exchanges: List[str]) -> List[str]:
     return normalized
 
 
-async def _fetch_top_of_book_ws(exchange_id: str, symbol: str, timeout_sec: int = 10) -> Dict[str, Any]:
+async def _get_exchange(exchange_id: str):
     _require_ccxt_pro()
-
-    exchange_class = getattr(ccxtpro, exchange_id, None)
-    if exchange_class is None:
-        raise ValueError(f"Exchange não suportada: {exchange_id}")
-
-    exchange = exchange_class({"enableRateLimit": True})
-
-    try:
+    async with _exchange_lock:
+        if exchange_id in _exchange_clients:
+            return _exchange_clients[exchange_id]
+        exchange_class = getattr(ccxtpro, exchange_id, None)
+        if exchange_class is None:
+            raise ValueError(f"Exchange não suportada: {exchange_id}")
+        exchange = exchange_class({"enableRateLimit": True})
         await exchange.load_markets()
-        resolved_symbol, inverted = _resolve_symbol(exchange, symbol)
-        order_book = await asyncio.wait_for(exchange.watch_order_book(resolved_symbol), timeout=timeout_sec)
-        best_bid = order_book["bids"][0][0] if order_book.get("bids") else None
-        best_ask = order_book["asks"][0][0] if order_book.get("asks") else None
-        if best_bid is None or best_ask is None:
-            raise RuntimeError(f"Livro de ofertas vazio para {exchange_id}")
-        if inverted:
-            best_bid, best_ask = (1 / best_ask), (1 / best_bid)
-        timestamp = order_book.get("timestamp") or exchange.milliseconds()
-        return {
-            "exchange": exchange_id,
-            "symbol": resolved_symbol,
-            "inverted": inverted,
-            "best_bid": float(best_bid),
-            "best_ask": float(best_ask),
-            "timestamp": int(timestamp),
-        }
-    finally:
-        await exchange.close()
+        _exchange_clients[exchange_id] = exchange
+        return exchange
+
+
+def _get_event(key: Tuple[str, str]) -> asyncio.Event:
+    if key not in _quote_events:
+        _quote_events[key] = asyncio.Event()
+    return _quote_events[key]
+
+
+def _ensure_stream(exchange_id: str, symbol: str) -> None:
+    key = (exchange_id, symbol)
+    if key in _ws_tasks and not _ws_tasks[key].done():
+        return
+
+    async def _stream() -> None:
+        try:
+            exchange = await _get_exchange(exchange_id)
+            resolved_symbol, inverted = _resolve_symbol(exchange, symbol)
+            _symbol_meta[key] = (resolved_symbol, inverted)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Falha ao preparar stream %s %s: %s", exchange_id, symbol, exc)
+            _quote_cache[key] = {
+                "exchange": exchange_id,
+                "symbol": symbol,
+                "error": str(exc),
+                "timestamp": 0,
+            }
+            _get_event(key).set()
+            return
+
+        while True:
+            try:
+                exchange = _exchange_clients.get(exchange_id) or await _get_exchange(exchange_id)
+                resolved_symbol, inverted = _symbol_meta[key]
+                order_book = await exchange.watch_order_book(resolved_symbol)
+                best_bid = order_book["bids"][0][0] if order_book.get("bids") else None
+                best_ask = order_book["asks"][0][0] if order_book.get("asks") else None
+                if best_bid is None or best_ask is None:
+                    raise RuntimeError(f"Livro de ofertas vazio para {exchange_id}")
+                if inverted:
+                    best_bid, best_ask = (1 / best_ask), (1 / best_bid)
+                timestamp = order_book.get("timestamp") or exchange.milliseconds()
+                _quote_cache[key] = {
+                    "exchange": exchange_id,
+                    "symbol": resolved_symbol,
+                    "inverted": inverted,
+                    "best_bid": float(best_bid),
+                    "best_ask": float(best_ask),
+                    "timestamp": int(timestamp),
+                }
+                _get_event(key).set()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Erro stream %s %s: %s", exchange_id, symbol, exc)
+                await asyncio.sleep(2)
+
+    _ws_tasks[key] = asyncio.create_task(_stream())
 
 
 def calculate_spreads(quotes: Dict[str, Dict[str, Any]], threshold_pct: float) -> Dict[str, List[Dict[str, Any]]]:
@@ -107,6 +151,18 @@ def calculate_spreads(quotes: Dict[str, Dict[str, Any]], threshold_pct: float) -
     return {"spreads": spreads, "opportunities": opportunities}
 
 
+async def _await_quote(key: Tuple[str, str], timeout_sec: int) -> Dict[str, Any]:
+    event = _get_event(key)
+    try:
+        await asyncio.wait_for(event.wait(), timeout=timeout_sec)
+    except asyncio.TimeoutError as exc:
+        raise RuntimeError(f"Timeout aguardando {key[0]} {key[1]}") from exc
+    quote = _quote_cache.get(key)
+    if not quote or quote.get("error"):
+        raise RuntimeError(quote.get("error") if quote else "Sem cotação disponível")
+    return quote
+
+
 async def get_spread_opportunities(
     symbol: str,
     exchanges: List[str],
@@ -117,13 +173,14 @@ async def get_spread_opportunities(
         raise ValueError("Threshold deve ser >= 0")
 
     normalized = _normalize_exchanges(exchanges)
-    tasks = [
-        _fetch_top_of_book_ws(exchange_id, symbol, timeout_sec=timeout_sec)
-        for exchange_id in normalized
-    ]
-    results = await asyncio.gather(*tasks)
+    for exchange_id in normalized:
+        _ensure_stream(exchange_id, symbol)
 
-    quotes = {result["exchange"]: result for result in results}
+    quotes = {}
+    for exchange_id in normalized:
+        key = (exchange_id, symbol)
+        quotes[exchange_id] = await _await_quote(key, timeout_sec)
+
     return calculate_spreads(quotes, threshold_pct)
 
 
