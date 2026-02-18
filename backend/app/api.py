@@ -1,5 +1,5 @@
 # file: backend/app/api.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from typing import List
 
 from app.schemas.backtest import PresetResponse
@@ -111,3 +111,32 @@ async def get_indicator_schema_endpoint(strategy_name: str):
             detail=f"Indicator '{strategy_name}' not found in pandas_ta library"
         )
     return schema
+
+
+@router.get("/arbitrage/spreads")
+async def get_arbitrage_spreads(
+    symbol: str = "USDT/USDC",
+    exchanges: str = Query("binance,okx,bybit", description="Lista de exchanges separadas por vírgula"),
+    threshold: float = Query(0.0, description="Spread mínimo em %"),
+):
+    """Detecta spreads USDT/USDC entre exchanges via WebSocket (sem executar trades)."""
+    from app.services.arbitrage_spread_service import get_spread_opportunities
+
+    exchange_list = [e.strip() for e in exchanges.split(",") if e.strip()]
+    try:
+        opportunities = await get_spread_opportunities(
+            symbol=symbol,
+            exchanges=exchange_list,
+            threshold_pct=threshold,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "symbol": symbol,
+        "threshold": threshold,
+        "exchanges": exchange_list,
+        "opportunities": opportunities,
+    }
