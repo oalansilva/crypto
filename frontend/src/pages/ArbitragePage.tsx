@@ -35,7 +35,7 @@ export default function ArbitragePage() {
       exchanges: exchanges.trim() || DEFAULT_EXCHANGES.join(','),
     })
     return `/api/arbitrage/spreads?${params.toString()}`
-  }, [symbol, threshold, exchanges])
+  }, [symbols, threshold, exchanges])
 
   const fetchData = async () => {
     setLoading(true)
@@ -72,7 +72,7 @@ export default function ArbitragePage() {
         <header>
           <h1 className="text-3xl font-bold text-white">Arbitragem CEX ↔ CEX</h1>
           <p className="text-gray-400 mt-1">
-            Monitoramento em tempo real de spreads USDT/USDC via WebSocket (sem execução de trades).
+            Monitoramento em tempo real de spreads stablecoin via WebSocket (sem execução de trades).
           </p>
         </header>
 
