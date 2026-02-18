@@ -12,6 +12,22 @@ except Exception:  # pragma: no cover - handled by runtime checks
 SUPPORTED_EXCHANGES = {"binance", "okx", "bybit"}
 
 
+def _resolve_symbol(exchange, symbol: str) -> tuple[str, bool]:
+    if symbol in exchange.symbols:
+        return symbol, False
+
+    base, quote = symbol.split("/")
+    for market_symbol, market in exchange.markets.items():
+        if market.get("base") == base and market.get("quote") == quote:
+            return market_symbol, False
+
+    for market_symbol, market in exchange.markets.items():
+        if market.get("base") == quote and market.get("quote") == base:
+            return market_symbol, True
+
+    raise ValueError(f"{exchange.id} não possui símbolo {symbol}")
+
+
 def _require_ccxt_pro() -> None:
     if ccxtpro is None:
         raise RuntimeError("ccxt.pro não está instalado. Instale ccxt.pro para uso via WebSocket.")
@@ -37,14 +53,20 @@ async def _fetch_top_of_book_ws(exchange_id: str, symbol: str, timeout_sec: int 
     exchange = exchange_class({"enableRateLimit": True})
 
     try:
-        order_book = await asyncio.wait_for(exchange.watch_order_book(symbol), timeout=timeout_sec)
+        await exchange.load_markets()
+        resolved_symbol, inverted = _resolve_symbol(exchange, symbol)
+        order_book = await asyncio.wait_for(exchange.watch_order_book(resolved_symbol), timeout=timeout_sec)
         best_bid = order_book["bids"][0][0] if order_book.get("bids") else None
         best_ask = order_book["asks"][0][0] if order_book.get("asks") else None
         if best_bid is None or best_ask is None:
             raise RuntimeError(f"Livro de ofertas vazio para {exchange_id}")
+        if inverted:
+            best_bid, best_ask = (1 / best_ask), (1 / best_bid)
         timestamp = order_book.get("timestamp") or exchange.milliseconds()
         return {
             "exchange": exchange_id,
+            "symbol": resolved_symbol,
+            "inverted": inverted,
             "best_bid": float(best_bid),
             "best_ask": float(best_ask),
             "timestamp": int(timestamp),
