@@ -69,6 +69,7 @@ stop_frontend_fallback() {
   kill_by_port 5173
   kill_by_pattern "vite.*--port 5173"
   kill_by_pattern "npm run dev -- --host 127.0.0.1 --port 5173"
+  kill_by_pattern "npm run dev -- --host 0.0.0.0 --port 5173"
 }
 
 echo "Stopping services..."

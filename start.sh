@@ -27,7 +27,7 @@ start_backend_with_nohup() {
 
   (
     cd "$BACKEND_DIR"
-    nohup "$VENV_PYTHON" -m uvicorn app.main:app --host 127.0.0.1 --port 8003 >"$BACKEND_LOG" 2>&1 &
+    nohup "$VENV_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port 8003 >"$BACKEND_LOG" 2>&1 &
     echo "$!" >"$BACKEND_PID_FILE"
   )
   echo "Backend started with nohup (log: $BACKEND_LOG)."
@@ -41,7 +41,7 @@ start_frontend_with_nohup() {
 
   (
     cd "$FRONTEND_DIR"
-    nohup npm run dev -- --host 127.0.0.1 --port 5173 >"$FRONTEND_LOG" 2>&1 &
+    nohup npm run dev -- --host 0.0.0.0 --port 5173 >"$FRONTEND_LOG" 2>&1 &
     echo "$!" >"$FRONTEND_PID_FILE"
   )
   echo "Frontend started with nohup (log: $FRONTEND_LOG)."
