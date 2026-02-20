@@ -34,7 +34,9 @@ export const MonitorPage: React.FC = () => {
                 apiTier = tierParam;  // '1', '2', '3'
             }
             
-            const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8003/api";
+            // Prefer relative "/api" so Vite proxy routes to backend even when accessing from outside the server.
+            // Only use VITE_API_URL when explicitly set.
+            const baseUrl = import.meta.env.VITE_API_URL || "/api";
             const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch opportunities');
