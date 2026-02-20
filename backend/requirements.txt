@@ -14,7 +14,7 @@ langgraph>=0.2.0
 
 # Core Data/Trading
 ccxt
-ccxt.pro
+# ccxt.pro  # opcional/pago; não existe no PyPI
 pandas
 numpy
 openpyxl
