@@ -534,6 +534,30 @@ class OpportunityService:
                         buy_idx = df_signals[df_signals['signal'] == 1].last_valid_index()
                         if buy_idx is not None and buy_idx in df_closed.index:
                             entry_price = float(df_closed.loc[buy_idx, 'close'])
+                        elif is_holding and not df_closed.empty:
+                            # Fallback: infer entry from last bullish crossover on closed candles.
+                            # This is useful when the signal generator doesn't emit explicit BUYs,
+                            # but we still mark HOLD via trend condition.
+                            try:
+                                s = df_closed['short']
+                                m = df_closed['medium'] if 'medium' in df_closed.columns else None
+                                l = df_closed['long'] if 'long' in df_closed.columns else None
+
+                                inferred_idx = None
+                                if l is not None:
+                                    cross_long = (s.shift(1) <= l.shift(1)) & (s > l)
+                                    if cross_long.any():
+                                        inferred_idx = cross_long[cross_long].index[-1]
+
+                                if inferred_idx is None and m is not None:
+                                    cross_med = (s.shift(1) <= m.shift(1)) & (s > m)
+                                    if cross_med.any():
+                                        inferred_idx = cross_med[cross_med].index[-1]
+
+                                if inferred_idx is not None and inferred_idx in df_closed.index:
+                                    entry_price = float(df_closed.loc[inferred_idx, 'close'])
+                            except Exception:
+                                pass
 
                         last_price = float(df.iloc[-1]['close'])
                         if entry_price and last_price and last_price > 0:
