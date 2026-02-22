@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { API_BASE_URL } from '@/lib/apiBase'
+import { API_BASE_URL, apiUrl } from '@/lib/apiBase'
 import type { LabLogEntry, LabLogLevel, LogConnectionState } from '@/types/lab'
 
 interface UseLogSSEOptions {
@@ -62,7 +62,7 @@ export function useLogSSE({ runId, enabled, step }: UseLogSSEOptions): UseLogSSE
   const streamUrl = useMemo(() => {
     const id = String(runId || '').trim()
     if (!id) return ''
-    const url = new URL(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/logs/stream`)
+    const url = apiUrl(`/lab/runs/${encodeURIComponent(id)}/logs/stream`)
     if (step) url.searchParams.set('step', step)
     const token = getStoredJwtToken()
     if (token) url.searchParams.set('token', token)

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search, Pause, Square } from 'lucide-react'
-import { API_BASE_URL } from '../lib/apiBase'
+import { API_BASE_URL, apiUrl } from '../lib/apiBase'
 import { BackendLogViewer } from '../components/BackendLogViewer'
 
 interface TemplateMetadata {
@@ -238,7 +238,7 @@ export function ComboConfigurePage() {
         if (symbolsToRun.length === 1) {
             setRunning(true)
             try {
-                const existsUrl = new URL(`${API_BASE_URL}/favorites/exists`)
+                const existsUrl = apiUrl('/favorites/exists')
                 existsUrl.searchParams.set('strategy_name', templateName)
                 existsUrl.searchParams.set('symbol', symbolsToRun[0])
                 existsUrl.searchParams.set('timeframe', timeframe)

@@ -38,9 +38,12 @@ function toAbsoluteApiUrl(url: string): string {
   if (!value) return ''
   if (/^https?:\/\//i.test(value)) return value
   try {
-    const base = new URL(API_BASE_URL)
-    if (value.startsWith('/')) return `${base.origin}${value}`
-    return `${base.origin}/${value}`
+    const baseOrigin = /^https?:\/\//i.test(API_BASE_URL)
+      ? new URL(API_BASE_URL).origin
+      : window.location.origin
+
+    if (value.startsWith('/')) return `${baseOrigin}${value}`
+    return `${baseOrigin}/${value}`
   } catch {
     return value
   }
