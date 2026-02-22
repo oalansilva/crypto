@@ -201,7 +201,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stop:</span>
                                 <span className="font-mono font-bold text-sm text-red-700 dark:text-red-300 text-right">
                                     {opportunity.distance_to_stop_pct.toFixed(2)}% to stop
-                                    {opportunity.stop_price !== null && opportunity.stop_price !== undefined ? ` · $${opportunity.stop_price.toFixed(8)}` : ''}
+                                    {opportunity.stop_price !== null && opportunity.stop_price !== undefined ? ` · stop $${opportunity.stop_price.toFixed(8)}` : ''}
+                                    {opportunity.entry_price !== null && opportunity.entry_price !== undefined ? ` · entry $${opportunity.entry_price.toFixed(8)}` : ''}
                                 </span>
                             </div>
                         ) : null}
