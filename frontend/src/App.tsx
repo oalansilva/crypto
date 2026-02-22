@@ -23,7 +23,7 @@ function HomePage() {
         <div className="space-y-8 animate-in fade-in duration-500">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-4xl font-bold text-white mb-3">
-              <span className="gradient-text">New Backtest</span>
+              <span className="gradient-text">New Backtest2</span>
             </h2>
             <p className="text-gray-400 text-lg">
               Configure your parameters and start testing your strategy
