@@ -195,6 +195,15 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                                 </span>
                             </div>
                         </div>
+
+                        {is_holding && opportunity.distance_to_stop_pct !== null && opportunity.distance_to_stop_pct !== undefined ? (
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stop:</span>
+                                <span className="font-mono font-bold text-sm text-red-700 dark:text-red-300">
+                                    {opportunity.distance_to_stop_pct.toFixed(2)}% to stop
+                                </span>
+                            </div>
+                        ) : null}
                         
                         {/* Progress bar when close to signal (< 1%) */}
                         {showProgress && (

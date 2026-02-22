@@ -514,6 +514,47 @@ class OpportunityService:
                 last_signal_val = 0
                 if last_sig_idx is not None:
                      last_signal_val = df_signals.loc[last_sig_idx, 'signal']
+
+                # Compute stop-loss proximity (optional display on Monitor cards)
+                entry_price = None
+                stop_price = None
+                distance_to_stop_pct = None
+                try:
+                    direction = str(params.get('direction', 'long') or 'long').lower()
+                    sl_raw = params.get('stop_loss', template_data.get('stop_loss', None))
+                    sl = None
+                    if sl_raw is not None:
+                        sl = float(sl_raw)
+                        # Normalize: user uses 0.09 for 9%. If someone uses 9, treat as 9% too.
+                        if sl > 1:
+                            sl = sl / 100.0
+
+                    if sl is not None and sl > 0:
+                        # Use last confirmed BUY signal as entry
+                        buy_idx = df_signals[df_signals['signal'] == 1].last_valid_index()
+                        if buy_idx is not None and buy_idx in df_closed.index:
+                            entry_price = float(df_closed.loc[buy_idx, 'close'])
+
+                        last_price = float(df.iloc[-1]['close'])
+                        if entry_price and last_price and last_price > 0:
+                            if direction == 'short':
+                                stop_price = entry_price * (1.0 + sl)
+                                distance_to_stop_pct = (stop_price - last_price) / last_price * 100.0
+                            else:
+                                stop_price = entry_price * (1.0 - sl)
+                                distance_to_stop_pct = (last_price - stop_price) / last_price * 100.0
+
+                            if distance_to_stop_pct is not None:
+                                distance_to_stop_pct = round(float(distance_to_stop_pct), 2)
+                            if stop_price is not None:
+                                stop_price = round(float(stop_price), 8)
+                            if entry_price is not None:
+                                entry_price = round(float(entry_price), 8)
+                except Exception:
+                    # Never fail opportunity generation due to stop computation
+                    entry_price = None
+                    stop_price = None
+                    distance_to_stop_pct = None
                 
                 # Debug for TRX
                 if symbol == 'TRX/USDT':
@@ -791,6 +832,9 @@ class OpportunityService:
                     'next_status_label': next_status_label,
                     'indicator_values': indicator_values if indicator_values else None,
                     'indicator_values_candle_time': indicator_values_candle_time,
+                    'entry_price': entry_price,
+                    'stop_price': stop_price,
+                    'distance_to_stop_pct': distance_to_stop_pct,
                     # Keep legacy fields for backward compatibility
                     'status': analysis['status'],
                     'badge': analysis['badge'],

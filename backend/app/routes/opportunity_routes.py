@@ -22,6 +22,11 @@ class OpportunityResponse(BaseModel):
     next_status_label: str  # "entry" or "exit"
     indicator_values: Optional[Dict[str, float]] = None  # Valores usados no cálculo da distância (short, medium, long, etc.)
     indicator_values_candle_time: Optional[str] = None  # ISO datetime do candle usado (para conferir com TradingView)
+
+    # Risk / stop-loss (optional)
+    entry_price: Optional[float] = None
+    stop_price: Optional[float] = None
+    distance_to_stop_pct: Optional[float] = None
     # Legacy fields (kept for backward compatibility)
     status: str
     badge: str
