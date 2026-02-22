@@ -3,6 +3,8 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 class Settings(BaseSettings):
+    # Background jobs
+    arbitrage_monitor_enabled: str = "1"
     # Supabase (Optional for local SQLite)
     supabase_url: str | None = None
     supabase_service_role_key: str | None = None

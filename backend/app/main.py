@@ -144,10 +144,14 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error initializing database: {e}")
 
     stop_event = asyncio.Event()
-    app.state.arbitrage_task = asyncio.create_task(
-        monitor_arbitrage_opportunities(stop_event=stop_event)
-    )
+    app.state.arbitrage_task = None
     app.state.arbitrage_stop_event = stop_event
+
+    # Optional background monitor (can be noisy in logs)
+    if str(getattr(settings, "arbitrage_monitor_enabled", "1")).strip() not in {"0", "false", "False", "no", "NO"}:
+        app.state.arbitrage_task = asyncio.create_task(
+            monitor_arbitrage_opportunities(stop_event=stop_event)
+        )
 
     yield
 
