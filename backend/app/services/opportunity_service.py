@@ -666,7 +666,26 @@ class OpportunityService:
                      if strategy.exit_logic:  # exit_logic comes from database (combo_templates.template_data)
                          # Use df_closed here too for consistency
                          # Analyze proximity to exit signal using exit_logic from database
-                         exit_analysis = self.analyzer.analyze(df_closed, strategy.exit_logic)
+                         exit_logic = strategy.exit_logic
+
+                         # Special-case: multi_ma_crossover long HOLD exit.
+                         # If the long MA is above the medium MA (stronger trend filter),
+                         # prefer exiting on short crossing BELOW long (red crosses blue),
+                         # not short crossing below medium.
+                         if template_name == 'multi_ma_crossover':
+                             try:
+                                 if not df_for_distance.empty:
+                                     row_used = df_for_distance.iloc[-1]
+                                     if all(k in row_used for k in ('medium', 'long')):
+                                         long_val = float(row_used['long'])
+                                         medium_val = float(row_used['medium'])
+                                         if long_val > medium_val:
+                                             exit_logic = 'crossunder(short, long)'
+                             except Exception:
+                                 # Fallback: keep DB-provided exit logic
+                                 pass
+
+                         exit_analysis = self.analyzer.analyze(df_closed, exit_logic)
                          
                          # LOGIC CHANGE: If we are HOLDING, the relevant distance is ALWAYS the Exit Distance.
                          # Even if it's NEUTRAL (not < 1%), we want to see "Distance to Sell", not "Distance to Buy" (which is history).
