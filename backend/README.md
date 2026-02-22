@@ -98,6 +98,27 @@ GET /api/health
 GET /api/presets
 ```
 
+### Combo Backtest (`ccxt` default, `stooq` for US stocks EOD)
+```http
+POST /api/combos/backtest
+Content-Type: application/json
+
+{
+  "template_name": "multi_ma_crossover",
+  "symbol": "AAPL",
+  "timeframe": "1d",
+  "data_source": "stooq",
+  "start_date": "2024-01-01",
+  "end_date": "2025-12-31",
+  "parameters": {}
+}
+```
+
+Notas:
+- `data_source` é opcional. Sem ele, o backend mantém o caminho crypto existente (`ccxt`).
+- `data_source=stooq` aceita apenas `timeframe=1d` (EOD).
+- O campo `parameters` da resposta inclui `data_source`; ao salvar em favoritos, o monitor reutiliza essa origem.
+
 ### Executar Backtest (Single)
 ```http
 POST /api/backtest/run

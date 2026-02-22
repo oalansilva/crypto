@@ -2,7 +2,7 @@
 Pydantic schemas for combo strategy API requests and responses.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Dict, Any, Optional
 
 
@@ -34,6 +34,10 @@ class ComboBacktestRequest(BaseModel):
     template_name: str = Field(..., description="Name of the combo template")
     symbol: str = Field(..., description="Trading pair (e.g., BTC/USDT)")
     timeframe: str = Field(..., description="Timeframe (e.g., 1h, 4h)")
+    data_source: Optional[str] = Field(
+        None,
+        description="Optional market data source ('ccxt' default, 'stooq' for US stocks EOD)",
+    )
     start_date: Optional[str] = Field(None, description="Start date (YYYY-MM-DD)")
     end_date: Optional[str] = Field(None, description="End date (YYYY-MM-DD)")
     parameters: Dict[str, Any] = Field(default_factory=dict, description="Custom parameter values")
@@ -41,6 +45,17 @@ class ComboBacktestRequest(BaseModel):
     deep_backtest: bool = Field(True, description="Enable Deep Backtesting with 15m intraday precision (default: True for 1D strategies)")
     initial_capital: float = Field(100, description="Initial capital in USD for metrics calculation (default: $100, TradingView-style)")
     direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
+
+    @model_validator(mode="after")
+    def validate_data_source(self):
+        source = str(self.data_source or "").strip().lower()
+        if source in {"", "ccxt", "binance", "crypto", "default"}:
+            return self
+        if source in {"stooq", "stooq-eod", "stooq_eod"}:
+            if str(self.timeframe or "").strip().lower() != "1d":
+                raise ValueError("data_source=stooq supports only timeframe='1d' (EOD).")
+            return self
+        raise ValueError("Unsupported data_source. Supported values: 'ccxt' (default) or 'stooq'.")
 
 
 class ComboBacktestResponse(BaseModel):

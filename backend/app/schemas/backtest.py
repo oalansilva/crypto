@@ -1,5 +1,5 @@
 # file: backend/app/schemas/backtest.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal, Union, List
 from datetime import datetime
 from uuid import UUID
@@ -26,6 +26,20 @@ class BacktestRunCreate(BaseModel):
     stop_pct: Optional[Union[float, RangeParam, dict]] = None
     take_pct: Optional[Union[float, RangeParam, dict]] = None
     fill_mode: Literal["close", "next_open"] = "close"
+    data_source: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_data_source(self):
+        source = str(self.data_source or "").strip().lower()
+        if source in {"", "ccxt", "binance", "crypto", "default"}:
+            return self
+        if source in {"stooq", "stooq-eod", "stooq_eod"}:
+            tfs = self.timeframe if isinstance(self.timeframe, list) else [self.timeframe]
+            invalid = [tf for tf in tfs if str(tf or "").strip().lower() != "1d"]
+            if invalid:
+                raise ValueError("data_source=stooq supports only timeframe='1d' (EOD).")
+            return self
+        raise ValueError("Unsupported data_source. Supported values: 'ccxt' (default) or 'stooq'.")
 
 class BacktestRunResponse(BaseModel):
     run_id: UUID

@@ -4,13 +4,16 @@ import logging
 import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from pathlib import Path
 
 from app.strategies.combos.proximity_analyzer import ProximityAnalyzer
 from app.strategies.combos.combo_strategy import ComboStrategy
 from app.services.combo_service import ComboService
+from app.services.market_data_providers import (
+    CCXT_SOURCE,
+    get_market_data_provider,
+    resolve_data_source_for_symbol,
+)
 from app.symbols_config import get_excluded_symbols, is_excluded_symbol
-from src.data.incremental_loader import IncrementalLoader
 from app.database import DB_PATH
 
 logger = logging.getLogger(__name__)
@@ -129,7 +132,6 @@ class OpportunityService:
             # Use the canonical DB path from app.database
             db_path = str(DB_PATH)
         self.db_path = db_path
-        self.loader = IncrementalLoader()
         self.combo_service = ComboService(db_path)
         self.analyzer = ProximityAnalyzer()
 
@@ -230,12 +232,15 @@ class OpportunityService:
                 symbol = fav['symbol']
                 tf = fav['timeframe']
                 template_name = fav['strategy_name']
-                params = fav['parameters']
+                params = fav.get('parameters') or {}
+                data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
                 
-                logger.debug(f"Processing strategy {fav['id']}: {symbol} {tf} - {template_name}")
+                logger.debug(
+                    f"Processing strategy {fav['id']}: {symbol} {tf} - {template_name} (source={data_source})"
+                )
 
                 # 0. Skip known unsupported symbols (delisted / no data) before fetching
-                if _is_unsupported_symbol(symbol):
+                if data_source == CCXT_SOURCE and _is_unsupported_symbol(symbol):
                     skipped_strategies.append({
                         'id': fav['id'],
                         'symbol': symbol,
@@ -245,18 +250,29 @@ class OpportunityService:
                     continue
 
                 # 1. Fetch Data (1D usually)
-                cache_key = f"{symbol}_{tf}"
+                cache_key = f"{data_source}:{symbol}_{tf}"
                 if cache_key not in data_cache:
                     # Calculate start date (e.g. 500 days ago to be safe for EMA 200)
                     start_date = (datetime.now() - timedelta(days=500)).strftime("%Y-%m-%d")
-                    
-                    # Fetching enough data for indicators (e.g. 200 candles)
-                    df = self.loader.fetch_data(
-                        symbol=symbol,
-                        timeframe=tf,
-                        since_str=start_date,
-                        limit=None 
-                    )
+
+                    provider = get_market_data_provider(data_source)
+                    try:
+                        # Fetching enough data for indicators (e.g. 200 candles)
+                        df = provider.fetch_ohlcv(
+                            symbol=symbol,
+                            timeframe=tf,
+                            since_str=start_date,
+                            limit=None,
+                        )
+                    except Exception as fetch_exc:
+                        skipped_strategies.append({
+                            'id': fav['id'],
+                            'symbol': symbol,
+                            'timeframe': tf,
+                            'reason': f'Error fetching data ({data_source}): {fetch_exc}',
+                        })
+                        continue
+
                     data_cache[cache_key] = df
                 
                 df = data_cache[cache_key].copy()
@@ -272,7 +288,8 @@ class OpportunityService:
 
                 # Heuristic: fix corrupted tail candles (open[t] != close[t-1]) so MAs match TradingView/Binance.
                 # This is especially important for the last closed candle used in distance calculations.
-                df = _apply_crypto_continuity_fix(df, tf)
+                if data_source == CCXT_SOURCE:
+                    df = _apply_crypto_continuity_fix(df, tf)
 
                 # 2. Get Template Metadata from Database (entry_logic and exit_logic)
                 # This dynamically loads the buy/sell rules from combo_templates table
@@ -312,7 +329,7 @@ class OpportunityService:
                     # Improved parameter mapping logic
                     # Supports formats: ema_short, sma_medium, sma_long, etc.
                     for pk, pv in params.items():
-                        if pk == 'stop_loss':
+                        if pk in {'stop_loss', 'direction', 'data_source'}:
                             continue
                             
                         pk_lower = pk.lower()
