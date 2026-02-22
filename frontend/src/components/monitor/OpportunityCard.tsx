@@ -197,13 +197,21 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                         </div>
 
                         {is_holding && opportunity.distance_to_stop_pct !== null && opportunity.distance_to_stop_pct !== undefined ? (
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stop:</span>
-                                <span className="font-mono font-bold text-sm text-red-700 dark:text-red-300 text-right">
-                                    {opportunity.distance_to_stop_pct.toFixed(2)}% to stop
-                                    {opportunity.entry_price !== null && opportunity.entry_price !== undefined ? ` · entry $${opportunity.entry_price.toFixed(8)}` : ''}
-                                    {opportunity.stop_price !== null && opportunity.stop_price !== undefined ? ` · stop $${opportunity.stop_price.toFixed(8)}` : ''}
-                                </span>
+                            <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20 p-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stop risk:</span>
+                                    <span className="font-mono font-bold text-sm text-red-700 dark:text-red-300">
+                                        {opportunity.distance_to_stop_pct.toFixed(2)}%
+                                    </span>
+                                </div>
+                                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-mono text-gray-700 dark:text-gray-300">
+                                    {opportunity.entry_price !== null && opportunity.entry_price !== undefined ? (
+                                        <span>entry: ${opportunity.entry_price.toFixed(8)}</span>
+                                    ) : null}
+                                    {opportunity.stop_price !== null && opportunity.stop_price !== undefined ? (
+                                        <span>stop: ${opportunity.stop_price.toFixed(8)}</span>
+                                    ) : null}
+                                </div>
                             </div>
                         ) : null}
                         
