@@ -1857,14 +1857,31 @@ class ComboOptimizer:
             
             # Extract indicator data (only numeric columns)
             indicator_data = {}
-            excluded_cols = ['open', 'high', 'low', 'close', 'volume', 'signal', 'regime']
+            excluded_cols = {
+                'open', 'high', 'low', 'close', 'volume', 'signal', 'regime',
+                # timestamps / indexes (never treat as numeric indicator series)
+                'timestamp', 'timestamp_utc', 'time', 'date',
+            }
+
+            try:
+                from pandas.api.types import is_numeric_dtype
+            except Exception:
+                is_numeric_dtype = None
+
             for col in df_with_signals.columns:
-                if col not in excluded_cols:
-                    # Only include numeric columns
-                    try:
-                        indicator_data[col] = df_with_signals[col].fillna(0).tolist()
-                    except:
-                        pass  # Skip non-numeric columns
+                if col in excluded_cols:
+                    continue
+
+                try:
+                    series = df_with_signals[col]
+                    if is_numeric_dtype is not None and not is_numeric_dtype(series):
+                        continue
+
+                    # Ensure JSON-serializable numeric list
+                    indicator_data[col] = [float(x) if x is not None else 0.0 for x in series.fillna(0).tolist()]
+                except Exception:
+                    # Skip any non-numeric or non-serializable columns
+                    continue
             
         except Exception as e:
             logging.error(f"Final backtest failed: {e}")
