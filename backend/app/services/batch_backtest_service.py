@@ -79,6 +79,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
     template_name = payload["template_name"]
     symbols = payload["symbols"]
     timeframe = payload.get("timeframe", "1d")
+    data_source = payload.get("data_source")
     start_date = payload.get("start_date")
     end_date = payload.get("end_date")
     period_type = payload.get("period_type")  # '6m' | '2y' | 'all'
@@ -161,6 +162,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                 template_name=template_name,
                 symbol=symbol,
                 timeframe=timeframe,
+                data_source=data_source,
                 start_date=start_date,
                 end_date=end_date,
                 custom_ranges=custom_ranges,
@@ -187,6 +189,8 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
         best_metrics = result.get("best_metrics") or {}
         params_with_direction = dict(best_params)
         params_with_direction["direction"] = direction
+        if data_source:
+            params_with_direction["data_source"] = data_source
 
         name = f"{template_name} - {symbol} {timeframe} (batch)"
         notes = batch_note

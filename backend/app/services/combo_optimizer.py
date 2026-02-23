@@ -27,6 +27,10 @@ _deep_coverage_warned: set = set()
 from app.services.sequential_optimizer import SequentialOptimizer
 from app.services.combo_service import ComboService
 from app.services.backtest_service import BacktestService
+from app.services.market_data_providers import (
+    get_market_data_provider,
+    validate_data_source_timeframe,
+)
 from src.data.incremental_loader import IncrementalLoader
 from app.services.deep_backtest import simulate_execution_with_15m
 
@@ -1435,6 +1439,7 @@ class ComboOptimizer:
         template_name: str,
         symbol: str,
         timeframe: str = "1h",
+        data_source: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         custom_ranges: Optional[Dict[str, Any]] = None,
@@ -1446,6 +1451,7 @@ class ComboOptimizer:
             direction = "long"
 
         optimization_start_time = time.time()
+        selected_data_source = validate_data_source_timeframe(data_source, timeframe)
 
         # Generate stages
         fixed_timeframe = timeframe if timeframe else None
@@ -1469,18 +1475,19 @@ class ComboOptimizer:
             from datetime import datetime
             end_date = datetime.now().strftime("%Y-%m-%d")
         
-        # Load data
-        df = self.loader.fetch_data(
+        # Load data from selected provider (ccxt default; stooq for US stocks EOD)
+        provider = get_market_data_provider(selected_data_source)
+        df = provider.fetch_ohlcv(
             symbol=symbol,
             timeframe=timeframe,
             since_str=start_date,
-            until_str=end_date
+            until_str=end_date,
         )
 
         # Prefetch 15m cache ONCE (main process) when deep backtest is enabled.
         # Workers will only READ the parquet slice (read_only=True) to avoid concurrent writes/corruption.
         # After prefetch, ensure 15m tail is up to end_date (self-healing: avoids stale cache for this symbol).
-        if deep_backtest:
+        if deep_backtest and selected_data_source == "ccxt":
             try:
                 # For "all history", align intraday start to the first available daily candle
                 # (avoids downloading 15m before the exchange has data for the symbol).
@@ -1547,6 +1554,12 @@ class ComboOptimizer:
             logging.info(
                 "Deep backtest ON: workers will use 15m intraday data for exit simulation (stop/target precision)."
             )
+        elif deep_backtest and selected_data_source != "ccxt":
+            logging.info(
+                "Deep backtest disabled for data_source=%s (intraday cache is crypto/ccxt only).",
+                selected_data_source,
+            )
+            deep_backtest = False
         
         # Initialize best parameters (direction is fixed for the whole optimization)
         best_params = {"direction": direction}
@@ -1749,7 +1762,7 @@ class ComboOptimizer:
         
         try:
             # Reload data with best timeframe
-            df_final = self.loader.fetch_data(
+            df_final = provider.fetch_ohlcv(
                 symbol=symbol,
                 timeframe=timeframe,
                 since_str=start_date,
@@ -1894,6 +1907,7 @@ class ComboOptimizer:
             "indicator_data": indicator_data,
             "parameters": best_params,  # For compatibility with ComboResultsPage
             "direction": best_params.get("direction", "long"),
+            "data_source": selected_data_source,
         }
 
 

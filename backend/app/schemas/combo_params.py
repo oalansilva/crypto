@@ -77,6 +77,10 @@ class ComboOptimizationRequest(BaseModel):
     template_name: str
     symbol: str
     timeframe: str = Field(default="1h")
+    data_source: Optional[str] = Field(
+        None,
+        description="Optional market data source ('ccxt' default, 'stooq' for US stocks EOD)",
+    )
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     deep_backtest: bool = Field(
@@ -89,6 +93,17 @@ class ComboOptimizationRequest(BaseModel):
     )
     initial_capital: float = Field(100, description="Initial capital in USD for metrics calculation (default: $100, TradingView-style)")
     direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
+
+    @model_validator(mode="after")
+    def validate_data_source(self):
+        source = str(self.data_source or "").strip().lower()
+        if source in {"", "ccxt", "binance", "crypto", "default"}:
+            return self
+        if source in {"stooq", "stooq-eod", "stooq_eod"}:
+            if str(self.timeframe or "").strip().lower() != "1d":
+                raise ValueError("data_source=stooq supports only timeframe='1d' (EOD).")
+            return self
+        raise ValueError("Unsupported data_source. Supported values: 'ccxt' (default) or 'stooq'.")
 
 
 class ComboOptimizationResponse(BaseModel):
@@ -125,6 +140,10 @@ class ComboBatchBacktestRequest(BaseModel):
     template_name: str = Field(..., description="Name of the combo template")
     symbols: List[str] = Field(..., min_length=1, description="List of symbols to run (e.g. ['BTC/USDT', 'ETH/USDT'])")
     timeframe: str = Field(default="1d")
+    data_source: Optional[str] = Field(
+        None,
+        description="Optional market data source ('ccxt' default, 'stooq' for US stocks EOD)",
+    )
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     period_type: Optional[str] = Field(None, description="'6m' | '2y' | 'all'; used for skip logic")
@@ -135,6 +154,17 @@ class ComboBatchBacktestRequest(BaseModel):
     custom_ranges: Optional[Dict[str, Dict[str, Any]]] = Field(None)
     initial_capital: float = Field(100)
     direction: str = Field("long", description="Backtest direction: 'long' (default) or 'short'")
+
+    @model_validator(mode="after")
+    def validate_data_source(self):
+        source = str(self.data_source or "").strip().lower()
+        if source in {"", "ccxt", "binance", "crypto", "default"}:
+            return self
+        if source in {"stooq", "stooq-eod", "stooq_eod"}:
+            if str(self.timeframe or "").strip().lower() != "1d":
+                raise ValueError("data_source=stooq supports only timeframe='1d' (EOD).")
+            return self
+        raise ValueError("Unsupported data_source. Supported values: 'ccxt' (default) or 'stooq'.")
 
 
 class ComboBatchBacktestResponse(BaseModel):
