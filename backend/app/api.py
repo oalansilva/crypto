@@ -47,23 +47,6 @@ async def get_binance_timeframes():
     return {"timeframes": tfs, "count": len(tfs)}
 
 
-@router.get("/markets/us/nasdaq100")
-async def get_nasdaq100_symbols():
-    """Get NASDAQ-100 tickers for US Stocks market selection (free/EOD use)."""
-    import json
-    from pathlib import Path
-
-    cfg = Path(__file__).resolve().parents[1] / "config" / "nasdaq100_symbols.json"
-    payload = json.loads(cfg.read_text(encoding="utf-8"))
-    symbols = payload.get("symbols") or []
-    return {
-        "symbols": symbols,
-        "count": len(symbols),
-        "asOf": payload.get("asOf"),
-        "source": payload.get("source"),
-    }
-
-
 @router.get("/strategies/metadata")
 async def get_strategies_metadata():
     """Get metadata for all available pandas-ta indicators + custom strategies"""
