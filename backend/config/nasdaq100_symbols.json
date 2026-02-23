@@ -1,0 +1,16 @@
+{
+  "asOf": "2026-02-23",
+  "source": "Manual list (NASDAQ-100 constituents; update as needed)",
+  "symbols": [
+    "AAPL","MSFT","NVDA","AMZN","META","GOOGL","GOOG","AVGO","TSLA","COST",
+    "PEP","ADBE","CSCO","NFLX","AMD","QCOM","TMUS","INTU","TXN","AMGN",
+    "HON","SBUX","BKNG","ISRG","VRTX","ADP","MDLZ","GILD","MU","REGN",
+    "PANW","SNPS","PYPL","CDNS","LRCX","KLAC","ASML","MRVL","MELI","CRWD",
+    "ORLY","CSX","ABNB","CTAS","WDAY","NXPI","MCHP","ROP","MAR","MNST",
+    "AEP","KDP","PAYX","ROST","DXCM","FTNT","PCAR","ODFL","IDXX","BIIB",
+    "ADSK","AZN","LULU","TEAM","DDOG","XEL","WBD","FAST","VRSK","EA",
+    "CPRT","BKR","CHTR","CTSH","EXC","GEHC","ILMN","INTC","MRNA","PDD",
+    "SIRI","TTWO","UAL","VOD","WBA","ZM","ZS","SPLK","ENPH","LCID",
+    "DOCU","SGEN","JD","NTES","OKTA","ANSS","EBAY","CSGP","CME","FISV"
+  ]
+}

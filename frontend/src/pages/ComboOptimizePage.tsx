@@ -7,8 +7,9 @@ import {
 } from 'lucide-react'
 import { API_BASE_URL } from '../lib/apiBase'
 
-// Mock Data (Replace with API fetch)
 const TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
+
+type MarketMode = 'crypto' | 'us-stocks'
 
 export function ComboOptimizePage() {
     const navigate = useNavigate()
@@ -17,6 +18,9 @@ export function ComboOptimizePage() {
     // State
     const [templates, setTemplates] = useState<any[]>([])
     const [selectedTemplate, setSelectedTemplate] = useState<string>(searchParams.get('template') || '')
+    const [market, setMarket] = useState<MarketMode>('crypto')
+    const [nasdaqSymbols, setNasdaqSymbols] = useState<string[]>([])
+
     const [symbol, setSymbol] = useState(searchParams.get('symbol') || 'BTC/USDT')
     const [timeframe, setTimeframe] = useState(searchParams.get('timeframe') || '1h')
     const [isOptimizing, setIsOptimizing] = useState(false)
@@ -36,6 +40,21 @@ export function ComboOptimizePage() {
             })
             .catch(err => console.error(err))
     }, [])
+
+    // Fetch NASDAQ-100 universe once
+    useEffect(() => {
+        fetch(`${API_BASE_URL}/markets/us/nasdaq100`)
+            .then(res => res.json())
+            .then(data => setNasdaqSymbols(Array.isArray(data?.symbols) ? data.symbols : []))
+            .catch(err => console.error(err))
+    }, [])
+
+    // Enforce US stocks constraints
+    useEffect(() => {
+        if (market !== 'us-stocks') return
+        if (timeframe !== '1d') setTimeframe('1d')
+        if (symbol.includes('/')) setSymbol('AAPL')
+    }, [market])
 
     // Load params when template selected
     useEffect(() => {
@@ -87,17 +106,24 @@ export function ComboOptimizePage() {
         })
 
         try {
+            const payload: any = {
+                template_name: selectedTemplate,
+                symbol,
+                timeframe,
+                start_date: "2024-01-01", // TODO: Date picker
+                end_date: "2024-01-31",
+                custom_ranges,
+            }
+
+            if (market === 'us-stocks') {
+                payload.data_source = 'stooq'
+                payload.timeframe = '1d'
+            }
+
             const res = await fetch(`${API_BASE_URL}/combos/optimize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_name: selectedTemplate,
-                    symbol,
-                    timeframe,
-                    start_date: "2024-01-01", // TODO: Date picker
-                    end_date: "2024-01-31",
-                    custom_ranges
-                })
+                body: JSON.stringify(payload)
             })
 
             const data = await res.json()
@@ -162,23 +188,54 @@ export function ComboOptimizePage() {
                                     </select>
                                 </div>
 
+                                {/* Market */}
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Market</label>
+                                    <select
+                                        value={market}
+                                        onChange={(e) => setMarket(e.target.value as MarketMode)}
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500 transition-colors"
+                                    >
+                                        <option value="crypto">Crypto (Binance)</option>
+                                        <option value="us-stocks">US Stocks (NASDAQ-100 · EOD 1D)</option>
+                                    </select>
+                                    {market === 'us-stocks' ? (
+                                        <p className="mt-2 text-xs text-gray-400">
+                                            US Stocks uses free Stooq EOD data. Timeframe is fixed to <span className="font-mono">1d</span>.
+                                        </p>
+                                    ) : null}
+                                </div>
+
                                 {/* Symbol & Timeframe */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm text-gray-400 mb-1">Symbol</label>
-                                        <input
-                                            type="text"
-                                            value={symbol}
-                                            onChange={(e) => setSymbol(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
-                                        />
+                                        {market === 'us-stocks' ? (
+                                            <select
+                                                value={symbol}
+                                                onChange={(e) => setSymbol(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
+                                            >
+                                                {nasdaqSymbols.length ? nasdaqSymbols.map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                )) : <option value="AAPL">AAPL</option>}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                value={symbol}
+                                                onChange={(e) => setSymbol(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
+                                            />
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm text-gray-400 mb-1">Timeframe</label>
                                         <select
-                                            value={timeframe}
+                                            value={market === 'us-stocks' ? '1d' : timeframe}
                                             onChange={(e) => setTimeframe(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
+                                            disabled={market === 'us-stocks'}
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500 disabled:opacity-60"
                                         >
                                             {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
                                         </select>
