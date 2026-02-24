@@ -362,6 +362,14 @@ const FavoritesDashboard: React.FC = () => {
         return `≤ ${e!}`;
     };
 
+    const getFavoriteStatus = (fav: FavoriteStrategy): string => {
+        const metricStatus = String(fav.metrics?.status || '').toUpperCase();
+        if (metricStatus.includes('HOLD')) return 'HOLD';
+        if (fav.metrics?.is_holding === true) return 'HOLD';
+        if (metricStatus === '') return 'WAITING';
+        return metricStatus.replaceAll('_', ' ');
+    };
+
     return (
         <div className="min-h-screen relative overflow-hidden bg-black text-white font-sans selection:bg-blue-500/30">
             {/* Animated background */}
@@ -372,8 +380,8 @@ const FavoritesDashboard: React.FC = () => {
             <div className="max-w-[1920px] mx-auto border-l-4 border-primary-600 pl-4">
                 {/* Header */}
                 <header className="glass-strong border-b border-white/10 sticky top-0 z-50 mb-8">
-                    <div className="container mx-auto px-6 py-6">
-                        <div className="flex items-center justify-between">
+                    <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-6">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="relative">
                                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
@@ -390,14 +398,14 @@ const FavoritesDashboard: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-4">
+                            <div className="w-full lg:w-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
                                 {/* Filters */}
-                                <div className="flex gap-2">
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:gap-2 w-full lg:w-auto">
                                     <div className="relative group">
                                         <select
                                             value={tierFilter}
                                             onChange={(e) => setTierFilter(e.target.value as 'all' | '1' | '2' | '3' | '1_2' | 'none')}
-                                            className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
                                         >
                                             <option value="all" className="bg-gray-900">Tier: All</option>
                                             <option value="1_2" className="bg-gray-900">Tier 1 + Tier 2</option>
@@ -413,7 +421,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <select
                                             value={selectedSymbol}
                                             onChange={(e) => setSelectedSymbol(e.target.value)}
-                                            className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
                                         >
                                             <option value="ALL" className="bg-gray-900">Symbol: All</option>
                                             {uniqueSymbols.map(sym => (
@@ -427,7 +435,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <select
                                             value={selectedIndicator}
                                             onChange={(e) => setSelectedIndicator(e.target.value)}
-                                            className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
                                         >
                                             <option value="ALL" className="bg-gray-900">Strategy: All</option>
                                             {uniqueIndicators.map(ind => (
@@ -441,7 +449,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <select
                                             value={directionFilter}
                                             onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'long' | 'short')}
-                                            className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
                                         >
                                             <option value="all" className="bg-gray-900">Direção: All</option>
                                             <option value="long" className="bg-gray-900">Long</option>
@@ -454,7 +462,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <select
                                             value={sortBy}
                                             onChange={(e) => setSortBy(e.target.value as SortByOption)}
-                                            className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
                                         >
                                             <option value="returnPerTrade" className="bg-gray-900">Ordenar: Ret/T %</option>
                                             <option value="return" className="bg-gray-900">Ordenar: Return</option>
@@ -472,35 +480,200 @@ const FavoritesDashboard: React.FC = () => {
                                         placeholder="Search strategies..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none w-64 placeholder-gray-600 transition-colors hover:bg-white/10"
+                                        className="bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 lg:py-2 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none w-full lg:w-64 min-h-11 placeholder-gray-600 transition-colors hover:bg-white/10"
                                     />
                                 </div>
 
-                                <div className="h-8 w-[1px] bg-white/10 mx-2"></div>
+                                <div className="hidden lg:block h-8 w-[1px] bg-white/10 mx-2"></div>
 
-                                <button
-                                    onClick={handleExportExcel}
-                                    className="bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white px-4 py-2 text-sm font-medium rounded-lg border border-white/10 hover:border-white/20 transition-all flex items-center gap-2"
-                                >
-                                    <List className="w-4 h-4" /> Export
-                                </button>
-                                <button
-                                    onClick={() => navigate('/combo/select')}
-                                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5"
-                                >
-                                    Find New
-                                </button>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full lg:flex lg:w-auto">
+                                    <button
+                                        onClick={handleExportExcel}
+                                        className="bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white px-4 py-2.5 lg:py-2 text-sm font-medium rounded-lg border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2 min-h-11"
+                                    >
+                                        <List className="w-4 h-4" /> Export
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/combo/select')}
+                                        className="px-6 py-2.5 lg:py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5 min-h-11"
+                                    >
+                                        Find New
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </header>
 
-                <main className="container mx-auto px-6 pb-12">
+                <main className="container mx-auto px-3 sm:px-6 pb-12">
                     {/* Table Container */}
                     <div className="glass-strong rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
 
+                        <div className="lg:hidden p-3 sm:p-4 space-y-3">
+                            {isLoading ? (
+                                <div className="p-8 text-center text-gray-500 animate-pulse">Scanning database...</div>
+                            ) : filteredFavorites.length === 0 ? (
+                                <div className="p-8 text-center text-gray-500">No favorite strategies found.</div>
+                            ) : (
+                                visibleFavorites.map((fav: FavoriteStrategy) => {
+                                    const isSelected = selectedIds.includes(fav.id);
+                                    const m = fav.metrics || {};
+                                    const totalReturn = m.total_return_pct ?? m.total_return;
+                                    const tierInfo = getTierInfo(fav.tier);
+                                    const statusLabel = getFavoriteStatus(fav);
+                                    return (
+                                        <article
+                                            key={fav.id}
+                                            className={`rounded-xl border bg-white/5 p-3 space-y-3 ${
+                                                fav.tier === 1
+                                                    ? 'border-green-500/40'
+                                                    : fav.tier === 2
+                                                        ? 'border-yellow-500/40'
+                                                        : fav.tier === 3
+                                                            ? 'border-red-500/40'
+                                                            : 'border-white/10'
+                                            } ${isSelected ? 'ring-1 ring-blue-500/60' : ''}`}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="text-base font-bold tracking-wide break-words">{fav.symbol}</p>
+                                                    <p className="text-sm text-blue-300 break-words">{fav.strategy_name.replace(/_/g, ' ')}</p>
+                                                </div>
+                                                <span className={`px-2 py-1 rounded-md text-xs font-semibold border ${statusLabel === 'HOLD' ? 'text-emerald-300 border-emerald-500/50 bg-emerald-500/10' : 'text-gray-300 border-white/20 bg-white/10'}`}>
+                                                    {statusLabel}
+                                                </span>
+                                            </div>
 
-                        <div className="overflow-x-auto">
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                <div className="rounded-lg bg-white/5 border border-white/10 p-2">
+                                                    <p className="text-gray-500">Tier</p>
+                                                    <p className={`font-medium ${tierInfo.textColor}`}>{tierInfo.label}</p>
+                                                </div>
+                                                <div className="rounded-lg bg-white/5 border border-white/10 p-2">
+                                                    <p className="text-gray-500">Return</p>
+                                                    <p className={`font-semibold ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPct(totalReturn)}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                <select
+                                                    value={fav.tier ?? ''}
+                                                    onChange={(e) => {
+                                                        const tierValue = e.target.value === '' ? null : parseInt(e.target.value);
+                                                        handleUpdateTier(fav, tierValue);
+                                                    }}
+                                                    className={`w-full min-h-11 text-xs font-medium px-3 py-2 rounded-lg border transition-all ${
+                                                        fav.tier === 1
+                                                            ? 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30'
+                                                            : fav.tier === 2
+                                                                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
+                                                                : fav.tier === 3
+                                                                    ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30'
+                                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+                                                    }`}
+                                                >
+                                                    <option value="">Sem tier</option>
+                                                    <option value="1">Tier 1</option>
+                                                    <option value="2">Tier 2</option>
+                                                    <option value="3">Tier 3</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => toggleSelection(fav.id)}
+                                                    className={`min-h-11 rounded-lg border text-sm font-medium transition-colors ${
+                                                        isSelected
+                                                            ? 'border-blue-500/60 bg-blue-500/15 text-blue-300'
+                                                            : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                                                    }`}
+                                                >
+                                                    {isSelected ? 'Selected for compare' : 'Select to compare'}
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => handleViewTrades(fav)}
+                                                    className="min-h-11 rounded-lg border border-white/10 bg-white/5 text-gray-200 text-sm font-medium flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                                                >
+                                                    <List className="w-4 h-4" />
+                                                    Trades
+                                                </button>
+                                                <button
+                                                    onClick={() => handleViewResults(fav)}
+                                                    disabled={loadingBacktestId === fav.id}
+                                                    className="min-h-11 rounded-lg border border-green-500/30 bg-green-500/10 text-green-300 text-sm font-medium flex items-center justify-center gap-2 hover:bg-green-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {loadingBacktestId === fav.id ? (
+                                                        <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : (
+                                                        <BarChart3 className="w-4 h-4" />
+                                                    )}
+                                                    Results
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOpenAgent(fav)}
+                                                    className="min-h-11 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium flex items-center justify-center gap-2 hover:bg-purple-500/20 transition-colors"
+                                                >
+                                                    <MessageCircle className="w-4 h-4" />
+                                                    Trader
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(fav.id)}
+                                                    className="min-h-11 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-sm font-medium flex items-center justify-center gap-2 hover:bg-red-500/20 transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                    Delete
+                                                </button>
+                                            </div>
+
+                                            <details className="rounded-lg border border-white/10 bg-black/20">
+                                                <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-gray-200 flex items-center justify-between min-h-11">
+                                                    <span>More details</span>
+                                                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                                                </summary>
+                                                <div className="px-3 pb-3 space-y-3 text-xs text-gray-300">
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <p className="text-gray-500">Timeframe</p>
+                                                            <p className="font-mono">{fav.timeframe}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-gray-500">Período</p>
+                                                            <p>{formatPeriod(fav)}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-500 mb-1">Params</p>
+                                                        <p className="font-mono break-words">{formatParams(fav.parameters).split('&').join(' ')}</p>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <p className="text-gray-500">Sharpe</p>
+                                                            <p>{formatNum(m.sharpe_ratio)}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-gray-500">Trades</p>
+                                                            <p>{getTradesCount(fav)}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-500 mb-1">Notes</p>
+                                                        <p className="break-words italic">{fav.notes || '-'}</p>
+                                                    </div>
+                                                </div>
+                                            </details>
+                                        </article>
+                                    );
+                                })
+                            )}
+                            {!isLoading && filteredFavorites.length > 0 && hasMore && (
+                                <div className="p-4 text-center text-gray-500 text-sm">
+                                    <div ref={sentinelRef} />
+                                    <span className="animate-pulse">Carregando mais…</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="hidden lg:block overflow-x-auto">
                             <table className="w-full text-left border-collapse text-sm">
                                 <thead className="bg-white/5 border-b border-white/10 text-gray-400 font-semibold uppercase tracking-wider text-xs">
                                     <tr>
@@ -707,7 +880,7 @@ const FavoritesDashboard: React.FC = () => {
                         </div>
 
                         {/* Footer / Status Bar - Replaces System Status */}
-                        <div className="p-4 bg-white/5 border-t border-white/10 flex justify-between items-center text-sm">
+                        <div className="p-4 bg-white/5 border-t border-white/10 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center text-sm">
                             <div className="flex items-center gap-2 text-gray-400">
                                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                 {hasMore
@@ -715,12 +888,12 @@ const FavoritesDashboard: React.FC = () => {
                                     : `${filteredFavorites.length} estratégias carregadas`}
                             </div>
                             {selectedIds.length > 0 && (
-                                <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 animate-in fade-in slide-in-from-right-4 w-full lg:w-auto">
                                     <span className="text-blue-400 font-medium">{selectedIds.length} selected</span>
                                     <button
                                         onClick={() => setIsCompareOpen(true)}
                                         disabled={selectedIds.length < 2}
-                                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                        className="px-4 py-2.5 lg:py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-11 lg:min-h-0 w-full sm:w-auto"
                                     >
                                         Compare Strategies
                                     </button>
