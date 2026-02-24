@@ -23,8 +23,8 @@
 ## 5. Regression Checks
 
 - [x] 5.1 Verify desktop layout is preserved at/above the desktop breakpoint
-- [ ] 5.2 Verify mobile layout across common widths (360/390/430) and that no horizontal scrolling appears
-- [ ] 5.3 Smoke test key flows: open favorites, filter/search, edit/update, delete with confirmation
+- [x] 5.2 Verify mobile layout across common widths (360/390/430) and that no horizontal scrolling appears
+- [x] 5.3 Smoke test key flows: open favorites, filter/search, edit/update, delete with confirmation
 
 ## 6. Validation
 
