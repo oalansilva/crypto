@@ -1,0 +1,19 @@
+# us-stocks-universe-nasdaq100 Specification
+
+## Purpose
+TBD - created by archiving change combo-configure-market-selector-nasdaq100. Update Purpose after archive.
+## Requirements
+### Requirement: Provide NASDAQ-100 ticker universe
+The system MUST maintain a NASDAQ-100 ticker universe and expose it for selection in Combo Configure.
+
+#### Scenario: Fetch NASDAQ-100 ticker list
+- **WHEN** the UI requests the NASDAQ-100 universe
+- **THEN** the system returns an ordered list of tickers (e.g., `AAPL`, `MSFT`, `NVDA`, ...) suitable for a symbol picker
+
+### Requirement: Universe is stable and versioned
+The system MUST store the NASDAQ-100 ticker list in a versioned repository artifact so changes are reviewable.
+
+#### Scenario: Update NASDAQ-100 list
+- **WHEN** the NASDAQ-100 list needs updating
+- **THEN** it is updated via a code change (commit/PR) rather than an ad-hoc runtime edit
+
