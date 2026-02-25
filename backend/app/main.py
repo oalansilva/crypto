@@ -137,6 +137,9 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing Database Tables...")
     try:
         Base.metadata.create_all(bind=engine)
+        # Apply lightweight SQLite migrations for existing tables
+        from app.database import ensure_sqlite_migrations
+        ensure_sqlite_migrations()
         logger.info("Database initialized successfully.")
 
         # Seed combo_templates if empty

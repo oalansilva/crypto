@@ -39,6 +39,35 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+
+def ensure_sqlite_migrations() -> None:
+    """Apply lightweight SQLite migrations that SQLAlchemy create_all won't handle.
+
+    We keep this minimal: add missing columns when the table already exists.
+    """
+
+    if not DB_URL.startswith("sqlite:"):
+        return
+
+    import sqlite3
+
+    conn = sqlite3.connect(str(DB_PATH))
+    try:
+        cur = conn.cursor()
+
+        # monitor_preferences: add price_timeframe if missing
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='monitor_preferences'")
+        row = cur.fetchone()
+        if row:
+            cur.execute("PRAGMA table_info(monitor_preferences)")
+            cols = {r[1] for r in cur.fetchall()}  # r[1] = name
+            if "price_timeframe" not in cols:
+                cur.execute("ALTER TABLE monitor_preferences ADD COLUMN price_timeframe TEXT DEFAULT '1d'")
+                conn.commit()
+    finally:
+        conn.close()
+
+
 def get_db():
     db = SessionLocal()
     try:
