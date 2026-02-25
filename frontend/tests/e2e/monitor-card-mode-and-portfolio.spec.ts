@@ -236,6 +236,11 @@ test('timeframe switch keeps non-chart controls interactive and shows localized 
     )
     .toBe(true)
 
-  await expect(page.getByTestId('candles-chart-area-btc-usdt')).toContainText('Loading chart...')
+  // Ensure loading is localized to the chart area
+  await expect(
+    page
+      .getByTestId('candles-chart-area-btc-usdt')
+      .getByTestId('candles-loading-btc-usdt')
+  ).toBeVisible()
   await expect(page.locator('body')).not.toContainText('Loading candles...')
 })
