@@ -220,8 +220,12 @@ def _normalize_candles_frame(df, limit: int):
     out = df.copy()
     if out.empty:
         return []
+    # Some providers (e.g., CCXT loader) may set timestamp_utc as the index name but not as a column.
     if "timestamp_utc" not in out.columns:
-        raise ValueError("Provider returned invalid candle payload (missing timestamp_utc).")
+        if getattr(out.index, "name", None) == "timestamp_utc":
+            out = out.reset_index()
+        else:
+            raise ValueError("Provider returned invalid candle payload (missing timestamp_utc).")
 
     out = out.reset_index(drop=True)
     out["timestamp_utc"] = pd.to_datetime(out["timestamp_utc"], utc=True, errors="coerce")
