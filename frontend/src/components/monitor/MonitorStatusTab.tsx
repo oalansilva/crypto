@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { Opportunity, MonitorCardMode, MonitorPreference } from '@/components/monitor/types';
+import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
@@ -15,6 +15,7 @@ type ListFilter = 'in_portfolio' | 'all';
 const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
     card_mode: 'price',
+    price_timeframe: '1d',
 };
 
 export const MonitorStatusTab: React.FC = () => {
@@ -48,11 +49,24 @@ export const MonitorStatusTab: React.FC = () => {
 
             await favoritesResponse.json();
             const preferencesPayload = await preferencesResponse.json();
-            setPreferences(
-                typeof preferencesPayload === 'object' && preferencesPayload
-                    ? preferencesPayload
-                    : {}
-            );
+            if (typeof preferencesPayload === 'object' && preferencesPayload) {
+                const normalized: Record<string, MonitorPreference> = {};
+                for (const [symbol, raw] of Object.entries(preferencesPayload as Record<string, any>)) {
+                    normalized[symbol] = {
+                        in_portfolio: Boolean(raw?.in_portfolio),
+                        card_mode: raw?.card_mode === 'strategy' ? 'strategy' : 'price',
+                        price_timeframe: raw?.price_timeframe === '15m'
+                            || raw?.price_timeframe === '1h'
+                            || raw?.price_timeframe === '4h'
+                            || raw?.price_timeframe === '1d'
+                            ? raw.price_timeframe
+                            : '1d',
+                    };
+                }
+                setPreferences(normalized);
+            } else {
+                setPreferences({});
+            }
         } catch (error) {
             console.error(error);
             toast({
@@ -107,6 +121,7 @@ export const MonitorStatusTab: React.FC = () => {
         const next: MonitorPreference = {
             in_portfolio: patch.in_portfolio ?? prev.in_portfolio,
             card_mode: patch.card_mode ?? prev.card_mode,
+            price_timeframe: patch.price_timeframe ?? prev.price_timeframe,
         };
 
         setPreferences((current) => ({ ...current, [symbol]: next }));
@@ -129,6 +144,12 @@ export const MonitorStatusTab: React.FC = () => {
                 [symbol]: {
                     in_portfolio: Boolean(payload?.in_portfolio),
                     card_mode: payload?.card_mode === 'strategy' ? 'strategy' : 'price',
+                    price_timeframe: payload?.price_timeframe === '15m'
+                        || payload?.price_timeframe === '1h'
+                        || payload?.price_timeframe === '4h'
+                        || payload?.price_timeframe === '1d'
+                        ? payload.price_timeframe
+                        : '1d',
                 },
             }));
         } catch (error) {
@@ -149,6 +170,10 @@ export const MonitorStatusTab: React.FC = () => {
 
     const handleToggleCardMode = (symbol: string, nextMode: MonitorCardMode) => {
         void persistPreference(symbol, { card_mode: nextMode });
+    };
+
+    const handleChangePriceTimeframe = (symbol: string, nextTimeframe: MonitorPriceTimeframe) => {
+        void persistPreference(symbol, { price_timeframe: nextTimeframe });
     };
 
     useEffect(() => {
@@ -423,6 +448,7 @@ export const MonitorStatusTab: React.FC = () => {
                                             isSavingPreference={Boolean(savingSymbols[opp.symbol])}
                                             onToggleInPortfolio={handleToggleInPortfolio}
                                             onToggleCardMode={handleToggleCardMode}
+                                            onChangePriceTimeframe={handleChangePriceTimeframe}
                                         />
                                     ))}
                                 </div>

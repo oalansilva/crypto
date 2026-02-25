@@ -73,8 +73,12 @@ function buildCandles() {
 }
 
 async function setupApiMocks(page: any) {
-  const preferences: Record<string, { in_portfolio: boolean; card_mode: 'price' | 'strategy' }> = {
-    'BTC/USDT': { in_portfolio: true, card_mode: 'price' },
+  const requestedTimeframes: string[] = []
+  const preferences: Record<
+    string,
+    { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
+  > = {
+    'BTC/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
   }
 
   await page.route('**/*', (route: any) => {
@@ -113,10 +117,11 @@ async function setupApiMocks(page: any) {
     const url = new URL(route.request().url())
     const symbol = decodeURIComponent(url.pathname.split('/').pop() || '').trim()
     const patch = route.request().postDataJSON() || {}
-    const current = preferences[symbol] || { in_portfolio: false, card_mode: 'price' }
+    const current = preferences[symbol] || { in_portfolio: false, card_mode: 'price', price_timeframe: '1d' }
     const next = {
       in_portfolio: patch.in_portfolio ?? current.in_portfolio,
       card_mode: patch.card_mode ?? current.card_mode,
+      price_timeframe: patch.price_timeframe ?? current.price_timeframe,
     }
     preferences[symbol] = next
 
@@ -128,14 +133,22 @@ async function setupApiMocks(page: any) {
   })
 
   await page.route('**/api/market/candles**', (route: any) =>
-    route.fulfill({
+    {
+      const url = new URL(route.request().url())
+      requestedTimeframes.push(url.searchParams.get('timeframe') || '')
+      return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         candles: buildCandles(),
       }),
     })
+    }
   )
+
+  return {
+    requestedTimeframes,
+  }
 }
 
 test('defaults to In Portfolio and hides symbols without preference', async ({ page }) => {
@@ -171,4 +184,17 @@ test('per-card mode toggle persists across reload', async ({ page }) => {
 
   await page.reload()
   await expect(page.getByTestId('mode-label-btc-usdt')).toHaveText('Strategy')
+})
+
+test('per-card timeframe selection persists across reload', async ({ page }) => {
+  const mocks = await setupApiMocks(page)
+  await page.goto('/monitor')
+
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByTestId('timeframe-toggle-btc-usdt-4h').click()
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => mocks.requestedTimeframes.includes('4h')).toBe(true)
+
+  await page.reload()
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
 })
