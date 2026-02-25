@@ -170,27 +170,17 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             : `Waiting for ${next_status_label} signal`
     );
 
-    const cardStyle = is_holding ? {
-        backgroundColor: 'rgb(220, 252, 231)',
-        borderLeftWidth: '4px',
-        borderLeftColor: 'rgb(22, 163, 74)',
-    } : isStoppedOut ? {
-        backgroundColor: 'rgb(254, 242, 242)',
-        borderLeftWidth: '4px',
-        borderLeftColor: 'rgb(220, 38, 38)',
-    } : isMissedEntry ? {
-        backgroundColor: 'rgb(254, 252, 232)',
-        borderLeftWidth: '4px',
-        borderLeftColor: 'rgb(234, 179, 8)',
-    } : isWait && tierStyles ? {
-        backgroundColor: tierStyles.dot === 'bg-green-500' ? 'rgb(240, 253, 244)' : tierStyles.dot === 'bg-amber-500' ? 'rgb(255, 251, 235)' : 'rgb(254, 242, 242)',
-        borderLeftWidth: '4px',
-        borderLeftColor: tierStyles.border,
-    } : {
-        backgroundColor: 'rgb(255, 255, 255)',
-        borderLeftWidth: '4px',
-        borderLeftColor: 'rgb(203, 213, 225)',
-    };
+    // NOTE: Avoid hardcoded light backgrounds via inline styles.
+    // They reduce contrast on mobile/dark mode. Background colors are handled via Tailwind classes.
+    const cardStyle = is_holding
+        ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(22, 163, 74)' }
+        : isStoppedOut
+            ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(220, 38, 38)' }
+            : isMissedEntry
+                ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(234, 179, 8)' }
+                : isWait && tierStyles
+                    ? { borderLeftWidth: '4px', borderLeftColor: tierStyles.border }
+                    : { borderLeftWidth: '4px', borderLeftColor: 'rgb(203, 213, 225)' };
 
     const symbolTestKey = symbolKey(symbol);
 
@@ -226,7 +216,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <div className="flex items-center gap-1">
                         <button
                             type="button"
-                            className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${preference.in_portfolio ? 'border-amber-500 text-amber-600 bg-amber-50' : 'border-slate-300 text-slate-600 bg-white'}`}
+                            className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${preference.in_portfolio ? 'border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-200' : 'border-slate-300 text-slate-700 bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200'}`}
                             onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
                             disabled={isSavingPreference}
                             data-testid={`portfolio-toggle-${symbolTestKey}`}
@@ -238,7 +228,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
                         <button
                             type="button"
-                            className="rounded-md border border-slate-300 px-2 py-1 text-xs flex items-center gap-1 bg-white text-slate-700"
+                            className="rounded-md border border-slate-300 px-2 py-1 text-xs flex items-center gap-1 bg-white text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
                             onClick={() => onToggleCardMode(symbol, isPriceMode ? 'strategy' : 'price')}
                             disabled={isSavingPreference}
                             data-testid={`mode-toggle-${symbolTestKey}`}
