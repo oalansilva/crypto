@@ -84,17 +84,6 @@ The UI MUST include an Asset Type dropdown control on the Favorites screen.
 - **WHEN** the user changes the Asset Type dropdown
 - **THEN** the Favorites list updates immediately to reflect the selection
 
-### Requirement: Monitor includes tabs for Status and Dashboard
-The UI MUST provide tabs on the Monitor screen for switching between Status and Dashboard.
-
-#### Scenario: Tabs are visible
-- **WHEN** the user opens the Monitor screen
-- **THEN** the UI shows tabs labeled Status and Dashboard
-
-#### Scenario: Switching tabs updates the view
-- **WHEN** the user switches from Status to Dashboard (or vice versa)
-- **THEN** the visible content changes to the selected tab
-
 ### Requirement: Favorites-only dataset is used
 The UI MUST use only the Favorites dataset for the dashboard.
 
@@ -117,6 +106,7 @@ The UI MUST render a candlestick chart with clear up/down candle colors and read
 The UI MUST provide controls on the Monitor screen to:
 - filter the list by In Portfolio vs All
 - toggle per-card mode (Price vs Strategy)
+- select per-card timeframe in Price mode
 
 #### Scenario: Filter toggle exists
 - **WHEN** the user opens Monitor
@@ -125,4 +115,8 @@ The UI MUST provide controls on the Monitor screen to:
 #### Scenario: Per-card toggle exists
 - **WHEN** the user views a symbol card
 - **THEN** the card provides a toggle control to switch between Price and Strategy modes
+
+#### Scenario: Per-card timeframe selector exists
+- **WHEN** the card is in Price mode
+- **THEN** the card provides a timeframe selector with allowed options for the asset type
 
