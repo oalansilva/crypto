@@ -215,7 +215,7 @@ export function MonitorDashboardTab() {
                     active
                       ? 'border-blue-400 bg-blue-500/20 text-white'
                       : 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
-                  }`} ${isStock && tf !== '1d' ? 'opacity-40 cursor-not-allowed' : ''}`
+                  } ${isStock && tf !== '1d' ? 'opacity-40 cursor-not-allowed' : ''}`}
                   aria-pressed={active}
                   data-testid={`timeframe-${tf}`}
                 >
