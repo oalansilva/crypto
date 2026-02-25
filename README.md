@@ -172,6 +172,16 @@ cd frontend
 npm run dev
 ```
 
+### CI / E2E
+
+```bash
+./backend/.venv/bin/python -m pytest -q backend/tests/integration
+npm --prefix frontend run test:e2e
+```
+
+Branch protection checklist for `main`:
+`docs/branch-protection.md`
+
 ### Building for Production
 
 ```bash
