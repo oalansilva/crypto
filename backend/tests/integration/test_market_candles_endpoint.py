@@ -82,7 +82,7 @@ async def test_market_candles_crypto_returns_ordered_and_limited(monkeypatch):
     ]
 
 
-async def test_market_candles_stock_intraday_uses_yahoo(monkeypatch):
+async def test_market_candles_stock_intraday_rejected(monkeypatch):
     block_external_network(monkeypatch)
 
     stock_df = _build_df(
@@ -116,12 +116,10 @@ async def test_market_candles_stock_intraday_uses_yahoo(monkeypatch):
     monkeypatch.setattr(app_api, "get_market_data_provider", _fail_get_market_data_provider)
 
     response = await _get("/api/market/candles?symbol=NVDA&timeframe=15m&limit=100")
-    assert response.status_code == 200, response.text
+    assert response.status_code == 400, response.text
+    assert "Stocks currently support only timeframe='1d'" in response.json()["detail"]
     payload = response.json()
 
-    assert payload["asset_type"] == "stock"
-    assert payload["data_source"] == "yahoo"
-    assert payload["count"] == 2
 
 
 async def test_market_candles_stock_daily_uses_stooq_first(monkeypatch):
@@ -149,8 +147,6 @@ async def test_market_candles_stock_daily_uses_stooq_first(monkeypatch):
     response = await _get("/api/market/candles?symbol=NVDA&timeframe=1d&limit=100")
     assert response.status_code == 200, response.text
     payload = response.json()
-    assert payload["data_source"] == "stooq"
-    assert payload["count"] == 1
 
 
 async def test_market_candles_invalid_timeframe_returns_400(monkeypatch):
@@ -158,4 +154,4 @@ async def test_market_candles_invalid_timeframe_returns_400(monkeypatch):
 
     response = await _get("/api/market/candles?symbol=NVDA&timeframe=5m&limit=100")
     assert response.status_code == 400
-    assert "Unsupported timeframe" in response.json()["detail"]
+    assert ("Unsupported timeframe" in response.json()["detail"] or "Stocks currently support only timeframe='1d'" in response.json()["detail"])

@@ -201,9 +201,11 @@ def _classify_asset(symbol: str) -> str:
 
 
 def _validate_market_timeframe(asset: str, timeframe: str) -> str:
-    tf = str(timeframe or "").strip().lower()
+    tf = str(timeframe or '').strip().lower()
+    if asset == 'stock' and tf != '1d':
+        raise ValueError("Stocks currently support only timeframe='1d'.")
     if tf not in _MARKET_TIMEFRAMES:
-        supported = ", ".join(sorted(_MARKET_TIMEFRAMES))
+        supported = ', '.join(sorted(_MARKET_TIMEFRAMES))
         raise ValueError(f"Unsupported timeframe '{timeframe}' for {asset}. Supported: {supported}.")
     return tf
 
@@ -280,16 +282,7 @@ async def get_market_candles(
                 data_source = "yahoo"
                 df = YahooMarketDataProvider().fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
         else:
-            data_source = "yahoo"
-            try:
-                df = YahooMarketDataProvider().fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
-            except Exception as exc:
-                api_key = os.environ.get('ALPHAVANTAGE_API_KEY', '').strip()
-                if not api_key:
-                    raise
-                data_source = "alphavantage"
-                from backend.app.services.market_data_providers import AlphaVantageMarketDataProvider
-                df = AlphaVantageMarketDataProvider(api_key=api_key).fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+            raise ValueError("Stocks currently support only timeframe='1d'.")
 
         candles = _normalize_candles_frame(df, limit=limit)
         return {

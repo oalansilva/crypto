@@ -138,6 +138,7 @@ export function MonitorDashboardTab() {
   }, [selectedSymbol, timeframe])
 
   const selectedMeta = symbols.find((s) => s.symbol === selectedSymbol) || null
+  const isStock = (selectedMeta?.assetType ?? classifyAsset(selectedSymbol)) === 'stock'
   const lastClose = candles.length > 0 ? candles[candles.length - 1].close : null
   const previousClose = candles.length > 1 ? candles[candles.length - 2].close : null
   const changePct = lastClose && previousClose ? ((lastClose - previousClose) / previousClose) * 100 : null
@@ -209,11 +210,12 @@ export function MonitorDashboardTab() {
                   key={tf}
                   type="button"
                   onClick={() => setTimeframe(tf)}
+                  disabled={isStock && tf !== '1d'}
                   className={`rounded-lg border px-3 min-h-11 min-w-11 text-sm font-medium transition-colors ${
                     active
                       ? 'border-blue-400 bg-blue-500/20 text-white'
                       : 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
-                  }`}
+                  }`} ${isStock && tf !== '1d' ? 'opacity-40 cursor-not-allowed' : ''}`
                   aria-pressed={active}
                   data-testid={`timeframe-${tf}`}
                 >
@@ -225,6 +227,7 @@ export function MonitorDashboardTab() {
 
           {candlesLoading ? <p className="text-sm text-gray-400">Loading candles...</p> : null}
           {candlesError ? <p className="text-sm text-red-400">{candlesError}</p> : null}
+          {isStock ? <p className="text-xs text-gray-400">Stocks: intraday (15m/1h/4h) disabled for now. Use 1d.</p> : null}
           {!candlesLoading && !candlesError && candles.length === 0 ? (
             <p className="text-sm text-gray-400">No candle data available for this symbol/timeframe.</p>
           ) : null}
