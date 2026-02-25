@@ -72,8 +72,17 @@ function buildCandles() {
   ]
 }
 
-async function setupApiMocks(page: any) {
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function setupApiMocks(
+  page: any,
+  options?: {
+    candlesDelayMs?: number
+    preferencePatchDelayMs?: number
+  }
+) {
   const requestedTimeframes: string[] = []
+  const preferencePatches: Array<{ symbol: string; patch: any }> = []
   const preferences: Record<
     string,
     { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
@@ -117,12 +126,16 @@ async function setupApiMocks(page: any) {
     const url = new URL(route.request().url())
     const symbol = decodeURIComponent(url.pathname.split('/').pop() || '').trim()
     const patch = route.request().postDataJSON() || {}
+    if (options?.preferencePatchDelayMs) {
+      await sleep(options.preferencePatchDelayMs)
+    }
     const current = preferences[symbol] || { in_portfolio: false, card_mode: 'price', price_timeframe: '1d' }
     const next = {
       in_portfolio: patch.in_portfolio ?? current.in_portfolio,
       card_mode: patch.card_mode ?? current.card_mode,
       price_timeframe: patch.price_timeframe ?? current.price_timeframe,
     }
+    preferencePatches.push({ symbol, patch })
     preferences[symbol] = next
 
     await route.fulfill({
@@ -136,18 +149,24 @@ async function setupApiMocks(page: any) {
     {
       const url = new URL(route.request().url())
       requestedTimeframes.push(url.searchParams.get('timeframe') || '')
-      return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candles: buildCandles(),
-      }),
-    })
+      return (async () => {
+        if (options?.candlesDelayMs) {
+          await sleep(options.candlesDelayMs)
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            candles: buildCandles(),
+          }),
+        })
+      })()
     }
   )
 
   return {
     requestedTimeframes,
+    preferencePatches,
   }
 }
 
@@ -197,4 +216,26 @@ test('per-card timeframe selection persists across reload', async ({ page }) => 
 
   await page.reload()
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('timeframe switch keeps non-chart controls interactive and shows localized chart loading', async ({ page }) => {
+  const mocks = await setupApiMocks(page, { candlesDelayMs: 600, preferencePatchDelayMs: 500 })
+  await page.goto('/monitor')
+
+  await page.getByTestId('timeframe-toggle-btc-usdt-4h').click()
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('candles-loading-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeEnabled()
+
+  await page.getByTestId('portfolio-toggle-btc-usdt').click()
+  await expect
+    .poll(() =>
+      mocks.preferencePatches.some(
+        (entry) => entry.symbol === 'BTC/USDT' && entry.patch && entry.patch.in_portfolio === false
+      )
+    )
+    .toBe(true)
+
+  await expect(page.getByTestId('candles-chart-area-btc-usdt')).toContainText('Loading chart...')
+  await expect(page.locator('body')).not.toContainText('Loading candles...')
 })

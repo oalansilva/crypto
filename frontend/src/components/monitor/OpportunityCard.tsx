@@ -17,6 +17,9 @@ interface OpportunityCardProps {
 }
 
 const PRICE_TIMEFRAMES: MonitorPriceTimeframe[] = ['15m', '1h', '4h', '1d'];
+const CANDLE_LIMIT = '120';
+const candlesCache = new Map<string, MarketCandle[]>();
+const inflightBySymbol = new Map<string, AbortController>();
 
 const getDistanceColor = (distance: number | null | undefined): string => {
     if (distance === null || distance === undefined) return 'text-gray-600 dark:text-gray-400';
@@ -39,6 +42,7 @@ const getTierStyles = (tier: number | null | undefined) => {
 };
 
 const symbolKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+const candleCacheKey = (symbol: string, timeframe: MonitorPriceTimeframe): string => `${symbol}|${timeframe}`;
 
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     opportunity,
@@ -76,10 +80,23 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     React.useEffect(() => {
         if (!isPriceMode) {
             setCandlesError(null);
+            setCandlesLoading(false);
             return;
         }
 
+        const cacheKey = candleCacheKey(symbol, effectiveTimeframe);
+        const cached = candlesCache.get(cacheKey);
+        if (cached) {
+            setCandles(cached);
+            setCandlesError(null);
+            setCandlesLoading(false);
+            return;
+        }
+
+        inflightBySymbol.get(symbol)?.abort();
         const controller = new AbortController();
+        inflightBySymbol.set(symbol, controller);
+
         const run = async () => {
             setCandlesLoading(true);
             setCandlesError(null);
@@ -87,7 +104,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 const url = apiUrl('/market/candles');
                 url.searchParams.set('symbol', symbol);
                 url.searchParams.set('timeframe', effectiveTimeframe);
-                url.searchParams.set('limit', '120');
+                url.searchParams.set('limit', CANDLE_LIMIT);
 
                 const response = await fetch(url.toString(), { signal: controller.signal });
                 const payload = await response.json();
@@ -96,9 +113,15 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 }
 
                 const rows = Array.isArray(payload?.candles) ? payload.candles : [];
+                candlesCache.set(cacheKey, rows);
                 setCandles(rows);
             } catch (error) {
-                if (!controller.signal.aborted) {
+                const isAbortError =
+                    controller.signal.aborted
+                    || (error instanceof DOMException && error.name === 'AbortError')
+                    || (error instanceof Error && error.name === 'AbortError');
+
+                if (!isAbortError) {
                     setCandles([]);
                     setCandlesError(error instanceof Error ? error.message : 'Failed to load candles');
                 }
@@ -106,11 +129,19 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 if (!controller.signal.aborted) {
                     setCandlesLoading(false);
                 }
+                if (inflightBySymbol.get(symbol) === controller) {
+                    inflightBySymbol.delete(symbol);
+                }
             }
         };
 
         run();
-        return () => controller.abort();
+        return () => {
+            if (inflightBySymbol.get(symbol) === controller) {
+                inflightBySymbol.delete(symbol);
+            }
+            controller.abort();
+        };
     }, [isPriceMode, symbol, effectiveTimeframe]);
 
     const formattedPrice = new Intl.NumberFormat('en-US', {
@@ -222,9 +253,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             type="button"
                             className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${preference.in_portfolio ? 'border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-200' : 'border-slate-300 text-slate-700 bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200'}`}
                             onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
-                            disabled={isSavingPreference}
                             data-testid={`portfolio-toggle-${symbolTestKey}`}
                             title={preference.in_portfolio ? 'Remove from In Portfolio' : 'Add to In Portfolio'}
+                            aria-busy={isSavingPreference}
                         >
                             <Star className={`w-3 h-3 ${preference.in_portfolio ? 'fill-current' : ''}`} />
                             <span className="hidden sm:inline">Portfolio</span>
@@ -234,9 +265,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             type="button"
                             className="rounded-md border border-slate-300 px-2 py-1 text-xs flex items-center gap-1 bg-white text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
                             onClick={() => onToggleCardMode(symbol, isPriceMode ? 'strategy' : 'price')}
-                            disabled={isSavingPreference}
                             data-testid={`mode-toggle-${symbolTestKey}`}
                             title={isPriceMode ? 'Switch to strategy mode' : 'Switch to price mode'}
+                            aria-busy={isSavingPreference}
                         >
                             <BarChart3 className="w-3 h-3" />
                             <span data-testid={`mode-label-${symbolTestKey}`}>{isPriceMode ? 'Price' : 'Strategy'}</span>
@@ -251,7 +282,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <div className="flex flex-wrap gap-2" role="group" aria-label={`Price timeframe for ${symbol}`}>
                             {PRICE_TIMEFRAMES.map((tf) => {
                                 const active = tf === effectiveTimeframe;
-                                const disabled = isSavingPreference || (isStock && tf !== '1d');
+                                const disabled = isStock && tf !== '1d';
                                 return (
                                     <button
                                         key={tf}
@@ -275,11 +306,24 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Price:</span>
                             <span className="font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formattedPrice}</span>
                         </div>
-                        <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md text-xs border border-gray-300 dark:border-gray-600">
-                            {candlesLoading ? 'Loading candles...' : null}
+                        <div
+                            className="relative p-2 bg-gray-100 dark:bg-gray-800 rounded-md text-xs border border-gray-300 dark:border-gray-600 min-h-[80px]"
+                            data-testid={`candles-chart-area-${symbolTestKey}`}
+                        >
                             {candlesError ? <span className="text-red-600 dark:text-red-300">{candlesError}</span> : null}
-                            {!candlesLoading && !candlesError && candles.length === 0 ? <span>No candle data.</span> : null}
-                            {!candlesLoading && !candlesError && candles.length > 0 ? <MiniCandlesChart candles={candles} /> : null}
+                            {!candlesError && candles.length === 0 ? <span>No candle data.</span> : null}
+                            {!candlesError && candles.length > 0 ? <MiniCandlesChart candles={candles} /> : null}
+                            {candlesLoading ? (
+                                <div
+                                    className="absolute top-2 right-2 inline-flex items-center gap-1 rounded bg-slate-900/75 px-2 py-1 text-[10px] font-medium text-white pointer-events-none"
+                                    data-testid={`candles-loading-${symbolTestKey}`}
+                                    role="status"
+                                    aria-live="polite"
+                                >
+                                    <span className="inline-block h-2 w-2 rounded-full border border-white/80 border-t-transparent animate-spin" />
+                                    <span>Loading chart...</span>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 ) : (
