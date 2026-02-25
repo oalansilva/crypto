@@ -28,6 +28,8 @@ _ALLOWED_CHANGE_ARTIFACTS = {
     "design": "design.md",
     "tasks": "tasks.md",
     "readme": "README.md",
+    # Non-canonical PT-BR review file (optional)
+    "review-ptbr": "review-ptbr.md",
 }
 
 
