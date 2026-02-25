@@ -211,7 +211,7 @@ def _validate_market_timeframe(asset: str, timeframe: str) -> str:
     return tf
 
 
-def _default_since_str(timeframe: str, limit: int) -> str:
+def _ui_default_since_str(timeframe: str, limit: int) -> str:
     """Return a safe default `since` for UI chart candles.
 
     We intentionally avoid huge backfills (which can freeze the UI) and instead
@@ -285,7 +285,7 @@ async def get_market_candles(
     try:
         asset_type = _classify_asset(raw_symbol)
         tf = _validate_market_timeframe(asset_type, timeframe)
-        since_str = _default_since_str(tf, limit=limit)
+        since_str = _ui_default_since_str(tf, limit=limit)
 
         data_source = ""
         if asset_type == "crypto":
