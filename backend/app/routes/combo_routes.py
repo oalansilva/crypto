@@ -308,7 +308,22 @@ async def run_combo_backtest(request: ComboBacktestRequest):
     """
     try:
         logger.info(f"Starting combo backtest for template: {request.template_name} on {request.symbol} {request.timeframe}")
-        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
+
+        # data_source may be omitted by the UI (e.g. Favorites -> View Results).
+        # Resolve in this order:
+        # 1) explicit request.data_source
+        # 2) parameters.data_source (persisted with the favorite)
+        # 3) infer from symbol (no "/" => US ticker => stooq; with "/" => crypto => ccxt)
+        from app.services.market_data_providers import resolve_data_source_for_symbol
+
+        requested_source = request.data_source
+        if (requested_source is None or str(requested_source).strip() == "") and isinstance(request.parameters, dict):
+            requested_source = request.parameters.get("data_source")
+
+        if requested_source is None or str(requested_source).strip() == "":
+            requested_source = resolve_data_source_for_symbol(request.symbol, None)
+
+        data_source = validate_data_source_timeframe(requested_source, request.timeframe)
         
         # Create strategy instance
         service = ComboService()
