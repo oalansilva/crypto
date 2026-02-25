@@ -291,7 +291,18 @@ async def get_market_candles(
         if asset_type == "crypto":
             data_source = CCXT_SOURCE
             provider = get_market_data_provider(data_source)
-            df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+            # For UI candles, never trigger full-history download when cache is empty.
+            # Some test fakes/providers may not support this kwarg.
+            try:
+                df = provider.fetch_ohlcv(
+                    raw_symbol,
+                    tf,
+                    since_str=since_str,
+                    limit=limit,
+                    full_history_if_empty=False,
+                )
+            except TypeError:
+                df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
         elif tf == "1d":
             # Prefer free Stooq EOD for stocks; fallback to Yahoo daily when needed.
             data_source = STOOQ_SOURCE

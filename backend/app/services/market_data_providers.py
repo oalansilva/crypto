@@ -78,6 +78,7 @@ class CcxtMarketDataProvider:
         since_str: Optional[str] = None,
         until_str: Optional[str] = None,
         limit: Optional[int] = None,
+        full_history_if_empty: bool = True,
     ) -> pd.DataFrame:
         return self.loader.fetch_data(
             symbol=symbol,
@@ -85,6 +86,7 @@ class CcxtMarketDataProvider:
             since_str=since_str,
             until_str=until_str,
             limit=limit,
+            full_history_if_empty=full_history_if_empty,
         )
 
 
