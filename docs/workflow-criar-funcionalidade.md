@@ -80,6 +80,34 @@ Viewer (exemplo):
 
 > Se o E2E não rodar localmente (deps), registrar e confiar no CI.
 
+#### Checklist de testes (PASSOU/FALHOU)
+
+Para cada change/feature:
+
+- [ ] **Backend tests**: `pytest -q backend/tests/integration` **PASSOU**
+  - Se falhou: corrigir e re-rodar até passar.
+
+- [ ] **E2E (se aplicável)**: `npm --prefix frontend run test:e2e` **PASSOU**
+  - Se falhou: corrigir e re-rodar.
+  - Se CI-only: registrar que local não roda e validar no GitHub Actions.
+
+- [ ] **Reportar no chat** (resumo obrigatório):
+
+Exemplo (sucesso):
+```
+✅ Testes backend: PASSOU
+✅ Testes E2E: PASSOU (quando aplicável)
+```
+
+Exemplo (falha):
+```
+❌ Testes backend: FALHOU
+   - comando: ./backend/.venv/bin/python -m pytest -q backend/tests/integration
+   - erro: <cole o trecho principal>
+```
+
+> Dica: quando o E2E falhar no CI, usar os artifacts do workflow (Playwright report/trace) para debug.
+
 ### 7) Deploy
 
 - `git push origin <branch>`
