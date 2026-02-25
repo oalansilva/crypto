@@ -66,6 +66,26 @@ Servidor rodando em: http://localhost:8000
 
 Documentação interativa: http://localhost:8000/docs
 
+## Strategy Lab — Tracing/Studio (dev)
+
+O Strategy Lab expõe runs em `POST /api/lab/run` e `GET /api/lab/runs/{run_id}`.
+
+Para habilitar metadados de tracing (dev-only):
+- Envie `debug_trace=true` no `POST /api/lab/run`.
+- O `GET /api/lab/runs/{run_id}` retorna um objeto `trace` com:
+  - `enabled`, `provider`, `thread_id`, `trace_id`
+  - `trace_url` (opcional)
+
+Para que o backend gere um link clicável (`trace_url`), configure uma destas env vars:
+- `LAB_TRACE_PUBLIC_URL` (preferido)
+- `TRACE_PUBLIC_URL`
+
+Exemplo:
+```bash
+export LAB_TRACE_PUBLIC_URL="http://localhost:2024"
+```
+O backend monta: `${LAB_TRACE_PUBLIC_URL}/{thread_id}`.
+
 ## 📡 Endpoints
 
 ### Health Check
@@ -77,6 +97,27 @@ GET /api/health
 ```http
 GET /api/presets
 ```
+
+### Combo Backtest (`ccxt` default, `stooq` for US stocks EOD)
+```http
+POST /api/combos/backtest
+Content-Type: application/json
+
+{
+  "template_name": "multi_ma_crossover",
+  "symbol": "AAPL",
+  "timeframe": "1d",
+  "data_source": "stooq",
+  "start_date": "2024-01-01",
+  "end_date": "2025-12-31",
+  "parameters": {}
+}
+```
+
+Notas:
+- `data_source` é opcional. Sem ele, o backend mantém o caminho crypto existente (`ccxt`).
+- `data_source=stooq` aceita apenas `timeframe=1d` (EOD).
+- O campo `parameters` da resposta inclui `data_source`; ao salvar em favoritos, o monitor reutiliza essa origem.
 
 ### Executar Backtest (Single)
 ```http

@@ -20,7 +20,12 @@ export function BackendLogViewer({
   const [error, setError] = useState<string | null>(null)
 
   const url = useMemo(() => {
-    const u = new URL(`${API_BASE_URL}/logs/tail`)
+    // API_BASE_URL may be relative (e.g. "/api"), which requires a base URL.
+    const endpoint = `${API_BASE_URL}/logs/tail`
+    const u = endpoint.startsWith('http')
+      ? new URL(endpoint)
+      : new URL(endpoint, window.location.origin)
+
     u.searchParams.set('name', name)
     u.searchParams.set('lines', String(lines))
     return u.toString()
@@ -37,8 +42,9 @@ export function BackendLogViewer({
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         if (alive) setContent(data.content || '')
-      } catch (e: any) {
-        if (alive) setError(e?.message || 'Erro ao buscar logs')
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Erro ao buscar logs'
+        if (alive) setError(msg)
       }
     }
 

@@ -15,7 +15,21 @@ def _get_gateway_url() -> str:
 
 
 def _get_gateway_token() -> Optional[str]:
-    return os.getenv("OPENCLAW_GATEWAY_TOKEN")
+    tok = os.getenv("OPENCLAW_GATEWAY_TOKEN")
+    if tok:
+        return tok
+
+    # Optional: read token from a file path so we don't hardcode secrets in the repo.
+    token_file = (os.getenv("OPENCLAW_GATEWAY_TOKEN_FILE") or "").strip()
+    if token_file:
+        try:
+            with open(token_file, "r", encoding="utf-8") as f:
+                v = f.read().strip()
+            return v or None
+        except Exception:
+            return None
+
+    return None
 
 
 def _now_ms() -> int:

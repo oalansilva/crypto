@@ -109,7 +109,17 @@ class IncrementalLoader:
         tmp_path = f"{parquet_path}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
         try:
             os.makedirs(os.path.dirname(parquet_path), exist_ok=True)
-            df.to_parquet(tmp_path, index=False)
+            try:
+                df.to_parquet(tmp_path, index=False)
+            except Exception as e:
+                msg = str(e)
+                if "Unable to find a usable engine" in msg and ("pyarrow" in msg or "fastparquet" in msg):
+                    raise RuntimeError(
+                        "DEPENDENCY_MISSING: parquet engine not available. "
+                        "Instale um engine parquet (recomendado: `pip install pyarrow`) "
+                        "ou `pip install fastparquet`."
+                    ) from e
+                raise
             os.replace(tmp_path, parquet_path)
         finally:
             try:

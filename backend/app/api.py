@@ -1,5 +1,8 @@
 # file: backend/app/api.py
-from fastapi import APIRouter, HTTPException
+import json
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query
 from typing import List
 
 from app.schemas.backtest import PresetResponse
@@ -7,6 +10,12 @@ from app.services.preset_service import get_presets
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
 
 router = APIRouter(prefix="/api")
+NASDAQ100_VERSION = "2026-02-23"
+NASDAQ100_CONFIG_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "config"
+    / f"nasdaq100_symbols.v{NASDAQ100_VERSION}.json"
+)
 
 
 @router.get("/health")
@@ -34,6 +43,40 @@ async def get_binance_symbols():
     return {
         "symbols": symbols,
         "count": len(symbols)
+    }
+
+
+@router.get("/exchanges/binance/timeframes")
+async def get_binance_timeframes():
+    """Get supported timeframes for Binance (cached)."""
+    from app.services.exchange_service import ExchangeService
+
+    service = ExchangeService()
+    tfs = service.fetch_binance_timeframes()
+    return {"timeframes": tfs, "count": len(tfs)}
+
+
+@router.get("/markets/us/nasdaq100")
+async def get_us_nasdaq100_symbols():
+    """Get versioned NASDAQ-100 ticker universe (plain US tickers)."""
+    try:
+        with NASDAQ100_CONFIG_PATH.open("r", encoding="utf-8") as f:
+            symbols = json.load(f)
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="NASDAQ-100 config not found")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Invalid NASDAQ-100 config format")
+
+    if not isinstance(symbols, list) or not all(isinstance(s, str) and s.strip() for s in symbols):
+        raise HTTPException(status_code=500, detail="Invalid NASDAQ-100 symbols payload")
+
+    ordered = [str(s).strip().upper() for s in symbols]
+    return {
+        "market": "us-stocks",
+        "universe": "nasdaq-100",
+        "version": NASDAQ100_VERSION,
+        "symbols": ordered,
+        "count": len(ordered),
     }
 
 
@@ -101,3 +144,36 @@ async def get_indicator_schema_endpoint(strategy_name: str):
             detail=f"Indicator '{strategy_name}' not found in pandas_ta library"
         )
     return schema
+
+
+@router.get("/arbitrage/spreads")
+async def get_arbitrage_spreads(
+    symbols: str = Query(
+        "USDT/USDC,USDT/DAI,USDC/DAI",
+        description="Lista de símbolos separados por vírgula",
+    ),
+    exchanges: str = Query("binance,okx,bybit", description="Lista de exchanges separadas por vírgula"),
+    threshold: float = Query(0.0, description="Spread mínimo em %"),
+):
+    """Detecta spreads entre exchanges via WebSocket (sem executar trades)."""
+    from app.services.arbitrage_spread_service import get_spreads_for_symbols
+
+    exchange_list = [e.strip() for e in exchanges.split(",") if e.strip()]
+    symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
+    try:
+        results = await get_spreads_for_symbols(
+            symbols=symbol_list,
+            exchanges=exchange_list,
+            threshold_pct=threshold,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "symbols": symbol_list,
+        "threshold": threshold,
+        "exchanges": exchange_list,
+        "results": results,
+    }

@@ -9,6 +9,7 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 import logging
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
@@ -19,6 +20,7 @@ from app.routes.opportunity_routes import router as opportunity_router
 from app.routes.logs import router as logs_router
 from app.routes.agent_chat import router as agent_chat_router
 from app.routes.openspec import router as openspec_router
+from app.routes.lab import router as lab_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -43,6 +45,7 @@ logger.info("=" * 80)
 
 from contextlib import asynccontextmanager
 from app.database import Base, engine
+from app.services.arbitrage_monitor import monitor_arbitrage_opportunities
 # Import models to register them with Base
 import app.models
 
@@ -134,13 +137,32 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database initialized successfully.")
-        
+
         # Seed combo_templates if empty
         seed_combo_templates_if_empty()
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
+
+    stop_event = asyncio.Event()
+    app.state.arbitrage_task = None
+    app.state.arbitrage_stop_event = stop_event
+
+    # Optional background monitor (can be noisy in logs)
+    if str(getattr(settings, "arbitrage_monitor_enabled", "1")).strip() not in {"0", "false", "False", "no", "NO"}:
+        app.state.arbitrage_task = asyncio.create_task(
+            monitor_arbitrage_opportunities(stop_event=stop_event)
+        )
+
     yield
-    # Cleanup if needed
+
+    stop_event.set()
+    task = getattr(app.state, "arbitrage_task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 settings = get_settings()
 
@@ -169,6 +191,7 @@ app.include_router(opportunity_router)
 app.include_router(logs_router)
 app.include_router(agent_chat_router)
 app.include_router(openspec_router)
+app.include_router(lab_router)
 
 @app.get("/")
 async def root():

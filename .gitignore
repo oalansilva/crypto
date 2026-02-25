@@ -26,15 +26,25 @@ data/*.parquet
 .DS_Store
 Thumbs.db
 
+# Local data
+/data/
+
 # Logs
 *.log
 full_execution_log.txt
 backend_log.txt
 
+# OpenSpec tool integrations (IDE/agent glue)
+# .codex/  (commented to allow versioning of skills)
+.codex/antigravity-skills/
+
 # Backend data (checkpoints, jobs, storage)
 backend/data/
 backend/backend/data/
 data/storage/
+
+# Backend runtime logs
+backend/logs/
 
 # Large data files (prevent accidental commits)
 *.parquet
@@ -50,6 +60,9 @@ data/storage/
 **/cache/
 **/.cache/
 
+# Frontend dev outputs
+frontend/vite.out
+
 # Test and debug scripts (root level)
 test_*.py
 debug_*.py
@@ -60,3 +73,4 @@ fix_*.py
 # Job files
 backend/data/jobs/*.json
 backend/data/jobs/results.db
+backend/full_execution_log.txt.1

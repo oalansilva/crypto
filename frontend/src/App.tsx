@@ -9,6 +9,9 @@ import { ComboOptimizePage } from './pages/ComboOptimizePage'
 import { ComboEditPage } from './pages/ComboEditPage'
 import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
+import LabPage from './pages/LabPage'
+import LabRunPage from './pages/LabRunPage'
+import ArbitragePage from './pages/ArbitragePage'
 import { Sparkles } from 'lucide-react'
 import { Toaster } from "@/components/ui/toaster"
 
@@ -20,7 +23,7 @@ function HomePage() {
         <div className="space-y-8 animate-in fade-in duration-500">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-4xl font-bold text-white mb-3">
-              <span className="gradient-text">New Backtest</span>
+              <span className="gradient-text">New Backtest2</span>
             </h2>
             <p className="text-gray-400 text-lg">
               Configure your parameters and start testing your strategy
@@ -85,7 +88,11 @@ function App() {
           <Route path="/combo/optimize" element={<ComboOptimizePage />} />
           <Route path="/combo/results" element={<ComboResultsPage />} />
           <Route path="/openspec" element={<OpenSpecListPage />} />
-          <Route path="/openspec/:id" element={<OpenSpecDetailPage />} />
+          {/* Catch-all to support nested specs like /openspec/backend/spec */}
+          <Route path="/openspec/*" element={<OpenSpecDetailPage />} />
+          <Route path="/lab" element={<LabPage />} />
+          <Route path="/lab/runs/:runId" element={<LabRunPage />} />
+          <Route path="/arbitrage" element={<ArbitragePage />} />
         </Route>
       </Routes>
       <Toaster />

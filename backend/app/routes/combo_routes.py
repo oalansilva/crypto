@@ -28,8 +28,11 @@ from app.schemas.combo_params import (
     CloneTemplateRequest
 )
 from app.services.combo_service import ComboService
-from src.data.incremental_loader import IncrementalLoader
 from app.services.combo_optimizer import ComboOptimizer
+from app.services.market_data_providers import (
+    get_market_data_provider,
+    validate_data_source_timeframe,
+)
 from app.services.batch_backtest_service import (
     run_batch_backtest,
     get_batch_progress,
@@ -305,6 +308,7 @@ async def run_combo_backtest(request: ComboBacktestRequest):
     """
     try:
         logger.info(f"Starting combo backtest for template: {request.template_name} on {request.symbol} {request.timeframe}")
+        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
         
         # Create strategy instance
         service = ComboService()
@@ -314,13 +318,13 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         )
         logger.info(f"Strategy instance created for {request.template_name}")
         
-        # Load market data
-        loader = IncrementalLoader()
-        df = loader.fetch_data(
+        # Load market data via provider selection (default: ccxt)
+        provider = get_market_data_provider(data_source)
+        df = provider.fetch_ohlcv(
             symbol=request.symbol,
             timeframe=request.timeframe,
             since_str=request.start_date,
-            until_str=request.end_date
+            until_str=request.end_date,
         )
         logger.info(f"Loaded {len(df)} candles for {request.symbol} {request.timeframe}")
         
@@ -447,7 +451,11 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             trades=trades,
             candles=candles,
             indicator_data=indicator_data,
-            parameters={**(request.parameters or {}), "direction": direction},
+            parameters={
+                **(request.parameters or {}),
+                "direction": direction,
+                "data_source": data_source,
+            },
             execution_mode="fast_1d",
             direction=direction,
         )
@@ -457,6 +465,8 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Backtest error: {str(e)}")
         import traceback
@@ -477,6 +487,7 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
     """
     try:
         logger.info(f"Starting optimization for template: {request.template_name} on {request.symbol} {request.timeframe}")
+        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
         
         # Create optimizer
         optimizer = ComboOptimizer()
@@ -496,6 +507,7 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
             template_name=request.template_name,
             symbol=request.symbol,
             timeframe=request.timeframe,
+            data_source=data_source,
             start_date=request.start_date,
             end_date=request.end_date,
             custom_ranges=request.custom_ranges,
@@ -524,6 +536,7 @@ async def start_batch_backtest(request: ComboBatchBacktestRequest, background_ta
     Poll GET /api/combos/backtest/batch/{job_id} for progress.
     """
     try:
+        validate_data_source_timeframe(request.data_source, request.timeframe)
         job_id = str(uuid.uuid4())
         payload = request.model_dump()
         init_batch_job(job_id, len(request.symbols))

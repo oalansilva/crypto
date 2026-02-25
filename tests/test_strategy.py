@@ -20,10 +20,13 @@ def test_sma_cross_signals():
     
     # Init strategy
     strategy = SMACrossStrategy(fast=2, slow=4)
-    signals = strategy.generate_signals(df)
-    
-    # Just verify we get a series of length 10
-    assert len(signals) == 10
+    signals_df = strategy.generate_signals(df)
+
+    # Strategy returns a DataFrame with indicators + 'signal'
+    assert len(signals_df) == 10
+    assert 'signal' in signals_df.columns
+
+    signals = signals_df['signal']
     # Verify values are in {-1, 0, 1}
     assert signals.isin([-1, 0, 1]).all()
     

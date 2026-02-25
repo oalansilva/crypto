@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by archiving change extend-timeframes. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Suporte a Backtesting de Período Completo
 
 O sistema DEVE (MUST) permitir que os usuários selecionem facilmente "Todos os dados disponíveis" sem escolher datas manualmente.
@@ -25,7 +23,7 @@ And `until` deve ser definido para o tempo atual (ou None)
 
 ### Requirement: Backtest Configuration Parameters
 The system SHALL accept the following backtest configuration parameters:
-- `symbol`: Trading pair (e.g., "BTC/USDT")
+- `symbol`: Trading symbol (e.g., "BTC/USDT" for crypto or "AAPL" for US stocks)
 - `timeframe`: Signal generation timeframe (e.g., "1d", "4h")
 - `since`: Start date (ISO 8601)
 - `until`: End date (ISO 8601)
@@ -33,20 +31,19 @@ The system SHALL accept the following backtest configuration parameters:
 - `parameters`: Strategy-specific parameters (e.g., MA lengths, stop loss)
 - `precision_mode`: Execution validation mode (`"fast"` | `"precise"`)
 - `intraday_timeframe`: Timeframe for intraday validation (e.g., `"1h"`, `"15m"`) - required when `precision_mode="precise"`
+- `data_source`: Optional market data source/provider identifier (e.g., `"ccxt"` for crypto, `"stooq"` for US stocks EOD)
 
-#### Scenario: Precise backtest configuration
-- **WHEN** user configures backtest with `{ "precision_mode": "precise", "intraday_timeframe": "1h" }`
-- **THEN** the system validates that 1h data is available for the requested period
-- **AND** proceeds with deep backtesting using 1h candles
+#### Scenario: US stock backtest configuration with free EOD data
+- **WHEN** user configures backtest with `{ "symbol": "AAPL", "timeframe": "1d", "data_source": "stooq" }`
+- **THEN** the system validates the symbol and fetches EOD candles from Stooq
 
-#### Scenario: Invalid precision configuration
-- **WHEN** user sets `precision_mode="precise"` without specifying `intraday_timeframe`
-- **THEN** return validation error: "intraday_timeframe required when precision_mode is precise"
+#### Scenario: Crypto backtest configuration remains supported
+- **WHEN** user configures backtest with `{ "symbol": "BTC/USDT", "timeframe": "1d" }`
+- **THEN** the system continues to fetch candles from the existing crypto data source
 
-#### Scenario: Fast mode (backward compatible)
-- **WHEN** user omits `precision_mode` or sets it to `"fast"`
-- **THEN** use daily-only execution (existing behavior)
-- **AND** ignore `intraday_timeframe` if provided
+#### Scenario: Invalid intraday request for EOD-only source
+- **WHEN** user configures backtest with `{ "symbol": "AAPL", "timeframe": "1h", "data_source": "stooq" }`
+- **THEN** the system returns a validation error indicating the provider supports EOD (1D) only
 
 ### Requirement: Batch backtest from Configure Backtest screen
 The system SHALL allow the user to trigger a **batch backtest** from the `Configure Backtest` screen, using the current configuration to run backtests for multiple symbols automatically and save resulting strategies into favorites.
@@ -76,3 +73,4 @@ The system SHALL allow the user to trigger a **batch backtest** from the `Config
   - quantidade de símbolos processados com sucesso
   - quantidade de símbolos que falharam
   - indicação de onde revisar os favoritos criados (ex.: link para `Strategy Favorites` ou `Opportunity Board`).
+

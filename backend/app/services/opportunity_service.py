@@ -4,13 +4,16 @@ import logging
 import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from pathlib import Path
 
 from app.strategies.combos.proximity_analyzer import ProximityAnalyzer
 from app.strategies.combos.combo_strategy import ComboStrategy
 from app.services.combo_service import ComboService
+from app.services.market_data_providers import (
+    CCXT_SOURCE,
+    get_market_data_provider,
+    resolve_data_source_for_symbol,
+)
 from app.symbols_config import get_excluded_symbols, is_excluded_symbol
-from src.data.incremental_loader import IncrementalLoader
 from app.database import DB_PATH
 
 logger = logging.getLogger(__name__)
@@ -129,7 +132,6 @@ class OpportunityService:
             # Use the canonical DB path from app.database
             db_path = str(DB_PATH)
         self.db_path = db_path
-        self.loader = IncrementalLoader()
         self.combo_service = ComboService(db_path)
         self.analyzer = ProximityAnalyzer()
 
@@ -230,12 +232,15 @@ class OpportunityService:
                 symbol = fav['symbol']
                 tf = fav['timeframe']
                 template_name = fav['strategy_name']
-                params = fav['parameters']
+                params = fav.get('parameters') or {}
+                data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
                 
-                logger.debug(f"Processing strategy {fav['id']}: {symbol} {tf} - {template_name}")
+                logger.debug(
+                    f"Processing strategy {fav['id']}: {symbol} {tf} - {template_name} (source={data_source})"
+                )
 
                 # 0. Skip known unsupported symbols (delisted / no data) before fetching
-                if _is_unsupported_symbol(symbol):
+                if data_source == CCXT_SOURCE and _is_unsupported_symbol(symbol):
                     skipped_strategies.append({
                         'id': fav['id'],
                         'symbol': symbol,
@@ -245,18 +250,29 @@ class OpportunityService:
                     continue
 
                 # 1. Fetch Data (1D usually)
-                cache_key = f"{symbol}_{tf}"
+                cache_key = f"{data_source}:{symbol}_{tf}"
                 if cache_key not in data_cache:
                     # Calculate start date (e.g. 500 days ago to be safe for EMA 200)
                     start_date = (datetime.now() - timedelta(days=500)).strftime("%Y-%m-%d")
-                    
-                    # Fetching enough data for indicators (e.g. 200 candles)
-                    df = self.loader.fetch_data(
-                        symbol=symbol,
-                        timeframe=tf,
-                        since_str=start_date,
-                        limit=None 
-                    )
+
+                    provider = get_market_data_provider(data_source)
+                    try:
+                        # Fetching enough data for indicators (e.g. 200 candles)
+                        df = provider.fetch_ohlcv(
+                            symbol=symbol,
+                            timeframe=tf,
+                            since_str=start_date,
+                            limit=None,
+                        )
+                    except Exception as fetch_exc:
+                        skipped_strategies.append({
+                            'id': fav['id'],
+                            'symbol': symbol,
+                            'timeframe': tf,
+                            'reason': f'Error fetching data ({data_source}): {fetch_exc}',
+                        })
+                        continue
+
                     data_cache[cache_key] = df
                 
                 df = data_cache[cache_key].copy()
@@ -272,7 +288,8 @@ class OpportunityService:
 
                 # Heuristic: fix corrupted tail candles (open[t] != close[t-1]) so MAs match TradingView/Binance.
                 # This is especially important for the last closed candle used in distance calculations.
-                df = _apply_crypto_continuity_fix(df, tf)
+                if data_source == CCXT_SOURCE:
+                    df = _apply_crypto_continuity_fix(df, tf)
 
                 # 2. Get Template Metadata from Database (entry_logic and exit_logic)
                 # This dynamically loads the buy/sell rules from combo_templates table
@@ -312,7 +329,7 @@ class OpportunityService:
                     # Improved parameter mapping logic
                     # Supports formats: ema_short, sma_medium, sma_long, etc.
                     for pk, pv in params.items():
-                        if pk == 'stop_loss':
+                        if pk in {'stop_loss', 'direction', 'data_source'}:
                             continue
                             
                         pk_lower = pk.lower()
@@ -468,10 +485,44 @@ class OpportunityService:
                 # Stop loss is NOT used to determine HOLD status - it's just historical info
                 # -------------------------------------------------------------------------
                 
-                # Determine if holding based ONLY on entry conditions (short > medium)
-                # Ignore stop loss history - if conditions are met NOW, we're in HOLD
-                is_holding = short_above_medium
+                # Determine if holding based ONLY on entry conditions (short > long)
+                # Ignore stop loss history - if trend up is met NOW, we're in HOLD
+                is_holding = short_above_long
                 
+                
+                # Compute entry distance override based on trend gate
+                # - If trend up is false (short <= long): use short -> long distance
+                # - If trend up is true (short > long): use short -> medium distance
+                entry_distance_override = None
+                if not df_for_distance.empty:
+                    row_used = df_for_distance.iloc[-1]
+                    if all(k in row_used for k in ('short', 'medium', 'long')):
+                        try:
+                            short_val = float(row_used['short'])
+                            medium_val = float(row_used['medium'])
+                            long_val = float(row_used['long'])
+                            if short_above_long:
+                                # Trend up true -> distance to short crossing medium (red -> orange)
+                                if short_val < medium_val:
+                                    denom = min(short_val, medium_val)
+                                    if denom > 0:
+                                        entry_distance_override = (medium_val - short_val) / denom * 100
+                                    else:
+                                        entry_distance_override = 0
+                                else:
+                                    entry_distance_override = 0
+                            else:
+                                # Trend up false -> distance to short crossing long (red -> blue)
+                                if short_val < long_val:
+                                    denom = min(short_val, long_val)
+                                    if denom > 0:
+                                        entry_distance_override = (long_val - short_val) / denom * 100
+                                    else:
+                                        entry_distance_override = 0
+                                else:
+                                    entry_distance_override = 0
+                        except (TypeError, ValueError):
+                            entry_distance_override = None
                 # Run backtest logic on closed candles for reference (but don't use for HOLD determination)
                 df_signals = strategy.generate_signals(df_closed)
                 
@@ -480,10 +531,75 @@ class OpportunityService:
                 last_signal_val = 0
                 if last_sig_idx is not None:
                      last_signal_val = df_signals.loc[last_sig_idx, 'signal']
+
+                # Compute stop-loss proximity (optional display on Monitor cards)
+                entry_price = None
+                stop_price = None
+                distance_to_stop_pct = None
+                try:
+                    direction = str(params.get('direction', 'long') or 'long').lower()
+                    sl_raw = params.get('stop_loss', template_data.get('stop_loss', None))
+                    sl = None
+                    if sl_raw is not None:
+                        sl = float(sl_raw)
+                        # Normalize: user uses 0.09 for 9%. If someone uses 9, treat as 9% too.
+                        if sl > 1:
+                            sl = sl / 100.0
+
+                    if sl is not None and sl > 0:
+                        # Use last confirmed BUY signal as entry
+                        buy_idx = df_signals[df_signals['signal'] == 1].last_valid_index()
+                        if buy_idx is not None and buy_idx in df_closed.index:
+                            entry_price = float(df_closed.loc[buy_idx, 'close'])
+                        elif is_holding and not df_closed.empty:
+                            # Fallback: infer entry from last bullish crossover on closed candles.
+                            # This is useful when the signal generator doesn't emit explicit BUYs,
+                            # but we still mark HOLD via trend condition.
+                            try:
+                                s = df_closed['short']
+                                m = df_closed['medium'] if 'medium' in df_closed.columns else None
+                                l = df_closed['long'] if 'long' in df_closed.columns else None
+
+                                inferred_idx = None
+                                if l is not None:
+                                    cross_long = (s.shift(1) <= l.shift(1)) & (s > l)
+                                    if cross_long.any():
+                                        inferred_idx = cross_long[cross_long].index[-1]
+
+                                if inferred_idx is None and m is not None:
+                                    cross_med = (s.shift(1) <= m.shift(1)) & (s > m)
+                                    if cross_med.any():
+                                        inferred_idx = cross_med[cross_med].index[-1]
+
+                                if inferred_idx is not None and inferred_idx in df_closed.index:
+                                    entry_price = float(df_closed.loc[inferred_idx, 'close'])
+                            except Exception:
+                                pass
+
+                        last_price = float(df.iloc[-1]['close'])
+                        if entry_price and last_price and last_price > 0:
+                            if direction == 'short':
+                                stop_price = entry_price * (1.0 + sl)
+                                distance_to_stop_pct = (stop_price - last_price) / last_price * 100.0
+                            else:
+                                stop_price = entry_price * (1.0 - sl)
+                                distance_to_stop_pct = (last_price - stop_price) / last_price * 100.0
+
+                            if distance_to_stop_pct is not None:
+                                distance_to_stop_pct = round(float(distance_to_stop_pct), 2)
+                            if stop_price is not None:
+                                stop_price = round(float(stop_price), 8)
+                            if entry_price is not None:
+                                entry_price = round(float(entry_price), 8)
+                except Exception:
+                    # Never fail opportunity generation due to stop computation
+                    entry_price = None
+                    stop_price = None
+                    distance_to_stop_pct = None
                 
                 # Debug for TRX
                 if symbol == 'TRX/USDT':
-                    logger.info(f"TRX/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > medium, ignoring stop loss)")
+                    logger.info(f"TRX/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > long, ignoring stop loss)")
                     if current_row is not None:
                         if 'short' in current_row and 'medium' in current_row:
                             logger.info(f"TRX/USDT - Current candle: short={current_row['short']:.4f}, medium={current_row['medium']:.4f}")
@@ -492,7 +608,7 @@ class OpportunityService:
                 
                 # Debug for ETH
                 if symbol == 'ETH/USDT':
-                    logger.info(f"ETH/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > medium, ignoring stop loss)")
+                    logger.info(f"ETH/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > long, ignoring stop loss)")
                     if current_row is not None:
                         if 'short' in current_row and 'medium' in current_row:
                             logger.info(f"ETH/USDT - short={current_row['short']:.4f}, medium={current_row['medium']:.4f}")
@@ -569,6 +685,7 @@ class OpportunityService:
                 # All cases where short > long are treated as HOLD
                 # -------------------------------------------------------------------------
                 
+                
                 # Standardize Entry Status Names for frontend clarity
                 # BUT: If we're in HOLD, set status to HOLDING
                 if is_holding:
@@ -576,9 +693,24 @@ class OpportunityService:
                     analysis['badge'] = 'info'
                 elif analysis['status'] == 'SIGNAL':
                     analysis['status'] = 'BUY_SIGNAL'
-                elif analysis['status'] == 'NEAR':
-                    analysis['status'] = 'BUY_NEAR'
-                
+                else:
+                    # Override entry distance and proximity when not holding
+                    if entry_distance_override is not None:
+                        threshold_pct = self.analyzer.threshold * 100
+                        if entry_distance_override <= threshold_pct:
+                            analysis['status'] = 'BUY_NEAR'
+                            analysis['badge'] = 'warning'
+                            if short_above_long:
+                                analysis['message'] = 'Approaching short crossing medium'
+                            else:
+                                analysis['message'] = 'Approaching short crossing long'
+                        else:
+                            analysis['status'] = 'NEUTRAL'
+                            analysis['badge'] = 'neutral'
+                            analysis['message'] = 'Waiting for setup'
+                        analysis['distance'] = round(entry_distance_override, 2)
+                    elif analysis['status'] == 'NEAR':
+                        analysis['status'] = 'BUY_NEAR'
                 # -------------------------------------------------------------------------
                 # NEW: Stateful Check (Stop Loss / Confirmed Signals)
                 # Proximity Analyzer is stateless (doesn't know if we hit -5% SL logic).
@@ -741,6 +873,9 @@ class OpportunityService:
                     'next_status_label': next_status_label,
                     'indicator_values': indicator_values if indicator_values else None,
                     'indicator_values_candle_time': indicator_values_candle_time,
+                    'entry_price': entry_price,
+                    'stop_price': stop_price,
+                    'distance_to_stop_pct': distance_to_stop_pct,
                     # Keep legacy fields for backward compatibility
                     'status': analysis['status'],
                     'badge': analysis['badge'],

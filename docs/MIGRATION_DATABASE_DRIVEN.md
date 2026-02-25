@@ -160,10 +160,10 @@ strategy = service.create_strategy(
 
 ```bash
 # Stop services
-.\stop.ps1
+./stop.sh
 
 # Start services
-.\start.ps1
+./start.sh
 ```
 
 ## Rollback Procedure
@@ -185,8 +185,8 @@ git revert HEAD~2  # Revert last 2 commits
 ### 3. Restart Services
 
 ```bash
-.\stop.ps1
-.\start.ps1
+./stop.sh
+./start.sh
 ```
 
 ## New Features

@@ -27,6 +27,11 @@ _deep_coverage_warned: set = set()
 from app.services.sequential_optimizer import SequentialOptimizer
 from app.services.combo_service import ComboService
 from app.services.backtest_service import BacktestService
+from app.services.market_data_providers import (
+    get_market_data_provider,
+    resolve_data_source_for_symbol,
+    validate_data_source_timeframe,
+)
 from src.data.incremental_loader import IncrementalLoader
 from app.services.deep_backtest import simulate_execution_with_15m
 
@@ -382,11 +387,33 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
         # Métricas via fonte única (_metrics_from_trades) – scoring e exibição consistentes
         metrics = _metrics_from_trades(trades, initial_capital, context_params=full_params)
 
-        if len(trades) > 0:
-            atr_col = next((c for c in df.columns if c.startswith('ATR')), None)
-            adx_col = next((c for c in df.columns if c.startswith('ADX')), None)
-            metrics['avg_atr'] = df[atr_col].mean() if atr_col else 0
-            metrics['avg_adx'] = df[adx_col].mean() if adx_col else 0
+        # Optional diagnostic indicators (best-effort).
+        # Use df_with_signals because that's where indicator columns live.
+        def _first_col(prefix: str):
+            pref = prefix.upper()
+            for c in df_with_signals.columns:
+                try:
+                    if str(c).upper().startswith(pref):
+                        return c
+                except Exception:
+                    continue
+            return None
+
+        atr_col = _first_col("ATR")
+        adx_col = _first_col("ADX")
+
+        def _safe_mean(series):
+            try:
+                m = series.dropna().mean()
+                # avoid serializing NaN
+                if m != m:  # NaN
+                    return None
+                return float(m)
+            except Exception:
+                return None
+
+        metrics['avg_atr'] = _safe_mean(df_with_signals[atr_col]) if atr_col else None
+        metrics['avg_adx'] = _safe_mean(df_with_signals[adx_col]) if adx_col else None
 
         return metrics, full_params
         
@@ -1413,6 +1440,7 @@ class ComboOptimizer:
         template_name: str,
         symbol: str,
         timeframe: str = "1h",
+        data_source: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         custom_ranges: Optional[Dict[str, Any]] = None,
@@ -1424,6 +1452,14 @@ class ComboOptimizer:
             direction = "long"
 
         optimization_start_time = time.time()
+        # If data_source is omitted, infer based on symbol:
+        # - symbols without "/" are treated as US tickers -> stooq
+        # - symbols with "/" are treated as crypto pairs -> ccxt
+        inferred = data_source
+        if inferred is None or str(inferred).strip() == "":
+            inferred = resolve_data_source_for_symbol(symbol, None)
+
+        selected_data_source = validate_data_source_timeframe(inferred, timeframe)
 
         # Generate stages
         fixed_timeframe = timeframe if timeframe else None
@@ -1447,18 +1483,19 @@ class ComboOptimizer:
             from datetime import datetime
             end_date = datetime.now().strftime("%Y-%m-%d")
         
-        # Load data
-        df = self.loader.fetch_data(
+        # Load data from selected provider (ccxt default; stooq for US stocks EOD)
+        provider = get_market_data_provider(selected_data_source)
+        df = provider.fetch_ohlcv(
             symbol=symbol,
             timeframe=timeframe,
             since_str=start_date,
-            until_str=end_date
+            until_str=end_date,
         )
 
         # Prefetch 15m cache ONCE (main process) when deep backtest is enabled.
         # Workers will only READ the parquet slice (read_only=True) to avoid concurrent writes/corruption.
         # After prefetch, ensure 15m tail is up to end_date (self-healing: avoids stale cache for this symbol).
-        if deep_backtest:
+        if deep_backtest and selected_data_source == "ccxt":
             try:
                 # For "all history", align intraday start to the first available daily candle
                 # (avoids downloading 15m before the exchange has data for the symbol).
@@ -1525,6 +1562,12 @@ class ComboOptimizer:
             logging.info(
                 "Deep backtest ON: workers will use 15m intraday data for exit simulation (stop/target precision)."
             )
+        elif deep_backtest and selected_data_source != "ccxt":
+            logging.info(
+                "Deep backtest disabled for data_source=%s (intraday cache is crypto/ccxt only).",
+                selected_data_source,
+            )
+            deep_backtest = False
         
         # Initialize best parameters (direction is fixed for the whole optimization)
         best_params = {"direction": direction}
@@ -1727,7 +1770,7 @@ class ComboOptimizer:
         
         try:
             # Reload data with best timeframe
-            df_final = self.loader.fetch_data(
+            df_final = provider.fetch_ohlcv(
                 symbol=symbol,
                 timeframe=timeframe,
                 since_str=start_date,
@@ -1822,14 +1865,31 @@ class ComboOptimizer:
             
             # Extract indicator data (only numeric columns)
             indicator_data = {}
-            excluded_cols = ['open', 'high', 'low', 'close', 'volume', 'signal', 'regime']
+            excluded_cols = {
+                'open', 'high', 'low', 'close', 'volume', 'signal', 'regime',
+                # timestamps / indexes (never treat as numeric indicator series)
+                'timestamp', 'timestamp_utc', 'time', 'date',
+            }
+
+            try:
+                from pandas.api.types import is_numeric_dtype
+            except Exception:
+                is_numeric_dtype = None
+
             for col in df_with_signals.columns:
-                if col not in excluded_cols:
-                    # Only include numeric columns
-                    try:
-                        indicator_data[col] = df_with_signals[col].fillna(0).tolist()
-                    except:
-                        pass  # Skip non-numeric columns
+                if col in excluded_cols:
+                    continue
+
+                try:
+                    series = df_with_signals[col]
+                    if is_numeric_dtype is not None and not is_numeric_dtype(series):
+                        continue
+
+                    # Ensure JSON-serializable numeric list
+                    indicator_data[col] = [float(x) if x is not None else 0.0 for x in series.fillna(0).tolist()]
+                except Exception:
+                    # Skip any non-numeric or non-serializable columns
+                    continue
             
         except Exception as e:
             logging.error(f"Final backtest failed: {e}")
@@ -1872,6 +1932,7 @@ class ComboOptimizer:
             "indicator_data": indicator_data,
             "parameters": best_params,  # For compatibility with ComboResultsPage
             "direction": best_params.get("direction", "long"),
+            "data_source": selected_data_source,
         }
 
 
@@ -1886,18 +1947,34 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
     import numpy as np
 
     out = {
+        # --- Core ---
         'total_trades': 0,
         'win_rate': 0.0,
-        'total_return': 0.0,
-        'total_return_pct': 0.0,
-        'avg_profit': 0.0,
+        'total_return': 0.0,          # decimal (e.g. 0.35 = +35%)
+        'total_return_pct': 0.0,      # percent (e.g. 35.0)
+        'avg_profit': 0.0,            # mean return per trade (decimal)
+
+        # --- Risk / ratios ---
         'sharpe_ratio': 0.0,
-        'sortino_ratio': 0.0,
+        'sortino_ratio': None,        # may be None when degenerate
+        'sortino_status': None,       # ok|degenerate|invalid
+        'downside_deviation': None,   # downside std (same units as returns)
+        'neg_return_count': 0,
+        'return_series_kind': 'per_trade',
+
+        # --- PnL / trade stats ---
         'profit_factor': 0.0,
         'max_loss': 0.0,
         'max_consecutive_losses': 0,
-        'max_drawdown': 0.0,
-        'expectancy': 0.0,
+
+        # Drawdown: keep both decimal + pct (avoid unit confusion)
+        'max_drawdown': 0.0,          # decimal (0..1)
+        'max_drawdown_pct': 0.0,      # percent (0..100)
+
+        # Expectancy: provide multiple units explicitly
+        'expectancy': 0.0,            # decimal per trade (same unit as avg_profit)
+        'expectancy_pct': 0.0,        # percent per trade
+        'expectancy_usd_10k': 0.0,    # legacy-style (assumes $10k notional)
     }
     if not trades:
         return out
@@ -1941,22 +2018,37 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
 
     total_return_pct = (cap / initial_capital - 1) * 100.0
     total_return = total_return_pct / 100.0
-    out['total_return'] = total_return
-    out['total_return_pct'] = total_return_pct
-    out['avg_profit'] = (total_return / n) if n else 0
+    out['total_return'] = float(total_return)
+    out['total_return_pct'] = float(total_return_pct)
 
-    # Sharpe
-    arr = np.array(returns)
-    std_dev = np.std(arr)
-    out['sharpe_ratio'] = (np.mean(arr) / std_dev) if std_dev > 0 else 0.0
+    # avg_profit = mean return per trade (decimal)
+    out['avg_profit'] = float(np.mean(np.array(returns, dtype=float))) if n else 0.0
 
-    # Sortino (downside deviation)
+    # Sharpe (per-trade return series; not annualized)
+    arr = np.array(returns, dtype=float)
+    std_dev = float(np.std(arr))
+    out['sharpe_ratio'] = float(np.mean(arr) / std_dev) if std_dev > 0 else 0.0
+
+    # Sortino (downside deviation) with guardrails
     neg = arr[arr < 0]
-    if len(neg) > 1:
-        down_std = np.std(neg)
-        out['sortino_ratio'] = (np.mean(arr) / down_std) if down_std > 0 else out['sharpe_ratio']
+    out['neg_return_count'] = int(len(neg))
+
+    # Note: with very few negatives or near-zero downside deviation, Sortino is degenerate.
+    # Returning a huge number is misleading; we return None + status instead.
+    eps = 1e-9
+    if len(neg) < 2:
+        out['sortino_ratio'] = None
+        out['downside_deviation'] = 0.0
+        out['sortino_status'] = 'degenerate'
     else:
-        out['sortino_ratio'] = out['sharpe_ratio']
+        down_std = float(np.std(neg))
+        out['downside_deviation'] = down_std
+        if down_std < eps:
+            out['sortino_ratio'] = None
+            out['sortino_status'] = 'degenerate'
+        else:
+            out['sortino_ratio'] = float(np.mean(arr) / down_std)
+            out['sortino_status'] = 'ok'
 
     # Profit factor (USD com compounding)
     cap2 = float(initial_capital)
@@ -1975,7 +2067,12 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
     )
 
     out['max_loss'] = float(np.min(arr))
-    out['expectancy'] = float(np.mean(arr)) * 10000.0  # $10k assumed
+
+    # Expectancy: keep units explicit
+    mean_r = float(np.mean(arr))
+    out['expectancy'] = mean_r
+    out['expectancy_pct'] = mean_r * 100.0
+    out['expectancy_usd_10k'] = mean_r * 10000.0  # legacy: assumes $10k notional
 
     # Max consecutive losses
     streak = 0
@@ -1988,15 +2085,18 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
             streak = 0
     out['max_consecutive_losses'] = max_streak
 
-    # Max drawdown (equity curve já em valor absoluto)
+    # Max drawdown (equity curve em valor absoluto)
     peak = float(initial_capital)
     max_dd = 0.0
     for eq in equity_curve:
         if eq > peak:
             peak = eq
         dd = (peak - eq) / peak if peak > 0 else 0
-        max_dd = max(max_dd, dd)
-    out['max_drawdown'] = max_dd * 100.0
+        max_dd = max(max_dd, float(dd))
+
+    # IMPORTANT: store drawdown as decimal + pct (avoid mixing units elsewhere)
+    out['max_drawdown'] = float(max_dd)            # 0..1
+    out['max_drawdown_pct'] = float(max_dd) * 100.0
 
     return out
 

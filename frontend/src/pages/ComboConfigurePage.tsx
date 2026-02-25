@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search, Pause, Square } from 'lucide-react'
-import { API_BASE_URL } from '../lib/apiBase'
+import { API_BASE_URL, apiUrl } from '../lib/apiBase'
 import { BackendLogViewer } from '../components/BackendLogViewer'
 
 interface TemplateMetadata {
@@ -18,6 +18,9 @@ interface TemplateMetadata {
     stop_loss: number
 }
 
+type Market = 'crypto' | 'us-stocks'
+const US_STOCKS_TOP_10 = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'GOOGL', 'AVGO', 'TSLA', 'NFLX', 'COST']
+
 export function ComboConfigurePage() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
@@ -30,6 +33,7 @@ export function ComboConfigurePage() {
     // Optimization parameters
     const [params, setParams] = useState<any[]>([])
     const [timeframe, setTimeframe] = useState('1d')
+    const [market, setMarket] = useState<Market>('crypto')
     const [deepBacktest, setDeepBacktest] = useState(true)
     const [direction, setDirection] = useState<'long' | 'short'>('long')
     const [logs, setLogs] = useState<string[]>([])
@@ -69,8 +73,8 @@ export function ComboConfigurePage() {
     const batchStartTimeRef = useRef<number | null>(null)
     const [clientElapsedSec, setClientElapsedSec] = useState(0)
 
-    // Fetch available symbols from Binance
-    const { data: symbolsData } = useQuery({
+    // Fetch available symbols from Binance (crypto market)
+    const { data: cryptoSymbolsData } = useQuery({
         queryKey: ['binance-symbols'],
         queryFn: async () => {
             const response = await fetch(`${API_BASE_URL}/exchanges/binance/symbols`);
@@ -83,6 +87,24 @@ export function ComboConfigurePage() {
         staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
     });
 
+    const { data: usStocksSymbolsData } = useQuery({
+        queryKey: ['markets', 'us', 'nasdaq100'],
+        queryFn: async () => {
+            const response = await fetch(`${API_BASE_URL}/markets/us/nasdaq100`)
+            if (!response.ok) {
+                throw new Error('Failed to fetch NASDAQ-100 symbols')
+            }
+            const data = await response.json()
+            return data.symbols as string[]
+        },
+        enabled: market === 'us-stocks',
+        staleTime: 1000 * 60 * 60 * 24,
+    })
+
+    const activeSymbols = market === 'us-stocks' ? (usStocksSymbolsData ?? []) : (cryptoSymbolsData ?? [])
+    const isUsStocksMarket = market === 'us-stocks'
+    const defaultSymbol = isUsStocksMarket ? (activeSymbols[0] ?? 'AAPL') : 'BTC/USDT'
+
     useEffect(() => {
         if (templateName) {
             fetchMetadata()
@@ -94,10 +116,28 @@ export function ComboConfigurePage() {
     }, [templateName])
 
     useEffect(() => {
-        if (batchScope === 'all' && (symbolsData ?? []).length > 0) {
-            setSelectedSymbols([...(symbolsData ?? [])])
+        if (isUsStocksMarket && timeframe !== '1d') {
+            setTimeframe('1d')
         }
-    }, [batchScope, symbolsData])
+    }, [isUsStocksMarket, timeframe])
+
+    useEffect(() => {
+        if (batchScope === 'all' && activeSymbols.length > 0) {
+            setSelectedSymbols([...activeSymbols])
+            return
+        }
+        if (batchScope === 'selected' && selectedSymbols.length === 0) {
+            setSelectedSymbols([defaultSymbol])
+        }
+    }, [activeSymbols, batchScope, defaultSymbol, selectedSymbols.length])
+
+    useEffect(() => {
+        setBatchScope('selected')
+        setSelectedSymbols([defaultSymbol])
+        setLeftHighlighted([])
+        setRightHighlighted([])
+        setLeftFilter('')
+    }, [market, defaultSymbol])
 
     const fetchMetadata = async () => {
         try {
@@ -170,7 +210,7 @@ export function ComboConfigurePage() {
     }
 
     const getBatchSymbols = (): string[] => {
-        if (batchScope === 'all') return symbolsData ?? []
+        if (batchScope === 'all') return activeSymbols
         return selectedSymbols
     }
 
@@ -234,11 +274,12 @@ export function ComboConfigurePage() {
             custom_ranges[p.name] = { min: p.min, max: p.max, step: p.step ?? 1 }
         })
         const { start_date, end_date } = getPeriodDates()
+        const dataSourcePayload = isUsStocksMarket ? { data_source: 'stooq' as const } : {}
 
         if (symbolsToRun.length === 1) {
             setRunning(true)
             try {
-                const existsUrl = new URL(`${API_BASE_URL}/favorites/exists`)
+                const existsUrl = apiUrl('/favorites/exists')
                 existsUrl.searchParams.set('strategy_name', templateName)
                 existsUrl.searchParams.set('symbol', symbolsToRun[0])
                 existsUrl.searchParams.set('timeframe', timeframe)
@@ -264,7 +305,8 @@ export function ComboConfigurePage() {
                         end_date,
                         deep_backtest: deepBacktest,
                         direction,
-                        custom_ranges
+                        custom_ranges,
+                        ...dataSourcePayload
                     })
                 })
                 if (!res.ok) {
@@ -274,7 +316,7 @@ export function ComboConfigurePage() {
                 const result = await res.json()
                 const name = `${result.template_name} - ${result.symbol} ${result.timeframe} (${new Date().toLocaleTimeString()})`
                 const baseParams = result.best_parameters ?? result.parameters ?? {}
-                const parameters = { ...baseParams, direction }
+                const parameters = { ...baseParams, direction, ...(isUsStocksMarket ? { data_source: 'stooq' } : {}) }
                 const favRes = await fetch(`${API_BASE_URL}/favorites/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -324,7 +366,8 @@ export function ComboConfigurePage() {
                     period_type: period,
                     deep_backtest: deepBacktest,
                     direction,
-                    custom_ranges
+                    custom_ranges,
+                    ...dataSourcePayload
                 })
             })
             if (!res.ok) {
@@ -379,8 +422,10 @@ export function ComboConfigurePage() {
     }, [batchRunning])
 
     const selectTopSymbols = () => {
-        const list = symbolsData ?? []
-        const top = list.filter(s => /^(BTC|ETH|BNB|SOL|XRP|ADA|DOGE|AVAX|MATIC|LINK)\/USDT$/i.test(s))
+        const list = activeSymbols
+        const top = isUsStocksMarket
+            ? list.filter(s => US_STOCKS_TOP_10.includes(s))
+            : list.filter(s => /^(BTC|ETH|BNB|SOL|XRP|ADA|DOGE|AVAX|MATIC|LINK)\/USDT$/i.test(s))
         setSelectedSymbols(prev => {
             const next = new Set(prev)
             top.forEach(x => next.add(x))
@@ -390,7 +435,7 @@ export function ComboConfigurePage() {
         setRightHighlighted([])
     }
 
-    const availableSymbols = (symbolsData ?? []).filter(s => !selectedSymbols.includes(s))
+    const availableSymbols = activeSymbols.filter(s => !selectedSymbols.includes(s))
     const leftFilterLower = leftFilter.trim().toLowerCase()
     const availableFiltered = leftFilterLower
         ? availableSymbols.filter(s => s.toLowerCase().includes(leftFilterLower))
@@ -410,7 +455,7 @@ export function ComboConfigurePage() {
         if (rightHighlighted.length === 0) return
         setSelectedSymbols(prev => {
             const next = prev.filter(s => !rightHighlighted.includes(s))
-            return next.length ? next : ['BTC/USDT']
+            return next.length ? next : [defaultSymbol]
         })
         setRightHighlighted([])
     }
@@ -419,8 +464,8 @@ export function ComboConfigurePage() {
         setSelectedSymbols(prev => [...prev, ...availableFiltered])
         setLeftHighlighted([])
     }
-    const clearToBtc = () => {
-        setSelectedSymbols(['BTC/USDT'])
+    const clearToDefault = () => {
+        setSelectedSymbols([defaultSymbol])
         setLeftHighlighted([])
         setRightHighlighted([])
     }
@@ -527,6 +572,23 @@ export function ComboConfigurePage() {
                         </h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-300 mb-2">Market</label>
+                                <select
+                                    value={market}
+                                    onChange={(e) => setMarket(e.target.value as Market)}
+                                    className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none"
+                                >
+                                    <option value="crypto" className="bg-gray-900 text-white">Crypto</option>
+                                    <option value="us-stocks" className="bg-gray-900 text-white">US Stocks (NASDAQ-100)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-300 mb-2">Market Data</label>
+                                <div className="glass px-4 py-3 rounded-lg border border-white/10 text-sm text-gray-200">
+                                    {isUsStocksMarket ? 'Stooq (free EOD 1D)' : 'CCXT (crypto exchange data)'}
+                                </div>
+                            </div>
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-semibold text-gray-300 mb-2">Escopo</label>
                                 <div className="flex flex-wrap gap-4 mb-4">
@@ -537,7 +599,7 @@ export function ComboConfigurePage() {
                                             checked={batchScope === 'all'}
                                             onChange={() => {
                                                 setBatchScope('all')
-                                                setSelectedSymbols([...(symbolsData ?? [])])
+                                                setSelectedSymbols([...activeSymbols])
                                                 setLeftHighlighted([])
                                                 setRightHighlighted([])
                                                 setLeftFilter('')
@@ -553,7 +615,7 @@ export function ComboConfigurePage() {
                                             checked={batchScope === 'selected'}
                                             onChange={() => {
                                                 setBatchScope('selected')
-                                                setSelectedSymbols(prev => (prev.length ? prev : ['BTC/USDT']))
+                                                setSelectedSymbols(prev => (prev.length ? prev : [defaultSymbol]))
                                                 setLeftHighlighted([])
                                                 setRightHighlighted([])
                                                 setLeftFilter('')
@@ -574,7 +636,7 @@ export function ComboConfigurePage() {
                                 </p>
                                 {batchScope === 'all' ? (
                                     <div className="py-6 rounded-lg bg-white/5 border border-white/10 text-center text-gray-400 text-sm">
-                                        Modo Todos — todos os pares USDT serão usados. Altere para &quot;Seleciona&quot; para escolher ativos.
+                                        Modo Todos — todos os ativos do mercado selecionado serão usados. Altere para &quot;Seleciona&quot; para escolher ativos.
                                     </div>
                                 ) : (
                                     <>
@@ -588,10 +650,10 @@ export function ComboConfigurePage() {
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={clearToBtc}
+                                                onClick={clearToDefault}
                                                 className="text-xs px-3 py-1.5 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-colors"
                                             >
-                                                Limpar (só BTC)
+                                                Limpar (1 ativo)
                                             </button>
                                         </div>
                                         <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
@@ -655,9 +717,9 @@ export function ComboConfigurePage() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={clearToBtc}
+                                                    onClick={clearToDefault}
                                                     className="p-1.5 rounded bg-white/10 text-gray-300 hover:bg-blue-500/30 hover:text-white transition-colors"
-                                                    title="Limpar (só BTC)"
+                                                    title="Limpar seleção"
                                                 >
                                                     <ChevronsLeft className="w-4 h-4" />
                                                 </button>
@@ -669,7 +731,7 @@ export function ComboConfigurePage() {
                                                         <div
                                                             key={s}
                                                             onClick={() => toggleRight(s)}
-                                                            onDoubleClick={() => setSelectedSymbols(prev => (prev.filter(x => x !== s).length ? prev.filter(x => x !== s) : ['BTC/USDT']))}
+                                                            onDoubleClick={() => setSelectedSymbols(prev => (prev.filter(x => x !== s).length ? prev.filter(x => x !== s) : [defaultSymbol]))}
                                                             className={`px-3 py-1.5 rounded-sm text-sm cursor-pointer truncate ${rightHighlighted.includes(s) ? 'bg-blue-500/30 text-white' : 'text-gray-300 hover:bg-white/10'}`}
                                                         >
                                                             {s}
@@ -692,15 +754,21 @@ export function ComboConfigurePage() {
                                 <select
                                     value={timeframe}
                                     onChange={(e) => setTimeframe(e.target.value)}
+                                    disabled={isUsStocksMarket}
                                     className="w-full glass px-4 py-3 rounded-lg border border-white/10 text-white focus:border-blue-500 focus:outline-none"
                                 >
-                                    <option value="1m" className="bg-gray-900 text-white">1 minute</option>
-                                    <option value="5m" className="bg-gray-900 text-white">5 minutes</option>
-                                    <option value="15m" className="bg-gray-900 text-white">15 minutes</option>
-                                    <option value="1h" className="bg-gray-900 text-white">1 hour</option>
-                                    <option value="4h" className="bg-gray-900 text-white">4 hours</option>
+                                    {!isUsStocksMarket && <option value="1m" className="bg-gray-900 text-white">1 minute</option>}
+                                    {!isUsStocksMarket && <option value="5m" className="bg-gray-900 text-white">5 minutes</option>}
+                                    {!isUsStocksMarket && <option value="15m" className="bg-gray-900 text-white">15 minutes</option>}
+                                    {!isUsStocksMarket && <option value="1h" className="bg-gray-900 text-white">1 hour</option>}
+                                    {!isUsStocksMarket && <option value="4h" className="bg-gray-900 text-white">4 hours</option>}
                                     <option value="1d" className="bg-gray-900 text-white">1 day</option>
                                 </select>
+                                {isUsStocksMarket && (
+                                    <p className="text-xs text-blue-300 mt-1">
+                                        US Stocks via Stooq supports free EOD candles only, so timeframe is fixed to 1D.
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-300 mb-2">

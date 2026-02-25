@@ -10,6 +10,12 @@ Para cada indicador, o sistema MUST retornar:
 - Nome legível / Categoria
 - Lista de parâmetros aceitos com seus tipos (int, float) e valores padrão.
 
+#### Scenario: Catálogo retorna metadados de indicadores
+- **GIVEN** o usuário consulta o endpoint de catálogo de indicadores
+- **WHEN** o sistema responde com a lista disponível
+- **THEN** cada indicador DEVE incluir identificador, nome/categoria e parâmetros
+- **AND** os parâmetros DEVEM informar tipo e valor padrão
+
 ### Requirement: Execução Dinâmica
 O motor de backtest SHALL aceitar uma definição abstrata de estratégia contendo:
 - Lista de indicadores a serem calculados.
@@ -18,54 +24,95 @@ O motor de backtest SHALL aceitar uma definição abstrata de estratégia conten
 O sistema NÃO DEVE depender de classes de estratégia hardcoded (como `SMACrossStrategy`) para novos testes.
 
 #### Scenario: Executar Estratégia Desconhecida
-- DADO que o front envia uma estratégia usando o indicador "Keltner Channels"
-- MESMO QUE não exista uma classe `KeltnerStrategy` no código
-- O sistema DEVE calcular os canais usando `pandas-ta` e executar as ordens baseadas nas condições fornecidas.
+- **GIVEN** o front envia uma estratégia usando o indicador "Keltner Channels"
+- **AND** não existe uma classe `KeltnerStrategy` no código
+- **WHEN** a execução é iniciada
+- **THEN** o sistema DEVE calcular os canais usando `pandas-ta`
+- **AND** DEVE executar as ordens baseadas nas condições fornecidas
 
 ### Requirement: Comparação Multi-Estratégia
 O endpoint de backtest SHALL aceitar uma lista de configurações de estratégia.
 O retorno DEVE agrupar os resultados por estratégia para permitir comparação direta de métricas (Sharpe, Retorno, Drawdown).
 
+#### Scenario: Resultado agrupado por estratégia
+- **GIVEN** o usuário envia múltiplas estratégias no mesmo request
+- **WHEN** o backtest termina
+- **THEN** a resposta DEVE agrupar métricas por estratégia
+- **AND** cada grupo DEVE incluir Sharpe, Retorno e Drawdown
+
 ### Requirement: Auto Backtest Orchestration
 The System SHALL provide an automated end-to-end backtest workflow that executes timeframe selection, parameter optimization, and risk management optimization sequentially without user intervention.
-The System MUST return the final optimized configuration and automatically save it to the user's favorites with a timestamp note.#### Scenario: User runs auto backtest for BTC/USDT with RSI
-Given the user selects symbol "BTC/USDT" and strategy "RSI"
-When the user triggers the auto backtest endpoint
-Then the System SHALL:
-1. Execute timeframe optimization across all default timeframes
-2. Select the best timeframe based on Sharpe Ratio
-3. Execute parameter grid search on the selected timeframe
-4. Select the best parameter combination
-5. Execute stop-loss/take-profit optimization
-6. Select the best risk configuration
-7. Save the final configuration to favorites with note "Auto-selected on [DATE]"
-And return the run_id and status to the user
+The System MUST return the final optimized configuration and automatically save it to the user's favorites with a timestamp note.
+
+#### Scenario: Auto backtest executa etapas sequenciais
+- **GIVEN** o usuário seleciona símbolo e estratégia
+- **WHEN** dispara o endpoint de auto backtest
+- **THEN** o sistema DEVE executar timeframe, parâmetros e risco em sequência
+- **AND** DEVE salvar a configuração final nos favoritos com timestamp
+- **AND** DEVE retornar `run_id` e status ao usuário
 
 #### Scenario: Progress tracking during auto backtest
-Given an auto backtest is running
-When the user queries the status endpoint
-Then the System MUST return:
-- Current stage (1/3, 2/3, or 3/3)
-- Stage description ("Optimizing timeframes", "Optimizing parameters", "Optimizing risk")
-- Progress percentage (e.g., 33%, 66%, 100%)
+- **GIVEN** um auto backtest em execução
+- **WHEN** o usuário consulta o endpoint de status
+- **THEN** o sistema DEVE retornar o estágio atual (1/3, 2/3, 3/3)
+- **AND** DEVE retornar a descrição do estágio
+- **AND** DEVE retornar a porcentagem de progresso
 
 ### Requirement: Stage Result Logging
 The System SHALL persist detailed logs of each optimization stage to `backend/full_execution_log.txt` using the existing logging format.
 Each stage log MUST include timestamps, stage identifier, and key results.
 
+#### Scenario: Logs por estágio são persistidos
+- **GIVEN** um auto backtest em execução
+- **WHEN** um estágio é concluído
+- **THEN** o sistema DEVE registrar o estágio com timestamp e identificador
+- **AND** DEVE persistir os principais resultados do estágio
+
 ### Requirement: Error Handling and Recovery (Auto Backtest)
 The System SHALL gracefully handle failures at any optimization stage and provide clear error feedback to the user.
 The System MUST save partial logs when a stage fails for debugging purposes.
 
+#### Scenario: Falha em estágio retorna erro claro
+- **GIVEN** um estágio falha durante o auto backtest
+- **WHEN** o sistema detecta a falha
+- **THEN** DEVE retornar erro claro ao usuário
+- **AND** DEVE salvar logs parciais para debug
+
 ### Requirement: Process Cancellation (Auto Backtest)
 The System SHALL allow users to cancel a running auto backtest at any time.
 
+#### Scenario: Usuário cancela execução
+- **GIVEN** um auto backtest em execução
+- **WHEN** o usuário solicita cancelamento
+- **THEN** o sistema DEVE interromper a execução
+- **AND** DEVE atualizar o status para cancelado
+
 ### Requirement: Input Validation (Auto Backtest)
-The System SHALL validate user inputs before starting the auto backtest workflow.### Requirement: Execution History (Auto Backtest)
+The System SHALL validate user inputs before starting the auto backtest workflow.
+
+#### Scenario: Entrada inválida bloqueia execução
+- **GIVEN** o usuário envia parâmetros inválidos
+- **WHEN** o endpoint de auto backtest é acionado
+- **THEN** o sistema DEVE recusar a execução
+- **AND** DEVE retornar mensagem de validação
+
+### Requirement: Execution History (Auto Backtest)
 The System SHALL persist all auto backtest executions and allow users to view past runs.
+
+#### Scenario: Histórico de execuções disponível
+- **GIVEN** o usuário concluiu execuções anteriores
+- **WHEN** consulta o histórico
+- **THEN** o sistema DEVE listar execuções passadas
+- **AND** DEVE incluir status e timestamps
 
 ### Requirement: Default Configuration Values (Auto Backtest)
 The System SHALL use consistent default values for fee and slippage across all auto backtest executions.
+
+#### Scenario: Valores padrão são aplicados
+- **GIVEN** o usuário não informa fee/slippage
+- **WHEN** o auto backtest inicia
+- **THEN** o sistema DEVE aplicar valores padrão consistentes
+- **AND** DEVE registrar esses valores no resultado
 
 ### Requirement: Intraday Execution Validation
 The backtest engine SHALL validate trade execution using intraday data when precision mode is enabled.
@@ -98,3 +145,72 @@ The system SHALL accept a `precision_mode` parameter in backtest requests.
 - **WHEN** backtest request omits `precision_mode`
 - **THEN** use daily-only execution (current behavior)
 - **AND** return results with metadata: `{ "precision": "fast" }`
+
+### Requirement: Dev Agent must include PythonREPLTool
+**Description:** The system MUST enable PythonREPLTool in the Dev agent so it can execute Python for validating and correcting logic expressions.
+
+#### Scenario: Dev uses PythonREPLTool for logic validation
+- **GIVEN** o Dev precisa validar uma expressão de lógica
+- **WHEN** ele executa a verificação/correção
+- **THEN** o Dev MUST poder usar PythonREPLTool
+- **AND** o resultado da execução deve estar disponível para a decisão de correção
+
+### Requirement: Dev correction precedes fallback logic
+**Description:** When validation fails for `entry_logic` or `exit_logic`, the system SHALL require Dev correction to produce valid boolean expressions and MUST NOT apply simplification fallback logic.
+
+#### Scenario: Invalid logic is rewritten to valid boolean format
+- **GIVEN** `entry_logic` and/or `exit_logic` is invalid during preflight
+- **WHEN** the validation failure is detected
+- **THEN** the system MUST request Dev rewrite and revalidate the rewritten expressions
+- **AND** the system MUST continue only if rewritten `entry_logic` and `exit_logic` are valid boolean expressions
+- **AND** the system MUST NOT replace logic with EMA/RSI or any other simplified fallback
+
+#### Scenario: Rewrite fails to produce valid boolean logic
+- **GIVEN** invalid `entry_logic` or `exit_logic` cannot be rewritten into valid boolean format
+- **WHEN** correction attempts are exhausted or correction fails validation
+- **THEN** the system MUST stop execution with a validation error
+- **AND** the system MUST NOT execute the run using fallback strategy logic
+
+### Requirement: Corrections must be logged
+**Description:** The system SHALL persist correction metadata in run trace for invalid logic handling, including original logic, rewritten logic, validation result, reason, and explicit no-fallback status.
+
+#### Scenario: Correction log is persisted with no-fallback evidence
+- **GIVEN** a correction attempt is performed for invalid `entry_logic` or `exit_logic`
+- **WHEN** the run proceeds or fails after validation
+- **THEN** the trace MUST record original logic, rewritten logic, validation result, and correction reason
+- **AND** the trace MUST identify Dev as the correction actor
+- **AND** the trace MUST explicitly indicate that no EMA/RSI simplification fallback was applied
+
+### Requirement: Dev may implement new indicators in backend
+**Description:** The system SHALL allow the Dev to add new indicators by modifying backend engine code (e.g., ComboStrategy), without touching frontend/interface code.
+
+#### Scenario: Missing indicator is added
+- **GIVEN** the Dev needs an indicator not supported (e.g., any pandas_ta indicator)
+- **WHEN** the Dev updates the backend engine
+- **THEN** the new indicator MUST be available as a column for logic evaluation
+- **AND** no frontend/interface files are modified
+
+### Requirement: Indicator additions and corrections must be logged
+**Description:** The system MUST log when a new indicator is added or when a backend correction is applied, including the indicator name and column alias.
+
+#### Scenario: Trace records indicator addition
+- **GIVEN** a new indicator is implemented
+- **WHEN** a run uses that indicator
+- **THEN** the trace MUST record the indicator name and alias
+- **AND** the log MUST be persisted with the run
+
+#### Scenario: Trace records auto-correction
+- **GIVEN** an error was diagnosed and corrected by the Dev
+- **WHEN** the backend is updated
+- **THEN** the trace MUST record the correction details
+- **AND** the log MUST be persisted with the run
+
+### Requirement: Dev must diagnose and fix errors
+**Description:** When the system detects an execution error (e.g., missing indicator column), the Dev SHALL diagnose the root cause and apply a backend fix without changing frontend/interface code.
+
+#### Scenario: Missing indicator is diagnosed and fixed
+- **GIVEN** a run fails due to an unknown indicator column
+- **WHEN** the Dev analyzes the failure
+- **THEN** the Dev MUST implement the missing indicator in the backend
+- **AND** the run MUST proceed without frontend/interface changes
+

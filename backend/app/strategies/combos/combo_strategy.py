@@ -17,25 +17,26 @@ from .helpers import HELPER_FUNCTIONS
 class ComboStrategy:
     """
     Base class for combo strategies that combine multiple indicators.
-    
+
     Supports:
     - Multiple instances of the same indicator
     - Indicator aliases for clear logic
     - Custom entry/exit logic evaluation
     - Helper functions (crossover, crossunder, etc.)
     """
-    
+
     def __init__(
         self,
         indicators: List[Dict[str, Any]],
         entry_logic: str,
         exit_logic: str,
         stop_loss: float = 0.015,
-        stop_gain: Optional[float] = None
+        stop_gain: Optional[float] = None,
+        derived_features: Optional[List[Dict[str, Any]]] = None
     ):
         """
         Initialize combo strategy.
-        
+
         Args:
             indicators: List of indicator configs with type, alias, and params
             entry_logic: Entry logic expression (e.g., "(close > fast) AND (RSI < 30)")
@@ -48,49 +49,145 @@ class ComboStrategy:
         self.exit_logic = exit_logic
         self.stop_loss = stop_loss
         self.stop_gain = stop_gain
-        
+        self.derived_features = derived_features or []
+
         self._indicator_cache = {}
         self._validate_aliases()
-    
+
     def _validate_aliases(self):
         """Validate that all aliases are unique."""
         aliases = [ind.get('alias') for ind in self.indicators if ind.get('alias')]
         if len(aliases) != len(set(aliases)):
             duplicates = [a for a in aliases if aliases.count(a) > 1]
             raise ValueError(f"Duplicate aliases found: {set(duplicates)}")
-    
+
+    def _normalize_derived_feature(self, item: Any) -> Optional[Dict[str, Any]]:
+        if isinstance(item, str):
+            token = item.strip()
+            if not token:
+                return None
+            m = re.match(r"^(?P<source>[A-Za-z_][A-Za-z0-9_]*)_(?P<suffix>prev|lag|shift|slope|mean|rolling_mean|pct_change)(?P<num>\d+)?$", token)
+            if not m:
+                return None
+            source = m.group("source")
+            suffix = m.group("suffix")
+            num = m.group("num")
+            period = int(num) if num else 1
+            transform = "lag" if suffix in ("prev", "lag", "shift") else suffix
+            if transform == "mean":
+                transform = "rolling_mean"
+            return {
+                "name": token,
+                "source": source,
+                "transform": transform,
+                "params": {"period": period} if period else {},
+            }
+
+        if not isinstance(item, dict):
+            return None
+
+        name = str(item.get("name") or item.get("alias") or "").strip()
+        source = str(item.get("source") or item.get("base") or "").strip()
+        transform = str(item.get("transform") or "").strip().lower()
+        params = item.get("params") if isinstance(item.get("params"), dict) else {}
+
+        if not source or not transform:
+            return None
+
+        if not name:
+            if transform in ("lag", "prev", "shift"):
+                name = f"{source}_prev"
+            elif transform == "rolling_mean":
+                name = f"{source}_mean"
+            else:
+                name = f"{source}_{transform}"
+
+        if transform == "prev":
+            transform = "lag"
+        if transform == "shift":
+            transform = "lag"
+        if transform == "mean":
+            transform = "rolling_mean"
+
+        return {
+            "name": name,
+            "source": source,
+            "transform": transform,
+            "params": params,
+        }
+
+    def _apply_derived_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        if not self.derived_features:
+            return df
+
+        allowed = {"lag", "slope", "rolling_mean", "pct_change"}
+        for raw in self.derived_features:
+            spec = self._normalize_derived_feature(raw)
+            if not spec:
+                raise RuntimeError(f"Invalid derived feature declaration: {raw}")
+
+            name = spec.get("name")
+            source = spec.get("source")
+            transform = spec.get("transform")
+            params = spec.get("params") or {}
+
+            if transform not in allowed:
+                raise RuntimeError(f"Unsupported derived transform: {transform}")
+
+            if source not in df.columns:
+                raise RuntimeError(f"Derived feature source not found: {source}")
+
+            period = 1
+            try:
+                period = int(params.get("period") or params.get("window") or 1)
+            except Exception:
+                period = 1
+            period = max(1, period)
+
+            series = df[source]
+            if transform == "lag":
+                df[name] = series.shift(period)
+            elif transform == "slope":
+                df[name] = (series - series.shift(period)) / float(period)
+            elif transform == "rolling_mean":
+                df[name] = series.rolling(window=period).mean()
+            elif transform == "pct_change":
+                df[name] = series.pct_change(periods=period)
+
+        return df
+
     def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Calculate all indicators and add them to the dataframe.
-        
+
         Args:
             df: DataFrame with OHLCV data
-        
+
         Returns:
             DataFrame with calculated indicators
         """
         # Check cache
         if 'calculated' in self._indicator_cache:
             return self._indicator_cache['calculated'].copy()
-        
+
         df = df.copy()
-        
+
         for indicator in self.indicators:
             ind_type = indicator['type'].lower()
             params = indicator.get('params', {})
             alias = indicator.get('alias')
-            
+
             try:
                 if ind_type == 'ema':
                     length = params.get('length', 9)
                     col_name = alias if alias else f'EMA_{length}'
                     df[col_name] = ta.ema(df['close'], length=length)
-                
+
                 elif ind_type == 'sma':
                     length = params.get('length', 20)
                     col_name = alias if alias else f'SMA_{length}'
                     df[col_name] = ta.sma(df['close'], length=length)
-                
+
                 elif ind_type == 'rsi':
                     length = params.get('length', 14)
                     # Keep the traditional RSI_{length} column name for backward-compatible logic,
@@ -100,53 +197,121 @@ class ComboStrategy:
                     df[col_name] = rsi_series
                     if alias and alias != col_name:
                         df[alias] = rsi_series
-                
+
                 elif ind_type == 'macd':
                     fast = params.get('fast', 12)
                     slow = params.get('slow', 26)
                     signal = params.get('signal', 9)
                     alias_prefix = alias if alias else 'MACD'
-                    
+
                     macd_result = ta.macd(df['close'], fast=fast, slow=slow, signal=signal)
                     df[f'{alias_prefix}_macd'] = macd_result[f'MACD_{fast}_{slow}_{signal}']
                     df[f'{alias_prefix}_signal'] = macd_result[f'MACDs_{fast}_{slow}_{signal}']
                     df[f'{alias_prefix}_histogram'] = macd_result[f'MACDh_{fast}_{slow}_{signal}']
-                
+
                 elif ind_type == 'bbands' or ind_type == 'bollinger':
                     length = params.get('length', 20)
                     std = params.get('std', 2)
                     alias_prefix = alias if alias else 'BB'
-                    
+
                     bbands_result = ta.bbands(df['close'], length=length, std=std)
                     # Handle potential column name variations (e.g. with .0 suffix)
                     cols = bbands_result.columns.tolist()
                     lower_col = next(c for c in cols if c.startswith(f'BBL_{length}_{std}'))
                     mid_col = next(c for c in cols if c.startswith(f'BBM_{length}_{std}'))
                     upper_col = next(c for c in cols if c.startswith(f'BBU_{length}_{std}'))
-                    
+
                     df[f'{alias_prefix}_upper'] = bbands_result[upper_col]
                     df[f'{alias_prefix}_middle'] = bbands_result[mid_col]
                     df[f'{alias_prefix}_lower'] = bbands_result[lower_col]
-                
+
                 elif ind_type == 'atr':
                     length = params.get('length', 14)
                     col_name = f'ATR_{length}'
-                    df[col_name] = ta.atr(df['high'], df['low'], df['close'], length=length)
-                
+                    atr_series = ta.atr(df['high'], df['low'], df['close'], length=length)
+                    df[col_name] = atr_series
+                    # Support stable alias when provided (e.g. "atr")
+                    if alias and alias != col_name:
+                        df[alias] = atr_series
+
                 elif ind_type == 'adx':
                     length = params.get('length', 14)
                     col_name = f'ADX_{length}'
                     adx_result = ta.adx(df['high'], df['low'], df['close'], length=length)
-                    df[col_name] = adx_result[f'ADX_{length}']
-                
+                    adx_series = adx_result[f'ADX_{length}']
+                    df[col_name] = adx_series
+                    # Support stable alias when provided (e.g. "adx")
+                    if alias and alias != col_name:
+                        df[alias] = adx_series
+
+                elif ind_type == 'roc':
+                    length = params.get('length', 20)
+                    col_name = f'ROC_{length}'
+                    roc_series = ta.roc(df['close'], length=length)
+                    df[col_name] = roc_series
+                    if alias and alias != col_name:
+                        df[alias] = roc_series
+
                 elif ind_type == 'volume_sma':
                     length = params.get('length', 20)
                     col_name = alias if alias else f'VOL_SMA_{length}'
                     df[col_name] = ta.sma(df['volume'], length=length)
-            
+
+                else:
+                    # Generic pandas_ta indicator support
+                    func = getattr(ta, ind_type, None)
+                    if func is None:
+                        raise RuntimeError(f"Unsupported indicator type: {ind_type}")
+
+                    import inspect
+
+                    sig = None
+                    try:
+                        sig = inspect.signature(func)
+                    except Exception:
+                        sig = None
+
+                    kwargs = dict(params or {})
+                    if sig is not None:
+                        for name in sig.parameters:
+                            if name in ("open", "high", "low", "close", "volume") and name not in kwargs:
+                                if name in df.columns:
+                                    kwargs[name] = df[name]
+
+                    result = None
+                    try:
+                        if any(k in kwargs for k in ("open", "high", "low", "close", "volume")):
+                            result = func(**kwargs)
+                        else:
+                            result = func(df["close"], **kwargs)
+                    except Exception as e:
+                        raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
+
+                    if isinstance(result, pd.DataFrame):
+                        if alias and alias in result.columns:
+                            series = result[alias]
+                            col_name = alias
+                        else:
+                            col_name = alias or str(result.columns[0])
+                            series = result.iloc[:, 0]
+                        df[col_name] = series
+                    else:
+                        col_name = alias if alias else ind_type
+                        df[col_name] = result
+
+                    if alias and alias != col_name:
+                        df[alias] = df[col_name]
+
+                
+                    length = params.get('length', 20)
+                    col_name = alias if alias else f'VOL_SMA_{length}'
+                    df[col_name] = ta.sma(df['volume'], length=length)
+
             except Exception as e:
                 raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
-        
+
+        df = self._apply_derived_features(df)
+
         # Ensure all columns are numeric to prevent NoneType errors in eval evaluation
         # This handles cases where pandas-ta might return object types with None
         # IMPORTANT: Skip 'regime' column as it contains categorical strings
@@ -158,17 +323,17 @@ class ComboStrategy:
 
         # Cache the result
         self._indicator_cache['calculated'] = df.copy()
-        
+
         return df
-    
+
     def _evaluate_logic_vectorized(self, df: pd.DataFrame, logic: str) -> pd.Series:
         """
         Evaluate entry/exit logic for the ENTIRE dataframe at once.
-        
+
         Args:
             df: DataFrame with indicators
             logic: Logic expression to evaluate
-        
+
         Returns:
             Boolean Series where True means logic condition is met
         """
@@ -181,6 +346,11 @@ class ComboStrategy:
             logic_expr = re.sub(r"\bNOT\b", "not", logic_expr, flags=re.IGNORECASE)
             # Also accept C-style operators if present in templates.
             logic_expr = logic_expr.replace("&&", " and ").replace("||", " or ")
+
+            # Backward-compatible dotted indicator access:
+            # Some templates use bb.upper / bb.middle / bb.lower. Internally we materialize as
+            # bb_upper / bb_middle / bb_lower.
+            logic_expr = re.sub(r"\b([A-Za-z_][A-Za-z0-9_]*)\.(upper|middle|lower)\b", r"\1_\2", logic_expr)
 
             # Create local context with vectorized helper functions
             local_context = HELPER_FUNCTIONS.copy()
@@ -195,10 +365,32 @@ class ComboStrategy:
                 except Exception:
                     return ~x
             local_context["NOT"] = NOT
-            
+
             # Add all dataframe columns to context (Vectors/Series)
             for col in df.columns:
                 local_context[col] = df[col]
+
+            # Preflight: detect unknown identifiers early (avoids silent 0-trade runs)
+            # This catches cases like `bb.upper` (mapped to bb_upper) when the column doesn't exist.
+            tokens = set(re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", logic_expr))
+            reserved = {
+                "and",
+                "or",
+                "not",
+                "True",
+                "False",
+                "None",
+            }
+            # helper functions are available via HELPER_FUNCTIONS/local_context
+            allowed = set(local_context.keys()) | reserved
+            missing = sorted([t for t in tokens if t not in allowed])
+            if missing:
+                raise RuntimeError(
+                    "Logic references unknown columns/functions: "
+                    + ", ".join(missing)
+                    + ". Available example columns: "
+                    + ", ".join(list(df.columns)[:20])
+                )
 
             # Compatibility mapping for RSI references:
             # Some example templates hardcode RSI_14 but also define optimization over RSI length.
@@ -302,7 +494,7 @@ class ComboStrategy:
             _map_length_token("SMA", "sma")
             _map_length_token("ATR", "atr")
             _map_length_token("ADX", "adx")
-            
+
             # Rewrite boolean logic to vectorized operators using AST (prevents precedence bugs).
             # Example: `rsi < 30 and close > ema_fast` becomes `(rsi < 30) & (close > ema_fast)`
             class _VectorizeBoolOps(ast.NodeTransformer):
@@ -334,29 +526,29 @@ class ComboStrategy:
 
             # Evaluate the logic globally (fast!)
             result = eval(code, {"__builtins__": {}}, local_context)
-            
+
             if isinstance(result, pd.Series):
                 return result.fillna(False).astype(bool)
-            
+
             # If result is scalar (e.g. "True"), broadcast to Series
             return pd.Series([bool(result)] * len(df), index=df.index)
-        
+
         except Exception as e:
             # Fallback or strict error
             raise RuntimeError(f"Error evaluating vectorized logic '{logic}': {str(e)}")
 
-    
+
     def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Generate buy/sell signals based on entry/exit logic AND stop loss.
-        
+
         CRITICAL: Signals are generated AFTER candle close confirmation (TradingView style).
         - Crossover detected on day N → Signal applied on day N+1
         - This ensures we only trade on confirmed crossovers after candle close
-        
+
         Args:
             df: DataFrame with OHLCV data
-        
+
         Returns:
             DataFrame with 'signal' column (1=buy, -1=sell, 0=hold)
         """
@@ -367,10 +559,10 @@ class ComboStrategy:
 
         # Calculate indicators
         df = self.calculate_indicators(df)
-        
+
         # Initialize signal column
         df['signal'] = 0
-        
+
         # ---------------------------------------------------------------------
         # OPTIMIZATION: Vectorized Logic Evaluation
         # ---------------------------------------------------------------------
@@ -389,26 +581,26 @@ class ComboStrategy:
 
         # Iteration is still needed for state management (In Position, Stop Loss),
         # but now we strictly check boolean flags (O(1)) instead of evaluating logic.
-        
+
         in_position = False
         entry_price = None
         pending_entry = False
         pending_exit = False
-        
+
         # Pre-convert columns to Numpy arrays for max speed in the loop
         # (Pandas .iloc is slow inside loops)
         close_arr = df['close'].values
         open_arr = df['open'].values
         low_arr = df['low'].values
-        
+
         entry_bits = entry_mask.values
         exit_bits = exit_mask.values
-        
+
         # Output signal arrays
         signals = np.zeros(len(df), dtype=int)
-        
+
         stop_loss_decimal = self.stop_loss
-        
+
         for i in range(len(df)):
             # Apply confirmed signals from Previous Candle
             if pending_entry and not in_position:
@@ -417,7 +609,7 @@ class ComboStrategy:
                 entry_price = float(open_arr[i])
                 pending_entry = False
                 continue
-            
+
             if pending_exit and in_position:
                 signals[i] = -1
                 in_position = False
@@ -429,7 +621,7 @@ class ComboStrategy:
             if in_position and entry_price is not None:
                 current_low = float(low_arr[i])
                 low_pnl = (current_low - entry_price) / entry_price
-                
+
                 if low_pnl <= -stop_loss_decimal:
                     signals[i] = -1
                     in_position = False
@@ -438,46 +630,46 @@ class ComboStrategy:
                     continue
 
             # Logic Check for Signal Confirmation (happens at close)
-            # If logic is True at index i (Close of candle i), 
+            # If logic is True at index i (Close of candle i),
             # we set pending flag for index i+1 (Open of candle i+1)
-            
+
             if i > 0: # Logic usually requires lookback (shift)
                 # Entry Logic
                 if not in_position:
                     if entry_bits[i]:
                         pending_entry = True
-                
+
                 # Exit Logic
                 elif in_position:
                     if exit_bits[i]:
                         pending_exit = True
-        
+
         # Write back results
         df['signal'] = signals
         return df
-    
+
     def get_indicator_columns(self) -> List[str]:
         """
         Get list of indicator column names for chart visualization.
-        
+
         Returns:
             List of column names
         """
         columns = []
-        
+
         for indicator in self.indicators:
             ind_type = indicator['type'].lower()
             params = indicator.get('params', {})
             alias = indicator.get('alias')
-            
+
             if ind_type in ['ema', 'sma']:
                 length = params.get('length', 9 if ind_type == 'ema' else 20)
                 columns.append(alias if alias else f'{ind_type.upper()}_{length}')
-            
+
             elif ind_type == 'rsi':
                 length = params.get('length', 14)
                 columns.append(f'RSI_{length}')
-            
+
             elif ind_type == 'macd':
                 alias_prefix = alias if alias else 'MACD'
                 columns.extend([
@@ -485,7 +677,7 @@ class ComboStrategy:
                     f'{alias_prefix}_signal',
                     f'{alias_prefix}_histogram'
                 ])
-            
+
             elif ind_type in ['bbands', 'bollinger']:
                 alias_prefix = alias if alias else 'BB'
                 columns.extend([
@@ -493,17 +685,17 @@ class ComboStrategy:
                     f'{alias_prefix}_middle',
                     f'{alias_prefix}_lower'
                 ])
-            
+
             elif ind_type == 'atr':
                 length = params.get('length', 14)
                 columns.append(f'ATR_{length}')
-            
+
             elif ind_type == 'adx':
                 length = params.get('length', 14)
                 columns.append(f'ADX_{length}')
-            
+
             elif ind_type == 'volume_sma':
                 length = params.get('length', 20)
                 columns.append(alias if alias else f'VOL_SMA_{length}')
-        
+
         return columns

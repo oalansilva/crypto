@@ -22,4 +22,9 @@ export interface Opportunity {
     indicator_values?: Record<string, number>;
     /** Data/hora do candle usado (ISO) para conferir com TradingView */
     indicator_values_candle_time?: string | null;
+
+    /** Optional risk info */
+    entry_price?: number | null;
+    stop_price?: number | null;
+    distance_to_stop_pct?: number | null;
 }
