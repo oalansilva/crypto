@@ -147,8 +147,9 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await page.goto('/favorites');
 
   await expect(page.getByRole('heading', { name: 'Strategy Favorites' })).toBeVisible();
-  await expect(page.getByText('NVDA')).toBeVisible();
-  await expect(page.getByText('BTC/USDT')).toBeVisible();
+  // Be explicit to avoid matching dropdown <option> elements.
+  await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
   await expect(page.getByText('ema rsi', { exact: false })).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
