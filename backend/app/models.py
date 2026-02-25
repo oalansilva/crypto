@@ -180,3 +180,12 @@ class ComboTemplate(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class MonitorPreference(Base):
+    __tablename__ = "monitor_preferences"
+
+    symbol = Column(String, primary_key=True, index=True)
+    in_portfolio = Column(Boolean, nullable=False, default=False)
+    card_mode = Column(String, nullable=False, default="price")
+    updated_at = Column(DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)

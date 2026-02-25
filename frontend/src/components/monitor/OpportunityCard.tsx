@@ -1,13 +1,18 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Target, Activity, Settings } from "lucide-react";
-import { API_BASE_URL } from '../../lib/apiBase';
+import { Target, Activity, Settings, Star, BarChart3 } from "lucide-react";
+import { API_BASE_URL, apiUrl } from '../../lib/apiBase';
+import { MiniCandlesChart, type MarketCandle } from './MiniCandlesChart';
 
-import type { Opportunity } from './types';
+import type { Opportunity, MonitorCardMode, MonitorPreference } from './types';
 
 interface OpportunityCardProps {
     opportunity: Opportunity;
+    preference: MonitorPreference;
+    isSavingPreference: boolean;
+    onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
+    onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
 }
 
 const getDistanceColor = (distance: number | null | undefined): string => {
@@ -30,21 +35,79 @@ const getTierStyles = (tier: number | null | undefined) => {
     }
 };
 
-export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity }) => {
-    const { 
-        symbol, 
-        timeframe, 
-        name, 
-        is_holding, 
-        distance_to_next_status, 
+const symbolKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+
+export const OpportunityCard: React.FC<OpportunityCardProps> = ({
+    opportunity,
+    preference,
+    isSavingPreference,
+    onToggleInPortfolio,
+    onToggleCardMode,
+}) => {
+    const {
+        symbol,
+        timeframe,
+        name,
+        is_holding,
+        distance_to_next_status,
         next_status_label,
-        last_price 
+        last_price,
     } = opportunity;
 
-    // Local state para edição de notas diretamente do monitor
+    const isPriceMode = preference.card_mode === 'price';
+
     const [isEditingNotes, setIsEditingNotes] = React.useState(false);
     const [notesValue, setNotesValue] = React.useState(opportunity.notes || '');
     const [isSavingNotes, setIsSavingNotes] = React.useState(false);
+
+    const [candles, setCandles] = React.useState<MarketCandle[]>([]);
+    const [candlesLoading, setCandlesLoading] = React.useState(false);
+    const [candlesError, setCandlesError] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        setNotesValue(opportunity.notes || '');
+    }, [opportunity.notes]);
+
+    React.useEffect(() => {
+        if (!isPriceMode) {
+            setCandlesError(null);
+            return;
+        }
+
+        const controller = new AbortController();
+        const run = async () => {
+            setCandlesLoading(true);
+            setCandlesError(null);
+            try {
+                const effectiveTf = symbol.includes('/') ? timeframe : '1d';
+                const url = apiUrl('/market/candles');
+                url.searchParams.set('symbol', symbol);
+                url.searchParams.set('timeframe', effectiveTf);
+                url.searchParams.set('limit', '120');
+
+                const response = await fetch(url.toString(), { signal: controller.signal });
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(String(payload?.detail || `Failed to load candles (${response.status})`));
+                }
+
+                const rows = Array.isArray(payload?.candles) ? payload.candles : [];
+                setCandles(rows);
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    setCandles([]);
+                    setCandlesError(error instanceof Error ? error.message : 'Failed to load candles');
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setCandlesLoading(false);
+                }
+            }
+        };
+
+        run();
+        return () => controller.abort();
+    }, [isPriceMode, symbol, timeframe]);
 
     const formattedPrice = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -54,31 +117,28 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
     }).format(last_price);
 
     const distance = distance_to_next_status;
-    const distanceStr = distance !== null && distance !== undefined 
-        ? `${distance.toFixed(2)}%` 
+    const distanceStr = distance !== null && distance !== undefined
+        ? `${distance.toFixed(2)}%`
         : '-';
     const distanceColor = getDistanceColor(distance);
-    
-    // Show progress bar if distance is less than 1%
+
     const showProgress = distance !== null && distance !== undefined && distance < 1.0;
-    const progressPercent = showProgress 
-        ? Math.max(0, Math.min(100, (1 - distance) * 100)) 
+    const progressPercent = showProgress
+        ? Math.max(0, Math.min(100, (1 - distance) * 100))
         : 0;
 
-    // Check for special statuses from backend
     const status = opportunity.status || (is_holding ? 'HOLD' : 'WAIT');
     const isStoppedOut = status === 'STOPPED_OUT';
     const isMissedEntry = status === 'MISSED_ENTRY';
     const isWait = !is_holding && !isStoppedOut && !isMissedEntry;
     const tierStyles = getTierStyles(opportunity.tier);
-    
-    // Status badge: HOLD (green), STOPPED_OUT (red/orange), MISSED_ENTRY (yellow), or WAIT (gray)
+
     let statusBadge = 'WAIT';
     let badgeColor = "bg-slate-200 text-slate-600 border-slate-300";
     let borderColor = 'border-l-slate-300 border-l-4';
     let cardBgColor = 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700';
     let holdingIndicator = '';
-    
+
     if (is_holding) {
         statusBadge = 'HOLD';
         badgeColor = "bg-green-600 text-white border-green-600 font-bold shadow-md";
@@ -104,14 +164,13 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                       'bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
     }
 
-    // Message: Use backend message if available, otherwise generate from distance
     const statusMessage = opportunity.message || (
         distance !== null && distance !== undefined
             ? `${distance.toFixed(2)}% to ${next_status_label}`
             : `Waiting for ${next_status_label} signal`
     );
 
-    const cardStyle = is_holding ? { 
+    const cardStyle = is_holding ? {
         backgroundColor: 'rgb(220, 252, 231)',
         borderLeftWidth: '4px',
         borderLeftColor: 'rgb(22, 163, 74)',
@@ -133,218 +192,240 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
         borderLeftColor: 'rgb(203, 213, 225)',
     };
 
+    const symbolTestKey = symbolKey(symbol);
+
     return (
-        <Card 
+        <Card
             className={`${borderColor} ${cardBgColor} ${holdingIndicator} hover:shadow-lg transition-all hover:scale-[1.02] relative`}
             style={cardStyle}
+            data-testid={`monitor-card-${symbolTestKey}`}
         >
-            {/* Visual indicator dot for special statuses */}
-            {is_holding && (
-                <div 
-                    className="absolute top-3 right-3 w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/70 ring-2 ring-green-400"
-                    style={{ backgroundColor: 'rgb(34, 197, 94)' }}
-                ></div>
-            )}
-            {isStoppedOut && (
-                <div 
-                    className="absolute top-3 right-3 w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/70 ring-2 ring-red-400"
-                    style={{ backgroundColor: 'rgb(239, 68, 68)' }}
-                ></div>
-            )}
-            {isMissedEntry && (
-                <div 
-                    className="absolute top-3 right-3 w-3 h-3 bg-yellow-500 rounded-full animate-pulse shadow-lg shadow-yellow-500/70 ring-2 ring-yellow-400"
-                    style={{ backgroundColor: 'rgb(234, 179, 8)' }}
-                ></div>
-            )}
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex flex-col">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-2">
+                <div className="flex flex-col min-w-0">
                     <CardTitle className={`text-xl font-bold flex items-center gap-2 ${
-                        is_holding ? 'text-green-700 dark:text-green-300' : 
-                        isStoppedOut ? 'text-red-700 dark:text-red-300' : 
-                        isMissedEntry ? 'text-yellow-700 dark:text-yellow-300' : 
+                        is_holding ? 'text-green-700 dark:text-green-300' :
+                        isStoppedOut ? 'text-red-700 dark:text-red-300' :
+                        isMissedEntry ? 'text-yellow-700 dark:text-yellow-300' :
                         'text-gray-900 dark:text-gray-100'
                     }`}>
                         {tierStyles && (
                             <span className={`w-2 h-2 rounded-full ${tierStyles.dot} ring-1 ${tierStyles.ring} flex-shrink-0`} title={tierStyles.label} />
                         )}
-                        {symbol} <span className="text-sm font-normal text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{timeframe}</span>
+                        <span className="truncate">{symbol}</span>
+                        <span className="text-sm font-normal text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{timeframe}</span>
                     </CardTitle>
-                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px] font-medium">
+                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[220px] font-medium">
                         {name || opportunity.template_name}
                     </span>
                 </div>
-                <Badge variant="outline" className={`${badgeColor} uppercase text-sm font-bold shadow-sm px-3 py-1`}>
-                    {statusBadge}
-                </Badge>
-            </CardHeader>
-            <CardContent>
-                <div className="flex flex-col gap-4 mt-2">
-                    <div className="flex justify-between items-center">
-                        <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Price:</span>
-                        <span className="font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formattedPrice}</span>
-                    </div>
 
-                    <div className="flex flex-col gap-2">
-                        <div className="flex justify-between items-center">
-                            <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Distance:</span>
-                            <div className="flex items-center gap-2">
-                                <Target className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                                <span className={`font-mono font-bold text-lg ${distanceColor}`}>
-                                    {distanceStr}
-                                </span>
-                            </div>
-                        </div>
+                <div className="flex flex-col items-end gap-2">
+                    <Badge variant="outline" className={`${badgeColor} uppercase text-sm font-bold shadow-sm px-3 py-1`}>
+                        {statusBadge}
+                    </Badge>
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${preference.in_portfolio ? 'border-amber-500 text-amber-600 bg-amber-50' : 'border-slate-300 text-slate-600 bg-white'}`}
+                            onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
+                            disabled={isSavingPreference}
+                            data-testid={`portfolio-toggle-${symbolTestKey}`}
+                            title={preference.in_portfolio ? 'Remove from In Portfolio' : 'Add to In Portfolio'}
+                        >
+                            <Star className={`w-3 h-3 ${preference.in_portfolio ? 'fill-current' : ''}`} />
+                            <span className="hidden sm:inline">Portfolio</span>
+                        </button>
 
-                        {is_holding && opportunity.distance_to_stop_pct !== null && opportunity.distance_to_stop_pct !== undefined ? (
-                            <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20 p-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stop risk:</span>
-                                    <span className="font-mono font-bold text-sm text-red-700 dark:text-red-300">
-                                        {opportunity.distance_to_stop_pct.toFixed(2)}%
-                                    </span>
-                                </div>
-                                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-mono text-gray-700 dark:text-gray-300">
-                                    {opportunity.entry_price !== null && opportunity.entry_price !== undefined ? (
-                                        <span>entry: ${opportunity.entry_price.toFixed(8)}</span>
-                                    ) : null}
-                                    {opportunity.stop_price !== null && opportunity.stop_price !== undefined ? (
-                                        <span>stop: ${opportunity.stop_price.toFixed(8)}</span>
-                                    ) : null}
-                                </div>
-                            </div>
-                        ) : null}
-                        
-                        {/* Progress bar when close to signal (< 1%) */}
-                        {showProgress && (
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                                <div 
-                                    className={`h-full transition-all ${
-                                        is_holding ? 'bg-orange-500' : 'bg-yellow-500'
-                                    }`}
-                                    style={{ width: `${progressPercent}%` }}
-                                />
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm border border-gray-300 dark:border-gray-600">
-                        <div className="flex items-start gap-2">
-                            <Activity className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                            <span className="font-medium text-gray-800 dark:text-gray-200 break-words">{statusMessage}</span>
-                        </div>
-                    </div>
-
-                    {opportunity.parameters && Object.keys(opportunity.parameters).length > 0 && (
-                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm border border-gray-300 dark:border-gray-600">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Settings className="w-4 h-4 text-violet-600 dark:text-violet-400 flex-shrink-0" />
-                                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    Parâmetros
-                                </span>
-                            </div>
-                            <p className="font-mono text-xs text-gray-700 dark:text-gray-300 break-words">
-                                {Object.entries(opportunity.parameters)
-                                    .map(([k, v]) => `${k}=${v}`)
-                                    .join(' ')}
-                            </p>
-                        </div>
-                    )}
-
-                    {opportunity.indicator_values && Object.keys(opportunity.indicator_values).length > 0 && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md text-sm border border-blue-200 dark:border-blue-800">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Target className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                                <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
-                                    Valores usados (último candle fechado)
-                                </span>
-                            </div>
-                            {opportunity.indicator_values_candle_time && (
-                                <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 mb-1 font-medium">
-                                    Candle: {new Date(opportunity.indicator_values_candle_time).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' })} UTC
-                                </p>
-                            )}
-                            <p className="font-mono text-xs text-gray-700 dark:text-gray-300 break-words">
-                                {Object.entries(opportunity.indicator_values)
-                                    .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v}`)
-                                    .join(' · ')}
-                            </p>
-                        </div>
-                    )}
-
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-sm border border-slate-200 dark:border-slate-600">
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                Notes
-                            </span>
-                            {!isEditingNotes && (
-                                <button
-                                    type="button"
-                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                                    onClick={() => setIsEditingNotes(true)}
-                                >
-                                    Editar
-                                </button>
-                            )}
-                        </div>
-
-                        {isEditingNotes ? (
-                            <div className="mt-2 space-y-2">
-                                <textarea
-                                    className="w-full min-h-[60px] text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                    value={notesValue}
-                                    onChange={(e) => setNotesValue(e.target.value)}
-                                    placeholder="Adicione comentários sobre esta estratégia..."
-                                />
-                                <div className="flex justify-end gap-2">
-                                    <button
-                                        type="button"
-                                        className="px-2 py-1 text-xs rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                                        onClick={() => {
-                                            setNotesValue(opportunity.notes || '');
-                                            setIsEditingNotes(false);
-                                        }}
-                                        disabled={isSavingNotes}
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                                        onClick={async () => {
-                                            try {
-                                                setIsSavingNotes(true);
-                                                const res = await fetch(`${API_BASE_URL}/favorites/${opportunity.id}`, {
-                                                    method: 'PATCH',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ notes: notesValue }),
-                                                });
-                                                if (!res.ok) {
-                                                    // fallback simples; o MonitorPage já tem toast para erros de load
-                                                    alert('Erro ao salvar notas da estratégia.');
-                                                    return;
-                                                }
-                                                setIsEditingNotes(false);
-                                            } catch (err) {
-                                                console.error('Erro ao salvar notas:', err);
-                                                alert('Erro ao salvar notas da estratégia.');
-                                            } finally {
-                                                setIsSavingNotes(false);
-                                            }
-                                        }}
-                                        disabled={isSavingNotes}
-                                    >
-                                        {isSavingNotes ? 'Salvando...' : 'Salvar'}
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="mt-1 font-medium text-slate-700 dark:text-slate-200 break-words text-xs whitespace-pre-wrap">
-                                {notesValue || 'Sem comentários.'}
-                            </p>
-                        )}
+                        <button
+                            type="button"
+                            className="rounded-md border border-slate-300 px-2 py-1 text-xs flex items-center gap-1 bg-white text-slate-700"
+                            onClick={() => onToggleCardMode(symbol, isPriceMode ? 'strategy' : 'price')}
+                            disabled={isSavingPreference}
+                            data-testid={`mode-toggle-${symbolTestKey}`}
+                            title={isPriceMode ? 'Switch to strategy mode' : 'Switch to price mode'}
+                        >
+                            <BarChart3 className="w-3 h-3" />
+                            <span data-testid={`mode-label-${symbolTestKey}`}>{isPriceMode ? 'Price' : 'Strategy'}</span>
+                        </button>
                     </div>
                 </div>
+            </CardHeader>
+
+            <CardContent>
+                {isPriceMode ? (
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Price:</span>
+                            <span className="font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formattedPrice}</span>
+                        </div>
+                        <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md text-xs border border-gray-300 dark:border-gray-600">
+                            {candlesLoading ? 'Loading candles...' : null}
+                            {candlesError ? <span className="text-red-600 dark:text-red-300">{candlesError}</span> : null}
+                            {!candlesLoading && !candlesError && candles.length === 0 ? <span>No candle data.</span> : null}
+                            {!candlesLoading && !candlesError && candles.length > 0 ? <MiniCandlesChart candles={candles} /> : null}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-4 mt-2">
+                        <div className="flex justify-between items-center">
+                            <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Price:</span>
+                            <span className="font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formattedPrice}</span>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Distance:</span>
+                                <div className="flex items-center gap-2">
+                                    <Target className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                                    <span className={`font-mono font-bold text-lg ${distanceColor}`}>
+                                        {distanceStr}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {is_holding && opportunity.distance_to_stop_pct !== null && opportunity.distance_to_stop_pct !== undefined ? (
+                                <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20 p-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stop risk:</span>
+                                        <span className="font-mono font-bold text-sm text-red-700 dark:text-red-300">
+                                            {opportunity.distance_to_stop_pct.toFixed(2)}%
+                                        </span>
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-mono text-gray-700 dark:text-gray-300">
+                                        {opportunity.entry_price !== null && opportunity.entry_price !== undefined ? (
+                                            <span>entry: ${opportunity.entry_price.toFixed(8)}</span>
+                                        ) : null}
+                                        {opportunity.stop_price !== null && opportunity.stop_price !== undefined ? (
+                                            <span>stop: ${opportunity.stop_price.toFixed(8)}</span>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            {showProgress && (
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                                    <div
+                                        className={`h-full transition-all ${
+                                            is_holding ? 'bg-orange-500' : 'bg-yellow-500'
+                                        }`}
+                                        style={{ width: `${progressPercent}%` }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm border border-gray-300 dark:border-gray-600">
+                            <div className="flex items-start gap-2">
+                                <Activity className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                <span className="font-medium text-gray-800 dark:text-gray-200 break-words">{statusMessage}</span>
+                            </div>
+                        </div>
+
+                        {opportunity.parameters && Object.keys(opportunity.parameters).length > 0 && (
+                            <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm border border-gray-300 dark:border-gray-600">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Settings className="w-4 h-4 text-violet-600 dark:text-violet-400 flex-shrink-0" />
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                        Parameters
+                                    </span>
+                                </div>
+                                <p className="font-mono text-xs text-gray-700 dark:text-gray-300 break-words">
+                                    {Object.entries(opportunity.parameters)
+                                        .map(([k, v]) => `${k}=${v}`)
+                                        .join(' ')}
+                                </p>
+                            </div>
+                        )}
+
+                        {opportunity.indicator_values && Object.keys(opportunity.indicator_values).length > 0 && (
+                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md text-sm border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Target className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                                        Indicator Values
+                                    </span>
+                                </div>
+                                <p className="font-mono text-xs text-gray-700 dark:text-gray-300 break-words">
+                                    {Object.entries(opportunity.indicator_values)
+                                        .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v}`)
+                                        .join(' · ')}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-sm border border-slate-200 dark:border-slate-600">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                    Notes
+                                </span>
+                                {!isEditingNotes && (
+                                    <button
+                                        type="button"
+                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                        onClick={() => setIsEditingNotes(true)}
+                                    >
+                                        Edit
+                                    </button>
+                                )}
+                            </div>
+
+                            {isEditingNotes ? (
+                                <div className="mt-2 space-y-2">
+                                    <textarea
+                                        className="w-full min-h-[60px] text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                        value={notesValue}
+                                        onChange={(e) => setNotesValue(e.target.value)}
+                                        placeholder="Add notes for this strategy..."
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            className="px-2 py-1 text-xs rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                                            onClick={() => {
+                                                setNotesValue(opportunity.notes || '');
+                                                setIsEditingNotes(false);
+                                            }}
+                                            disabled={isSavingNotes}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                                            onClick={async () => {
+                                                try {
+                                                    setIsSavingNotes(true);
+                                                    const res = await fetch(`${API_BASE_URL}/favorites/${opportunity.id}`, {
+                                                        method: 'PATCH',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ notes: notesValue }),
+                                                    });
+                                                    if (!res.ok) {
+                                                        alert('Error saving notes.');
+                                                        return;
+                                                    }
+                                                    setIsEditingNotes(false);
+                                                } catch (err) {
+                                                    console.error('Error saving notes:', err);
+                                                    alert('Error saving notes.');
+                                                } finally {
+                                                    setIsSavingNotes(false);
+                                                }
+                                            }}
+                                            disabled={isSavingNotes}
+                                        >
+                                            {isSavingNotes ? 'Saving...' : 'Save'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="mt-1 font-medium text-slate-700 dark:text-slate-200 break-words text-xs whitespace-pre-wrap">
+                                    {notesValue || 'No notes.'}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
