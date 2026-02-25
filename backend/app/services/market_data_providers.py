@@ -368,6 +368,201 @@ class StooqEodProvider:
             raise ValueError(f"Failed fetching Stooq EOD data for '{symbol}': {exc}") from exc
 
 
+class YahooMarketDataProvider:
+    """Yahoo Finance provider used for US stocks intraday and daily candles."""
+
+    source = "yahoo"
+    DEFAULT_TIMEOUT_SECONDS = 20.0
+
+    _VALID_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
+    _DEFAULT_RANGE_BY_TF = {
+        "15m": "1mo",   # ~30d
+        "1h": "6mo",    # ~180d
+        "4h": "1y",     # ~365d (aggregated from 1h)
+        "1d": "10y",    # years
+    }
+    _INTERVAL_BY_TF = {
+        "15m": "15m",
+        "1h": "60m",
+        "4h": "60m",
+        "1d": "1d",
+    }
+
+    def __init__(self, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS):
+        self.timeout_seconds = max(1.0, float(timeout_seconds))
+
+    @staticmethod
+    def _normalize_symbol(symbol: str) -> str:
+        raw = str(symbol or "").strip().upper()
+        if not raw:
+            raise ValueError("Symbol must not be empty.")
+        if "/" in raw:
+            raise ValueError("Yahoo provider expects stock tickers without '/'.")
+        return raw
+
+    @classmethod
+    def _normalize_timeframe(cls, timeframe: str) -> str:
+        tf = str(timeframe or "").strip().lower()
+        if tf not in cls._VALID_TIMEFRAMES:
+            supported = ", ".join(sorted(cls._VALID_TIMEFRAMES))
+            raise ValueError(f"Unsupported Yahoo timeframe '{timeframe}'. Supported: {supported}.")
+        return tf
+
+    @staticmethod
+    def _range_for_since(since_str: Optional[str], default_range: str) -> str:
+        since_dt = StooqEodProvider._parse_datetime_utc(since_str)
+        if since_dt is None:
+            return default_range
+
+        days = max(1, int((datetime.now(timezone.utc) - since_dt.to_pydatetime()).days))
+        if days <= 5:
+            return "5d"
+        if days <= 30:
+            return "1mo"
+        if days <= 90:
+            return "3mo"
+        if days <= 180:
+            return "6mo"
+        if days <= 365:
+            return "1y"
+        if days <= 365 * 2:
+            return "2y"
+        if days <= 365 * 5:
+            return "5y"
+        if days <= 365 * 10:
+            return "10y"
+        return "max"
+
+    @staticmethod
+    def _parse_payload(payload: dict, symbol: str) -> pd.DataFrame:
+        chart = (payload or {}).get("chart") or {}
+        if chart.get("error"):
+            message = chart["error"].get("description") or chart["error"].get("code") or "unknown yahoo error"
+            raise ValueError(f"Yahoo request failed for '{symbol}': {message}")
+
+        result = chart.get("result") or []
+        if not result:
+            raise ValueError(f"No Yahoo candles returned for '{symbol}'.")
+
+        row = result[0] or {}
+        timestamps = row.get("timestamp") or []
+        indicators = row.get("indicators") or {}
+        quotes = (indicators.get("quote") or [{}])[0] or {}
+
+        opens = quotes.get("open") or []
+        highs = quotes.get("high") or []
+        lows = quotes.get("low") or []
+        closes = quotes.get("close") or []
+        volumes = quotes.get("volume") or []
+
+        rows: list[dict] = []
+        total = min(len(timestamps), len(opens), len(highs), len(lows), len(closes))
+        for idx in range(total):
+            ts = timestamps[idx]
+            o = opens[idx]
+            h = highs[idx]
+            l = lows[idx]
+            c = closes[idx]
+            v = volumes[idx] if idx < len(volumes) else 0
+            if ts is None or o is None or h is None or l is None or c is None:
+                continue
+            t = pd.to_datetime(int(ts), unit="s", utc=True)
+            rows.append(
+                {
+                    "time": t,
+                    "timestamp_utc": t,
+                    "timestamp": int(t.value // 1_000_000),
+                    "open": float(o),
+                    "high": float(h),
+                    "low": float(l),
+                    "close": float(c),
+                    "volume": float(v or 0),
+                }
+            )
+
+        if not rows:
+            raise ValueError(f"Yahoo returned no valid OHLC rows for '{symbol}'.")
+
+        df = pd.DataFrame(rows).sort_values("timestamp_utc")
+        df = df.set_index("timestamp_utc", drop=False)
+        return df
+
+    @staticmethod
+    def _aggregate_to_4h(df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
+
+        agg = (
+            df.resample("4h", on="timestamp_utc")
+            .agg(
+                {
+                    "open": "first",
+                    "high": "max",
+                    "low": "min",
+                    "close": "last",
+                    "volume": "sum",
+                }
+            )
+            .dropna(subset=["open", "high", "low", "close"])
+            .reset_index()
+        )
+
+        if agg.empty:
+            return agg
+
+        agg["time"] = pd.to_datetime(agg["timestamp_utc"], utc=True)
+        agg["timestamp"] = (agg["time"].astype("int64") // 1_000_000).astype("int64")
+        agg = agg[["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]]
+        agg = agg.set_index("timestamp_utc", drop=False).sort_index()
+        return agg
+
+    def fetch_ohlcv(
+        self,
+        symbol: str,
+        timeframe: str,
+        since_str: Optional[str] = None,
+        until_str: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> pd.DataFrame:
+        ticker = self._normalize_symbol(symbol)
+        tf = self._normalize_timeframe(timeframe)
+
+        interval = self._INTERVAL_BY_TF[tf]
+        range_param = self._range_for_since(since_str, self._DEFAULT_RANGE_BY_TF[tf])
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+
+        try:
+            response = httpx.get(
+                url,
+                params={
+                    "interval": interval,
+                    "range": range_param,
+                    "includePrePost": "false",
+                    "events": "div,splits",
+                },
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as exc:
+            raise ValueError(f"Yahoo request failed for '{ticker}': {exc}") from exc
+
+        out = self._parse_payload(payload, symbol=ticker)
+        if tf == "4h":
+            out = self._aggregate_to_4h(out)
+
+        since_dt = StooqEodProvider._parse_datetime_utc(since_str)
+        until_dt = StooqEodProvider._parse_datetime_utc(until_str)
+        if since_dt is not None:
+            out = out[out.index >= since_dt]
+        if until_dt is not None:
+            out = out[out.index <= until_dt]
+        if isinstance(limit, int) and limit > 0:
+            out = out.tail(limit)
+
+        return out
+
+
 _PROVIDERS: dict[str, MarketDataProvider] = {}
 
 
