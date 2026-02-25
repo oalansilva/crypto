@@ -31,6 +31,7 @@ const FavoritesDashboard: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
     const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | '1_2' | 'none'>('all');
+    const [assetTypeFilter, setAssetTypeFilter] = useState<'all' | 'crypto' | 'stocks'>('all');
 
     // New state for Trades Modal
     const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
@@ -223,11 +224,15 @@ const FavoritesDashboard: React.FC = () => {
             (tierFilter === '1_2' && (fav.tier === 1 || fav.tier === 2)) ||
             (tierFilter === 'none' && fav.tier === null) ||
             (tierFilter !== 'none' && tierFilter !== '1_2' && fav.tier === parseInt(tierFilter));
+        const isCrypto = fav.symbol.includes('/');
+        const matchesAssetType = assetTypeFilter === 'all' ||
+            (assetTypeFilter === 'crypto' && isCrypto) ||
+            (assetTypeFilter === 'stocks' && !isCrypto);
 
         const favDirection = ((fav.parameters?.direction as string) || 'long').toLowerCase();
         const matchesDirection = directionFilter === 'all' || favDirection === directionFilter;
 
-        return matchesSearch && matchesSymbol && matchesIndicator && matchesTier && matchesDirection;
+        return matchesSearch && matchesSymbol && matchesIndicator && matchesTier && matchesAssetType && matchesDirection;
     }) || []).sort((a, b) => {
         const tierA = a.tier ?? 999;
         const tierB = b.tier ?? 999;
@@ -413,6 +418,20 @@ const FavoritesDashboard: React.FC = () => {
                                             <option value="2" className="bg-gray-900">Tier 2 – Bons complementares</option>
                                             <option value="3" className="bg-gray-900">Tier 3</option>
                                             <option value="none" className="bg-gray-900">Sem tier</option>
+                                        </select>
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                    </div>
+
+                                    <div className="relative group">
+                                        <select
+                                            aria-label="Asset Type"
+                                            value={assetTypeFilter}
+                                            onChange={(e) => setAssetTypeFilter(e.target.value as 'all' | 'crypto' | 'stocks')}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
+                                        >
+                                            <option value="all" className="bg-gray-900">Asset Type: All</option>
+                                            <option value="crypto" className="bg-gray-900">Asset Type: Crypto</option>
+                                            <option value="stocks" className="bg-gray-900">Asset Type: Stocks</option>
                                         </select>
                                         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                                     </div>

@@ -31,6 +31,36 @@ const FAVORITES_PAYLOAD = [
     start_date: null,
     end_date: null,
   },
+  {
+    id: 2,
+    name: 'BTC Swing',
+    symbol: 'BTC/USDT',
+    timeframe: '4h',
+    strategy_name: 'ema_rsi',
+    parameters: { ema_short: 12, ema_long: 26, direction: 'long' },
+    metrics: {
+      total_return: 0.2,
+      total_return_pct: 20,
+      total_trades: 4,
+      win_rate: 0.5,
+      sharpe_ratio: 1.2,
+      max_drawdown: 0.08,
+      trades: [
+        {
+          entry_time: '2025-01-03T00:00:00Z',
+          entry_price: 100,
+          exit_time: '2025-01-04T00:00:00Z',
+          exit_price: 102,
+          profit: 0.02,
+        },
+      ],
+    },
+    notes: 'crypto favorite',
+    created_at: '2025-01-11T00:00:00Z',
+    tier: 2,
+    start_date: null,
+    end_date: null,
+  },
 ];
 
 const BACKTEST_PAYLOAD = {
@@ -117,9 +147,37 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await page.goto('/favorites');
 
   await expect(page.getByRole('heading', { name: 'Strategy Favorites' })).toBeVisible();
-  await expect(page.getByText('NVDA')).toBeVisible();
-  await expect(page.getByText('ema rsi', { exact: false })).toBeVisible();
+  // Be explicit to avoid matching dropdown <option> elements.
+  await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
+  await expect(page.getByRole('cell', { name: /ema rsi/i }).first()).toBeVisible();
   expect(pageErrors).toEqual([]);
+});
+
+test('favorites Asset Type dropdown filters crypto and stocks', async ({ page }) => {
+  await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const assetTypeSelect = page.getByLabel('Asset Type');
+  await expect(assetTypeSelect).toHaveValue('all');
+  await expect(assetTypeSelect.locator('option')).toHaveText([
+    'Asset Type: All',
+    'Asset Type: Crypto',
+    'Asset Type: Stocks',
+  ]);
+
+  const nvdaRow = page.locator('tbody tr', { hasText: 'NVDA' });
+  const btcRow = page.locator('tbody tr', { hasText: 'BTC/USDT' });
+  await expect(nvdaRow).toHaveCount(1);
+  await expect(btcRow).toHaveCount(1);
+
+  await assetTypeSelect.selectOption('crypto');
+  await expect(nvdaRow).toHaveCount(0);
+  await expect(btcRow).toHaveCount(1);
+
+  await assetTypeSelect.selectOption('stocks');
+  await expect(nvdaRow).toHaveCount(1);
+  await expect(btcRow).toHaveCount(0);
 });
 
 test('favorites -> View Results navigates to results page', async ({ page }) => {
