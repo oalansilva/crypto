@@ -1,5 +1,6 @@
 # file: backend/app/api.py
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
