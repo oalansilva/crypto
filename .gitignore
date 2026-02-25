@@ -64,11 +64,14 @@ backend/logs/
 frontend/vite.out
 
 # Test and debug scripts (root level)
-test_*.py
-debug_*.py
-reproduction_*.py
-verify_*.py
-fix_*.py
+/test_*.py
+/debug_*.py
+/reproduction_*.py
+/verify_*.py
+/fix_*.py
+
+# Allow committed test fixtures
+!backend/tests/fixtures/*.csv
 
 # Job files
 backend/data/jobs/*.json
