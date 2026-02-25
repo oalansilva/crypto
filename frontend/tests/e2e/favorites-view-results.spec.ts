@@ -150,7 +150,7 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   // Be explicit to avoid matching dropdown <option> elements.
   await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
-  await expect(page.getByText('ema rsi', { exact: false })).toBeVisible();
+  await expect(page.getByRole('cell', { name: /ema rsi/i }).first()).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
 
