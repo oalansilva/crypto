@@ -28,10 +28,11 @@ NASDAQ100_CONFIG_PATH = (
 
 _MARKET_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
 _DEFAULT_HISTORY_DAYS = {
+    # Keep these windows small: the candles endpoint is for UI charts, not full-history backfills.
     "15m": 30,
     "1h": 180,
     "4h": 365,
-    "1d": 3650,
+    "1d": 400,
 }
 
 
@@ -210,8 +211,27 @@ def _validate_market_timeframe(asset: str, timeframe: str) -> str:
     return tf
 
 
-def _default_since_str(timeframe: str) -> str:
-    days = _DEFAULT_HISTORY_DAYS.get(timeframe, 30)
+def _default_since_str(timeframe: str, limit: int) -> str:
+    """Return a safe default `since` for UI chart candles.
+
+    We intentionally avoid huge backfills (which can freeze the UI) and instead
+    fetch a recent window sized for the requested number of candles.
+    """
+
+    tf = str(timeframe or "").strip().lower()
+    base_days = int(_DEFAULT_HISTORY_DAYS.get(tf, 30))
+
+    # Approximate days needed to cover `limit` candles.
+    if tf == "15m":
+        days_needed = max(3, int(limit / 96) + 3)  # 96 candles/day
+    elif tf == "1h":
+        days_needed = max(7, int(limit / 24) + 7)
+    elif tf == "4h":
+        days_needed = max(30, int(limit / 6) + 30)
+    else:  # 1d
+        days_needed = max(60, int(limit) + 30)
+
+    days = min(base_days, days_needed)
     since = datetime.now(timezone.utc) - timedelta(days=days)
     return since.isoformat()
 
@@ -256,7 +276,7 @@ def _normalize_candles_frame(df, limit: int):
 async def get_market_candles(
     symbol: str = Query(..., description="Ticker or pair (e.g. NVDA or BTC/USDT)"),
     timeframe: str = Query("1d", description="One of: 15m, 1h, 4h, 1d"),
-    limit: int = Query(300, ge=1, le=2000, description="Max candles to return"),
+    limit: int = Query(200, ge=1, le=2000, description="Max candles to return"),
 ):
     raw_symbol = str(symbol or "").strip()
     if not raw_symbol:
@@ -265,7 +285,7 @@ async def get_market_candles(
     try:
         asset_type = _classify_asset(raw_symbol)
         tf = _validate_market_timeframe(asset_type, timeframe)
-        since_str = _default_since_str(tf)
+        since_str = _default_since_str(tf, limit=limit)
 
         data_source = ""
         if asset_type == "crypto":
