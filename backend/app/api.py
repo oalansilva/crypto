@@ -1,11 +1,19 @@
 # file: backend/app/api.py
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
+import pandas as pd
 from typing import List
 
 from app.schemas.backtest import PresetResponse
+from app.services.market_data_providers import (
+    CCXT_SOURCE,
+    STOOQ_SOURCE,
+    YahooMarketDataProvider,
+    get_market_data_provider,
+)
 from app.services.preset_service import get_presets
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
 
@@ -16,6 +24,14 @@ NASDAQ100_CONFIG_PATH = (
     / "config"
     / f"nasdaq100_symbols.v{NASDAQ100_VERSION}.json"
 )
+
+_MARKET_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
+_DEFAULT_HISTORY_DAYS = {
+    "15m": 30,
+    "1h": 180,
+    "4h": 365,
+    "1d": 3650,
+}
 
 
 @router.get("/health")
@@ -177,3 +193,104 @@ async def get_arbitrage_spreads(
         "exchanges": exchange_list,
         "results": results,
     }
+
+
+def _classify_asset(symbol: str) -> str:
+    return "crypto" if "/" in symbol else "stock"
+
+
+def _validate_market_timeframe(asset: str, timeframe: str) -> str:
+    tf = str(timeframe or "").strip().lower()
+    if tf not in _MARKET_TIMEFRAMES:
+        supported = ", ".join(sorted(_MARKET_TIMEFRAMES))
+        raise ValueError(f"Unsupported timeframe '{timeframe}' for {asset}. Supported: {supported}.")
+    return tf
+
+
+def _default_since_str(timeframe: str) -> str:
+    days = _DEFAULT_HISTORY_DAYS.get(timeframe, 30)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    return since.isoformat()
+
+
+def _normalize_candles_frame(df, limit: int):
+    if df is None:
+        return []
+
+    out = df.copy()
+    if out.empty:
+        return []
+    if "timestamp_utc" not in out.columns:
+        raise ValueError("Provider returned invalid candle payload (missing timestamp_utc).")
+
+    out = out.reset_index(drop=True)
+    out["timestamp_utc"] = pd.to_datetime(out["timestamp_utc"], utc=True, errors="coerce")
+    out = out.dropna(subset=["timestamp_utc", "open", "high", "low", "close"])
+    out = out.sort_values("timestamp_utc")
+    out = out.tail(limit)
+
+    candles = []
+    for _, row in out.iterrows():
+        ts = row["timestamp_utc"]
+        candles.append(
+            {
+                "timestamp_utc": ts.isoformat(),
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
+                "volume": float(row.get("volume", 0.0) or 0.0),
+            }
+        )
+    return candles
+
+
+@router.get("/market/candles")
+async def get_market_candles(
+    symbol: str = Query(..., description="Ticker or pair (e.g. NVDA or BTC/USDT)"),
+    timeframe: str = Query("1h", description="One of: 15m, 1h, 4h, 1d"),
+    limit: int = Query(300, ge=1, le=2000, description="Max candles to return"),
+):
+    raw_symbol = str(symbol or "").strip()
+    if not raw_symbol:
+        raise HTTPException(status_code=400, detail="Query param 'symbol' must not be empty.")
+
+    try:
+        asset_type = _classify_asset(raw_symbol)
+        tf = _validate_market_timeframe(asset_type, timeframe)
+        since_str = _default_since_str(tf)
+
+        data_source = ""
+        if asset_type == "crypto":
+            data_source = CCXT_SOURCE
+            provider = get_market_data_provider(data_source)
+            df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+        elif tf == "1d":
+            # Prefer free Stooq EOD for stocks; fallback to Yahoo daily when needed.
+            data_source = STOOQ_SOURCE
+            provider = get_market_data_provider(data_source)
+            try:
+                df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+            except Exception:
+                data_source = "yahoo"
+                df = YahooMarketDataProvider().fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+        else:
+            data_source = "yahoo"
+            df = YahooMarketDataProvider().fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+
+        candles = _normalize_candles_frame(df, limit=limit)
+        return {
+            "symbol": raw_symbol,
+            "asset_type": asset_type,
+            "timeframe": tf,
+            "data_source": data_source,
+            "limit": limit,
+            "count": len(candles),
+            "candles": candles,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed fetching candles for '{raw_symbol}': {exc}")
