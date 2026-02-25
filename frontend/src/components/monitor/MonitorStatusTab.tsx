@@ -1,41 +1,83 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import type { Opportunity } from '@/components/monitor/types';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { Opportunity, MonitorCardMode, MonitorPreference } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { RefreshCw, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { API_BASE_URL } from '@/lib/apiBase';
 
 type SortOption = 'distance' | 'tier_distance' | 'symbol';
 type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
+type ListFilter = 'in_portfolio' | 'all';
+
+const DEFAULT_PREFERENCE: MonitorPreference = {
+    in_portfolio: false,
+    card_mode: 'price',
+};
 
 export const MonitorStatusTab: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
     const [sortBy, setSortBy] = useState<SortOption>('tier_distance');
     const [tierFilter, setTierFilter] = useState<TierFilter>('all');
+    const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [preferences, setPreferences] = useState<Record<string, MonitorPreference>>({});
+    const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
     const { toast } = useToast();
+
+    const getPreference = (symbol: string): MonitorPreference => {
+        return preferences[symbol] ?? DEFAULT_PREFERENCE;
+    };
+
+    const fetchMonitorContext = async () => {
+        try {
+            const [favoritesResponse, preferencesResponse] = await Promise.all([
+                fetch(`${API_BASE_URL}/favorites/`),
+                fetch(`${API_BASE_URL}/monitor/preferences`),
+            ]);
+
+            if (!favoritesResponse.ok) {
+                throw new Error(`Failed to load favorites (${favoritesResponse.status})`);
+            }
+            if (!preferencesResponse.ok) {
+                throw new Error(`Failed to load monitor preferences (${preferencesResponse.status})`);
+            }
+
+            await favoritesResponse.json();
+            const preferencesPayload = await preferencesResponse.json();
+            setPreferences(
+                typeof preferencesPayload === 'object' && preferencesPayload
+                    ? preferencesPayload
+                    : {}
+            );
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: 'Erro',
+                description: 'Não foi possível carregar preferências do monitor.',
+                variant: 'destructive',
+            });
+        }
+    };
 
     const fetchOpportunities = async (tier?: TierFilter) => {
         setLoading(true);
         try {
-            // Convert frontend tier filter to API query param
             const tierParam = tier || tierFilter;
             let apiTier: string;
             if (tierParam === 'all') {
                 apiTier = 'all';
             } else if (tierParam === '1_2') {
-                apiTier = '1,2';  // API expects comma-separated
+                apiTier = '1,2';
             } else if (tierParam === 'none') {
                 apiTier = 'none';
             } else {
-                apiTier = tierParam;  // '1', '2', '3'
+                apiTier = tierParam;
             }
-            
-            // Prefer relative "/api" so Vite proxy routes to backend even when accessing from outside the server.
-            // Only use VITE_API_URL when explicitly set.
+
             const baseUrl = import.meta.env.VITE_API_URL || "/api";
             const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}`;
             const response = await fetch(url);
@@ -60,34 +102,79 @@ export const MonitorStatusTab: React.FC = () => {
         }
     };
 
-    // Fetch when page loads or tier filter changes
+    const persistPreference = async (symbol: string, patch: Partial<MonitorPreference>) => {
+        const prev = getPreference(symbol);
+        const next: MonitorPreference = {
+            in_portfolio: patch.in_portfolio ?? prev.in_portfolio,
+            card_mode: patch.card_mode ?? prev.card_mode,
+        };
+
+        setPreferences((current) => ({ ...current, [symbol]: next }));
+        setSavingSymbols((current) => ({ ...current, [symbol]: true }));
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/monitor/preferences/${encodeURIComponent(symbol)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(patch),
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(String(payload?.detail || `Failed to save preference (${response.status})`));
+            }
+
+            setPreferences((current) => ({
+                ...current,
+                [symbol]: {
+                    in_portfolio: Boolean(payload?.in_portfolio),
+                    card_mode: payload?.card_mode === 'strategy' ? 'strategy' : 'price',
+                },
+            }));
+        } catch (error) {
+            setPreferences((current) => ({ ...current, [symbol]: prev }));
+            toast({
+                title: 'Erro',
+                description: error instanceof Error ? error.message : 'Falha ao salvar preferência.',
+                variant: 'destructive',
+            });
+        } finally {
+            setSavingSymbols((current) => ({ ...current, [symbol]: false }));
+        }
+    };
+
+    const handleToggleInPortfolio = (symbol: string, nextValue: boolean) => {
+        void persistPreference(symbol, { in_portfolio: nextValue });
+    };
+
+    const handleToggleCardMode = (symbol: string, nextMode: MonitorCardMode) => {
+        void persistPreference(symbol, { card_mode: nextMode });
+    };
+
     useEffect(() => {
-        fetchOpportunities(tierFilter);
+        void fetchMonitorContext();
+    }, []);
+
+    useEffect(() => {
+        void fetchOpportunities(tierFilter);
     }, [tierFilter]);
 
-    // Sort opportunities by selected criteria
     const sortedOpportunities = useMemo(() => {
         const sorted = [...opportunities].sort((a, b) => {
             if (sortBy === 'tier_distance') {
-                // Tier + Distância: Tier 1 e 2 primeiro, depois por distância
-                // HOLD sempre primeiro dentro de cada grupo de tier
                 const tierA = a.tier ?? 999;
                 const tierB = b.tier ?? 999;
-                // Agrupar Tier 1 e 2 como "prioritários" (< 3), outros depois
                 const priorityA = tierA <= 2 ? 0 : 1;
                 const priorityB = tierB <= 2 ? 0 : 1;
                 if (priorityA !== priorityB) {
                     return priorityA - priorityB;
                 }
-                // Dentro do mesmo grupo de prioridade, HOLD primeiro
                 if (a.is_holding !== b.is_holding) {
                     return a.is_holding ? -1 : 1;
                 }
-                // Depois por tier específico (1 antes de 2)
                 if (tierA !== tierB) {
                     return tierA - tierB;
                 }
-                // Depois por distância (mais próximo primeiro)
                 const distA = a.distance_to_next_status ?? 999;
                 const distB = b.distance_to_next_status ?? 999;
                 if (distA !== distB) {
@@ -95,7 +182,6 @@ export const MonitorStatusTab: React.FC = () => {
                 }
                 return a.symbol.localeCompare(b.symbol);
             } else if (sortBy === 'distance') {
-                // Distância: HOLD primeiro, depois por distância
                 if (a.is_holding !== b.is_holding) {
                     return a.is_holding ? -1 : 1;
                 }
@@ -118,14 +204,18 @@ export const MonitorStatusTab: React.FC = () => {
         return sorted;
     }, [opportunities, sortBy]);
 
-    // Separate opportunities by status, then apply tier filter
-    // Dados já vêm filtrados por tier do backend
-    const holding = sortedOpportunities.filter(o => o.is_holding);
-    const stoppedOut = sortedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT');
-    const missedEntry = sortedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY');
-    const waiting = sortedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY');
+    const filteredOpportunities = useMemo(() => {
+        if (listFilter === 'all') {
+            return sortedOpportunities;
+        }
+        return sortedOpportunities.filter((opp) => preferences[opp.symbol]?.in_portfolio === true);
+    }, [listFilter, preferences, sortedOpportunities]);
 
-    // Lista ordenada para paginação infinita: holding → stopped → missed → waiting
+    const holding = filteredOpportunities.filter(o => o.is_holding);
+    const stoppedOut = filteredOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT');
+    const missedEntry = filteredOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY');
+    const waiting = filteredOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY');
+
     type SectionKey = 'holding' | 'stoppedOut' | 'missedEntry' | 'waiting';
     const orderedCards = useMemo(() => {
         const withSection = (arr: Opportunity[], s: SectionKey) =>
@@ -140,7 +230,6 @@ export const MonitorStatusTab: React.FC = () => {
 
     const { visibleItems, hasMore, sentinelRef } = useInfiniteScroll(orderedCards, 24, 24);
 
-    // Agrupa itens visíveis por seção consecutiva para manter headers + grid
     const visibleGroups = useMemo(() => {
         const g: { section: SectionKey; cards: Opportunity[] }[] = [];
         for (const { opp, section } of visibleItems) {
@@ -167,7 +256,7 @@ export const MonitorStatusTab: React.FC = () => {
             dotClass: 'bg-red-500',
             h2Class: 'text-red-600',
             badgeClass: 'bg-red-500/10 text-red-600',
-            description: 'A média curta está acima da longa (condição de entrada satisfeita), mas a posição foi fechada no stop loss. A distância mostra o spread entre as médias. Aguardando cruzamento para baixo ou nova entrada.',
+            description: 'A média curta está acima da longa (condição de entrada satisfeita), mas a posição foi fechada no stop loss. Aguardando cruzamento para baixo ou nova entrada.',
         },
         missedEntry: {
             title: 'Entrada Perdida',
@@ -187,14 +276,16 @@ export const MonitorStatusTab: React.FC = () => {
         },
     };
 
+    const noResultsForInPortfolio = !loading && opportunities.length > 0 && filteredOpportunities.length === 0 && listFilter === 'in_portfolio';
+
     return (
-        <div className="container mx-auto p-6 space-y-8">
+        <div className="container mx-auto p-6 space-y-8" data-testid="monitor-status-tab">
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center">
                     <div className="space-y-1">
                         <h1 className="text-3xl font-bold tracking-tight">Opportunity Board</h1>
                         <p className="text-muted-foreground">
-                            Monitor your favorite strategies - See which are in HOLD and how close they are to the next signal
+                            Monitor your favorite strategies.
                         </p>
                         {lastUpdated && (
                             <p className="text-xs text-muted-foreground">
@@ -203,7 +294,13 @@ export const MonitorStatusTab: React.FC = () => {
                         )}
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="secondary" onClick={() => fetchOpportunities()} disabled={loading}>
+                        <Button
+                            variant="secondary"
+                            onClick={() => {
+                                void Promise.all([fetchOpportunities(), fetchMonitorContext()]);
+                            }}
+                            disabled={loading}
+                        >
                             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
@@ -211,6 +308,26 @@ export const MonitorStatusTab: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2" role="group" aria-label="Monitor list filter">
+                        <span className="text-sm font-medium">List:</span>
+                        <button
+                            type="button"
+                            className={`text-sm border rounded px-2 py-1.5 ${listFilter === 'in_portfolio' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-900 text-gray-100 border-border'}`}
+                            onClick={() => setListFilter('in_portfolio')}
+                            data-testid="monitor-filter-in-portfolio"
+                        >
+                            In Portfolio
+                        </button>
+                        <button
+                            type="button"
+                            className={`text-sm border rounded px-2 py-1.5 ${listFilter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-900 text-gray-100 border-border'}`}
+                            onClick={() => setListFilter('all')}
+                            data-testid="monitor-filter-all"
+                        >
+                            All
+                        </button>
+                    </div>
+
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">Tier:</span>
                         <div className="relative">
@@ -230,6 +347,7 @@ export const MonitorStatusTab: React.FC = () => {
                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         </div>
                     </div>
+
                     <div className="flex items-center gap-2">
                         <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm font-medium">Sort:</span>
@@ -274,6 +392,11 @@ export const MonitorStatusTab: React.FC = () => {
                         Go to Backtester
                     </Button>
                 </div>
+            ) : noResultsForInPortfolio ? (
+                <div className="text-center py-16 space-y-4" data-testid="monitor-empty-in-portfolio">
+                    <p className="text-muted-foreground">No symbols are marked as In Portfolio yet.</p>
+                    <Button variant="secondary" onClick={() => setListFilter('all')}>Show All Symbols</Button>
+                </div>
             ) : (
                 <div className="space-y-10">
                     {visibleGroups.map(({ section, cards }) => {
@@ -293,13 +416,19 @@ export const MonitorStatusTab: React.FC = () => {
                                 </p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                     {cards.map((opp) => (
-                                        <OpportunityCard key={opp.id} opportunity={opp} />
+                                        <OpportunityCard
+                                            key={opp.id}
+                                            opportunity={opp}
+                                            preference={getPreference(opp.symbol)}
+                                            isSavingPreference={Boolean(savingSymbols[opp.symbol])}
+                                            onToggleInPortfolio={handleToggleInPortfolio}
+                                            onToggleCardMode={handleToggleCardMode}
+                                        />
                                     ))}
                                 </div>
                             </section>
                         );
                     })}
-                    {/* Sentinel: ao entrar na viewport, carrega mais itens */}
                     {hasMore && (
                         <div ref={sentinelRef} className="flex justify-center py-8" aria-hidden="true">
                             <span className="text-sm text-muted-foreground animate-pulse">Carregando mais…</span>

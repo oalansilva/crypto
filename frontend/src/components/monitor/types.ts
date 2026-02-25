@@ -28,3 +28,10 @@ export interface Opportunity {
     stop_price?: number | null;
     distance_to_stop_pct?: number | null;
 }
+
+export type MonitorCardMode = 'price' | 'strategy';
+
+export interface MonitorPreference {
+    in_portfolio: boolean;
+    card_mode: MonitorCardMode;
+}
