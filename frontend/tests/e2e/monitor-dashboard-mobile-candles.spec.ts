@@ -10,6 +10,7 @@ const FAVORITES_PAYLOAD = [
     parameters: {},
     metrics: {},
     created_at: '2025-01-01T00:00:00Z',
+    tier: 1,
   },
   {
     id: 2,
@@ -20,6 +21,7 @@ const FAVORITES_PAYLOAD = [
     parameters: {},
     metrics: {},
     created_at: '2025-01-01T00:00:00Z',
+    tier: 1,
   },
 ]
 
@@ -94,6 +96,7 @@ test('monitor shows status and dashboard tabs and loads favorites in dashboard',
   await expect(page.getByTestId('monitor-dashboard-tab')).toBeVisible()
   await expect(page.getByTestId('dashboard-symbol-list')).toContainText('NVDA')
   await expect(page.getByTestId('dashboard-symbol-list')).toContainText('BTC/USDT')
+  await expect(page.getByTestId('dashboard-symbol-list')).not.toContainText('TSLA')
 })
 
 test('monitor dashboard selects symbol and renders chart container', async ({ page }) => {
@@ -110,7 +113,7 @@ test('monitor dashboard timeframe switching updates request and state', async ({
   await page.goto('/monitor')
   await page.getByRole('tab', { name: 'Dashboard' }).click()
 
-  await expect(page.getByTestId('timeframe-1h')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('timeframe-1d')).toHaveAttribute('aria-pressed', 'true')
   await page.getByTestId('timeframe-4h').click()
   await expect(page.getByTestId('timeframe-4h')).toHaveAttribute('aria-pressed', 'true')
 

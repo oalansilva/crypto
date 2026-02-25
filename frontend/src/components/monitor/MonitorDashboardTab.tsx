@@ -35,7 +35,7 @@ export function MonitorDashboardTab() {
 
   const symbols = useMemo<SymbolCard[]>(() => {
     const grouped = new Map<string, SymbolCard>()
-    for (const fav of favorites) {
+    for (const fav of tieredFavorites) {
       const key = String(fav.symbol || '').trim()
       if (!key) continue
       const row = grouped.get(key)

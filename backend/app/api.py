@@ -248,7 +248,7 @@ def _normalize_candles_frame(df, limit: int):
 @router.get("/market/candles")
 async def get_market_candles(
     symbol: str = Query(..., description="Ticker or pair (e.g. NVDA or BTC/USDT)"),
-    timeframe: str = Query("1h", description="One of: 15m, 1h, 4h, 1d"),
+    timeframe: str = Query("1d", description="One of: 15m, 1h, 4h, 1d"),
     limit: int = Query(300, ge=1, le=2000, description="Max candles to return"),
 ):
     raw_symbol = str(symbol or "").strip()
