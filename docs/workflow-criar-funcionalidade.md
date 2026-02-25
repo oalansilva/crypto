@@ -54,10 +54,16 @@ Gerar instruções e escrever os artefatos:
 
 Enviar links do viewer do OpenSpec e aguardar o “ok” do Alan.
 
-Viewer (exemplo):
-- `http://72.60.150.140:5173/openspec/changes/<change-name>/proposal`
+**Camada de revisão PT-BR (obrigatória):**
+- Enviar um resumo curto em PT-BR no chat.
+- Criar o arquivo **não-canônico** `openspec/changes/<change-name>/review-ptbr.md`.
+- Incluir também o link do viewer para esse resumo PT-BR.
 
-> Importante: usar sempre o prefixo `/openspec/changes/`.
+Viewer (exemplos):
+- Proposal: `http://72.60.150.140:5173/openspec/changes/<change-name>/proposal`
+- Review PT-BR: `http://72.60.150.140:5173/openspec/changes/<change-name>/review-ptbr`
+
+> Importante: usar sempre o prefixo `/openspec/changes/`. O artifact `review-ptbr` precisa estar allowlisted no backend (`backend/app/routes/openspec.py`).
 
 ### 5) Implementação (com Codex)
 
