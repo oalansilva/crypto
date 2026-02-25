@@ -11,22 +11,39 @@ from app.models import MonitorPreference
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
 CardMode = Literal["price", "strategy"]
+PriceTimeframe = Literal["15m", "1h", "4h", "1d"]
+PRICE_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
 
 
 class MonitorPreferencePayload(BaseModel):
     in_portfolio: bool
     card_mode: CardMode
+    price_timeframe: PriceTimeframe
 
 
 class MonitorPreferenceUpdate(BaseModel):
     in_portfolio: Optional[bool] = None
     card_mode: Optional[CardMode] = None
+    price_timeframe: Optional[PriceTimeframe] = None
 
 
 def _normalize_symbol(symbol: str) -> str:
     normalized = str(symbol or "").strip()
     if not normalized:
         raise HTTPException(status_code=400, detail="Symbol must not be empty")
+    return normalized
+
+
+def _is_stock_symbol(symbol: str) -> bool:
+    return "/" not in symbol
+
+
+def _normalize_price_timeframe(symbol: str, timeframe: Optional[str]) -> str:
+    normalized = str(timeframe or "").strip().lower()
+    if normalized not in PRICE_TIMEFRAMES:
+        normalized = "1d"
+    if _is_stock_symbol(symbol):
+        return "1d"
     return normalized
 
 
@@ -37,6 +54,7 @@ def list_monitor_preferences(db: Session = Depends(get_db)):
         row.symbol: {
             "in_portfolio": bool(row.in_portfolio),
             "card_mode": row.card_mode if row.card_mode in {"price", "strategy"} else "price",
+            "price_timeframe": _normalize_price_timeframe(row.symbol, getattr(row, "price_timeframe", None)),
         }
         for row in rows
     }
@@ -48,10 +66,20 @@ def update_monitor_preferences(
     symbol: str = Path(..., description="Symbol (e.g. BTC/USDT or NVDA)"),
     db: Session = Depends(get_db),
 ):
-    if payload.in_portfolio is None and payload.card_mode is None:
+    if (
+        payload.in_portfolio is None
+        and payload.card_mode is None
+        and payload.price_timeframe is None
+    ):
         raise HTTPException(status_code=400, detail="At least one field must be provided")
 
     normalized_symbol = _normalize_symbol(symbol)
+    is_stock = _is_stock_symbol(normalized_symbol)
+    if is_stock and payload.price_timeframe is not None and payload.price_timeframe != "1d":
+        raise HTTPException(
+            status_code=400,
+            detail="Stocks currently support only timeframe='1d'",
+        )
 
     existing = (
         db.query(MonitorPreference)
@@ -66,6 +94,10 @@ def update_monitor_preferences(
         existing.in_portfolio = payload.in_portfolio
     if payload.card_mode is not None:
         existing.card_mode = payload.card_mode
+    if payload.price_timeframe is not None:
+        existing.price_timeframe = payload.price_timeframe
+    elif not getattr(existing, "price_timeframe", None):
+        existing.price_timeframe = "1d"
 
     existing.updated_at = datetime.utcnow()
     db.commit()
@@ -74,4 +106,5 @@ def update_monitor_preferences(
     return {
         "in_portfolio": bool(existing.in_portfolio),
         "card_mode": existing.card_mode if existing.card_mode in {"price", "strategy"} else "price",
+        "price_timeframe": _normalize_price_timeframe(normalized_symbol, getattr(existing, "price_timeframe", None)),
     }

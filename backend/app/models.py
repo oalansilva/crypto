@@ -188,4 +188,5 @@ class MonitorPreference(Base):
     symbol = Column(String, primary_key=True, index=True)
     in_portfolio = Column(Boolean, nullable=False, default=False)
     card_mode = Column(String, nullable=False, default="price")
+    price_timeframe = Column(String, nullable=False, default="1d")
     updated_at = Column(DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)

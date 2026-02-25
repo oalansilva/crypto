@@ -5,7 +5,7 @@ import { Target, Activity, Settings, Star, BarChart3 } from "lucide-react";
 import { API_BASE_URL, apiUrl } from '../../lib/apiBase';
 import { MiniCandlesChart, type MarketCandle } from './MiniCandlesChart';
 
-import type { Opportunity, MonitorCardMode, MonitorPreference } from './types';
+import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe } from './types';
 
 interface OpportunityCardProps {
     opportunity: Opportunity;
@@ -13,7 +13,10 @@ interface OpportunityCardProps {
     isSavingPreference: boolean;
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
+    onChangePriceTimeframe: (symbol: string, nextTimeframe: MonitorPriceTimeframe) => void;
 }
+
+const PRICE_TIMEFRAMES: MonitorPriceTimeframe[] = ['15m', '1h', '4h', '1d'];
 
 const getDistanceColor = (distance: number | null | undefined): string => {
     if (distance === null || distance === undefined) return 'text-gray-600 dark:text-gray-400';
@@ -43,10 +46,10 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     isSavingPreference,
     onToggleInPortfolio,
     onToggleCardMode,
+    onChangePriceTimeframe,
 }) => {
     const {
         symbol,
-        timeframe,
         name,
         is_holding,
         distance_to_next_status,
@@ -55,6 +58,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     } = opportunity;
 
     const isPriceMode = preference.card_mode === 'price';
+    const isStock = !symbol.includes('/');
+    const effectiveTimeframe: MonitorPriceTimeframe = isStock ? '1d' : preference.price_timeframe;
 
     const [isEditingNotes, setIsEditingNotes] = React.useState(false);
     const [notesValue, setNotesValue] = React.useState(opportunity.notes || '');
@@ -79,10 +84,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             setCandlesLoading(true);
             setCandlesError(null);
             try {
-                const effectiveTf = symbol.includes('/') ? timeframe : '1d';
                 const url = apiUrl('/market/candles');
                 url.searchParams.set('symbol', symbol);
-                url.searchParams.set('timeframe', effectiveTf);
+                url.searchParams.set('timeframe', effectiveTimeframe);
                 url.searchParams.set('limit', '120');
 
                 const response = await fetch(url.toString(), { signal: controller.signal });
@@ -107,7 +111,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
         run();
         return () => controller.abort();
-    }, [isPriceMode, symbol, timeframe]);
+    }, [isPriceMode, symbol, effectiveTimeframe]);
 
     const formattedPrice = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -202,7 +206,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             <span className={`w-2 h-2 rounded-full ${tierStyles.dot} ring-1 ${tierStyles.ring} flex-shrink-0`} title={tierStyles.label} />
                         )}
                         <span className="truncate">{symbol}</span>
-                        <span className="text-sm font-normal text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{timeframe}</span>
+                        <span className="text-sm font-normal text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{effectiveTimeframe}</span>
                     </CardTitle>
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[220px] font-medium">
                         {name || opportunity.template_name}
@@ -244,6 +248,29 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             <CardContent>
                 {isPriceMode ? (
                     <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2" role="group" aria-label={`Price timeframe for ${symbol}`}>
+                            {PRICE_TIMEFRAMES.map((tf) => {
+                                const active = tf === effectiveTimeframe;
+                                const disabled = isSavingPreference || (isStock && tf !== '1d');
+                                return (
+                                    <button
+                                        key={tf}
+                                        type="button"
+                                        className={`rounded-md border px-2 py-1 text-xs font-medium ${
+                                            active
+                                                ? 'border-blue-500 bg-blue-600 text-white'
+                                                : 'border-slate-300 bg-white text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200'
+                                        } ${disabled && !active ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        onClick={() => onChangePriceTimeframe(symbol, tf)}
+                                        disabled={disabled}
+                                        aria-pressed={active}
+                                        data-testid={`timeframe-toggle-${symbolTestKey}-${tf}`}
+                                    >
+                                        {tf}
+                                    </button>
+                                );
+                            })}
+                        </div>
                         <div className="flex justify-between items-center">
                             <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Price:</span>
                             <span className="font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formattedPrice}</span>

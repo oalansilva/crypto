@@ -30,8 +30,10 @@ export interface Opportunity {
 }
 
 export type MonitorCardMode = 'price' | 'strategy';
+export type MonitorPriceTimeframe = '15m' | '1h' | '4h' | '1d';
 
 export interface MonitorPreference {
     in_portfolio: boolean;
     card_mode: MonitorCardMode;
+    price_timeframe: MonitorPriceTimeframe;
 }
