@@ -29,6 +29,7 @@ from app.services.combo_service import ComboService
 from app.services.backtest_service import BacktestService
 from app.services.market_data_providers import (
     get_market_data_provider,
+    resolve_data_source_for_symbol,
     validate_data_source_timeframe,
 )
 from src.data.incremental_loader import IncrementalLoader
@@ -1451,7 +1452,14 @@ class ComboOptimizer:
             direction = "long"
 
         optimization_start_time = time.time()
-        selected_data_source = validate_data_source_timeframe(data_source, timeframe)
+        # If data_source is omitted, infer based on symbol:
+        # - symbols without "/" are treated as US tickers -> stooq
+        # - symbols with "/" are treated as crypto pairs -> ccxt
+        inferred = data_source
+        if inferred is None or str(inferred).strip() == "":
+            inferred = resolve_data_source_for_symbol(symbol, None)
+
+        selected_data_source = validate_data_source_timeframe(inferred, timeframe)
 
         # Generate stages
         fixed_timeframe = timeframe if timeframe else None
