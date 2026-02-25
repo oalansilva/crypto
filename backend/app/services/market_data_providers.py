@@ -579,3 +579,142 @@ def get_market_data_provider(data_source: Optional[str]) -> MarketDataProvider:
 
     _PROVIDERS[source] = provider
     return provider
+
+
+class AlphaVantageMarketDataProvider:
+    """Free-tier intraday stock candles via Alpha Vantage.
+
+    Notes:
+    - Requires env var ALPHAVANTAGE_API_KEY.
+    - Rate-limited; should be used as fallback behind caching.
+    """
+
+    source = "alphavantage"
+    DEFAULT_TIMEOUT_SECONDS = 20.0
+
+    _INTERVAL_MAP = {
+        "15m": "15min",
+        "1h": "60min",
+        # Alpha Vantage does not provide 4h directly. We'll use 60min and resample.
+        "4h": "60min",
+        "1d": "Daily",
+    }
+
+    def __init__(self, api_key: str, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS):
+        self.api_key = str(api_key or "").strip()
+        if not self.api_key:
+            raise ValueError("ALPHAVANTAGE_API_KEY is not configured")
+        self.timeout_seconds = max(1.0, float(timeout_seconds))
+
+    def fetch_ohlcv(
+        self,
+        symbol: str,
+        timeframe: str,
+        since_str: Optional[str] = None,
+        until_str: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> pd.DataFrame:
+        tf = str(timeframe or "").strip().lower()
+        interval = self._INTERVAL_MAP.get(tf)
+        if interval is None:
+            raise ValueError(f"Alpha Vantage does not support timeframe '{timeframe}'.")
+
+        raw_symbol = str(symbol or "").strip().upper()
+        if not raw_symbol or "/" in raw_symbol:
+            raise ValueError(f"Alpha Vantage expects a stock ticker (e.g. AAPL). Got '{symbol}'.")
+
+        # Alpha Vantage endpoints
+        if tf == "1d":
+            url = "https://www.alphavantage.co/query"
+            params = {
+                "function": "TIME_SERIES_DAILY_ADJUSTED",
+                "symbol": raw_symbol,
+                "outputsize": "compact",
+                "apikey": self.api_key,
+            }
+            r = httpx.get(url, params=params, timeout=self.timeout_seconds)
+            if r.status_code == 429:
+                raise RuntimeError("Alpha Vantage rate limited (HTTP 429)")
+            r.raise_for_status()
+            payload = r.json()
+            series = payload.get("Time Series (Daily)")
+            if not isinstance(series, dict) or not series:
+                raise RuntimeError(f"Alpha Vantage returned no daily data for {raw_symbol}")
+
+            rows = []
+            for date_str, values in series.items():
+                rows.append(
+                    {
+                        "timestamp_utc": pd.to_datetime(date_str, utc=True),
+                        "open": float(values.get("1. open")),
+                        "high": float(values.get("2. high")),
+                        "low": float(values.get("3. low")),
+                        "close": float(values.get("4. close")),
+                        "volume": float(values.get("6. volume", 0) or 0),
+                    }
+                )
+            df = pd.DataFrame(rows).sort_values("timestamp_utc")
+            df["time"] = df["timestamp_utc"]
+            df["timestamp"] = (df["timestamp_utc"].astype("int64") // 1_000_000)
+            df = df[["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]]
+            df = df.set_index("timestamp_utc", drop=False)
+            return StooqEodProvider._slice_dataframe(df, since_str=since_str, until_str=until_str, limit=limit)
+
+        # intraday
+        url = "https://www.alphavantage.co/query"
+        params = {
+            "function": "TIME_SERIES_INTRADAY",
+            "symbol": raw_symbol,
+            "interval": interval,
+            "outputsize": "compact",
+            "apikey": self.api_key,
+        }
+        r = httpx.get(url, params=params, timeout=self.timeout_seconds)
+        if r.status_code == 429:
+            raise RuntimeError("Alpha Vantage rate limited (HTTP 429)")
+        r.raise_for_status()
+        payload = r.json()
+        key = f"Time Series ({interval})"
+        series = payload.get(key)
+        if not isinstance(series, dict) or not series:
+            # AlphaVantage returns {"Note": ...} when throttled
+            note = payload.get("Note") or payload.get("Information")
+            if note:
+                raise RuntimeError(str(note))
+            raise RuntimeError(f"Alpha Vantage returned no intraday data for {raw_symbol}")
+
+        rows = []
+        for ts_str, values in series.items():
+            t = pd.to_datetime(ts_str, utc=True)
+            rows.append(
+                {
+                    "timestamp_utc": t,
+                    "open": float(values.get("1. open")),
+                    "high": float(values.get("2. high")),
+                    "low": float(values.get("3. low")),
+                    "close": float(values.get("4. close")),
+                    "volume": float(values.get("5. volume", 0) or 0),
+                }
+            )
+
+        df = pd.DataFrame(rows).sort_values("timestamp_utc")
+        df["time"] = df["timestamp_utc"]
+        df["timestamp"] = (df["timestamp_utc"].astype("int64") // 1_000_000)
+        df = df[["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]]
+        df = df.set_index("timestamp_utc", drop=False)
+
+        if tf == "4h":
+            # Aggregate 60m candles into 4h.
+            agg = (
+                df.resample("4h", on="timestamp_utc")
+                .agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"})
+                .dropna(subset=["open", "high", "low", "close"])
+                .reset_index()
+            )
+            agg["time"] = pd.to_datetime(agg["timestamp_utc"], utc=True)
+            agg["timestamp"] = (pd.to_datetime(agg["timestamp_utc"], utc=True).astype("int64") // 1_000_000)
+            agg = agg[["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]]
+            agg = agg.set_index("timestamp_utc", drop=False).sort_index()
+            df = agg
+
+        return StooqEodProvider._slice_dataframe(df, since_str=since_str, until_str=until_str, limit=limit)

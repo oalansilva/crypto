@@ -77,3 +77,4 @@ frontend/vite.out
 backend/data/jobs/*.json
 backend/data/jobs/results.db
 backend/full_execution_log.txt.1
+.env

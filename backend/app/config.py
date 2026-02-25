@@ -3,6 +3,8 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 class Settings(BaseSettings):
+    # Market data providers (optional)
+    alphavantage_api_key: str | None = None
     # Background jobs
     arbitrage_monitor_enabled: str = "1"
     # Supabase (Optional for local SQLite)
@@ -22,6 +24,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "allow"
 
 @lru_cache()
 def get_settings() -> Settings:

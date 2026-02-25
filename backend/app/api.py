@@ -280,7 +280,15 @@ async def get_market_candles(
                 df = YahooMarketDataProvider().fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
         else:
             data_source = "yahoo"
-            df = YahooMarketDataProvider().fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+            try:
+                df = YahooMarketDataProvider().fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+            except Exception as exc:
+                api_key = os.environ.get('ALPHAVANTAGE_API_KEY', '').strip()
+                if not api_key:
+                    raise
+                data_source = "alphavantage"
+                from backend.app.services.market_data_providers import AlphaVantageMarketDataProvider
+                df = AlphaVantageMarketDataProvider(api_key=api_key).fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
 
         candles = _normalize_candles_frame(df, limit=limit)
         return {
