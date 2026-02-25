@@ -26,7 +26,7 @@ export function MonitorDashboardTab() {
   const [favoritesLoading, setFavoritesLoading] = useState(false)
   const [favoritesError, setFavoritesError] = useState<string | null>(null)
   const [selectedSymbol, setSelectedSymbol] = useState<string>('')
-  const [timeframe, setTimeframe] = useState<Timeframe>('1h')
+  const [timeframe, setTimeframe] = useState<Timeframe>('1d')
   const [candles, setCandles] = useState<MarketCandle[]>([])
   const [candlesLoading, setCandlesLoading] = useState(false)
   const [candlesError, setCandlesError] = useState<string | null>(null)
@@ -35,8 +35,12 @@ export function MonitorDashboardTab() {
 
   const symbols = useMemo<SymbolCard[]>(() => {
     const grouped = new Map<string, SymbolCard>()
+
+    // Only include tiered favorites (tier 1/2/3). "No tier" is ignored in the Dashboard.
+    const tieredFavorites = favorites.filter((f: any) => [1, 2, 3].includes(Number(f?.tier)))
+
     for (const fav of tieredFavorites) {
-      const key = String(fav.symbol || '').trim()
+      const key = String((fav as any).symbol || '').trim()
       if (!key) continue
       const row = grouped.get(key)
       if (row) {
