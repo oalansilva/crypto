@@ -16,6 +16,11 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Keep each file short and actionable.
 - Prefer linking to sources (PR, CI runs, OpenSpec viewer) over copying long logs.
 
+### Delivery workflow (must follow)
+
+- Always follow the agreed flow: **PO → Alan approval → DEV → QA → Alan homologation → archive**.
+- If a change is already open and Alan requests a **small adjustment**, **DEV may implement it within the same change**, but the rest of the flow remains mandatory (**QA validation + Alan homologation + archive**).
+
 ## Prereqs (so the Turn Scheduler works)
 
 ### Operating mode
