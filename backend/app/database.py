@@ -64,6 +64,11 @@ def ensure_sqlite_migrations() -> None:
             if "price_timeframe" not in cols:
                 cur.execute("ALTER TABLE monitor_preferences ADD COLUMN price_timeframe TEXT DEFAULT '1d'")
                 conn.commit()
+
+            # monitor_preferences: add theme if missing
+            if "theme" not in cols:
+                cur.execute("ALTER TABLE monitor_preferences ADD COLUMN theme TEXT NOT NULL DEFAULT 'dark-green'")
+                conn.commit()
     finally:
         conn.close()
 
