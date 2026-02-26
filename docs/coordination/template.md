@@ -6,6 +6,8 @@
 - QA: not started | in progress | blocked | done
 - Alan (Stakeholder): not reviewed | reviewed | approved
 
+> Gate order: PO must be **done** before Alan approves to implement.
+
 ## Decisions (locked)
 - Goal:
 - Surface (mobile/desktop):

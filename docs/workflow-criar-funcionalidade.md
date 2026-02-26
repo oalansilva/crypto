@@ -94,7 +94,12 @@ Gerar instruções e escrever os artefatos:
 
 - `openspec validate <change-name> --type change`
 
-### 6) Revisão do Alan (antes de implementar)
+### 6) Aprovação do PO (antes do Alan)
+
+- PO revisa os artefatos, garante que decisões e critérios de aceitação estão travados.
+- PO atualiza o kanban (`docs/coordination/<change>.md`) marcando PO como **done**.
+
+### 7) Revisão do Alan (antes de implementar)
 
 Enviar links do viewer do OpenSpec e aguardar o “ok” do Alan.
 
@@ -109,13 +114,13 @@ Viewer (exemplos):
 
 > Importante: usar sempre o prefixo `/openspec/changes/`. O artifact `review-ptbr` precisa estar allowlisted no backend (`backend/app/routes/openspec.py`).
 
-### 7) Implementação (DEV)
+### 8) Implementação (DEV)
 
 - Garantir branch + working tree limpos
 - Rodar:
   - `codex exec --full-auto --cd /root/.openclaw/workspace/crypto "Implementar as tasks da change <change-name> seguindo specs/design."`
 
-### 8) QA Gate (obrigatório)
+### 9) QA Gate (obrigatório)
 
 O QA deve:
 - adicionar/atualizar testes conforme `docs/testing-playbook.md`
