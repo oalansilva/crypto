@@ -26,7 +26,7 @@
 - PT-BR review (viewer): openspec/changes/monitor-candles-async-ui/review-ptbr.md
 - PR: (none)
 - CI run: (run `pnpm test:e2e` / GH Actions if configured)
-- Implementation commit: (pending commit in repo)
+- Implementation commit: c540577
 
 ## Notes
 - Spec mentions: optimistic timeframe switch, chart-area loading indicator, request cancellation, in-memory cache by `symbol+timeframe`.
