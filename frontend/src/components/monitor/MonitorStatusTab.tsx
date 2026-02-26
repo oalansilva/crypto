@@ -348,7 +348,20 @@ export const MonitorStatusTab: React.FC = () => {
                             </p>
                         )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                        <button
+                            type="button"
+                            className="text-sm border rounded px-2 py-1.5 bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)]"
+                            onClick={() => {
+                                const next: MonitorTheme = theme === 'dark-green' ? 'black' : 'dark-green';
+                                void persistPreference('__global__', { theme: next });
+                            }}
+                            data-testid="monitor-theme-toggle"
+                            title="Toggle Monitor theme"
+                        >
+                            Theme: {theme}
+                        </button>
+
                         <Button
                             variant="secondary"
                             onClick={() => {
