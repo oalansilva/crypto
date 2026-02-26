@@ -54,11 +54,16 @@ async def test_monitor_preferences_put_and_get_roundtrip(tmp_path: Path):
         get_response = await client.get("/api/monitor/preferences")
 
     assert put_response.status_code == 200, put_response.text
-    assert put_response.json() == {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "4h"}
+    assert put_response.json() == {
+        "in_portfolio": True,
+        "card_mode": "strategy",
+        "price_timeframe": "4h",
+        "theme": "dark-green",
+    }
 
     assert get_response.status_code == 200, get_response.text
     assert get_response.json() == {
-        "BTC/USDT": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "4h"},
+        "BTC/USDT": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "4h", "theme": "dark-green"},
     }
 
 
@@ -77,14 +82,14 @@ async def test_monitor_preferences_put_partial_update_keeps_defaults(tmp_path: P
         final = await client.get("/api/monitor/preferences")
 
     assert first.status_code == 200, first.text
-    assert first.json() == {"in_portfolio": True, "card_mode": "price", "price_timeframe": "1d"}
+    assert first.json() == {"in_portfolio": True, "card_mode": "price", "price_timeframe": "1d", "theme": "dark-green"}
 
     assert second.status_code == 200, second.text
-    assert second.json() == {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d"}
+    assert second.json() == {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d", "theme": "dark-green"}
 
     assert final.status_code == 200, final.text
     assert final.json() == {
-        "NVDA": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d"},
+        "NVDA": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d", "theme": "dark-green"},
     }
 
 
@@ -109,9 +114,10 @@ async def test_monitor_preferences_price_timeframe_persists_for_crypto(tmp_path:
         second = await client.get("/api/monitor/preferences")
 
     assert first.status_code == 200, first.text
-    assert first.json() == {"in_portfolio": False, "card_mode": "price", "price_timeframe": "15m"}
+    assert first.json() == {"in_portfolio": False, "card_mode": "price", "price_timeframe": "15m", "theme": "dark-green"}
     assert second.status_code == 200, second.text
     assert second.json()["BTC/USDT"]["price_timeframe"] == "15m"
+    assert second.json()["BTC/USDT"]["theme"] == "dark-green"
 
 
 async def test_monitor_preferences_rejects_intraday_timeframe_for_stock(tmp_path: Path):

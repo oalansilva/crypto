@@ -189,4 +189,6 @@ class MonitorPreference(Base):
     in_portfolio = Column(Boolean, nullable=False, default=False)
     card_mode = Column(String, nullable=False, default="price")
     price_timeframe = Column(String, nullable=False, default="1d")
+    # Monitor-only theme preference (defaults to dark-green).
+    theme = Column(String, nullable=False, default="dark-green")
     updated_at = Column(DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)

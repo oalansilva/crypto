@@ -12,19 +12,23 @@ router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
 CardMode = Literal["price", "strategy"]
 PriceTimeframe = Literal["15m", "1h", "4h", "1d"]
+ThemeName = Literal["dark-green", "black"]
 PRICE_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
+THEMES = {"dark-green", "black"}
 
 
 class MonitorPreferencePayload(BaseModel):
     in_portfolio: bool
     card_mode: CardMode
     price_timeframe: PriceTimeframe
+    theme: ThemeName
 
 
 class MonitorPreferenceUpdate(BaseModel):
     in_portfolio: Optional[bool] = None
     card_mode: Optional[CardMode] = None
     price_timeframe: Optional[PriceTimeframe] = None
+    theme: Optional[ThemeName] = None
 
 
 def _normalize_symbol(symbol: str) -> str:
@@ -55,6 +59,7 @@ def list_monitor_preferences(db: Session = Depends(get_db)):
             "in_portfolio": bool(row.in_portfolio),
             "card_mode": row.card_mode if row.card_mode in {"price", "strategy"} else "price",
             "price_timeframe": _normalize_price_timeframe(row.symbol, getattr(row, "price_timeframe", None)),
+            "theme": row.theme if getattr(row, "theme", None) in THEMES else "dark-green",
         }
         for row in rows
     }
@@ -70,6 +75,7 @@ def update_monitor_preferences(
         payload.in_portfolio is None
         and payload.card_mode is None
         and payload.price_timeframe is None
+        and payload.theme is None
     ):
         raise HTTPException(status_code=400, detail="At least one field must be provided")
 
@@ -99,6 +105,11 @@ def update_monitor_preferences(
     elif not getattr(existing, "price_timeframe", None):
         existing.price_timeframe = "1d"
 
+    if payload.theme is not None:
+        existing.theme = payload.theme
+    elif not getattr(existing, "theme", None):
+        existing.theme = "dark-green"
+
     existing.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(existing)
@@ -107,4 +118,5 @@ def update_monitor_preferences(
         "in_portfolio": bool(existing.in_portfolio),
         "card_mode": existing.card_mode if existing.card_mode in {"price", "strategy"} else "price",
         "price_timeframe": _normalize_price_timeframe(normalized_symbol, getattr(existing, "price_timeframe", None)),
+        "theme": existing.theme if getattr(existing, "theme", None) in THEMES else "dark-green",
     }
