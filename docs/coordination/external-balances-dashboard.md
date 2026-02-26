@@ -1,7 +1,7 @@
 # external-balances-dashboard
 
 ## Status
-- PO: in progress
+- PO: done
 - DEV: not started
 - QA: not started
 - Alan (Stakeholder): not reviewed
@@ -11,9 +11,11 @@
 ## Decisions (locked)
 - Goal: Add a dashboard to view external balances (starting with Binance Spot) via read-only API.
 - Surface (mobile/desktop): Desktop-first (still usable on mobile).
-- Defaults: Fetch is on-demand (no aggressive polling).
+- Defaults: Fetch is on-demand (no aggressive polling). Default sort: total desc.
+- Route: `/external/balances`
 - Data sources: Binance Spot account endpoint (server-side only).
 - Persistence: Do not persist balances; snapshot only.
+- UI columns: asset, free, locked, total (highlight locked > 0).
 - Performance limits: Keep calls rate-limit friendly; optional brief cache if needed.
 - Security: Secrets in server env vars only; never in frontend; do not log secrets.
 - Non-goals: Trading, withdrawals, transfers, history/PnL.
@@ -29,7 +31,7 @@
 - Backend must ensure errors are clear when secrets are missing and must not log key/secret.
 
 ## Next actions
-- [ ] PO: Confirm UI/UX (route name, table columns, sorting) + error states; lock acceptance.
+- [x] PO: Confirm UI/UX (route name, table columns, sorting) + error states; lock acceptance.
 - [ ] DEV: Implement backend endpoint + frontend page/route.
 - [ ] QA: Add backend mock test + Playwright E2E for new page.
 - [ ] Alan: Review/approve scope + confirm we should proceed with Binance read-only integration.
