@@ -19,6 +19,13 @@ Este documento descreve o fluxo padrão para criar funcionalidades no projeto **
 5) **Testing é parte do DoD**
 - Para cada change, adicionar/atualizar testes conforme `docs/testing-playbook.md`.
 
+## Papéis (multi-agente)
+
+- **Alan (Stakeholder)**: valida a ideia (antes) e homologa o final (depois).
+- **PO**: discovery, escopo/restrições, critérios de aceitação, artefatos OpenSpec (EN) + `review-ptbr.md`.
+- **DEV**: implementação + commits/PR/merge/deploy.
+- **QA**: testes (unit/integration/E2E), valida critérios de aceitação, garante CI verde. **Tudo passa por QA.**
+
 ## Passo a passo
 
 ### 0) Pré-check
@@ -29,11 +36,29 @@ Este documento descreve o fluxo padrão para criar funcionalidades no projeto **
   - `git branch --show-current`
   - `git status --porcelain` (deve estar vazio)
 
-### 1) Criar a change
+### 1) Criar o Kanban da change (obrigatório)
+
+- Criar `docs/coordination/<change-name>.md` usando `docs/coordination/template.md`.
+- Preencher o mínimo: Status + Links do viewer + Next actions.
+
+### 2) Criar a change
 
 - `openspec new change <change-name>`
 
-### 2) Planning (sem Codex)
+### 3) Discovery (PO) — perguntas e decisões (obrigatório)
+
+O PO deve fechar (por escrito) antes do planning:
+- objetivo
+- defaults
+- regras
+- escopo e não-escopo
+- performance/limites (ex: candles limit)
+- persistência (backend/local)
+- critérios de aceitação
+
+Registrar no kanban `docs/coordination/<change-name>.md` em "Decisions (locked)".
+
+### 4) Planning (sem Codex)
 
 Gerar instruções e escrever os artefatos:
 
@@ -50,7 +75,7 @@ Gerar instruções e escrever os artefatos:
 
 - `openspec validate <change-name> --type change`
 
-### 4) Revisão do Alan (antes de implementar)
+### 5) Revisão do Alan (antes de implementar)
 
 Enviar links do viewer do OpenSpec e aguardar o “ok” do Alan.
 
@@ -65,13 +90,23 @@ Viewer (exemplos):
 
 > Importante: usar sempre o prefixo `/openspec/changes/`. O artifact `review-ptbr` precisa estar allowlisted no backend (`backend/app/routes/openspec.py`).
 
-### 5) Implementação (com Codex)
+### 6) Implementação (DEV)
 
 - Garantir branch + working tree limpos
 - Rodar:
   - `codex exec --full-auto --cd /root/.openclaw/workspace/crypto "Implementar as tasks da change <change-name> seguindo specs/design."`
 
-### 6) Gate obrigatório de testes
+### 7) QA Gate (obrigatório)
+
+O QA deve:
+- adicionar/atualizar testes conforme `docs/testing-playbook.md`
+- rodar suites relevantes (integration + E2E quando aplicável)
+- garantir CI verde
+- registrar evidências no kanban (Links + Notes)
+
+Só após QA OK a change pode ser considerada pronta para homologação.
+
+### 8) Gate obrigatório de testes (execução)
 
 1) **Criar/atualizar testes** (obrigatório)
 - Seguir `docs/testing-playbook.md`.
