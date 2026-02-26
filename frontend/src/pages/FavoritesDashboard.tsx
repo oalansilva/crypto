@@ -55,10 +55,8 @@ const FavoritesDashboard: React.FC = () => {
             const res = await fetch(`${API_BASE_URL}/favorites/`);
             if (!res.ok) throw new Error('Failed to fetch favorites');
             const data = await res.json() as FavoriteStrategy[];
-            console.log('📥 Loaded favorites:', data);
-            if (data && data.length > 0) {
-                console.log('   First favorite max_loss:', data[0].metrics?.max_loss);
-            }
+            // Avoid logging large payloads in production/dev UI: can freeze browser on slower devices.
+            console.log(`📥 Loaded favorites: ${data?.length ?? 0} items`);
             return data;
         }
     });
