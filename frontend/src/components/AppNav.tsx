@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { Activity, TrendingUp, Sparkles, Bookmark, Layers, Shuffle } from 'lucide-react'
+import { Activity, TrendingUp, Sparkles, Bookmark, Layers, Shuffle, Wallet } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Playground', icon: Sparkles },
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/lab', label: 'Lab', icon: Sparkles },
   { to: '/arbitrage', label: 'Arbitragem', icon: Shuffle },
   { to: '/combo/select', label: 'Combo', icon: Layers },
+  { to: '/external/balances', label: 'Balances', icon: Wallet },
 ] as const
 
 export function AppNav() {

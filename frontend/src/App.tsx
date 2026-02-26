@@ -12,6 +12,7 @@ import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
 import LabPage from './pages/LabPage'
 import LabRunPage from './pages/LabRunPage'
 import ArbitragePage from './pages/ArbitragePage'
+import ExternalBalancesPage from './pages/ExternalBalancesPage'
 import { Sparkles } from 'lucide-react'
 import { Toaster } from "@/components/ui/toaster"
 
@@ -93,6 +94,7 @@ function App() {
           <Route path="/lab" element={<LabPage />} />
           <Route path="/lab/runs/:runId" element={<LabRunPage />} />
           <Route path="/arbitrage" element={<ArbitragePage />} />
+          <Route path="/external/balances" element={<ExternalBalancesPage />} />
         </Route>
       </Routes>
       <Toaster />

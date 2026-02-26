@@ -2,8 +2,8 @@
 
 ## Status
 - PO: done
-- DEV: not started
-- QA: not started
+- DEV: done
+- QA: done
 - Alan (Stakeholder): needs approval
 
 > Gate order: PO must be **done** before Alan approves to implement.
@@ -33,6 +33,6 @@
 
 ## Next actions
 - [x] PO: Confirm UI/UX (route name, table columns, sorting) + error states; lock acceptance.
-- [ ] DEV: Implement backend endpoint + frontend page/route.
-- [ ] QA: Add backend mock test + Playwright E2E for new page.
+- [x] DEV: Implement backend endpoint + frontend page/route.
+- [x] QA: Add backend mock test + Playwright E2E for new page.
 - [ ] Alan: Review/approve scope + confirm we should proceed with Binance read-only integration.
