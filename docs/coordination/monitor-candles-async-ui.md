@@ -1,7 +1,7 @@
 # monitor-candles-async-ui
 
 ## Status
-- PO: done
+- PO: blocked (waiting Alan approval)
 - DEV: done
 - QA: done
 - Alan (Stakeholder): not reviewed
@@ -30,6 +30,7 @@
 
 ## Notes
 - Spec mentions: optimistic timeframe switch, chart-area loading indicator, request cancellation, in-memory cache by `symbol+timeframe`.
+- Blocker: Needs Alan to review/approve mobile UX expectations (loading indicator placement + what stays interactive). PO is blocked until that approval.
 
 ## Next actions
 - [x] PO: Confirm/record candle fetch bounds (limit) + acceptance criteria for “non-blocking” interaction (what must remain clickable) and lock them above.
