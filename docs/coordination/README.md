@@ -18,6 +18,11 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 ## Prereqs (so the Turn Scheduler works)
 
+### Operating mode
+- PO/DEV/QA work 24/7 in timeboxed turns.
+- Only notify Alan when relevant (decision needed, blocked, CI failed, ready for homologation, or prod risk).
+- If waiting on Alan, mark the change as `blocked: waiting Alan` and add a Next action owned by Alan.
+
 ### Additional definitions (recommended)
 
 To keep the process predictable, define these once and follow them:
