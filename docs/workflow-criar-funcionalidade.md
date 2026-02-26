@@ -14,7 +14,13 @@ Uma change só é considerada **Done** quando:
 ### Regras de qualidade (obrigatórias)
 - Mudou schema de DB? Deve ter migração (SQLite `ALTER TABLE`/startup migration) + teste de integração.
 - Endpoints de UI devem ter limites e não podem fazer backfill histórico gigante por padrão (ex: candles sempre bounded por `timeframe+limit`).
+- Qualquer endpoint novo/alterado deve ter pelo menos 1 **teste de contrato** (integration) validando status + schema mínimo.
 - Tasks devem ser pequenas (ideal 30–90 min) para permitir execução em turnos.
+
+### Políticas operacionais
+- Merge: padrão é **merge commit** (preserva rastreio). Squash só quando explicitamente desejado.
+- Deploy: produção = `main` (deploy via `./stop.sh` + `./start.sh`).
+- Rollback: se quebrou produção, preferir **revert no main** primeiro.
 
 1) **Nunca iniciar planning se existir change aberta (não arquivada)**
 - Antes de criar uma nova change, liste as changes e arquive as pendentes.

@@ -18,6 +18,32 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 ## Prereqs (so the Turn Scheduler works)
 
+### Additional definitions (recommended)
+
+To keep the process predictable, define these once and follow them:
+
+1) **Priority / ordering**
+- Use P0/P1/P2 for each active change.
+- Prefer **1 active change at a time** (or at most 2) to avoid context thrash.
+
+2) **Merge policy**
+- Default: merge commit (preserve history).
+- Use squash only for small hotfixes when explicitly desired.
+
+3) **Deploy policy**
+- Production = `main` deployed via `./stop.sh` + `./start.sh`.
+- Deploy after merge unless explicitly testing a branch.
+
+4) **Rollback policy**
+- If a change breaks production, prefer revert on `main` first, then follow up with a fix.
+
+5) **Contract tests for endpoints**
+- Any new/changed endpoint must have at least 1 backend integration test verifying status + minimal schema.
+
+6) **UI limits (defaults)**
+- UI endpoints must be bounded (timeframe+limit).
+- Prefer stable defaults (e.g., candles default limit 200) and document them.
+
 For each active change file (`docs/coordination/<change>.md`), ensure:
 
 - Status section is present and up to date (PO/DEV/QA/Alan).
