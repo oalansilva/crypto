@@ -18,7 +18,7 @@
 - OpenSpec viewer: http://72.60.150.140:5173/openspec/changes/monitor-dark-green-theme/proposal
 - PT-BR review (viewer): http://72.60.150.140:5173/openspec/changes/monitor-dark-green-theme/review-ptbr
 - PR: (none)
-- CI run: backend tests (local) passed; frontend E2E pending
+- CI run: backend OK; Playwright E2E (monitor theme) passed locally
 - Implementation commits: bff0e44 (backend prefs) + b2e068e (frontend theme) + 23ef1be (frontend theme toggle/persist)
 
 ## Notes
