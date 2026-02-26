@@ -236,10 +236,24 @@ export const MonitorStatusTab: React.FC = () => {
         return sortedOpportunities.filter((opp) => preferences[opp.symbol]?.in_portfolio === true);
     }, [listFilter, preferences, sortedOpportunities]);
 
-    const holding = filteredOpportunities.filter(o => o.is_holding);
-    const stoppedOut = filteredOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT');
-    const missedEntry = filteredOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY');
-    const waiting = filteredOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY');
+    // Render one card per symbol (preferences are per-symbol, and duplicate cards can fight over fetch/caches).
+    const dedupedOpportunities = useMemo(() => {
+        const seen = new Set<string>();
+        const out: Opportunity[] = [];
+        for (const opp of filteredOpportunities) {
+            const sym = String(opp.symbol || '').trim();
+            if (!sym) continue;
+            if (seen.has(sym)) continue;
+            seen.add(sym);
+            out.push(opp);
+        }
+        return out;
+    }, [filteredOpportunities]);
+
+    const holding = dedupedOpportunities.filter(o => o.is_holding);
+    const stoppedOut = dedupedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT');
+    const missedEntry = dedupedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY');
+    const waiting = dedupedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY');
 
     type SectionKey = 'holding' | 'stoppedOut' | 'missedEntry' | 'waiting';
     const orderedCards = useMemo(() => {
