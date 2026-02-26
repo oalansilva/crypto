@@ -42,18 +42,23 @@ def fetch_my_trades(symbol: str, limit: int = 1000) -> List[Dict[str, Any]]:
         return []
 
     ts = int(time.time() * 1000)
-    payload = _signed_get(
-        api_key,
-        api_secret,
-        base_url,
-        "/api/v3/myTrades",
-        {
-            "symbol": symbol.upper(),
-            "limit": int(limit),
-            "timestamp": ts,
-            "recvWindow": 5000,
-        },
-    )
+    try:
+        payload = _signed_get(
+            api_key,
+            api_secret,
+            base_url,
+            "/api/v3/myTrades",
+            {
+                "symbol": symbol.upper(),
+                "limit": int(limit),
+                "timestamp": ts,
+                "recvWindow": 5000,
+            },
+        )
+    except Exception:
+        # If the key lacks trade-history permissions or the endpoint fails,
+        # return empty to keep the wallet usable.
+        return []
 
     if isinstance(payload, list):
         return payload
