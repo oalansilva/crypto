@@ -4,6 +4,18 @@ Este documento descreve o fluxo padrão para criar funcionalidades no projeto **
 
 ## Regras Globais
 
+### Definition of Done (DoD)
+Uma change só é considerada **Done** quando:
+- CI está **verde**
+- QA validou critérios de aceitação e atualizou/criou testes necessários
+- Alan homologou (UI/fluxo real)
+- Change foi arquivada no OpenSpec
+
+### Regras de qualidade (obrigatórias)
+- Mudou schema de DB? Deve ter migração (SQLite `ALTER TABLE`/startup migration) + teste de integração.
+- Endpoints de UI devem ter limites e não podem fazer backfill histórico gigante por padrão (ex: candles sempre bounded por `timeframe+limit`).
+- Tasks devem ser pequenas (ideal 30–90 min) para permitir execução em turnos.
+
 1) **Nunca iniciar planning se existir change aberta (não arquivada)**
 - Antes de criar uma nova change, liste as changes e arquive as pendentes.
 
