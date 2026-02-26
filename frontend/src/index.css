@@ -408,3 +408,32 @@ select.input option {
     height: 44px;
   }
 }
+
+/* ============================================
+   MONITOR THEME (scoped)
+   ============================================ */
+
+.monitor-theme {
+  background: var(--monitor-bg);
+  color: var(--monitor-text);
+}
+
+.monitor-theme--dark-green {
+  --monitor-bg: #06110b; /* not pure black */
+  --monitor-surface: #0a1a10;
+  --monitor-card: #0b1f13;
+  --monitor-border: rgba(16, 185, 129, 0.18);
+  --monitor-text: rgba(255, 255, 255, 0.95);
+  --monitor-muted: rgba(255, 255, 255, 0.65);
+  --monitor-primary: #10b981;
+}
+
+.monitor-theme--black {
+  --monitor-bg: #0b0b0b;
+  --monitor-surface: #111111;
+  --monitor-card: #141414;
+  --monitor-border: rgba(255, 255, 255, 0.12);
+  --monitor-text: rgba(255, 255, 255, 0.95);
+  --monitor-muted: rgba(255, 255, 255, 0.65);
+  --monitor-primary: #ff5500;
+}

@@ -171,7 +171,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     let statusBadge = 'WAIT';
     let badgeColor = "bg-slate-200 text-slate-600 border-slate-300";
     let borderColor = 'border-l-slate-300 border-l-4';
-    let cardBgColor = 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700';
+    let cardBgColor = 'bg-[var(--monitor-card)] border-[var(--monitor-border)]';
     let holdingIndicator = '';
 
     if (is_holding) {
@@ -231,13 +231,13 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         is_holding ? 'text-green-700 dark:text-green-300' :
                         isStoppedOut ? 'text-red-700 dark:text-red-300' :
                         isMissedEntry ? 'text-yellow-700 dark:text-yellow-300' :
-                        'text-gray-900 dark:text-gray-100'
+                        'text-[var(--monitor-text)]'
                     }`}>
                         {tierStyles && (
                             <span className={`w-2 h-2 rounded-full ${tierStyles.dot} ring-1 ${tierStyles.ring} flex-shrink-0`} title={tierStyles.label} />
                         )}
                         <span className="truncate">{symbol}</span>
-                        <span className="text-sm font-normal text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{effectiveTimeframe}</span>
+                        <span className="text-sm font-normal text-[var(--monitor-muted)] bg-[var(--monitor-surface)] border border-[var(--monitor-border)] px-2 py-1 rounded">{effectiveTimeframe}</span>
                     </CardTitle>
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[220px] font-medium">
                         {name || opportunity.template_name}

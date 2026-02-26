@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe } from '@/components/monitor/types';
+import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe, MonitorTheme } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
@@ -16,7 +16,10 @@ const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
     card_mode: 'price',
     price_timeframe: '1d',
+    theme: 'dark-green',
 };
+
+const DEFAULT_THEME: MonitorTheme = 'dark-green';
 
 export const MonitorStatusTab: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -61,6 +64,7 @@ export const MonitorStatusTab: React.FC = () => {
                             || raw?.price_timeframe === '1d'
                             ? raw.price_timeframe
                             : '1d',
+                        theme: raw?.theme === 'black' ? 'black' : 'dark-green',
                     };
                 }
                 setPreferences(normalized);
@@ -150,6 +154,7 @@ export const MonitorStatusTab: React.FC = () => {
                         || payload?.price_timeframe === '1d'
                         ? payload.price_timeframe
                         : '1d',
+                    theme: payload?.theme === 'black' ? 'black' : 'dark-green',
                 },
             }));
         } catch (error) {
@@ -317,8 +322,19 @@ export const MonitorStatusTab: React.FC = () => {
 
     const noResultsForInPortfolio = !loading && opportunities.length > 0 && filteredOpportunities.length === 0 && listFilter === 'in_portfolio';
 
+    const theme: MonitorTheme = (
+        preferences['__global__']?.theme
+        || Object.values(preferences).find((p) => p?.theme)?.theme
+        || DEFAULT_THEME
+    );
+
     return (
-        <div className="container mx-auto p-6 space-y-8" data-testid="monitor-status-tab">
+        <div
+            className={`min-h-screen monitor-theme monitor-theme--${theme} py-6`}
+            data-testid="monitor-status-tab"
+        >
+            <div className="container mx-auto p-6 space-y-8">
+
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center">
                     <div className="space-y-1">
@@ -351,7 +367,7 @@ export const MonitorStatusTab: React.FC = () => {
                         <span className="text-sm font-medium">List:</span>
                         <button
                             type="button"
-                            className={`text-sm border rounded px-2 py-1.5 ${listFilter === 'in_portfolio' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-900 text-gray-100 border-border'}`}
+                            className={`text-sm border rounded px-2 py-1.5 ${listFilter === 'in_portfolio' ? 'bg-blue-600 text-white border-blue-600' : 'bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)]'}`}
                             onClick={() => setListFilter('in_portfolio')}
                             data-testid="monitor-filter-in-portfolio"
                         >
@@ -359,7 +375,7 @@ export const MonitorStatusTab: React.FC = () => {
                         </button>
                         <button
                             type="button"
-                            className={`text-sm border rounded px-2 py-1.5 ${listFilter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-900 text-gray-100 border-border'}`}
+                            className={`text-sm border rounded px-2 py-1.5 ${listFilter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)]'}`}
                             onClick={() => setListFilter('all')}
                             data-testid="monitor-filter-all"
                         >
@@ -373,7 +389,7 @@ export const MonitorStatusTab: React.FC = () => {
                             <select
                                 value={tierFilter}
                                 onChange={(e) => setTierFilter(e.target.value as TierFilter)}
-                                className="text-sm border border-border rounded pl-2 pr-8 py-1.5 bg-gray-900 text-gray-100 appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
+                                className="text-sm border rounded pl-2 pr-8 py-1.5 bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)] appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
                                 title="Filtrar por tier"
                             >
                                 <option value="all" className="bg-gray-900">Tier: All</option>
@@ -394,7 +410,7 @@ export const MonitorStatusTab: React.FC = () => {
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                                className="text-sm border border-border rounded pl-2 pr-8 py-1.5 bg-gray-900 text-gray-100 appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
+                                className="text-sm border rounded pl-2 pr-8 py-1.5 bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)] appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
                             >
                                 <option value="tier_distance" className="bg-gray-900">Tier + Distância</option>
                                 <option value="distance" className="bg-gray-900">Distância (mais próximo)</option>
@@ -476,6 +492,7 @@ export const MonitorStatusTab: React.FC = () => {
                     )}
                 </div>
             )}
+            </div>
         </div>
     );
 };
