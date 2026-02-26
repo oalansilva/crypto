@@ -2,9 +2,9 @@
 
 ## Status
 - PO: done
-- DEV: blocked (awaiting Alan approval)
+- DEV: not started (awaiting Alan approval)
 - QA: not started
-- Alan (Stakeholder): not reviewed (approval requested)
+- Alan (Stakeholder): approved (approval requested)
 
 ## Decisions (locked)
 - Goal: Change Monitor palette from black to dark green (aesthetic refresh).
@@ -30,6 +30,6 @@
 
 ## Next actions
 - [x] PO: Create OpenSpec change artifacts (EN) + review-ptbr + viewer links; lock acceptance criteria.
-- [ ] DEV: Implement Monitor dark-green theme + backend preference persistence. (blocked until Alan approves)
+- [ ] DEV: Implement Monitor dark-green theme + backend preference persistence. (ready)
 - [ ] QA: Add/update tests (E2E visual smoke + preference persistence) and ensure CI green.
-- [ ] Alan: Review artifacts and approve to implement; final homologation after QA.
+- [x] Alan: Review artifacts and approve to implement; final homologation after QA.
