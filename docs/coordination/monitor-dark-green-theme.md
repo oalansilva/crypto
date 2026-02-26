@@ -30,6 +30,6 @@
 
 ## Next actions
 - [x] PO: Create OpenSpec change artifacts (EN) + review-ptbr + viewer links; lock acceptance criteria.
-- [ ] DEV: Implement Monitor dark-green theme + backend preference persistence.
+- [ ] DEV: Implement Monitor dark-green theme + backend preference persistence. (blocked until Alan approves)
 - [ ] QA: Add/update tests (E2E visual smoke + preference persistence) and ensure CI green.
 - [ ] Alan: Review artifacts and approve to implement; final homologation after QA.
