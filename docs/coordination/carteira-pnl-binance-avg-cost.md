@@ -2,8 +2,8 @@
 
 ## Status
 - PO: done
-- DEV: in progress
-- QA: not started
+- DEV: done
+- QA: done
 - Alan (Stakeholder): approved
 
 ## Decisions (locked)
@@ -19,6 +19,6 @@
 
 ## Next actions
 - [x] PO: Done
-- [ ] DEV: Implement avg cost + PnL via Binance myTrades and expose in Wallet endpoint
-- [ ] QA: Add tests (backend + E2E)
+- [x] DEV: Implement avg cost + PnL via Binance myTrades and expose in Wallet endpoint
+- [x] QA: Add tests (backend + E2E)
 - [ ] Alan: Homologate UI

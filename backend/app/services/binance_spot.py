@@ -10,6 +10,7 @@ import urllib.request
 from typing import Any, Dict, List
 
 from app.services.binance_prices import compute_usdt_price_for_asset, fetch_all_binance_prices
+from app.services.binance_trades import compute_avg_buy_cost_usdt
 
 
 class BinanceConfigError(RuntimeError):
@@ -95,6 +96,13 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
 
         total_usd += float(value_usd)
 
+        avg_cost_usdt = compute_avg_buy_cost_usdt(asset)
+        pnl_usd = None
+        pnl_pct = None
+        if avg_cost_usdt is not None and price_usdt is not None and avg_cost_usdt > 0:
+            pnl_usd = (float(price_usdt) - float(avg_cost_usdt)) * float(total)
+            pnl_pct = ((float(price_usdt) / float(avg_cost_usdt)) - 1.0) * 100.0
+
         out.append({
             "asset": asset,
             "free": free,
@@ -102,6 +110,9 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
             "total": total,
             "price_usdt": price_usdt,
             "value_usd": value_usd,
+            "avg_cost_usdt": avg_cost_usdt,
+            "pnl_usd": pnl_usd,
+            "pnl_pct": pnl_pct,
         })
 
     # Default sort: value desc (when present), else total desc, then asset asc

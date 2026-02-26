@@ -12,6 +12,9 @@ type BalanceRow = {
   total: number
   price_usdt?: number | null
   value_usd?: number | null
+  avg_cost_usdt?: number | null
+  pnl_usd?: number | null
+  pnl_pct?: number | null
 }
 
 export default function ExternalBalancesPage() {
@@ -100,6 +103,9 @@ export default function ExternalBalancesPage() {
                     <th className="py-2 pr-4">Total</th>
                     <th className="py-2 pr-4">Price (USDT)</th>
                     <th className="py-2 pr-4">Value (USD)</th>
+                    <th className="py-2 pr-4">Avg Cost (USDT)</th>
+                    <th className="py-2 pr-4">PnL (USD)</th>
+                    <th className="py-2 pr-4">PnL (%)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -108,6 +114,13 @@ export default function ExternalBalancesPage() {
                     const lockedHighlight = locked > 0
                     const price = row.price_usdt
                     const value = row.value_usd
+                    const avgCost = row.avg_cost_usdt
+                    const pnlUsd = row.pnl_usd
+                    const pnlPct = row.pnl_pct
+                    const pnlColor = typeof pnlUsd === 'number'
+                      ? (pnlUsd >= 0 ? 'text-emerald-300' : 'text-red-300')
+                      : 'text-gray-300'
+
                     return (
                       <tr key={row.asset} className="border-b border-white/5">
                         <td className="py-2 pr-4 font-medium text-gray-200">{row.asset}</td>
@@ -118,13 +131,16 @@ export default function ExternalBalancesPage() {
                         <td className="py-2 pr-4 text-gray-200">{row.total}</td>
                         <td className="py-2 pr-4 text-gray-300">{typeof price === 'number' ? price : '-'}</td>
                         <td className="py-2 pr-4 text-gray-200">{typeof value === 'number' ? value.toFixed(2) : '-'}</td>
+                        <td className="py-2 pr-4 text-gray-300">{typeof avgCost === 'number' ? avgCost : '-'}</td>
+                        <td className={`py-2 pr-4 font-semibold ${pnlColor}`}>{typeof pnlUsd === 'number' ? pnlUsd.toFixed(2) : '-'}</td>
+                        <td className={`py-2 pr-4 font-semibold ${pnlColor}`}>{typeof pnlPct === 'number' ? pnlPct.toFixed(2) : '-'}</td>
                       </tr>
                     )
                   })}
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-white/10">
-                    <td className="py-3 pr-4 font-semibold text-gray-200" colSpan={5}>Total</td>
+                    <td className="py-3 pr-4 font-semibold text-gray-200" colSpan={8}>Total</td>
                     <td className="py-3 pr-4 font-semibold text-gray-200">{typeof totalUsd === 'number' ? totalUsd.toFixed(2) : '-'}</td>
                   </tr>
                 </tfoot>
