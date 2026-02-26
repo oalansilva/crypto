@@ -4,7 +4,7 @@
 - PO: done
 - DEV: not started
 - QA: not started
-- Alan (Stakeholder): not reviewed
+- Alan (Stakeholder): needs approval
 
 > Gate order: PO must be **done** before Alan approves to implement.
 
@@ -29,6 +29,7 @@
 ## Notes
 - Requires server env vars: `BINANCE_API_KEY`, `BINANCE_API_SECRET`.
 - Backend must ensure errors are clear when secrets are missing and must not log key/secret.
+- OpenSpec validation: `openspec validate external-balances-dashboard --type change` ✅
 
 ## Next actions
 - [x] PO: Confirm UI/UX (route name, table columns, sorting) + error states; lock acceptance.
