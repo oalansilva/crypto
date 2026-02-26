@@ -13,8 +13,8 @@
 
 ## 3. Tests (E2E)
 
-- [ ] 3.1 Add/extend Playwright E2E smoke: Monitor loads with dark-green theme
-- [ ] 3.2 Add E2E: theme persists after reload (via preferences)
+- [x] 3.1 Add/extend Playwright E2E smoke: Monitor loads with dark-green theme
+- [x] 3.2 Add E2E: theme persists after reload (via preferences)
 
 ## 4. Validation
 

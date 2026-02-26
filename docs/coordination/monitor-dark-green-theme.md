@@ -3,7 +3,7 @@
 ## Status
 - PO: done
 - DEV: in progress
-- QA: not started
+- QA: in progress
 - Alan (Stakeholder): approved
 
 ## Decisions (locked)
