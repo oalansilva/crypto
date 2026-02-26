@@ -8,7 +8,7 @@ const navItems = [
   { to: '/lab', label: 'Lab', icon: Sparkles },
   { to: '/arbitrage', label: 'Arbitragem', icon: Shuffle },
   { to: '/combo/select', label: 'Combo', icon: Layers },
-  { to: '/external/balances', label: 'Balances', icon: Wallet },
+  { to: '/external/balances', label: 'Carteira', icon: Wallet },
 ] as const
 
 export function AppNav() {

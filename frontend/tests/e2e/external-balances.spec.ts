@@ -28,7 +28,7 @@ test('external balances page loads and shows balances', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/external/balances')
 
-  await expect(page.getByText('External Balances')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Carteira' })).toBeVisible()
   await expect(page.getByText('HBAR', { exact: true })).toBeVisible()
   await expect(page.getByText('USDC', { exact: true })).toBeVisible()
 })

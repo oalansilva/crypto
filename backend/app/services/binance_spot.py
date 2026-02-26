@@ -69,6 +69,8 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
     out: List[Dict[str, Any]] = []
     total_usd = 0.0
 
+    MIN_USD_VALUE_TO_SHOW = 0.02
+
     for b in balances:
         asset = (b.get("asset") or "").strip().upper()
         if not asset:
@@ -84,8 +86,14 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
 
         price_usdt = compute_usdt_price_for_asset(asset, symbol_prices)
         value_usd = (total * price_usdt) if price_usdt is not None else None
-        if value_usd is not None:
-            total_usd += float(value_usd)
+        if value_usd is None:
+            continue
+
+        # Hide dust: do not include in response nor total
+        if float(value_usd) < MIN_USD_VALUE_TO_SHOW:
+            continue
+
+        total_usd += float(value_usd)
 
         out.append({
             "asset": asset,
