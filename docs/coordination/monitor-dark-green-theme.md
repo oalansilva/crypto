@@ -19,7 +19,7 @@
 - PT-BR review (viewer): http://72.60.150.140:5173/openspec/changes/monitor-dark-green-theme/review-ptbr
 - PR: (none)
 - CI run: backend tests (local) passed; frontend E2E pending
-- Implementation commit: bff0e44
+- Implementation commits: bff0e44 (backend prefs) + b2e068e (frontend theme)
 
 ## Notes
 - OpenSpec change artifacts already present under `openspec/changes/monitor-dark-green-theme/` (proposal/design/specs/tasks + PT-BR review).
@@ -28,6 +28,7 @@
   - Theme persists across reload/devices.
   - `/monitor` background is dark-green (not pure black) and readability preserved.
 - Gate: per coordination rules, DEV should not start until Alan approval is recorded.
+- DEV update: Frontend now applies a scoped `monitor-theme` wrapper + CSS vars (dark-green default) and normalizes `theme` from backend payload.
 
 ## Next actions
 - [x] PO: Create OpenSpec change artifacts (EN) + review-ptbr + viewer links; lock acceptance criteria.
