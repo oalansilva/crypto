@@ -1,10 +1,10 @@
 # monitor-candles-async-ui
 
 ## Status
-- PO: blocked (waiting Alan approval)
+- PO: done
 - DEV: done
 - QA: done
-- Alan (Stakeholder): not reviewed
+- Alan (Stakeholder): approved
 
 ## Decisions (locked)
 - Goal: Make Monitor card candle timeframe switching optimistic + non-blocking (especially on mobile), with clear chart-only loading feedback.
@@ -36,4 +36,8 @@
 - [x] PO: Confirm/record candle fetch bounds (limit) + acceptance criteria for “non-blocking” interaction (what must remain clickable) and lock them above.
 - [x] DEV: Implement optimistic timeframe switch with request cancellation + cache; add chart-only loading indicator.
 - [x] QA: Add/adjust Playwright E2E to assert timeframe switching doesn’t block card interactions + shows localized loading indicator; verify last-click-wins behavior.
-- [ ] Alan: Review UX expectations on mobile (loading indicator placement + what stays interactive) and approve.
+- [x] Alan: Review UX expectations on mobile (loading indicator placement + what stays interactive) and approve.
+
+
+## Closed
+- Archived in OpenSpec.
