@@ -2,8 +2,8 @@
 
 ## Status
 - PO: done
-- DEV: in progress
-- QA: in progress
+- DEV: done
+- QA: done
 - Alan (Stakeholder): approved
 
 ## Decisions (locked)
@@ -19,7 +19,7 @@
 - PT-BR review (viewer): http://72.60.150.140:5173/openspec/changes/monitor-dark-green-theme/review-ptbr
 - PR: (none)
 - CI run: backend OK; Playwright E2E (monitor theme) passed locally
-- Implementation commits: bff0e44 (backend prefs) + b2e068e (frontend theme) + 23ef1be (frontend theme toggle/persist)
+- Implementation commits: bff0e44 (backend prefs) + b2e068e (frontend theme) + 23ef1be (frontend theme toggle/persist) + 6eefae4 (QA E2E) + d3cb05f (sqlite theme migration)
 
 ## Notes
 - OpenSpec change artifacts already present under `openspec/changes/monitor-dark-green-theme/` (proposal/design/specs/tasks + PT-BR review).
@@ -32,6 +32,6 @@
 
 ## Next actions
 - [x] PO: Create OpenSpec change artifacts (EN) + review-ptbr + viewer links; lock acceptance criteria.
-- [ ] DEV: Implement Monitor dark-green theme + backend preference persistence. (ready)
-- [ ] QA: Add/update tests (E2E visual smoke + preference persistence) and ensure CI green.
+- [x] DEV: Implement Monitor dark-green theme + backend preference persistence.
+- [x] QA: Add/update tests (E2E visual smoke + preference persistence) and ensure CI green.
 - [x] Alan: Review artifacts and approve to implement; final homologation after QA.
