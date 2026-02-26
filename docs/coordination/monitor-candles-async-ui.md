@@ -1,8 +1,8 @@
 # monitor-candles-async-ui
 
 ## Status
-- PO: in progress
-- DEV: not started
+- PO: done
+- DEV: done
 - QA: not started
 - Alan (Stakeholder): not reviewed
 
@@ -25,13 +25,14 @@
 - OpenSpec viewer: openspec/changes/monitor-candles-async-ui/specs/monitor-candles-async-ui/spec.md
 - PT-BR review (viewer): openspec/changes/monitor-candles-async-ui/review-ptbr.md
 - PR: (none)
-- CI run: (none)
+- CI run: (run `pnpm test:e2e` / GH Actions if configured)
+- Implementation commit: (pending commit in repo)
 
 ## Notes
 - Spec mentions: optimistic timeframe switch, chart-area loading indicator, request cancellation, in-memory cache by `symbol+timeframe`.
 
 ## Next actions
 - [x] PO: Confirm/record candle fetch bounds (limit) + acceptance criteria for “non-blocking” interaction (what must remain clickable) and lock them above.
-- [ ] DEV: Implement optimistic timeframe switch with request cancellation + cache; add chart-only loading indicator.
+- [x] DEV: Implement optimistic timeframe switch with request cancellation + cache; add chart-only loading indicator.
 - [ ] QA: Add/adjust Playwright E2E to assert timeframe switching doesn’t block card interactions + shows loading indicator; verify last-click-wins behavior.
 - [ ] Alan: Review UX expectations on mobile (loading indicator placement + what stays interactive) and approve.
