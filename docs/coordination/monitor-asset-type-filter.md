@@ -2,8 +2,8 @@
 
 ## Status
 - PO: done
-- DEV: not started
-- QA: not started
+- DEV: done
+- QA: done
 - Alan (Stakeholder): approved
 
 > Gate order: PO must be **done** before Alan approves to implement.
@@ -25,6 +25,6 @@
 
 ## Next actions
 - [x] PO: Create OpenSpec artifacts and validation.
-- [ ] DEV: Implement Asset Type filter UI + filtering logic.
-- [ ] QA: Add Playwright E2E coverage (mocked API) and ensure CI green.
+- [x] DEV: Implement Asset Type filter UI + filtering logic.
+- [x] QA: Add Playwright E2E coverage (mocked API) and ensure CI green.
 - [x] Alan: Approved implementation.

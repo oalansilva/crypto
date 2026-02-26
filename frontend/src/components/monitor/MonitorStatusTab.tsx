@@ -11,6 +11,7 @@ import { API_BASE_URL } from '@/lib/apiBase';
 type SortOption = 'distance' | 'tier_distance' | 'symbol';
 type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
 type ListFilter = 'in_portfolio' | 'all';
+type AssetTypeFilter = 'all' | 'crypto' | 'stocks';
 
 const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
@@ -27,6 +28,7 @@ export const MonitorStatusTab: React.FC = () => {
     const [sortBy, setSortBy] = useState<SortOption>('tier_distance');
     const [tierFilter, setTierFilter] = useState<TierFilter>('all');
     const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
+    const [assetTypeFilter, setAssetTypeFilter] = useState<AssetTypeFilter>('all');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [preferences, setPreferences] = useState<Record<string, MonitorPreference>>({});
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
@@ -235,11 +237,21 @@ export const MonitorStatusTab: React.FC = () => {
     }, [opportunities, sortBy]);
 
     const filteredOpportunities = useMemo(() => {
+        const isCrypto = (symbol: string) => symbol.includes('/');
+
+        const afterAssetType = sortedOpportunities.filter((opp) => {
+            const sym = String(opp.symbol || '').trim();
+            if (!sym) return false;
+            if (assetTypeFilter === 'crypto') return isCrypto(sym);
+            if (assetTypeFilter === 'stocks') return !isCrypto(sym);
+            return true;
+        });
+
         if (listFilter === 'all') {
-            return sortedOpportunities;
+            return afterAssetType;
         }
-        return sortedOpportunities.filter((opp) => preferences[opp.symbol]?.in_portfolio === true);
-    }, [listFilter, preferences, sortedOpportunities]);
+        return afterAssetType.filter((opp) => preferences[opp.symbol]?.in_portfolio === true);
+    }, [assetTypeFilter, listFilter, preferences, sortedOpportunities]);
 
     // Render one card per symbol (preferences are per-symbol, and duplicate cards can fight over fetch/caches).
     const dedupedOpportunities = useMemo(() => {
@@ -394,6 +406,24 @@ export const MonitorStatusTab: React.FC = () => {
                         >
                             All
                         </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Asset Type:</span>
+                        <div className="relative">
+                            <select
+                                value={assetTypeFilter}
+                                onChange={(e) => setAssetTypeFilter(e.target.value as AssetTypeFilter)}
+                                className="text-sm border rounded pl-2 pr-8 py-1.5 bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)] appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
+                                title="Filtrar por tipo de ativo"
+                                data-testid="monitor-filter-asset-type"
+                            >
+                                <option value="all" className="bg-gray-900">Asset Type: All</option>
+                                <option value="crypto" className="bg-gray-900">Asset Type: Crypto</option>
+                                <option value="stocks" className="bg-gray-900">Asset Type: Stocks</option>
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2">
