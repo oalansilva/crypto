@@ -1,10 +1,10 @@
 # monitor-dark-green-theme
 
 ## Status
-- PO: in progress
-- DEV: not started
+- PO: done
+- DEV: blocked (awaiting Alan approval)
 - QA: not started
-- Alan (Stakeholder): not reviewed
+- Alan (Stakeholder): not reviewed (approval requested)
 
 ## Decisions (locked)
 - Goal: Change Monitor palette from black to dark green (aesthetic refresh).
@@ -26,6 +26,7 @@
   - Default theme = `dark-green` when no preference exists.
   - Theme persists across reload/devices.
   - `/monitor` background is dark-green (not pure black) and readability preserved.
+- Gate: per coordination rules, DEV should not start until Alan approval is recorded.
 
 ## Next actions
 - [x] PO: Create OpenSpec change artifacts (EN) + review-ptbr + viewer links; lock acceptance criteria.
