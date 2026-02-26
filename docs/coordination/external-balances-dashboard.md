@@ -4,7 +4,7 @@
 - PO: done
 - DEV: done
 - QA: done
-- Alan (Stakeholder): needs approval
+- Alan (Stakeholder): needs homologation
 
 > Gate order: PO must be **done** before Alan approves to implement.
 
