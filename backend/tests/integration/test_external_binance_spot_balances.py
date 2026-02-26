@@ -31,14 +31,14 @@ def _build_test_app() -> FastAPI:
 
 
 async def test_binance_balances_returns_sorted_payload(monkeypatch):
-    # Patch env + urllib call inside service.
+    # Patch env + urllib calls inside services.
     import os
     import urllib.request
 
     os.environ["BINANCE_API_KEY"] = "k"
     os.environ["BINANCE_API_SECRET"] = "s"
 
-    payload = {
+    account_payload = {
         "balances": [
             {"asset": "USDT", "free": "0.1", "locked": "0"},
             {"asset": "HBAR", "free": "0.0", "locked": "10"},
@@ -46,8 +46,16 @@ async def test_binance_balances_returns_sorted_payload(monkeypatch):
         ]
     }
 
+    prices_payload = [
+        {"symbol": "HBARUSDT", "price": "0.1"},
+        {"symbol": "BTCUSDT", "price": "50000"},
+    ]
+
     def _fake_urlopen(req, timeout=30):
-        return _FakeResponse(payload)
+        url = req.full_url if hasattr(req, "full_url") else str(req)
+        if "ticker/price" in url:
+            return _FakeResponse(prices_payload)
+        return _FakeResponse(account_payload)
 
     monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
 
@@ -59,9 +67,16 @@ async def test_binance_balances_returns_sorted_payload(monkeypatch):
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert "balances" in data
-    # Should filter out zero totals and sort by total desc: HBAR(10) then USDT(0.1)
+    assert "total_usd" in data
+
+    # Should filter out zero totals and sort by value desc:
+    # HBAR: 10 * 0.1 = 1.0
+    # USDT: 0.1 * 1 = 0.1
     assert [b["asset"] for b in data["balances"]] == ["HBAR", "USDT"]
     assert data["balances"][0]["total"] == 10.0
+    assert data["balances"][0]["price_usdt"] == 0.1
+    assert data["balances"][0]["value_usd"] == 1.0
+    assert data["total_usd"] == 1.1
 
 
 async def test_binance_balances_missing_secret_returns_400(monkeypatch):

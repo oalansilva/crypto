@@ -9,6 +9,8 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, List
 
+from app.services.binance_prices import compute_usdt_price_for_asset, fetch_all_binance_prices
+
 
 class BinanceConfigError(RuntimeError):
     pass
@@ -40,7 +42,13 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
       - BINANCE_BASE_URL (optional; default https://api.binance.com)
 
     Returns:
-      {"balances": [{"asset","free","locked","total"}, ...]}
+      {
+        "balances": [{"asset","free","locked","total","price_usdt","value_usd"}, ...],
+        "total_usd": <float>
+      }
+
+    Notes:
+    - Pricing is computed as USDT value (USDT≈USD) with fallbacks.
     """
 
     api_key = _get_env("BINANCE_API_KEY")
@@ -54,9 +62,15 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
     payload = _signed_get(base_url, api_key, api_secret, "/api/v3/account", {"timestamp": ts})
 
     balances = payload.get("balances") or []
+
+    # Fetch all prices once (public endpoint) and compute USD values.
+    symbol_prices = fetch_all_binance_prices()
+
     out: List[Dict[str, Any]] = []
+    total_usd = 0.0
+
     for b in balances:
-        asset = (b.get("asset") or "").strip()
+        asset = (b.get("asset") or "").strip().upper()
         if not asset:
             continue
         try:
@@ -67,8 +81,26 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
         total = free + locked
         if total <= 0:
             continue
-        out.append({"asset": asset, "free": free, "locked": locked, "total": total})
 
-    # Default sort: total desc, then asset asc
-    out.sort(key=lambda x: (-float(x.get("total") or 0), str(x.get("asset") or "")))
-    return {"balances": out}
+        price_usdt = compute_usdt_price_for_asset(asset, symbol_prices)
+        value_usd = (total * price_usdt) if price_usdt is not None else None
+        if value_usd is not None:
+            total_usd += float(value_usd)
+
+        out.append({
+            "asset": asset,
+            "free": free,
+            "locked": locked,
+            "total": total,
+            "price_usdt": price_usdt,
+            "value_usd": value_usd,
+        })
+
+    # Default sort: value desc (when present), else total desc, then asset asc
+    def _sort_key(x: Dict[str, Any]):
+        v = x.get("value_usd")
+        v_sort = float(v) if v is not None else -1.0
+        return (-v_sort, -float(x.get("total") or 0), str(x.get("asset") or ""))
+
+    out.sort(key=_sort_key)
+    return {"balances": out, "total_usd": total_usd}

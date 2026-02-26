@@ -15,9 +15,10 @@ async function setupApiMocks(page: any) {
       contentType: 'application/json',
       body: JSON.stringify({
         balances: [
-          { asset: 'HBAR', free: 0.103, locked: 896, total: 896.103 },
-          { asset: 'USDC', free: 0.455, locked: 0, total: 0.455 },
+          { asset: 'HBAR', free: 0.103, locked: 896, total: 896.103, price_usdt: 0.1, value_usd: 89.61 },
+          { asset: 'USDC', free: 0.455, locked: 0, total: 0.455, price_usdt: 1, value_usd: 0.455 },
         ],
+        total_usd: 90.065,
       }),
     })
   )
