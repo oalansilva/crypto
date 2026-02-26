@@ -2,9 +2,9 @@
 
 ## Status
 - PO: done
-- DEV: not started (awaiting Alan approval)
+- DEV: in progress
 - QA: not started
-- Alan (Stakeholder): approved (approval requested)
+- Alan (Stakeholder): approved
 
 ## Decisions (locked)
 - Goal: Change Monitor palette from black to dark green (aesthetic refresh).
@@ -17,8 +17,9 @@
 ## Links
 - OpenSpec viewer: http://72.60.150.140:5173/openspec/changes/monitor-dark-green-theme/proposal
 - PT-BR review (viewer): http://72.60.150.140:5173/openspec/changes/monitor-dark-green-theme/review-ptbr
-- PR: (pending)
-- CI run: (pending)
+- PR: (none)
+- CI run: backend tests (local) passed; frontend E2E pending
+- Implementation commit: bff0e44
 
 ## Notes
 - OpenSpec change artifacts already present under `openspec/changes/monitor-dark-green-theme/` (proposal/design/specs/tasks + PT-BR review).
