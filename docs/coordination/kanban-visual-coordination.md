@@ -2,7 +2,7 @@
 
 ## Status
 - PO: done
-- DEV: in progress
+- DEV: done
 - QA: not started
 - Alan approval: approved
 - Alan homologation: not reviewed
@@ -90,5 +90,8 @@ Review criteria (what you are approving):
   - [x] Backend 1.2: Add endpoint to return tasks checklist for a change (parse `openspec/changes/<change>/tasks.md`)
   - [x] Backend 1.3: Add comments storage + endpoints (append-only)
   - [x] Backend 1.4: Add tests for parsing + comments storage
-  - [ ] Frontend 2.1-2.4: Add /kanban page + columns/cards + details panel (tasks + comments)
+  - [x] Frontend 2.1: Add /kanban page
+  - [x] Frontend 2.2: Render ordered columns + cards from backend
+  - [x] Frontend 2.3: Card details panel (tasks checklist + comments thread)
+  - [x] Frontend 2.4: Add Archived as final column
 - [ ] QA: (pending DEV)

@@ -12,11 +12,11 @@
 
 ## 2. Frontend
 
-- [ ] 2.1 Add `/kanban` page
-- [ ] 2.2 Render the ordered columns + cards from backend list endpoint (includes active + archived; no archived toggle)
-- [ ] 2.3 Card details panel: tasks checklist (read-only in v1) + comments thread
+- [x] 2.1 Add `/kanban` page
+- [x] 2.2 Render the ordered columns + cards from backend list endpoint (includes active + archived; no archived toggle)
+- [x] 2.3 Card details panel: tasks checklist (read-only in v1) + comments thread
   - Comments UI shows author + timestamp; create-only (no edit/delete)
-- [ ] 2.4 Add Archived as the final column (always listed; no filter/toggle)
+- [x] 2.4 Add Archived as the final column (always listed; no filter/toggle)
 
 ## 3. QA
 

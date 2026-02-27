@@ -1,10 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { Activity, TrendingUp, Sparkles, Bookmark, Layers, Shuffle, Wallet } from 'lucide-react'
+import { Activity, TrendingUp, Sparkles, Bookmark, Layers, Shuffle, Wallet, Kanban } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Playground', icon: Sparkles },
   { to: '/favorites', label: 'Favorites', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
+  { to: '/kanban', label: 'Kanban', icon: Kanban },
   { to: '/lab', label: 'Lab', icon: Sparkles },
   { to: '/arbitrage', label: 'Arbitragem', icon: Shuffle },
   { to: '/combo/select', label: 'Combo', icon: Layers },
@@ -18,6 +19,7 @@ export function AppNav() {
     if (to === '/') return location.pathname === '/'
     if (to.startsWith('/combo')) return location.pathname.startsWith('/combo')
     if (to.startsWith('/lab')) return location.pathname.startsWith('/lab')
+    if (to.startsWith('/kanban')) return location.pathname.startsWith('/kanban')
     return location.pathname === to
   }
 
