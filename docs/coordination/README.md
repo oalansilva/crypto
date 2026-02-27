@@ -46,6 +46,14 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Each turn: the acting agent should leave a short note in the Kanban card comments (1–3 lines: what changed, blocker, next step).
 - Mentions in comments: use `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`. Agents should respond to mentions addressed to them on their next turn (best-effort, concise).
 - Each agent turn should also scan the card comments for unanswered mentions to them and reply (best-effort).
+
+### Tracking consistency (avoid drift)
+
+- An agent may only claim a work item done after updating:
+  1) `openspec/changes/<change>/tasks.md` (checkboxes)
+  2) `docs/coordination/<change>.md` (status + next actions)
+  3) Kanban card comment (handoff)
+- Guard-rail: if coordination indicates completion but `tasks.md` still has unchecked items, the next turn must be a **tracking reconciliation** (no new implementation) until consistent.
 - Telegram notifications to Alan only on milestones:
   - PO ready for Alan approval
   - DEV ready for QA
