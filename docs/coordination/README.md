@@ -50,6 +50,13 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
   - QA ready for Alan homologation
   - Any real blocker needing Alan action
 
+### Archiving rule (keep Kanban + OpenSpec in sync)
+
+- When Alan says **"ok pode arquivar"**, close coordination first:
+  - set `Alan homologation: approved`
+  - add a `## Closed` section
+- Then run `openspec archive ...`.
+
 ## Prereqs (so the Turn Scheduler works)
 
 ### Operating mode
