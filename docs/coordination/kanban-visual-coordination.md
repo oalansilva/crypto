@@ -3,7 +3,7 @@
 ## Status
 - PO: done
 - DEV: done
-- QA: not started
+- QA: done
 - Alan approval: approved
 - Alan homologation: not reviewed
 - Alan (Stakeholder): approved

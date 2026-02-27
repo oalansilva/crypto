@@ -20,7 +20,7 @@
 
 ## 3. QA
 
-- [ ] 3.1 Minimal E2E test: Kanban loads and shows a mocked change
+- [x] 3.1 Minimal E2E test: Kanban loads and shows a mocked change
 - [ ] 3.2 Regression: ensure existing `/openspec` pages still work
 
 ## 4. Docs
