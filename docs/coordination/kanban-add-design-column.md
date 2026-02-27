@@ -2,10 +2,16 @@
 
 ## Status
 - PO: done
+- DESIGN: skipped
 - Alan approval: approved
-- DEV: not started
-- QA: not started
-- Alan homologation: not reviewed
+- DEV: done
+- QA: done
+- Alan homologation: approved
+
+
+## Closed
+
+- Homologated by Alan and archived.
 
 ## Decisions (locked)
 - Add DESIGN as always-visible column: PO → DESIGN → Alan approval → DEV → QA → Alan homologation → Archived.
@@ -18,6 +24,9 @@
 
 ## Next actions
 - [x] PO: Done
-- [ ] DEV: Implement backend+frontend+tests for DESIGN column
-- [ ] QA: Validate and run E2E
+- [x] DEV: Implement backend+frontend+tests for DESIGN column
+- [x] QA: Validate and run E2E (pytest integration + Playwright)
 - [ ] Alan: Homologate
+
+## Comments
+- No @QA mentions found on this card.
