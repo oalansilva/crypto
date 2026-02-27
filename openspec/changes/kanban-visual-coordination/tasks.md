@@ -8,9 +8,9 @@
 ## 2. Frontend
 
 - [ ] 2.1 Add `/kanban` page
-- [ ] 2.2 Render the ordered columns + cards from backend list endpoint (default: non-archived only)
+- [ ] 2.2 Render the ordered columns + cards from backend list endpoint (includes active + archived; no archived toggle)
 - [ ] 2.3 Card details panel: tasks checklist + comments thread
-- [ ] 2.4 Add Archived as a filter/view (e.g., “Show archived”), not a main column
+- [ ] 2.4 Add Archived as the final column (always listed; no filter/toggle)
 
 ## 3. QA
 
@@ -19,4 +19,4 @@
 
 ## 4. Docs
 
-- [ ] 4.1 Document how statuses are derived from coordination files (including Archived filter/view behavior)
+- [ ] 4.1 Document the status→column derivation rules (source-of-truth fields, allowed values, Archived detection, Alan approval vs homologation) as locked in docs/coordination/kanban-visual-coordination.md
