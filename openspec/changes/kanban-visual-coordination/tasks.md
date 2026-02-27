@@ -2,9 +2,9 @@
 
 ## 1. Backend
 
-- [ ] 1.1 Add endpoint to list active + archived changes + statuses (parse `docs/coordination/*.md`)
-- [ ] 1.2 Add endpoint to return tasks checklist for a change (parse `openspec/changes/<change>/tasks.md`)
-- [ ] 1.3 Add comments storage + endpoints (append-only)
+- [x] 1.1 Add endpoint to list active + archived changes + statuses (parse `docs/coordination/*.md`)
+- [x] 1.2 Add endpoint to return tasks checklist for a change (parse `openspec/changes/<change>/tasks.md`)
+- [x] 1.3 Add comments storage + endpoints (append-only)
   - Data model: id, change, author, created_at (UTC ISO-8601), body
   - Validation: body max length 2,000 chars
   - API: list comments (GET) + create comment (POST). No edit/delete in v1.
