@@ -26,6 +26,7 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Default mode is **autonomous**: let the **Turn Scheduler** pull work without Alan needing to be online.
 - Default to **one work item per turn** (do not do DEV+QA back-to-back in the same manual block).
 - Only run multiple stages back-to-back if Alan explicitly says **"modo rápido"**.
+- Pull policy: prefer finishing work **right-to-left** on the Kanban (items closest to Archived first) before starting new work.
 
 ### Communication policy (Alan)
 
@@ -44,6 +45,7 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - **No per-turn daily spam in Telegram.**
 - Each turn: the acting agent should leave a short note in the Kanban card comments (1–3 lines: what changed, blocker, next step).
 - Mentions in comments: use `@PO`, `@DEV`, `@QA`, `@Alan`. Agents should respond to mentions addressed to them on their next turn (best-effort, concise).
+- Each agent turn should also scan the card comments for unanswered mentions to them and reply (best-effort).
 - Telegram notifications to Alan only on milestones:
   - PO ready for Alan approval
   - DEV ready for QA
