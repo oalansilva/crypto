@@ -54,10 +54,12 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 ### Archiving rule (keep Kanban + OpenSpec in sync)
 
-- When Alan says **"ok pode arquivar"**, close coordination first:
-  - set `Alan homologation: approved`
-  - add a `## Closed` section
-- Then run `openspec archive ...`.
+- When Alan says **"ok pode arquivar"**, validate the flow and close coordination first:
+  - Ensure gates are satisfied in `docs/coordination/<change>.md`: PO/DEV/QA done, Alan approval approved.
+  - Ensure `openspec/changes/<change>/tasks.md` has **no unchecked** items.
+  - Then set `Alan homologation: approved` and add a `## Closed` section.
+- Only after that, run `openspec archive ...`.
+- Helper script (recommended): `scripts/archive_change_safe.sh <change>`
 
 ## Prereqs (so the Turn Scheduler works)
 
