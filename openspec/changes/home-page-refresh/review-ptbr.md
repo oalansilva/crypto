@@ -16,3 +16,6 @@ Transformar a **Home** em um **hub**: mais clara, com atalhos diretos para os fl
 
 ## Próximo passo
 DESIGN: entregar protótipo HTML/CSS reutilizável. Depois: tua aprovação do protótipo + escopo.
+
+## Links
+- Protótipo: http://72.60.150.140:5173/prototypes/home-page-refresh/index.html
