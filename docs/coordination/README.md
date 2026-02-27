@@ -33,6 +33,12 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Always include the **next step** and whether **Alan action is needed**.
 - Do **not** send repeated updates for the same unchanged blocked state; re-notify only when the state changes or on explicit request.
 
+### Agent-to-agent communication (Scrum-like, auditable)
+
+- PO/DEV/QA may communicate asynchronously **via Kanban card comments** (single place, auditable).
+- Use comments for handoffs, questions, decisions, and blockers.
+- This does **not** change gate order: **PO → Alan approval → DEV → QA → Alan homologation → archive**.
+
 ## Prereqs (so the Turn Scheduler works)
 
 ### Operating mode
