@@ -39,6 +39,16 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Use comments for handoffs, questions, decisions, and blockers.
 - This does **not** change gate order: **PO → Alan approval → DEV → QA → Alan homologation → archive**.
 
+### Update policy (reduce noise)
+
+- **No per-turn daily spam in Telegram.**
+- Each turn: the acting agent should leave a short note in the Kanban card comments (1–3 lines: what changed, blocker, next step).
+- Telegram notifications to Alan only on milestones:
+  - PO ready for Alan approval
+  - DEV ready for QA
+  - QA ready for Alan homologation
+  - Any real blocker needing Alan action
+
 ## Prereqs (so the Turn Scheduler works)
 
 ### Operating mode
