@@ -4,8 +4,8 @@
 - PO: done
 - DESIGN: done
 - Alan approval: approved
-- DEV: not started
-- QA: not started
+- DEV: done
+- QA: done (UI confere com prototype Option A; build ok; sem bloqueadores)
 - Alan homologation: not reviewed
 
 ## Decisions (draft)
@@ -29,8 +29,11 @@
 - Prototype (when ready): http://72.60.150.140:5173/prototypes/home-page-refresh/index.html
 
 ## Notes
+- [DEV] Home implementado seguindo o prototype (Option A). Saúde do sistema usa /api/health; demais cards/tabelas ainda com placeholders (anotado na UI).
 - [DESIGN] v0 prototype created (layout skeleton): http://72.60.150.140:5173/prototypes/home-page-refresh/index.html
 - [PO] KPI decision memo updated to be short + answerable (3 quick questions). Awaiting Alan confirmation.
+- [QA] Validado Home vs prototype (Option A): hero + grid de KPIs + “Foco de hoje” + “Runs recentes” + sidebar (Market watch/Atalhos/Notas). Responsivo OK (sem scroll horizontal em viewport mobile). Build `frontend` ok.
+
 
 ## Next actions
 - [x] PO: Propose IA + KPI shortlist for Home.
@@ -38,5 +41,5 @@
 - [x] PO: Add an explicit “Pick A or B” + 3 quick choices at the top of the KPI memo (so Alan can answer in 30s).
 - [x] Alan: Chose Option A (simple Home) and approved scope/prototype direction.
 - [ ] DESIGN: Optional small iteration of prototype based on Option A (if needed).
-- [ ] DEV: Implement Home using prototype.
-- [ ] QA: Validate.
+- [x] DEV: Implement Home using prototype.
+- [x] QA: Validate.

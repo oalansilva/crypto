@@ -10,6 +10,7 @@ interface Opportunity {
   sell_price: number
   spread_pct: number
   timestamp: number
+  meets_threshold?: boolean
 }
 
 interface ApiResponse {
