@@ -79,10 +79,21 @@ def list_comments(change_id: str) -> List[Dict[str, Any]]:
     if not _change_exists(cid):
         raise FileNotFoundError(f"Unknown change '{cid}'")
 
+    # Seed a first comment so the thread is never empty (improves UX and
+    # creates an auditable single place for handoffs).
     p = _file_for_change(cid)
-    if not p.exists():
-        return []
+    if (not p.exists()) or p.stat().st_size == 0:
+        try:
+            add_comment(
+                cid,
+                author="system",
+                body="Thread created. Use comments for handoffs, blockers, and decisions.",
+            )
+        except Exception:
+            # Never break the UI if seeding fails.
+            pass
 
+    # Reload after potential seed.
     out: List[Dict[str, Any]] = []
     for line in p.read_text(encoding="utf-8").splitlines():
         s = line.strip()

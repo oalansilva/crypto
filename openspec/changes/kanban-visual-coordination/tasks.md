@@ -9,6 +9,7 @@
   - Validation: body max length 2,000 chars
   - API: list comments (GET) + create comment (POST). No edit/delete in v1.
 - [x] 1.4 Add tests for parsing + comments storage
+- [x] 1.5 Seed comments thread automatically when none exists (create first system comment)
 
 ## 2. Frontend
 
@@ -17,7 +18,7 @@
 - [x] 2.3 Card details panel: tasks checklist (read-only in v1) + comments thread
   - Comments UI shows author + timestamp; create-only (no edit/delete)
 - [x] 2.4 Add Archived as the final column (always listed; no filter/toggle)
-- [ ] 2.5 Tasks UI: child items without explicit checkbox should inherit parent completion state (avoid confusion)
+- [x] 2.5 Tasks UI: child items without explicit checkbox should inherit parent completion state (avoid confusion)
 
 ## 3. QA
 

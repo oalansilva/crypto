@@ -2,8 +2,8 @@
 
 ## Status
 - PO: done
-- DEV: in progress
-- QA: done
+- DEV: done
+- QA: not started
 - Alan approval: approved
 - Alan homologation: not reviewed
 - Alan (Stakeholder): approved
@@ -85,7 +85,7 @@ Review criteria (what you are approving):
   - [x] Clarify comment expectations: retention, edit/delete policy, and minimal metadata (author, timestamp).
   - [x] Confirm scope: tasks checklist is read-only vs. interactive (check/uncheck) for v1.
   - [x] Mark PO as **done** once above decisions are locked and documented.
-- [ ] DEV:
+- [x] DEV:
   - [x] Backend 1.1: Add endpoint to list active + archived changes + statuses (parse `docs/coordination/*.md`)
   - [x] Backend 1.2: Add endpoint to return tasks checklist for a change (parse `openspec/changes/<change>/tasks.md`)
   - [x] Backend 1.3: Add comments storage + endpoints (append-only)
@@ -94,6 +94,7 @@ Review criteria (what you are approving):
   - [x] Frontend 2.2: Render ordered columns + cards from backend
   - [x] Frontend 2.3: Card details panel (tasks checklist + comments thread)
   - [x] Frontend 2.4: Add Archived as final column
-  - [ ] Frontend 2.5: Tasks UI inherits completion for child items (no-checkbox children)
+  - [x] Frontend 2.5: Tasks UI inherits completion for child items (no-checkbox children)
+  - [x] Backend 1.5: Seed comments thread automatically when empty
 - [x] QA:
   - [x] 3.2 Regression: ensure existing `/openspec` pages still work
