@@ -44,7 +44,7 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 - **No per-turn daily spam in Telegram.**
 - Each turn: the acting agent should leave a short note in the Kanban card comments (1–3 lines: what changed, blocker, next step).
-- Mentions in comments: use `@PO`, `@DEV`, `@QA`, `@Alan`. Agents should respond to mentions addressed to them on their next turn (best-effort, concise).
+- Mentions in comments: use `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`. Agents should respond to mentions addressed to them on their next turn (best-effort, concise).
 - Each agent turn should also scan the card comments for unanswered mentions to them and reply (best-effort).
 - Telegram notifications to Alan only on milestones:
   - PO ready for Alan approval
