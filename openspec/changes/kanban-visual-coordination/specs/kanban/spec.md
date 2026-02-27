@@ -1,24 +1,29 @@
 ## ADDED Requirements
 
-### Requirement: System MUST provide a Kanban board for active changes
-The system MUST provide a Kanban UI page that lists active OpenSpec changes and shows them in workflow columns:
+### Requirement: System MUST provide a Kanban board for active + archived changes
+The system MUST provide a Kanban UI page that lists **active** OpenSpec changes and **archived** changes and shows them in workflow columns:
 - PO
 - Alan approval
 - DEV
 - QA
 - Alan homologation
-- Archived (optional view)
+- Archived
 
 #### Scenario: Active changes appear
 - **WHEN** there are active changes under `openspec/changes/*` containing `.openspec.yaml` (excluding `archive/`)
 - **THEN** the Kanban MUST display one card per active change
+
+#### Scenario: Archived changes appear
+- **WHEN** there are archived changes under `openspec/changes/archive/*` containing `.openspec.yaml`
+- **THEN** the Kanban MUST display one card per archived change in the Archived column
 
 ### Requirement: Kanban MUST derive status from coordination files
 The system MUST derive each card's workflow state from `docs/coordination/<change>.md`.
 
 #### Scenario: Missing coordination file
 - **WHEN** `docs/coordination/<change>.md` does not exist
-- **THEN** the UI MUST display a clear warning and offer a link/instruction to create it
+- **THEN** the system MUST automatically create `docs/coordination/<change>.md` using the coordination template
+- **AND THEN** the Kanban MUST display the card with the newly created coordination state
 
 ### Requirement: Card details MUST show tasks checklist
 The system MUST render a checklist view of `openspec/changes/<change>/tasks.md`.

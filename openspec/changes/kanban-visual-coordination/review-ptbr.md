@@ -11,7 +11,7 @@ Criar um **Kanban visual dentro do app** pra tu acompanhar o fluxo e as tasks/co
   - DEV
   - QA
   - Alan homologation
-  - (Archived opcional)
+  - Archived (sempre visível)
 - Ao clicar num card:
   - checklist das tasks (lidas do `openspec/changes/<change>/tasks.md`)
   - comentários por change (thread)

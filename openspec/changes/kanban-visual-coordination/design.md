@@ -22,7 +22,7 @@ We already maintain coordination state in markdown and OpenSpec artifacts. We wa
   - DEV
   - QA
   - Alan homologation
-  - Archived (toggle)
+  - Archived
 - Card shows:
   - change name
   - current stage

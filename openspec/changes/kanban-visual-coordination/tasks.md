@@ -1,6 +1,6 @@
 ## 1. Backend
 
-- [ ] 1.1 Add endpoint to list active changes + statuses (parse `docs/coordination/*.md`)
+- [ ] 1.1 Add endpoint to list active + archived changes + statuses (parse `docs/coordination/*.md`)
 - [ ] 1.2 Add endpoint to return tasks checklist for a change (parse `openspec/changes/<change>/tasks.md`)
 - [ ] 1.3 Add comments storage + endpoints (GET/POST per change)
 - [ ] 1.4 Add tests for parsing + comments storage
@@ -8,8 +8,9 @@
 ## 2. Frontend
 
 - [ ] 2.1 Add `/kanban` page
-- [ ] 2.2 Render columns + cards from backend list endpoint
+- [ ] 2.2 Render the ordered columns + cards from backend list endpoint (default: non-archived only)
 - [ ] 2.3 Card details panel: tasks checklist + comments thread
+- [ ] 2.4 Add Archived as a filter/view (e.g., “Show archived”), not a main column
 
 ## 3. QA
 
@@ -18,4 +19,4 @@
 
 ## 4. Docs
 
-- [ ] 4.1 Document how statuses are derived from coordination files
+- [ ] 4.1 Document how statuses are derived from coordination files (including Archived filter/view behavior)
