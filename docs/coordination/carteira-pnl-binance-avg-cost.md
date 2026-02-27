@@ -2,7 +2,7 @@
 
 ## Status
 - PO: done
-- DEV: not started
+- DEV: in progress
 - QA: not started
 - Alan (Stakeholder): approved
 
