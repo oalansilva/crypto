@@ -17,6 +17,7 @@
 - [x] 2.3 Card details panel: tasks checklist (read-only in v1) + comments thread
   - Comments UI shows author + timestamp; create-only (no edit/delete)
 - [x] 2.4 Add Archived as the final column (always listed; no filter/toggle)
+- [ ] 2.5 Tasks UI: child items without explicit checkbox should inherit parent completion state (avoid confusion)
 
 ## 3. QA
 

@@ -2,7 +2,7 @@
 
 ## Status
 - PO: done
-- DEV: done
+- DEV: in progress
 - QA: done
 - Alan approval: approved
 - Alan homologation: not reviewed
@@ -76,6 +76,8 @@ Review criteria (what you are approving):
 - Tasks checklist behavior in the Kanban UI: read-only display (v1)
 
 ## Next actions
+**Blocked:** awaiting **Alan homologation** (current status: `Alan homologation: not reviewed`). No further PO/DEV/QA actions pending.
+
 - [x] **Alan approval (required to start DEV):** Approved (`Alan approval: approved` in `## Status`).
 - [x] PO:
   - [x] Confirm final column set + mapping to existing workflow (Archived is a column and is always listed).
@@ -83,7 +85,7 @@ Review criteria (what you are approving):
   - [x] Clarify comment expectations: retention, edit/delete policy, and minimal metadata (author, timestamp).
   - [x] Confirm scope: tasks checklist is read-only vs. interactive (check/uncheck) for v1.
   - [x] Mark PO as **done** once above decisions are locked and documented.
-- [x] DEV:
+- [ ] DEV:
   - [x] Backend 1.1: Add endpoint to list active + archived changes + statuses (parse `docs/coordination/*.md`)
   - [x] Backend 1.2: Add endpoint to return tasks checklist for a change (parse `openspec/changes/<change>/tasks.md`)
   - [x] Backend 1.3: Add comments storage + endpoints (append-only)
@@ -92,5 +94,6 @@ Review criteria (what you are approving):
   - [x] Frontend 2.2: Render ordered columns + cards from backend
   - [x] Frontend 2.3: Card details panel (tasks checklist + comments thread)
   - [x] Frontend 2.4: Add Archived as final column
+  - [ ] Frontend 2.5: Tasks UI inherits completion for child items (no-checkbox children)
 - [x] QA:
   - [x] 3.2 Regression: ensure existing `/openspec` pages still work
