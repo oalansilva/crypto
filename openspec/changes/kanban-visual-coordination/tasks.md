@@ -1,4 +1,4 @@
-> Blocked: DEV tasks start only after `docs/coordination/kanban-visual-coordination.md` has `Alan approval: approved` in its `## Status` section.
+> Prereq satisfied: `docs/coordination/kanban-visual-coordination.md` already has `Alan approval: approved` in its `## Status` section.
 
 ## 1. Backend
 
@@ -21,7 +21,7 @@
 ## 3. QA
 
 - [x] 3.1 Minimal E2E test: Kanban loads and shows a mocked change
-- [ ] 3.2 Regression: ensure existing `/openspec` pages still work
+- [x] 3.2 Regression: ensure existing `/openspec` pages still work
 
 ## 4. Docs
 

@@ -64,11 +64,9 @@
 
 ## Notes
 - The Kanban UI should make the existing markdown workflow easier to consume (no new process).
-- DEV is blocked pending Alan approval.
 
 ## Alan approval instructions
-To approve and unblock DEV, update this same file:
-- In `## Status`, set: `Alan approval: approved`
+Alan approval is already **approved** for this change (no action needed).
 
 Review criteria (what you are approving):
 - Column set + order: `PO → Alan approval → DEV → QA → Alan homologation → Archived`
@@ -78,14 +76,14 @@ Review criteria (what you are approving):
 - Tasks checklist behavior in the Kanban UI: read-only display (v1)
 
 ## Next actions
-- [ ] **Alan approval (required to start DEV):** After review, set `Alan approval: approved` in the `## Status` section of this file.
+- [x] **Alan approval (required to start DEV):** Approved (`Alan approval: approved` in `## Status`).
 - [x] PO:
   - [x] Confirm final column set + mapping to existing workflow (Archived is a column and is always listed).
   - [x] Define the exact rule for deriving each column/status from `docs/coordination/<change>.md` (source-of-truth fields and allowed values).
   - [x] Clarify comment expectations: retention, edit/delete policy, and minimal metadata (author, timestamp).
   - [x] Confirm scope: tasks checklist is read-only vs. interactive (check/uncheck) for v1.
   - [x] Mark PO as **done** once above decisions are locked and documented.
-- [ ] DEV:
+- [x] DEV:
   - [x] Backend 1.1: Add endpoint to list active + archived changes + statuses (parse `docs/coordination/*.md`)
   - [x] Backend 1.2: Add endpoint to return tasks checklist for a change (parse `openspec/changes/<change>/tasks.md`)
   - [x] Backend 1.3: Add comments storage + endpoints (append-only)
@@ -94,4 +92,5 @@ Review criteria (what you are approving):
   - [x] Frontend 2.2: Render ordered columns + cards from backend
   - [x] Frontend 2.3: Card details panel (tasks checklist + comments thread)
   - [x] Frontend 2.4: Add Archived as final column
-- [ ] QA: (pending DEV)
+- [x] QA:
+  - [x] 3.2 Regression: ensure existing `/openspec` pages still work
