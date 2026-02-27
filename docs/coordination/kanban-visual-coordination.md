@@ -4,9 +4,9 @@
 - PO: done
 - DEV: blocked
 - QA: not started
-- Alan approval: not reviewed
+- Alan approval: approved
 - Alan homologation: not reviewed
-- Alan (Stakeholder): not reviewed
+- Alan (Stakeholder): approved
 
 > Gate order: PO must be **done** before Alan approves to implement.
 
