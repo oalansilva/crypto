@@ -8,6 +8,11 @@
 
 > Gate order: PO must be **done** before Alan approves to implement.
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions (locked)
 - Goal: Add a dashboard to view external balances (starting with Binance Spot) via read-only API.
 - Surface (mobile/desktop): Desktop-first (still usable on mobile).

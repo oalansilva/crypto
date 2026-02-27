@@ -154,10 +154,44 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     return "Archived"
 
 
+def _archived_change_ids_from_openspec() -> set[str]:
+    """Return change ids that are archived per OpenSpec archive folder.
+
+    OpenSpec archives are stored under `openspec/changes/archive/<archive-id>/`.
+    In this project, archive folder names are typically prefixed with YYYY-MM-DD-,
+    so we strip that prefix to recover the original change id.
+
+    This makes the Kanban board consistent even if `docs/coordination/<change>.md`
+    was not updated at archive time.
+    """
+
+    archive_root = project_root() / "openspec" / "changes" / "archive"
+    if not archive_root.exists():
+        return set()
+
+    out: set[str] = set()
+    for d in archive_root.iterdir():
+        if not d.is_dir():
+            continue
+        if not (d / ".openspec.yaml").exists():
+            continue
+        name = d.name
+        # Strip common date prefix.
+        m = re.match(r"^\d{4}-\d{2}-\d{2}-(.+)$", name)
+        if m:
+            out.add(m.group(1))
+        else:
+            out.add(name)
+
+    return out
+
+
 def list_coordination_changes() -> List[Dict[str, Any]]:
     base = coordination_dir()
     if not base.exists():
         return []
+
+    openspec_archived_ids = _archived_change_ids_from_openspec()
 
     out: List[Dict[str, Any]] = []
     for p in sorted(base.glob("*.md")):
@@ -170,8 +204,11 @@ def list_coordination_changes() -> List[Dict[str, Any]]:
             continue
 
         status = parse_status(md)
-        archived = is_archived(md, status)
-        column = derive_column(status, archived=archived)
+
+        # Determine archived. OpenSpec archive status wins to avoid inconsistencies
+        # between file-based coordination and the actual OpenSpec archive state.
+        archived = is_archived(md, status) or (change_id in openspec_archived_ids)
+        column = "Archived" if archived else derive_column(status, archived=archived)
 
         out.append(
             {

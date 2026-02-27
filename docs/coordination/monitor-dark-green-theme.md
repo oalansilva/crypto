@@ -6,6 +6,11 @@
 - QA: done
 - Alan (Stakeholder): approved
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions (locked)
 - Goal: Change Monitor palette from black to dark green (aesthetic refresh).
 - Surface (mobile/desktop): Monitor only (mobile-first).

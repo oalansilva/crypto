@@ -8,6 +8,11 @@
 
 > Gate order: PO must be **done** before Alan approves to implement.
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions (locked)
 - Goal: Show Wallet PnL per asset based on Binance Spot avg buy cost.
 - Scope: Binance Spot, USDT pairs only.

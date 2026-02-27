@@ -8,6 +8,11 @@
 
 > Gate order: PO must be **done** before Alan approves to implement.
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions (locked)
 - Goal: Reduce Turn Scheduler executions when there are **no active OpenSpec changes**.
 - Surface (mobile/desktop): N/A (ops-only).

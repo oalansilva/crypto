@@ -8,6 +8,11 @@
 
 > Gate order: PO must be **done** before Alan approves to implement.
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions (locked)
 - Goal: Add an Asset Type filter (All/Crypto/Stocks) to /monitor to reduce noise.
 - Surface (mobile/desktop): Monitor only.
