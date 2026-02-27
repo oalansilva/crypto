@@ -15,7 +15,7 @@
 ## Links
 - OpenSpec viewer: http://72.60.150.140:5173/openspec/changes/home-page-refresh/proposal
 - PT-BR review: http://72.60.150.140:5173/openspec/changes/home-page-refresh/review-ptbr
-- Prototype (when ready): http://72.60.150.140:5173/prototypes/home-page-refresh/
+- Prototype (when ready): http://72.60.150.140:5173/prototypes/home-page-refresh/index.html
 
 ## Notes
 - [DESIGN] v0 prototype created (layout skeleton): http://72.60.150.140:5173/prototypes/home-page-refresh/
