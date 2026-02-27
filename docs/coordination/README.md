@@ -21,6 +21,18 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Always follow the agreed flow: **PO → Alan approval → DEV → QA → Alan homologation → archive**.
 - If a change is already open and Alan requests a **small adjustment**, **DEV may implement it within the same change**, but the rest of the flow remains mandatory (**QA validation + Alan homologation + archive**).
 
+### Autonomy & turn-based execution
+
+- Default mode is **autonomous**: let the **Turn Scheduler** pull work without Alan needing to be online.
+- Default to **one work item per turn** (do not do DEV+QA back-to-back in the same manual block).
+- Only run multiple stages back-to-back if Alan explicitly says **"modo rápido"**.
+
+### Communication policy (Alan)
+
+- Send **daily-style** summaries only (no technical details like commits/files) unless Alan asks.
+- Always include the **next step** and whether **Alan action is needed**.
+- Do **not** send repeated updates for the same unchanged blocked state; re-notify only when the state changes or on explicit request.
+
 ## Prereqs (so the Turn Scheduler works)
 
 ### Operating mode
