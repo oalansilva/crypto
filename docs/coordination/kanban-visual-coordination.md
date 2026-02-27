@@ -89,6 +89,6 @@ Review criteria (what you are approving):
   - [x] Backend 1.1: Add endpoint to list active + archived changes + statuses (parse `docs/coordination/*.md`)
   - [x] Backend 1.2: Add endpoint to return tasks checklist for a change (parse `openspec/changes/<change>/tasks.md`)
   - [x] Backend 1.3: Add comments storage + endpoints (append-only)
-  - [ ] Backend 1.4: Add tests for parsing + comments storage
+  - [x] Backend 1.4: Add tests for parsing + comments storage
   - [ ] Frontend 2.1-2.4: Add /kanban page + columns/cards + details panel (tasks + comments)
 - [ ] QA: (pending DEV)
