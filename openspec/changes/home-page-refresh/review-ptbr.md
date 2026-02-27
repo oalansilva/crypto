@@ -1,11 +1,18 @@
 # Revisão (PT-BR) — home-page-refresh
 
 ## Objetivo
-Reformular a **Home** do sistema para ficar mais clara, útil e "direta ao ponto".
+Transformar a **Home** em um **hub**: mais clara, com atalhos diretos para os fluxos do dia a dia (em vez de uma única chamada do Combo).
 
-## O que vai acontecer agora
-- PO e DESIGN vão fazer um brainstorm e propor uma nova estrutura.
-- DESIGN vai entregar um protótipo HTML/CSS reutilizável.
+## O que vai mudar (v1, pequeno e iterativo)
+- Home com **Quick Actions/Atalhos** para:
+  - Favorites, Monitor, Combo Strategies, Lab, Arbitrage, External Balances, Kanban, OpenSpec
+- Texto curto de orientação (o que é o app + “por onde começar”).
+- **Sem dependência de backend** nesta primeira versão (Home mais estática/navegacional).
+
+## Critérios de aceite (resumo)
+- Ao abrir `/`, aparecem os atalhos listados.
+- Clicar em qualquer atalho navega para a página correta.
+- Layout funciona bem em desktop e mobile.
 
 ## Próximo passo
-Tu aprova o escopo/estrutura e o protótipo antes de começar DEV.
+DESIGN: entregar protótipo HTML/CSS reutilizável. Depois: tua aprovação do protótipo + escopo.

@@ -1,98 +1,52 @@
-<artifact id="design" change="home-page-refresh" schema="spec-driven">
-
-<task>
-Create the design artifact for change "home-page-refresh".
-Technical design document with implementation details
-</task>
-
-<project_context>
-<!-- This is background information for you. Do NOT include this in your output. -->
-Purpose: Build a cryptocurrency backtester to fetch historical data, simulate trading strategies, and visualize performance (ROI, Drawdown).
-
-Tech Stack:
-- Python 3.x
-- pandas (Data manipulation)
-- ccxt (Crypto data fetching)
-- matplotlib (Visualization)
-
-Project Conventions:
-- PEP 8
-- Type hinting for all function signatures
-- Docstrings for all classes and methods
-
-Architecture Patterns:
-- Modular design: DataLoader, Strategy, Backtester, Visualization
-- Strategy Pattern for different trading strategies
-
-External Dependencies:
-- CCXT (Exchange APIs)
-</project_context>
-
-<dependencies>
-Read these files for context before creating this artifact:
-
-<dependency id="proposal" status="done">
-  <path>/root/.openclaw/workspace/crypto/openspec/changes/home-page-refresh/proposal.md</path>
-  <description>Initial proposal document outlining the change</description>
-</dependency>
-</dependencies>
-
-<output>
-Write to: /root/.openclaw/workspace/crypto/openspec/changes/home-page-refresh/design.md
-</output>
-
-<instruction>
-Create the design document that explains HOW to implement the change.
-
-When to include design.md (create only if any apply):
-- Cross-cutting change (multiple services/modules) or new architectural pattern
-- New external dependency or significant data model changes
-- Security, performance, or migration complexity
-- Ambiguity that benefits from technical decisions before coding
-
-Sections:
-- **Context**: Background, current state, constraints, stakeholders
-- **Goals / Non-Goals**: What this design achieves and explicitly excludes
-- **Decisions**: Key technical choices with rationale (why X over Y?). Include alternatives considered for each decision.
-- **Risks / Trade-offs**: Known limitations, things that could go wrong. Format: [Risk] → Mitigation
-- **Migration Plan**: Steps to deploy, rollback strategy (if applicable)
-- **Open Questions**: Outstanding decisions or unknowns to resolve
-
-Focus on architecture and approach, not line-by-line implementation.
-Reference the proposal for motivation and specs for requirements.
-
-Good design docs explain the "why" behind technical decisions.
-</instruction>
-
-<template>
-<!-- Use this as the structure for your output file. Fill in the sections. -->
 ## Context
 
-<!-- Background and current state -->
+Home currently functions as a single feature promo (Combo Strategies), which is not aligned with how the product is used day-to-day (jumping between Monitor, Favorites, Lab, balances, and Kanban).
+
+Constraint: keep this change small and iterative. In v1, Home is primarily a navigational hub; it should not require new backend work.
+
+Stakeholders:
+- Alan (approval + direction)
+- DESIGN (prototype)
+- DEV (implementation)
 
 ## Goals / Non-Goals
 
 **Goals:**
-<!-- What this design aims to achieve -->
+- Provide a Home information architecture that clearly exposes the main workflows.
+- Reduce clicks/time-to-action to get to common destinations.
+- Enable a fast DEV implementation via a simple HTML/CSS prototype.
 
 **Non-Goals:**
-<!-- What is explicitly out of scope -->
+- Building personalized analytics (e.g., “recent runs”, “performance charts”) that require new endpoints.
+- Changing the underlying features (Monitor, Lab, Combo, etc.).
 
 ## Decisions
 
-<!-- Key design decisions and rationale -->
+1. **Home as a hub, not a dashboard (v1)**
+   - Decision: Home will be mostly static UI + navigation shortcuts.
+   - Rationale: fastest path to value; avoids dependency on backend data.
+   - Alternative considered: show dynamic “recent activity” and status cards; rejected for v1 due to data/endpoint coupling.
+
+2. **Prototype-first for consistent UI**
+   - Decision: DESIGN will provide a reusable HTML/CSS prototype under `frontend/public/prototypes/home-page-refresh/`.
+   - Rationale: improves speed and avoids UI drift across DEV iterations.
+
+3. **Quick Actions as the primary interaction**
+   - Decision: Quick Actions grid/cards is the primary Home interaction pattern.
+   - Rationale: matches user intent (“take me to X”) and is simple to test.
 
 ## Risks / Trade-offs
 
-<!-- Known risks and trade-offs -->
-</template>
+- [Home feels too “static”] → Mitigation: keep copy concise and allow adding a small “What’s new” or “recent” block in a later iteration if needed.
+- [Too many shortcuts creates clutter] → Mitigation: limit to core destinations listed in spec; keep consistent card style and short descriptions.
 
-<success_criteria>
-<!-- To be defined in schema validation rules -->
-</success_criteria>
+## Migration Plan
 
-<unlocks>
-Completing this artifact enables: tasks
-</unlocks>
+- Replace current Home content with the new hub layout.
+- No data migration.
+- Rollback: revert Home component to previous single-CTA version.
 
-</artifact>
+## Open Questions
+
+- Should any shortcut be emphasized as the “primary” CTA (e.g., Monitor vs Combo) for Alan’s preferred daily workflow?
+- Any destinations to hide for now (e.g., OpenSpec/Kanban) in a “Developer tools” subsection?
