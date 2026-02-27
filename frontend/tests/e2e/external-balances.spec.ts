@@ -29,6 +29,19 @@ test('external balances page loads and shows balances', async ({ page }) => {
   await page.goto('/external/balances')
 
   await expect(page.getByRole('heading', { name: 'Carteira' })).toBeVisible()
+
+  // Column headers (regression: PnL columns present)
+  await expect(page.getByText('Avg Cost (USDT)')).toBeVisible()
+  await expect(page.getByText('PnL (USD)')).toBeVisible()
+  await expect(page.getByText('PnL (%)')).toBeVisible()
+
+  // Rows present
   await expect(page.getByText('HBAR', { exact: true })).toBeVisible()
   await expect(page.getByText('USDC', { exact: true })).toBeVisible()
+
+  // Values render/formatted
+  await expect(page.getByText('89.61')).toBeVisible() // HBAR value_usd (toFixed(2))
+  await expect(page.getByText('0.08')).toBeVisible() // HBAR avg_cost_usdt
+  await expect(page.getByText('17.92')).toBeVisible() // HBAR pnl_usd (toFixed(2))
+  await expect(page.getByText('25.00')).toBeVisible() // HBAR pnl_pct (toFixed(2))
 })

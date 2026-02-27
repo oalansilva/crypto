@@ -20,8 +20,9 @@ def test_balances_snapshot_includes_avg_cost_and_pnl(monkeypatch):
     binance_spot = importlib.import_module("app.services.binance_spot")
     binance_trades = importlib.import_module("app.services.binance_trades")
 
-    def fake_signed_get(base_url, api_key, api_secret, path, params):
+    def fake_signed_get(base_url, api_key, api_secret, path, params, *, timeout_s: int):
         assert path == "/api/v3/account"
+        assert timeout_s
         return {
             "balances": [
                 {"asset": "ABC", "free": "2", "locked": "0"},
@@ -34,8 +35,9 @@ def test_balances_snapshot_includes_avg_cost_and_pnl(monkeypatch):
     def fake_compute_usdt_price(asset, symbol_prices):
         return 2.5
 
-    def fake_fetch_my_trades(symbol: str, limit: int = 1000):
+    def fake_fetch_my_trades(symbol: str, *, limit: int = 1000, lookback_days=None):
         assert symbol == "ABCUSDT"
+        assert limit
         return [
             {"isBuyer": True, "qty": "2", "price": "2"},
         ]

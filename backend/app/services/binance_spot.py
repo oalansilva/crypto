@@ -7,7 +7,7 @@ import os
 import time
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.services.binance_prices import compute_usdt_price_for_asset, fetch_all_binance_prices
 from app.services.binance_trades import compute_avg_buy_cost_usdt
@@ -22,7 +22,29 @@ def _get_env(name: str) -> str:
     return value
 
 
-def _signed_get(base_url: str, api_key: str, api_secret: str, path: str, params: Dict[str, Any]) -> Dict[str, Any]:
+def _get_int_env(name: str, default: int) -> int:
+    raw = _get_env(name)
+    if not raw:
+        return int(default)
+    try:
+        return int(raw)
+    except Exception:
+        return int(default)
+
+
+def _clamp_int(value: int, lo: int, hi: int) -> int:
+    return max(lo, min(hi, int(value)))
+
+
+def _signed_get(
+    base_url: str,
+    api_key: str,
+    api_secret: str,
+    path: str,
+    params: Dict[str, Any],
+    *,
+    timeout_s: int,
+) -> Dict[str, Any]:
     query = urllib.parse.urlencode(params)
     signature = hmac.new(api_secret.encode(), query.encode(), hashlib.sha256).hexdigest()
     url = f"{base_url}{path}?{query}&signature={signature}"
@@ -30,17 +52,23 @@ def _signed_get(base_url: str, api_key: str, api_secret: str, path: str, params:
     req = urllib.request.Request(url)
     req.add_header("X-MBX-APIKEY", api_key)
 
-    with urllib.request.urlopen(req, timeout=30) as f:
+    with urllib.request.urlopen(req, timeout=float(timeout_s)) as f:
         return json.load(f)
 
 
-def fetch_spot_balances_snapshot() -> Dict[str, Any]:
+def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None) -> Dict[str, Any]:
     """Fetch Binance Spot balances using server-side env credentials.
 
     Env vars:
       - BINANCE_API_KEY
       - BINANCE_API_SECRET
       - BINANCE_BASE_URL (optional; default https://api.binance.com)
+
+    Safeguards:
+      - HTTP timeout (env BINANCE_HTTP_TIMEOUT_SECONDS; default 10, clamped 1..60)
+      - Max symbols to query trade history for (env BINANCE_MAX_TRADE_SYMBOLS; default 15, clamped 0..200)
+      - Total time budget for trade-history lookups (env BINANCE_TRADE_LOOKUPS_BUDGET_SECONDS; default 15, clamped 1..120)
+      - Optional lookback window passed to myTrades (startTime)
 
     Returns:
       {
@@ -59,14 +87,19 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
     if not api_key or not api_secret:
         raise BinanceConfigError("Missing Binance credentials. Set BINANCE_API_KEY and BINANCE_API_SECRET.")
 
+    timeout_s = _clamp_int(_get_int_env("BINANCE_HTTP_TIMEOUT_SECONDS", 10), 1, 60)
+    max_trade_symbols = _clamp_int(_get_int_env("BINANCE_MAX_TRADE_SYMBOLS", 15), 0, 200)
+    trade_budget_s = _clamp_int(_get_int_env("BINANCE_TRADE_LOOKUPS_BUDGET_SECONDS", 15), 1, 120)
+
     ts = int(time.time() * 1000)
-    payload = _signed_get(base_url, api_key, api_secret, "/api/v3/account", {"timestamp": ts})
+    payload = _signed_get(base_url, api_key, api_secret, "/api/v3/account", {"timestamp": ts}, timeout_s=timeout_s)
 
     balances = payload.get("balances") or []
 
     # Fetch all prices once (public endpoint) and compute USD values.
     symbol_prices = fetch_all_binance_prices()
 
+    # Build the list first (cheap), then run trade-history lookups only for the most relevant items.
     out: List[Dict[str, Any]] = []
     total_usd = 0.0
 
@@ -96,13 +129,6 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
 
         total_usd += float(value_usd)
 
-        avg_cost_usdt = compute_avg_buy_cost_usdt(asset)
-        pnl_usd = None
-        pnl_pct = None
-        if avg_cost_usdt is not None and price_usdt is not None and avg_cost_usdt > 0:
-            pnl_usd = (float(price_usdt) - float(avg_cost_usdt)) * float(total)
-            pnl_pct = ((float(price_usdt) / float(avg_cost_usdt)) - 1.0) * 100.0
-
         out.append({
             "asset": asset,
             "free": free,
@@ -110,10 +136,39 @@ def fetch_spot_balances_snapshot() -> Dict[str, Any]:
             "total": total,
             "price_usdt": price_usdt,
             "value_usd": value_usd,
-            "avg_cost_usdt": avg_cost_usdt,
-            "pnl_usd": pnl_usd,
-            "pnl_pct": pnl_pct,
+            "avg_cost_usdt": None,
+            "pnl_usd": None,
+            "pnl_pct": None,
         })
+
+    # Prefer spending limited trade-history calls on largest positions.
+    out.sort(key=lambda x: -(float(x.get("value_usd") or 0.0)))
+
+    lookups_started = time.time()
+
+    for i, row in enumerate(out):
+        if max_trade_symbols <= 0:
+            break
+        if i >= max_trade_symbols:
+            break
+        if (time.time() - lookups_started) > float(trade_budget_s):
+            break
+
+        asset = str(row.get("asset") or "").strip().upper()
+        avg_cost_usdt = compute_avg_buy_cost_usdt(asset, lookback_days=lookback_days)
+        row["avg_cost_usdt"] = avg_cost_usdt
+
+        price_usdt = row.get("price_usdt")
+        total = float(row.get("total") or 0.0)
+
+        pnl_usd = None
+        pnl_pct = None
+        if avg_cost_usdt is not None and price_usdt is not None and float(avg_cost_usdt) > 0:
+            pnl_usd = (float(price_usdt) - float(avg_cost_usdt)) * float(total)
+            pnl_pct = ((float(price_usdt) / float(avg_cost_usdt)) - 1.0) * 100.0
+
+        row["pnl_usd"] = pnl_usd
+        row["pnl_pct"] = pnl_pct
 
     # Default sort: value desc (when present), else total desc, then asset asc
     def _sort_key(x: Dict[str, Any]):
