@@ -53,6 +53,7 @@ type CoordinationCommentsListResponse = {
 
 const COLUMNS_ORDER = [
   'PO',
+  'DESIGN',
   'Alan approval',
   'DEV',
   'QA',
@@ -287,6 +288,7 @@ export default function KanbanPage() {
 
                               <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
                                 <StatusLine label="PO" value={it.status?.['PO']} />
+                                <StatusLine label="DESIGN" value={it.status?.['DESIGN'] || 'skipped'} />
                                 <StatusLine
                                   label="Alan approval"
                                   value={it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)']}

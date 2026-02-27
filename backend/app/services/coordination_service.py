@@ -97,6 +97,16 @@ def _alan_field(status: Dict[str, str], key: str) -> Optional[str]:
     return fallback
 
 
+def _design_field(status: Dict[str, str]) -> str:
+    """Get DESIGN gate with backward-compatible default.
+
+    Backward compatibility rule: if DESIGN is missing from `## Status`, treat it as `skipped`.
+    """
+
+    v = _get_gate(status, "DESIGN")
+    return v if v is not None else "skipped"
+
+
 def is_archived(md: str, status: Dict[str, str]) -> bool:
     # Rule 1: a heading exactly `## Closed` anywhere.
     for line in md.splitlines():
@@ -105,6 +115,7 @@ def is_archived(md: str, status: Dict[str, str]) -> bool:
 
     # Rule 2: all gates complete.
     po = _get_gate(status, "PO")
+    design = _design_field(status)
     dev = _get_gate(status, "DEV")
     qa = _get_gate(status, "QA")
     alan_approval = _alan_field(status, "Alan approval")
@@ -112,6 +123,7 @@ def is_archived(md: str, status: Dict[str, str]) -> bool:
 
     return (
         po == "done"
+        and design in {"done", "skipped"}
         and dev == "done"
         and qa == "done"
         and alan_approval == "approved"
@@ -125,17 +137,19 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     Column selection algorithm (first match wins):
     1) archived -> Archived
     2) PO != done -> PO
-    3) Alan approval != approved -> Alan approval
-    4) DEV != done -> DEV
-    5) QA != done -> QA
-    6) Alan homologation != approved -> Alan homologation
-    7) else -> Archived
+    3) DESIGN not in {done, skipped} -> DESIGN
+    4) Alan approval != approved -> Alan approval
+    5) DEV != done -> DEV
+    6) QA != done -> QA
+    7) Alan homologation != approved -> Alan homologation
+    8) else -> Archived
     """
 
     if archived:
         return "Archived"
 
     po = _get_gate(status, "PO")
+    design = _design_field(status)
     dev = _get_gate(status, "DEV")
     qa = _get_gate(status, "QA")
     alan_approval = _alan_field(status, "Alan approval")
@@ -143,6 +157,8 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
 
     if po != "done":
         return "PO"
+    if design not in {"done", "skipped"}:
+        return "DESIGN"
     if alan_approval != "approved":
         return "Alan approval"
     if dev != "done":

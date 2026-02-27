@@ -91,7 +91,7 @@ This change is archived.
     assert coordination_service.derive_column(status, archived=archived) == "Archived"
 
 
-def test_derive_column_gate_order_prefers_po_then_approval_then_dev_then_qa_then_homologation():
+def test_derive_column_gate_order_includes_design_between_po_and_approval():
     md = """# change
 
 ## Status
@@ -104,9 +104,33 @@ def test_derive_column_gate_order_prefers_po_then_approval_then_dev_then_qa_then
     status = coordination_service.parse_status(md)
     assert coordination_service.derive_column(status, archived=False) == "PO"
 
-    md2 = md.replace("PO: in progress", "PO: done").replace("Alan approval: approved", "Alan approval: reviewed")
+    # PO done but DESIGN incomplete => DESIGN
+    md2 = """# change
+
+## Status
+- PO: done
+- DESIGN: in progress
+- DEV: done
+- QA: done
+- Alan approval: approved
+- Alan homologation: approved
+"""
     status2 = coordination_service.parse_status(md2)
-    assert coordination_service.derive_column(status2, archived=False) == "Alan approval"
+    assert coordination_service.derive_column(status2, archived=False) == "DESIGN"
+
+    # Backward compat: missing DESIGN => skipped => proceed to Alan approval
+    md3 = """# change
+
+## Status
+- PO: done
+- DEV: done
+- QA: done
+- Alan approval: reviewed
+- Alan homologation: approved
+"""
+    status3 = coordination_service.parse_status(md3)
+    assert coordination_service.derive_column(status3, archived=False) == "Alan approval"
+
 
 
 def test_comments_service_append_only_and_sorted(tmp_project: Path):

@@ -2,6 +2,7 @@
 
 ## Status
 - PO: not started | in progress | blocked | done
+- DESIGN: not started | in progress | blocked | done | skipped
 - DEV: not started | in progress | blocked | done
 - QA: not started | in progress | blocked | done
 - Alan (Stakeholder): not reviewed | reviewed | approved
