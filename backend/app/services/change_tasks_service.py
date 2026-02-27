@@ -57,7 +57,25 @@ class TaskSection:
 
 
 def _tasks_path(change_id: str) -> Path:
-    return project_root() / "openspec" / "changes" / change_id / "tasks.md"
+    # Active changes live here
+    p = project_root() / "openspec" / "changes" / change_id / "tasks.md"
+    if p.exists():
+        return p
+
+    # Archived changes live under openspec/changes/archive/<archive-id>/tasks.md
+    # Archive folder is usually prefixed with YYYY-MM-DD-<change_id>.
+    archive_root = project_root() / "openspec" / "changes" / "archive"
+    if archive_root.exists():
+        # 1) try common date prefix
+        matches = list(archive_root.glob(f"????-??-??-{change_id}/tasks.md"))
+        if matches:
+            return matches[0]
+        # 2) try exact folder match
+        p2 = archive_root / change_id / "tasks.md"
+        if p2.exists():
+            return p2
+
+    return p
 
 
 def _read_text(p: Path) -> str:
