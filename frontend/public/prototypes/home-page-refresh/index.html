@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prototype — Home Page Refresh</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <div class="brand">
+          <div class="brand__mark" aria-hidden="true">◼</div>
+          <div class="brand__text">
+            <div class="brand__name">Crypto Lab</div>
+            <div class="brand__sub">Home (refresh prototype)</div>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Primary">
+          <a href="#" class="nav__link">Backtests</a>
+          <a href="#" class="nav__link">Strategies</a>
+          <a href="#" class="nav__link">Monitor</a>
+          <a href="#" class="nav__link">Data</a>
+          <a href="#" class="nav__link">Docs</a>
+        </nav>
+
+        <div class="topbar__actions">
+          <button class="btn btn--ghost" type="button">Search</button>
+          <button class="btn" type="button">New backtest</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" class="container main">
+      <section class="hero" aria-label="Overview">
+        <div class="hero__left">
+          <h1 class="hero__title">Your daily crypto snapshot</h1>
+          <p class="hero__desc">
+            A clearer Home that answers: <strong>How am I doing?</strong> What needs attention?
+            What’s the fastest next action?
+          </p>
+
+          <div class="hero__quick">
+            <a class="card card--action" href="#">
+              <div class="card__title">Run a backtest</div>
+              <div class="card__meta">Pick a strategy · choose timeframe</div>
+            </a>
+            <a class="card card--action" href="#">
+              <div class="card__title">Update data</div>
+              <div class="card__meta">Sync candles · verify last date</div>
+            </a>
+            <a class="card card--action" href="#">
+              <div class="card__title">Check Monitor</div>
+              <div class="card__meta">Signals · open positions · alerts</div>
+            </a>
+          </div>
+        </div>
+
+        <aside class="hero__right" aria-label="Health">
+          <div class="panel">
+            <div class="panel__header">
+              <h2 class="panel__title">System health</h2>
+              <span class="pill pill--ok">OK</span>
+            </div>
+            <dl class="kv">
+              <div class="kv__row">
+                <dt>Last data sync</dt>
+                <dd>Today, 09:12</dd>
+              </div>
+              <div class="kv__row">
+                <dt>Exchange</dt>
+                <dd>Binance</dd>
+              </div>
+              <div class="kv__row">
+                <dt>Portfolio source</dt>
+                <dd>External balances</dd>
+              </div>
+            </dl>
+            <div class="panel__footer">
+              <button class="btn btn--ghost" type="button">View logs</button>
+              <button class="btn btn--ghost" type="button">Settings</button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="grid" aria-label="Key metrics">
+        <article class="card">
+          <div class="card__kpi">
+            <div class="kpi__label">Portfolio PnL (today)</div>
+            <div class="kpi__value">+2.34%</div>
+            <div class="kpi__sub">vs. BTC: +0.40%</div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card__kpi">
+            <div class="kpi__label">Drawdown (30d)</div>
+            <div class="kpi__value">-6.10%</div>
+            <div class="kpi__sub">Peak: Feb 12</div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card__kpi">
+            <div class="kpi__label">Best strategy (7d)</div>
+            <div class="kpi__value">MA Crossover</div>
+            <div class="kpi__sub">ROI: +8.9%</div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card__kpi">
+            <div class="kpi__label">Data freshness</div>
+            <div class="kpi__value">200 candles</div>
+            <div class="kpi__sub">BTC/USDT · 1h</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="layout" aria-label="Main content">
+        <div class="col">
+          <div class="panel">
+            <div class="panel__header">
+              <h2 class="panel__title">Today’s focus</h2>
+              <a class="link" href="#">See all</a>
+            </div>
+
+            <ul class="list">
+              <li class="list__item">
+                <span class="badge badge--warn">Action</span>
+                <div class="list__main">
+                  <div class="list__title">Refresh candles for ETH/USDT (1h)</div>
+                  <div class="list__meta">Last sync: 2 days ago · Missing ~48 candles</div>
+                </div>
+                <button class="btn btn--small" type="button">Sync</button>
+              </li>
+              <li class="list__item">
+                <span class="badge">Info</span>
+                <div class="list__main">
+                  <div class="list__title">New backtest result available</div>
+                  <div class="list__meta">Momentum v2 · ROI +12.1% · DD -4.0%</div>
+                </div>
+                <button class="btn btn--small btn--ghost" type="button">Open</button>
+              </li>
+              <li class="list__item">
+                <span class="badge badge--ok">OK</span>
+                <div class="list__main">
+                  <div class="list__title">External balances synced</div>
+                  <div class="list__meta">Binance · 09:10</div>
+                </div>
+                <button class="btn btn--small btn--ghost" type="button">View</button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <h2 class="panel__title">Recent runs</h2>
+              <a class="link" href="#">Backtests</a>
+            </div>
+            <div class="table">
+              <div class="table__row table__row--head">
+                <div>Strategy</div>
+                <div>Pair</div>
+                <div>TF</div>
+                <div>ROI</div>
+                <div>DD</div>
+                <div>Status</div>
+              </div>
+              <div class="table__row">
+                <div>Momentum v2</div>
+                <div>BTC/USDT</div>
+                <div>4h</div>
+                <div class="pos">+12.1%</div>
+                <div>-4.0%</div>
+                <div><span class="pill pill--ok">Done</span></div>
+              </div>
+              <div class="table__row">
+                <div>Mean reversion</div>
+                <div>ETH/USDT</div>
+                <div>1h</div>
+                <div class="neg">-1.2%</div>
+                <div>-7.6%</div>
+                <div><span class="pill">Done</span></div>
+              </div>
+              <div class="table__row">
+                <div>MA Crossover</div>
+                <div>SOL/USDT</div>
+                <div>1h</div>
+                <div class="pos">+8.9%</div>
+                <div>-3.4%</div>
+                <div><span class="pill pill--warn">Queued</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="col col--side">
+          <div class="panel">
+            <div class="panel__header">
+              <h2 class="panel__title">Market watch</h2>
+              <a class="link" href="#">Monitor</a>
+            </div>
+            <ul class="mini">
+              <li class="mini__row">
+                <div class="mini__pair">BTC/USDT</div>
+                <div class="mini__price">$62,340</div>
+                <div class="mini__chg pos">+1.2%</div>
+              </li>
+              <li class="mini__row">
+                <div class="mini__pair">ETH/USDT</div>
+                <div class="mini__price">$3,420</div>
+                <div class="mini__chg neg">-0.4%</div>
+              </li>
+              <li class="mini__row">
+                <div class="mini__pair">SOL/USDT</div>
+                <div class="mini__price">$128</div>
+                <div class="mini__chg pos">+3.1%</div>
+              </li>
+            </ul>
+            <div class="panel__footer">
+              <button class="btn btn--ghost btn--small" type="button">Edit watchlist</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <h2 class="panel__title">Shortcuts</h2>
+            </div>
+            <div class="chips">
+              <a class="chip" href="#">Import CSV</a>
+              <a class="chip" href="#">External balances</a>
+              <a class="chip" href="#">Candles inspector</a>
+              <a class="chip" href="#">Opportunity board</a>
+              <a class="chip" href="#">Changelog</a>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <h2 class="panel__title">Notes</h2>
+            </div>
+            <p class="muted">
+              This is a static prototype to guide DEV implementation. Copy + layout can be adjusted after PO/Alan alignment.
+            </p>
+          </div>
+        </aside>
+      </section>
+
+      <footer class="footer">
+        <div class="muted">Prototype: home-page-refresh · Static HTML/CSS · v0</div>
+      </footer>
+    </main>
+  </body>
+</html>
