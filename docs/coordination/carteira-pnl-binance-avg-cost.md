@@ -2,8 +2,8 @@
 
 ## Status
 - PO: done
-- DEV: in progress
-- QA: not started
+- DEV: done
+- QA: in progress
 - Alan (Stakeholder): approved
 
 > Gate order: PO must be **done** before Alan approves to implement.
@@ -22,6 +22,6 @@
 
 ## Next actions
 - [x] PO: Confirm scope/assumptions (buys-only avg cost, USDT pairs only, lookback window) and lock acceptance.
-- [ ] DEV: Implement myTrades avg cost + PnL fields on wallet endpoint + UI columns.
-- [ ] QA: Add backend mock tests + Playwright E2E for PnL rendering.
-- [x] Alan: Approved scope to implement; homologate UI after QA.
+- [x] DEV: Implement myTrades avg cost + PnL fields on wallet endpoint + UI columns.
+- [x] QA: Add backend mock tests + Playwright E2E for PnL rendering.
+- [ ] Alan: Homologate UI (Carteira PnL)
