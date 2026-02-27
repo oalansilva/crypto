@@ -1,9 +1,11 @@
 # kanban-visual-coordination
 
 ## Status
-- PO: in progress
-- DEV: not started
+- PO: done
+- DEV: blocked
 - QA: not started
+- Alan approval: not reviewed
+- Alan homologation: not reviewed
 - Alan (Stakeholder): not reviewed
 
 > Gate order: PO must be **done** before Alan approves to implement.
@@ -18,6 +20,7 @@
 - Data sources:
   - Statuses and “next step” come from `docs/coordination/*.md` (Status section).
   - Checklist comes from OpenSpec `openspec/changes/<change>/tasks.md`.
+  - Tasks checklist behavior (v1): **read-only display** (no check/uncheck in the UI).
 - Status → column derivation (locked, parser rules):
   - **Source-of-truth fields** (read from `docs/coordination/<change>.md`, inside `## Status`):
     - `PO:` values: `not started` | `in progress` | `blocked` | `done`
@@ -42,6 +45,11 @@
   - **Representation note**: the board shows two Alan columns. The coordination file must therefore track Alan’s state separately for approval vs homologation (preferred via the two explicit fields above). If only `Alan (Stakeholder):` is present, it will be used for both.
 - Persistence:
   - Comments are stored server-side (keyed by change), via backend GET/POST endpoints.
+  - Comment policy (v1):
+    - Retention: keep comments indefinitely (including after a change is Archived).
+    - Edit/delete: **not supported** in v1 (append-only thread).
+    - Minimal metadata per comment: `id`, `change`, `author`, `created_at` (UTC ISO-8601), `body`.
+    - Constraints: `body` is plain text (no Markdown parsing in v1), max length 2,000 chars.
   - Coordination + tasks remain file-based (markdown) and are read-only from the UI (no editing required for v1).
 - Performance limits: Must handle the typical number of active changes (small/medium) with fast initial load; no heavy optimization required for v1.
 - Non-goals:
@@ -56,15 +64,26 @@
 
 ## Notes
 - The Kanban UI should make the existing markdown workflow easier to consume (no new process).
+- DEV is blocked pending Alan approval.
+
+## Alan approval instructions
+To approve and unblock DEV, update this same file:
+- In `## Status`, set: `Alan approval: approved`
+
+Review criteria (what you are approving):
+- Column set + order: `PO → Alan approval → DEV → QA → Alan homologation → Archived`
+- Status → column derivation rules (source-of-truth fields + allowed values + evaluation order)
+- Archived detection rules
+- Comment persistence expectations (append-only, retention, no edit/delete in v1)
+- Tasks checklist behavior in the Kanban UI: read-only display (v1)
 
 ## Next actions
-- [ ] PO:
+- [ ] **Alan approval (required to start DEV):** After review, set `Alan approval: approved` in the `## Status` section of this file.
+- [x] PO:
   - [x] Confirm final column set + mapping to existing workflow (Archived is a column and is always listed).
   - [x] Define the exact rule for deriving each column/status from `docs/coordination/<change>.md` (source-of-truth fields and allowed values).
-  - [ ] Clarify comment expectations: retention, edit/delete policy, and minimal metadata (author, timestamp).
-  - [ ] Confirm scope: tasks checklist is read-only vs. interactive (check/uncheck) for v1.
-  - [ ] Mark PO as **done** once above decisions are locked and documented.
+  - [x] Clarify comment expectations: retention, edit/delete policy, and minimal metadata (author, timestamp).
+  - [x] Confirm scope: tasks checklist is read-only vs. interactive (check/uncheck) for v1.
+  - [x] Mark PO as **done** once above decisions are locked and documented.
 - [ ] DEV: (pending Alan approval)
 - [ ] QA: (pending DEV)
-- [ ] Alan:
-  - [ ] Review/approve: columns + mapping rules + comment persistence expectations **before DEV starts**.
