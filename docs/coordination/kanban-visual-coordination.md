@@ -5,10 +5,14 @@
 - DEV: done
 - QA: done
 - Alan approval: approved
-- Alan homologation: not reviewed
+- Alan homologation: approved
 - Alan (Stakeholder): approved
 
 > Gate order: PO must be **done** before Alan approves to implement.
+
+## Closed
+
+- Homologated by Alan and archived.
 
 ## Decisions (locked)
 - Goal: Add a visual Kanban board inside the web app so Alan can easily track progress across active changes, view the task checklist, and read/write comments.
@@ -76,7 +80,7 @@ Review criteria (what you are approving):
 - Tasks checklist behavior in the Kanban UI: read-only display (v1)
 
 ## Next actions
-**Blocked:** awaiting **Alan homologation** (current status: `Alan homologation: not reviewed`). No further PO/DEV/QA actions pending.
+Archived: Alan homologation approved and change is closed. No further actions pending.
 
 - [x] **Alan approval (required to start DEV):** Approved (`Alan approval: approved` in `## Status`).
 - [x] PO:
