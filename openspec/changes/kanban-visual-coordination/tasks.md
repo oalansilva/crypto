@@ -8,7 +8,7 @@
   - Data model: id, change, author, created_at (UTC ISO-8601), body
   - Validation: body max length 2,000 chars
   - API: list comments (GET) + create comment (POST). No edit/delete in v1.
-- [ ] 1.4 Add tests for parsing + comments storage
+- [x] 1.4 Add tests for parsing + comments storage
 
 ## 2. Frontend
 

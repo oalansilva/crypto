@@ -2,7 +2,7 @@
 
 ## Status
 - PO: done
-- DEV: blocked
+- DEV: in progress
 - QA: not started
 - Alan approval: approved
 - Alan homologation: not reviewed
