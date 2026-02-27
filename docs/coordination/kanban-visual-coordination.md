@@ -3,7 +3,7 @@
 ## Status
 - PO: done
 - DEV: done
-- QA: not started
+- QA: done
 - Alan approval: approved
 - Alan homologation: not reviewed
 - Alan (Stakeholder): approved
@@ -97,4 +97,5 @@ Review criteria (what you are approving):
   - [x] Frontend 2.5: Tasks UI inherits completion for child items (no-checkbox children)
   - [x] Backend 1.5: Seed comments thread automatically when empty
 - [x] QA:
+  - [x] 3.1 Minimal E2E test: Kanban loads and shows a mocked change
   - [x] 3.2 Regression: ensure existing `/openspec` pages still work

@@ -77,9 +77,22 @@ function formatTs(iso: string) {
   return d.toLocaleString()
 }
 
-function TaskTree({ item, depth }: { item: TaskChecklistItem; depth: number }) {
+function TaskTree({
+  item,
+  depth,
+  inheritedChecked = false,
+}: {
+  item: TaskChecklistItem
+  depth: number
+  inheritedChecked?: boolean
+}) {
   const children = item.children || []
-  const checked = Boolean(item.checked)
+
+  // If a child item doesn't have an explicit checkbox state in the markdown,
+  // inherit the parent completion state to avoid confusion in the UI.
+  const hasExplicitChecked = typeof item.checked === 'boolean'
+  const checked = hasExplicitChecked ? Boolean(item.checked) : inheritedChecked
+
   return (
     <div className="space-y-1">
       <div className="flex items-start gap-2" style={{ paddingLeft: `${depth * 14}px` }}>
@@ -106,7 +119,12 @@ function TaskTree({ item, depth }: { item: TaskChecklistItem; depth: number }) {
       {children.length ? (
         <div className="space-y-1">
           {children.map((ch, idx) => (
-            <TaskTree key={`${ch.text}-${idx}`} item={ch} depth={depth + 1} />
+            <TaskTree
+              key={`${ch.text}-${idx}`}
+              item={ch}
+              depth={depth + 1}
+              inheritedChecked={checked}
+            />
           ))}
         </div>
       ) : null}
