@@ -5,7 +5,7 @@
 - DESIGN: done
 - Alan approval: approved
 - DEV: done (mobile layout delta applied: topbar + sticky headers + hint)
-- QA: pending re-run (after mobile layout adjustment)
+- QA: done (E2E unflaked; sticky headers OK em viewport mobile <640px; desktop unchanged)
 - Alan homologation: reviewed (not approved: layout mismatch; target: match prototype layout while keeping current content)
 
 ## Decisions (draft)
@@ -35,11 +35,14 @@
 ## Notes
 - Alan feedback (2026-02-28): “Não vi diferença e não está no layout aprovado”.
 - DEV note (2026-02-28): ajuste mobile-only em /kanban para ficar alinhado ao prototype aprovado: topbar (breadcrumb + actions), headers das colunas sticky (offset do topbar) e hint de swipe.
-- QA validated build/E2E, but UX approval is blocked until we align implementation with the approved mobile prototype expectations.
+- QA re-run (2026-02-28): Playwright E2E suite OK (16/16). Fix aplicado no kanban-loads ("Detalhes" agora usa exact:true para evitar strict locator com o swipe hint).
+- Mobile check (390x844 + 412x915): topbar OK, swipe hint visible, no page-level horizontal overflow.
+- Sticky headers: verificado via Playwright (Chromium) em 390x844: topbar e header da coluna com computed style `position: sticky` e permanecem fixos no scroll vertical. Obs: em >=640px (sm+) o header da coluna fica `position: static` por design (`sm:static`).
+- Desktop (1280x800): board renders as before; swipe hint not shown; no horizontal overflow.
 
 ## Next actions
 - [ ] Alan: Point what exactly is missing vs the approved layout (2–3 bullets or a screenshot).
 - [ ] DESIGN: Translate the approved prototype into a minimal delta plan against current `/kanban` UI (what must change; what must stay).
 - [x] DEV: Adjust `/kanban` mobile UI to match the approved layout (then re-run QA).
-- [ ] QA: Re-validate on mobile + confirm desktop unchanged.
+- [x] QA: Re-validate on mobile + confirm desktop unchanged. (E2E suite green; sticky OK em viewport mobile; desktop unchanged)
 - [ ] Alan: Homologate (after fixes).

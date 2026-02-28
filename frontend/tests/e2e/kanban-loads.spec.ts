@@ -61,7 +61,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
 
   // Open the details panel to ensure the rest of the page can render using the mocked API.
   await page.getByRole('button', { name: `Open details for ${mockedChangeId}` }).click()
-  await expect(page.getByText('Detalhes')).toBeVisible()
+  await expect(page.getByText('Detalhes', { exact: true })).toBeVisible()
   await expect(page.getByText('Tasks')).toBeVisible()
   await expect(page.getByText('Comments')).toBeVisible()
 })
