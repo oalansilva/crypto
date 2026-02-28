@@ -42,6 +42,7 @@
 
 ## Next actions
 - [ ] Alan: Point what exactly is missing vs the approved layout (2–3 bullets or a screenshot).
+- [ ] PO: Follow up with Alan requesting the missing-vs-approved bullets/screenshot so we can close homologation.
 - [ ] DESIGN: Translate the approved prototype into a minimal delta plan against current `/kanban` UI (what must change; what must stay).
 - [x] DEV: Adjust `/kanban` mobile UI to match the approved layout (then re-run QA).
 - [x] QA: Re-validate on mobile + confirm desktop unchanged. (E2E suite green; sticky OK em viewport mobile; desktop unchanged)
