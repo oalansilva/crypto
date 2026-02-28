@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mobile PWA Kanban MVP — Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar__left">
+        <a class="crumb" href="#">Home</a>
+        <span class="sep">/</span>
+        <span class="crumb crumb--current">Kanban</span>
+      </div>
+      <div class="topbar__right">
+        <button class="icon-btn" aria-label="Search">
+          <span class="icon">⌕</span>
+        </button>
+        <button class="primary-btn">New</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="toolbar">
+        <div class="toolbar__title">
+          <h1>Opportunity Board</h1>
+          <p class="muted">Mobile-first interaction only (desktop layout unchanged)</p>
+        </div>
+        <div class="toolbar__controls">
+          <label class="pill" for="filter">Filter</label>
+          <select id="filter" class="select">
+            <option>All</option>
+            <option>My cards</option>
+            <option>Due this week</option>
+          </select>
+          <label class="pill" for="sort">Sort</label>
+          <select id="sort" class="select">
+            <option>Priority</option>
+            <option>Updated</option>
+            <option>Created</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="board" aria-label="Kanban board">
+        <div class="board__scroller" id="boardScroller">
+          <!-- Column: To do -->
+          <article class="col" aria-label="To do column">
+            <header class="col__header">
+              <div class="col__name">To do</div>
+              <div class="col__meta"><span class="badge">6</span></div>
+            </header>
+            <div class="col__body">
+              <button class="card" data-card-id="KBN-104" data-title="Fix mobile column scroll" data-owner="Alan" data-priority="P1" data-status="To do">
+                <div class="card__top">
+                  <div class="card__id">KBN-104</div>
+                  <div class="chip chip--p1">P1</div>
+                </div>
+                <div class="card__title">Fix mobile column scroll</div>
+                <div class="card__meta">
+                  <span class="chip">@Alan</span>
+                  <span class="chip chip--ghost">Due Fri</span>
+                </div>
+              </button>
+
+              <button class="card" data-card-id="KBN-109" data-title="Add quick comment" data-owner="PO" data-priority="P2" data-status="To do">
+                <div class="card__top">
+                  <div class="card__id">KBN-109</div>
+                  <div class="chip chip--p2">P2</div>
+                </div>
+                <div class="card__title">Add quick comment</div>
+                <div class="card__meta">
+                  <span class="chip">@PO</span>
+                  <span class="chip chip--ghost">3m</span>
+                </div>
+              </button>
+
+              <button class="card" data-card-id="KBN-112" data-title="PWA install hint" data-owner="DEV" data-priority="P3" data-status="To do">
+                <div class="card__top">
+                  <div class="card__id">KBN-112</div>
+                  <div class="chip chip--p3">P3</div>
+                </div>
+                <div class="card__title">PWA install hint</div>
+                <div class="card__meta">
+                  <span class="chip">@DEV</span>
+                  <span class="chip chip--ghost">—</span>
+                </div>
+              </button>
+            </div>
+          </article>
+
+          <!-- Column: Doing -->
+          <article class="col" aria-label="Doing column">
+            <header class="col__header">
+              <div class="col__name">Doing</div>
+              <div class="col__meta"><span class="badge">3</span></div>
+            </header>
+            <div class="col__body">
+              <button class="card" data-card-id="KBN-097" data-title="Mobile drawer details" data-owner="DESIGN" data-priority="P1" data-status="Doing">
+                <div class="card__top">
+                  <div class="card__id">KBN-097</div>
+                  <div class="chip chip--p1">P1</div>
+                </div>
+                <div class="card__title">Mobile drawer details</div>
+                <div class="card__meta">
+                  <span class="chip">@DESIGN</span>
+                  <span class="chip chip--ghost">Updated 10m</span>
+                </div>
+              </button>
+
+              <button class="card" data-card-id="KBN-101" data-title="Sticky column header" data-owner="DEV" data-priority="P2" data-status="Doing">
+                <div class="card__top">
+                  <div class="card__id">KBN-101</div>
+                  <div class="chip chip--p2">P2</div>
+                </div>
+                <div class="card__title">Sticky column header</div>
+                <div class="card__meta">
+                  <span class="chip">@DEV</span>
+                  <span class="chip chip--ghost">Updated 1h</span>
+                </div>
+              </button>
+            </div>
+          </article>
+
+          <!-- Column: Done -->
+          <article class="col" aria-label="Done column">
+            <header class="col__header">
+              <div class="col__name">Done</div>
+              <div class="col__meta"><span class="badge">8</span></div>
+            </header>
+            <div class="col__body">
+              <button class="card" data-card-id="KBN-088" data-title="Improve tap targets" data-owner="QA" data-priority="P2" data-status="Done">
+                <div class="card__top">
+                  <div class="card__id">KBN-088</div>
+                  <div class="chip chip--p2">P2</div>
+                </div>
+                <div class="card__title">Improve tap targets</div>
+                <div class="card__meta">
+                  <span class="chip">@QA</span>
+                  <span class="chip chip--ghost">Done</span>
+                </div>
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div class="mobile-hint" aria-hidden="true">
+          <div class="mobile-hint__text">Tip: swipe horizontally between columns · tap a card to open details</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Drawer overlay -->
+    <div class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer__backdrop" data-close></div>
+      <aside class="drawer__panel" role="dialog" aria-modal="true" aria-label="Card details">
+        <header class="drawer__header">
+          <div class="drawer__title">
+            <div class="drawer__id" id="drawerId">KBN-104</div>
+            <h2 id="drawerTitle">Fix mobile column scroll</h2>
+          </div>
+          <button class="icon-btn" aria-label="Close" data-close>
+            <span class="icon">✕</span>
+          </button>
+        </header>
+
+        <div class="drawer__content">
+          <section class="drawer__section">
+            <div class="kv">
+              <div class="kv__item"><span class="kv__k">Status</span><span class="kv__v" id="drawerStatus">To do</span></div>
+              <div class="kv__item"><span class="kv__k">Owner</span><span class="kv__v" id="drawerOwner">Alan</span></div>
+              <div class="kv__item"><span class="kv__k">Priority</span><span class="kv__v" id="drawerPriority">P1</span></div>
+            </div>
+          </section>
+
+          <section class="drawer__section">
+            <h3>Notes</h3>
+            <p class="muted">
+              Mobile MVP behavior:
+              <br />• Columns: horizontal scroll (snap)
+              <br />• Cards: large tap targets
+              <br />• Details: bottom drawer with comments
+            </p>
+          </section>
+
+          <section class="drawer__section">
+            <div class="comments">
+              <div class="comments__header">
+                <h3>Comments</h3>
+                <span class="badge" id="commentsCount">2</span>
+              </div>
+
+              <ul class="comments__list" id="commentsList" aria-label="Comments list">
+                <li class="comment">
+                  <div class="comment__meta"><span class="who">@PO</span><span class="when">Today</span></div>
+                  <div class="comment__body">Please keep desktop layout untouched. Mobile only.</div>
+                </li>
+                <li class="comment">
+                  <div class="comment__meta"><span class="who">@DEV</span><span class="when">Today</span></div>
+                  <div class="comment__body">Drawer should feel native on iOS/Android (drag handle).</div>
+                </li>
+              </ul>
+
+              <form class="comments__form" id="commentForm">
+                <label class="sr-only" for="commentInput">Add a comment</label>
+                <textarea id="commentInput" class="textarea" rows="2" placeholder="Write a comment…"></textarea>
+                <div class="comments__actions">
+                  <button type="button" class="ghost-btn" id="quickMention">@Alan</button>
+                  <button type="submit" class="primary-btn">Post</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+
+        <div class="drawer__grab" aria-hidden="true"></div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const drawer = document.getElementById('drawer');
+    const drawerId = document.getElementById('drawerId');
+    const drawerTitle = document.getElementById('drawerTitle');
+    const drawerStatus = document.getElementById('drawerStatus');
+    const drawerOwner = document.getElementById('drawerOwner');
+    const drawerPriority = document.getElementById('drawerPriority');
+
+    const commentsList = document.getElementById('commentsList');
+    const commentsCount = document.getElementById('commentsCount');
+    const commentForm = document.getElementById('commentForm');
+    const commentInput = document.getElementById('commentInput');
+
+    const quickMention = document.getElementById('quickMention');
+
+    function setDrawerOpen(open) {
+      drawer.classList.toggle('drawer--open', open);
+      drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+      document.documentElement.classList.toggle('no-scroll', open);
+      document.body.classList.toggle('no-scroll', open);
+      if (open) setTimeout(() => commentInput.focus(), 150);
+    }
+
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => {
+        drawerId.textContent = card.dataset.cardId;
+        drawerTitle.textContent = card.dataset.title;
+        drawerStatus.textContent = card.dataset.status;
+        drawerOwner.textContent = card.dataset.owner;
+        drawerPriority.textContent = card.dataset.priority;
+        setDrawerOpen(true);
+      });
+    });
+
+    drawer.addEventListener('click', (e) => {
+      if (e.target.matches('[data-close]')) setDrawerOpen(false);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && drawer.classList.contains('drawer--open')) setDrawerOpen(false);
+    });
+
+    function refreshCount() {
+      commentsCount.textContent = String(commentsList.querySelectorAll('li').length);
+    }
+
+    commentForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = commentInput.value.trim();
+      if (!text) return;
+
+      const li = document.createElement('li');
+      li.className = 'comment';
+      li.innerHTML = `
+        <div class="comment__meta"><span class="who">@you</span><span class="when">just now</span></div>
+        <div class="comment__body"></div>
+      `;
+      li.querySelector('.comment__body').textContent = text;
+      commentsList.appendChild(li);
+      commentInput.value = '';
+      refreshCount();
+      commentsList.scrollTop = commentsList.scrollHeight;
+    });
+
+    quickMention.addEventListener('click', () => {
+      const cur = commentInput.value;
+      const next = cur && !cur.endsWith(' ') ? (cur + ' ') : cur;
+      commentInput.value = next + '@Alan ';
+      commentInput.focus();
+    });
+
+    refreshCount();
+  </script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 ## Status
 - PO: in progress
-- DESIGN: not started
+- DESIGN: done
 - Alan approval: not reviewed
 - DEV: not started
 - QA: not started
