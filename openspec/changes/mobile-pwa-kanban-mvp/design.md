@@ -1,98 +1,56 @@
-<artifact id="design" change="mobile-pwa-kanban-mvp" schema="spec-driven">
-
-<task>
-Create the design artifact for change "mobile-pwa-kanban-mvp".
-Technical design document with implementation details
-</task>
-
-<project_context>
-<!-- This is background information for you. Do NOT include this in your output. -->
-Purpose: Build a cryptocurrency backtester to fetch historical data, simulate trading strategies, and visualize performance (ROI, Drawdown).
-
-Tech Stack:
-- Python 3.x
-- pandas (Data manipulation)
-- ccxt (Crypto data fetching)
-- matplotlib (Visualization)
-
-Project Conventions:
-- PEP 8
-- Type hinting for all function signatures
-- Docstrings for all classes and methods
-
-Architecture Patterns:
-- Modular design: DataLoader, Strategy, Backtester, Visualization
-- Strategy Pattern for different trading strategies
-
-External Dependencies:
-- CCXT (Exchange APIs)
-</project_context>
-
-<dependencies>
-Read these files for context before creating this artifact:
-
-<dependency id="proposal" status="done">
-  <path>/root/.openclaw/workspace/crypto/openspec/changes/mobile-pwa-kanban-mvp/proposal.md</path>
-  <description>Initial proposal document outlining the change</description>
-</dependency>
-</dependencies>
-
-<output>
-Write to: /root/.openclaw/workspace/crypto/openspec/changes/mobile-pwa-kanban-mvp/design.md
-</output>
-
-<instruction>
-Create the design document that explains HOW to implement the change.
-
-When to include design.md (create only if any apply):
-- Cross-cutting change (multiple services/modules) or new architectural pattern
-- New external dependency or significant data model changes
-- Security, performance, or migration complexity
-- Ambiguity that benefits from technical decisions before coding
-
-Sections:
-- **Context**: Background, current state, constraints, stakeholders
-- **Goals / Non-Goals**: What this design achieves and explicitly excludes
-- **Decisions**: Key technical choices with rationale (why X over Y?). Include alternatives considered for each decision.
-- **Risks / Trade-offs**: Known limitations, things that could go wrong. Format: [Risk] → Mitigation
-- **Migration Plan**: Steps to deploy, rollback strategy (if applicable)
-- **Open Questions**: Outstanding decisions or unknowns to resolve
-
-Focus on architecture and approach, not line-by-line implementation.
-Reference the proposal for motivation and specs for requirements.
-
-Good design docs explain the "why" behind technical decisions.
-</instruction>
-
-<template>
-<!-- Use this as the structure for your output file. Fill in the sections. -->
 ## Context
 
-<!-- Background and current state -->
+Objetivo: entregar um **MVP mobile (PWA)** para uso do **Kanban** no celular, com “cara de app” (standalone) e interação touch.
+
+Restrição principal: **não mexer no layout do PC** por enquanto.
+
+Stakeholders:
+- Alan (aprovação / direção)
+- PO/DESIGN (escopo + protótipo)
+- DEV (implementação)
+- QA (validação mobile + regressão desktop)
 
 ## Goals / Non-Goals
 
 **Goals:**
-<!-- What this design aims to achieve -->
+- Melhorar a experiência de `/kanban` em telas pequenas (touch-first)
+- Permitir instalação como PWA (manifest + ícones + standalone)
+- Garantir que o Kanban desktop continue visualmente e funcionalmente igual
 
 **Non-Goals:**
-<!-- What is explicitly out of scope -->
+- Reestruturar o Kanban desktop
+- Criar offline-first completo (cache sofisticado, sync, etc.) no MVP
+- Refatorar arquitetura global de navegação (apenas o necessário para o Kanban mobile)
 
 ## Decisions
 
-<!-- Key design decisions and rationale -->
+1. **Mobile-only UI via breakpoint (sem afetar desktop)**
+   - Decisão: aplicar UI mobile-friendly apenas abaixo de um breakpoint (ex.: `max-width: 768px`) e/ou via classe/flag de layout.
+   - Racional: garante que o desktop não muda e reduz risco de regressão.
+   - Alternativas: criar rota separada (`/m/kanban`); rejeitada para MVP por aumentar complexidade e duplicar rotas.
+
+2. **Prototype-first para a UI mobile do Kanban**
+   - Decisão: DESIGN entregar um protótipo HTML/CSS do Kanban mobile antes do DEV codar.
+   - Racional: acelera, reduz retrabalho e deixa claro o que “entra no MVP”.
+
+3. **PWA mínimo (instalável + standalone)**
+   - Decisão: implementar o mínimo necessário para instalação (manifest + ícones + start_url), evitando prometer offline robusto.
+   - Racional: foco em valor rápido e menor risco.
 
 ## Risks / Trade-offs
 
-<!-- Known risks and trade-offs -->
-</template>
+- [CSS mobile vaza para desktop] → Mitigação: isolar estilos por breakpoint e/ou escopo do container do Kanban.
+- [Fluxo de instalação PWA inconsistente entre iOS/Android] → Mitigação: documentar “como instalar” no QA checklist e testar nos navegadores principais.
+- [Touch targets pequenos / drag & drop difícil] → Mitigação: aumentar área clicável, espaçamento e considerar interações alternativas (ex.: abrir card → ações) no MVP.
 
-<success_criteria>
-<!-- To be defined in schema validation rules -->
-</success_criteria>
+## Migration Plan
 
-<unlocks>
-Completing this artifact enables: tasks
-</unlocks>
+- Implementar UI mobile para `/kanban` sob breakpoint.
+- Adicionar manifest + ícones.
+- Rollback: reverter estilos mobile e remover links/registro PWA se necessário.
 
-</artifact>
+## Open Questions
+
+- Quais interações do Kanban são obrigatórias no mobile MVP? (ex.: mover cards por drag, ou pode ser via ação “Mover para”?)
+- Precisamos de um drawer/nav específico no Kanban mobile, ou o menu existente já atende?
+- Lista mínima de dispositivos a validar: Android (Chrome) + iOS (Safari) — confirmar.

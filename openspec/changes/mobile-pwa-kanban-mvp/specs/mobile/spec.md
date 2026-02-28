@@ -1,114 +1,34 @@
-<artifact id="specs" change="mobile-pwa-kanban-mvp" schema="spec-driven">
-
-<task>
-Create the specs artifact for change "mobile-pwa-kanban-mvp".
-Detailed specifications for the change
-</task>
-
-<project_context>
-<!-- This is background information for you. Do NOT include this in your output. -->
-Purpose: Build a cryptocurrency backtester to fetch historical data, simulate trading strategies, and visualize performance (ROI, Drawdown).
-
-Tech Stack:
-- Python 3.x
-- pandas (Data manipulation)
-- ccxt (Crypto data fetching)
-- matplotlib (Visualization)
-
-Project Conventions:
-- PEP 8
-- Type hinting for all function signatures
-- Docstrings for all classes and methods
-
-Architecture Patterns:
-- Modular design: DataLoader, Strategy, Backtester, Visualization
-- Strategy Pattern for different trading strategies
-
-External Dependencies:
-- CCXT (Exchange APIs)
-</project_context>
-
-<dependencies>
-Read these files for context before creating this artifact:
-
-<dependency id="proposal" status="done">
-  <path>/root/.openclaw/workspace/crypto/openspec/changes/mobile-pwa-kanban-mvp/proposal.md</path>
-  <description>Initial proposal document outlining the change</description>
-</dependency>
-</dependencies>
-
-<output>
-Write to: /root/.openclaw/workspace/crypto/openspec/changes/mobile-pwa-kanban-mvp/specs/**/*.md
-</output>
-
-<instruction>
-Create specification files that define WHAT the system should do.
-
-Create one spec file per capability listed in the proposal's Capabilities section.
-- New capabilities: use the exact kebab-case name from the proposal (specs/<capability>/spec.md).
-- Modified capabilities: use the existing spec folder name from openspec/specs/<capability>/ when creating the delta spec at specs/<capability>/spec.md.
-
-Delta operations (use ## headers):
-- **ADDED Requirements**: New capabilities
-- **MODIFIED Requirements**: Changed behavior - MUST include full updated content
-- **REMOVED Requirements**: Deprecated features - MUST include **Reason** and **Migration**
-- **RENAMED Requirements**: Name changes only - use FROM:/TO: format
-
-Format requirements:
-- Each requirement: `### Requirement: <name>` followed by description
-- Use SHALL/MUST for normative requirements (avoid should/may)
-- Each scenario: `#### Scenario: <name>` with WHEN/THEN format
-- **CRITICAL**: Scenarios MUST use exactly 4 hashtags (`####`). Using 3 hashtags or bullets will fail silently.
-- Every requirement MUST have at least one scenario.
-
-MODIFIED requirements workflow:
-1. Locate the existing requirement in openspec/specs/<capability>/spec.md
-2. Copy the ENTIRE requirement block (from `### Requirement:` through all scenarios)
-3. Paste under `## MODIFIED Requirements` and edit to reflect new behavior
-4. Ensure header text matches exactly (whitespace-insensitive)
-
-Common pitfall: Using MODIFIED with partial content loses detail at archive time.
-If adding new concerns without changing existing behavior, use ADDED instead.
-
-Example:
-```
 ## ADDED Requirements
 
-### Requirement: User can export data
-The system SHALL allow users to export their data in CSV format.
+### Requirement: Mobile Kanban layout
+The system MUST render the `/kanban` experience in a mobile-friendly layout on small screens without changing the desktop layout.
 
-#### Scenario: Successful export
-- **WHEN** user clicks "Export" button
-- **THEN** system downloads a CSV file with all user data
+#### Scenario: Mobile layout activates on small screens
+- **WHEN** the user opens `/kanban` on a device/screen size below the defined breakpoint
+- **THEN** the Kanban UI uses the mobile layout (touch-friendly spacing, readable typography, and mobile navigation patterns)
 
-## REMOVED Requirements
+#### Scenario: Desktop layout remains unchanged
+- **WHEN** the user opens `/kanban` on a desktop-sized screen
+- **THEN** the Kanban UI matches the existing desktop layout and behavior (no visual/layout regression)
 
-### Requirement: Legacy export
-**Reason**: Replaced by new export system
-**Migration**: Use new export endpoint at /api/v2/export
-```
+### Requirement: Touch-first interactions
+The system MUST provide touch-friendly interactions for core Kanban usage on mobile.
 
-Specs should be testable - each scenario is a potential test case.
-</instruction>
+#### Scenario: Tapping a card is reliable
+- **WHEN** the user taps a Kanban card on mobile
+- **THEN** the system opens the card (or its details/actions) without requiring pixel-precise clicks
 
-<template>
-<!-- Use this as the structure for your output file. Fill in the sections. -->
-## ADDED Requirements
+#### Scenario: Primary actions are reachable
+- **WHEN** the user is on `/kanban` in mobile layout
+- **THEN** the primary Kanban actions defined for the MVP are accessible without requiring desktop-only UI affordances
 
-### Requirement: <!-- requirement name -->
-<!-- requirement text -->
+### Requirement: PWA installability (minimum)
+The system MUST provide the minimum required configuration for the app to be installable as a PWA and run in standalone mode.
 
-#### Scenario: <!-- scenario name -->
-- **WHEN** <!-- condition -->
-- **THEN** <!-- expected outcome -->
-</template>
+#### Scenario: Manifest is available
+- **WHEN** the user loads the app in a modern browser that supports PWAs
+- **THEN** a valid web app manifest is served and includes name, icons, and a start_url
 
-<success_criteria>
-<!-- To be defined in schema validation rules -->
-</success_criteria>
-
-<unlocks>
-Completing this artifact enables: tasks
-</unlocks>
-
-</artifact>
+#### Scenario: Standalone mode works
+- **WHEN** the user installs the PWA and launches it from the home screen
+- **THEN** the app opens in standalone mode and `/kanban` is reachable as the primary focus for this MVP

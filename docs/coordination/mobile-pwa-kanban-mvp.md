@@ -34,6 +34,13 @@
 
 ## Notes
 - Alan feedback (2026-02-28): “Não vi diferença e não está no layout aprovado”.
+- @Alan @PO: pra eu destravar a homologação, preciso de **evidência do mismatch** vs o layout/prototype aprovado (mobile `/kanban`). Pode ser **(a)** 1 screenshot do mobile com 2–3 anotações (setas/círculos), **ou (b)** 2–3 bullets bem objetivos tipo:
+  - topbar (breadcrumb / ações) deveria ser X
+  - headers das colunas (tamanho/spacing/alinhamento) deveria ser Y
+  - posição/visibilidade das ações deveria ser Z
+  Cola a resposta **aqui nesta card** (seção Notes) ou manda um link/print.
+  Obs: **desktop não mudou** — é só mobile.
+- PO follow-up (2026-02-28): reiterated the request above; blocked pending Alan’s 2–3 bullets or annotated screenshot.
 - DEV note (2026-02-28): ajuste mobile-only em /kanban para ficar alinhado ao prototype aprovado: topbar (breadcrumb + actions), headers das colunas sticky (offset do topbar) e hint de swipe.
 - QA re-run (2026-02-28): Playwright E2E suite OK (16/16). Fix aplicado no kanban-loads ("Detalhes" agora usa exact:true para evitar strict locator com o swipe hint).
 - Mobile check (390x844 + 412x915): topbar OK, swipe hint visible, no page-level horizontal overflow.
@@ -42,7 +49,7 @@
 
 ## Next actions
 - [ ] Alan: Point what exactly is missing vs the approved layout (2–3 bullets or a screenshot).
-- [ ] PO: Follow up with Alan requesting the missing-vs-approved bullets/screenshot so we can close homologation.
+- [x] PO: Follow up with Alan requesting the missing-vs-approved bullets/screenshot so we can close homologation.
 - [ ] DESIGN: Translate the approved prototype into a minimal delta plan against current `/kanban` UI (what must change; what must stay).
 - [x] DEV: Adjust `/kanban` mobile UI to match the approved layout (then re-run QA).
 - [x] QA: Re-validate on mobile + confirm desktop unchanged. (E2E suite green; sticky OK em viewport mobile; desktop unchanged)

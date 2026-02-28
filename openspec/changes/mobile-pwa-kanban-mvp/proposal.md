@@ -1,91 +1,28 @@
-<artifact id="proposal" change="mobile-pwa-kanban-mvp" schema="spec-driven">
-
-<task>
-Create the proposal artifact for change "mobile-pwa-kanban-mvp".
-Initial proposal document outlining the change
-</task>
-
-<project_context>
-<!-- This is background information for you. Do NOT include this in your output. -->
-Purpose: Build a cryptocurrency backtester to fetch historical data, simulate trading strategies, and visualize performance (ROI, Drawdown).
-
-Tech Stack:
-- Python 3.x
-- pandas (Data manipulation)
-- ccxt (Crypto data fetching)
-- matplotlib (Visualization)
-
-Project Conventions:
-- PEP 8
-- Type hinting for all function signatures
-- Docstrings for all classes and methods
-
-Architecture Patterns:
-- Modular design: DataLoader, Strategy, Backtester, Visualization
-- Strategy Pattern for different trading strategies
-
-External Dependencies:
-- CCXT (Exchange APIs)
-</project_context>
-
-<output>
-Write to: /root/.openclaw/workspace/crypto/openspec/changes/mobile-pwa-kanban-mvp/proposal.md
-</output>
-
-<instruction>
-Create the proposal document that establishes WHY this change is needed.
-
-Sections:
-- **Why**: 1-2 sentences on the problem or opportunity. What problem does this solve? Why now?
-- **What Changes**: Bullet list of changes. Be specific about new capabilities, modifications, or removals. Mark breaking changes with **BREAKING**.
-- **Capabilities**: Identify which specs will be created or modified:
-  - **New Capabilities**: List capabilities being introduced. Each becomes a new `specs/<name>/spec.md`. Use kebab-case names (e.g., `user-auth`, `data-export`).
-  - **Modified Capabilities**: List existing capabilities whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Check `openspec/specs/` for existing spec names. Leave empty if no requirement changes.
-- **Impact**: Affected code, APIs, dependencies, or systems.
-
-IMPORTANT: The Capabilities section is critical. It creates the contract between
-proposal and specs phases. Research existing specs before filling this in.
-Each capability listed here will need a corresponding spec file.
-
-Keep it concise (1-2 pages). Focus on the "why" not the "how" -
-implementation details belong in design.md.
-
-This is the foundation - specs, design, and tasks all build on this.
-</instruction>
-
-<template>
-<!-- Use this as the structure for your output file. Fill in the sections. -->
 ## Why
 
-<!-- Explain the motivation for this change. What problem does this solve? Why now? -->
+Hoje o Kanban é útil no desktop, mas no celular a experiência é ruim (layout pensado para PC, interações pequenas para touch, navegação pouco “app-like”). Isso atrasa o uso diário e reduz retenção.
+
+Precisamos de um **MVP mobile (PWA)** focado **exclusivamente no Kanban**, instalável e confortável de usar no telefone, sem mexer no layout do PC.
 
 ## What Changes
 
-<!-- Describe what will change. Be specific about new capabilities, modifications, or removals. -->
+- Tornar a rota **`/kanban` mobile-friendly** (touch-first, legibilidade, navegação simples)
+- Adicionar suporte a **PWA instalável**:
+  - `manifest.webmanifest` (nome, ícones, start_url)
+  - modo **standalone** (feel de app)
+  - assets básicos (ícones)
+- Ajustes de UI **apenas em mobile** (não alterar layout do desktop/PC)
 
 ## Capabilities
 
 ### New Capabilities
-<!-- Capabilities being introduced. Replace <name> with kebab-case identifier (e.g., user-auth, data-export, api-rate-limiting). Each creates specs/<name>/spec.md -->
-- `<name>`: <brief description of what this capability covers>
+- `mobile`: Um modo mobile (PWA) para o Kanban com layout e interações apropriadas para telefone, mantendo o desktop inalterado.
 
 ### Modified Capabilities
-<!-- Existing capabilities whose REQUIREMENTS are changing (not just implementation).
-     Only list here if spec-level behavior changes. Each needs a delta spec file.
-     Use existing spec names from openspec/specs/. Leave empty if no requirement changes. -->
-- `<existing-name>`: <what requirement is changing>
+- (none)
 
 ## Impact
 
-<!-- Affected code, APIs, dependencies, systems -->
-</template>
-
-<success_criteria>
-<!-- To be defined in schema validation rules -->
-</success_criteria>
-
-<unlocks>
-Completing this artifact enables: design, specs
-</unlocks>
-
-</artifact>
+- Frontend: CSS/layout condicional por breakpoint (mobile) para `/kanban`.
+- PWA: inclusão/ajuste de manifest + ícones e configuração de modo standalone.
+- QA: testes manuais em iOS/Android (Chrome/Safari PWA install flow) + regressão no Kanban desktop.

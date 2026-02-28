@@ -1,99 +1,31 @@
-<artifact id="tasks" change="mobile-pwa-kanban-mvp" schema="spec-driven">
+## 1. PO + DESIGN Alignment
 
-<task>
-Create the tasks artifact for change "mobile-pwa-kanban-mvp".
-Implementation checklist with trackable tasks
-</task>
+- [ ] 1.1 Confirmar escopo exato do MVP (o que entra / o que fica fora)
+- [ ] 1.2 Definir as ações obrigatórias no mobile (ex.: abrir card, mover card, criar/editar, filtros)
+- [ ] 1.3 Definir breakpoint e princípios de UI (tamanhos, espaçamentos, navegação)
 
-<project_context>
-<!-- This is background information for you. Do NOT include this in your output. -->
-Purpose: Build a cryptocurrency backtester to fetch historical data, simulate trading strategies, and visualize performance (ROI, Drawdown).
+## 2. DESIGN Prototype
 
-Tech Stack:
-- Python 3.x
-- pandas (Data manipulation)
-- ccxt (Crypto data fetching)
-- matplotlib (Visualization)
+- [ ] 2.1 Criar protótipo HTML/CSS do Kanban mobile (layout + estados principais)
+- [ ] 2.2 Garantir touch targets e tipografia legível (mínimo 44px para áreas tocáveis quando aplicável)
+- [ ] 2.3 Publicar protótipo em `frontend/public/prototypes/mobile-pwa-kanban-mvp/`
 
-Project Conventions:
-- PEP 8
-- Type hinting for all function signatures
-- Docstrings for all classes and methods
+## 3. DEV Implementation (Frontend)
 
-Architecture Patterns:
-- Modular design: DataLoader, Strategy, Backtester, Visualization
-- Strategy Pattern for different trading strategies
+- [ ] 3.1 Implementar layout mobile para `/kanban` sem alterar o desktop (escopo + breakpoint)
+- [ ] 3.2 Ajustar interações touch-first (tap/scroll/drag ou alternativa definida no escopo)
+- [ ] 3.3 Validar navegação no Kanban mobile (drawer/menu/atalhos necessários)
 
-External Dependencies:
-- CCXT (Exchange APIs)
-</project_context>
+## 4. PWA (Minimum)
 
-<rules>
-<!-- These are constraints for you to follow. Do NOT include this in your output. -->
-- Include a short note reminding to use project skills (.codex/skills) when applicable (architecture, tests, debugging, frontend).
-</rules>
+- [ ] 4.1 Adicionar/ajustar `manifest.webmanifest` (name, short_name, icons, start_url)
+- [ ] 4.2 Adicionar ícones PWA (set mínimo para Android + iOS)
+- [ ] 4.3 Validar execução em modo standalone e acesso direto ao Kanban
 
-<dependencies>
-Read these files for context before creating this artifact:
+## 5. QA + Acceptance
 
-<dependency id="specs" status="done">
-  <path>/root/.openclaw/workspace/crypto/openspec/changes/mobile-pwa-kanban-mvp/specs/**/*.md</path>
-  <description>Detailed specifications for the change</description>
-</dependency>
-<dependency id="design" status="done">
-  <path>/root/.openclaw/workspace/crypto/openspec/changes/mobile-pwa-kanban-mvp/design.md</path>
-  <description>Technical design document with implementation details</description>
-</dependency>
-</dependencies>
+- [ ] 5.1 Testar fluxo de instalação PWA em Android (Chrome)
+- [ ] 5.2 Testar fluxo de instalação PWA em iOS (Safari)
+- [ ] 5.3 Rodar checklist de regressão no Kanban desktop (layout e ações)
 
-<output>
-Write to: /root/.openclaw/workspace/crypto/openspec/changes/mobile-pwa-kanban-mvp/tasks.md
-</output>
-
-<instruction>
-Create the task list that breaks down the implementation work.
-
-**IMPORTANT: Follow the template below exactly.** The apply phase parses
-checkbox format to track progress. Tasks not using `- [ ]` won't be tracked.
-
-Guidelines:
-- Group related tasks under ## numbered headings
-- Each task MUST be a checkbox: `- [ ] X.Y Task description`
-- Tasks should be small enough to complete in one session
-- Order tasks by dependency (what must be done first?)
-
-Example:
-```
-## 1. Setup
-
-- [ ] 1.1 Create new module structure
-- [ ] 1.2 Add dependencies to package.json
-
-## 2. Core Implementation
-
-- [ ] 2.1 Implement data export function
-- [ ] 2.2 Add CSV formatting utilities
-```
-
-Reference specs for what needs to be built, design for how to build it.
-Each task should be verifiable - you know when it's done.
-</instruction>
-
-<template>
-<!-- Use this as the structure for your output file. Fill in the sections. -->
-## 1. <!-- Task Group Name -->
-
-- [ ] 1.1 <!-- Task description -->
-- [ ] 1.2 <!-- Task description -->
-
-## 2. <!-- Task Group Name -->
-
-- [ ] 2.1 <!-- Task description -->
-- [ ] 2.2 <!-- Task description -->
-</template>
-
-<success_criteria>
-<!-- To be defined in schema validation rules -->
-</success_criteria>
-
-</artifact>
+> Note: Use relevant project skills under `.codex/skills` when applicable (frontend, tests, debugging).
