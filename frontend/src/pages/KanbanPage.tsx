@@ -155,19 +155,67 @@ export default function KanbanPage() {
     refetchOnWindowFocus: false,
   })
 
+  type FilterMode = 'all' | 'active' | 'archived'
+  type SortMode = 'column' | 'title' | 'id'
+
   const items = data?.items || []
+
+  // Local search ("Localizar"): filters cards by id/title.
+  const [query, setQuery] = useState('')
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+
+  // Mobile toolbar controls (match prototype intent).
+  const [filterMode, setFilterMode] = useState<FilterMode>('all')
+  const [sortMode, setSortMode] = useState<SortMode>('column')
+
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase()
+
+    let out = items
+
+    if (filterMode !== 'all') {
+      out = out.filter((it) => (filterMode === 'archived' ? it.archived : !it.archived))
+    }
+
+    if (q) {
+      out = out.filter((it) => {
+        const hay = `${it.id} ${it.title || ''}`.toLowerCase()
+        return hay.includes(q)
+      })
+    }
+
+    const colIdx = (col: string) => {
+      const i = COLUMNS_ORDER.indexOf(col as (typeof COLUMNS_ORDER)[number])
+      return i === -1 ? 999 : i
+    }
+
+    out = [...out].sort((a, b) => {
+      if (sortMode === 'title') {
+        const at = (a.title || a.id).toLowerCase()
+        const bt = (b.title || b.id).toLowerCase()
+        return at.localeCompare(bt)
+      }
+      if (sortMode === 'id') return a.id.localeCompare(b.id)
+
+      const dc = colIdx(a.column) - colIdx(b.column)
+      if (dc !== 0) return dc
+      return (a.title || a.id).localeCompare(b.title || b.id)
+    })
+
+    return out
+  }, [items, query, filterMode, sortMode])
 
   const byColumn = useMemo(() => {
     const map = new Map<string, CoordinationChangeItem[]>()
     for (const c of COLUMNS_ORDER) map.set(c, [])
 
-    for (const it of items) {
+    for (const it of filteredItems) {
       const col = map.has(it.column) ? it.column : 'DEV'
       map.get(col)!.push(it)
     }
 
     return map
-  }, [items])
+  }, [filteredItems])
 
   const tasksQuery = useQuery({
     queryKey: ['coordination', 'change', selected?.id, 'tasks'],
@@ -244,6 +292,7 @@ export default function KanbanPage() {
               type="button"
               className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 grid place-items-center"
               aria-label="Search"
+              onClick={() => setMobileSearchOpen((v) => !v)}
             >
               <Search className="w-4 h-4 text-gray-200" />
             </button>
@@ -257,6 +306,32 @@ export default function KanbanPage() {
           </div>
         </div>
       </header>
+
+      {/* Mobile-only search row (toggle from topbar). */}
+      {mobileSearchOpen ? (
+        <div className="sm:hidden border-b border-white/10 bg-zinc-950/70 backdrop-blur">
+          <div className="px-4 py-3 flex items-center gap-2">
+            <div className="flex-1">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Localizar…"
+                autoFocus
+              />
+            </div>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setQuery('')
+                setMobileSearchOpen(false)
+              }}
+              aria-label="Close search"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {/* Desktop header (unchanged) */}
       <div className="hidden sm:flex items-start justify-between gap-6 mb-6">
@@ -274,6 +349,36 @@ export default function KanbanPage() {
         <div className="sm:hidden mb-3">
           <div className="text-lg font-semibold text-white">Opportunity Board</div>
           <div className="text-xs text-gray-400">Mobile-first interaction only (desktop layout unchanged)</div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-400">Filter</span>
+              <select
+                className="h-9 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100"
+                value={filterMode}
+                onChange={(e) => setFilterMode(e.target.value as FilterMode)}
+                aria-label="Filter"
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-400">Sort</span>
+              <select
+                className="h-9 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100"
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                aria-label="Sort"
+              >
+                <option value="column">Priority</option>
+                <option value="title">Title</option>
+                <option value="id">ID</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <Card className="border border-white/10 glass">
@@ -293,7 +398,7 @@ export default function KanbanPage() {
                   return (
                     <section
                       key={col}
-                      className="w-[88vw] sm:w-[320px] shrink-0 snap-start rounded-xl border border-white/10 bg-white/5"
+                      className="w-[88vw] sm:w-[320px] shrink-0 snap-start rounded-xl border border-white/10 bg-zinc-900/40"
                     >
                       <div className="px-4 py-3 border-b border-white/10 sm:static sticky top-14 z-10 bg-zinc-950/80 backdrop-blur sm:bg-transparent sm:backdrop-blur-0">
                         <div className="flex items-center justify-between gap-3">
@@ -302,7 +407,7 @@ export default function KanbanPage() {
                         </div>
                       </div>
 
-                      <div className="p-3 space-y-3">
+                      <div className="p-3 space-y-3 min-h-[220px]">
                         {colItems.length === 0 ? (
                           <div className="rounded-lg border border-dashed border-white/10 p-4 text-xs text-gray-500">
                             vazio
@@ -314,7 +419,7 @@ export default function KanbanPage() {
                               key={it.id}
                               onClick={() => setSelected(it)}
                               className={
-                                'w-full text-left rounded-xl border border-white/10 bg-black/30 hover:bg-black/20 transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 ' +
+                                'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 ' +
                                 (selected?.id === it.id ? 'ring-2 ring-white/20' : '')
                               }
                               aria-label={`Open details for ${it.id}`}

@@ -23,8 +23,15 @@ export function AppNav() {
     return location.pathname === to
   }
 
+  const hideOnMobileKanban = location.pathname.startsWith('/kanban')
+
   return (
-    <header className="glass-strong border-b border-white/10 sticky top-0 z-50">
+    <header
+      className={
+        "glass-strong border-b border-white/10 sticky top-0 z-50 " +
+        (hideOnMobileKanban ? 'hidden sm:block' : '')
+      }
+    >
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <NavLink to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">

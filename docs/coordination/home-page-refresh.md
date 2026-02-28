@@ -6,7 +6,7 @@
 - Alan approval: approved
 - DEV: done
 - QA: done (UI confere com prototype Option A; build ok; sem bloqueadores)
-- Alan homologation: not reviewed
+- Alan homologation: approved
 
 ## Decisions (draft)
 - Goal: reformulate the Home page to improve clarity and daily usability.
@@ -34,6 +34,10 @@
 - [PO] KPI decision memo updated to be short + answerable (3 quick questions). Awaiting Alan confirmation.
 - [QA] Validado Home vs prototype (Option A): hero + grid de KPIs + “Foco de hoje” + “Runs recentes” + sidebar (Market watch/Atalhos/Notas). Responsivo OK (sem scroll horizontal em viewport mobile). Build `frontend` ok.
 
+
+## Closed
+
+- Homologated by Alan and archived.
 
 ## Next actions
 - [x] PO: Propose IA + KPI shortlist for Home.
