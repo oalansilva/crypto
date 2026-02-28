@@ -4,9 +4,9 @@
 - PO: done
 - DESIGN: done
 - Alan approval: approved
-- DEV: not started
-- QA: not started
-- Alan homologation: not reviewed
+- DEV: done (mobile layout delta applied: topbar + sticky headers + hint)
+- QA: pending re-run (after mobile layout adjustment)
+- Alan homologation: reviewed (not approved: layout mismatch; target: match prototype layout while keeping current content)
 
 ## Decisions (draft)
 - Scope: MVP for mobile only, focused on `/kanban`.
@@ -32,9 +32,14 @@
 - Proposal: http://72.60.150.140:5173/openspec/changes/mobile-pwa-kanban-mvp/proposal
 - Prototype (when ready): http://72.60.150.140:5173/prototypes/mobile-pwa-kanban-mvp/index.html
 
+## Notes
+- Alan feedback (2026-02-28): “Não vi diferença e não está no layout aprovado”.
+- DEV note (2026-02-28): ajuste mobile-only em /kanban para ficar alinhado ao prototype aprovado: topbar (breadcrumb + actions), headers das colunas sticky (offset do topbar) e hint de swipe.
+- QA validated build/E2E, but UX approval is blocked until we align implementation with the approved mobile prototype expectations.
+
 ## Next actions
-- [x] PO: Lock acceptance criteria and mobile-only constraints.
-- [ ] DESIGN: Create prototype for mobile Kanban.
-- [ ] Alan: Approve scope + prototype (and answer open questions above).
-- [ ] DEV: Implement mobile-only Kanban improvements + PWA installability.
-- [ ] QA: Validate on mobile viewport.
+- [ ] Alan: Point what exactly is missing vs the approved layout (2–3 bullets or a screenshot).
+- [ ] DESIGN: Translate the approved prototype into a minimal delta plan against current `/kanban` UI (what must change; what must stay).
+- [x] DEV: Adjust `/kanban` mobile UI to match the approved layout (then re-run QA).
+- [ ] QA: Re-validate on mobile + confirm desktop unchanged.
+- [ ] Alan: Homologate (after fixes).

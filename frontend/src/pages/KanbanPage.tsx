@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Kanban, X } from 'lucide-react'
+import { Kanban, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -137,6 +137,14 @@ export default function KanbanPage() {
   const qc = useQueryClient()
   const [selected, setSelected] = useState<CoordinationChangeItem | null>(null)
 
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    if (selected) document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [selected])
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['coordination', 'changes'],
     queryFn: async () => {
@@ -219,8 +227,39 @@ export default function KanbanPage() {
   })
 
   return (
-    <main className="container mx-auto px-6 py-10">
-      <div className="flex items-start justify-between gap-6 mb-6">
+    <main className="mx-auto px-0 py-0 sm:container sm:px-6 sm:py-10">
+      {/* Mobile-only topbar (match approved prototype layout; keep desktop unchanged) */}
+      <header className="sm:hidden sticky top-0 z-40 border-b border-white/10 bg-zinc-950/70 backdrop-blur">
+        <div className="h-14 px-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-gray-300">
+            <a href="/" className="opacity-80 hover:opacity-100">
+              Home
+            </a>
+            <span className="opacity-40">/</span>
+            <span className="font-semibold text-gray-100">Kanban</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 grid place-items-center"
+              aria-label="Search"
+            >
+              <Search className="w-4 h-4 text-gray-200" />
+            </button>
+            <button
+              type="button"
+              className="h-10 px-3 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-gray-100"
+              aria-label="New"
+            >
+              New
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Desktop header (unchanged) */}
+      <div className="hidden sm:flex items-start justify-between gap-6 mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Kanban className="w-5 h-5" /> Kanban
@@ -231,7 +270,13 @@ export default function KanbanPage() {
         </div>
       </div>
 
-      <Card className="border border-white/10 glass">
+      <div className="px-4 py-4 sm:px-0 sm:py-0">
+        <div className="sm:hidden mb-3">
+          <div className="text-lg font-semibold text-white">Opportunity Board</div>
+          <div className="text-xs text-gray-400">Mobile-first interaction only (desktop layout unchanged)</div>
+        </div>
+
+        <Card className="border border-white/10 glass">
         <CardHeader>
           <div className="text-sm text-gray-300">Board</div>
         </CardHeader>
@@ -241,16 +286,16 @@ export default function KanbanPage() {
           ) : error ? (
             <div className="text-red-400 text-sm">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="flex items-start gap-4 min-w-max pb-2">
+            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div className="flex items-start gap-3 sm:gap-4 min-w-max pb-2 snap-x snap-mandatory scroll-px-4">
                 {COLUMNS_ORDER.map((col) => {
                   const colItems = byColumn.get(col) || []
                   return (
                     <section
                       key={col}
-                      className="w-[320px] shrink-0 rounded-xl border border-white/10 bg-white/5"
+                      className="w-[88vw] sm:w-[320px] shrink-0 snap-start rounded-xl border border-white/10 bg-white/5"
                     >
-                      <div className="px-4 py-3 border-b border-white/10">
+                      <div className="px-4 py-3 border-b border-white/10 sm:static sticky top-14 z-10 bg-zinc-950/80 backdrop-blur sm:bg-transparent sm:backdrop-blur-0">
                         <div className="flex items-center justify-between gap-3">
                           <div className="font-semibold text-sm text-white">{col}</div>
                           <div className="text-xs text-gray-400">{colItems.length}</div>
@@ -308,15 +353,23 @@ export default function KanbanPage() {
                   )
                 })}
               </div>
+
+              {/* Mobile-only hint (match prototype) */}
+              <div className="sm:hidden mt-3">
+                <div className="inline-flex items-center rounded-full border border-white/10 bg-zinc-950/70 px-3 py-1 text-[11px] text-gray-300">
+                  Dica: deslize horizontalmente entre colunas · toque num card para abrir detalhes
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
+      </div>
 
       {selected ? (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/70" onClick={() => setSelected(null)} aria-hidden="true" />
-          <aside className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-zinc-950 border-l border-white/10 shadow-2xl">
+          <aside className="absolute inset-x-0 bottom-0 top-auto h-[82vh] w-full rounded-t-2xl bg-zinc-950 border-t border-white/10 shadow-2xl sm:rounded-none sm:inset-y-0 sm:right-0 sm:top-0 sm:h-full sm:w-[520px] sm:border-t-0 sm:border-l sm:border-white/10">
             <div className="h-full flex flex-col">
               <div className="px-4 py-3 border-b border-white/10 flex items-start justify-between gap-3">
                 <div className="min-w-0">
