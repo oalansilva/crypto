@@ -24,6 +24,7 @@ from app.routes.lab import router as lab_router
 from app.routes.monitor_preferences import router as monitor_preferences_router
 from app.routes.external_balances import router as external_balances_router
 from app.routes.coordination import router as coordination_router
+from app.routes.workflow import router as workflow_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -142,6 +143,14 @@ async def lifespan(app: FastAPI):
         # Apply lightweight SQLite migrations for existing tables
         from app.database import ensure_sqlite_migrations
         ensure_sqlite_migrations()
+
+        # Workflow DB (optional; enabled via WORKFLOW_DB_ENABLED=1)
+        try:
+            from app.workflow_database import init_workflow_schema
+            init_workflow_schema()
+        except Exception as e:
+            logger.warning(f"Workflow DB init skipped/failed: {e}")
+
         logger.info("Database initialized successfully.")
 
         # Seed combo_templates if empty
@@ -201,6 +210,7 @@ app.include_router(lab_router)
 app.include_router(monitor_preferences_router)
 app.include_router(external_balances_router)
 app.include_router(coordination_router)
+app.include_router(workflow_router)
 
 @app.get("/")
 async def root():

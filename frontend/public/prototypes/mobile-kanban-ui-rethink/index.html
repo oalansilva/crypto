@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mobile Kanban UI Rethink — Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Fixed header -->
+    <header class="header" role="banner">
+      <button class="icon-btn" id="btnMenu" aria-label="Open menu">
+        <span class="icon">☰</span>
+      </button>
+      <div class="header__title">
+        <div class="header__kicker">Project</div>
+        <div class="header__name">Opportunity Board</div>
+      </div>
+      <div class="header__actions">
+        <button class="icon-btn" aria-label="Search">
+          <span class="icon">⌕</span>
+        </button>
+        <button class="icon-btn" aria-label="Notifications">
+          <span class="icon">⎋</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Fixed filter bar -->
+    <section class="filters" aria-label="Filters">
+      <div class="filters__left">
+        <button class="pill pill--primary" id="btnOpenFilters">
+          <span class="pill__icon">⟂</span>
+          Filters
+        </button>
+      </div>
+      <div class="filters__scroller" role="list">
+        <button class="chip" data-chip="type">Type · All</button>
+        <button class="chip" data-chip="assignee">Assignee · Me</button>
+        <button class="chip" data-chip="priority">Priority · P1–P3</button>
+        <button class="chip" data-chip="labels">Labels · 2</button>
+        <button class="chip" data-chip="due">Due · Any</button>
+      </div>
+    </section>
+
+    <!-- Stage tabs (sticky) -->
+    <nav class="stages" aria-label="Workflow stages">
+      <div class="stages__tabs" id="stageTabs" role="tablist" aria-orientation="horizontal">
+        <button class="tab tab--active" role="tab" aria-selected="true" data-stage="todo">To do <span class="badge">6</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-stage="doing">Doing <span class="badge">3</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-stage="review">Review <span class="badge">2</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-stage="done">Done <span class="badge">8</span></button>
+      </div>
+      <div class="stages__hint" aria-hidden="true">Swipe to change stage</div>
+    </nav>
+
+    <!-- One-stage-at-a-time pages (swipe/scroll-snap) -->
+    <main class="pages" id="pages" aria-label="Kanban stages">
+      <section class="page" data-stage="todo" aria-label="To do">
+        <div class="page__title">To do</div>
+        <div class="list">
+          <button class="card" data-id="KBN-104" data-type="BUG" data-priority="P1" data-title="Fix mobile stage swipe + tab sync" data-assignees="Alan,DESIGN" data-labels="mobile,ux" data-due="Fri" data-comments="4" data-checklist="2/5" data-attachments="1">
+            <div class="card__stripe card__stripe--p1" aria-hidden="true"></div>
+            <div class="card__body">
+              <div class="card__top">
+                <div class="card__id">KBN-104</div>
+                <div class="card__badges">
+                  <span class="type type--bug">BUG</span>
+                  <span class="prio prio--p1">P1</span>
+                </div>
+              </div>
+              <div class="card__title">Fix mobile stage swipe + tab sync</div>
+              <div class="labels">
+                <span class="label">mobile</span>
+                <span class="label">ux</span>
+              </div>
+              <div class="card__meta">
+                <div class="meta-left">
+                  <span class="meta">💬 4</span>
+                  <span class="meta">☑ 2/5</span>
+                  <span class="meta">📎 1</span>
+                  <span class="meta meta--warn">⏰ Fri</span>
+                </div>
+                <div class="avatars" aria-label="Assignees">
+                  <span class="avatar">A</span>
+                  <span class="avatar">D</span>
+                  <span class="avatar avatar--more">+1</span>
+                </div>
+              </div>
+            </div>
+          </button>
+
+          <button class="card" data-id="KBN-109" data-type="STORY" data-priority="P2" data-title="Mobile card redesign: indicators + labels" data-assignees="DESIGN" data-labels="design" data-due="—" data-comments="1" data-checklist="0/3" data-attachments="0">
+            <div class="card__stripe card__stripe--p2" aria-hidden="true"></div>
+            <div class="card__body">
+              <div class="card__top">
+                <div class="card__id">KBN-109</div>
+                <div class="card__badges">
+                  <span class="type type--story">STORY</span>
+                  <span class="prio prio--p2">P2</span>
+                </div>
+              </div>
+              <div class="card__title">Mobile card redesign: indicators + labels</div>
+              <div class="labels">
+                <span class="label">design</span>
+              </div>
+              <div class="card__meta">
+                <div class="meta-left">
+                  <span class="meta">💬 1</span>
+                  <span class="meta">☑ 0/3</span>
+                </div>
+                <div class="avatars" aria-label="Assignees">
+                  <span class="avatar">D</span>
+                </div>
+              </div>
+            </div>
+          </button>
+
+          <button class="card" data-id="KBN-112" data-type="TASK" data-priority="P3" data-title="Add batching/lazy-loading guardrails" data-assignees="DEV" data-labels="perf,mobile" data-due="—" data-comments="0" data-checklist="1/1" data-attachments="0">
+            <div class="card__stripe card__stripe--p3" aria-hidden="true"></div>
+            <div class="card__body">
+              <div class="card__top">
+                <div class="card__id">KBN-112</div>
+                <div class="card__badges">
+                  <span class="type type--task">TASK</span>
+                  <span class="prio prio--p3">P3</span>
+                </div>
+              </div>
+              <div class="card__title">Add batching/lazy-loading guardrails</div>
+              <div class="labels">
+                <span class="label">perf</span>
+                <span class="label">mobile</span>
+              </div>
+              <div class="card__meta">
+                <div class="meta-left">
+                  <span class="meta">☑ 1/1</span>
+                </div>
+                <div class="avatars" aria-label="Assignees">
+                  <span class="avatar">V</span>
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section class="page" data-stage="doing" aria-label="Doing">
+        <div class="page__title">Doing</div>
+        <div class="list">
+          <button class="card" data-id="KBN-097" data-type="TASK" data-priority="P1" data-title="Prototype: full-screen bottom sheet details" data-assignees="DESIGN" data-labels="mobile,detail" data-due="Today" data-comments="2" data-checklist="3/6" data-attachments="2">
+            <div class="card__stripe card__stripe--p1" aria-hidden="true"></div>
+            <div class="card__body">
+              <div class="card__top">
+                <div class="card__id">KBN-097</div>
+                <div class="card__badges">
+                  <span class="type type--task">TASK</span>
+                  <span class="prio prio--p1">P1</span>
+                </div>
+              </div>
+              <div class="card__title">Prototype: full-screen bottom sheet details</div>
+              <div class="labels">
+                <span class="label">mobile</span>
+                <span class="label">detail</span>
+              </div>
+              <div class="card__meta">
+                <div class="meta-left">
+                  <span class="meta">💬 2</span>
+                  <span class="meta">☑ 3/6</span>
+                  <span class="meta">📎 2</span>
+                  <span class="meta meta--warn">⏰ Today</span>
+                </div>
+                <div class="avatars" aria-label="Assignees">
+                  <span class="avatar">D</span>
+                </div>
+              </div>
+            </div>
+          </button>
+
+          <button class="card" data-id="KBN-101" data-type="SPIKE" data-priority="P2" data-title="Investigate long-press drag behavior on iOS" data-assignees="DEV,QA" data-labels="drag" data-due="—" data-comments="3" data-checklist="0/2" data-attachments="0">
+            <div class="card__stripe card__stripe--p2" aria-hidden="true"></div>
+            <div class="card__body">
+              <div class="card__top">
+                <div class="card__id">KBN-101</div>
+                <div class="card__badges">
+                  <span class="type type--spike">SPIKE</span>
+                  <span class="prio prio--p2">P2</span>
+                </div>
+              </div>
+              <div class="card__title">Investigate long-press drag behavior on iOS</div>
+              <div class="labels">
+                <span class="label">drag</span>
+              </div>
+              <div class="card__meta">
+                <div class="meta-left">
+                  <span class="meta">💬 3</span>
+                  <span class="meta">☑ 0/2</span>
+                </div>
+                <div class="avatars" aria-label="Assignees">
+                  <span class="avatar">V</span>
+                  <span class="avatar">Q</span>
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section class="page" data-stage="review" aria-label="Review">
+        <div class="page__title">Review</div>
+        <div class="list">
+          <button class="card" data-id="KBN-121" data-type="STORY" data-priority="P2" data-title="Filter bottom sheet — chips + toggles" data-assignees="DESIGN" data-labels="filters" data-due="—" data-comments="0" data-checklist="1/4" data-attachments="0">
+            <div class="card__stripe card__stripe--p2" aria-hidden="true"></div>
+            <div class="card__body">
+              <div class="card__top">
+                <div class="card__id">KBN-121</div>
+                <div class="card__badges">
+                  <span class="type type--story">STORY</span>
+                  <span class="prio prio--p2">P2</span>
+                </div>
+              </div>
+              <div class="card__title">Filter bottom sheet — chips + toggles</div>
+              <div class="labels"><span class="label">filters</span></div>
+              <div class="card__meta">
+                <div class="meta-left">
+                  <span class="meta">☑ 1/4</span>
+                </div>
+                <div class="avatars" aria-label="Assignees">
+                  <span class="avatar">D</span>
+                </div>
+              </div>
+            </div>
+          </button>
+
+          <button class="card" data-id="KBN-122" data-type="BUG" data-priority="P3" data-title="Ensure header/filter bars don’t jitter on scroll" data-assignees="DEV" data-labels="mobile" data-due="—" data-comments="2" data-checklist="0/1" data-attachments="0">
+            <div class="card__stripe card__stripe--p3" aria-hidden="true"></div>
+            <div class="card__body">
+              <div class="card__top">
+                <div class="card__id">KBN-122</div>
+                <div class="card__badges">
+                  <span class="type type--bug">BUG</span>
+                  <span class="prio prio--p3">P3</span>
+                </div>
+              </div>
+              <div class="card__title">Ensure header/filter bars don’t jitter on scroll</div>
+              <div class="labels"><span class="label">mobile</span></div>
+              <div class="card__meta">
+                <div class="meta-left">
+                  <span class="meta">💬 2</span>
+                  <span class="meta">☑ 0/1</span>
+                </div>
+                <div class="avatars" aria-label="Assignees">
+                  <span class="avatar">V</span>
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section class="page" data-stage="done" aria-label="Done">
+        <div class="page__title">Done</div>
+        <div class="list">
+          <div class="done-note">
+            <div class="done-note__title">Done items</div>
+            <div class="done-note__text">In this prototype, done cards are collapsed. This is a UX knob we can keep (reduces scroll) or remove.</div>
+          </div>
+          <button class="card card--done" data-id="KBN-088" data-type="TASK" data-priority="P2" data-title="Increase tap target sizes" data-assignees="QA" data-labels="a11y" data-due="—" data-comments="0" data-checklist="1/1" data-attachments="0">
+            <div class="card__stripe card__stripe--p2" aria-hidden="true"></div>
+            <div class="card__body">
+              <div class="card__top">
+                <div class="card__id">KBN-088</div>
+                <div class="card__badges">
+                  <span class="type type--task">TASK</span>
+                  <span class="prio prio--p2">P2</span>
+                </div>
+              </div>
+              <div class="card__title">Increase tap target sizes</div>
+              <div class="labels"><span class="label">a11y</span></div>
+              <div class="card__meta">
+                <div class="meta-left">
+                  <span class="meta">☑ 1/1</span>
+                </div>
+                <div class="avatars" aria-label="Assignees">
+                  <span class="avatar">Q</span>
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- FAB -->
+    <button class="fab" id="fab" aria-label="Create task">
+      <span class="fab__icon">＋</span>
+    </button>
+
+    <!-- Task detail bottom sheet (full-screen) -->
+    <div class="sheet" id="detailSheet" aria-hidden="true">
+      <div class="sheet__backdrop" data-close></div>
+      <section class="sheet__panel" role="dialog" aria-modal="true" aria-label="Task details">
+        <header class="sheet__header">
+          <div class="grab" aria-hidden="true"></div>
+          <div class="sheet__headerRow">
+            <div class="sheet__id" id="detailId">KBN-104</div>
+            <button class="icon-btn" data-close aria-label="Close details"><span class="icon">✕</span></button>
+          </div>
+          <h2 class="sheet__title" id="detailTitle">Fix mobile stage swipe + tab sync</h2>
+
+          <div class="sheet__pills">
+            <span class="pill" id="detailType">BUG</span>
+            <span class="pill" id="detailPriority">P1</span>
+            <span class="pill pill--ghost" id="detailStage">To do</span>
+          </div>
+        </header>
+
+        <div class="sheet__content" id="detailScroll">
+          <section class="section">
+            <div class="section__title">People</div>
+            <div class="row">
+              <div class="row__k">Assignees</div>
+              <div class="row__v" id="detailAssignees">Alan, DESIGN</div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section__title">Labels</div>
+            <div class="labels" id="detailLabels">
+              <span class="label">mobile</span>
+              <span class="label">ux</span>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section__title">Description</div>
+            <p class="muted">
+              This is a prototype bottom sheet meant to feel native: full-screen, with a grab handle.
+              The real implementation should support history, checklists, attachments and comments.
+            </p>
+          </section>
+
+          <section class="section">
+            <div class="section__title">Checklist</div>
+            <div class="check">
+              <div class="check__item"><input type="checkbox" checked /> Sync active tab while swiping</div>
+              <div class="check__item"><input type="checkbox" /> Keep header + filters fixed</div>
+              <div class="check__item"><input type="checkbox" /> Add avatars and indicators</div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="comments">
+              <div class="comments__header">
+                <div class="section__title">Comments</div>
+                <span class="badge" id="detailCommentsCount">2</span>
+              </div>
+              <ul class="comments__list" id="detailComments">
+                <li class="comment">
+                  <div class="comment__meta"><span class="who">@PO</span><span class="when">Today</span></div>
+                  <div class="comment__body">Mobile should show one stage at a time. Tabs + swipe.</div>
+                </li>
+                <li class="comment">
+                  <div class="comment__meta"><span class="who">@DEV</span><span class="when">Today</span></div>
+                  <div class="comment__body">Prefer scroll-snap pages; keep it lightweight and fast.</div>
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section__title">History</div>
+            <div class="history">
+              <div class="history__item"><span class="muted">Just now</span> · moved to <b>To do</b></div>
+              <div class="history__item"><span class="muted">1h ago</span> · priority set to <b>P1</b></div>
+            </div>
+          </section>
+
+          <div class="spacer"></div>
+        </div>
+
+        <footer class="sheet__footer">
+          <form class="composer" id="commentForm">
+            <input class="composer__input" id="commentInput" placeholder="Write a comment…" />
+            <button class="composer__btn" type="submit">Post</button>
+          </form>
+        </footer>
+      </section>
+    </div>
+
+    <!-- Filters bottom sheet -->
+    <div class="sheet" id="filtersSheet" aria-hidden="true">
+      <div class="sheet__backdrop" data-close></div>
+      <section class="sheet__panel sheet__panel--half" role="dialog" aria-modal="true" aria-label="Filters">
+        <header class="sheet__header">
+          <div class="grab" aria-hidden="true"></div>
+          <div class="sheet__headerRow">
+            <h2 class="sheet__title">Filters</h2>
+            <button class="icon-btn" data-close aria-label="Close filters"><span class="icon">✕</span></button>
+          </div>
+        </header>
+
+        <div class="sheet__content">
+          <section class="section">
+            <div class="section__title">Quick toggles</div>
+            <label class="toggle"><input type="checkbox" checked /> <span>Only my tasks</span></label>
+            <label class="toggle"><input type="checkbox" /> <span>Due this week</span></label>
+            <label class="toggle"><input type="checkbox" /> <span>Hide Done</span></label>
+          </section>
+
+          <section class="section">
+            <div class="section__title">Types</div>
+            <div class="pills">
+              <button class="pill">BUG</button>
+              <button class="pill">STORY</button>
+              <button class="pill">TASK</button>
+              <button class="pill">SPIKE</button>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section__title">Priority</div>
+            <div class="pills">
+              <button class="pill">P1</button>
+              <button class="pill">P2</button>
+              <button class="pill">P3</button>
+            </div>
+          </section>
+
+          <div class="filters-actions">
+            <button class="ghost-btn" data-close>Reset</button>
+            <button class="primary-btn" data-close>Apply</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Menu drawer (lightweight) -->
+    <div class="drawer" id="menuDrawer" aria-hidden="true">
+      <div class="drawer__backdrop" data-close></div>
+      <aside class="drawer__panel" role="dialog" aria-modal="true" aria-label="Menu">
+        <div class="drawer__header">
+          <div class="drawer__title">Menu</div>
+          <button class="icon-btn" data-close aria-label="Close menu"><span class="icon">✕</span></button>
+        </div>
+        <nav class="drawer__nav">
+          <a href="#" class="drawer__item">Boards</a>
+          <a href="#" class="drawer__item">Projects</a>
+          <a href="#" class="drawer__item">Backlog</a>
+          <a href="#" class="drawer__item">Users</a>
+          <a href="#" class="drawer__item">Settings</a>
+        </nav>
+      </aside>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

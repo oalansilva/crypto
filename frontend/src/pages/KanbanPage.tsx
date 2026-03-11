@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Kanban, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -50,6 +50,19 @@ type CoordinationCommentsListResponse = {
   change_id: string
   items: CoordinationCommentItem[]
 }
+
+type ChangeUpdateResponse = {
+  id: string
+  project_id: string
+  change_id: string
+  title: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+const MOBILE_SWIPE_THRESHOLD = 48
+const MOBILE_LONG_PRESS_MS = 420
 
 const COLUMNS_ORDER = [
   'PO',
@@ -136,19 +149,33 @@ function TaskTree({
 export default function KanbanPage() {
   const qc = useQueryClient()
   const [selected, setSelected] = useState<CoordinationChangeItem | null>(null)
+  const [activeMobileColumn, setActiveMobileColumn] = useState<(typeof COLUMNS_ORDER)[number]>('PO')
+  const [moveTarget, setMoveTarget] = useState<CoordinationChangeItem | null>(null)
+  const touchStartX = useRef<number | null>(null)
+  const touchDeltaX = useRef(0)
+  const longPressTimerRef = useRef<number | null>(null)
+  const mobileColumnInitializedRef = useRef(false)
 
   useEffect(() => {
     const prev = document.body.style.overflow
-    if (selected) document.body.style.overflow = "hidden"
+    if (selected || moveTarget) document.body.style.overflow = "hidden"
     return () => {
       document.body.style.overflow = prev
     }
-  }, [selected])
+  }, [selected, moveTarget])
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current != null) {
+        window.clearTimeout(longPressTimerRef.current)
+      }
+    }
+  }, [])
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['coordination', 'changes'],
+    queryKey: ['kanban', 'changes'],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/coordination/changes`)
+      const res = await fetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=crypto`)
       if (!res.ok) throw new Error(`Failed to load changes (${res.status})`)
       return (await res.json()) as CoordinationChangeListResponse
     },
@@ -217,11 +244,68 @@ export default function KanbanPage() {
     return map
   }, [filteredItems])
 
+  useEffect(() => {
+    if (mobileColumnInitializedRef.current) return
+    const firstNonEmpty = COLUMNS_ORDER.find((col) => (byColumn.get(col)?.length || 0) > 0)
+    if (firstNonEmpty) {
+      setActiveMobileColumn(firstNonEmpty)
+    }
+    mobileColumnInitializedRef.current = true
+  }, [byColumn])
+
+  const activeMobileIndex = COLUMNS_ORDER.indexOf(activeMobileColumn)
+
+  const moveMobileStage = (direction: -1 | 1) => {
+    const next = Math.max(0, Math.min(COLUMNS_ORDER.length - 1, activeMobileIndex + direction))
+    setActiveMobileColumn(COLUMNS_ORDER[next])
+  }
+
+  const handleBoardTouchStart = (clientX: number) => {
+    touchStartX.current = clientX
+    touchDeltaX.current = 0
+  }
+
+  const handleBoardTouchMove = (clientX: number) => {
+    if (touchStartX.current == null) return
+    touchDeltaX.current = clientX - touchStartX.current
+  }
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const handleBoardTouchEnd = () => {
+    if (touchStartX.current == null) return
+    if (Math.abs(touchDeltaX.current) >= MOBILE_SWIPE_THRESHOLD) {
+      moveMobileStage(touchDeltaX.current > 0 ? -1 : 1)
+    }
+    touchStartX.current = null
+    touchDeltaX.current = 0
+  }
+
+  const startCardLongPress = (it: CoordinationChangeItem) => {
+    clearLongPressTimer()
+    longPressTimerRef.current = window.setTimeout(() => {
+      setMoveTarget(it)
+      longPressTimerRef.current = null
+    }, MOBILE_LONG_PRESS_MS)
+  }
+
+  const cancelCardLongPress = () => {
+    clearLongPressTimer()
+  }
+
   const tasksQuery = useQuery({
-    queryKey: ['coordination', 'change', selected?.id, 'tasks'],
+    queryKey: ['workflow', 'kanban', 'change', selected?.id, 'tasks'],
     enabled: Boolean(selected?.id),
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/coordination/changes/${encodeURIComponent(selected!.id)}/tasks`)
+      const changeId = encodeURIComponent(selected!.id)
+      const res = await fetch(
+        `${API_BASE_URL}/workflow/kanban/changes/${changeId}/tasks?project_slug=crypto`
+      )
       if (!res.ok) throw new Error(`Failed to load tasks (${res.status})`)
       return (await res.json()) as ChangeTasksChecklistResponse
     },
@@ -229,14 +313,38 @@ export default function KanbanPage() {
   })
 
   const commentsQuery = useQuery({
-    queryKey: ['coordination', 'change', selected?.id, 'comments'],
+    queryKey: ['workflow', 'kanban', 'change', selected?.id, 'comments'],
     enabled: Boolean(selected?.id),
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/coordination/changes/${encodeURIComponent(selected!.id)}/comments`)
+      const changeId = encodeURIComponent(selected!.id)
+      const url = `${API_BASE_URL}/workflow/kanban/changes/${changeId}/comments?project_slug=crypto`
+      const res = await fetch(url)
       if (!res.ok) throw new Error(`Failed to load comments (${res.status})`)
       return (await res.json()) as CoordinationCommentsListResponse
     },
     refetchOnWindowFocus: false,
+  })
+
+  const moveChange = useMutation({
+    mutationFn: async ({ changeId, status }: { changeId: string; status: string }) => {
+      const res = await fetch(`${API_BASE_URL}/workflow/projects/crypto/changes/${encodeURIComponent(changeId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`Failed to move card (${res.status})${txt ? `: ${txt}` : ''}`)
+      }
+      return (await res.json()) as ChangeUpdateResponse
+    },
+    onSuccess: async (_data, vars) => {
+      setMoveTarget((curr) => (curr?.id === vars.changeId ? null : curr))
+      setActiveMobileColumn(vars.status as (typeof COLUMNS_ORDER)[number])
+      await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
+    },
   })
 
   const [author, setAuthor] = useState(() => localStorage.getItem('kanban.commentAuthor') || '')
@@ -251,14 +359,14 @@ export default function KanbanPage() {
       if (!b) throw new Error('Body is required')
       if (b.length > 2000) throw new Error('Body too long (max 2000 chars)')
 
-      const res = await fetch(
-        `${API_BASE_URL}/coordination/changes/${encodeURIComponent(selected.id)}/comments`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ author: a, body: b }),
-        },
-      )
+      const changeId = encodeURIComponent(selected.id)
+      const url = `${API_BASE_URL}/workflow/kanban/changes/${changeId}/comments?project_slug=crypto`
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author: a, body: b }),
+      })
 
       if (!res.ok) {
         const txt = await res.text().catch(() => '')
@@ -270,7 +378,7 @@ export default function KanbanPage() {
     onSuccess: async () => {
       localStorage.setItem('kanban.commentAuthor', author.trim())
       setBody('')
-      await qc.invalidateQueries({ queryKey: ['coordination', 'change', selected?.id, 'comments'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', selected?.id, 'comments'] })
     },
   })
 
@@ -346,135 +454,267 @@ export default function KanbanPage() {
       </div>
 
       <div className="px-4 py-4 sm:px-0 sm:py-0">
-        <div className="sm:hidden mb-3">
-          <div className="text-lg font-semibold text-white">Opportunity Board</div>
-          <div className="text-xs text-gray-400">Mobile-first interaction only (desktop layout unchanged)</div>
+        <div className="sm:hidden sticky top-14 z-30 -mx-4 mb-3 border-b border-white/10 bg-zinc-950/85 backdrop-blur">
+          <div className="px-4 py-3">
+            <div className="text-lg font-semibold text-white">Opportunity Board</div>
+            <div className="text-xs text-gray-400">Uma etapa por vez · swipe + tabs</div>
+          </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400">Filter</span>
-              <select
-                className="h-9 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100"
-                value={filterMode}
-                onChange={(e) => setFilterMode(e.target.value as FilterMode)}
-                aria-label="Filter"
-              >
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
+          <div className="px-4 pb-3 flex gap-2 overflow-x-auto">
+            <select
+              className="h-10 min-w-[110px] rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100"
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value as FilterMode)}
+              aria-label="Filter"
+            >
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+            </select>
 
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400">Sort</span>
-              <select
-                className="h-9 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100"
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortMode)}
-                aria-label="Sort"
-              >
-                <option value="column">Priority</option>
-                <option value="title">Title</option>
-                <option value="id">ID</option>
-              </select>
+            <select
+              className="h-10 min-w-[110px] rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100"
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as SortMode)}
+              aria-label="Sort"
+            >
+              <option value="column">Priority</option>
+              <option value="title">Title</option>
+              <option value="id">ID</option>
+            </select>
+
+            <div className="h-10 shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 grid place-items-center text-xs text-gray-300">
+              {filteredItems.length} items
             </div>
+          </div>
+
+          <div className="px-4 pb-2 overflow-x-auto">
+            <div className="flex gap-2 min-w-max" role="tablist" aria-label="Workflow stages">
+              {COLUMNS_ORDER.map((col) => {
+                const count = byColumn.get(col)?.length || 0
+                const active = activeMobileColumn === col
+                return (
+                  <button
+                    key={col}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveMobileColumn(col)}
+                    className={
+                      'h-11 rounded-2xl px-4 text-sm font-semibold border transition-colors ' +
+                      (active
+                        ? 'border-cyan-400/40 bg-cyan-400/15 text-white'
+                        : 'border-white/10 bg-white/5 text-gray-300')
+                    }
+                  >
+                    {col} <span className="ml-1 text-xs text-gray-400">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-2 text-[11px] text-gray-400">Swipe para trocar de etapa</div>
           </div>
         </div>
 
-        <Card className="border border-white/10 glass">
-        <CardHeader>
-          <div className="text-sm text-gray-300">Board</div>
-        </CardHeader>
-        <CardContent>
+        <Card className="hidden sm:block border border-white/10 glass">
+          <CardHeader>
+            <div className="text-sm text-gray-300">Board</div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-gray-400 text-sm">Carregando…</div>
+            ) : error ? (
+              <div className="text-red-400 text-sm">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="flex items-start gap-4 min-w-max pb-2">
+                  {COLUMNS_ORDER.map((col) => {
+                    const colItems = byColumn.get(col) || []
+                    return (
+                      <section key={col} className="w-[320px] shrink-0 rounded-xl border border-white/10 bg-zinc-900/40">
+                        <div className="px-4 py-3 border-b border-white/10">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="font-semibold text-sm text-white">{col}</div>
+                            <div className="text-xs text-gray-400">{colItems.length}</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 space-y-3 min-h-[220px]">
+                          {colItems.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-white/10 p-4 text-xs text-gray-500">vazio</div>
+                          ) : (
+                            colItems.map((it) => (
+                              <button
+                                type="button"
+                                key={it.id}
+                                onClick={() => setSelected(it)}
+                                className={
+                                  'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 ' +
+                                  (selected?.id === it.id ? 'ring-2 ring-white/20' : '')
+                                }
+                                aria-label={`Open details for ${it.id}`}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-semibold text-white truncate">{it.title || it.id}</div>
+                                    <div className="text-[11px] text-gray-400 font-mono truncate">{it.id}</div>
+                                  </div>
+                                  {it.archived ? (
+                                    <div className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-gray-300">archived</div>
+                                  ) : null}
+                                </div>
+
+                                <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
+                                  <StatusLine label="PO" value={it.status?.['PO']} />
+                                  <StatusLine label="DESIGN" value={it.status?.['DESIGN'] || 'skipped'} />
+                                  <StatusLine label="Alan approval" value={it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)']} />
+                                  <StatusLine label="DEV" value={it.status?.['DEV']} />
+                                  <StatusLine label="QA" value={it.status?.['QA']} />
+                                  <StatusLine label="Alan homologation" value={it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)']} />
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </section>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="sm:hidden">
           {isLoading ? (
             <div className="text-gray-400 text-sm">Carregando…</div>
           ) : error ? (
             <div className="text-red-400 text-sm">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
           ) : (
-            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-              <div className="flex items-start gap-3 sm:gap-4 min-w-max pb-2 snap-x snap-mandatory scroll-px-4">
-                {COLUMNS_ORDER.map((col) => {
-                  const colItems = byColumn.get(col) || []
-                  return (
-                    <section
-                      key={col}
-                      className="w-[88vw] sm:w-[320px] shrink-0 snap-start rounded-xl border border-white/10 bg-zinc-900/40"
+            <section
+              className="rounded-2xl border border-white/10 bg-zinc-900/40 overflow-hidden"
+              onTouchStart={(e) => handleBoardTouchStart(e.touches[0]?.clientX ?? 0)}
+              onTouchMove={(e) => handleBoardTouchMove(e.touches[0]?.clientX ?? 0)}
+              onTouchEnd={handleBoardTouchEnd}
+            >
+              <div className="px-4 py-3 border-b border-white/10 bg-zinc-950/70">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-gray-400">Current stage</div>
+                    <div className="font-semibold text-white">{activeMobileColumn}</div>
+                  </div>
+                  <div className="text-sm text-gray-300">{(byColumn.get(activeMobileColumn)?.length || 0)} cards</div>
+                </div>
+              </div>
+
+              <div className="p-3 space-y-3 min-h-[50vh]">
+                {(byColumn.get(activeMobileColumn)?.length || 0) === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-gray-500">Nenhum card nesta etapa.</div>
+                ) : (
+                  (byColumn.get(activeMobileColumn) || []).map((it) => (
+                    <button
+                      type="button"
+                      key={it.id}
+                      onClick={() => setSelected(it)}
+                      onTouchStart={() => startCardLongPress(it)}
+                      onTouchEnd={cancelCardLongPress}
+                      onTouchCancel={cancelCardLongPress}
+                      onTouchMove={cancelCardLongPress}
+                      className="w-full text-left rounded-2xl border border-white/10 bg-zinc-950/60 p-4 shadow-sm"
+                      aria-label={`Open details for ${it.id}`}
                     >
-                      <div className="px-4 py-3 border-b border-white/10 sm:static sticky top-14 z-10 bg-zinc-950/80 backdrop-blur sm:bg-transparent sm:backdrop-blur-0">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="font-semibold text-sm text-white">{col}</div>
-                          <div className="text-xs text-gray-400">{colItems.length}</div>
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 h-14 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-cyan-400 to-emerald-400" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-[11px] font-mono text-gray-400">{it.id}</div>
+                              <div className="mt-1 text-base font-semibold leading-tight text-white">{it.title || it.id}</div>
+                            </div>
+                            {it.archived ? <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-gray-300">archived</div> : null}
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-cyan-100">{activeMobileColumn}</span>
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">PO {it.status?.['PO'] || '—'}</span>
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">DEV {it.status?.['DEV'] || '—'}</span>
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">QA {it.status?.['QA'] || '—'}</span>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+                            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Alan approval · {(it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
+                            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Homologation · {(it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
+                          </div>
+
+                          <div className="mt-3 text-[11px] text-amber-200/80">Pressione e segure para mover de etapa</div>
                         </div>
                       </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
 
-                      <div className="p-3 space-y-3 min-h-[220px]">
-                        {colItems.length === 0 ? (
-                          <div className="rounded-lg border border-dashed border-white/10 p-4 text-xs text-gray-500">
-                            vazio
-                          </div>
-                        ) : (
-                          colItems.map((it) => (
-                            <button
-                              type="button"
-                              key={it.id}
-                              onClick={() => setSelected(it)}
-                              className={
-                                'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 ' +
-                                (selected?.id === it.id ? 'ring-2 ring-white/20' : '')
-                              }
-                              aria-label={`Open details for ${it.id}`}
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-sm font-semibold text-white truncate">{it.title || it.id}</div>
-                                  <div className="text-[11px] text-gray-400 font-mono truncate">{it.id}</div>
-                                </div>
-                                {it.archived ? (
-                                  <div className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-gray-300">
-                                    archived
-                                  </div>
-                                ) : null}
-                              </div>
+      {moveTarget ? (
+        <div className="fixed inset-0 z-50 sm:hidden">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setMoveTarget(null)} aria-hidden="true" />
+          <aside className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-white/10 bg-zinc-950 shadow-2xl">
+            <div className="px-4 py-4 border-b border-white/10">
+              <div className="text-xs text-gray-400">Mover card</div>
+              <div className="mt-1 text-base font-semibold text-white">{moveTarget.title || moveTarget.id}</div>
+              <div className="text-[11px] font-mono text-gray-500">{moveTarget.id}</div>
+            </div>
 
-                              <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
-                                <StatusLine label="PO" value={it.status?.['PO']} />
-                                <StatusLine label="DESIGN" value={it.status?.['DESIGN'] || 'skipped'} />
-                                <StatusLine
-                                  label="Alan approval"
-                                  value={it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)']}
-                                />
-                                <StatusLine label="DEV" value={it.status?.['DEV']} />
-                                <StatusLine label="QA" value={it.status?.['QA']} />
-                                <StatusLine
-                                  label="Alan homologation"
-                                  value={it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)']}
-                                />
-                              </div>
-                            </button>
-                          ))
-                        )}
+            <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+              <div className="text-xs text-gray-400">Escolha a nova etapa no fluxo</div>
+              <div className="grid grid-cols-1 gap-2">
+                {COLUMNS_ORDER.map((col) => {
+                  const active = moveTarget.column === col
+                  return (
+                    <button
+                      key={col}
+                      type="button"
+                      disabled={active || moveChange.isPending}
+                      onClick={() => moveChange.mutate({ changeId: moveTarget.id, status: col })}
+                      className={
+                        'rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ' +
+                        (active
+                          ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100'
+                          : 'border-white/10 bg-white/5 text-gray-100 disabled:opacity-60')
+                      }
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span>{col}</span>
+                        <span className="text-[11px] text-gray-400">{active ? 'Atual' : 'Mover'}</span>
                       </div>
-                    </section>
+                    </button>
                   )
                 })}
               </div>
 
-              {/* Mobile-only hint (match prototype) */}
-              <div className="sm:hidden mt-3">
-                <div className="inline-flex items-center rounded-full border border-white/10 bg-zinc-950/70 px-3 py-1 text-[11px] text-gray-300">
-                  Dica: deslize horizontalmente entre colunas · toque num card para abrir detalhes
+              {moveChange.error ? (
+                <div className="text-xs text-red-400">
+                  {moveChange.error instanceof Error ? moveChange.error.message : 'Falha ao mover card'}
                 </div>
+              ) : null}
+
+              <div className="flex justify-end">
+                <Button variant="ghost" onClick={() => setMoveTarget(null)} disabled={moveChange.isPending}>
+                  Fechar
+                </Button>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-      </div>
+          </aside>
+        </div>
+      ) : null}
 
       {selected ? (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/70" onClick={() => setSelected(null)} aria-hidden="true" />
-          <aside className="absolute inset-x-0 bottom-0 top-auto h-[82vh] w-full rounded-t-2xl bg-zinc-950 border-t border-white/10 shadow-2xl sm:rounded-none sm:inset-y-0 sm:right-0 sm:top-0 sm:h-full sm:w-[520px] sm:border-t-0 sm:border-l sm:border-white/10">
+          <aside className="absolute inset-0 h-full w-full bg-zinc-950 border-t border-white/10 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[520px] sm:border-t-0 sm:border-l sm:border-white/10">
             <div className="h-full flex flex-col">
               <div className="px-4 py-3 border-b border-white/10 flex items-start justify-between gap-3">
                 <div className="min-w-0">
