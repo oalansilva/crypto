@@ -21,6 +21,6 @@
 
 ## 4. Documentation / Handoff
 
-- [ ] 4.1 Update workflow/Kanban documentation to explain Pending backlog intake and automatic status synchronization.
-- [ ] 4.2 Prepare PT-BR review notes for Alan with links to proposal, specs, design, and tasks.
+- [ ] 4.1 Update workflow/Kanban documentation to explain Pending backlog intake, automatic status synchronization, and that OpenSpec artifacts are created/updated when PO pulls a card from Pending into PO.
+- [x] 4.2 Prepare PT-BR review notes for Alan with links to proposal, specs, design, and tasks.
 - [ ] 4.3 Use project skills when applicable during implementation/testing (frontend, architecture, debugging, tests).

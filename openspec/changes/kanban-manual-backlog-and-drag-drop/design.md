@@ -50,7 +50,14 @@ The current `/kanban` page is primarily a visualization and card-move surface fo
 5. Add tests for create flow, move flow, and rejected transitions.
 6. Deploy normally; rollback by hiding Pending/create/drag logic and reverting runtime mapping.
 
-## Open Questions
+## Decision Details
 
-- Whether a newly created Pending card should immediately create a minimal OpenSpec change folder, or only after PO pulls it into planning.
-- Whether descriptions should appear directly on the board card or only in the details drawer in v1.
+### Pending card artifact policy
+
+Newly created `Pending` cards are **runtime/Kanban-first** records. They MUST NOT require immediate OpenSpec folder creation at intake time. OpenSpec proposal/spec/tasks artifacts are created or updated when PO pulls the card from `Pending` into active planning.
+
+**Why:** this preserves Kanban/workflow DB as the operational intake surface, keeps backlog capture lightweight, and avoids polluting OpenSpec with ideas that may never enter planning.
+
+### Pending card description visibility
+
+The optional short description MUST be stored in runtime and available in the card details view in v1. Showing it inline on the compact board card is optional and can remain a follow-up refinement if density becomes a concern.

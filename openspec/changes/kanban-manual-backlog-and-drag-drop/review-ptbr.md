@@ -19,5 +19,8 @@ Esta change propõe transformar o `/kanban` em uma superfície de entrada de bac
 - OpenSpec continua sendo criado/atualizado quando o trabalho entrar de fato no fluxo de planejamento
 - a UI deve refletir a mudança de coluna automaticamente, sem reload manual
 
-### Dúvida em aberto
-- decidir se um card criado em `Pending` já gera um esqueleto OpenSpec imediatamente ou só quando PO puxar para planejamento
+### Decisão de PO
+- card criado em `Pending` **não** gera OpenSpec imediatamente
+- intake acontece primeiro no runtime/Kanban
+- proposal/spec/tasks do OpenSpec passam a existir/ser atualizados quando PO puxar o card para planejamento em `PO`
+- a descrição opcional fica persistida no runtime e disponível no drawer/detalhes do card já no v1
