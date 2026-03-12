@@ -1,0 +1,21 @@
+{
+  "change_id": "qa-ui-playwright-regression",
+  "flow": "wallet",
+  "executed_at_utc": "2026-03-12T18:55:00Z",
+  "spec": "frontend/tests/e2e/wallet-nav.spec.ts",
+  "result": "failed",
+  "material_change_vs_previous_blocker": false,
+  "previous_material_state": "2026-03-12T18:40Z mismatch between mocked spec expectations and runtime/live wallet data",
+  "current_observation": "The earlier HBAR strict-mode selector blocker remains fixed, but the isolated wallet rerun still renders runtime/live wallet assets (BTC/HBAR/BNB/USDT) instead of the mocked HBAR/USDC rows expected by the spec, so the assertion for USDC 0.455 cannot be satisfied.",
+  "product_defect_confirmed": false,
+  "classification": "automation/setup mismatch",
+  "evidence": [
+    "qa_artifacts/playwright/wallet/recheck-2026-03-12T1855Z/01-home.png",
+    "qa_artifacts/playwright/wallet/recheck-2026-03-12T1855Z/02-wallet-loaded.png",
+    "qa_artifacts/playwright/wallet/recheck-2026-03-12T1855Z/wallet-nav-menu-Carteira---99adb--balances-with-screenshots-/test-failed-1.png",
+    "qa_artifacts/playwright/wallet/recheck-2026-03-12T1855Z/wallet-nav-menu-Carteira---99adb--balances-with-screenshots-/error-context.md",
+    "qa_artifacts/playwright/wallet/recheck-2026-03-12T1855Z/wallet-nav-menu-Carteira---99adb--balances-with-screenshots-/trace.zip",
+    "qa_artifacts/playwright/wallet/recheck-2026-03-12T1855Z/wallet-nav-menu-Carteira---99adb--balances-with-screenshots-/video.webm"
+  ],
+  "next_owner": "DEV"
+}
