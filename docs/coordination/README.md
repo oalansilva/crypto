@@ -49,6 +49,9 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 ### Tracking consistency (avoid drift)
 
+- Before moving a change into `QA`, `Alan homologation`, or `Archived`, run `./scripts/verify_upstream_published.py --for-status <status>`.
+- The guard blocks progression when there are relevant tracked/untracked repo changes or unpushed commits; Playwright/QA ephemeral artifacts under `frontend/playwright-report/**`, `frontend/test-results/**`, `qa_artifacts/**`, and similar cache dirs are ignored by default.
+- Kanban/runtime enforcement: `PATCH /api/workflow/projects/<project>/changes/<change>` now rejects moves into `QA`, `Alan homologation`, or `Archived` with HTTP `409` until the upstream guard passes.
 - An agent may only claim a work item done after updating:
   1) `openspec/changes/<change>/tasks.md` (checkboxes)
   2) `docs/coordination/<change>.md` (status + next actions)

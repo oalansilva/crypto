@@ -122,6 +122,9 @@ Viewer (exemplos):
 
 ### 9) QA Gate (obrigatório)
 
+Antes de mover a change para `QA`, rode o guard de upstream:
+- `./scripts/verify_upstream_published.py --for-status QA`
+
 O QA deve:
 - adicionar/atualizar testes conforme `docs/testing-playbook.md`
 - rodar suites relevantes (integration + E2E quando aplicável)
@@ -147,11 +150,18 @@ Só após QA OK a change pode ser considerada pronta para homologação.
 
 ### 10) Homologação (Alan)
 
+Antes de mover a change para `Alan homologation`, rode:
+- `./scripts/verify_upstream_published.py --for-status "Alan homologation"`
+
 - Alan testa e confirma “ok”.
 
 ### 11) Arquivar a change
 
-- `openspec archive <change-name> --yes`
+Antes de arquivar, rode:
+- `./scripts/verify_upstream_published.py --for-status Archived`
+
+Use o helper seguro (recomendado), que também revalida o guard:
+- `./scripts/archive_change_safe.sh <change-name>`
 
 ### 12) Evidência
 

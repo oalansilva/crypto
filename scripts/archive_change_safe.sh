@@ -60,6 +60,12 @@ if ! curl -fsS "$WORKFLOW_HEALTH_URL" >/dev/null 2>&1; then
   exit 2
 fi
 
+# --- Preflight (repo must already be published upstream) ---
+if ! ./scripts/verify_upstream_published.py --for-status "Archived"; then
+  echo "ERROR: upstream guard blocked archive; push/clean relevant changes first" >&2
+  exit 1
+fi
+
 # Load backend/.env if present (WORKFLOW_DATABASE_URL, etc.)
 if [[ -f backend/.env ]]; then
   set -a

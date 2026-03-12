@@ -67,9 +67,24 @@ test('menu: Carteira -> loads and shows balances (with screenshots)', async ({ p
 
   await expect(page.getByRole('heading', { name: 'Carteira' })).toBeVisible()
 
-  // Wait for table content.
-  await expect(page.getByText('HBAR', { exact: true })).toBeVisible()
-  await expect(page.getByText('USDC', { exact: true })).toBeVisible()
+  // Wait for wallet rows using locators scoped to the balances section so
+  // strict mode doesn't collide with duplicated asset labels elsewhere.
+  const balancesSection = page.locator('div').filter({
+    has: page.getByRole('heading', { name: 'Balances', exact: true }),
+  }).first()
+
+  await expect(
+    balancesSection.locator('div').filter({
+      has: page.getByText('HBAR', { exact: true }),
+      hasText: '896.103',
+    }).first()
+  ).toBeVisible()
+  await expect(
+    balancesSection.locator('div').filter({
+      has: page.getByText('USDC', { exact: true }),
+      hasText: '0.455',
+    }).first()
+  ).toBeVisible()
 
   // Total should be formatted with 2 decimals (JS float rounding can yield 90.06 for 90.065)
   await expect(page.getByText(/90\.0(6|7)/)).toBeVisible()

@@ -12,12 +12,14 @@ smooth transition we also provide a small set of Kanban-compat endpoints under
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.services.upstream_guard import ENFORCED_STATUSES, UpstreamGuardError, require_upstream_published
 from app.workflow_database import get_workflow_db, get_workflow_db_url
 from app.workflow_models import (
     ApprovalScope,
@@ -36,6 +38,8 @@ from app.workflow_models import (
 
 
 router = APIRouter(prefix="/api/workflow", tags=["workflow"])
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 WorkflowScope = Literal["change", "work_item"]
@@ -389,7 +393,13 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
     if payload.title is not None:
         c.title = payload.title.strip()
     if payload.status is not None:
-        c.status = payload.status.strip()
+        new_status = payload.status.strip()
+        if new_status in ENFORCED_STATUSES:
+            try:
+                require_upstream_published(REPO_ROOT, target_statuses=[new_status])
+            except UpstreamGuardError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+        c.status = new_status
     db.commit()
     db.refresh(c)
     return ChangeOut(
