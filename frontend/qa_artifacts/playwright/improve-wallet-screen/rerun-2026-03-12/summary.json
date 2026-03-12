@@ -1,0 +1,124 @@
+[
+  {
+    "case": "proto-desktop",
+    "url": "http://127.0.0.1:5173/prototypes/improve-wallet-screen/",
+    "vp": {
+      "width": 1440,
+      "height": 1200
+    },
+    "info": {
+      "title": "Prototype — Wallet (External Balances)",
+      "h1": "Carteira",
+      "brand": "Crypto Lab",
+      "hasExportar": true,
+      "hasAtualizar": true,
+      "hasBalances": true,
+      "hasDust": true,
+      "hasLockedOnly": true,
+      "hasNotaPnl": true,
+      "hasResetFiltros": true,
+      "bodyTextSample": "Pular para o conteúdo\n◼\nCrypto Lab\nPrototype · Carteira · /external/balances\nExportar\nAtualizar\nCarteira\nBinance Spot\n·\nread-only\n·\nas of 2026-03-12 02:10 UTC\nTotal\n$31,231.06\n8 ativos · filtro min USD 0.02\nTotal USD\n$31,231.06\nSoma do valor (USD) das linhas visíveis\nLocked USD\n$2,824.91\nEstimado por “locked” × preço\nPnL (parcial)\n$303.13 (5/8)\nApenas para ativos com avg cost / pnl calculados\nBuscar\nDust threshold\nUSD\nLocked only\nOrdenar\nMaior valor\nMenor valor\nAtivo (A–Z)\nAtivo (Z–A)\nPnL (maior)\nPnL (menor)\nmin USD: 0.02 · sort: value/desc\nNota sobre PnL\nO backend calcula avg cost / pnl somente para um número limitado de ativos (budget de tempo). A UI deve sinalizar parcial e não sugerir contabilidade completa.\nBalances\nLayout responsivo: tabela (desktop) / cards (mobile)\nReset filtros\nAtivo\nTotal\nFree\nLocked\nValor (USD)\nPreço\nPnL\nS\nSOL SPOT\nSolana\n65\n65\n0\n$8,334.30\n$128.22\n—\nE\nETH SPOT\nEthereum\n2.42\n2.42\n0\n$8,276.69\n$3420.12\n-$122.50 (-1.46%)\nB\nBTC LOCKED\nBitcoin\n0.125\n0.08\n0.045\n$7,812.53\n$62500.23\n$420.12 (5.68%)\nB\nBNB SPOT\nBNB\n5.35\n5.35\n0\n$3,103.54\n$580.1\n$42.01 (1.37%)\nD\nDOGE SPOT\nDogecoin\n10000\n10000\n0\n$1,700.00\n$0.17\n-$55.00 (-3.14%)\nA\nADA LOCKED\nCardano\n1200\n1180\n20\n$744.0",
+      "buttons": [
+        "Exportar",
+        "Atualizar",
+        "Reset filtros",
+        "Ativo",
+        "Valor (USD)",
+        "PnL",
+        "Simular loading",
+        "Simular erro",
+        "×"
+      ]
+    }
+  },
+  {
+    "case": "impl-desktop",
+    "url": "http://127.0.0.1:5173/external/balances",
+    "vp": {
+      "width": 1440,
+      "height": 1200
+    },
+    "info": {
+      "title": "frontend",
+      "h1": "Carteira",
+      "brand": "Crypto LabCarteira · /external/balancesExportarAtualizar",
+      "hasExportar": true,
+      "hasAtualizar": true,
+      "hasBalances": true,
+      "hasDust": true,
+      "hasLockedOnly": true,
+      "hasNotaPnl": true,
+      "hasResetFiltros": true,
+      "bodyTextSample": "Crypto Lab\nCarteira · /external/balances\nExportar\nAtualizar\nCarteira\nBinance Spot\n·\nread-only\n·\nas of 2026-03-12 08:57:31 UTC\nTotal\n$174.96\n4 ativos · filtro min USD 0.02\nTotal USD\n$174.96\nSoma do valor (USD) das linhas visíveis\nLocked USD\n$174.02\nEstimado por “locked” × preço\nPnL (parcial)\n$17.58(4/4)\nApenas para ativos com avg cost / pnl calculados\nBuscar\nDust threshold\nUSD\nLocked only\nOrdenar\nMaior valor\nMenor valor\nAtivo (A–Z)\nAtivo (Z–A)\nPnL (maior)\nPnL (menor)\nmin USD: 0.02 · sort: value/desc\nNota sobre PnL\nO backend calcula avg cost / pnl somente para um número limitado de ativos (budget de tempo). A UI deve sinalizar parcial e não sugerir contabilidade completa.\nBalances\nLayout responsivo: tabela (desktop) / cards (mobile)\nReset filtros\nAtivo\nTotal\nFree\nLocked\nValor (USD)\nPreço\nPnL\nB\nBTCLOCKED\nlocked: 0.00128\n0.00128\n0\n0.00128\n$89.41\n$69853.38\n$20.97 (30.64%)\nH\nHBARLOCKED\nlocked: 896\n896.103\n0.103\n896\n$84.62\n$0.09443\n-$3.52 (-4%)\nB\nBNBSPOT\nspot\n0.00084157\n0.00084157\n0\n$0.54\n$647.58\n$0.14 (33.35%)\nU\nUSDTSPOT\nspot\n0.38484269\n0.38484269\n0\n$0.38\n$1\n$0.00 (0%)\ntotal_usd (server): $174.96\nas_of 2026-03-12 08:57:31 UTC",
+      "buttons": [
+        "Exportar",
+        "Atualizar",
+        "Reset filtros",
+        "Ativo",
+        "Valor (USD)",
+        "PnL"
+      ]
+    }
+  },
+  {
+    "case": "proto-mobile",
+    "url": "http://127.0.0.1:5173/prototypes/improve-wallet-screen/",
+    "vp": {
+      "width": 390,
+      "height": 844
+    },
+    "info": {
+      "title": "Prototype — Wallet (External Balances)",
+      "h1": "Carteira",
+      "brand": "Crypto Lab",
+      "hasExportar": true,
+      "hasAtualizar": true,
+      "hasBalances": true,
+      "hasDust": true,
+      "hasLockedOnly": true,
+      "hasNotaPnl": true,
+      "hasResetFiltros": true,
+      "bodyTextSample": "Pular para o conteúdo\n◼\nCrypto Lab\nPrototype · Carteira · /external/balances\nExportar\nAtualizar\nCarteira\nBinance Spot\n·\nread-only\n·\nas of 2026-03-12 02:10 UTC\nTotal\n$31,231.06\n8 ativos · filtro min USD 0.02\nTotal USD\n$31,231.06\nSoma do valor (USD) das linhas visíveis\nLocked USD\n$2,824.91\nEstimado por “locked” × preço\nPnL (parcial)\n$303.13 (5/8)\nApenas para ativos com avg cost / pnl calculados\nBuscar\nDust threshold\nUSD\nLocked only\nOrdenar\nMaior valor\nMenor valor\nAtivo (A–Z)\nAtivo (Z–A)\nPnL (maior)\nPnL (menor)\nmin USD: 0.02 · sort: value/desc\nNota sobre PnL\nO backend calcula avg cost / pnl somente para um número limitado de ativos (budget de tempo). A UI deve sinalizar parcial e não sugerir contabilidade completa.\nBalances\nLayout responsivo: tabela (desktop) / cards (mobile)\nReset filtros\nS\nSOL\nSpot\n$8,334.30\nTotal: 65\nPreço\n$128.22\nPnL\n—\nFree\n65\nLocked\n0\nE\nETH\nSpot\n$8,276.69\nTotal: 2.42\nPreço\n$3420.12\nPnL\n-$122.50 (-1.46%)\nFree\n2.42\nLocked\n0\nB\nBTC\nLocked: 0.045\n$7,812.53\nTotal: 0.125\nPreço\n$62500.23\nPnL\n$420.12 (5.68%)\nFree\n0.08\nLocked\n0.045\nB\nBNB\nSpot\n$3,103.54\nTotal: 5.35\nPreço\n$580.1\nPnL\n$42.01 (1.37%)\nFree\n5.35\nLocked\n0\nD\nDOGE\nSpot\n$1,700.00\nTotal: 10000\nPreço\n$0.17\nPnL\n-$55.00 ",
+      "buttons": [
+        "Exportar",
+        "Atualizar",
+        "Reset filtros",
+        "Ativo",
+        "Valor (USD)",
+        "PnL",
+        "Simular loading",
+        "Simular erro",
+        "×"
+      ]
+    }
+  },
+  {
+    "case": "impl-mobile",
+    "url": "http://127.0.0.1:5173/external/balances",
+    "vp": {
+      "width": 390,
+      "height": 844
+    },
+    "info": {
+      "title": "frontend",
+      "h1": "Carteira",
+      "brand": "Crypto LabCarteira · /external/balancesExportarAtualizar",
+      "hasExportar": true,
+      "hasAtualizar": true,
+      "hasBalances": true,
+      "hasDust": true,
+      "hasLockedOnly": true,
+      "hasNotaPnl": true,
+      "hasResetFiltros": true,
+      "bodyTextSample": "Crypto Lab\nCarteira · /external/balances\nExportar\nAtualizar\nCarteira\nBinance Spot\n·\nread-only\n·\nas of 2026-03-12 08:57:40 UTC\nTotal\n$174.97\n4 ativos · filtro min USD 0.02\nTotal USD\n$174.97\nSoma do valor (USD) das linhas visíveis\nLocked USD\n$174.03\nEstimado por “locked” × preço\nPnL (parcial)\n$17.59(4/4)\nApenas para ativos com avg cost / pnl calculados\nBuscar\nDust threshold\nUSD\nLocked only\nOrdenar\nMaior valor\nMenor valor\nAtivo (A–Z)\nAtivo (Z–A)\nPnL (maior)\nPnL (menor)\nmin USD: 0.02 · sort: value/desc\nNota sobre PnL\nO backend calcula avg cost / pnl somente para um número limitado de ativos (budget de tempo). A UI deve sinalizar parcial e não sugerir contabilidade completa.\nBalances\nLayout responsivo: tabela (desktop) / cards (mobile)\nReset filtros\nB\nBTC\nLocked: 0.00128\n$89.41\nTotal: 0.00128\nPreço\n$69853.38\nPnL\n$20.97 (30.64%)\nFree\n0\nLocked\n0.00128\nH\nHBAR\nLocked: 896\n$84.63\nTotal: 896.103\nPreço\n$0.09444\nPnL\n-$3.51 (-3.99%)\nFree\n0.103\nLocked\n896\nB\nBNB\nSpot\n$0.54\nTotal: 0.00084157\nPreço\n$647.58\nPnL\n$0.14 (33.35%)\nFree\n0.00084157\nLocked\n0\nU\nUSDT\nSpot\n$0.38\nTotal: 0.38484269\nPreço\n$1\nPnL\n$0.00 (0%)\nFree\n0.38484269\nLocked\n0\ntotal_usd (server): $174.97\nas_of 2026-03-12 08:57:40 UTC",
+      "buttons": [
+        "Exportar",
+        "Atualizar",
+        "Reset filtros",
+        "Ativo",
+        "Valor (USD)",
+        "PnL"
+      ]
+    }
+  }
+]

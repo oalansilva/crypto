@@ -65,6 +65,11 @@
 - Ajuste final de compatibilidade em 2.3: o adapter `/api/workflow/kanban/changes/{id}/tasks` agora devolve `path` com sufixo `tasks.md` e preserva a árvore `story -> bug`/bug órfão no mesmo shape de checklist esperado pelo drawer do Kanban.
 - Cobertura mínima de regressão adicionada para 2.3: `backend/tests/integration/test_workflow_kanban_adapter_api.py` valida o adapter DB-backed de tasks; `frontend/tests/e2e/kanban-loads.spec.ts` valida a renderização da árvore de work-items (`Story`/`Bug`) no painel de detalhes.
 - Não foi encontrado outro mecanismo local de tracking/kanban além de `openspec/changes/.../tasks.md`, `docs/coordination/*.md` e o store local de comentários em `data/coordination_comments/<change>.jsonl`.
+
+**Nota (padrão novo):** comentários/evidências que devem aparecer no drawer do Kanban precisam ir para o **Workflow DB** via:
+- `GET/POST /api/workflow/kanban/changes/{id}/comments?project_slug=crypto`
+
+O endpoint legado (`/api/coordination/changes/{id}/comments`) existe só para compatibilidade e faz *dual-write*/migração best-effort para evitar perda de evidências.
 - Reconciliação QA 2026-03-10: coordination estava incoerente ao marcar `QA: done` enquanto `tasks.md` ainda tinha 3.2/3.3 abertos; o status consolidado voltou para `QA: in progress` antes de registrar novo avanço.
 - Testes adicionados em `backend/tests/integration/test_workflow_core_service.py` cobrindo WIP limit, ownership por run, dependências bloqueando ativação, exclusividade de lock e bloqueio `story -> bug` no fechamento.
 - Fix de runtime config: `app.workflow_database` antes usava apenas `os.getenv()`, mas o backend carrega `backend/.env` via `pydantic-settings` (não exporta para `os.environ`). Agora a flag/URL são lidas via `get_settings()` (campos `workflow_db_enabled` e `workflow_database_url`). Também foi garantido `psycopg2-binary` no venv para Postgres.

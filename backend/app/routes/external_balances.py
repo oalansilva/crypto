@@ -10,11 +10,16 @@ router = APIRouter(prefix="/api/external", tags=["external"])
 
 
 @router.get("/binance/spot/balances")
-def get_binance_spot_balances(lookback_days: Optional[int] = None):
+def get_binance_spot_balances(
+    lookback_days: Optional[int] = None,
+    min_usd: Optional[float] = None,
+):
     """Return Binance Spot balances (read-only).
 
     Query params:
       - lookback_days (optional): limits trade-history used for avg cost (startTime).
+      - min_usd (optional): dust threshold; hides positions with value_usd < min_usd.
+        Default (when omitted): 0.02 (backward-compatible).
     """
 
     if lookback_days is not None:
@@ -25,8 +30,16 @@ def get_binance_spot_balances(lookback_days: Optional[int] = None):
         if d <= 0 or d > 3650:
             raise HTTPException(status_code=400, detail="lookback_days must be between 1 and 3650")
 
+    if min_usd is not None:
+        try:
+            v = float(min_usd)
+        except Exception:
+            raise HTTPException(status_code=400, detail="min_usd must be a number")
+        if v < 0 or v > 1_000_000:
+            raise HTTPException(status_code=400, detail="min_usd must be between 0 and 1000000")
+
     try:
-        return fetch_spot_balances_snapshot(lookback_days=lookback_days)
+        return fetch_spot_balances_snapshot(lookback_days=lookback_days, min_usd=min_usd)
     except BinanceConfigError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

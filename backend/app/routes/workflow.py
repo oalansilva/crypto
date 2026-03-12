@@ -684,7 +684,12 @@ def kanban_list_changes(
     items = db.query(Change).filter(Change.project_id == project.id).order_by(Change.created_at.asc()).all()
     out: List[KanbanChangeItem] = []
 
+    # Best-effort reconciliation so the Kanban doesn't get stuck when agents
+    # complete artifacts but forget to update workflow DB gates/status.
+    from app.services.workflow_reconcile_service import reconcile_change_forward
+
     for c in items:
+        reconcile_change_forward(db, change=c)
         status = _latest_change_gate_status(db, c.id)
         col = c.status.strip() if c.status else "DEV"
         if col.lower() == "archived":
@@ -784,6 +789,19 @@ def kanban_list_comments(
 ) -> KanbanCommentsListResponse:
     slug = _kanban_project_slug(db, project_slug)
     change = _kanban_change_by_id(db, slug, change_id)
+
+    # Forward-migrate any legacy JSONL comments into the workflow DB.
+    # This prevents evidence loss in the Kanban drawer if an agent/tool still
+    # writes to the old coordination surface.
+    try:
+        from app.services.workflow_coordination_bridge import (
+            migrate_coordination_comments_into_workflow_db,
+        )
+
+        migrate_coordination_comments_into_workflow_db(db, change_pk=change.id, change_id=change_id)
+    except Exception:
+        # Never break Kanban if migration fails.
+        pass
 
     items = (
         db.query(WorkflowComment)

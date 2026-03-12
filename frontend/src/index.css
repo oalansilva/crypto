@@ -8,29 +8,29 @@
    ============================================ */
 
 :root {
-  /* Colors - Background */
-  --bg-primary: #0a0f0a;
-  --bg-secondary: #0f1410;
-  --bg-elevated: #1a1f1a;
-  --bg-overlay: rgba(10, 15, 10, 0.95);
+  /* Colors - Background (Wallet prototype palette) */
+  --bg-primary: #0b1020;
+  --bg-secondary: rgba(255, 255, 255, 0.06); /* panel */
+  --bg-elevated: rgba(255, 255, 255, 0.09); /* panel2 */
+  --bg-overlay: rgba(10, 15, 30, 0.88);
 
-  /* Colors - Accent */
-  --accent-primary: #10b981;
-  --accent-secondary: #059669;
-  --accent-success: #10b981;
-  --accent-warning: #f59e0b;
-  --accent-danger: #ef4444;
+  /* Colors - Accent (Wallet prototype palette) */
+  --accent-primary: #8aa6ff; /* accent */
+  --accent-secondary: #6f8cff;
+  --accent-success: #35d07f; /* good */
+  --accent-warning: #ffb020; /* warn */
+  --accent-danger: #ff4d6d; /* bad */
 
   /* Colors - Text */
-  --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --text-muted: #475569;
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.62);
+  --text-tertiary: rgba(255, 255, 255, 0.44);
+  --text-muted: rgba(255, 255, 255, 0.50);
 
   /* Colors - Border */
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.2);
+  --border-subtle: rgba(255, 255, 255, 0.10); /* stroke */
+  --border-default: rgba(255, 255, 255, 0.16); /* stroke2 */
+  --border-strong: rgba(255, 255, 255, 0.20);
 
   /* Spacing */
   --space-xs: 4px;
@@ -109,9 +109,19 @@ html {
   text-rendering: optimizeLegibility;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
 body {
   min-height: 100vh;
-  background-color: #111111;
+  background:
+    radial-gradient(1000px 500px at 10% 0%, rgba(138, 166, 255, 0.25), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(53, 208, 127, 0.14), transparent 60%),
+    var(--bg-primary);
   /* background-attachment: fixed; */
   color: var(--text-primary);
   font-size: var(--text-base);
@@ -124,14 +134,14 @@ body {
 
 /* Glass Effect */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-subtle);
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.09);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-default);
@@ -139,7 +149,7 @@ body {
 
 /* Gradient Text */
 .gradient-text {
-  background: linear-gradient(135deg, var(--accent-primary) 0%, #34d399 100%);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-success) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -209,14 +219,16 @@ body {
 
 /* Button Variants */
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-  color: white;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  background: rgba(138, 166, 255, 0.18);
+  color: var(--text-primary);
+  border: 1px solid rgba(138, 166, 255, 0.55);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+  background: rgba(138, 166, 255, 0.22);
+  border-color: rgba(138, 166, 255, 0.78);
 }
 
 .btn-secondary {

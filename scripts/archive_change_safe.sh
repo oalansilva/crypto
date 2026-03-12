@@ -114,11 +114,15 @@ git push origin main
 # --- Atomic-ish archive transaction ---
 # 1) Move workflow DB change to Archived (and ensure gates are approved in DB).
 # 2) If OpenSpec archive fails, rollback workflow DB status.
+# 3) If ONLY the post-archive Kanban validation fails/times out, DO NOT rollback
+#    (treat as post-commit reconciliation needed).
 PREV_STATUS=""
+ARCHIVE_COMMITTED=0
 rollback_workflow_status() {
   local code=$?
-  if [[ $code -ne 0 && -n "${PREV_STATUS}" ]]; then
-    echo "WARN: archive failed; rolling back workflow status to '${PREV_STATUS}'" >&2
+  # Rollback only if we failed BEFORE completing OpenSpec archive.
+  if [[ $code -ne 0 && -n "${PREV_STATUS}" && $ARCHIVE_COMMITTED -eq 0 ]]; then
+    echo "WARN: archive failed before OpenSpec completion; rolling back workflow status to '${PREV_STATUS}'" >&2
     WORKFLOW_DB_ENABLED=1 PYTHONPATH=backend \
       "$PY_BIN" backend/scripts/set_change_status.py \
         --project "$PROJECT_SLUG" --change "$CHANGE_ID" --status "$PREV_STATUS" >/dev/null 2>&1 || true
@@ -138,32 +142,57 @@ PREV_STATUS=$(
 # Archive in OpenSpec
 openspec archive "$CHANGE_ID" --yes
 
+# From this point on, OpenSpec archive succeeded; do NOT rollback workflow DB on errors.
+ARCHIVE_COMMITTED=1
+
 git add -A
 git commit -m "openspec: archive ${CHANGE_ID}" || true
 git push origin main
 
 # --- Mandatory post-archive validation (Kanban endpoint) ---
+# This is a *post-commit* check: we retry with backoff and a more tolerant timeout.
+# If it still fails, we exit non-zero but we DO NOT rollback the workflow DB status.
 CHANGE_ID="$CHANGE_ID" KANBAN_URL="$KANBAN_URL" python3 - <<'PY'
-import json, os, sys, urllib.request
+import json, os, sys, time, urllib.request
+
 change_id = os.environ.get('CHANGE_ID')
 url = os.environ.get('KANBAN_URL')
 if not change_id or not url:
     print('ERROR: missing CHANGE_ID/KANBAN_URL env', file=sys.stderr)
     sys.exit(2)
-with urllib.request.urlopen(url, timeout=10) as r:
-    data = json.loads(r.read().decode('utf-8'))
-items = data.get('items') or []
-item = next((it for it in items if it.get('id') == change_id), None)
-if not item:
-    print(f"ERROR: change '{change_id}' not found in Kanban endpoint after archive", file=sys.stderr)
-    sys.exit(10)
-if item.get('archived') is not True:
-    print(f"ERROR: Kanban item archived!=true for '{change_id}': {item}", file=sys.stderr)
-    sys.exit(11)
-if (item.get('column') or '') != 'Archived':
-    print(f"ERROR: Kanban item column!='Archived' for '{change_id}': {item}", file=sys.stderr)
-    sys.exit(12)
-print(f"OK: Kanban validated archived for {change_id}")
+
+attempts = int(os.environ.get('KANBAN_VALIDATE_ATTEMPTS', '6'))
+base_sleep = float(os.environ.get('KANBAN_VALIDATE_BASE_SLEEP_S', '1.0'))
+base_timeout = float(os.environ.get('KANBAN_VALIDATE_TIMEOUT_S', '15'))
+
+last_err = None
+for i in range(1, attempts + 1):
+    timeout = base_timeout * (1.5 ** (i - 1))
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            data = json.loads(r.read().decode('utf-8'))
+        items = data.get('items') or []
+        item = next((it for it in items if it.get('id') == change_id), None)
+        if not item:
+            raise RuntimeError(f"change '{change_id}' not found in Kanban endpoint")
+        if item.get('archived') is not True:
+            raise RuntimeError(f"Kanban item archived!=true: {item}")
+        if (item.get('column') or '') != 'Archived':
+            raise RuntimeError(f"Kanban item column!='Archived': {item}")
+        print(f"OK: Kanban validated archived for {change_id} (attempt {i}/{attempts}, timeout={timeout:.1f}s)")
+        sys.exit(0)
+    except Exception as e:
+        last_err = e
+        if i < attempts:
+            sleep_s = base_sleep * (2 ** (i - 1))
+            print(f"WARN: Kanban validation attempt {i}/{attempts} failed: {e}; retrying in {sleep_s:.1f}s (timeout was {timeout:.1f}s)", file=sys.stderr)
+            time.sleep(sleep_s)
+
+print("ERROR: post-archive Kanban validation failed after retries.", file=sys.stderr)
+print(f"       This does NOT rollback the workflow DB (OpenSpec archive already completed).", file=sys.stderr)
+print(f"       Reconcile needed: check workflow service and kanban endpoint, then verify change '{change_id}' shows Archived.", file=sys.stderr)
+print(f"       Last error: {last_err}", file=sys.stderr)
+sys.exit(50)
 PY
 
 # If we got here, do not rollback.

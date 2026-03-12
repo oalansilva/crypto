@@ -1,0 +1,214 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - link "Crypto Backtester Professional Trading Analysis" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - generic [ref=e14]:
+          - text: Crypto Backtester
+          - paragraph [ref=e15]: Professional Trading Analysis
+      - navigation "Navegação principal" [ref=e16]:
+        - link "Playground" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=e18]
+          - text: Playground
+        - link "Favorites" [ref=e21] [cursor=pointer]:
+          - /url: /favorites
+          - img [ref=e22]
+          - text: Favorites
+        - link "Monitor" [ref=e24] [cursor=pointer]:
+          - /url: /monitor
+          - img [ref=e25]
+          - text: Monitor
+        - link "Kanban" [ref=e27] [cursor=pointer]:
+          - /url: /kanban
+          - img [ref=e28]
+          - text: Kanban
+        - link "Lab" [ref=e29] [cursor=pointer]:
+          - /url: /lab
+          - img [ref=e30]
+          - text: Lab
+        - link "Arbitragem" [ref=e33] [cursor=pointer]:
+          - /url: /arbitrage
+          - img [ref=e34]
+          - text: Arbitragem
+        - link "Combo" [ref=e40] [cursor=pointer]:
+          - /url: /combo/select
+          - img [ref=e41]
+          - text: Combo
+        - link "Carteira" [ref=e45] [cursor=pointer]:
+          - /url: /external/balances
+          - img [ref=e46]
+          - text: Carteira
+  - main [ref=e49]:
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - heading "Carteira" [level=1] [ref=e53]:
+            - img [ref=e54]
+            - text: Carteira
+          - generic [ref=e57]:
+            - generic [ref=e58]: Binance Spot — read-only
+            - generic [ref=e59]: •
+            - generic [ref=e60]: "dust: < $0.02"
+        - generic [ref=e61]:
+          - button "Refresh" [disabled] [ref=e62]:
+            - img [ref=e63]
+            - text: Refresh
+          - button "Reset" [disabled] [ref=e68]
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e71]: Total (USD)
+          - generic [ref=e72]: —
+          - generic [ref=e73]: Carregando…
+        - generic [ref=e74]:
+          - generic [ref=e75]: Locked (estimado)
+          - generic [ref=e76]: —
+          - generic [ref=e77]: locked * price_usdt
+        - generic [ref=e78]:
+          - generic [ref=e79]: PnL (parcial)
+          - generic [ref=e80]: —
+          - generic [ref=e81]: —
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]:
+            - generic [ref=e85]: Buscar
+            - textbox "Buscar" [ref=e86]:
+              - /placeholder: BTC, ETH…
+          - generic [ref=e87]:
+            - generic [ref=e88]: Min USD (dust)
+            - generic [ref=e89]:
+              - textbox "Min USD (dust) USD" [ref=e90]: "0.02"
+              - generic [ref=e91]: USD
+          - generic [ref=e92]:
+            - generic [ref=e93]: Locked only
+            - generic [ref=e94]:
+              - checkbox "Locked only Mostrar somente locked" [ref=e95]
+              - generic [ref=e96]: Mostrar somente locked
+          - generic [ref=e97]:
+            - generic [ref=e98]: Ordenar
+            - combobox "Ordenar" [ref=e99]:
+              - option "Value (USD) ↓" [selected]
+              - option "Value (USD) ↑"
+              - option "Asset A→Z"
+              - option "Asset Z→A"
+              - option "PnL ↓"
+              - option "PnL ↑"
+          - button "Sync" [disabled] [ref=e101]
+        - generic [ref=e102]: "min USD: 0.02 · sort: value/desc"
+        - generic [ref=e103]:
+          - generic [ref=e104]: PnL é parcial
+          - generic [ref=e105]: O backend computa avg_cost/pnl apenas para um número limitado de símbolos (por orçamento de chamadas).
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - heading "Saldos" [level=2] [ref=e109]
+            - generic [ref=e110]: —
+          - generic [ref=e111]: loading…
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - button "Asset" [ref=e114]
+            - generic [ref=e115]: Total
+            - generic [ref=e116]: Free
+            - generic [ref=e117]: Locked
+            - button "Value (USD)" [ref=e118]
+            - generic [ref=e119]: Price
+            - button "PnL" [ref=e120]
+          - generic [ref=e121]:
+            - generic [ref=e122]:
+              - generic [ref=e123]:
+                - generic [ref=e124]: l
+                - generic [ref=e125]:
+                  - generic [ref=e126]: —
+                  - generic [ref=e127]: spot
+              - generic [ref=e128]: —
+              - generic [ref=e129]: —
+              - generic [ref=e130]: —
+              - generic [ref=e131]: —
+              - generic [ref=e132]: —
+              - generic [ref=e133]: —
+            - generic [ref=e134]:
+              - generic [ref=e135]:
+                - generic [ref=e136]: l
+                - generic [ref=e137]:
+                  - generic [ref=e138]: —
+                  - generic [ref=e139]: spot
+              - generic [ref=e140]: —
+              - generic [ref=e141]: —
+              - generic [ref=e142]: —
+              - generic [ref=e143]: —
+              - generic [ref=e144]: —
+              - generic [ref=e145]: —
+            - generic [ref=e146]:
+              - generic [ref=e147]:
+                - generic [ref=e148]: l
+                - generic [ref=e149]:
+                  - generic [ref=e150]: —
+                  - generic [ref=e151]: spot
+              - generic [ref=e152]: —
+              - generic [ref=e153]: —
+              - generic [ref=e154]: —
+              - generic [ref=e155]: —
+              - generic [ref=e156]: —
+              - generic [ref=e157]: —
+            - generic [ref=e158]:
+              - generic [ref=e159]:
+                - generic [ref=e160]: l
+                - generic [ref=e161]:
+                  - generic [ref=e162]: —
+                  - generic [ref=e163]: spot
+              - generic [ref=e164]: —
+              - generic [ref=e165]: —
+              - generic [ref=e166]: —
+              - generic [ref=e167]: —
+              - generic [ref=e168]: —
+              - generic [ref=e169]: —
+            - generic [ref=e170]:
+              - generic [ref=e171]:
+                - generic [ref=e172]: l
+                - generic [ref=e173]:
+                  - generic [ref=e174]: —
+                  - generic [ref=e175]: spot
+              - generic [ref=e176]: —
+              - generic [ref=e177]: —
+              - generic [ref=e178]: —
+              - generic [ref=e179]: —
+              - generic [ref=e180]: —
+              - generic [ref=e181]: —
+            - generic [ref=e182]:
+              - generic [ref=e183]:
+                - generic [ref=e184]: l
+                - generic [ref=e185]:
+                  - generic [ref=e186]: —
+                  - generic [ref=e187]: spot
+              - generic [ref=e188]: —
+              - generic [ref=e189]: —
+              - generic [ref=e190]: —
+              - generic [ref=e191]: —
+              - generic [ref=e192]: —
+              - generic [ref=e193]: —
+            - generic [ref=e194]:
+              - generic [ref=e195]:
+                - generic [ref=e196]: l
+                - generic [ref=e197]:
+                  - generic [ref=e198]: —
+                  - generic [ref=e199]: spot
+              - generic [ref=e200]: —
+              - generic [ref=e201]: —
+              - generic [ref=e202]: —
+              - generic [ref=e203]: —
+              - generic [ref=e204]: —
+              - generic [ref=e205]: —
+            - generic [ref=e206]:
+              - generic [ref=e207]:
+                - generic [ref=e208]: l
+                - generic [ref=e209]:
+                  - generic [ref=e210]: —
+                  - generic [ref=e211]: spot
+              - generic [ref=e212]: —
+              - generic [ref=e213]: —
+              - generic [ref=e214]: —
+              - generic [ref=e215]: —
+              - generic [ref=e216]: —
+              - generic [ref=e217]: —
+        - generic [ref=e219]: Carteira · 0 rows visíveis · sort value/desc

@@ -1,0 +1,112 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - link "Crypto Backtester Professional Trading Analysis" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - generic [ref=e14]:
+          - text: Crypto Backtester
+          - paragraph [ref=e15]: Professional Trading Analysis
+      - navigation "Navegação principal" [ref=e16]:
+        - link "Playground" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=e18]
+          - text: Playground
+        - link "Favorites" [ref=e23] [cursor=pointer]:
+          - /url: /favorites
+          - img [ref=e24]
+          - text: Favorites
+        - link "Monitor" [ref=e26] [cursor=pointer]:
+          - /url: /monitor
+          - img [ref=e27]
+          - text: Monitor
+        - link "Kanban" [ref=e29] [cursor=pointer]:
+          - /url: /kanban
+          - img [ref=e30]
+          - text: Kanban
+        - link "Lab" [ref=e34] [cursor=pointer]:
+          - /url: /lab
+          - img [ref=e35]
+          - text: Lab
+        - link "Arbitragem" [ref=e40] [cursor=pointer]:
+          - /url: /arbitrage
+          - img [ref=e41]
+          - text: Arbitragem
+        - link "Combo" [ref=e47] [cursor=pointer]:
+          - /url: /combo/select
+          - img [ref=e48]
+          - text: Combo
+        - link "Carteira" [active] [ref=e52] [cursor=pointer]:
+          - /url: /external/balances
+          - img [ref=e53]
+          - text: Carteira
+  - main [ref=e243]:
+    - generic [ref=e244]:
+      - generic [ref=e245]:
+        - heading "Carteira" [level=1] [ref=e246]:
+          - img [ref=e247]
+          - text: Carteira
+        - paragraph [ref=e250]: Binance Spot — read-only (valores < $0.02 ocultos)
+        - paragraph [ref=e251]: "Last updated: 01:07:46"
+      - button "Refresh" [ref=e252] [cursor=pointer]:
+        - img [ref=e253]
+        - text: Refresh
+    - generic [ref=e258]:
+      - generic [ref=e260]: Balances (sorted by total desc)
+      - table [ref=e263]:
+        - rowgroup [ref=e264]:
+          - row "Asset Free Locked Total Price (USDT) Value (USD) Avg Cost (USDT) PnL (USD) PnL (%)" [ref=e265]:
+            - columnheader "Asset" [ref=e266]
+            - columnheader "Free" [ref=e267]
+            - columnheader "Locked" [ref=e268]
+            - columnheader "Total" [ref=e269]
+            - columnheader "Price (USDT)" [ref=e270]
+            - columnheader "Value (USD)" [ref=e271]
+            - columnheader "Avg Cost (USDT)" [ref=e272]
+            - columnheader "PnL (USD)" [ref=e273]
+            - columnheader "PnL (%)" [ref=e274]
+        - rowgroup [ref=e275]:
+          - row "BTC 0 0.00128 0.00128 69892.9 89.46 53471.60830087634 21.02 30.71" [ref=e276]:
+            - cell "BTC" [ref=e277]
+            - cell "0" [ref=e278]
+            - cell "0.00128" [ref=e279]
+            - cell "0.00128" [ref=e280]
+            - cell "69892.9" [ref=e281]
+            - cell "89.46" [ref=e282]
+            - cell "53471.60830087634" [ref=e283]
+            - cell "21.02" [ref=e284]
+            - cell "30.71" [ref=e285]
+          - row "HBAR 0.103 896 896.103 0.09424 84.45 0.09836 -3.69 -4.19" [ref=e286]:
+            - cell "HBAR" [ref=e287]
+            - cell "0.103" [ref=e288]
+            - cell "896" [ref=e289]
+            - cell "896.103" [ref=e290]
+            - cell "0.09424" [ref=e291]
+            - cell "84.45" [ref=e292]
+            - cell "0.09836" [ref=e293]
+            - cell "-3.69" [ref=e294]
+            - cell "-4.19" [ref=e295]
+          - row "BNB 0.00084157 0 0.00084157 649.27 0.55 485.62522796352584 0.14 33.70" [ref=e296]:
+            - cell "BNB" [ref=e297]
+            - cell "0.00084157" [ref=e298]
+            - cell "0" [ref=e299]
+            - cell "0.00084157" [ref=e300]
+            - cell "649.27" [ref=e301]
+            - cell "0.55" [ref=e302]
+            - cell "485.62522796352584" [ref=e303]
+            - cell "0.14" [ref=e304]
+            - cell "33.70" [ref=e305]
+          - row "USDT 0.38484269 0 0.38484269 1 0.38 1 0.00 0.00" [ref=e306]:
+            - cell "USDT" [ref=e307]
+            - cell "0.38484269" [ref=e308]
+            - cell "0" [ref=e309]
+            - cell "0.38484269" [ref=e310]
+            - cell "1" [ref=e311]
+            - cell "0.38" [ref=e312]
+            - cell "1" [ref=e313]
+            - cell "0.00" [ref=e314]
+            - cell "0.00" [ref=e315]
+        - rowgroup [ref=e316]:
+          - row "Total 174.84" [ref=e317]:
+            - cell "Total" [ref=e318]
+            - cell "174.84" [ref=e319]

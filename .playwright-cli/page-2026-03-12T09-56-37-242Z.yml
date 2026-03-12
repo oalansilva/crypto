@@ -1,0 +1,209 @@
+- generic [active] [ref=e1]:
+  - link "Pular para o conteúdo" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: ◼
+        - generic [ref=e7]:
+          - generic [ref=e8]: Crypto Lab
+          - generic [ref=e9]: Prototype · Carteira · /external/balances
+      - generic [ref=e10]:
+        - button "Exportar" [ref=e11] [cursor=pointer]
+        - button "Atualizar" [ref=e12] [cursor=pointer]
+  - main [ref=e13]:
+    - region "Cabeçalho" [ref=e14]:
+      - generic [ref=e15]:
+        - heading "Carteira" [level=1] [ref=e16]
+        - generic [ref=e17]:
+          - generic [ref=e18]: Binance Spot
+          - generic [ref=e19]: ·
+          - generic [ref=e20]: read-only
+          - generic [ref=e21]: ·
+          - generic [ref=e22]:
+            - text: as of
+            - time [ref=e23]: 2026-03-12 02:10 UTC
+      - generic [ref=e25]:
+        - generic [ref=e26]: Total
+        - generic [ref=e27]: $31,231.06
+        - generic [ref=e28]: 8 ativos · filtro min USD 0.02
+    - region "Resumo" [ref=e29]:
+      - article [ref=e30]:
+        - generic [ref=e31]: Total USD
+        - generic [ref=e32]: $31,231.06
+        - generic [ref=e33]: Soma do valor (USD) das linhas visíveis
+      - article [ref=e34]:
+        - generic [ref=e35]: Locked USD
+        - generic [ref=e36]: $2,824.91
+        - generic [ref=e37]: Estimado por “locked” × preço
+      - article [ref=e38]:
+        - generic [ref=e39]: PnL (parcial)
+        - generic [ref=e40]: $303.13 (5/8)
+        - generic [ref=e41]: Apenas para ativos com avg cost / pnl calculados
+    - region "Controles" [ref=e42]:
+      - generic [ref=e43]:
+        - generic "Buscar" [ref=e44]:
+          - generic [ref=e45]: Buscar
+          - textbox "Buscar" [ref=e46]:
+            - /placeholder: BTC, ETH, SOL…
+        - generic "Min USD" [ref=e47]:
+          - generic [ref=e48]: Dust threshold
+          - generic [ref=e49]:
+            - spinbutton "Min USD" [ref=e50]: "0.02"
+            - generic [ref=e51]: USD
+        - generic [ref=e52]:
+          - checkbox "Locked only"
+          - generic [ref=e54]: Locked only
+        - generic "Ordenação" [ref=e55]:
+          - generic [ref=e56]: Ordenar
+          - combobox "Ordenação" [ref=e57]:
+            - option "Maior valor" [selected]
+            - option "Menor valor"
+            - option "Ativo (A–Z)"
+            - option "Ativo (Z–A)"
+            - option "PnL (maior)"
+            - option "PnL (menor)"
+        - generic [ref=e59]: "min USD: 0.02 · sort: value/desc"
+      - note [ref=e60]:
+        - generic [ref=e61]: Nota sobre PnL
+        - generic [ref=e62]:
+          - text: O backend calcula
+          - strong [ref=e63]: avg cost / pnl
+          - text: somente para um número limitado de ativos (budget de tempo). A UI deve sinalizar
+          - strong [ref=e64]: parcial
+          - text: e não sugerir contabilidade completa.
+    - region "Conteúdo" [ref=e65]:
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - heading "Balances" [level=2] [ref=e69]
+            - generic [ref=e70]: "Layout responsivo: tabela (desktop) / cards (mobile)"
+          - button "Reset filtros" [ref=e72] [cursor=pointer]
+        - generic "Tabela de balances" [ref=e73]:
+          - row "Ativo Total Free Locked Valor (USD) Preço PnL" [ref=e74]:
+            - button "Ativo" [ref=e75] [cursor=pointer]
+            - generic [ref=e76]: Total
+            - generic [ref=e77]: Free
+            - generic [ref=e78]: Locked
+            - button "Valor (USD)" [ref=e79]
+            - generic [ref=e80]: Preço
+            - button "PnL" [ref=e81]
+          - rowgroup [ref=e82]:
+            - row "SOL SPOT Solana 65 65 0 $8,334.30 $128.22 —" [ref=e83]:
+              - generic [ref=e85]:
+                - generic [ref=e86]: S
+                - generic [ref=e87]:
+                  - generic [ref=e88]:
+                    - text: SOL
+                    - generic [ref=e89]: SPOT
+                  - generic [ref=e90]: Solana
+              - generic [ref=e91]: "65"
+              - generic [ref=e92]: "65"
+              - generic [ref=e93]: "0"
+              - generic [ref=e94]: $8,334.30
+              - generic [ref=e95]: $128.22
+              - generic [ref=e96]: —
+            - row "ETH SPOT Ethereum 2.42 2.42 0 $8,276.69 $3420.12 -$122.50 (-1.46%)" [ref=e97]:
+              - generic [ref=e99]:
+                - generic [ref=e100]: E
+                - generic [ref=e101]:
+                  - generic [ref=e102]:
+                    - text: ETH
+                    - generic [ref=e103]: SPOT
+                  - generic [ref=e104]: Ethereum
+              - generic [ref=e105]: "2.42"
+              - generic [ref=e106]: "2.42"
+              - generic [ref=e107]: "0"
+              - generic [ref=e108]: $8,276.69
+              - generic [ref=e109]: $3420.12
+              - generic [ref=e110]: "-$122.50 (-1.46%)"
+            - row "BTC LOCKED Bitcoin 0.125 0.08 0.045 $7,812.53 $62500.23 $420.12 (5.68%)" [ref=e111]:
+              - generic [ref=e113]:
+                - generic [ref=e114]: B
+                - generic [ref=e115]:
+                  - generic [ref=e116]:
+                    - text: BTC
+                    - generic [ref=e117]: LOCKED
+                  - generic [ref=e118]: Bitcoin
+              - generic [ref=e119]: "0.125"
+              - generic [ref=e120]: "0.08"
+              - generic [ref=e121]: "0.045"
+              - generic [ref=e122]: $7,812.53
+              - generic [ref=e123]: $62500.23
+              - generic [ref=e124]: $420.12 (5.68%)
+            - row "BNB SPOT BNB 5.35 5.35 0 $3,103.54 $580.1 $42.01 (1.37%)" [ref=e125]:
+              - generic [ref=e127]:
+                - generic [ref=e128]: B
+                - generic [ref=e129]:
+                  - generic [ref=e130]:
+                    - text: BNB
+                    - generic [ref=e131]: SPOT
+                  - generic [ref=e132]: BNB
+              - generic [ref=e133]: "5.35"
+              - generic [ref=e134]: "5.35"
+              - generic [ref=e135]: "0"
+              - generic [ref=e136]: $3,103.54
+              - generic [ref=e137]: $580.1
+              - generic [ref=e138]: $42.01 (1.37%)
+            - row "DOGE SPOT Dogecoin 10000 10000 0 $1,700.00 $0.17 -$55.00 (-3.14%)" [ref=e139]:
+              - generic [ref=e141]:
+                - generic [ref=e142]: D
+                - generic [ref=e143]:
+                  - generic [ref=e144]:
+                    - text: DOGE
+                    - generic [ref=e145]: SPOT
+                  - generic [ref=e146]: Dogecoin
+              - generic [ref=e147]: "10000"
+              - generic [ref=e148]: "10000"
+              - generic [ref=e149]: "0"
+              - generic [ref=e150]: $1,700.00
+              - generic [ref=e151]: $0.17
+              - generic [ref=e152]: "-$55.00 (-3.14%)"
+            - row "ADA LOCKED Cardano 1200 1180 20 $744.00 $0.62 —" [ref=e153]:
+              - generic [ref=e155]:
+                - generic [ref=e156]: A
+                - generic [ref=e157]:
+                  - generic [ref=e158]:
+                    - text: ADA
+                    - generic [ref=e159]: LOCKED
+                  - generic [ref=e160]: Cardano
+              - generic [ref=e161]: "1200"
+              - generic [ref=e162]: "1180"
+              - generic [ref=e163]: "20"
+              - generic [ref=e164]: $744.00
+              - generic [ref=e165]: $0.62
+              - generic [ref=e166]: —
+            - row "ARB SPOT Arbitrum 400 400 0 $728.00 $1.82 $18.50 (2.61%)" [ref=e167]:
+              - generic [ref=e169]:
+                - generic [ref=e170]: A
+                - generic [ref=e171]:
+                  - generic [ref=e172]:
+                    - text: ARB
+                    - generic [ref=e173]: SPOT
+                  - generic [ref=e174]: Arbitrum
+              - generic [ref=e175]: "400"
+              - generic [ref=e176]: "400"
+              - generic [ref=e177]: "0"
+              - generic [ref=e178]: $728.00
+              - generic [ref=e179]: $1.82
+              - generic [ref=e180]: $18.50 (2.61%)
+            - row "XRP SPOT XRP 950 950 0 $532.00 $0.56 —" [ref=e181]:
+              - generic [ref=e183]:
+                - generic [ref=e184]: X
+                - generic [ref=e185]:
+                  - generic [ref=e186]:
+                    - text: XRP
+                    - generic [ref=e187]: SPOT
+                  - generic [ref=e188]: XRP
+              - generic [ref=e189]: "950"
+              - generic [ref=e190]: "950"
+              - generic [ref=e191]: "0"
+              - generic [ref=e192]: $532.00
+              - generic [ref=e193]: $0.56
+              - generic [ref=e194]: —
+        - generic [ref=e195]:
+          - generic [ref=e196]: Prototype · 8 rows visíveis · sort value/desc
+          - generic [ref=e197]:
+            - button "Simular loading" [ref=e198] [cursor=pointer]
+            - button "Simular erro" [ref=e199] [cursor=pointer]
+    - generic [ref=e201]: "Prototipo estático para orientar DEV. Estados: default, empty, loading, error (toast)."

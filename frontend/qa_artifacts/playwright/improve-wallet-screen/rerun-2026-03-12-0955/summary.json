@@ -1,0 +1,32 @@
+[
+  {
+    "name": "proto-desktop",
+    "url": "http://72.60.150.140:5173/qa-artifacts/playwright/improve-wallet-screen/rerun-2026-03-12-0955/proto-desktop.png",
+    "sourceUrl": "http://127.0.0.1:5173/prototypes/improve-wallet-screen/",
+    "notes": "Approved prototype desktop reference"
+  },
+  {
+    "name": "impl-desktop",
+    "url": "http://72.60.150.140:5173/qa-artifacts/playwright/improve-wallet-screen/rerun-2026-03-12-0955/impl-desktop-loaded.png",
+    "sourceUrl": "http://127.0.0.1:5173/external/balances",
+    "notes": "Implementation desktop after waitForLoadState('networkidle') + 3s"
+  },
+  {
+    "name": "proto-mobile",
+    "url": "http://72.60.150.140:5173/qa-artifacts/playwright/improve-wallet-screen/rerun-2026-03-12-0955/proto-mobile.png",
+    "sourceUrl": "http://127.0.0.1:5173/prototypes/improve-wallet-screen/",
+    "notes": "Approved prototype mobile reference"
+  },
+  {
+    "name": "impl-mobile",
+    "url": "http://72.60.150.140:5173/qa-artifacts/playwright/improve-wallet-screen/rerun-2026-03-12-0955/impl-mobile-loaded.png",
+    "sourceUrl": "http://127.0.0.1:5173/external/balances",
+    "notes": "Implementation mobile after waitForLoadState('networkidle') + 3s"
+  },
+  {
+    "name": "verdict",
+    "status": "failed",
+    "gate": "QA",
+    "reason": "Desktop composition still diverges materially from the approved prototype: main wallet content remains visually compressed in the upper-left with excessive empty area to the right/below. Mobile is acceptable/closer, but the desktop blocker remains unresolved."
+  }
+]

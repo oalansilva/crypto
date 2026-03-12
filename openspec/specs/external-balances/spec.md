@@ -68,3 +68,35 @@ The Wallet UI (`/external/balances`) MUST display PnL columns and visually indic
 - **THEN** it MUST show `avg_cost_usdt`, `pnl_usd`, and `pnl_pct` when available
 - **AND** show `-` when not available
 
+### Requirement: Wallet API MUST return snapshot timestamp
+The Wallet balances endpoint MUST return an `as_of` timestamp so the UI can display when the snapshot was taken.
+
+#### Scenario: Timestamp present
+- **WHEN** the user calls `GET /api/external/binance/spot/balances`
+- **THEN** the response MUST include `as_of`
+
+### Requirement: Wallet API MUST support dust threshold override
+The Wallet balances endpoint MUST accept a query param `min_usd` (optional float) to override dust filtering.
+
+#### Scenario: Default dust behavior
+- **WHEN** `min_usd` is not provided
+- **THEN** the endpoint MUST behave with the default dust threshold (currently 0.02)
+
+#### Scenario: Include dust
+- **WHEN** `min_usd=0`
+- **THEN** the endpoint MUST include rows that would otherwise be filtered as dust
+
+### Requirement: Wallet UI MUST provide search and locked-only filtering
+
+#### Scenario: Search
+- **WHEN** the user searches by asset symbol
+- **THEN** the UI MUST filter rows case-insensitively by `asset`
+
+#### Scenario: Locked only
+- **WHEN** the user enables a "locked only" filter
+- **THEN** the UI MUST show only rows where `locked > 0`
+
+### Requirement: Wallet UI MUST be usable on mobile
+- **WHEN** the viewport is narrow
+- **THEN** the UI MUST not require horizontal scrolling to inspect balances
+

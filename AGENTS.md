@@ -6,8 +6,13 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 - **Branch padrão:** trabalhe em `feature/long-change` (evite commits diretos na `main`).
 - **Fluxo operacional atual:** Workflow DB/Postgres = fonte runtime; Kanban = interface principal; OpenSpec = artefatos/documentação.
+- **Legado proibido para operação ativa:** não usar `docs/coordination/*.md` como superfície operacional para tracking ativo, evidências de QA, handoffs ou progresso corrente; usar somente workflow DB + Kanban comments/work items, com OpenSpec como camada de artefatos.
 - **Criação de change:** use `scripts/create_change_and_seed.sh <change-name>` para garantir OpenSpec + coordination + workflow DB/Kanban no mesmo passo.
+- **QA UI/browser:** preferir **Microsoft Playwright CLI** (`playwright-cli`) em vez de MCP para automação de interface; usar como base a skill oficial local `skills/playwright-cli-official/`; salvar evidências por fluxo (screenshots e, quando útil, trace/video), registrar os caminhos/links no card/tracking e abrir work item do tipo `bug` quando houver problema real.
 - **Gates:** PO → DESIGN (quando UI) → Alan approval → DEV → QA → Alan homologation → archive.
+- **Testes UI/E2E:** QA é o dono da validação; Playwright é a ferramenta principal de automação; Codex CLI entra como apoio para escrever/ajustar/depurar/rodar os testes, sem substituir a decisão de QA.
+- **Design de interface em Codex CLI:** usar `skills/interface-design-codex/` como referência padrão para trabalho de DESIGN e apoio de revisão visual.
+- **Playwright headed neste servidor:** preferir `/usr/local/bin/playwright-cli-headed` e um único `run-code` com `goto + interações + screenshot` no mesmo fluxo.
 - **Escopo de mudanças:** prefira mexer apenas em `backend/`, `frontend/`, `src/`, `tests/`, `openspec/`.
 
 ## Como rodar (VPS / dev)
@@ -71,6 +76,8 @@ O orquestrador controla cinco agentes virtuais (main, design, PO, DEV, QA). Cada
 - O **workflow DB** é a fonte operacional de verdade.
 - **OpenSpec** serve como camada de artefatos/documentação.
 - Comentários do Kanban são o canal padrão entre agentes, com menções `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`.
+- Nenhum agente (PO/DESIGN/DEV/QA) pode considerar sua etapa concluída só com OpenSpec/arquivos; é obrigatório atualizar o runtime/Kanban e deixar comentário de handoff no mesmo turno.
+- Quando Alan homologar uma change em chat, o orquestrador deve fechar e arquivar no mesmo turno (runtime/Kanban + OpenSpec), sem deixar pendência operacional.
 - Múltiplas stories/agentes podem trabalhar em paralelo, desde que respeitem **locks**, **dependências** e **WIP**.
 - Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
 

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prototype — Wallet (External Balances)</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Pular para o conteúdo</a>
+
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <div class="brand">
+          <div class="brand__mark" aria-hidden="true">◼</div>
+          <div class="brand__text">
+            <div class="brand__name">Crypto Lab</div>
+            <div class="brand__sub">Prototype · Carteira · /external/balances</div>
+          </div>
+        </div>
+
+        <div class="topbar__actions">
+          <button class="btn btn--ghost" type="button" data-action="export">Exportar</button>
+          <button class="btn" type="button" data-action="refresh">Atualizar</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" class="container main">
+      <section class="pagehead" aria-label="Cabeçalho">
+        <div class="pagehead__left">
+          <h1 class="title">Carteira</h1>
+          <div class="sub">
+            <span class="pill">Binance Spot</span>
+            <span class="dot" aria-hidden="true">·</span>
+            <span class="muted">read-only</span>
+            <span class="dot" aria-hidden="true">·</span>
+            <span class="muted">as of <time id="asOf">2026-03-12 02:10 UTC</time></span>
+          </div>
+        </div>
+
+        <div class="pagehead__right">
+          <div class="kpi">
+            <div class="kpi__label">Total</div>
+            <div class="kpi__value" id="kpiTotal">$0.00</div>
+            <div class="kpi__sub" id="kpiMeta">—</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="summary" aria-label="Resumo">
+        <article class="card kpiCard">
+          <div class="kpiCard__label">Total USD</div>
+          <div class="kpiCard__value" id="sumTotal">$0.00</div>
+          <div class="kpiCard__meta muted">Soma do valor (USD) das linhas visíveis</div>
+        </article>
+
+        <article class="card kpiCard">
+          <div class="kpiCard__label">Locked USD</div>
+          <div class="kpiCard__value" id="sumLocked">$0.00</div>
+          <div class="kpiCard__meta muted">Estimado por “locked” × preço</div>
+        </article>
+
+        <article class="card kpiCard">
+          <div class="kpiCard__label">PnL (parcial)</div>
+          <div class="kpiCard__value" id="sumPnl">—</div>
+          <div class="kpiCard__meta muted">Apenas para ativos com avg cost / pnl calculados</div>
+        </article>
+      </section>
+
+      <section class="controls" aria-label="Controles">
+        <div class="controls__row">
+          <label class="field" aria-label="Buscar">
+            <span class="field__label">Buscar</span>
+            <input id="q" class="input" placeholder="BTC, ETH, SOL…" autocomplete="off" />
+          </label>
+
+          <label class="field" aria-label="Min USD">
+            <span class="field__label">Dust threshold</span>
+            <div class="field__inline">
+              <input id="minUsd" class="input input--num" type="number" min="0" step="0.01" value="0.02" />
+              <span class="field__unit">USD</span>
+            </div>
+          </label>
+
+          <label class="toggle" for="lockedOnly">
+            <input id="lockedOnly" type="checkbox" />
+            <span class="toggle__ui" aria-hidden="true"></span>
+            <span class="toggle__label">Locked only</span>
+          </label>
+
+          <label class="field" aria-label="Ordenação">
+            <span class="field__label">Ordenar</span>
+            <select id="sort" class="select">
+              <option value="value_desc">Maior valor</option>
+              <option value="value_asc">Menor valor</option>
+              <option value="asset_asc">Ativo (A–Z)</option>
+              <option value="asset_desc">Ativo (Z–A)</option>
+              <option value="pnl_desc">PnL (maior)</option>
+              <option value="pnl_asc">PnL (menor)</option>
+            </select>
+          </label>
+
+          <div class="controls__meta" id="metaLine">
+            <span class="muted">—</span>
+          </div>
+        </div>
+
+        <div class="callout" role="note" id="pnlCaveat">
+          <div class="callout__title">Nota sobre PnL</div>
+          <div class="callout__body">
+            O backend calcula <strong>avg cost / pnl</strong> somente para um número limitado de ativos (budget de tempo).
+            A UI deve sinalizar <strong>parcial</strong> e não sugerir contabilidade completa.
+          </div>
+        </div>
+      </section>
+
+      <section class="content" aria-label="Conteúdo">
+        <div class="panel" id="panel">
+          <div class="panel__header">
+            <div>
+              <h2 class="panel__title">Balances</h2>
+              <div class="panel__sub muted">Layout responsivo: tabela (desktop) / cards (mobile)</div>
+            </div>
+            <div class="panel__headerRight">
+              <button class="btn btn--ghost btn--small" type="button" data-action="reset">Reset filtros</button>
+            </div>
+          </div>
+
+          <div class="state" id="stateEmpty" hidden>
+            <div class="state__title">Nada para mostrar</div>
+            <div class="state__desc">
+              Pode ser que todos os ativos tenham ficado abaixo do seu <strong>min USD</strong>, ou que a busca não encontrou nenhum símbolo.
+            </div>
+          </div>
+
+          <div class="table" aria-label="Tabela de balances">
+            <div class="table__row table__row--head" role="row">
+              <button class="th" type="button" data-sort="asset">Ativo</button>
+              <div class="th th--num">Total</div>
+              <div class="th th--num">Free</div>
+              <div class="th th--num">Locked</div>
+              <button class="th th--num" type="button" data-sort="value">Valor (USD)</button>
+              <div class="th th--num">Preço</div>
+              <button class="th th--num" type="button" data-sort="pnl">PnL</button>
+            </div>
+            <div id="rows" class="table__body" role="rowgroup"></div>
+          </div>
+
+          <div id="cards" class="cards" aria-label="Cards de balances"></div>
+
+          <div class="panel__footer">
+            <div class="muted" id="footerMeta">Prototype · dados fake · v0</div>
+            <div class="panel__footerRight">
+              <button class="btn btn--ghost btn--small" type="button" data-action="loading">Simular loading</button>
+              <button class="btn btn--ghost btn--small" type="button" data-action="error">Simular erro</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div class="muted">Prototipo estático para orientar DEV. Estados: default, empty, loading, error (toast).</div>
+      </footer>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+      <div class="toast__title" id="toastTitle">Erro</div>
+      <div class="toast__body" id="toastBody">Falha ao carregar balances.</div>
+      <button class="toast__x" type="button" aria-label="Fechar" data-action="toast-close">×</button>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

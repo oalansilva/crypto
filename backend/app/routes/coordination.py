@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 from app.services.change_tasks_service import get_change_tasks_checklist
 from app.services.coordination_comments_service import add_comment, list_comments
 from app.services.coordination_service import list_coordination_changes
+from app.workflow_database import WorkflowSessionLocal
+from app.workflow_models import Change, Project
 
 
 router = APIRouter(prefix="/api/coordination", tags=["coordination"])
@@ -111,4 +113,35 @@ async def post_comment(
         raise HTTPException(status_code=404, detail=f"Unknown change '{change_id}'")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    # Best-effort dual-write into the workflow DB so the Kanban drawer (which
+    # reads wf_comments) always renders evidence even if a client posts to the
+    # legacy coordination endpoint.
+    try:
+        if WorkflowSessionLocal is not None:
+            from app.services.workflow_coordination_bridge import (
+                dual_write_coordination_comment_to_workflow_db,
+            )
+
+            with WorkflowSessionLocal() as db:
+                project = db.query(Project).order_by(Project.created_at.asc()).first()
+                if project is not None:
+                    change = (
+                        db.query(Change)
+                        .filter(Change.project_id == project.id, Change.change_id == change_id)
+                        .first()
+                    )
+                    if change is not None:
+                        dual_write_coordination_comment_to_workflow_db(
+                            db,
+                            change_pk=change.id,
+                            comment_id=str(item.get("id") or ""),
+                            author=str(item.get("author") or ""),
+                            body=str(item.get("body") or ""),
+                            created_at_iso=str(item.get("created_at") or ""),
+                        )
+    except Exception:
+        # Never break legacy endpoint if workflow DB write fails.
+        pass
+
     return CoordinationCommentCreateResponse(item=item)

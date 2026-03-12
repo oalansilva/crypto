@@ -1,0 +1,174 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - link "Crypto Backtester Professional Trading Analysis" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - generic [ref=e14]:
+          - text: Crypto Backtester
+          - paragraph [ref=e15]: Professional Trading Analysis
+      - navigation "Navegação principal" [ref=e16]:
+        - link "Playground" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=e18]
+          - text: Playground
+        - link "Favorites" [ref=e23] [cursor=pointer]:
+          - /url: /favorites
+          - img [ref=e24]
+          - text: Favorites
+        - link "Monitor" [ref=e26] [cursor=pointer]:
+          - /url: /monitor
+          - img [ref=e27]
+          - text: Monitor
+        - link "Kanban" [ref=e29] [cursor=pointer]:
+          - /url: /kanban
+          - img [ref=e30]
+          - text: Kanban
+        - link "Lab" [ref=e34] [cursor=pointer]:
+          - /url: /lab
+          - img [ref=e35]
+          - text: Lab
+        - link "Arbitragem" [ref=e40] [cursor=pointer]:
+          - /url: /arbitrage
+          - img [ref=e41]
+          - text: Arbitragem
+        - link "Combo" [ref=e47] [cursor=pointer]:
+          - /url: /combo/select
+          - img [ref=e48]
+          - text: Combo
+        - link "Carteira" [ref=e52] [cursor=pointer]:
+          - /url: /external/balances
+          - img [ref=e53]
+          - text: Carteira
+  - main [ref=e56]:
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - heading "Carteira" [level=1] [ref=e60]:
+            - img [ref=e61]
+            - text: Carteira
+          - generic [ref=e64]:
+            - generic [ref=e65]: Binance Spot — read-only
+            - generic [ref=e66]: •
+            - generic [ref=e67]: "dust: < $0.02"
+        - generic [ref=e68]:
+          - button "Refresh" [ref=e69] [cursor=pointer]:
+            - img [ref=e70]
+            - text: Refresh
+          - button "Reset" [ref=e75] [cursor=pointer]
+      - generic [ref=e76]:
+        - generic [ref=e77]:
+          - generic [ref=e78]: Total (USD)
+          - generic [ref=e79]: $174.21
+          - generic [ref=e80]: 4 ativos · filtro min USD 0.02
+        - generic [ref=e81]:
+          - generic [ref=e82]: Locked (estimado)
+          - generic [ref=e83]: $173.27
+          - generic [ref=e84]: locked * price_usdt
+        - generic [ref=e85]:
+          - generic [ref=e86]: PnL (parcial)
+          - generic [ref=e87]: $16.83
+          - generic [ref=e88]: (4/4)
+      - generic [ref=e89]:
+        - generic [ref=e90]:
+          - generic [ref=e91]:
+            - generic [ref=e92]: Buscar
+            - textbox "Buscar" [ref=e93]:
+              - /placeholder: BTC, ETH…
+          - generic [ref=e94]:
+            - generic [ref=e95]: Min USD (dust)
+            - generic [ref=e96]:
+              - textbox "Min USD (dust) USD" [ref=e97]: "0.02"
+              - generic [ref=e98]: USD
+          - generic [ref=e99]:
+            - generic [ref=e100]: Locked only
+            - generic [ref=e101]:
+              - checkbox "Locked only Mostrar somente locked" [ref=e102]
+              - generic [ref=e103]: Mostrar somente locked
+          - generic [ref=e104]:
+            - generic [ref=e105]: Ordenar
+            - combobox "Ordenar" [ref=e106]:
+              - option "Value (USD) ↓"
+              - option "Value (USD) ↑"
+              - option "Asset A→Z" [selected]
+              - option "Asset Z→A"
+              - option "PnL ↓"
+              - option "PnL ↑"
+          - button "Sync" [ref=e108] [cursor=pointer]
+        - generic [ref=e109]: "min USD: 0.02 · sort: asset/asc"
+        - generic [ref=e110]:
+          - generic [ref=e111]: PnL é parcial
+          - generic [ref=e112]: O backend computa avg_cost/pnl apenas para um número limitado de símbolos (por orçamento de chamadas).
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - heading "Saldos" [level=2] [ref=e116]
+            - generic [ref=e117]: "total_usd (server): $174.21"
+          - generic [ref=e118]: 4 rows
+        - generic [ref=e283]:
+          - generic [ref=e284]:
+            - button "Asset" [ref=e285]
+            - generic [ref=e286]: Total
+            - generic [ref=e287]: Free
+            - generic [ref=e288]: Locked
+            - button "Value (USD)" [ref=e289]
+            - generic [ref=e290]: Price
+            - button "PnL" [ref=e291]
+          - generic [ref=e292]:
+            - generic [ref=e319]:
+              - generic [ref=e320]:
+                - generic [ref=e321]: B
+                - generic [ref=e322]:
+                  - generic [ref=e323]:
+                    - text: BNB
+                    - generic [ref=e324]: SPOT
+                  - generic [ref=e325]: spot
+              - generic [ref=e326]: "0.00084157"
+              - generic [ref=e327]: "0.00084157"
+              - generic [ref=e328]: "0"
+              - generic [ref=e329]: $0.54
+              - generic [ref=e330]: $645.16
+              - generic [ref=e331]: $0.13 (32.85%)
+            - generic [ref=e293]:
+              - generic [ref=e294]:
+                - generic [ref=e295]: B
+                - generic [ref=e296]:
+                  - generic [ref=e297]:
+                    - text: BTC
+                    - generic [ref=e298]: LOCKED
+                  - generic [ref=e299]: "locked: 0.00128"
+              - generic [ref=e300]: "0.00128"
+              - generic [ref=e301]: "0"
+              - generic [ref=e302]: "0.00128"
+              - generic [ref=e303]: $88.98
+              - generic [ref=e304]: $69518.48
+              - generic [ref=e305]: $20.54 (30.01%)
+            - generic [ref=e306]:
+              - generic [ref=e307]:
+                - generic [ref=e308]: H
+                - generic [ref=e309]:
+                  - generic [ref=e310]:
+                    - text: HBAR
+                    - generic [ref=e311]: LOCKED
+                  - generic [ref=e312]: "locked: 896"
+              - generic [ref=e313]: "896.103"
+              - generic [ref=e314]: "0.103"
+              - generic [ref=e315]: "896"
+              - generic [ref=e316]: $84.30
+              - generic [ref=e317]: $0.09407
+              - generic [ref=e318]: "-$3.84 (-4.36%)"
+            - generic [ref=e332]:
+              - generic [ref=e333]:
+                - generic [ref=e334]: U
+                - generic [ref=e335]:
+                  - generic [ref=e336]:
+                    - text: USDT
+                    - generic [ref=e337]: SPOT
+                  - generic [ref=e338]: spot
+              - generic [ref=e339]: "0.38484269"
+              - generic [ref=e340]: "0.38484269"
+              - generic [ref=e341]: "0"
+              - generic [ref=e342]: $0.38
+              - generic [ref=e343]: $1
+              - generic [ref=e344]: $0.00 (0%)
+        - generic [ref=e346]: Carteira · 4 rows visíveis · sort asset/asc

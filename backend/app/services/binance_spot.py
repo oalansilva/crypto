@@ -56,7 +56,7 @@ def _signed_get(
         return json.load(f)
 
 
-def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None) -> Dict[str, Any]:
+def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None, min_usd: Optional[float] = None) -> Dict[str, Any]:
     """Fetch Binance Spot balances using server-side env credentials.
 
     Env vars:
@@ -73,7 +73,8 @@ def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None) -> Dict
     Returns:
       {
         "balances": [{"asset","free","locked","total","price_usdt","value_usd"}, ...],
-        "total_usd": <float>
+        "total_usd": <float>,
+        "as_of": <iso8601 str>
       }
 
     Notes:
@@ -92,6 +93,7 @@ def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None) -> Dict
     trade_budget_s = _clamp_int(_get_int_env("BINANCE_TRADE_LOOKUPS_BUDGET_SECONDS", 15), 1, 120)
 
     ts = int(time.time() * 1000)
+    as_of_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts / 1000.0))
     payload = _signed_get(base_url, api_key, api_secret, "/api/v3/account", {"timestamp": ts}, timeout_s=timeout_s)
 
     balances = payload.get("balances") or []
@@ -103,7 +105,8 @@ def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None) -> Dict
     out: List[Dict[str, Any]] = []
     total_usd = 0.0
 
-    MIN_USD_VALUE_TO_SHOW = 0.02
+    # Dust threshold (backward-compatible default): hide positions with value_usd < 0.02
+    MIN_USD_VALUE_TO_SHOW = float(min_usd) if min_usd is not None else 0.02
 
     for b in balances:
         asset = (b.get("asset") or "").strip().upper()
@@ -177,4 +180,4 @@ def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None) -> Dict
         return (-v_sort, -float(x.get("total") or 0), str(x.get("asset") or ""))
 
     out.sort(key=_sort_key)
-    return {"balances": out, "total_usd": total_usd}
+    return {"balances": out, "total_usd": total_usd, "as_of": as_of_iso}
