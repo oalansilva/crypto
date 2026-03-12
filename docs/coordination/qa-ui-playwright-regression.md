@@ -8,6 +8,11 @@
 - QA: done
 - Alan homologation: approved
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions (draft)
 - Goal: track ongoing browser/UI QA regression flows executed with Playwright for the crypto product.
 - Operational rule: use only workflow DB + Kanban comments/work items for active tracking; do not use legacy coordination as the runtime surface.
