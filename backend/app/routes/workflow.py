@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+import re
 from typing import Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,6 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.services.upstream_guard import ENFORCED_STATUSES, UpstreamGuardError, require_upstream_published
+from app.services.workflow_transition_service import KANBAN_COLUMNS, sync_change_gates_for_column
 from app.workflow_database import get_workflow_db, get_workflow_db_url
 from app.workflow_models import (
     ApprovalScope,
@@ -50,6 +52,11 @@ def _require_db_url() -> str:
     if not url:
         raise HTTPException(status_code=503, detail="Workflow DB disabled. Set WORKFLOW_DB_ENABLED=1.")
     return url
+
+
+def _slugify_change_title(title: str) -> str:
+    base = re.sub(r"[^a-z0-9]+", "-", title.strip().lower()).strip("-")
+    return base or "change"
 
 
 @router.get("/health")
@@ -137,11 +144,13 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_workflow_db
 class ChangeCreate(BaseModel):
     change_id: str = Field(min_length=1, max_length=128)
     title: str = Field(default="", max_length=256)
+    description: str = Field(default="", max_length=2000)
     status: str = Field(default="in_progress", max_length=32)
 
 
 class ChangeUpdate(BaseModel):
     title: Optional[str] = Field(default=None, max_length=256)
+    description: Optional[str] = Field(default=None, max_length=2000)
     status: Optional[str] = Field(default=None, max_length=32)
 
 
@@ -150,6 +159,7 @@ class ChangeOut(BaseModel):
     project_id: str
     change_id: str
     title: str
+    description: str
     status: str
     created_at: datetime
     updated_at: datetime
@@ -333,6 +343,7 @@ def list_changes(project_slug: str, db: Session = Depends(get_workflow_db)):
             project_id=c.project_id,
             change_id=c.change_id,
             title=c.title,
+            description=c.description,
             status=c.status,
             created_at=c.created_at,
             updated_at=c.updated_at,
@@ -353,12 +364,19 @@ def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depend
             project_id=existing.project_id,
             change_id=existing.change_id,
             title=existing.title,
+            description=existing.description,
             status=existing.status,
             created_at=existing.created_at,
             updated_at=existing.updated_at,
         )
 
-    c = Change(project_id=p.id, change_id=change_id, title=payload.title.strip(), status=payload.status.strip())
+    c = Change(
+        project_id=p.id,
+        change_id=change_id,
+        title=payload.title.strip(),
+        description=payload.description.strip(),
+        status=payload.status.strip(),
+    )
     db.add(c)
     db.commit()
     db.refresh(c)
@@ -367,6 +385,7 @@ def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depend
         project_id=c.project_id,
         change_id=c.change_id,
         title=c.title,
+        description=c.description,
         status=c.status,
         created_at=c.created_at,
         updated_at=c.updated_at,
@@ -381,6 +400,7 @@ def get_change(project_slug: str, change_id: str, db: Session = Depends(get_work
         project_id=c.project_id,
         change_id=c.change_id,
         title=c.title,
+        description=c.description,
         status=c.status,
         created_at=c.created_at,
         updated_at=c.updated_at,
@@ -392,6 +412,8 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
     c = _get_change_by_slug_and_id(db, project_slug, change_id)
     if payload.title is not None:
         c.title = payload.title.strip()
+    if payload.description is not None:
+        c.description = payload.description.strip()
     if payload.status is not None:
         new_status = payload.status.strip()
         if new_status in ENFORCED_STATUSES:
@@ -399,7 +421,7 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                 require_upstream_published(REPO_ROOT, target_statuses=[new_status])
             except UpstreamGuardError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
-        c.status = new_status
+        sync_change_gates_for_column(db, change=c, target_column=new_status)
     db.commit()
     db.refresh(c)
     return ChangeOut(
@@ -407,6 +429,7 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
         project_id=c.project_id,
         change_id=c.change_id,
         title=c.title,
+        description=c.description,
         status=c.status,
         created_at=c.created_at,
         updated_at=c.updated_at,
@@ -586,20 +609,12 @@ def create_handoff(project_slug: str, change_id: str, payload: HandoffCreate, db
 # These endpoints intentionally mirror the legacy `/api/coordination/*` response
 # shapes so the Kanban UI can run exclusively on the DB-backed workflow model.
 
-KANBAN_COLUMNS = [
-    "PO",
-    "DESIGN",
-    "Alan approval",
-    "DEV",
-    "QA",
-    "Alan homologation",
-    "Archived",
-]
 
 
 class KanbanChangeItem(BaseModel):
     id: str
     title: Optional[str] = None
+    description: Optional[str] = None
     path: str
     status: Dict[str, str]
     archived: bool
@@ -650,8 +665,17 @@ class KanbanCommentCreateRequest(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
 
 
+class KanbanChangeCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=256)
+    description: str = Field(default="", max_length=2000)
+
+
 class KanbanCommentCreateResponse(BaseModel):
     item: KanbanCommentItem
+
+
+class KanbanChangeCreateResponse(BaseModel):
+    item: KanbanChangeItem
 
 
 def _kanban_project_slug(db: Session, project_slug: Optional[str]) -> str:
@@ -683,6 +707,46 @@ def _latest_change_gate_status(db: Session, change_pk: str) -> Dict[str, str]:
     return out
 
 
+@router.post("/kanban/changes", response_model=KanbanChangeCreateResponse)
+def kanban_create_change(
+    payload: KanbanChangeCreateRequest,
+    project_slug: Optional[str] = Query(default=None),
+    db: Session = Depends(get_workflow_db),
+) -> KanbanChangeCreateResponse:
+    slug = _kanban_project_slug(db, project_slug)
+    project = _get_project_by_slug(db, slug)
+
+    base_id = _slugify_change_title(payload.title)
+    change_id = base_id
+    suffix = 2
+    while db.query(Change).filter(Change.project_id == project.id, Change.change_id == change_id).first():
+        change_id = f"{base_id}-{suffix}"
+        suffix += 1
+
+    change = Change(
+        project_id=project.id,
+        change_id=change_id,
+        title=payload.title.strip(),
+        description=payload.description.strip(),
+        status="Pending",
+    )
+    db.add(change)
+    db.commit()
+    db.refresh(change)
+
+    return KanbanChangeCreateResponse(
+        item=KanbanChangeItem(
+            id=change.change_id,
+            title=change.title or None,
+            description=change.description or None,
+            path=f"openspec/changes/{change.change_id}/proposal",
+            status=_latest_change_gate_status(db, change.id),
+            archived=False,
+            column="Pending",
+        )
+    )
+
+
 @router.get("/kanban/changes", response_model=KanbanChangeListResponse)
 def kanban_list_changes(
     project_slug: Optional[str] = Query(default=None),
@@ -711,6 +775,7 @@ def kanban_list_changes(
             KanbanChangeItem(
                 id=c.change_id,
                 title=c.title or None,
+                description=c.description or None,
                 path=f"openspec/changes/{c.change_id}/proposal",
                 status=status,
                 archived=archived,

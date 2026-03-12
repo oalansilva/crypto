@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Kanban, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -9,6 +9,7 @@ import { API_BASE_URL } from '@/lib/apiBase'
 type CoordinationChangeItem = {
   id: string
   title?: string | null
+  description?: string | null
   path: string
   status: Record<string, string>
   archived: boolean
@@ -56,15 +57,19 @@ type ChangeUpdateResponse = {
   project_id: string
   change_id: string
   title: string
+  description: string
   status: string
   created_at: string
   updated_at: string
 }
 
+const DESKTOP_DRAG_MIME = 'application/x-kanban-change-id'
+
 const MOBILE_SWIPE_THRESHOLD = 48
 const MOBILE_LONG_PRESS_MS = 420
 
 const COLUMNS_ORDER = [
+  'Pending',
   'PO',
   'DESIGN',
   'Alan approval',
@@ -149,8 +154,9 @@ function TaskTree({
 export default function KanbanPage() {
   const qc = useQueryClient()
   const [selected, setSelected] = useState<CoordinationChangeItem | null>(null)
-  const [activeMobileColumn, setActiveMobileColumn] = useState<(typeof COLUMNS_ORDER)[number]>('PO')
+  const [activeMobileColumn, setActiveMobileColumn] = useState<(typeof COLUMNS_ORDER)[number]>('Pending')
   const [moveTarget, setMoveTarget] = useState<CoordinationChangeItem | null>(null)
+  const [dragTargetColumn, setDragTargetColumn] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
   const longPressTimerRef = useRef<number | null>(null)
@@ -260,6 +266,32 @@ export default function KanbanPage() {
     setActiveMobileColumn(COLUMNS_ORDER[next])
   }
 
+  const handleDesktopDragStart = (event: DragEvent, item: CoordinationChangeItem) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData(DESKTOP_DRAG_MIME, item.id)
+    event.dataTransfer.setData('text/plain', item.id)
+  }
+
+  const handleDesktopDragOver = (event: DragEvent, column: string) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    setDragTargetColumn(column)
+  }
+
+  const handleDesktopDrop = (event: DragEvent, column: string) => {
+    event.preventDefault()
+    setDragTargetColumn(null)
+    const changeId = event.dataTransfer.getData(DESKTOP_DRAG_MIME) || event.dataTransfer.getData('text/plain')
+    if (!changeId) return
+    const item = items.find((candidate) => candidate.id === changeId)
+    if (!item || item.column === column) return
+    moveChange.mutate({ changeId, status: column })
+  }
+
+  const handleDesktopDragEnd = () => {
+    setDragTargetColumn(null)
+  }
+
   const handleBoardTouchStart = (clientX: number) => {
     touchStartX.current = clientX
     touchDeltaX.current = 0
@@ -349,6 +381,38 @@ export default function KanbanPage() {
 
   const [author, setAuthor] = useState(() => localStorage.getItem('kanban.commentAuthor') || '')
   const [body, setBody] = useState('')
+  const [newTitle, setNewTitle] = useState('')
+  const [newDescription, setNewDescription] = useState('')
+
+  const createChange = useMutation({
+    mutationFn: async () => {
+      const title = newTitle.trim()
+      const description = newDescription.trim()
+      if (!title) throw new Error('Title is required')
+
+      const res = await fetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=crypto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description }),
+      })
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`Failed to create card (${res.status})${txt ? `: ${txt}` : ''}`)
+      }
+
+      return (await res.json()) as { item: CoordinationChangeItem }
+    },
+    onSuccess: async (data) => {
+      setNewTitle('')
+      setNewDescription('')
+      setSelected(data.item)
+      setActiveMobileColumn('Pending')
+      await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', data.item.id, 'tasks'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', data.item.id, 'comments'] })
+    },
+  })
 
   const createComment = useMutation({
     mutationFn: async () => {
@@ -404,18 +468,38 @@ export default function KanbanPage() {
             >
               <Search className="w-4 h-4 text-gray-200" />
             </button>
-            <button
+            <Button
               type="button"
-              className="h-10 px-3 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-gray-100"
-              aria-label="New"
+              onClick={() => createChange.mutate()}
+              disabled={createChange.isPending || !newTitle.trim()}
+              className="h-10 px-3 rounded-xl"
+              aria-label="Create new card"
             >
-              New
-            </button>
+              {createChange.isPending ? 'Creating…' : 'New'}
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Mobile-only search row (toggle from topbar). */}
+      <div className="sm:hidden border-b border-white/10 bg-zinc-950/70 backdrop-blur">
+        <div className="px-4 py-3 space-y-2">
+          <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Novo card / backlog item" />
+          <textarea
+            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+            rows={3}
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
+            maxLength={2000}
+            placeholder="Descrição opcional"
+          />
+          {createChange.error ? (
+            <div className="text-xs text-red-400">
+              {createChange.error instanceof Error ? createChange.error.message : 'Falha ao criar card'}
+            </div>
+          ) : null}
+        </div>
+      </div>
       {mobileSearchOpen ? (
         <div className="sm:hidden border-b border-white/10 bg-zinc-950/70 backdrop-blur">
           <div className="px-4 py-3 flex items-center gap-2">
@@ -441,15 +525,40 @@ export default function KanbanPage() {
         </div>
       ) : null}
 
-      {/* Desktop header (unchanged) */}
-      <div className="hidden sm:flex items-start justify-between gap-6 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Kanban className="w-5 h-5" /> Kanban
-          </h1>
-          <p className="text-sm text-gray-400">
-            Visualização de coordenação (desktop-first). Colunas fixas; inclui ativos + arquivados.
-          </p>
+      <div className="px-4 py-3 sm:px-0 sm:py-0 sm:mb-6">
+        <div className="rounded-2xl border border-white/10 bg-zinc-950/60 p-4 sm:p-5">
+          <div className="sm:flex sm:items-start sm:justify-between sm:gap-6">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Kanban className="w-5 h-5" /> Kanban
+              </h1>
+              <p className="text-sm text-gray-400">
+                Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
+              </p>
+            </div>
+            <div className="mt-4 sm:mt-0 sm:w-[360px] space-y-2">
+              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Novo card / backlog item" />
+              <textarea
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                rows={3}
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                maxLength={2000}
+                placeholder="Descrição opcional"
+              />
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-500">Cria direto em Pending.</div>
+                <Button onClick={() => createChange.mutate()} disabled={createChange.isPending || !newTitle.trim()}>
+                  {createChange.isPending ? 'Criando…' : 'Criar card'}
+                </Button>
+              </div>
+              {createChange.error ? (
+                <div className="text-xs text-red-400">
+                  {createChange.error instanceof Error ? createChange.error.message : 'Falha ao criar card'}
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -531,7 +640,16 @@ export default function KanbanPage() {
                   {COLUMNS_ORDER.map((col) => {
                     const colItems = byColumn.get(col) || []
                     return (
-                      <section key={col} className="w-[320px] shrink-0 rounded-xl border border-white/10 bg-zinc-900/40">
+                      <section
+                        key={col}
+                        className={
+                          'w-[320px] shrink-0 rounded-xl border bg-zinc-900/40 transition-colors ' +
+                          (dragTargetColumn === col ? 'border-cyan-400/50' : 'border-white/10')
+                        }
+                        onDragOver={(event) => handleDesktopDragOver(event, col)}
+                        onDrop={(event) => handleDesktopDrop(event, col)}
+                        onDragLeave={() => setDragTargetColumn((curr) => (curr === col ? null : curr))}
+                      >
                         <div className="px-4 py-3 border-b border-white/10">
                           <div className="flex items-center justify-between gap-3">
                             <div className="font-semibold text-sm text-white">{col}</div>
@@ -547,6 +665,9 @@ export default function KanbanPage() {
                               <button
                                 type="button"
                                 key={it.id}
+                                draggable={!it.archived && !moveChange.isPending}
+                                onDragStart={(event) => handleDesktopDragStart(event, it)}
+                                onDragEnd={handleDesktopDragEnd}
                                 onClick={() => setSelected(it)}
                                 className={
                                   'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 ' +
@@ -563,6 +684,10 @@ export default function KanbanPage() {
                                     <div className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-gray-300">archived</div>
                                   ) : null}
                                 </div>
+
+                                {it.description ? (
+                                  <div className="mt-2 text-xs text-gray-300 break-words">{it.description}</div>
+                                ) : null}
 
                                 <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
                                   <StatusLine label="PO" value={it.status?.['PO']} />
@@ -721,6 +846,7 @@ export default function KanbanPage() {
                   <div className="text-sm text-gray-400">Detalhes</div>
                   <div className="text-lg font-semibold text-white truncate">{selected.title || selected.id}</div>
                   <div className="text-[11px] text-gray-500 font-mono truncate">{selected.id}</div>
+                {selected.description ? <div className="mt-2 text-sm text-gray-300 whitespace-pre-wrap">{selected.description}</div> : null}
                 </div>
                 <Button variant="ghost" onClick={() => setSelected(null)} aria-label="Close panel">
                   <X className="w-4 h-4" />

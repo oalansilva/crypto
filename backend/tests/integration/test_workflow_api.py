@@ -38,18 +38,25 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
 
     change = client.post(
         "/api/workflow/projects/crypto/changes",
-        json={"change_id": "centralize-workflow-state-db", "title": "Workflow DB", "status": "in_progress"},
+        json={
+            "change_id": "centralize-workflow-state-db",
+            "title": "Workflow DB",
+            "description": "Initial workflow runtime cutover",
+            "status": "in_progress",
+        },
     )
     assert change.status_code == 200
     change_body = change.json()
     assert change_body["change_id"] == "centralize-workflow-state-db"
+    assert change_body["description"] == "Initial workflow runtime cutover"
 
     updated = client.patch(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db",
-        json={"status": "dev_in_progress", "title": "Workflow DB APIs"},
+        json={"status": "DEV", "title": "Workflow DB APIs", "description": "APIs and Kanban compat"},
     )
     assert updated.status_code == 200
-    assert updated.json()["status"] == "dev_in_progress"
+    assert updated.json()["status"] == "DEV"
+    assert updated.json()["description"] == "APIs and Kanban compat"
 
     story = client.post(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/tasks",
@@ -125,7 +132,9 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
 
     approvals = client.get("/api/workflow/projects/crypto/changes/centralize-workflow-state-db/approvals")
     assert approvals.status_code == 200
-    assert len(approvals.json()) == 1
+    approval_items = approvals.json()
+    assert len(approval_items) >= 1
+    assert approval_items[-1]["gate"] == "Alan approval"
 
     handoffs = client.get(
         f"/api/workflow/projects/crypto/changes/centralize-workflow-state-db/handoffs?work_item_id={story_id}"

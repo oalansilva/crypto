@@ -31,6 +31,7 @@ from app.workflow_models import ApprovalScope, ApprovalState, Change, WorkflowAp
 
 
 KANBAN_FLOW_ORDER = [
+    "Pending",
     "PO",
     "DESIGN",
     "Alan approval",
@@ -188,6 +189,8 @@ def reconcile_change_forward(db: Session, *, change: Change) -> bool:
         desired_col = "Archived"
 
     current = (change.status or "").strip() or "PO"
+    if current == "Pending":
+        return False
     if current.lower() == "archived":
         current = "Archived"
 

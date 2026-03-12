@@ -22,6 +22,7 @@ import os
 from pathlib import Path
 
 from sqlalchemy import create_engine
+from sqlalchemy import text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import get_settings
@@ -94,6 +95,16 @@ def init_workflow_schema() -> None:
     )
 
     WorkflowBase.metadata.create_all(bind=workflow_engine)
+
+    # Lightweight forward-only migration for older workflow DBs.
+    with workflow_engine.begin() as conn:
+        try:
+            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(wf_changes)"))}
+            if "description" not in cols:
+                conn.execute(text("ALTER TABLE wf_changes ADD COLUMN description TEXT NOT NULL DEFAULT ''"))
+        except Exception:
+            # Best-effort; Postgres/other engines should use proper migrations later.
+            pass
 
 
 def get_workflow_db():
