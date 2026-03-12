@@ -1,0 +1,41 @@
+{
+  "as_of": "2026-03-12T18:04:32Z",
+  "balances": [
+    {
+      "asset": "BTC",
+      "api_avg_cost_usdt": 67825.6,
+      "latest_buy_trade_price": 67825.6,
+      "matches_latest_buy": true,
+      "trade_count": 25,
+      "pnl_usd": 3.00768,
+      "pnl_pct": 3.4643998726144654
+    },
+    {
+      "asset": "HBAR",
+      "api_avg_cost_usdt": 0.09836,
+      "latest_buy_trade_price": 0.09836,
+      "matches_latest_buy": true,
+      "trade_count": 5,
+      "pnl_usd": -3.8711649600000038,
+      "pnl_pct": -4.392029280195208
+    },
+    {
+      "asset": "BNB",
+      "api_avg_cost_usdt": 609.5,
+      "latest_buy_trade_price": 609.5,
+      "matches_latest_buy": true,
+      "trade_count": 6,
+      "pnl_usd": 0.034723178199999996,
+      "pnl_pct": 6.769483182936842
+    },
+    {
+      "asset": "USDT",
+      "api_avg_cost_usdt": 1.0,
+      "latest_buy_trade_price": null,
+      "matches_latest_buy": false,
+      "trade_count": 0,
+      "pnl_usd": 0.0,
+      "pnl_pct": 0.0
+    }
+  ]
+}
