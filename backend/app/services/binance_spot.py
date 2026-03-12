@@ -68,7 +68,7 @@ def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None, min_usd
       - HTTP timeout (env BINANCE_HTTP_TIMEOUT_SECONDS; default 10, clamped 1..60)
       - Max symbols to query trade history for (env BINANCE_MAX_TRADE_SYMBOLS; default 15, clamped 0..200)
       - Total time budget for trade-history lookups (env BINANCE_TRADE_LOOKUPS_BUDGET_SECONDS; default 15, clamped 1..120)
-      - Optional lookback window passed to myTrades (startTime)
+      - Optional lookback window applied when deriving avg_cost_usdt
 
     Returns:
       {
