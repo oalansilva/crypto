@@ -8,6 +8,11 @@
 - QA: done
 - Alan homologation: approved
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions (draft)
 - Rule confirmed by Alan: on `/external/balances`, PnL must use only the latest buy trade for each asset instead of averaging historical buys.
 - No UI redesign is required; this is a behavioral/data-rule adjustment with normal DEV -> QA -> Alan homologation flow.
