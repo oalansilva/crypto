@@ -99,11 +99,25 @@ def init_workflow_schema() -> None:
     # Lightweight forward-only migration for older workflow DBs.
     with workflow_engine.begin() as conn:
         try:
-            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(wf_changes)"))}
+            is_sqlite = str(workflow_engine.url).startswith("sqlite:")
+            if is_sqlite:
+                cols = {row[1] for row in conn.execute(text("PRAGMA table_info(wf_changes)"))}
+            else:
+                rows = conn.execute(
+                    text(
+                        """
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                          AND table_name = 'wf_changes'
+                        """
+                    )
+                )
+                cols = {str(row[0]) for row in rows}
             if "description" not in cols:
                 conn.execute(text("ALTER TABLE wf_changes ADD COLUMN description TEXT NOT NULL DEFAULT ''"))
         except Exception:
-            # Best-effort; Postgres/other engines should use proper migrations later.
+            # Best-effort lightweight compatibility shim.
             pass
 
 
