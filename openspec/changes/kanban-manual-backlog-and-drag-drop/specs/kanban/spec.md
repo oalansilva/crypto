@@ -42,10 +42,3 @@ The backend derivation logic MUST include Pending as the first runtime stage bef
 - **THEN** the derived Kanban column MUST stop reporting `Pending`
 - **AND** the card MUST continue through the normal workflow order after PO
 
-## RENAMED Requirements
-
-- FROM: `### Requirement: Kanban MUST include Pending and DESIGN columns (always visible)`
-- TO: `### Requirement: Kanban MUST include a DESIGN column (always visible)`
-
-- FROM: `### Requirement: Column derivation MUST include Pending`
-- TO: `### Requirement: Column derivation MUST include DESIGN`

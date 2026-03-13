@@ -152,6 +152,20 @@ PREV_STATUS=$(
 # Archive in OpenSpec
 openspec archive "$CHANGE_ID" --yes
 
+ARCHIVE_DIR=""
+for candidate in openspec/changes/archive/*; do
+  [[ -d "$candidate" ]] || continue
+  if [[ "$(basename "$candidate")" == *"$CHANGE_ID"* ]]; then
+    ARCHIVE_DIR="$candidate"
+    break
+  fi
+done
+if [[ -z "$ARCHIVE_DIR" || -d "openspec/changes/$CHANGE_ID" ]]; then
+  echo "ERROR: OpenSpec archive command returned without producing an archived change directory for $CHANGE_ID" >&2
+  echo "       active path still present? $( [[ -d "openspec/changes/$CHANGE_ID" ]] && echo yes || echo no )" >&2
+  exit 1
+fi
+
 # From this point on, OpenSpec archive succeeded; do NOT rollback workflow DB on errors.
 ARCHIVE_COMMITTED=1
 

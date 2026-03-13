@@ -118,29 +118,14 @@ def reconcile_file(change_spec_path: Path, canonical_spec_path: Path) -> list[tu
     lines = change_spec_path.read_text(encoding="utf-8").splitlines()
     sections = split_sections(lines)
     canonical = parse_canonical_requirements(canonical_spec_path)
-    renames: list[tuple[str, str]] = []
+    retargeted: list[tuple[str, str]] = []
     out_sections: list[list[str]] = []
 
-    existing_renames: set[tuple[str, str]] = set()
     for section_name, section_lines in sections:
         if section_name == "RENAMED":
-            current_from: str | None = None
-            current_to: str | None = None
-            for line in section_lines:
-                m = RENAMED_LINE_RE.match(line)
-                if not m:
-                    continue
-                kind, value = m.groups()
-                if kind == "FROM":
-                    current_from = value.strip()
-                else:
-                    current_to = value.strip()
-                if current_from and current_to:
-                    existing_renames.add((current_from, current_to))
-                    current_from = None
-                    current_to = None
-
-    for section_name, section_lines in sections:
+            # Drop stale rename metadata during archive reconciliation.
+            # Archive must target the canonical header that exists *now*.
+            continue
         if section_name != "MODIFIED":
             out_sections.append(section_lines)
             continue
@@ -173,53 +158,19 @@ def reconcile_file(change_spec_path: Path, canonical_spec_path: Path) -> list[tu
             new_block_lines = block_lines[:]
             new_block_lines[0] = f"### Requirement: {target_name}"
             rebuilt.extend(new_block_lines)
-            if (block.name, target_name) not in existing_renames:
-                renames.append((block.name, target_name))
-                existing_renames.add((block.name, target_name))
+            retargeted.append((block.name, target_name))
 
         out_sections.append(rebuilt)
 
-    if not renames:
+    if not retargeted:
         return []
 
     merged_lines: list[str] = []
-    inserted_renamed = False
     for section in out_sections:
-        if section and SECTION_RE.match(section[0]) and SECTION_RE.match(section[0]).group(1) == "RENAMED":
-            merged_lines.extend(section)
-            if section and merged_lines and merged_lines[-1] != "":
-                merged_lines.append("")
-            for old, new in renames:
-                merged_lines.extend([
-                    f"- FROM: `### Requirement: {old}`",
-                    f"- TO: `### Requirement: {new}`",
-                    "",
-                ])
-            inserted_renamed = True
-        else:
-            merged_lines.extend(section)
-
-    if not inserted_renamed:
-        final_lines: list[str] = []
-        inserted = False
-        for idx, section in enumerate(out_sections):
-            final_lines.extend(section)
-            if not inserted and section and SECTION_RE.match(section[0]) and SECTION_RE.match(section[0]).group(1) == "MODIFIED":
-                if final_lines and final_lines[-1] != "":
-                    final_lines.append("")
-                final_lines.append("## RENAMED Requirements")
-                final_lines.append("")
-                for old, new in renames:
-                    final_lines.extend([
-                        f"- FROM: `### Requirement: {old}`",
-                        f"- TO: `### Requirement: {new}`",
-                        "",
-                    ])
-                inserted = True
-        merged_lines = final_lines
+        merged_lines.extend(section)
 
     change_spec_path.write_text("\n".join(merged_lines).rstrip() + "\n", encoding="utf-8")
-    return renames
+    return retargeted
 
 
 def iter_change_spec_files(change_dir: Path) -> Iterable[tuple[Path, Path]]:
