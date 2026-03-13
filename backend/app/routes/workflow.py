@@ -17,6 +17,7 @@ import re
 from typing import Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+import subprocess
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -416,20 +417,44 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
         c.description = payload.description.strip()
     if payload.status is not None:
         new_status = payload.status.strip()
-        if new_status in ENFORCED_STATUSES:
+        if new_status == "Archived" and (c.status or "").strip() != "Archived":
             try:
-                require_upstream_published(REPO_ROOT, target_statuses=[new_status])
-            except UpstreamGuardError as exc:
+                subprocess.run(
+                    ["./scripts/archive_change_safe.sh", change_id],
+                    cwd=REPO_ROOT,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as exc:
+                stderr = (exc.stderr or "").strip()
+                stdout = (exc.stdout or "").strip()
+                message = stderr or stdout or "archive flow failed"
                 raise HTTPException(
                     status_code=409,
                     detail={
-                        "code": "upstream_guard_blocked",
-                        "message": str(exc),
+                        "code": "archive_flow_failed",
+                        "message": message,
                         "target": new_status,
                     },
                 ) from exc
-        sync_change_gates_for_column(db, change=c, target_column=new_status)
-    db.commit()
+        else:
+            if new_status in ENFORCED_STATUSES:
+                try:
+                    require_upstream_published(REPO_ROOT, target_statuses=[new_status])
+                except UpstreamGuardError as exc:
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "code": "upstream_guard_blocked",
+                            "message": str(exc),
+                            "target": new_status,
+                        },
+                    ) from exc
+            sync_change_gates_for_column(db, change=c, target_column=new_status)
+            db.commit()
+    if payload.status is None or new_status == "Archived":
+        db.commit()
     db.refresh(c)
     return ChangeOut(
         id=c.id,

@@ -15,7 +15,7 @@ The system MUST provide a Kanban UI page that lists active OpenSpec/workflow cha
 - **WHEN** there are runtime changes/cards marked as pending backlog items
 - **THEN** the Kanban MUST display one card per pending item in the Pending column
 
-### Requirement: Kanban MUST include Pending and DESIGN columns (always visible)
+### Requirement: Kanban MUST include a DESIGN column (always visible)
 The Kanban board MUST include **Pending** before **PO**, and **DESIGN** between **PO** and **Alan approval**.
 
 #### Scenario: Column ordering
@@ -30,7 +30,7 @@ The Kanban board MUST include **Pending** before **PO**, and **DESIGN** between 
   7) Alan homologation
   8) Archived
 
-### Requirement: Column derivation MUST include Pending
+### Requirement: Column derivation MUST include DESIGN
 The backend derivation logic MUST include Pending as the first runtime stage before PO.
 
 #### Scenario: Card awaiting PO planning
@@ -41,3 +41,11 @@ The backend derivation logic MUST include Pending as the first runtime stage bef
 - **WHEN** a pending card is moved to `PO`
 - **THEN** the derived Kanban column MUST stop reporting `Pending`
 - **AND** the card MUST continue through the normal workflow order after PO
+
+## RENAMED Requirements
+
+- FROM: `### Requirement: Kanban MUST include Pending and DESIGN columns (always visible)`
+- TO: `### Requirement: Kanban MUST include a DESIGN column (always visible)`
+
+- FROM: `### Requirement: Column derivation MUST include Pending`
+- TO: `### Requirement: Column derivation MUST include DESIGN`

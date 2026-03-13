@@ -145,6 +145,10 @@ PREV_STATUS=$(
       --actor "archive_change_safe.sh"
 )
 
+# Reconcile stale OpenSpec MODIFIED headers against the current canonical spec before archive.
+# This keeps archive robust when earlier archived changes renamed requirement headers.
+"$PY_BIN" ./scripts/reconcile_openspec_change_headers.py "$CHANGE_ID"
+
 # Archive in OpenSpec
 openspec archive "$CHANGE_ID" --yes
 

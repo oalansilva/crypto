@@ -6,7 +6,7 @@
 - Alan approval: approved
 - DEV: done
 - QA: done
-- Alan homologation: pending
+- Alan homologation: approved
 
 ## Decisions
 - `Pending` becomes a first-class pre-PO runtime/Kanban column.
