@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Workflow state MUST support a pre-PO pending stage
 The runtime workflow model MUST support a **Pending** stage for backlog items that exist before PO planning starts.
