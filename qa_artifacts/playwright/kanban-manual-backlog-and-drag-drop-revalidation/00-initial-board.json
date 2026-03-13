@@ -1,0 +1,34 @@
+{
+  "originalSource": {
+    "id": "orden-execu-o-dos-cards",
+    "title": "orden execução dos cards",
+    "description": "Quero também no board conseguir ordenar cima ou baixo os cards isso mostra a ordem que os agentes devem ir pegando os cards",
+    "path": "openspec/changes/orden-execu-o-dos-cards/proposal",
+    "status": {
+      "PO": "pending",
+      "DESIGN": "pending",
+      "Alan approval": "pending",
+      "DEV": "pending",
+      "QA": "pending",
+      "Alan homologation": "pending"
+    },
+    "archived": false,
+    "column": "PO"
+  },
+  "originalTarget": {
+    "id": "kanban-manual-backlog-and-drag-drop",
+    "title": "kanban-manual-backlog-and-drag-drop",
+    "description": null,
+    "path": "openspec/changes/kanban-manual-backlog-and-drag-drop/proposal",
+    "status": {
+      "PO": "approved",
+      "DESIGN": "approved",
+      "Alan approval": "approved",
+      "DEV": "pending",
+      "QA": "pending",
+      "Alan homologation": "pending"
+    },
+    "archived": false,
+    "column": "DEV"
+  }
+}

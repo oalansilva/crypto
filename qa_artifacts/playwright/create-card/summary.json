@@ -1,0 +1,8 @@
+{
+  "links": {
+    "before": "http://72.60.150.140:5173/qa-artifacts/playwright/create-card/01-before.png",
+    "after": "http://72.60.150.140:5173/qa-artifacts/playwright/create-card/02-after.png",
+    "drawer": "http://72.60.150.140:5173/qa-artifacts/playwright/create-card/03-drawer.png"
+  },
+  "changeId": "qa-kanban-2026-03-12t19-33-31-800z"
+}

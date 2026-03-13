@@ -1,0 +1,1 @@
+{"detail":{"code":"invalid_kanban_transition","message":"Cannot move card directly from Pending to DEV. Move it through the next workflow gate or send it back to an earlier stage.","current":"Pending","target":"DEV","allowed_targets":["PO"]}}
