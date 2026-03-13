@@ -4,21 +4,19 @@
 TBD - created by archiving change kanban-visual-coordination. Update Purpose after archive.
 ## Requirements
 ### Requirement: System MUST provide a Kanban board for active + archived changes
-The system MUST provide a Kanban UI page that lists **active** OpenSpec changes and **archived** changes and shows them in workflow columns:
+The system MUST provide a Kanban UI page that lists active OpenSpec/workflow changes and archived changes in workflow columns:
+- Pending
 - PO
+- DESIGN
 - Alan approval
 - DEV
 - QA
 - Alan homologation
 - Archived
 
-#### Scenario: Active changes appear
-- **WHEN** there are active changes under `openspec/changes/*` containing `.openspec.yaml` (excluding `archive/`)
-- **THEN** the Kanban MUST display one card per active change
-
-#### Scenario: Archived changes appear
-- **WHEN** there are archived changes under `openspec/changes/archive/*` containing `.openspec.yaml`
-- **THEN** the Kanban MUST display one card per archived change in the Archived column
+#### Scenario: Pending cards appear
+- **WHEN** there are runtime changes/cards marked as pending backlog items
+- **THEN** the Kanban MUST display one card per pending item in the Pending column
 
 ### Requirement: Kanban MUST derive status from coordination files
 The system MUST derive each card's workflow state from `docs/coordination/<change>.md`.
@@ -51,18 +49,19 @@ The Kanban UI MUST use the existing app session model (no new public exposure re
 - **AND THEN** it MUST NOT require any new public-facing exposure beyond the existing app access
 
 ### Requirement: Kanban MUST include a DESIGN column (always visible)
-The Kanban board MUST include a DESIGN column between PO and Alan approval.
+The Kanban board MUST include **Pending** before **PO**, and **DESIGN** between **PO** and **Alan approval**.
 
 #### Scenario: Column ordering
 - **WHEN** the user opens `/kanban`
 - **THEN** the columns MUST be ordered:
-  1) PO
-  2) DESIGN
-  3) Alan approval
-  4) DEV
-  5) QA
-  6) Alan homologation
-  7) Archived
+  1) Pending
+  2) PO
+  3) DESIGN
+  4) Alan approval
+  5) DEV
+  6) QA
+  7) Alan homologation
+  8) Archived
 
 ### Requirement: Coordination MUST support DESIGN status
 The coordination file `docs/coordination/<change>.md` MUST support a `DESIGN:` status in `## Status`.
@@ -79,16 +78,14 @@ Allowed values:
 - **THEN** the column derivation MUST treat DESIGN as completed and proceed to the next gate
 
 ### Requirement: Column derivation MUST include DESIGN
-The backend derivation logic MUST include DESIGN in the gate order.
+The backend derivation logic MUST include Pending as the first runtime stage before PO.
 
-#### Scenario: Change awaiting design
-- **GIVEN** `PO: done`
-- **AND** `DESIGN != done` and `DESIGN != skipped`
-- **THEN** the derived column MUST be `DESIGN`
+#### Scenario: Card awaiting PO planning
+- **GIVEN** a card is marked as pending backlog work
+- **THEN** the derived Kanban column MUST be `Pending`
 
-#### Scenario: Change after design
-- **GIVEN** `PO: done`
-- **AND** `DESIGN: done` (or `skipped`)
-- **AND** `Alan approval != approved`
-- **THEN** the derived column MUST be `Alan approval`
+#### Scenario: Card leaves pending
+- **WHEN** a pending card is moved to `PO`
+- **THEN** the derived Kanban column MUST stop reporting `Pending`
+- **AND** the card MUST continue through the normal workflow order after PO
 
