@@ -8,6 +8,11 @@
 - QA: done
 - Alan homologation: approved
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions
 - `Pending` becomes a first-class pre-PO runtime/Kanban column.
 - New cards can be created directly from `/kanban` with title + optional short description.
