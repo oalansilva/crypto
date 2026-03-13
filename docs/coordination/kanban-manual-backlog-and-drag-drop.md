@@ -5,8 +5,8 @@
 - DESIGN: done
 - Alan approval: approved
 - DEV: done
-- QA: pending
-- Alan homologation: not reviewed
+- QA: done
+- Alan homologation: pending
 
 ## Decisions
 - `Pending` becomes a first-class pre-PO runtime/Kanban column.
@@ -33,10 +33,12 @@
 - QA handoff 2026-03-12 23:43 UTC: blocker cleared; change is ready for QA to re-run the runtime invalid-jump check plus the already-passed create/move flows on the refreshed app.
 - QA runtime recheck 2026-03-12 23:58 UTC: **PASS** for the live invalid-jump guard. Fresh runtime card `qa-pending-card-runtime-recheck-pending-1773359905` on the running backend rejected `Pending -> DEV` with actionable HTTP `409` and `allowed_targets=["PO"]`, matching the documented guard rails. Clickable evidence: response http://72.60.150.140:5173/qa-artifacts/runtime/kanban-manual-backlog-and-drag-drop/live-recheck-invalid-pending-to-dev-live.json | create result http://72.60.150.140:5173/qa-artifacts/runtime/kanban-manual-backlog-and-drag-drop/live-recheck-create-pending.json | metadata http://72.60.150.140:5173/qa-artifacts/runtime/kanban-manual-backlog-and-drag-drop/live-recheck-metadata-pending.json | board snapshot http://72.60.150.140:5173/qa-artifacts/runtime/kanban-manual-backlog-and-drag-drop/live-recheck-board-pending.json.
 - QA reconciliation 2026-03-12 23:59 UTC: product blocker is cleared, but the change could **not** be promoted from `DEV` to `Alan homologation` in runtime/Kanban yet because the upstream publish guard still fails for this repo state (`./scripts/verify_upstream_published.py --for-status "Alan homologation"`). Registered runtime work item `bug` `9769f19b-9b55-4844-b5e6-8bbd17e5f8db` (`Publish/reconcile change before promoting to Alan homologation`) and handed off to DEV/owner for publish-reconciliation. Until that guard passes, runtime source of truth remains `DEV` even though QA evidence is now green.
+- DEV publish reconciliation 2026-03-13 00:xx UTC: root cause of the remaining publish block was simply that the delivery for this change still existed only as local tracked/untracked repo work. The actual guard failure was cleared by committing/pushing the real implementation/test/docs files for this change (`fd42480`, `origin/main`) and discarding only local scratch artifacts. After publish, `./scripts/verify_upstream_published.py --for-status "Alan homologation"` returned `OK` and the runtime/Kanban item now reads `PO/DESIGN/Alan approval/DEV/QA=approved`, `Alan homologation=pending`, column `Alan homologation`.
+- Handoff 2026-03-13 00:xx UTC: DEV unblock is complete. Change is now waiting only for Alan homologation; no further DEV/QA action is required unless Alan requests follow-up.
 
 ## Next actions
 - [x] DEV: Implement Pending intake, shared move transitions, desktop drag-and-drop, and board auto-refresh after approval.
 - [x] QA: Validate Pending creation, desktop drag/drop, mobile move parity, invalid-jump errors, and runtime synchronization after DEV.
 - [x] DEV: reconcile the running backend/runtime so invalid Kanban jumps return the documented actionable `409` payload in practice, not only in tests/code.
 - [x] QA: re-run the runtime invalid-jump check on the refreshed app and confirm the live `409` behavior holds.
-- [ ] DEV/owner: publish or reconcile the pending repo changes so `./scripts/verify_upstream_published.py --for-status "Alan homologation"` passes and the change can be promoted from `DEV` to `Alan homologation` with the attached QA evidence.
+- [ ] Alan: homologate the delivered Pending-first Kanban flow now that runtime/Kanban is already sitting in `Alan homologation` with QA evidence attached.
