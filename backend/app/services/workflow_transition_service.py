@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+from fastapi import HTTPException
+
 from sqlalchemy.orm import Session
 
 from app.workflow_models import ApprovalScope, ApprovalState, Change, WorkflowApproval
@@ -29,6 +31,17 @@ GATED_COLUMNS = {
 }
 
 GATE_SEQUENCE = ["PO", "DESIGN", "Alan approval", "DEV", "QA", "Alan homologation"]
+
+_ALLOWED_FORWARD_MOVES = {
+    "Pending": {"PO"},
+    "PO": {"DESIGN"},
+    "DESIGN": {"Alan approval"},
+    "Alan approval": {"DEV"},
+    "DEV": {"QA"},
+    "QA": {"Alan homologation"},
+    "Alan homologation": {"Archived"},
+    "Archived": set(),
+}
 
 
 @dataclass(frozen=True)
@@ -80,6 +93,46 @@ def desired_gate_states_for_column(column: str) -> list[GateDecision]:
     return out
 
 
+def validate_kanban_transition(*, current_column: str | None, target_column: str | None) -> tuple[str, str]:
+    current = _normalize_status(current_column)
+    target = _normalize_status(target_column)
+
+    if current == target:
+        return current, target
+
+    current_idx = KANBAN_COLUMNS.index(current)
+    target_idx = KANBAN_COLUMNS.index(target)
+
+    if current == "Archived":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "invalid_kanban_transition",
+                "message": "Archived cards cannot be moved back into the active workflow.",
+                "current": current,
+                "target": target,
+                "allowed_targets": [],
+            },
+        )
+
+    is_backward = target_idx < current_idx
+    is_allowed_forward = target in _ALLOWED_FORWARD_MOVES.get(current, set())
+    if not is_backward and not is_allowed_forward:
+        allowed_targets = sorted(set(_ALLOWED_FORWARD_MOVES.get(current, set())) | set(KANBAN_COLUMNS[:current_idx]))
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "invalid_kanban_transition",
+                "message": f"Cannot move card directly from {current} to {target}. Move it through the next workflow gate or send it back to an earlier stage.",
+                "current": current,
+                "target": target,
+                "allowed_targets": allowed_targets,
+            },
+        )
+
+    return current, target
+
+
 def sync_change_gates_for_column(
     db: Session,
     *,
@@ -87,7 +140,7 @@ def sync_change_gates_for_column(
     target_column: str,
     actor: str = "kanban",
 ) -> bool:
-    target = _normalize_status(target_column)
+    _current, target = validate_kanban_transition(current_column=change.status, target_column=target_column)
     mutated = False
 
     latest: dict[str, ApprovalState] = {}

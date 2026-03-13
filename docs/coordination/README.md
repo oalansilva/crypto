@@ -47,6 +47,15 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Mentions in comments: use `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`. Agents should respond to mentions addressed to them on their next turn (best-effort, concise).
 - Each agent turn should also scan the card comments for unanswered mentions to them and reply (best-effort).
 
+### Pending intake + Kanban move policy
+
+- `Pending` is the first-class pre-PO backlog column. New cards created from `/kanban` start there with `title` + optional short description.
+- Runtime/workflow DB is the operational source of truth for these intake cards.
+- Desktop drag-and-drop and the mobile move sheet must call the same runtime transition path.
+- Successful create/move actions must refresh the Kanban automatically from runtime.
+- Raw intake in `Pending` does **not** require immediate OpenSpec artifacts; proposal/spec/tasks/design are created or updated when PO pulls the card into `PO`.
+- Kanban moves must respect workflow guard rails: forward progression happens one gate at a time, while sending a card back to an earlier stage is allowed when rework is needed.
+
 ### Tracking consistency (avoid drift)
 
 - Before moving a change into `QA`, `Alan homologation`, or `Archived`, run `./scripts/verify_upstream_published.py --for-status <status>`.

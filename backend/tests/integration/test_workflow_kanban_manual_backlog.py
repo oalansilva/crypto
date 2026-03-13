@@ -64,6 +64,19 @@ def test_kanban_move_syncs_runtime_gate_statuses():
         json={"title": "Drag me", "description": "Desktop drag/drop path"},
     ).status_code == 200
 
+    assert client.patch(
+        "/api/workflow/projects/crypto/changes/drag-me",
+        json={"status": "PO"},
+    ).status_code == 200
+    assert client.patch(
+        "/api/workflow/projects/crypto/changes/drag-me",
+        json={"status": "DESIGN"},
+    ).status_code == 200
+    assert client.patch(
+        "/api/workflow/projects/crypto/changes/drag-me",
+        json={"status": "Alan approval"},
+    ).status_code == 200
+
     moved_to_dev = client.patch(
         "/api/workflow/projects/crypto/changes/drag-me",
         json={"status": "DEV"},
@@ -94,5 +107,27 @@ def test_kanban_move_syncs_runtime_gate_statuses():
     assert item_back["status"]["PO"] == "pending"
     assert item_back["status"]["DESIGN"] == "pending"
     assert item_back["status"]["Alan approval"] == "pending"
+
+    client.app.dependency_overrides.clear()
+
+
+def test_kanban_rejects_skipping_workflow_gates_with_actionable_error():
+    client = _build_client()
+    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert client.post(
+        "/api/workflow/kanban/changes?project_slug=crypto",
+        json={"title": "Skip me", "description": "Should fail on invalid jump"},
+    ).status_code == 200
+
+    rejected = client.patch(
+        "/api/workflow/projects/crypto/changes/skip-me",
+        json={"status": "DEV"},
+    )
+    assert rejected.status_code == 409
+    payload = rejected.json()["detail"]
+    assert payload["code"] == "invalid_kanban_transition"
+    assert payload["current"] == "Pending"
+    assert payload["target"] == "DEV"
+    assert payload["allowed_targets"] == ["PO"]
 
     client.app.dependency_overrides.clear()

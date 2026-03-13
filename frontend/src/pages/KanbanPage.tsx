@@ -67,6 +67,7 @@ const DESKTOP_DRAG_MIME = 'application/x-kanban-change-id'
 
 const MOBILE_SWIPE_THRESHOLD = 48
 const MOBILE_LONG_PRESS_MS = 420
+const MOBILE_LONG_PRESS_MOVE_TOLERANCE = 12
 
 const COLUMNS_ORDER = [
   'Pending',
@@ -160,6 +161,8 @@ export default function KanbanPage() {
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
   const longPressTimerRef = useRef<number | null>(null)
+  const cardTouchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const suppressNextCardClickRef = useRef<string | null>(null)
   const mobileColumnInitializedRef = useRef(false)
 
   useEffect(() => {
@@ -280,6 +283,7 @@ export default function KanbanPage() {
 
   const handleDesktopDrop = (event: DragEvent, column: string) => {
     event.preventDefault()
+    event.stopPropagation()
     setDragTargetColumn(null)
     const changeId = event.dataTransfer.getData(DESKTOP_DRAG_MIME) || event.dataTransfer.getData('text/plain')
     if (!changeId) return
@@ -318,16 +322,39 @@ export default function KanbanPage() {
     touchDeltaX.current = 0
   }
 
-  const startCardLongPress = (it: CoordinationChangeItem) => {
+  const startCardLongPress = (it: CoordinationChangeItem, clientX: number, clientY: number) => {
     clearLongPressTimer()
+    cardTouchStartRef.current = { x: clientX, y: clientY }
     longPressTimerRef.current = window.setTimeout(() => {
+      suppressNextCardClickRef.current = it.id
       setMoveTarget(it)
       longPressTimerRef.current = null
+      cardTouchStartRef.current = null
     }, MOBILE_LONG_PRESS_MS)
+  }
+
+  const handleCardTouchMove = (clientX: number, clientY: number) => {
+    const start = cardTouchStartRef.current
+    if (!start) return
+    const deltaX = clientX - start.x
+    const deltaY = clientY - start.y
+    if (Math.hypot(deltaX, deltaY) > MOBILE_LONG_PRESS_MOVE_TOLERANCE) {
+      clearLongPressTimer()
+      cardTouchStartRef.current = null
+    }
   }
 
   const cancelCardLongPress = () => {
     clearLongPressTimer()
+    cardTouchStartRef.current = null
+  }
+
+  const handleCardClick = (it: CoordinationChangeItem) => {
+    if (suppressNextCardClickRef.current === it.id) {
+      suppressNextCardClickRef.current = null
+      return
+    }
+    setSelected(it)
   }
 
   const tasksQuery = useQuery({
@@ -365,8 +392,23 @@ export default function KanbanPage() {
         body: JSON.stringify({ status }),
       })
       if (!res.ok) {
-        const txt = await res.text().catch(() => '')
-        throw new Error(`Failed to move card (${res.status})${txt ? `: ${txt}` : ''}`)
+        let message = ''
+        try {
+          const payload = await res.json()
+          const detail = payload?.detail
+          if (typeof detail === 'string') {
+            message = detail
+          } else if (detail && typeof detail === 'object') {
+            const base = typeof detail.message === 'string' ? detail.message : ''
+            const allowed = Array.isArray(detail.allowed_targets) && detail.allowed_targets.length
+              ? ` Allowed: ${detail.allowed_targets.join(', ')}.`
+              : ''
+            message = `${base}${allowed}`.trim()
+          }
+        } catch {
+          message = await res.text().catch(() => '')
+        }
+        throw new Error(`Failed to move card (${res.status})${message ? `: ${message}` : ''}`)
       }
       return (await res.json()) as ChangeUpdateResponse
     },
@@ -668,6 +710,8 @@ export default function KanbanPage() {
                                 draggable={!it.archived && !moveChange.isPending}
                                 onDragStart={(event) => handleDesktopDragStart(event, it)}
                                 onDragEnd={handleDesktopDragEnd}
+                                onDragOver={(event) => handleDesktopDragOver(event, col)}
+                                onDrop={(event) => handleDesktopDrop(event, col)}
                                 onClick={() => setSelected(it)}
                                 className={
                                   'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 ' +
@@ -740,11 +784,17 @@ export default function KanbanPage() {
                     <button
                       type="button"
                       key={it.id}
-                      onClick={() => setSelected(it)}
-                      onTouchStart={() => startCardLongPress(it)}
+                      onClick={() => handleCardClick(it)}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0]
+                        startCardLongPress(it, touch?.clientX ?? 0, touch?.clientY ?? 0)
+                      }}
                       onTouchEnd={cancelCardLongPress}
                       onTouchCancel={cancelCardLongPress}
-                      onTouchMove={cancelCardLongPress}
+                      onTouchMove={(e) => {
+                        const touch = e.touches[0]
+                        handleCardTouchMove(touch?.clientX ?? 0, touch?.clientY ?? 0)
+                      }}
                       className="w-full text-left rounded-2xl border border-white/10 bg-zinc-950/60 p-4 shadow-sm"
                       aria-label={`Open details for ${it.id}`}
                     >

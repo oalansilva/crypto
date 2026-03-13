@@ -2,6 +2,14 @@
 
 The current `/kanban` page is primarily a visualization and card-move surface for already existing workflow/OpenSpec changes. Alan wants to capture backlog items directly on the board, keep them visible in a **Pending** column, and let PO pull them into planning later. He also wants card movement to feel native on the board, especially drag-and-drop on desktop, with runtime workflow status updating automatically.
 
+## Design Direction
+
+Domain: kanban lane, intake tray, card handoff, workflow gate, pending backlog, move sheet
+Color world: existing Kanban column surfaces, drag hover highlight, active drop target outline, subtle success refresh cue, muted secondary text for optional description
+Signature: the board itself remains the primary control surface — create and move happen in-context instead of bouncing the user to separate planning screens
+Rejecting: separate "new change" page -> inline/lightweight create flow, desktop-only move buttons -> direct manipulation drag/drop, divergent mobile logic -> same backend transition path with mobile-specific presentation
+Direction: keep `/kanban` fast and operational. New work starts as a compact Pending card, desktop movement feels tactile via drag-and-drop, and mobile keeps a lower-risk action-sheet move flow that preserves the same workflow rules.
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -61,3 +69,26 @@ Newly created `Pending` cards are **runtime/Kanban-first** records. They MUST NO
 ### Pending card description visibility
 
 The optional short description MUST be stored in runtime and available in the card details view in v1. Showing it inline on the compact board card is optional and can remain a follow-up refinement if density becomes a concern.
+
+## Key UX Flows
+
+### Create-card flow
+
+- The existing `New` affordance on `/kanban` opens a lightweight create flow anchored to the board context.
+- Required input: title. Optional input: short description.
+- On submit success, the new card appears in `Pending` without manual reload.
+- Loading, validation, and error states stay inline/modal-local so the user never loses board context.
+
+### Desktop drag-and-drop flow
+
+- Dragging is enabled only on desktop/pointer layouts.
+- Valid drop columns receive a clear hover/target state before release.
+- On drop, the card keeps its place visually until the shared move mutation resolves, then the board refreshes from runtime.
+- Invalid moves must fail with an actionable message rather than silently snapping back without explanation.
+
+### Mobile move flow
+
+- Mobile does not use drag-and-drop in v1.
+- Tapping a move affordance opens the existing move sheet/action flow with the same allowed target stages as desktop.
+- Confirmed mobile moves call the same backend transition path as desktop drag/drop and then refresh the board.
+- This preserves parity of workflow rules while avoiding fragile touch drag behavior.

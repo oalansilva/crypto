@@ -420,7 +420,14 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
             try:
                 require_upstream_published(REPO_ROOT, target_statuses=[new_status])
             except UpstreamGuardError as exc:
-                raise HTTPException(status_code=409, detail=str(exc)) from exc
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "upstream_guard_blocked",
+                        "message": str(exc),
+                        "target": new_status,
+                    },
+                ) from exc
         sync_change_gates_for_column(db, change=c, target_column=new_status)
     db.commit()
     db.refresh(c)
