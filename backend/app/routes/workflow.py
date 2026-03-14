@@ -21,6 +21,7 @@ import subprocess
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.services.coordination_service import resolve_change_relative_path
 from app.services.upstream_guard import ENFORCED_STATUSES, UpstreamGuardError, require_upstream_published
 from app.services.workflow_transition_service import KANBAN_COLUMNS, sync_change_gates_for_column
 from app.workflow_database import get_workflow_db, get_workflow_db_url
@@ -153,6 +154,7 @@ class ChangeUpdate(BaseModel):
     title: Optional[str] = Field(default=None, max_length=256)
     description: Optional[str] = Field(default=None, max_length=2000)
     status: Optional[str] = Field(default=None, max_length=32)
+    cancel_archive: bool = False
 
 
 class ChangeOut(BaseModel):
@@ -418,26 +420,30 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
     if payload.status is not None:
         new_status = payload.status.strip()
         if new_status == "Archived" and (c.status or "").strip() != "Archived":
-            try:
-                subprocess.run(
-                    ["./scripts/archive_change_safe.sh", change_id],
-                    cwd=REPO_ROOT,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-            except subprocess.CalledProcessError as exc:
-                stderr = (exc.stderr or "").strip()
-                stdout = (exc.stdout or "").strip()
-                message = stderr or stdout or "archive flow failed"
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "code": "archive_flow_failed",
-                        "message": message,
-                        "target": new_status,
-                    },
-                ) from exc
+            if payload.cancel_archive:
+                c.status = "Archived"
+                db.commit()
+            else:
+                try:
+                    subprocess.run(
+                        ["./scripts/archive_change_safe.sh", change_id],
+                        cwd=REPO_ROOT,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                except subprocess.CalledProcessError as exc:
+                    stderr = (exc.stderr or "").strip()
+                    stdout = (exc.stdout or "").strip()
+                    message = stderr or stdout or "archive flow failed"
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "code": "archive_flow_failed",
+                            "message": message,
+                            "target": new_status,
+                        },
+                    ) from exc
         else:
             if new_status in ENFORCED_STATUSES:
                 try:
@@ -808,7 +814,7 @@ def kanban_list_changes(
                 id=c.change_id,
                 title=c.title or None,
                 description=c.description or None,
-                path=f"openspec/changes/{c.change_id}/proposal",
+                path=resolve_change_relative_path(c.change_id, "proposal"),
                 status=status,
                 archived=archived,
                 column=col,
@@ -883,7 +889,7 @@ def kanban_change_tasks(
 
     return KanbanTasksChecklistResponse(
         change_id=change_id,
-        path=f"openspec/changes/{change_id}/tasks.md",
+        path=resolve_change_relative_path(change_id, "tasks.md"),
         sections=sections,
     )
 

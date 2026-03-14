@@ -131,3 +131,44 @@ def test_kanban_rejects_skipping_workflow_gates_with_actionable_error():
     assert payload["allowed_targets"] == ["PO"]
 
     client.app.dependency_overrides.clear()
+
+
+def test_cancel_archive_bypasses_formal_archive_gate_flow_but_preserves_history():
+    client = _build_client()
+    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert client.post(
+        "/api/workflow/kanban/changes?project_slug=crypto",
+        json={"title": "Cancel me", "description": "Runtime cancel should archive card without final archive flow"},
+    ).status_code == 200
+
+    for status in ["PO", "DESIGN", "Alan approval", "DEV"]:
+        moved = client.patch(
+            "/api/workflow/projects/crypto/changes/cancel-me",
+            json={"status": status},
+        )
+        assert moved.status_code == 200
+
+    canceled = client.patch(
+        "/api/workflow/projects/crypto/changes/cancel-me",
+        json={"status": "Archived", "cancel_archive": True},
+    )
+    assert canceled.status_code == 200
+    assert canceled.json()["status"] == "Archived"
+
+    board = client.get("/api/workflow/kanban/changes?project_slug=crypto")
+    assert board.status_code == 200
+    item = board.json()["items"][0]
+    assert item["column"] == "Archived"
+    assert item["archived"] is True
+    assert item["status"]["PO"] == "approved"
+    assert item["status"]["DESIGN"] == "approved"
+    assert item["status"]["Alan approval"] == "approved"
+    assert item["status"]["DEV"] == "pending"
+    assert item["status"]["QA"] == "pending"
+    assert item["status"]["Alan homologation"] == "pending"
+
+    fetched = client.get("/api/workflow/projects/crypto/changes/cancel-me")
+    assert fetched.status_code == 200
+    assert fetched.json()["status"] == "Archived"
+
+    client.app.dependency_overrides.clear()

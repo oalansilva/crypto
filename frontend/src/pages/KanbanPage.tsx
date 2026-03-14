@@ -174,6 +174,11 @@ export default function KanbanPage() {
   }, [selected, moveTarget])
 
   useEffect(() => {
+    setEditTitle(selected?.title || '')
+    setEditDescription(selected?.description || '')
+  }, [selected])
+
+  useEffect(() => {
     return () => {
       if (longPressTimerRef.current != null) {
         window.clearTimeout(longPressTimerRef.current)
@@ -425,6 +430,8 @@ export default function KanbanPage() {
   const [body, setBody] = useState('')
   const [newTitle, setNewTitle] = useState('')
   const [newDescription, setNewDescription] = useState('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
 
   const createChange = useMutation({
     mutationFn: async () => {
@@ -449,10 +456,57 @@ export default function KanbanPage() {
       setNewTitle('')
       setNewDescription('')
       setSelected(data.item)
+      setEditTitle(data.item.title || '')
+      setEditDescription(data.item.description || '')
       setActiveMobileColumn('Pending')
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', data.item.id, 'tasks'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', data.item.id, 'comments'] })
+    },
+  })
+
+  const updateSelectedChange = useMutation({
+    mutationFn: async ({
+      changeId,
+      payload,
+    }: {
+      changeId: string
+      payload: { title?: string; description?: string; status?: string; cancel_archive?: boolean }
+    }) => {
+      const res = await fetch(`${API_BASE_URL}/workflow/projects/crypto/changes/${encodeURIComponent(changeId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        let message = ''
+        try {
+          const body = await res.json()
+          message = typeof body?.detail === 'string' ? body.detail : JSON.stringify(body?.detail || body)
+        } catch {
+          message = await res.text().catch(() => '')
+        }
+        throw new Error(`Failed to update card (${res.status})${message ? `: ${message}` : ''}`)
+      }
+      return (await res.json()) as ChangeUpdateResponse
+    },
+    onSuccess: async (data, vars) => {
+      const updated: CoordinationChangeItem = {
+        id: data.change_id,
+        title: data.title,
+        description: data.description,
+        path: selected?.path || `openspec/changes/${data.change_id}/proposal`,
+        status: selected?.status || {},
+        archived: data.status === 'Archived',
+        column: data.status as CoordinationChangeItem['column'],
+      }
+      setSelected(updated)
+      setEditTitle(data.title || '')
+      setEditDescription(data.description || '')
+      if (data.status === 'Archived') setActiveMobileColumn('Archived')
+      await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
     },
   })
 
@@ -896,7 +950,6 @@ export default function KanbanPage() {
                   <div className="text-sm text-gray-400">Detalhes</div>
                   <div className="text-lg font-semibold text-white truncate">{selected.title || selected.id}</div>
                   <div className="text-[11px] text-gray-500 font-mono truncate">{selected.id}</div>
-                {selected.description ? <div className="mt-2 text-sm text-gray-300 whitespace-pre-wrap">{selected.description}</div> : null}
                 </div>
                 <Button variant="ghost" onClick={() => setSelected(null)} aria-label="Close panel">
                   <X className="w-4 h-4" />
@@ -904,6 +957,89 @@ export default function KanbanPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-white">Card</div>
+                    <div className="text-[11px] text-gray-500">Stage atual: {selected.column}</div>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
+                    <div>
+                      <div className="text-[11px] text-gray-400 mb-1">Título</div>
+                      <Input
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        maxLength={256}
+                        placeholder="Título do card"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="text-[11px] text-gray-400 mb-1">Descrição</div>
+                      <textarea
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                        rows={4}
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        maxLength={2000}
+                        placeholder="Descrição do card"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-xs text-gray-500">Editar metadados preserva id, comments e gates.</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setEditTitle(selected.title || '')
+                            setEditDescription(selected.description || '')
+                          }}
+                          disabled={updateSelectedChange.isPending}
+                        >
+                          Reverter
+                        </Button>
+                        <Button
+                          onClick={() => updateSelectedChange.mutate({
+                            changeId: selected.id,
+                            payload: { title: editTitle.trim(), description: editDescription.trim() },
+                          })}
+                          disabled={updateSelectedChange.isPending || !editTitle.trim()}
+                        >
+                          {updateSelectedChange.isPending ? 'Salvando…' : 'Salvar'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+                      <div>
+                        <div className="text-sm font-medium text-red-300">Cancelar card</div>
+                        <div className="text-xs text-gray-500">Retira do fluxo ativo sem apagar histórico.</div>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        className="border border-red-500/40 bg-red-500/10 text-red-100 hover:bg-red-500/20"
+                        onClick={() => {
+                          if (!window.confirm(`Cancelar o card ${selected.id}? O histórico será preservado.`)) return
+                          updateSelectedChange.mutate({
+                            changeId: selected.id,
+                            payload: { status: 'Archived', cancel_archive: true },
+                          })
+                        }}
+                        disabled={updateSelectedChange.isPending || selected.column === 'Archived'}
+                      >
+                        {selected.column === 'Archived' ? 'Já cancelado' : 'Cancelar card'}
+                      </Button>
+                    </div>
+
+                    {updateSelectedChange.error ? (
+                      <div className="text-xs text-red-400">
+                        {updateSelectedChange.error instanceof Error ? updateSelectedChange.error.message : 'Falha ao atualizar card'}
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+
                 <section className="space-y-2">
                   <div className="text-sm font-semibold text-white">Tasks</div>
                   {tasksQuery.isLoading ? (
