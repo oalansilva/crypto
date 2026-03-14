@@ -6,7 +6,8 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 - **Branch padrão:** trabalhe em `feature/long-change` (evite commits diretos na `main`).
 - **Fluxo operacional atual:** Workflow DB/Postgres = fonte runtime; Kanban = interface principal; OpenSpec = artefatos/documentação.
-- **Legado proibido para operação ativa:** não usar `docs/coordination/*.md` como superfície operacional para tracking ativo, evidências de QA, handoffs ou progresso corrente; usar somente workflow DB + Kanban comments/work items, com OpenSpec como camada de artefatos.
+- **Legado proibido para operação ativa:** não usar `docs/coordination/*.md` como superfície operacional para tracking ativo, evidências de QA, handoffs ou progresso corrente; tratar esses arquivos como espelho/auditoria e usar workflow DB + Kanban comments/work items como superfície viva, com OpenSpec como camada de artefatos.
+- **Playbook operacional canônico (Phase 1):** seguir `docs/multiagent-operating-playbook.md` para responsabilidades por papel, contrato padrão de handoff, Definition of Done por coluna e regra de fechamento com runtime + handoff.
 - **Criação de change:** use `scripts/create_change_and_seed.sh <change-name>` para garantir OpenSpec + coordination + workflow DB/Kanban no mesmo passo.
 - **QA UI/browser:** preferir **Microsoft Playwright CLI** (`playwright-cli`) em vez de MCP para automação de interface; usar como base a skill oficial local `skills/playwright-cli-official/`; salvar evidências por fluxo (screenshots e, quando útil, trace/video), registrar os caminhos/links no card/tracking e abrir work item do tipo `bug` quando houver problema real.
 - **Gates:** PO → DESIGN (quando UI) → Alan approval → DEV → QA → Alan homologation → archive.
@@ -75,8 +76,11 @@ O orquestrador controla cinco agentes virtuais (main, design, PO, DEV, QA). Cada
 - O **Kanban** é o hub principal de consulta e handoff.
 - O **workflow DB** é a fonte operacional de verdade.
 - **OpenSpec** serve como camada de artefatos/documentação.
+- `docs/coordination/*.md` é espelho/auditoria; se divergir do runtime/Kanban, vence o runtime/Kanban.
 - Comentários do Kanban são o canal padrão entre agentes, com menções `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`.
 - Nenhum agente (PO/DESIGN/DEV/QA) pode considerar sua etapa concluída só com OpenSpec/arquivos; é obrigatório atualizar o runtime/Kanban e deixar comentário de handoff no mesmo turno.
+- Toda etapa só fecha de verdade com **runtime + handoff**; se um dos dois faltar, o próximo turno deve reconciliar antes de seguir.
+- O contrato operacional curto (papéis, handoff, DoD por coluna, bloqueios) fica consolidado em `docs/multiagent-operating-playbook.md`.
 - Quando Alan homologar uma change em chat, o orquestrador deve fechar e arquivar no mesmo turno (runtime/Kanban + OpenSpec), sem deixar pendência operacional.
 - Múltiplas stories/agentes podem trabalhar em paralelo, desde que respeitem **locks**, **dependências** e **WIP**.
 - Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.

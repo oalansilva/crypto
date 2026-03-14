@@ -11,6 +11,8 @@ Uma change só é considerada **Done** quando:
 - Alan homologou (UI/fluxo real)
 - Change foi arquivada no OpenSpec
 
+Regra operacional de stage: uma etapa intermediária só conta como concluída quando o runtime/Kanban foi atualizado **e** o handoff correspondente foi publicado no card no mesmo turno.
+
 ### Regras de qualidade (obrigatórias)
 - Mudou schema de DB? Deve ter migração (SQLite `ALTER TABLE`/startup migration) + teste de integração.
 - Endpoints de UI devem ter limites e não podem fazer backfill histórico gigante por padrão (ex: candles sempre bounded por `timeframe+limit`).
@@ -40,9 +42,13 @@ Uma change só é considerada **Done** quando:
 ## Papéis (multi-agente)
 
 - **Alan (Stakeholder)**: valida a ideia (antes) e homologa o final (depois).
+- **main**: mantém o chat gerencial e consulta Kanban/runtime como superfície principal.
 - **PO**: discovery, escopo/restrições, critérios de aceitação, artefatos OpenSpec (EN) + `review-ptbr.md`.
+- **DESIGN**: quando houver UI/UX, protótipo, decisões visuais e notas de aceite para DEV/QA.
 - **DEV**: implementação + commits/PR/merge/deploy.
 - **QA**: testes (unit/integration/E2E), valida critérios de aceitação, garante CI verde. **Tudo passa por QA.**
+
+Contrato operacional curto por papel, handoff padrão e DoD por coluna: `docs/multiagent-operating-playbook.md`.
 
 ## Passo a passo
 

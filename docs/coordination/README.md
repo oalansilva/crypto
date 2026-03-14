@@ -12,9 +12,11 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 ## Rules
 
-- If it matters, it must be written down here or in the OpenSpec artifacts.
+- If it matters, it must be written down in runtime/Kanban or the OpenSpec artifacts; coordination markdown mirrors the result for audit/readability.
 - Keep each file short and actionable.
 - Prefer linking to sources (PR, CI runs, OpenSpec viewer) over copying long logs.
+- `docs/coordination/*.md` is not the live operational source for active work; workflow DB + Kanban comments/work items are.
+- For the standardized role contract, handoff template, and Definition of Done by stage, follow `docs/multiagent-operating-playbook.md`.
 
 ### Delivery workflow (must follow)
 
@@ -61,10 +63,12 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Before moving a change into `QA`, `Alan homologation`, or `Archived`, run `./scripts/verify_upstream_published.py --for-status <status>`.
 - The guard blocks progression when there are relevant tracked/untracked repo changes or unpushed commits; Playwright/QA ephemeral artifacts under `frontend/playwright-report/**`, `frontend/test-results/**`, `qa_artifacts/**`, and similar cache dirs are ignored by default.
 - Kanban/runtime enforcement: `PATCH /api/workflow/projects/<project>/changes/<change>` now rejects moves into `QA`, `Alan homologation`, or `Archived` with HTTP `409` until the upstream guard passes.
-- An agent may only claim a work item done after updating:
-  1) `openspec/changes/<change>/tasks.md` (checkboxes)
-  2) `docs/coordination/<change>.md` (status + next actions)
-  3) Kanban card comment (handoff)
+- An agent may only claim a work item/stage done after updating:
+  1) runtime/Kanban state
+  2) Kanban card comment (handoff)
+  3) `openspec/changes/<change>/tasks.md` when task checkboxes changed
+  4) `docs/coordination/<change>.md` when the audit mirror needs reconciliation
+- Stage completion rule: runtime state + handoff comment must both exist in the same turn; otherwise the stage is not operationally complete.
 - Guard-rail: if coordination indicates completion but `tasks.md` still has unchecked items, the next turn must be a **tracking reconciliation** (no new implementation) until consistent.
 - Telegram notifications to Alan only on milestones:
   - PO ready for Alan approval
