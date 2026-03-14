@@ -4,8 +4,8 @@
 - PO: done
 - DESIGN: done
 - Alan approval: approved
-- DEV: in progress
-- QA: pending upstream publish guard
+- DEV: done
+- QA: in progress
 - Alan homologation: not reviewed
 
 ## Decisions
@@ -29,7 +29,8 @@
 - QA 2026-03-14 12:49 UTC: edição passou no runtime real, mas o cancelamento do próprio card encontrou bloqueio operacional ao tentar persistir `Archived`; o card permaneceu ativo e o gate não avançou naquele turno.
 - DEV 2026-03-14 13:06 UTC: bug funcional do cancelamento corrigido separando `cancel_archive=true` do archive formal de change homologada. Validação local+runtime concluída com sucesso (`backend/tests/integration/test_workflow_kanban_manual_backlog.py`, `frontend/tests/e2e/kanban-card-editing.spec.ts`, `npm run build`, smoke real com card temporário cancelado e persistido em `Archived`).
 - Reconciliação operacional 2026-03-14 15:58 UTC: o item segue no runtime/Kanban em `DEV` por política, não por defeito funcional. `./scripts/verify_upstream_published.py --for-status QA` ainda bloqueia a promoção por mudanças locais/publicação pendente misturadas no repositório (inclusive fora desta change). Mantido escopo limpo neste turno: sem mexer em trabalho alheio, sem forçar bypass do guard. Próximo gate operacional é publicar/reconciliar o conjunto relevante e então promover `DEV -> QA` para reexecução final da validação no próprio card.
+- Reconciliação/publicação 2026-03-14 16:19 UTC: a change foi isolada com segurança do restante do trabalho local, o commit relevante foi publicado em `origin/main` (`82fefba`), e `./scripts/verify_upstream_published.py --for-status QA` passou sem bypass. Com isso, o runtime/Kanban foi promovido corretamente de `DEV` para `QA` e o handoff operacional foi entregue para revalidação final do próprio card no runtime real.
 
 ## Next actions
-- [ ] Publicação/reconciliação: limpar/publicar o conjunto de mudanças relevantes para o `upstream_guard` permitir entrada em `QA` sem bypass inseguro.
-- [ ] QA: assim que o guard estiver verde, reexecutar no próprio card a checagem final de edição + cancelamento no runtime e anexar a evidência conclusiva.
+- [x] Publicação/reconciliação: limpar/publicar o conjunto de mudanças relevantes para o `upstream_guard` permitir entrada em `QA` sem bypass inseguro.
+- [ ] QA: reexecutar no próprio card a checagem final de edição + cancelamento no runtime agora que a change já está em `QA`, e anexar a evidência conclusiva.
