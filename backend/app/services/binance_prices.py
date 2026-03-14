@@ -5,6 +5,11 @@ import os
 import urllib.request
 from typing import Dict, Optional
 
+from app.config import get_settings
+
+# Ensure .env files are loaded before runtime os.getenv lookups below.
+get_settings()
+
 
 def _get_env(name: str) -> str:
     return (os.getenv(name) or "").strip()

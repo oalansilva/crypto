@@ -1,0 +1,58 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - link "Crypto Backtester Professional Trading Analysis" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - generic [ref=e14]:
+          - text: Crypto Backtester
+          - paragraph [ref=e15]: Professional Trading Analysis
+      - navigation "Navegação principal" [ref=e16]:
+        - link "Playground" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=e18]
+          - text: Playground
+        - link "Favorites" [ref=e21] [cursor=pointer]:
+          - /url: /favorites
+          - img [ref=e22]
+          - text: Favorites
+        - link "Monitor" [ref=e24] [cursor=pointer]:
+          - /url: /monitor
+          - img [ref=e25]
+          - text: Monitor
+        - link "Kanban" [ref=e27] [cursor=pointer]:
+          - /url: /kanban
+          - img [ref=e28]
+          - text: Kanban
+        - link "Lab" [ref=e29] [cursor=pointer]:
+          - /url: /lab
+          - img [ref=e30]
+          - text: Lab
+        - link "Arbitragem" [ref=e33] [cursor=pointer]:
+          - /url: /arbitrage
+          - img [ref=e34]
+          - text: Arbitragem
+        - link "Combo" [ref=e40] [cursor=pointer]:
+          - /url: /combo/select
+          - img [ref=e41]
+          - text: Combo
+        - link "Carteira" [ref=e45] [cursor=pointer]:
+          - /url: /external/balances
+          - img [ref=e46]
+          - text: Carteira
+  - main [ref=e49]:
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - heading "Kanban" [level=1] [ref=e54]:
+          - img [ref=e55]
+          - text: Kanban
+        - paragraph [ref=e56]: Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
+      - generic [ref=e57]:
+        - textbox "Novo card / backlog item" [ref=e60]
+        - textbox "Descrição opcional" [ref=e61]
+        - generic [ref=e62]:
+          - generic [ref=e63]: Cria direto em Pending.
+          - button "Criar card" [disabled] [ref=e64]
+    - generic [ref=e66]:
+      - generic [ref=e68]: Board
+      - generic [ref=e70]: Carregando…

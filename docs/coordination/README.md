@@ -39,7 +39,7 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 ### Agent-to-agent communication (Scrum-like, auditable)
 
 - PO/DEV/QA may communicate asynchronously **via Kanban card comments** (single place, auditable).
-- Use comments for handoffs, questions, decisions, and blockers.
+- Use comments for handoffs, questions, decisions, blockers, ownership clarifications, and dependency notes.
 - This does **not** change gate order: **PO → Alan approval → DEV → QA → Alan homologation → archive**.
 
 ### Update policy (reduce noise)
@@ -58,11 +58,21 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Raw intake in `Pending` does **not** require immediate OpenSpec artifacts; proposal/spec/tasks/design are created or updated when PO pulls the card into `PO`.
 - Kanban moves must respect workflow guard rails: forward progression happens one gate at a time, while sending a card back to an earlier stage is allowed when rework is needed.
 
+### Work-item discipline (inside the existing flow)
+
+- Use `change` as the release container, `story` as the default independently-ownable delivery slice, and `bug` for real defects/blockers.
+- Prefer checklist/subtasks for tiny implementation steps; create a separate `story` only when ownership, sequencing, dependency, or visibility really benefits.
+- A `story` cannot be considered complete while any child `bug` remains open.
+- Default WIP: at most **2 active stories per change** and **1 active story per owner/run** unless there is an explicit reason to exceed it.
+- Parallel work is allowed only when lock scope is clear. If two items touch the same delivery surface and safe isolation is uncertain, serialize them.
+- Dependencies must be declared before treating a blocked story as active work.
+
 ### Tracking consistency (avoid drift)
 
 - Before moving a change into `QA`, `Alan homologation`, or `Archived`, run `./scripts/verify_upstream_published.py --for-status <status>`.
 - The guard blocks progression when there are relevant tracked/untracked repo changes or unpushed commits; Playwright/QA ephemeral artifacts under `frontend/playwright-report/**`, `frontend/test-results/**`, `qa_artifacts/**`, and similar cache dirs are ignored by default.
 - Kanban/runtime enforcement: `PATCH /api/workflow/projects/<project>/changes/<change>` now rejects moves into `QA`, `Alan homologation`, or `Archived` with HTTP `409` until the upstream guard passes.
+- Important: `QA PASS` alone does not justify saying `next step: Alan homologation`. If the publish guard blocks the `QA -> Alan homologation` move, the required handoff is: `QA passed, promotion blocked by upstream publish guard`, plus the unblock owner and explicit confirmation that runtime did **not** advance yet.
 - An agent may only claim a work item/stage done after updating:
   1) runtime/Kanban state
   2) Kanban card comment (handoff)
@@ -70,6 +80,7 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
   4) `docs/coordination/<change>.md` when the audit mirror needs reconciliation
 - Stage completion rule: runtime state + handoff comment must both exist in the same turn; otherwise the stage is not operationally complete.
 - Guard-rail: if coordination indicates completion but `tasks.md` still has unchecked items, the next turn must be a **tracking reconciliation** (no new implementation) until consistent.
+- Guard-rail: if runtime shows a typed blocker/bug/dependency state that is missing from OpenSpec or the coordination mirror, reconcile that tracking drift before claiming fresh progress.
 - Telegram notifications to Alan only on milestones:
   - PO ready for Alan approval
   - DEV ready for QA

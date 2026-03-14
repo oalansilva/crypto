@@ -18,13 +18,19 @@ The system MUST provide a Kanban UI page that lists active OpenSpec/workflow cha
 - **WHEN** there are runtime changes/cards marked as pending backlog items
 - **THEN** the Kanban MUST display one card per pending item in the Pending column
 
-### Requirement: Kanban MUST derive status from coordination files
-The system MUST derive each card's workflow state from `docs/coordination/<change>.md`.
+### Requirement: Kanban MUST derive status from workflow runtime
+The system MUST derive each card's workflow state from the workflow DB/runtime state that powers Kanban.
+`docs/coordination/<change>.md` MAY mirror that state for audit/readability, but it MUST NOT be the deciding live operational source.
 
-#### Scenario: Missing coordination file
+#### Scenario: Coordination markdown is missing
 - **WHEN** `docs/coordination/<change>.md` does not exist
-- **THEN** the system MUST automatically create `docs/coordination/<change>.md` using the coordination template
-- **AND THEN** the Kanban MUST display the card with the newly created coordination state
+- **THEN** the Kanban MUST still display the card from workflow runtime state
+- **AND** missing coordination markdown alone MUST NOT block the runtime card state from being shown
+
+#### Scenario: Coordination markdown disagrees with runtime
+- **WHEN** workflow runtime state and `docs/coordination/<change>.md` disagree
+- **THEN** the Kanban MUST display the workflow runtime state
+- **AND** the coordination markdown MUST be treated as a mirror to reconcile later
 
 ### Requirement: Card details MUST show tasks checklist
 The system MUST render a checklist view of `openspec/changes/<change>/tasks.md`.

@@ -69,8 +69,8 @@ O orquestrador controla cinco agentes virtuais (main, design, PO, DEV, QA). Cada
 - **main:** orquestrador. Mantém a conversa com Alan curta/gerencial, consulta Kanban como fonte principal e aciona os demais agentes. Não deve virar a fonte de verdade do processo.
 - **design:** foca em UX/prototipação. Publica protótipos e decisões visuais no Kanban/artefatos, especialmente quando houver UI.
 - **PO:** define escopo, taxonomia de work items (`change`, `story`, `bug`) e dependências. Só libera DEV depois de approval.
-- **DEV:** implementa com base no workflow DB/Kanban como runtime. Respeita locks/dependências e pode trabalhar em paralelo com outros agentes quando o work item permitir.
-- **QA:** valida regressões, consistência do workflow DB/Kanban e critérios de aceite; bugs filhos bloqueiam o fechamento da story.
+- **DEV:** implementa com base no workflow DB/Kanban como runtime. Respeita taxonomia `change`/`story`/`bug`, ownership, locks e dependências; só paraleliza quando o work item permitir com isolamento claro.
+- **QA:** valida regressões, consistência do workflow DB/Kanban e critérios de aceite; bugs reais devem virar `bug` rastreável e bugs filhos bloqueiam o fechamento da story.
 
 ### Regras operacionais dos agentes
 - O **Kanban** é o hub principal de consulta e handoff.
@@ -82,8 +82,12 @@ O orquestrador controla cinco agentes virtuais (main, design, PO, DEV, QA). Cada
 - Toda etapa só fecha de verdade com **runtime + handoff**; se um dos dois faltar, o próximo turno deve reconciliar antes de seguir.
 - O contrato operacional curto (papéis, handoff, DoD por coluna, bloqueios) fica consolidado em `docs/multiagent-operating-playbook.md`.
 - Quando Alan homologar uma change em chat, o orquestrador deve fechar e arquivar no mesmo turno (runtime/Kanban + OpenSpec), sem deixar pendência operacional.
+- `change` é o container raiz da entrega; `story` é a fatia padrão de execução quando houver ownership/dependência própria; `bug` representa defeito real. Não criar cards separados para micro-passos sem necessidade operacional.
 - Múltiplas stories/agentes podem trabalhar em paralelo, desde que respeitem **locks**, **dependências** e **WIP**.
+- Regra prática de WIP: por padrão, no máximo **2 stories ativas por change** e **1 story ativa por agent run**.
+- Lock padrão fica no nível da **story**; bug filho herda esse lock salvo reassignment explícito.
 - Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
+- Antes de promover para `QA`, `Alan homologation` ou `Archived`, reconciliar runtime/Kanban + `tasks.md` + handoff; para archive, preferir `scripts/archive_change_safe.sh`.
 
 ## Engenharia de prompt
 

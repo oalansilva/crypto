@@ -9,8 +9,12 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional
 
+from app.config import get_settings
 from app.services.binance_prices import compute_usdt_price_for_asset, fetch_all_binance_prices
 from app.services.binance_trades import compute_avg_buy_cost_usdt
+
+# Ensure .env files are loaded before runtime os.getenv lookups below.
+get_settings()
 
 
 class BinanceConfigError(RuntimeError):

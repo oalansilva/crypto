@@ -29,6 +29,50 @@ def coordination_dir() -> Path:
     return project_root() / "docs" / "coordination"
 
 
+def openspec_changes_dir() -> Path:
+    return project_root() / "openspec" / "changes"
+
+
+def openspec_archive_dir() -> Path:
+    return openspec_changes_dir() / "archive"
+
+
+def resolve_change_root(change_id: str) -> Path:
+    """Resolve the canonical filesystem root for a change.
+
+    Preference order:
+    1) active change directory: `openspec/changes/<change_id>`
+    2) archived directory: `openspec/changes/archive/<archive-id>`
+
+    For archived changes we prefer the exact on-disk folder so runtime metadata
+    stays synchronized with the real OpenSpec archive location instead of
+    reconstructing a guessed path from status alone.
+    """
+
+    active = openspec_changes_dir() / change_id
+    if active.exists() and active.is_dir():
+        return active
+
+    archive_root = openspec_archive_dir()
+    if archive_root.exists():
+        matches = sorted(archive_root.glob(f"????-??-??-{change_id}"))
+        for match in matches:
+            if match.is_dir() and (match / ".openspec.yaml").exists():
+                return match
+
+        fallback = archive_root / change_id
+        if fallback.exists() and fallback.is_dir():
+            return fallback
+
+    return active
+
+
+def resolve_change_relative_path(change_id: str, *parts: str) -> str:
+    root = resolve_change_root(change_id)
+    rel_root = root.relative_to(project_root())
+    return str(rel_root.joinpath(*parts)) if parts else str(rel_root)
+
+
 def _read_text(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 

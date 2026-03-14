@@ -1,6 +1,21 @@
 # file: backend/app/config.py
-from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pathlib import Path
+
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+
+
+# Load backend/.env and repo-root .env into os.environ for runtime code that uses
+# os.getenv directly (e.g. Binance wallet integration). Keep override=False so
+# already-exported env vars still win.
+_THIS_FILE = Path(__file__).resolve()
+_BACKEND_DIR = _THIS_FILE.parents[1]
+_REPO_ROOT = _THIS_FILE.parents[2]
+for _env_path in (_BACKEND_DIR / ".env", _REPO_ROOT / ".env"):
+    if _env_path.exists():
+        load_dotenv(_env_path, override=False)
+
 
 class Settings(BaseSettings):
     # Market data providers (optional)
