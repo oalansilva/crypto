@@ -1,3 +1,5 @@
+## ADDED Requirements
+
 ### Requirement: Kanban MUST support explicit intra-column card ordering
 The system MUST let the user change the relative order of cards within the same Kanban column so the visible sequence represents pull priority.
 

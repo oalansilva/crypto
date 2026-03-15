@@ -1,3 +1,5 @@
+## ADDED Requirements
+
 ### Requirement: Workflow runtime MUST persist stable pull order per stage
 The runtime workflow model MUST store enough ordering information to return a stable, user-controlled card sequence within each active stage.
 
