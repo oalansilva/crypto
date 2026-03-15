@@ -3,10 +3,10 @@
 ## Status
 - PO: done
 - DESIGN: skipped
-- Alan approval: not reviewed
-- DEV: not started
-- QA: not started
-- Alan homologation: not reviewed
+- Alan approval: approved
+- DEV: done
+- QA: done
+- Alan homologation: approved
 
 ## Decisions
 - Cada card deve receber um número sequencial humano e estável para referência rápida no board, QA e conversas.
@@ -22,6 +22,8 @@
 ## Notes
 - Card puxado de Pending para PO e reconciliado com OpenSpec/coordination no mesmo turno para evitar divergência runtime/artifacts.
 - PO package fechado sem gate de DESIGN separado; foco é persistência + exibição discreta do número no card/drawer.
+- DEV implementou a numeração estável e reconciliou o runtime live; QA validou `card_number: 16` na API e `#16` no board/drawer após reload.
+- Alan confirmou em chat que a change está validada; change pronta para archive.
 
 ## Next actions
-- [ ] Alan: revisar planning package e aprovar para DEV implementar persistência + exibição da numeração.
+- [x] Archive the change after Alan homologation approval.
