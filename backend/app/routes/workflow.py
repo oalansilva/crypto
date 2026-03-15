@@ -154,6 +154,7 @@ class ChangeUpdate(BaseModel):
     title: Optional[str] = Field(default=None, max_length=256)
     description: Optional[str] = Field(default=None, max_length=2000)
     status: Optional[str] = Field(default=None, max_length=32)
+    reorder: Optional[Literal["up", "down"]] = None
     cancel_archive: bool = False
 
 
@@ -413,15 +414,20 @@ def get_change(project_slug: str, change_id: str, db: Session = Depends(get_work
 @router.patch("/projects/{project_slug}/changes/{change_id}", response_model=ChangeOut)
 def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: Session = Depends(get_workflow_db)):
     c = _get_change_by_slug_and_id(db, project_slug, change_id)
+    current_column = _normalize_column(c.status)
+
     if payload.title is not None:
         c.title = payload.title.strip()
     if payload.description is not None:
         c.description = payload.description.strip()
+    if payload.reorder is not None:
+        _reorder_change_within_column(db, c, payload.reorder)
     if payload.status is not None:
-        new_status = payload.status.strip()
-        if new_status == "Archived" and (c.status or "").strip() != "Archived":
+        new_status = _normalize_column(payload.status)
+        if new_status == "Archived" and current_column != "Archived":
             if payload.cancel_archive:
                 c.status = "Archived"
+                c.sort_order = _next_sort_order(db, c.project_id, "Archived", exclude_change_pk=c.id)
                 db.commit()
             else:
                 try:
@@ -458,6 +464,9 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                         },
                     ) from exc
             sync_change_gates_for_column(db, change=c, target_column=new_status)
+            if new_status != current_column:
+                _normalize_column_sort_orders(db, c.project_id, current_column)
+                c.sort_order = _next_sort_order(db, c.project_id, new_status, exclude_change_pk=c.id)
             db.commit()
     if payload.status is None or new_status == "Archived":
         db.commit()
@@ -657,6 +666,7 @@ class KanbanChangeItem(BaseModel):
     status: Dict[str, str]
     archived: bool
     column: str
+    position: int = 0
 
 
 class KanbanChangeListResponse(BaseModel):
@@ -745,6 +755,57 @@ def _latest_change_gate_status(db: Session, change_pk: str) -> Dict[str, str]:
     return out
 
 
+def _normalize_column(raw: Optional[str]) -> str:
+    col = raw.strip() if raw else "DEV"
+    if col.lower() == "archived":
+        col = "Archived"
+    if col not in KANBAN_COLUMNS:
+        col = "DEV"
+    return col
+
+
+def _next_sort_order(db: Session, project_id: str, column: str, exclude_change_pk: Optional[str] = None) -> int:
+    query = db.query(Change).filter(Change.project_id == project_id, Change.status == column)
+    if exclude_change_pk:
+        query = query.filter(Change.id != exclude_change_pk)
+    peers = query.order_by(Change.sort_order.desc(), Change.created_at.desc()).all()
+    return (peers[0].sort_order + 1) if peers else 0
+
+
+def _normalize_column_sort_orders(db: Session, project_id: str, column: str) -> None:
+    peers = (
+        db.query(Change)
+        .filter(Change.project_id == project_id, Change.status == column)
+        .order_by(Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc())
+        .all()
+    )
+    for idx, peer in enumerate(peers):
+        peer.sort_order = idx
+
+
+def _reorder_change_within_column(db: Session, change: Change, direction: Literal["up", "down"]) -> None:
+    column = _normalize_column(change.status)
+    _normalize_column_sort_orders(db, change.project_id, column)
+    peers = (
+        db.query(Change)
+        .filter(Change.project_id == change.project_id, Change.status == column)
+        .order_by(Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc())
+        .all()
+    )
+    idx = next((i for i, peer in enumerate(peers) if peer.id == change.id), None)
+    if idx is None:
+        return
+    swap_idx = idx - 1 if direction == "up" else idx + 1
+    if swap_idx < 0 or swap_idx >= len(peers):
+        return
+    current_order = int(peers[idx].sort_order or 0)
+    swap_order = int(peers[swap_idx].sort_order or 0)
+    peers[idx].sort_order = swap_order
+    peers[swap_idx].sort_order = current_order
+    db.flush()
+    _normalize_column_sort_orders(db, change.project_id, column)
+
+
 @router.post("/kanban/changes", response_model=KanbanChangeCreateResponse)
 def kanban_create_change(
     payload: KanbanChangeCreateRequest,
@@ -767,6 +828,7 @@ def kanban_create_change(
         title=payload.title.strip(),
         description=payload.description.strip(),
         status="Pending",
+        sort_order=_next_sort_order(db, project.id, "Pending"),
     )
     db.add(change)
     db.commit()
@@ -781,6 +843,7 @@ def kanban_create_change(
             status=_latest_change_gate_status(db, change.id),
             archived=False,
             column="Pending",
+            position=change.sort_order,
         )
     )
 
@@ -793,7 +856,12 @@ def kanban_list_changes(
     slug = _kanban_project_slug(db, project_slug)
     project = _get_project_by_slug(db, slug)
 
-    items = db.query(Change).filter(Change.project_id == project.id).order_by(Change.created_at.asc()).all()
+    items = (
+        db.query(Change)
+        .filter(Change.project_id == project.id)
+        .order_by(Change.created_at.asc())
+        .all()
+    )
     out: List[KanbanChangeItem] = []
 
     # Best-effort reconciliation so the Kanban doesn't get stuck when agents
@@ -803,11 +871,7 @@ def kanban_list_changes(
     for c in items:
         reconcile_change_forward(db, change=c)
         status = _latest_change_gate_status(db, c.id)
-        col = c.status.strip() if c.status else "DEV"
-        if col.lower() == "archived":
-            col = "Archived"
-        if col not in KANBAN_COLUMNS:
-            col = "DEV"
+        col = _normalize_column(c.status)
         archived = col == "Archived"
         out.append(
             KanbanChangeItem(
@@ -818,9 +882,12 @@ def kanban_list_changes(
                 status=status,
                 archived=archived,
                 column=col,
+                position=int(c.sort_order or 0),
             )
         )
 
+    column_index = {name: idx for idx, name in enumerate(KANBAN_COLUMNS)}
+    out.sort(key=lambda item: (column_index.get(item.column, 999), item.position, (item.title or item.id).lower(), item.id))
     return KanbanChangeListResponse(items=out)
 
 

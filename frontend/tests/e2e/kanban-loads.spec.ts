@@ -1,32 +1,32 @@
 import { expect, test } from '@playwright/test'
 
 const mockedChangeId = 'kanban-visual-coordination'
+const secondMockedChangeId = 'mobile-kanban-ui-rethink'
 
 test('Kanban loads and shows a mocked change', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  let currentColumn = 'QA'
+  const orderedIds = [mockedChangeId, secondMockedChangeId]
   // Mock the backend API used by the Kanban page.
   await page.route('**/api/workflow/kanban/changes?project_slug=crypto', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        items: [
-          {
-            id: mockedChangeId,
-            title: 'Kanban visual coordination',
-            path: 'docs/coordination/kanban-visual-coordination.md',
-            status: {
-              PO: 'done',
-              'Alan approval': 'approved',
-              DEV: 'done',
-              QA: 'in progress',
-              'Alan homologation': 'not reviewed',
-            },
-            archived: false,
-            column: currentColumn,
+        items: orderedIds.map((id, index) => ({
+          id,
+          title: id === mockedChangeId ? 'Kanban visual coordination' : 'Mobile Kanban UI rethink',
+          path: `docs/coordination/${id}.md`,
+          status: {
+            PO: 'done',
+            'Alan approval': 'approved',
+            DEV: 'done',
+            QA: 'in progress',
+            'Alan homologation': 'not reviewed',
           },
-        ],
+          archived: false,
+          column: 'QA',
+          position: index,
+        })),
       }),
     })
   })
@@ -77,18 +77,26 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
       return
     }
 
-    const payload = route.request().postDataJSON() as { status?: string }
-    currentColumn = payload.status || currentColumn
+    const payload = route.request().postDataJSON() as { status?: string; reorder?: 'up' | 'down' }
+    const changeId = route.request().url().split('/').pop() || mockedChangeId
+    const currentIndex = orderedIds.findIndex((id) => id === changeId)
+
+    if (payload.reorder && currentIndex !== -1) {
+      const swapIndex = payload.reorder === 'up' ? currentIndex - 1 : currentIndex + 1
+      if (swapIndex >= 0 && swapIndex < orderedIds.length) {
+        ;[orderedIds[currentIndex], orderedIds[swapIndex]] = [orderedIds[swapIndex], orderedIds[currentIndex]]
+      }
+    }
 
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        id: 'wf-change-1',
+        id: `wf-${changeId}`,
         project_id: 'wf-project-1',
-        change_id: mockedChangeId,
-        title: 'Kanban visual coordination',
-        status: currentColumn,
+        change_id: changeId,
+        title: changeId === mockedChangeId ? 'Kanban visual coordination' : 'Mobile Kanban UI rethink',
+        status: payload.status || 'QA',
         created_at: '2026-03-11T00:00:00+00:00',
         updated_at: '2026-03-11T00:01:00+00:00',
       }),
@@ -98,18 +106,25 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
   await page.goto('/kanban')
 
   await expect(page.getByText('Opportunity Board')).toBeVisible()
-  await expect(page.getByRole('tab', { name: /QA 1/i })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /QA 2/i })).toBeVisible()
   await page.getByRole('tab', { name: /DEV 0/i }).click()
   await expect(page.getByText('Current stage')).toBeVisible()
   await expect(page.locator('section').filter({ hasText: 'Current stage' }).getByText('DEV', { exact: true })).toBeVisible()
   await expect(page.getByText('Nenhum card nesta etapa.')).toBeVisible()
 
-  await page.getByRole('tab', { name: /QA 1/i }).click()
+  await page.getByRole('tab', { name: /QA 2/i }).click()
   await expect(page.getByRole('button', { name: `Open details for ${mockedChangeId}` })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Open details for ${secondMockedChangeId}` })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Move down' }).first().click()
+  await expect(page.getByRole('button', { name: `Open details for ${secondMockedChangeId}` }).first()).toBeVisible()
 
   // Open the details sheet to ensure the rest of the page can render using the mocked API.
   await page.getByRole('button', { name: `Open details for ${mockedChangeId}` }).click()
   await expect(page.getByText('Detalhes', { exact: true })).toBeVisible()
+  const detailsSheet = page.getByRole('complementary')
+  await expect(detailsSheet.getByRole('button', { name: 'Move up' })).toBeVisible()
+  await expect(detailsSheet.getByRole('button', { name: 'Move down' })).toBeVisible()
   await expect(page.getByText('Tasks', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('Story:')).toBeVisible()
   await expect(page.getByText('Implement DB-backed task adapter')).toBeVisible()
@@ -117,6 +132,6 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
   await expect(page.getByText('Bug:')).toBeVisible()
   await expect(page.getByText('Keep Kanban checklist shape compatible')).toBeVisible()
   await expect(page.getByText('bug-1')).toBeVisible()
-  await expect(page.getByText('Comments')).toBeVisible()
+  await expect(page.getByText('Comments', { exact: true })).toBeVisible()
 
 })

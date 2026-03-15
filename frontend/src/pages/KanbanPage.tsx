@@ -14,6 +14,7 @@ type CoordinationChangeItem = {
   status: Record<string, string>
   archived: boolean
   column: string
+  position?: number
 }
 
 type CoordinationChangeListResponse = {
@@ -240,6 +241,8 @@ export default function KanbanPage() {
 
       const dc = colIdx(a.column) - colIdx(b.column)
       if (dc !== 0) return dc
+      const dp = (a.position ?? 0) - (b.position ?? 0)
+      if (dp !== 0) return dp
       return (a.title || a.id).localeCompare(b.title || b.id)
     })
 
@@ -257,6 +260,13 @@ export default function KanbanPage() {
 
     return map
   }, [filteredItems])
+
+  const canReorder = (item: CoordinationChangeItem, direction: 'up' | 'down') => {
+    const columnItems = byColumn.get(item.column) || []
+    const index = columnItems.findIndex((candidate) => candidate.id === item.id)
+    if (index === -1) return false
+    return direction === 'up' ? index > 0 : index < columnItems.length - 1
+  }
 
   useEffect(() => {
     if (mobileColumnInitializedRef.current) return
@@ -420,6 +430,26 @@ export default function KanbanPage() {
     onSuccess: async (_data, vars) => {
       setMoveTarget((curr) => (curr?.id === vars.changeId ? null : curr))
       setActiveMobileColumn(vars.status as (typeof COLUMNS_ORDER)[number])
+      await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
+    },
+  })
+
+  const reorderChange = useMutation({
+    mutationFn: async ({ changeId, direction }: { changeId: string; direction: 'up' | 'down' }) => {
+      const res = await fetch(`${API_BASE_URL}/workflow/projects/crypto/changes/${encodeURIComponent(changeId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reorder: direction }),
+      })
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`Failed to reorder card (${res.status})${txt ? `: ${txt}` : ''}`)
+      }
+      return (await res.json()) as ChangeUpdateResponse
+    },
+    onSuccess: async (_data, vars) => {
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
@@ -795,6 +825,33 @@ export default function KanbanPage() {
                                   <StatusLine label="QA" value={it.status?.['QA']} />
                                   <StatusLine label="Alan homologation" value={it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)']} />
                                 </div>
+
+                                {!it.archived ? (
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        reorderChange.mutate({ changeId: it.id, direction: 'up' })
+                                      }}
+                                      disabled={!canReorder(it, 'up') || reorderChange.isPending || moveChange.isPending}
+                                      className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-gray-200 disabled:opacity-40"
+                                    >
+                                      Move up
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        reorderChange.mutate({ changeId: it.id, direction: 'down' })
+                                      }}
+                                      disabled={!canReorder(it, 'down') || reorderChange.isPending || moveChange.isPending}
+                                      className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-gray-200 disabled:opacity-40"
+                                    >
+                                      Move down
+                                    </button>
+                                  </div>
+                                ) : null}
                               </button>
                             ))
                           )}
@@ -873,6 +930,31 @@ export default function KanbanPage() {
                           <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
                             <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Alan approval · {(it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
                             <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Homologation · {(it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                reorderChange.mutate({ changeId: it.id, direction: 'up' })
+                              }}
+                              disabled={!canReorder(it, 'up') || reorderChange.isPending || moveChange.isPending}
+                              className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-gray-200 disabled:opacity-40"
+                            >
+                              Move up
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                reorderChange.mutate({ changeId: it.id, direction: 'down' })
+                              }}
+                              disabled={!canReorder(it, 'down') || reorderChange.isPending || moveChange.isPending}
+                              className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-gray-200 disabled:opacity-40"
+                            >
+                              Move down
+                            </button>
                           </div>
 
                           <div className="mt-3 text-[11px] text-amber-200/80">Pressione e segure para mover de etapa</div>
@@ -962,6 +1044,25 @@ export default function KanbanPage() {
                     <div className="text-sm font-semibold text-white">Card</div>
                     <div className="text-[11px] text-gray-500">Stage atual: {selected.column}</div>
                   </div>
+
+                  {!selected.archived ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => reorderChange.mutate({ changeId: selected.id, direction: 'up' })}
+                        disabled={!canReorder(selected, 'up') || reorderChange.isPending || moveChange.isPending}
+                      >
+                        Move up
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => reorderChange.mutate({ changeId: selected.id, direction: 'down' })}
+                        disabled={!canReorder(selected, 'down') || reorderChange.isPending || moveChange.isPending}
+                      >
+                        Move down
+                      </Button>
+                    </div>
+                  ) : null}
 
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
                     <div>

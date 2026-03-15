@@ -133,6 +133,72 @@ def test_kanban_rejects_skipping_workflow_gates_with_actionable_error():
     client.app.dependency_overrides.clear()
 
 
+def test_kanban_reorder_persists_within_same_column():
+    client = _build_client()
+    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+
+    for title in ["First card", "Second card", "Third card"]:
+        created = client.post(
+            "/api/workflow/kanban/changes?project_slug=crypto",
+            json={"title": title, "description": "Reorder test"},
+        )
+        assert created.status_code == 200
+
+    board = client.get("/api/workflow/kanban/changes?project_slug=crypto")
+    assert [item["id"] for item in board.json()["items"]] == ["first-card", "second-card", "third-card"]
+
+    moved_up = client.patch(
+        "/api/workflow/projects/crypto/changes/second-card",
+        json={"reorder": "up"},
+    )
+    assert moved_up.status_code == 200
+
+    board_after_up = client.get("/api/workflow/kanban/changes?project_slug=crypto")
+    assert [item["id"] for item in board_after_up.json()["items"]] == ["second-card", "first-card", "third-card"]
+
+    moved_down = client.patch(
+        "/api/workflow/projects/crypto/changes/second-card",
+        json={"reorder": "down"},
+    )
+    assert moved_down.status_code == 200
+
+    board_after_down = client.get("/api/workflow/kanban/changes?project_slug=crypto")
+    assert [item["id"] for item in board_after_down.json()["items"]] == ["first-card", "second-card", "third-card"]
+
+    client.app.dependency_overrides.clear()
+
+
+def test_reorder_does_not_move_between_columns():
+    client = _build_client()
+    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+
+    for title in ["Pending A", "Pending B"]:
+        assert client.post(
+            "/api/workflow/kanban/changes?project_slug=crypto",
+            json={"title": title, "description": "Pending reorder scope"},
+        ).status_code == 200
+
+    assert client.patch(
+        "/api/workflow/projects/crypto/changes/pending-b",
+        json={"status": "PO"},
+    ).status_code == 200
+
+    reordered = client.patch(
+        "/api/workflow/projects/crypto/changes/pending-a",
+        json={"reorder": "down"},
+    )
+    assert reordered.status_code == 200
+
+    board = client.get("/api/workflow/kanban/changes?project_slug=crypto")
+    items = board.json()["items"]
+    pending_ids = [item["id"] for item in items if item["column"] == "Pending"]
+    po_ids = [item["id"] for item in items if item["column"] == "PO"]
+    assert pending_ids == ["pending-a"]
+    assert po_ids == ["pending-b"]
+
+    client.app.dependency_overrides.clear()
+
+
 def test_cancel_archive_bypasses_formal_archive_gate_flow_but_preserves_history():
     client = _build_client()
     assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
