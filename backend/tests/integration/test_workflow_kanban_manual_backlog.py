@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -26,7 +26,9 @@ def _build_client():
             db.close()
 
     app.dependency_overrides[get_workflow_db] = override_get_db
-    return TestClient(app)
+    client = TestClient(app)
+    client.session_local = SessionLocal  # type: ignore[attr-defined]
+    return client
 
 
 def test_kanban_create_change_starts_in_pending_with_description():
@@ -164,6 +166,36 @@ def test_kanban_reorder_persists_within_same_column():
 
     board_after_down = client.get("/api/workflow/kanban/changes?project_slug=crypto")
     assert [item["id"] for item in board_after_down.json()["items"]] == ["first-card", "second-card", "third-card"]
+
+    client.app.dependency_overrides.clear()
+
+
+def test_kanban_reorder_recovers_legacy_zeroed_positions():
+    client = _build_client()
+    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+
+    for title in ["Legacy A", "Legacy B", "Legacy C"]:
+        created = client.post(
+            "/api/workflow/kanban/changes?project_slug=crypto",
+            json={"title": title, "description": "Legacy zero sort_order regression"},
+        )
+        assert created.status_code == 200
+
+    session = client.session_local()
+    try:
+        session.execute(text("UPDATE wf_changes SET sort_order = 0"))
+        session.commit()
+    finally:
+        session.close()
+
+    moved_up = client.patch(
+        "/api/workflow/projects/crypto/changes/legacy-b",
+        json={"reorder": "up"},
+    )
+    assert moved_up.status_code == 200
+
+    board_after_up = client.get("/api/workflow/kanban/changes?project_slug=crypto")
+    assert [item["id"] for item in board_after_up.json()["items"]] == ["legacy-b", "legacy-a", "legacy-c"]
 
     client.app.dependency_overrides.clear()
 

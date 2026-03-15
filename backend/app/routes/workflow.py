@@ -781,6 +781,10 @@ def _normalize_column_sort_orders(db: Session, project_id: str, column: str) -> 
     )
     for idx, peer in enumerate(peers):
         peer.sort_order = idx
+    # Workflow sessions run with autoflush disabled, so callers that immediately
+    # re-query this column (like intra-column reorder) must persist the normalized
+    # sequence first or they will read the stale legacy order again.
+    db.flush()
 
 
 def _reorder_change_within_column(db: Session, change: Change, direction: Literal["up", "down"]) -> None:

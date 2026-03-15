@@ -226,6 +226,7 @@ export default function KanbanPage() {
       })
     }
 
+    const sourceIndex = new Map(items.map((item, index) => [item.id, index]))
     const colIdx = (col: string) => {
       const i = COLUMNS_ORDER.indexOf(col as (typeof COLUMNS_ORDER)[number])
       return i === -1 ? 999 : i
@@ -243,7 +244,7 @@ export default function KanbanPage() {
       if (dc !== 0) return dc
       const dp = (a.position ?? 0) - (b.position ?? 0)
       if (dp !== 0) return dp
-      return (a.title || a.id).localeCompare(b.title || b.id)
+      return (sourceIndex.get(a.id) ?? 0) - (sourceIndex.get(b.id) ?? 0)
     })
 
     return out
@@ -788,8 +789,7 @@ export default function KanbanPage() {
                             <div className="rounded-lg border border-dashed border-white/10 p-4 text-xs text-gray-500">vazio</div>
                           ) : (
                             colItems.map((it) => (
-                              <button
-                                type="button"
+                              <div
                                 key={it.id}
                                 draggable={!it.archived && !moveChange.isPending}
                                 onDragStart={(event) => handleDesktopDragStart(event, it)}
@@ -797,11 +797,19 @@ export default function KanbanPage() {
                                 onDragOver={(event) => handleDesktopDragOver(event, col)}
                                 onDrop={(event) => handleDesktopDrop(event, col)}
                                 onClick={() => setSelected(it)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault()
+                                    setSelected(it)
+                                  }
+                                }}
                                 className={
-                                  'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 ' +
+                                  'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 cursor-pointer ' +
                                   (selected?.id === it.id ? 'ring-2 ring-white/20' : '')
                                 }
                                 aria-label={`Open details for ${it.id}`}
+                                role="button"
+                                tabIndex={0}
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
@@ -852,7 +860,7 @@ export default function KanbanPage() {
                                     </button>
                                   </div>
                                 ) : null}
-                              </button>
+                              </div>
                             ))
                           )}
                         </div>

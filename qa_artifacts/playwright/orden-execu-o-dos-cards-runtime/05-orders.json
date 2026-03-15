@@ -1,0 +1,20 @@
+{
+  "initialOrder": [
+    "orden-execu-o-dos-cards",
+    "numera-o-cards"
+  ],
+  "boardAction": "up",
+  "afterBoardAction": [
+    "orden-execu-o-dos-cards",
+    "numera-o-cards"
+  ],
+  "drawerAction": "up",
+  "afterDrawerAction": [
+    "orden-execu-o-dos-cards",
+    "numera-o-cards"
+  ],
+  "afterReload": [
+    "orden-execu-o-dos-cards",
+    "numera-o-cards"
+  ]
+}

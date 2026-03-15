@@ -1,0 +1,55 @@
+{
+  "verdict": "FAIL",
+  "summary": [
+    "Move down no board não alterou a ordem da coluna QA em runtime real.",
+    "A change permaneceu em QA; não houve mudança de coluna/gates."
+  ],
+  "evidence": [
+    {
+      "file": "00-initial-order.json",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/00-initial-order.json",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/00-initial-order.json"
+    },
+    {
+      "file": "01-before-desktop.png",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/01-before-desktop.png",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/01-before-desktop.png"
+    },
+    {
+      "file": "01-board-button-states.json",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/01-board-button-states.json",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/01-board-button-states.json"
+    },
+    {
+      "file": "02-after-board-action.png",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/02-after-board-action.png",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/02-after-board-action.png"
+    },
+    {
+      "file": "03-drawer-button-states.json",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/03-drawer-button-states.json",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/03-drawer-button-states.json"
+    },
+    {
+      "file": "04-after-drawer-action.png",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/04-after-drawer-action.png",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/04-after-drawer-action.png"
+    },
+    {
+      "file": "04-after-reload.png",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/04-after-reload.png",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/04-after-reload.png"
+    },
+    {
+      "file": "05-orders.json",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/05-orders.json",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/05-orders.json"
+    },
+    {
+      "file": "06-columns.json",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/06-columns.json",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/06-columns.json"
+    }
+  ],
+  "nextStep": "DEV precisa corrigir a persistência/ordenação intra-coluna no runtime do Kanban e devolver para QA."
+}
