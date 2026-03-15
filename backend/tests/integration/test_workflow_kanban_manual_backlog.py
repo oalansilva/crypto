@@ -5,6 +5,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.routes import workflow as workflow_routes
+
 from app.main import app
 from app.workflow_database import WorkflowBase, get_workflow_db
 
@@ -116,6 +118,37 @@ def test_kanban_move_syncs_runtime_gate_statuses():
     client.app.dependency_overrides.clear()
 
 
+def test_dev_to_qa_does_not_trigger_upstream_guard(monkeypatch):
+    client = _build_client()
+    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert client.post(
+        "/api/workflow/kanban/changes?project_slug=crypto",
+        json={"title": "Publish later", "description": "DEV -> QA should not be blocked by local unpublished work"},
+    ).status_code == 200
+
+    for column in ["PO", "DESIGN", "Alan approval", "DEV"]:
+        moved = client.patch(
+            "/api/workflow/projects/crypto/changes/publish-later",
+            json={"status": column},
+        )
+        assert moved.status_code == 200
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("upstream guard should not run for DEV -> QA")
+
+    monkeypatch.setattr(workflow_routes, "require_upstream_published", fail_if_called)
+
+    moved = client.patch(
+        "/api/workflow/projects/crypto/changes/publish-later",
+        json={"status": "QA"},
+    )
+    assert moved.status_code == 200
+    assert moved.json()["status"] == "QA"
+
+    client.app.dependency_overrides.clear()
+
+
+
 def test_kanban_rejects_skipping_workflow_gates_with_actionable_error():
     client = _build_client()
     assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
@@ -136,6 +169,41 @@ def test_kanban_rejects_skipping_workflow_gates_with_actionable_error():
     assert payload["allowed_targets"] == ["PO"]
 
     client.app.dependency_overrides.clear()
+
+
+def test_kanban_exposes_functional_publish_and_homologation_readiness_states(monkeypatch):
+    client = _build_client()
+    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert client.post(
+        "/api/workflow/kanban/changes?project_slug=crypto",
+        json={"title": "Operational states", "description": "Need explicit QA/publish/runtime distinction"},
+    ).status_code == 200
+
+    for column in ["PO", "DESIGN", "Alan approval", "DEV", "QA"]:
+        moved = client.patch(
+            "/api/workflow/projects/crypto/changes/operational-states",
+            json={"status": column},
+        )
+        assert moved.status_code == 200
+
+    approved = client.post(
+        "/api/workflow/projects/crypto/changes/operational-states/approvals",
+        json={"scope": "change", "gate": "QA", "state": "approved", "actor": "QA", "note": "functional green"},
+    )
+    assert approved.status_code == 200
+
+    monkeypatch.setattr(workflow_routes, "require_upstream_published", lambda *args, **kwargs: (_ for _ in ()).throw(workflow_routes.UpstreamGuardError("publish blocked")))
+
+    board = client.get("/api/workflow/kanban/changes?project_slug=crypto")
+    assert board.status_code == 200
+    item = board.json()["items"][0]
+    assert item["status"]["QA functional"] == "approved"
+    assert item["status"]["Publish"] == "blocked"
+    assert item["status"]["Runtime stage"] == "Alan homologation"
+    assert item["status"]["Homologation readiness"] == "blocked: publish/reconcile pending"
+
+    client.app.dependency_overrides.clear()
+
 
 
 def test_kanban_reorder_persists_within_same_column():

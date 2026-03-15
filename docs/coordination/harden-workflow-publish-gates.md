@@ -24,4 +24,7 @@
 - DESIGN foi marcado como skipped porque o ajuste é de fluxo/ruleset, não de interação visual.
 
 ## Next actions
-- [ ] Alan: aprovar o pacote de planning para implementar o endurecimento do fluxo.
+- [x] Implementar no runtime/Kanban a distinção entre QA funcional, publish/reconcile e prontidão de homologação.
+- [x] Remover o upstream guard como bloqueio de `DEV -> QA`.
+- [x] Atualizar o playbook operacional com a regra de live reconcile/smoke para handoff de runtime/API/UI.
+- [ ] QA: validar o fluxo final e confirmar que não há mensagem ambígua de prontidão para homologação.

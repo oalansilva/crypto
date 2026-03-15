@@ -160,6 +160,9 @@ When drift exists:
 - Preferred sequence for workflow changes: **DEV implements -> QA validates -> commit/publish after QA**.
 - Local unpublished changes from the current change should not, by themselves, block `DEV -> QA`.
 - If publish/upstream guard is required for later transitions (for example `QA -> Alan homologation` or `Alan homologation -> Archived`), do the commit/publish at that later point, not as an early blocker right after DEV.
+- `DEV -> QA` for runtime/API/UI changes is only operationally complete after a live reconcile/smoke step is called out in the handoff.
+- `QA -> Alan homologation` must distinguish three things explicitly: **QA functional**, **publish/reconcile**, and **runtime stage**.
+- Do not announce “ready for homologation” unless all three are aligned.
 
 ## Practical turn checklist
 

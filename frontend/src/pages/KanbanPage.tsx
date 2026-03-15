@@ -835,6 +835,10 @@ export default function KanbanPage() {
                                   <StatusLine label="Alan approval" value={it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)']} />
                                   <StatusLine label="DEV" value={it.status?.['DEV']} />
                                   <StatusLine label="QA" value={it.status?.['QA']} />
+                                  <StatusLine label="QA functional" value={it.status?.['QA functional']} />
+                                  <StatusLine label="Publish" value={it.status?.['Publish']} />
+                                  <StatusLine label="Runtime stage" value={it.status?.['Runtime stage']} />
+                                  <StatusLine label="Ready for homologation" value={it.status?.['Homologation readiness']} />
                                   <StatusLine label="Alan homologation" value={it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)']} />
                                 </div>
 
@@ -940,11 +944,12 @@ export default function KanbanPage() {
                             <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">PO {it.status?.['PO'] || '—'}</span>
                             <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">DEV {it.status?.['DEV'] || '—'}</span>
                             <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">QA {it.status?.['QA'] || '—'}</span>
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">Publish {it.status?.['Publish'] || '—'}</span>
                           </div>
 
                           <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
                             <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Alan approval · {(it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
-                            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Homologation · {(it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
+                            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Ready for homologation · {(it.status?.['Homologation readiness'] || '—')}</div>
                           </div>
 
                           <div className="mt-3 flex items-center gap-2">

@@ -760,6 +760,38 @@ def _latest_change_gate_status(db: Session, change_pk: str) -> Dict[str, str]:
     return out
 
 
+def _publish_state_for_change(change: Change) -> str:
+    try:
+        result = require_upstream_published(REPO_ROOT, target_statuses=["Alan homologation"])
+        return "ready" if result.ok else "blocked"
+    except UpstreamGuardError:
+        return "blocked"
+
+
+def _homologation_readiness(change: Change, gate_status: Dict[str, str], column: str) -> str:
+    qa_functional = gate_status.get("QA") or "pending"
+    publish_state = _publish_state_for_change(change)
+
+    if qa_functional != "approved":
+        return "blocked: QA functional pending"
+    if publish_state != "ready":
+        return "blocked: publish/reconcile pending"
+    if column not in {"Alan homologation", "Archived"}:
+        return f"blocked: runtime stage still in {column}"
+    return "ready"
+
+
+def _kanban_change_status(db: Session, change: Change) -> Dict[str, str]:
+    gate_status = _latest_change_gate_status(db, change.id)
+    column = _normalize_column(change.status)
+    out = dict(gate_status)
+    out["QA functional"] = gate_status.get("QA") or "pending"
+    out["Publish"] = _publish_state_for_change(change)
+    out["Runtime stage"] = column
+    out["Homologation readiness"] = _homologation_readiness(change, gate_status, column)
+    return out
+
+
 def _normalize_column(raw: Optional[str]) -> str:
     col = raw.strip() if raw else "DEV"
     if col.lower() == "archived":
@@ -851,7 +883,7 @@ def kanban_create_change(
             description=change.description or None,
             card_number=change.card_number,
             path=f"openspec/changes/{change.change_id}/proposal",
-            status=_latest_change_gate_status(db, change.id),
+            status=_kanban_change_status(db, change),
             archived=False,
             column="Pending",
             position=change.sort_order,
@@ -883,7 +915,7 @@ def kanban_list_changes(
 
     for c in items:
         reconcile_change_forward(db, change=c)
-        status = _latest_change_gate_status(db, c.id)
+        status = _kanban_change_status(db, c)
         col = _normalize_column(c.status)
         archived = col == "Archived"
         out.append(
