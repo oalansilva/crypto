@@ -8,6 +8,11 @@
 - QA: done
 - Alan homologation: approved
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions
 - A ordem visual dos cards dentro da coluna deve representar prioridade operacional real de pull.
 - A primeira entrega deve focar em reorder **intra-coluna**; não é mudança de gate/status.
