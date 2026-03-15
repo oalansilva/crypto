@@ -155,6 +155,12 @@ When drift exists:
 - reconcile the mirror later
 - do not reverse runtime decisions to match stale coordination markdown
 
+## Publish sequencing rule
+
+- Preferred sequence for workflow changes: **DEV implements -> QA validates -> commit/publish after QA**.
+- Local unpublished changes from the current change should not, by themselves, block `DEV -> QA`.
+- If publish/upstream guard is required for later transitions (for example `QA -> Alan homologation` or `Alan homologation -> Archived`), do the commit/publish at that later point, not as an early blocker right after DEV.
+
 ## Practical turn checklist
 
 ### Before claiming a stage done

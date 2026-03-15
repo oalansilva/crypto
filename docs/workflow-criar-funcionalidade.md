@@ -128,8 +128,10 @@ Viewer (exemplos):
 
 ### 9) QA Gate (obrigatório)
 
-Antes de mover a change para `QA`, rode o guard de upstream:
-- `./scripts/verify_upstream_published.py --for-status QA`
+Antes de mover a change para `QA`, **não use o upstream guard como bloqueio padrão da própria change**.
+- Sequência preferida: `DEV implementa -> QA valida -> commit/publish depois`.
+- Mudanças locais da própria change não devem bloquear por si só `DEV -> QA`.
+- Só rode `./scripts/verify_upstream_published.py --for-status QA` se houver uma necessidade operacional específica fora desse fluxo preferido.
 
 O QA deve:
 - adicionar/atualizar testes conforme `docs/testing-playbook.md`

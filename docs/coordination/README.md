@@ -69,9 +69,10 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 ### Tracking consistency (avoid drift)
 
-- Before moving a change into `QA`, `Alan homologation`, or `Archived`, run `./scripts/verify_upstream_published.py --for-status <status>`.
+- Preferred publish sequence for workflow changes: **DEV implements -> QA validates -> commit/publish after QA**.
+- Local unpublished changes from the current change should not, by themselves, block `DEV -> QA`.
+- If publish/upstream guards are enforced for later gates such as `Alan homologation` or `Archived`, run `./scripts/verify_upstream_published.py --for-status <status>` before that later transition.
 - The guard blocks progression when there are relevant tracked/untracked repo changes or unpushed commits; Playwright/QA ephemeral artifacts under `frontend/playwright-report/**`, `frontend/test-results/**`, `qa_artifacts/**`, and similar cache dirs are ignored by default.
-- Kanban/runtime enforcement: `PATCH /api/workflow/projects/<project>/changes/<change>` now rejects moves into `QA`, `Alan homologation`, or `Archived` with HTTP `409` until the upstream guard passes.
 - Important: `QA PASS` alone does not justify saying `next step: Alan homologation`. If the publish guard blocks the `QA -> Alan homologation` move, the required handoff is: `QA passed, promotion blocked by upstream publish guard`, plus the unblock owner and explicit confirmation that runtime did **not** advance yet.
 - An agent may only claim a work item/stage done after updating:
   1) runtime/Kanban state
