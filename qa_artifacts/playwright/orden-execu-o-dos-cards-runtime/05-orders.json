@@ -1,20 +1,20 @@
 {
   "initialOrder": [
-    "orden-execu-o-dos-cards",
-    "numera-o-cards"
+    "numera-o-cards",
+    "orden-execu-o-dos-cards"
   ],
   "boardAction": "up",
   "afterBoardAction": [
     "orden-execu-o-dos-cards",
     "numera-o-cards"
   ],
-  "drawerAction": "up",
+  "drawerAction": "down",
   "afterDrawerAction": [
-    "orden-execu-o-dos-cards",
-    "numera-o-cards"
+    "numera-o-cards",
+    "orden-execu-o-dos-cards"
   ],
   "afterReload": [
-    "orden-execu-o-dos-cards",
-    "numera-o-cards"
+    "numera-o-cards",
+    "orden-execu-o-dos-cards"
   ]
 }

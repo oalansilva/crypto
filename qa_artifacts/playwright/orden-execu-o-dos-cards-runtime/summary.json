@@ -1,8 +1,8 @@
 {
-  "verdict": "FAIL",
+  "verdict": "PASS",
   "summary": [
-    "Move down no board não alterou a ordem da coluna QA em runtime real.",
-    "A change permaneceu em QA; não houve mudança de coluna/gates."
+    "Move up/down atualizou a ordem da coluna QA no runtime real.",
+    "Refresh preservou a ordem e nenhuma coluna/gate mudou."
   ],
   "evidence": [
     {
@@ -49,7 +49,12 @@
       "file": "06-columns.json",
       "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/06-columns.json",
       "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/06-columns.json"
+    },
+    {
+      "file": "summary.json",
+      "path": "qa_artifacts/playwright/orden-execu-o-dos-cards-runtime/summary.json",
+      "url": "http://72.60.150.140:5173/qa-artifacts/playwright/orden-execu-o-dos-cards-runtime/summary.json"
     }
   ],
-  "nextStep": "DEV precisa corrigir a persistência/ordenação intra-coluna no runtime do Kanban e devolver para QA."
+  "nextStep": "Promover para Alan homologation."
 }
