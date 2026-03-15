@@ -2,11 +2,11 @@
 
 ## Status
 - PO: done
-- DESIGN: not started
-- Alan approval: not reviewed
-- DEV: not started
-- QA: not started
-- Alan homologation: not reviewed
+- DESIGN: done
+- Alan approval: approved
+- DEV: done
+- QA: done
+- Alan homologation: approved
 
 ## Decisions
 - A ordem visual dos cards dentro da coluna deve representar prioridade operacional real de pull.
@@ -23,6 +23,8 @@
 - PO package opened from the existing runtime card in `PO` to make the change reviewable and execution-ready.
 - Scope stays tight: reorder is about queue priority inside the same stage, not cross-column movement or automatic prioritization.
 - Specs created for both `kanban` and `workflow-state-db` so DESIGN/DEV can preserve the runtime-first contract.
+- Delivery validated in runtime by QA with published evidence for board action, drawer action, and refresh persistence.
+- Alan homologation approved in chat; change is ready to archive.
 
 ## Next actions
-- [ ] DESIGN: define the minimal reorder interaction for desktop and mobile, including feedback states and safe constraints for intra-column moves.
+- [x] Archive the change after Alan homologation approval.
