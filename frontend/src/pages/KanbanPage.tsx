@@ -10,6 +10,7 @@ type CoordinationChangeItem = {
   id: string
   title?: string | null
   description?: string | null
+  card_number?: number | null
   path: string
   status: Record<string, string>
   archived: boolean
@@ -60,6 +61,7 @@ type ChangeUpdateResponse = {
   title: string
   description: string
   status: string
+  card_number?: number | null
   created_at: string
   updated_at: string
 }
@@ -526,6 +528,7 @@ export default function KanbanPage() {
         id: data.change_id,
         title: data.title,
         description: data.description,
+        card_number: data.card_number ?? selected?.card_number ?? null,
         path: selected?.path || `openspec/changes/${data.change_id}/proposal`,
         status: selected?.status || {},
         archived: data.status === 'Archived',
@@ -813,6 +816,7 @@ export default function KanbanPage() {
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
+                                    {it.card_number ? <div className="text-[11px] font-semibold text-cyan-300">#{it.card_number}</div> : null}
                                     <div className="text-sm font-semibold text-white truncate">{it.title || it.id}</div>
                                     <div className="text-[11px] text-gray-400 font-mono truncate">{it.id}</div>
                                   </div>
@@ -922,7 +926,10 @@ export default function KanbanPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="text-[11px] font-mono text-gray-400">{it.id}</div>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                                {it.card_number ? <span className="font-semibold text-cyan-300">#{it.card_number}</span> : null}
+                                <span className="font-mono text-gray-400">{it.id}</span>
+                              </div>
                               <div className="mt-1 text-base font-semibold leading-tight text-white">{it.title || it.id}</div>
                             </div>
                             {it.archived ? <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-gray-300">archived</div> : null}
@@ -983,7 +990,10 @@ export default function KanbanPage() {
           <aside className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-white/10 bg-zinc-950 shadow-2xl">
             <div className="px-4 py-4 border-b border-white/10">
               <div className="text-xs text-gray-400">Mover card</div>
-              <div className="mt-1 text-base font-semibold text-white">{moveTarget.title || moveTarget.id}</div>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-base font-semibold text-white">
+                {moveTarget.card_number ? <span className="text-cyan-300">#{moveTarget.card_number}</span> : null}
+                <span>{moveTarget.title || moveTarget.id}</span>
+              </div>
               <div className="text-[11px] font-mono text-gray-500">{moveTarget.id}</div>
             </div>
 
@@ -1038,7 +1048,10 @@ export default function KanbanPage() {
               <div className="px-4 py-3 border-b border-white/10 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-sm text-gray-400">Detalhes</div>
-                  <div className="text-lg font-semibold text-white truncate">{selected.title || selected.id}</div>
+                  <div className="flex flex-wrap items-center gap-2 text-lg font-semibold text-white truncate">
+                    {selected.card_number ? <span className="text-cyan-300">#{selected.card_number}</span> : null}
+                    <span className="truncate">{selected.title || selected.id}</span>
+                  </div>
                   <div className="text-[11px] text-gray-500 font-mono truncate">{selected.id}</div>
                 </div>
                 <Button variant="ghost" onClick={() => setSelected(null)} aria-label="Close panel">

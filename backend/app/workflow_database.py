@@ -118,6 +118,8 @@ def init_workflow_schema() -> None:
                 conn.execute(text("ALTER TABLE wf_changes ADD COLUMN description TEXT NOT NULL DEFAULT ''"))
             if "sort_order" not in cols:
                 conn.execute(text("ALTER TABLE wf_changes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"))
+            if "card_number" not in cols:
+                conn.execute(text("ALTER TABLE wf_changes ADD COLUMN card_number INTEGER"))
         except Exception:
             # Best-effort lightweight compatibility shim.
             pass

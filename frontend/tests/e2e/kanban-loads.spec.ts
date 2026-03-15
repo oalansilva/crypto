@@ -7,7 +7,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const orderedIds = [mockedChangeId, secondMockedChangeId]
   // Mock the backend API used by the Kanban page.
-  await page.route('**/api/workflow/kanban/changes?project_slug=crypto', async (route) => {
+  await page.route('**/api/workflow/kanban/changes**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -15,6 +15,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
         items: orderedIds.map((id, index) => ({
           id,
           title: id === mockedChangeId ? 'Kanban visual coordination' : 'Mobile Kanban UI rethink',
+          card_number: id === mockedChangeId ? 41 : 42,
           path: `docs/coordination/${id}.md`,
           status: {
             PO: 'done',
@@ -97,6 +98,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
         change_id: changeId,
         title: changeId === mockedChangeId ? 'Kanban visual coordination' : 'Mobile Kanban UI rethink',
         status: payload.status || 'QA',
+        card_number: changeId === mockedChangeId ? 41 : 42,
         created_at: '2026-03-11T00:00:00+00:00',
         updated_at: '2026-03-11T00:01:00+00:00',
       }),
@@ -115,6 +117,8 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
   await page.getByRole('tab', { name: /QA 2/i }).click()
   await expect(page.getByRole('button', { name: `Open details for ${mockedChangeId}` })).toBeVisible()
   await expect(page.getByRole('button', { name: `Open details for ${secondMockedChangeId}` })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Open details for ${mockedChangeId}` }).getByText('#41')).toBeVisible()
+  await expect(page.getByRole('button', { name: `Open details for ${secondMockedChangeId}` }).getByText('#42')).toBeVisible()
 
   await page.getByRole('button', { name: 'Move down' }).first().click()
   await expect(page.getByRole('button', { name: `Open details for ${secondMockedChangeId}` }).first()).toBeVisible()
@@ -123,6 +127,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
   await page.getByRole('button', { name: `Open details for ${mockedChangeId}` }).click()
   await expect(page.getByText('Detalhes', { exact: true })).toBeVisible()
   const detailsSheet = page.getByRole('complementary')
+  await expect(detailsSheet.getByText('#41')).toBeVisible()
   await expect(detailsSheet.getByRole('button', { name: 'Move up' })).toBeVisible()
   await expect(detailsSheet.getByRole('button', { name: 'Move down' })).toBeVisible()
   await expect(page.getByText('Tasks', { exact: true }).first()).toBeVisible()

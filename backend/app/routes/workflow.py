@@ -165,6 +165,7 @@ class ChangeOut(BaseModel):
     title: str
     description: str
     status: str
+    card_number: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -286,6 +287,47 @@ def _get_work_item(db: Session, change_pk: str, work_item_id: str) -> WorkItem:
     return item
 
 
+def _next_card_number(db: Session, project_id: str, exclude_change_pk: Optional[str] = None) -> int:
+    query = db.query(Change).filter(Change.project_id == project_id, Change.card_number.is_not(None))
+    if exclude_change_pk:
+        query = query.filter(Change.id != exclude_change_pk)
+    latest = query.order_by(Change.card_number.desc()).first()
+    return int(latest.card_number or 0) + 1 if latest and latest.card_number is not None else 1
+
+
+def _ensure_change_card_number(db: Session, change: Change) -> int:
+    if change.card_number is not None:
+        return int(change.card_number)
+    change.card_number = _next_card_number(db, change.project_id, exclude_change_pk=change.id)
+    db.flush()
+    return int(change.card_number)
+
+
+def _backfill_project_card_numbers(db: Session, project_id: str) -> None:
+    missing = (
+        db.query(Change)
+        .filter(Change.project_id == project_id, Change.card_number.is_(None))
+        .order_by(Change.created_at.asc(), Change.change_id.asc())
+        .all()
+    )
+    for change in missing:
+        _ensure_change_card_number(db, change)
+
+
+def _change_out(change: Change) -> ChangeOut:
+    return ChangeOut(
+        id=change.id,
+        project_id=change.project_id,
+        change_id=change.change_id,
+        title=change.title,
+        description=change.description,
+        status=change.status,
+        card_number=change.card_number,
+        created_at=change.created_at,
+        updated_at=change.updated_at,
+    )
+
+
 def _validate_parent(db: Session, change_pk: str, parent_id: Optional[str], child_type: WorkItemType) -> Optional[str]:
     if parent_id is None:
         return None
@@ -340,20 +382,10 @@ def _handoff_out(item: WorkflowHandoff) -> HandoffOut:
 @router.get("/projects/{project_slug}/changes", response_model=List[ChangeOut])
 def list_changes(project_slug: str, db: Session = Depends(get_workflow_db)):
     p = _get_project_by_slug(db, project_slug)
+    _backfill_project_card_numbers(db, p.id)
+    db.commit()
     items = db.query(Change).filter(Change.project_id == p.id).order_by(Change.created_at.asc()).all()
-    return [
-        ChangeOut(
-            id=c.id,
-            project_id=c.project_id,
-            change_id=c.change_id,
-            title=c.title,
-            description=c.description,
-            status=c.status,
-            created_at=c.created_at,
-            updated_at=c.updated_at,
-        )
-        for c in items
-    ]
+    return [_change_out(c) for c in items]
 
 
 @router.post("/projects/{project_slug}/changes", response_model=ChangeOut)
@@ -363,16 +395,10 @@ def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depend
 
     existing = db.query(Change).filter(Change.project_id == p.id, Change.change_id == change_id).first()
     if existing:
-        return ChangeOut(
-            id=existing.id,
-            project_id=existing.project_id,
-            change_id=existing.change_id,
-            title=existing.title,
-            description=existing.description,
-            status=existing.status,
-            created_at=existing.created_at,
-            updated_at=existing.updated_at,
-        )
+        _ensure_change_card_number(db, existing)
+        db.commit()
+        db.refresh(existing)
+        return _change_out(existing)
 
     c = Change(
         project_id=p.id,
@@ -380,40 +406,27 @@ def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depend
         title=payload.title.strip(),
         description=payload.description.strip(),
         status=payload.status.strip(),
+        card_number=_next_card_number(db, p.id),
     )
     db.add(c)
     db.commit()
     db.refresh(c)
-    return ChangeOut(
-        id=c.id,
-        project_id=c.project_id,
-        change_id=c.change_id,
-        title=c.title,
-        description=c.description,
-        status=c.status,
-        created_at=c.created_at,
-        updated_at=c.updated_at,
-    )
+    return _change_out(c)
 
 
 @router.get("/projects/{project_slug}/changes/{change_id}", response_model=ChangeOut)
 def get_change(project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)):
     c = _get_change_by_slug_and_id(db, project_slug, change_id)
-    return ChangeOut(
-        id=c.id,
-        project_id=c.project_id,
-        change_id=c.change_id,
-        title=c.title,
-        description=c.description,
-        status=c.status,
-        created_at=c.created_at,
-        updated_at=c.updated_at,
-    )
+    _ensure_change_card_number(db, c)
+    db.commit()
+    db.refresh(c)
+    return _change_out(c)
 
 
 @router.patch("/projects/{project_slug}/changes/{change_id}", response_model=ChangeOut)
 def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: Session = Depends(get_workflow_db)):
     c = _get_change_by_slug_and_id(db, project_slug, change_id)
+    _ensure_change_card_number(db, c)
     current_column = _normalize_column(c.status)
 
     if payload.title is not None:
@@ -471,16 +484,7 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
     if payload.status is None or new_status == "Archived":
         db.commit()
     db.refresh(c)
-    return ChangeOut(
-        id=c.id,
-        project_id=c.project_id,
-        change_id=c.change_id,
-        title=c.title,
-        description=c.description,
-        status=c.status,
-        created_at=c.created_at,
-        updated_at=c.updated_at,
-    )
+    return _change_out(c)
 
 
 @router.get("/projects/{project_slug}/changes/{change_id}/tasks", response_model=List[WorkItemOut])
@@ -662,6 +666,7 @@ class KanbanChangeItem(BaseModel):
     id: str
     title: Optional[str] = None
     description: Optional[str] = None
+    card_number: Optional[int] = None
     path: str
     status: Dict[str, str]
     archived: bool
@@ -833,6 +838,7 @@ def kanban_create_change(
         description=payload.description.strip(),
         status="Pending",
         sort_order=_next_sort_order(db, project.id, "Pending"),
+        card_number=_next_card_number(db, project.id),
     )
     db.add(change)
     db.commit()
@@ -843,6 +849,7 @@ def kanban_create_change(
             id=change.change_id,
             title=change.title or None,
             description=change.description or None,
+            card_number=change.card_number,
             path=f"openspec/changes/{change.change_id}/proposal",
             status=_latest_change_gate_status(db, change.id),
             archived=False,
@@ -860,6 +867,8 @@ def kanban_list_changes(
     slug = _kanban_project_slug(db, project_slug)
     project = _get_project_by_slug(db, slug)
 
+    _backfill_project_card_numbers(db, project.id)
+    db.commit()
     items = (
         db.query(Change)
         .filter(Change.project_id == project.id)
@@ -882,6 +891,7 @@ def kanban_list_changes(
                 id=c.change_id,
                 title=c.title or None,
                 description=c.description or None,
+                card_number=c.card_number,
                 path=resolve_change_relative_path(c.change_id, "proposal"),
                 status=status,
                 archived=archived,
