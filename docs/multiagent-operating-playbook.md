@@ -20,6 +20,7 @@ This playbook standardizes how the existing team operates without changing the c
 3. If runtime/Kanban and `docs/coordination/*.md` disagree, runtime/Kanban wins.
 4. Main chat with Alan stays managerial; operational detail belongs in Kanban comments, runtime state, and OpenSpec.
 5. A blocked stage must say what is blocked, what evidence exists, and who owns the next step.
+6. **Approval checklist (always follow):** When asking Alan for approval → (1) PT-BR summary, (2) links to viewer (proposal, review-ptbr, tasks), (3) next step. Never ask for approval without all three.
 6. **PO pull rule:** When no active change exists (all are archived), the PO must automatically pull the highest priority card from the Pending column and start planning in the next turn.
 7. **Agent auto-trigger rule:** Whenever a card changes column, the responsible agent for the new stage must be automatically triggered/invoked. E.g., card moves to PO → trigger PO agent; card moves to DEV → trigger DEV agent; card moves to QA → trigger QA agent.
 
