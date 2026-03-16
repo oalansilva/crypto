@@ -835,9 +835,7 @@ export default function KanbanPage() {
                                   <StatusLine label="Alan approval" value={it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)']} />
                                   <StatusLine label="DEV" value={it.status?.['DEV']} />
                                   <StatusLine label="QA" value={it.status?.['QA']} />
-                                  <StatusLine label="QA functional" value={it.status?.['QA functional']} />
                                   <StatusLine label="Publish" value={it.status?.['Publish']} />
-                                  <StatusLine label="Runtime stage" value={it.status?.['Runtime stage']} />
                                   <StatusLine label="Ready for homologation" value={it.status?.['Homologation readiness']} />
                                   <StatusLine label="Alan homologation" value={it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)']} />
                                 </div>
@@ -1066,10 +1064,7 @@ export default function KanbanPage() {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 <section className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-white">Card</div>
-                    <div className="text-[11px] text-gray-500">Stage atual: {selected.column}</div>
-                  </div>
+                  <div className="text-sm font-semibold text-white">Card</div>
 
                   {!selected.archived ? (
                     <div className="flex flex-wrap items-center gap-2">
