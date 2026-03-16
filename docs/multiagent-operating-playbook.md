@@ -53,6 +53,8 @@ This playbook standardizes how the existing team operates without changing the c
 - Validates against acceptance criteria, runtime behavior, and supplied evidence.
 - Opens or preserves blocking bugs/work items when a defect is real.
 - Must not approve based only on intent or code inspection without explicit validation evidence.
+- **Must run QA UI checklist** (`docs/qa-ui-checklist.md`) before sending to Alan homologation. This includes desktop, mobile, and bug-specific validations.
+- Must run E2E tests for new UI features (`frontend/tests/*.spec.ts`).
 
 ## Standard Kanban handoff/comment contract
 

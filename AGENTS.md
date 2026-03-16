@@ -86,6 +86,7 @@ O orquestrador controla cinco agentes virtuais (main, design, PO, DEV, QA). Cada
 - Múltiplas stories/agentes podem trabalhar em paralelo, desde que respeitem **locks**, **dependências** e **WIP**.
 - Regra prática de WIP: por padrão, no máximo **2 stories ativas por change** e **1 story ativa por agent run**.
 - **Regra de auto-trigger:** Quando um card muda de coluna, o agente responsável pela nova etapa deve ser automaticamente acionado. Ex: card vai para PO → acionar PO; vai para DEV → acionar DEV; vai para QA → acionar QA.
+- **Regra de validação QA:** Antes de enviar para homologação Alan, QA deve rodar o checklist de validação UI (`docs/qa-ui-checklist.md`) e testes E2E (`frontend/tests/*.spec.ts`).
 - Lock padrão fica no nível da **story**; bug filho herda esse lock salvo reassignment explícito.
 - Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
 - Antes de promover para `QA`, `Alan homologation` ou `Archived`, reconciliar runtime/Kanban + `tasks.md` + handoff; para archive, preferir `scripts/archive_change_safe.sh`.
