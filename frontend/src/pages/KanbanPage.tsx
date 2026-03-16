@@ -532,6 +532,7 @@ export default function KanbanPage() {
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editImages, setEditImages] = useState<CardImage[]>([])
+  const [showCreateCardModal, setShowCreateCardModal] = useState(false)
 
   // Helper to convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -608,6 +609,7 @@ export default function KanbanPage() {
       setNewTitle('')
       setNewDescription('')
       setNewImages([])
+      setShowCreateCardModal(false)
       setSelected({ ...data.item, image_data: newImages })
       setEditTitle(data.item.title || '')
       setEditDescription(data.item.description || '')
@@ -770,70 +772,17 @@ export default function KanbanPage() {
             </button>
             <Button
               type="button"
-              onClick={() => createChange.mutate()}
-              disabled={createChange.isPending || !newTitle.trim()}
+              onClick={() => setShowCreateCardModal(true)}
               className="h-10 px-3 rounded-xl"
               aria-label="Create new card"
             >
-              {createChange.isPending ? 'Creating…' : 'New'}
+              New
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Mobile-only search row (toggle from topbar). */}
-      <div className="sm:hidden border-b border-white/10 bg-zinc-950/70 backdrop-blur">
-        <div className="px-4 py-3 space-y-2">
-          <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Novo card / backlog item" />
-          <textarea
-            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
-            rows={3}
-            value={newDescription}
-            onChange={(e) => setNewDescription(e.target.value)}
-            maxLength={2000}
-            placeholder="Descrição opcional"
-          />
-          {/* Image upload for new card (mobile) */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300">
-              <span className="border border-white/10 rounded px-2 py-1 bg-white/5 hover:bg-white/10">+ Imagem</span>
-              <span>Anexar imagem</span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={handleNewImageSelect}
-              />
-            </label>
-            {newImages.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {newImages.map((img, idx) => (
-                  <div key={idx} className="relative group">
-                    <img
-                      src={img.data}
-                      alt={img.filename}
-                      className="w-16 h-16 object-cover rounded border border-white/10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeNewImage(idx)}
-                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          {createChange.error ? (
-            <div className="text-xs text-red-400">
-              {createChange.error instanceof Error ? createChange.error.message : 'Falha ao criar card'}
-            </div>
-          ) : null}
-        </div>
-      </div>
+
       {mobileSearchOpen ? (
         <div className="sm:hidden border-b border-white/10 bg-zinc-950/70 backdrop-blur">
           <div className="px-4 py-3 flex items-center gap-2">
@@ -870,61 +819,10 @@ export default function KanbanPage() {
                 Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
               </p>
             </div>
-            <div className="mt-4 sm:mt-0 sm:w-[360px] space-y-2">
-              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Novo card / backlog item" />
-              <textarea
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
-                rows={3}
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                maxLength={2000}
-                placeholder="Descrição opcional"
-              />
-              {/* Image upload for new card */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300">
-                  <span className="border border-white/10 rounded px-2 py-1 bg-white/5 hover:bg-white/10">+ Imagem</span>
-                  <span>Anexar imagem</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleNewImageSelect}
-                  />
-                </label>
-                {newImages.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {newImages.map((img, idx) => (
-                      <div key={idx} className="relative group">
-                        <img
-                          src={img.data}
-                          alt={img.filename}
-                          className="w-16 h-16 object-cover rounded border border-white/10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeNewImage(idx)}
-                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs text-gray-500">Cria direto em Pending.</div>
-                <Button onClick={() => createChange.mutate()} disabled={createChange.isPending || !newTitle.trim()}>
-                  {createChange.isPending ? 'Criando…' : 'Criar card'}
-                </Button>
-              </div>
-              {createChange.error ? (
-                <div className="text-xs text-red-400">
-                  {createChange.error instanceof Error ? createChange.error.message : 'Falha ao criar card'}
-                </div>
-              ) : null}
+            <div className="mt-4 sm:mt-0">
+              <Button onClick={() => setShowCreateCardModal(true)} className="w-full sm:w-auto">
+                + Novo Card
+              </Button>
             </div>
           </div>
         </div>
@@ -1703,6 +1601,116 @@ export default function KanbanPage() {
                   {createBug.error ? (
                     <div className="text-xs text-red-400">
                       {createBug.error instanceof Error ? createBug.error.message : 'Falha ao criar bug'}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Create Card Modal */}
+      {showCreateCardModal && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowCreateCardModal(false)} aria-hidden="true" />
+          <aside className="absolute inset-0 h-full w-full bg-zinc-950 border-t border-white/10 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[480px] sm:border-t-0 sm:border-l sm:border-white/10">
+            <div className="h-full flex flex-col">
+              <div className="px-4 py-3 border-b border-white/10 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm text-gray-400">Criar novo card</div>
+                  <div className="text-lg font-semibold text-white truncate">Novo card</div>
+                </div>
+                <Button variant="ghost" onClick={() => setShowCreateCardModal(false)} aria-label="Close">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-4">
+                  <div>
+                    <div className="text-[11px] text-gray-400 mb-1">Título *</div>
+                    <Input
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      maxLength={256}
+                      placeholder="Ex: Implementar tela de login"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-gray-400 mb-1">Descrição</div>
+                    <textarea
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      rows={4}
+                      value={newDescription}
+                      onChange={(e) => setNewDescription(e.target.value)}
+                      maxLength={2000}
+                      placeholder="Descrição opcional do card..."
+                    />
+                  </div>
+
+                  {/* Image upload for new card */}
+                  <div className="space-y-2">
+                    <div className="text-[11px] text-gray-400">Imagens</div>
+                    <div className="flex flex-wrap gap-2">
+                      {newImages.map((img, idx) => (
+                        <div key={idx} className="relative group">
+                          <img
+                            src={img.data}
+                            alt={img.filename}
+                            className="w-20 h-20 object-cover rounded border border-white/10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeNewImage(idx)}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <label className="flex items-center justify-center w-20 h-20 rounded border border-dashed border-white/20 text-gray-400 cursor-pointer hover:border-white/40 hover:text-gray-300">
+                        <span className="text-xs">+</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleNewImageSelect}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-2">
+                    <div className="text-xs text-gray-500">Cria direto em Pending.</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setShowCreateCardModal(false)
+                          setNewTitle('')
+                          setNewDescription('')
+                          setNewImages([])
+                        }}
+                        disabled={createChange.isPending}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={() => createChange.mutate()}
+                        disabled={createChange.isPending || !newTitle.trim()}
+                      >
+                        {createChange.isPending ? 'Criando…' : 'Criar Card'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {createChange.error ? (
+                    <div className="text-xs text-red-400">
+                      {createChange.error instanceof Error ? createChange.error.message : 'Falha ao criar card'}
                     </div>
                   ) : null}
                 </div>

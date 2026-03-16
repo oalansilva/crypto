@@ -17,6 +17,7 @@ import re
 from typing import Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+import json
 import subprocess
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -44,6 +45,20 @@ from app.workflow_models import (
 router = APIRouter(prefix="/api/workflow", tags=["workflow"])
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _parse_json_field(value: any) -> List[dict]:
+    """Parse a JSON field that might be a string or list."""
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return parsed
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return []
 
 
 # --- tasks.md sync to workflow DB ---
@@ -453,7 +468,7 @@ def _change_out(change: Change) -> ChangeOut:
         description=change.description,
         status=change.status,
         card_number=change.card_number,
-        image_data=change.image_data if isinstance(change.image_data, list) else [],
+        image_data=_parse_json_field(change.image_data),
         created_at=change.created_at,
         updated_at=change.updated_at,
     )
@@ -1083,7 +1098,7 @@ def kanban_create_change(
             archived=False,
             column="Pending",
             position=change.sort_order,
-            image_data=change.image_data or [],
+            image_data=change.image_data if isinstance(change.image_data, list) else [],
         )
     )
 
