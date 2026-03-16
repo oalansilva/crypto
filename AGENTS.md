@@ -68,7 +68,7 @@ O orquestrador controla cinco agentes virtuais (main, design, PO, DEV, QA). Cada
 
 - **main:** orquestrador. Mantém a conversa com Alan curta/gerencial, consulta Kanban como fonte principal e aciona os demais agentes. Não deve virar a fonte de verdade do processo.
 - **design:** foca em UX/prototipação. Publica protótipos e decisões visuais no Kanban/artefatos, especialmente quando houver UI.
-- **PO:** define escopo, taxonomia de work items (`change`, `story`, `bug`) e dependências. Só libera DEV depois de approval.
+- **PO:** define escopo, taxonomia de work items (`change`, `story`, `bug`) e dependências. Só libera DEV depois de approval. **Quando não há change ativa (todas arquivadas), o PO deve puxar automaticamente o card de maior prioridade da coluna Pending para iniciar o planejamento no próximo turno.**
 - **DEV:** implementa com base no workflow DB/Kanban como runtime. Respeita taxonomia `change`/`story`/`bug`, ownership, locks e dependências; só paraleliza quando o work item permitir com isolamento claro.
 - **QA:** valida regressões, consistência do workflow DB/Kanban e critérios de aceite; bugs reais devem virar `bug` rastreável e bugs filhos bloqueiam o fechamento da story.
 

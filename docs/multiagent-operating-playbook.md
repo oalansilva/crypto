@@ -20,6 +20,7 @@ This playbook standardizes how the existing team operates without changing the c
 3. If runtime/Kanban and `docs/coordination/*.md` disagree, runtime/Kanban wins.
 4. Main chat with Alan stays managerial; operational detail belongs in Kanban comments, runtime state, and OpenSpec.
 5. A blocked stage must say what is blocked, what evidence exists, and who owns the next step.
+6. **PO pull rule:** When no active change exists (all are archived), the PO must automatically pull the highest priority card from the Pending column and start planning in the next turn.
 
 ## Role responsibilities
 
