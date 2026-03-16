@@ -233,8 +233,7 @@ def _archived_change_ids_from_openspec() -> set[str]:
     for d in archive_root.iterdir():
         if not d.is_dir():
             continue
-        if not (d / ".openspec.yaml").exists():
-            continue
+        # Accept archive folders with or without .openspec.yaml (backward compat)
         name = d.name
         # Strip common date prefix.
         m = re.match(r"^\d{4}-\d{2}-\d{2}-(.+)$", name)

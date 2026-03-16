@@ -46,6 +46,131 @@ router = APIRouter(prefix="/api/workflow", tags=["workflow"])
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+# --- tasks.md sync to workflow DB ---
+
+
+def _get_tasks_file_path(change_id: str) -> Path:
+    """Find tasks.md for a change (active or archived)."""
+    # Active changes
+    p = REPO_ROOT / "openspec" / "changes" / change_id / "tasks.md"
+    if p.exists():
+        return p
+
+    # Archived changes: try common date prefix pattern
+    archive_root = REPO_ROOT / "openspec" / "changes" / "archive"
+    if archive_root.exists():
+        # Try prefix pattern: YYYY-MM-DD-<change_id>
+        matches = list(archive_root.glob(f"????-??-??-{change_id}/tasks.md"))
+        if matches:
+            return matches[0]
+        # Try exact folder match
+        p2 = archive_root / change_id / "tasks.md"
+        if p2.exists():
+            return p2
+
+    return p
+
+
+def _parse_tasks_code(text: str) -> Optional[str]:
+    """Extract task code like '1.1' from task text."""
+    # Match patterns like "1.1", "1.2.3", "2.1" at the start
+    match = re.match(r"^(\d+(?:\.\d+)+)\s+(.+)$", text.strip())
+    if match:
+        return match.group(1)
+    return None
+
+
+def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> List[WorkItem]:
+    """Sync tasks.md to wf_work_items table.
+    
+    Creates Story work items for each section, and Bug work items for each task.
+    This function clears existing work items and recreates them from tasks.md to ensure
+    the database is in sync with the file.
+    """
+    tasks_path = _get_tasks_file_path(change_id)
+    if not tasks_path.exists():
+        return []
+
+    try:
+        md = tasks_path.read_text(encoding="utf-8")
+    except Exception:
+        return []
+
+    # Import the parser from change_tasks_service
+    from app.services.change_tasks_service import parse_tasks_markdown
+
+    sections = parse_tasks_markdown(md)
+    if not sections:
+        return []
+
+    # Clear existing work items for this change to avoid duplicates
+    # (tasks.md is the source of truth)
+    db.query(WorkItem).filter(WorkItem.change_pk == change_pk).delete()
+    db.commit()
+
+    synced_items: List[WorkItem] = []
+    section_code_to_story: Dict[str, WorkItem] = {}
+
+    # First, create all stories
+    for section in sections:
+        section_title = section.title.strip() if section.title else f"Section"
+        
+        # Extract section code (e.g., "1" from "1. Runtime / Backend")
+        section_code_match = re.match(r"^(\d+)", section_title)
+        section_code = section_code_match.group(1) if section_code_match else None
+        
+        # Create story for this section
+        story = WorkItem(
+            change_pk=change_pk,
+            type=WorkItemType.story,
+            state=WorkItemState.queued,
+            title=section_title,
+            description=f"code:{section_code}" if section_code else "",
+            priority=0,
+        )
+        db.add(story)
+        synced_items.append(story)
+        
+        if section_code:
+            section_code_to_story[section_code] = story
+
+    # Flush stories to get their IDs
+    db.flush()
+
+    # Now create bugs with proper parent references
+    for section in sections:
+        section_title = section.title.strip() if section.title else f"Section"
+        section_code_match = re.match(r"^(\d+)", section_title)
+        section_code = section_code_match.group(1) if section_code_match else None
+        
+        parent_story = section_code_to_story.get(section_code)
+
+        for task_item in section.items:
+            task_code = _parse_tasks_code(task_item.text)
+            task_title = task_item.title or task_item.text
+            
+            # Create bug for this task with parent reference
+            bug = WorkItem(
+                change_pk=change_pk,
+                type=WorkItemType.bug,
+                state=WorkItemState.queued if not task_item.checked else WorkItemState.done,
+                parent_id=parent_story.id if parent_story else None,
+                title=task_title,
+                description=f"code:{task_code}" if task_code else "",
+                priority=0,
+            )
+            db.add(bug)
+            synced_items.append(bug)
+
+    db.commit()
+    
+    # Refresh all items to get IDs
+    for item in synced_items:
+        db.refresh(item)
+
+    return synced_items
+
+
 WorkflowScope = Literal["change", "work_item"]
 
 
@@ -913,11 +1038,18 @@ def kanban_list_changes(
     # complete artifacts but forget to update workflow DB gates/status.
     from app.services.workflow_reconcile_service import reconcile_change_forward
 
+    # Get OpenSpec archived IDs to ensure Kanban stays consistent
+    from app.services.coordination_service import _archived_change_ids_from_openspec
+    openspec_archived_ids = _archived_change_ids_from_openspec()
+
     for c in items:
         reconcile_change_forward(db, change=c)
         status = _kanban_change_status(db, c)
         col = _normalize_column(c.status)
-        archived = col == "Archived"
+        # OpenSpec archive status wins to avoid inconsistencies
+        archived = col == "Archived" or c.change_id in openspec_archived_ids
+        if archived:
+            col = "Archived"
         out.append(
             KanbanChangeItem(
                 id=c.change_id,
@@ -941,13 +1073,33 @@ def _kanban_task_checked(state: WorkItemState) -> bool:
     return state in (WorkItemState.done, WorkItemState.canceled)
 
 
+def _extract_task_code(description: str) -> Optional[str]:
+    """Extract task code from description (e.g., 'code:1.1' -> '1.1')."""
+    if description:
+        # Look for code: prefix
+        for line in description.split("\n"):
+            if line.strip().startswith("code:"):
+                return line.replace("code:", "").strip()
+    return None
+
+
 def _kanban_task_item(it: WorkItem, children: Optional[List[TaskChecklistItem]] = None) -> TaskChecklistItem:
-    label = "Story" if it.type == WorkItemType.story else "Bug"
+    # Extract task code from description
+    task_code = _extract_task_code(it.description)
+    # Use title without the code prefix if present
+    title = it.title
+    # For stories, extract the section name (e.g., "1. Runtime / Backend" -> "Runtime / Backend")
+    if it.type == WorkItemType.story:
+        # Remove leading number prefix like "1. "
+        match = re.match(r"^\d+\.\s+(.+)$", title)
+        if match:
+            title = match.group(1)
+    
     return TaskChecklistItem(
         text=it.title,
         checked=_kanban_task_checked(it.state),
-        code=it.id,
-        title=label,
+        code=task_code,
+        title=title,
         children=children or [],
     )
 
@@ -962,10 +1114,15 @@ def kanban_change_tasks(
 
     We expose a checklist/tree so the existing Kanban UI can render work-items
     without needing to understand the full workflow schema yet.
+    
+    This endpoint syncs tasks.md to the database before returning results.
     """
 
     slug = _kanban_project_slug(db, project_slug)
     change = _kanban_change_by_id(db, slug, change_id)
+
+    # Sync tasks.md to database before fetching
+    sync_tasks_to_workflow_db(db, change.id, change_id)
 
     items = (
         db.query(WorkItem)
