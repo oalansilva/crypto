@@ -16,6 +16,7 @@ type CoordinationChangeItem = {
   archived: boolean
   column: string
   position?: number
+  has_bugs?: boolean
 }
 
 type CoordinationChangeListResponse = {
@@ -98,6 +99,15 @@ function formatTs(iso: string) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString()
+}
+
+// Returns additional CSS classes for bug items (card #14: tipos-itens)
+function getBugCardClass(selected: boolean, hasBugs?: boolean): string {
+  if (!hasBugs) return ''
+  // Coral/red styling for bug items: border + subtle background tint
+  return selected
+    ? 'border-red-400/60 bg-red-950/30 ring-2 ring-red-400/30'
+    : 'border-red-400/40 bg-red-950/20 hover:bg-red-950/30'
 }
 
 function TaskTree({
@@ -808,7 +818,8 @@ export default function KanbanPage() {
                                 }}
                                 className={
                                   'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 cursor-pointer ' +
-                                  (selected?.id === it.id ? 'ring-2 ring-white/20' : '')
+                                  (selected?.id === it.id ? 'ring-2 ring-white/20' : '') +
+                                  ' ' + getBugCardClass(selected?.id === it.id, it.has_bugs)
                                 }
                                 aria-label={`Open details for ${it.id}`}
                                 role="button"
@@ -920,7 +931,7 @@ export default function KanbanPage() {
                         const touch = e.touches[0]
                         handleCardTouchMove(touch?.clientX ?? 0, touch?.clientY ?? 0)
                       }}
-                      className="w-full text-left rounded-2xl border border-white/10 bg-zinc-950/60 p-4 shadow-sm"
+                      className={"w-full text-left rounded-2xl border border-white/10 bg-zinc-950/60 p-4 shadow-sm " + getBugCardClass(false, it.has_bugs)}
                       aria-label={`Open details for ${it.id}`}
                     >
                       <div className="flex items-start gap-3">

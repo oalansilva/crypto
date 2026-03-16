@@ -797,6 +797,7 @@ class KanbanChangeItem(BaseModel):
     archived: bool
     column: str
     position: int = 0
+    has_bugs: bool = False
 
 
 class KanbanChangeListResponse(BaseModel):
@@ -1050,6 +1051,13 @@ def kanban_list_changes(
         archived = col == "Archived" or c.change_id in openspec_archived_ids
         if archived:
             col = "Archived"
+        # Check if this change has any bugs
+        has_bugs = (
+            db.query(WorkItem)
+            .filter(WorkItem.change_pk == c.id, WorkItem.type == WorkItemType.bug)
+            .first()
+            is not None
+        )
         out.append(
             KanbanChangeItem(
                 id=c.change_id,
@@ -1061,6 +1069,7 @@ def kanban_list_changes(
                 archived=archived,
                 column=col,
                 position=int(c.sort_order or 0),
+                has_bugs=has_bugs,
             )
         )
 
