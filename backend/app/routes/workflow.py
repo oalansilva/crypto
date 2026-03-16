@@ -615,7 +615,7 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                     status_code=409,
                     detail={
                         "code": "qa_not_approved",
-                        "message": "Cannot move to Alan approval without QA approval",
+                        "message": f"Cannot move to {new_status} without QA approval",
                     },
                 )
         
@@ -626,7 +626,7 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                 .filter(
                     WorkItem.change_pk == c.id,
                     WorkItem.type == WorkItemType.bug,
-                    WorkItem.state.notin([WorkItemState.done, WorkItemState.canceled]),
+                    WorkItem.state.not_in([WorkItemState.done, WorkItemState.canceled]),
                 )
                 .all()
             )
