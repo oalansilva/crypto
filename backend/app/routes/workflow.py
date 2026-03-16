@@ -453,7 +453,7 @@ def _change_out(change: Change) -> ChangeOut:
         description=change.description,
         status=change.status,
         card_number=change.card_number,
-        image_data=change.image_data or [],
+        image_data=change.image_data if isinstance(change.image_data, list) else [],
         created_at=change.created_at,
         updated_at=change.updated_at,
     )
@@ -1147,7 +1147,7 @@ def kanban_list_changes(
                 item_type="change",
                 parent_story_id=None,
                 parent_story_title=None,
-                image_data=c.image_data or [],
+                image_data=c.image_data if isinstance(c.image_data, list) else [],
             )
         )
 
