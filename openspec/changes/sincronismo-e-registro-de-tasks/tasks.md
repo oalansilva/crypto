@@ -1,26 +1,22 @@
 # Tasks — sincronismo e registro de tasks
 
-## 1. Backend — Add task summary to kanban list
-- [ ] 1.1 Add task summary fields to `KanbanChangeItem` schema (`tasks_total`, `tasks_completed`, `tasks_progress`)
-- [ ] 1.2 Modify `kanban_list_changes` function to query work items per change
-- [ ] 1.3 Compute task totals and completion count from `wf_work_items` table
-- [ ] 1.4 Include task summary in the JSON response for each change
-- [ ] 1.5 Test the updated endpoint returns task data correctly
+## 1. Backend — Implement tasks.md sync to workflow DB
+- [ ] 1.1 Create a function to parse tasks.md and extract task structure
+- [ ] 1.2 Implement sync logic: read tasks.md → create/update work_items in wf_work_items
+- [ ] 1.3 Trigger sync on: card creation, card update, before rendering tasks API
+- [ ] 1.4 Handle parent tasks (stories) and child tasks (bugs) properly
+- [ ] 1.5 Test sync with existing cards
 
-## 2. Frontend — Update types and card UI
-- [ ] 2.1 Add task fields to `CoordinationChangeItem` type in `KanbanPage.tsx`
-- [ ] 2.2 Create task progress indicator component (text + optional progress bar)
-- [ ] 2.3 Render task progress on card surface below title/description
-- [ ] 2.4 Apply visual styling (color coding: gray/yellow/green based on progress)
-- [ ] 2.5 Ensure responsive layout doesn't break on mobile
+## 2. Backend — Fix tasks API
+- [ ] 2.1 Update `GET /workflow/kanban/changes/{change_id}/tasks` to return all synced tasks
+- [ ] 2.2 Ensure parent/child relationship is preserved
+- [ ] 2.3 Test API returns all tasks after sync
 
-## 3. Validation / Tests
-- [ ] 3.1 Test backend endpoint returns correct task counts for changes with tasks
-- [ ] 3.2 Test backend handles changes with zero tasks (show 0/0 or hide indicator)
-- [ ] 3.3 E2E test: verify task progress appears on Kanban cards
-- [ ] 3.4 E2E test: verify task progress updates after task status changes
+## 3. Frontend — Display tasks correctly
+- [ ] 3.1 Verify all tasks appear in drawer/card detail
+- [ ] 3.2 Add task progress indicator on card surface (optional, after sync works)
 
-## 4. Documentation / Handoff
-- [ ] 4.1 Update OpenSpec if new fields need documentation
-- [ ] 4.2 Record handoff comment with review links
-- [ ] 4.3 Close PO approval after implementation review
+## 4. Validation
+- [ ] 4.1 Test: open card "alterar-dados-dos-cards" → should show all 12 tasks
+- [ ] 4.2 Test: create new card → tasks.md should sync automatically
+- [ ] 4.3 Test: update tasks.md → changes should reflect in Kanban
