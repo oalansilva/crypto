@@ -414,17 +414,7 @@ export default function KanbanPage() {
       suppressNextCardClickRef.current = null
       return
     }
-    // For bug cards, open the parent change instead
-    if (it.item_type === 'bug') {
-      const changeId = getChangeIdFromBugId(it.id)
-      if (changeId) {
-        const parentChange = items.find(c => c.id === changeId)
-        if (parentChange) {
-          setSelected(parentChange)
-          return
-        }
-      }
-    }
+    // Open the clicked item (bug or change)
     setSelected(it)
   }
 
@@ -928,33 +918,13 @@ export default function KanbanPage() {
                                 onDragOver={(event) => handleDesktopDragOver(event, col)}
                                 onDrop={(event) => handleDesktopDrop(event, col)}
                                 onClick={() => {
-                                  // For bug cards, open the parent change instead
-                                  if (it.item_type === 'bug') {
-                                    const changeId = getChangeIdFromBugId(it.id)
-                                    if (changeId) {
-                                      const parentChange = items.find(c => c.id === changeId)
-                                      if (parentChange) {
-                                        setSelected(parentChange)
-                                        return
-                                      }
-                                    }
-                                  }
+                                  // Open the clicked item (bug or change)
                                   setSelected(it)
                                 }}
                                 onKeyDown={(event) => {
                                   if (event.key === 'Enter' || event.key === ' ') {
                                     event.preventDefault()
-                                    // For bug cards, open the parent change instead
-                                    if (it.item_type === 'bug') {
-                                      const changeId = getChangeIdFromBugId(it.id)
-                                      if (changeId) {
-                                        const parentChange = items.find(c => c.id === changeId)
-                                        if (parentChange) {
-                                          setSelected(parentChange)
-                                          return
-                                        }
-                                      }
-                                    }
+                                    // Open the clicked item (bug or change)
                                     setSelected(it)
                                   }
                                 }}
