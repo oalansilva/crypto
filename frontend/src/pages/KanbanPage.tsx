@@ -6,6 +6,11 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { API_BASE_URL } from '@/lib/apiBase'
 
+type CardImage = {
+  filename: string
+  data: string  // base64 encoded
+}
+
 type CoordinationChangeItem = {
   id: string
   title?: string | null
@@ -20,6 +25,7 @@ type CoordinationChangeItem = {
   item_type?: 'change' | 'bug'
   parent_story_id?: string | null
   parent_story_title?: string | null
+  image_data?: CardImage[]
 }
 
 type CoordinationChangeListResponse = {
@@ -216,6 +222,7 @@ export default function KanbanPage() {
   useEffect(() => {
     setEditTitle(selected?.title || '')
     setEditDescription(selected?.description || '')
+    setEditImages(selected?.image_data || [])
   }, [selected])
 
   useEffect(() => {
@@ -521,8 +528,62 @@ export default function KanbanPage() {
   const [body, setBody] = useState('')
   const [newTitle, setNewTitle] = useState('')
   const [newDescription, setNewDescription] = useState('')
+  const [newImages, setNewImages] = useState<CardImage[]>([])
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [editImages, setEditImages] = useState<CardImage[]>([])
+
+  // Helper to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // Handle image selection for new card
+  const handleNewImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+    
+    const newImgs: CardImage[] = []
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      if (file.type.startsWith('image/')) {
+        const data = await fileToBase64(file)
+        newImgs.push({ filename: file.name, data })
+      }
+    }
+    setNewImages(prev => [...prev, ...newImgs])
+  }
+
+  // Handle image selection for editing card
+  const handleEditImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+    
+    const newImgs: CardImage[] = []
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      if (file.type.startsWith('image/')) {
+        const data = await fileToBase64(file)
+        newImgs.push({ filename: file.name, data })
+      }
+    }
+    setEditImages(prev => [...prev, ...newImgs])
+  }
+
+  // Remove image from new card
+  const removeNewImage = (index: number) => {
+    setNewImages(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Remove image from edit card
+  const removeEditImage = (index: number) => {
+    setEditImages(prev => prev.filter((_, i) => i !== index))
+  }
 
   const createChange = useMutation({
     mutationFn: async () => {
@@ -533,7 +594,7 @@ export default function KanbanPage() {
       const res = await fetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=crypto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description }),
+        body: JSON.stringify({ title, description, image_data: newImages }),
       })
 
       if (!res.ok) {
@@ -546,9 +607,11 @@ export default function KanbanPage() {
     onSuccess: async (data) => {
       setNewTitle('')
       setNewDescription('')
-      setSelected(data.item)
+      setNewImages([])
+      setSelected({ ...data.item, image_data: newImages })
       setEditTitle(data.item.title || '')
       setEditDescription(data.item.description || '')
+      setEditImages(newImages)
       setActiveMobileColumn('Pending')
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', data.item.id, 'tasks'] })
@@ -562,7 +625,7 @@ export default function KanbanPage() {
       payload,
     }: {
       changeId: string
-      payload: { title?: string; description?: string; status?: string; cancel_archive?: boolean }
+      payload: { title?: string; description?: string; status?: string; cancel_archive?: boolean; image_data?: CardImage[] }
     }) => {
       const res = await fetch(`${API_BASE_URL}/workflow/projects/crypto/changes/${encodeURIComponent(changeId)}`, {
         method: 'PATCH',
@@ -591,10 +654,12 @@ export default function KanbanPage() {
         status: selected?.status || {},
         archived: data.status === 'Archived',
         column: data.status as CoordinationChangeItem['column'],
+        image_data: vars.payload.image_data ?? selected?.image_data ?? [],
       }
       setSelected(updated)
       setEditTitle(data.title || '')
       setEditDescription(data.description || '')
+      setEditImages(vars.payload.image_data ?? selected?.image_data ?? [])
       if (data.status === 'Archived') setActiveMobileColumn('Archived')
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
@@ -728,6 +793,40 @@ export default function KanbanPage() {
             maxLength={2000}
             placeholder="Descrição opcional"
           />
+          {/* Image upload for new card (mobile) */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+              <span className="border border-white/10 rounded px-2 py-1 bg-white/5 hover:bg-white/10">+ Imagem</span>
+              <span>Anexar imagem</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleNewImageSelect}
+              />
+            </label>
+            {newImages.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {newImages.map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={img.data}
+                      alt={img.filename}
+                      className="w-16 h-16 object-cover rounded border border-white/10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeNewImage(idx)}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           {createChange.error ? (
             <div className="text-xs text-red-400">
               {createChange.error instanceof Error ? createChange.error.message : 'Falha ao criar card'}
@@ -781,6 +880,40 @@ export default function KanbanPage() {
                 maxLength={2000}
                 placeholder="Descrição opcional"
               />
+              {/* Image upload for new card */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+                  <span className="border border-white/10 rounded px-2 py-1 bg-white/5 hover:bg-white/10">+ Imagem</span>
+                  <span>Anexar imagem</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleNewImageSelect}
+                  />
+                </label>
+                {newImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {newImages.map((img, idx) => (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={img.data}
+                          alt={img.filename}
+                          className="w-16 h-16 object-cover rounded border border-white/10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeNewImage(idx)}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-gray-500">Cria direto em Pending.</div>
                 <Button onClick={() => createChange.mutate()} disabled={createChange.isPending || !newTitle.trim()}>
@@ -958,6 +1091,25 @@ export default function KanbanPage() {
                                 {it.description ? (
                                   <div className="mt-2 text-xs text-gray-300 break-words">{it.description}</div>
                                 ) : null}
+
+                                {/* Image thumbnails on card */}
+                                {it.image_data && it.image_data.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {it.image_data.slice(0, 3).map((img, idx) => (
+                                      <img
+                                        key={idx}
+                                        src={img.data}
+                                        alt={img.filename}
+                                        className="w-10 h-10 object-cover rounded border border-white/10"
+                                      />
+                                    ))}
+                                    {it.image_data.length > 3 && (
+                                      <div className="w-10 h-10 rounded border border-white/10 bg-white/5 flex items-center justify-center text-[10px] text-gray-400">
+                                        +{it.image_data.length - 3}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
 
                                 <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
                                   <StatusLine label="PO" value={it.status?.['PO']} />
@@ -1242,6 +1394,39 @@ export default function KanbanPage() {
                       />
                     </div>
 
+                    {/* Image upload/display for card details */}
+                    <div className="space-y-2">
+                      <div className="text-[11px] text-gray-400">Imagens anexadas</div>
+                      <div className="flex flex-wrap gap-2">
+                        {editImages.map((img, idx) => (
+                          <div key={idx} className="relative group">
+                            <img
+                              src={img.data}
+                              alt={img.filename}
+                              className="w-20 h-20 object-cover rounded border border-white/10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeEditImage(idx)}
+                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        <label className="flex items-center justify-center w-20 h-20 rounded border border-dashed border-white/20 text-gray-400 cursor-pointer hover:border-white/40 hover:text-gray-300">
+                          <span className="text-xs">+</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={handleEditImageSelect}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="text-xs text-gray-500">Editar metadados preserva id, comments e gates.</div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -1250,6 +1435,7 @@ export default function KanbanPage() {
                           onClick={() => {
                             setEditTitle(selected.title || '')
                             setEditDescription(selected.description || '')
+                            setEditImages(selected.image_data || [])
                           }}
                           disabled={updateSelectedChange.isPending}
                         >
@@ -1258,7 +1444,7 @@ export default function KanbanPage() {
                         <Button
                           onClick={() => updateSelectedChange.mutate({
                             changeId: selected.id,
-                            payload: { title: editTitle.trim(), description: editDescription.trim() },
+                            payload: { title: editTitle.trim(), description: editDescription.trim(), image_data: editImages },
                           })}
                           disabled={updateSelectedChange.isPending || !editTitle.trim()}
                         >

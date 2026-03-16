@@ -275,6 +275,7 @@ class ChangeCreate(BaseModel):
     title: str = Field(default="", max_length=256)
     description: str = Field(default="", max_length=2000)
     status: str = Field(default="in_progress", max_length=32)
+    image_data: List[dict] = Field(default_factory=list)
 
 
 class ChangeUpdate(BaseModel):
@@ -283,6 +284,7 @@ class ChangeUpdate(BaseModel):
     status: Optional[str] = Field(default=None, max_length=32)
     reorder: Optional[Literal["up", "down"]] = None
     cancel_archive: bool = False
+    image_data: Optional[List[dict]] = Field(default=None)
 
 
 class ChangeOut(BaseModel):
@@ -293,6 +295,7 @@ class ChangeOut(BaseModel):
     description: str
     status: str
     card_number: Optional[int] = None
+    image_data: List[dict] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -450,6 +453,7 @@ def _change_out(change: Change) -> ChangeOut:
         description=change.description,
         status=change.status,
         card_number=change.card_number,
+        image_data=change.image_data or [],
         created_at=change.created_at,
         updated_at=change.updated_at,
     )
@@ -534,6 +538,7 @@ def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depend
         description=payload.description.strip(),
         status=payload.status.strip(),
         card_number=_next_card_number(db, p.id),
+        image_data=payload.image_data or [],
     )
     db.add(c)
     db.commit()
@@ -560,10 +565,45 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
         c.title = payload.title.strip()
     if payload.description is not None:
         c.description = payload.description.strip()
+    if payload.image_data is not None:
+        c.image_data = payload.image_data
     if payload.reorder is not None:
         _reorder_change_within_column(db, c, payload.reorder)
     if payload.status is not None:
         new_status = _normalize_column(payload.status)
+        
+        # Validation: Cannot move to Alan approval without DEV and QA approval
+        if new_status in {"Alan approval", "Alan homologation"}:
+            approvals = (
+                db.query(WorkflowApproval)
+                .filter(
+                    WorkflowApproval.change_pk == c.id,
+                    WorkflowApproval.scope == ApprovalScope.change,
+                )
+                .all()
+            )
+            gate_status = {a.gate: a.state.value for a in approvals}
+            
+            dev_approved = gate_status.get("DEV") == "approved"
+            qa_approved = gate_status.get("QA") == "approved"
+            
+            if not dev_approved:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "dev_not_approved",
+                        "message": "Cannot move to Alan approval without DEV approval",
+                    },
+                )
+            if not qa_approved:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "qa_not_approved",
+                        "message": "Cannot move to Alan approval without QA approval",
+                    },
+                )
+        
         if new_status == "Archived" and current_column != "Archived":
             # Check for open bugs before allowing archive
             open_bugs = (
@@ -825,6 +865,7 @@ class KanbanChangeItem(BaseModel):
     item_type: str = "change"  # "change" or "bug"
     parent_story_id: Optional[str] = None
     parent_story_title: Optional[str] = None
+    image_data: List[dict] = Field(default_factory=list)
 
 
 class KanbanChangeListResponse(BaseModel):
@@ -874,6 +915,7 @@ class KanbanCommentCreateRequest(BaseModel):
 class KanbanChangeCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=256)
     description: str = Field(default="", max_length=2000)
+    image_data: List[dict] = Field(default_factory=list)
 
 
 class KanbanCommentCreateResponse(BaseModel):
@@ -1024,6 +1066,7 @@ def kanban_create_change(
         status="Pending",
         sort_order=_next_sort_order(db, project.id, "Pending"),
         card_number=_next_card_number(db, project.id),
+        image_data=payload.image_data or [],
     )
     db.add(change)
     db.commit()
@@ -1040,6 +1083,7 @@ def kanban_create_change(
             archived=False,
             column="Pending",
             position=change.sort_order,
+            image_data=change.image_data or [],
         )
     )
 
@@ -1103,6 +1147,7 @@ def kanban_list_changes(
                 item_type="change",
                 parent_story_id=None,
                 parent_story_title=None,
+                image_data=c.image_data or [],
             )
         )
 
@@ -1159,6 +1204,7 @@ def kanban_list_changes(
                 item_type="bug",
                 parent_story_id=bug.parent_id,
                 parent_story_title=parent_story_title,
+                image_data=parent_change.image_data or [],
             )
         )
 

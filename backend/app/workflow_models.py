@@ -92,6 +92,8 @@ class Change(WorkflowBase):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="in_progress")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     card_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Image attachments stored as JSON: [{"filename": "xxx.jpg", "data": "base64..."}]
+    image_data: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
