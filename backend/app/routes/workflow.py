@@ -1080,3 +1080,109 @@ def kanban_post_comment(
             body=item.body,
         )
     )
+
+
+# --- Scheduler Polling Suppression (reduce-workflow-scheduler-polling) ---
+
+class SchedulerDecisionResponse(BaseModel):
+    should_run: bool
+    suppressed_count: int
+    material_changes: List[str]
+    state_changed: bool
+    suppressed_since: Optional[str] = None
+    last_hash: str
+    current_hash: str
+
+
+class SuppressorStatusResponse(BaseModel):
+    suppression_enabled: bool
+    suppressed_count: int
+    last_turn_at: Optional[str] = None
+    suppressed_since: Optional[str] = None
+    max_suppressed_turns: int
+    suppression_timeout_minutes: int
+
+
+@router.get("/scheduler/should-run", response_model=SchedulerDecisionResponse)
+def scheduler_should_run(
+    db: Session = Depends(get_workflow_db),
+) -> SchedulerDecisionResponse:
+    """Decision endpoint for workflow scheduler.
+    
+    The scheduler should call this before running a turn. Returns whether
+    the scheduler should proceed based on material workflow state changes.
+    
+    This implements the reduce-workflow-scheduler-polling change:
+    - Suppresses redundant turns when no material state changed
+    - Breaks suppression on meaningful events (approvals, handoffs, blockers)
+    - Forces periodic runs to avoid getting stuck in suppression
+    """
+    from app.services.workflow_polling_suppressor import get_suppressor
+    
+    suppressor = get_suppressor()
+    should_run, metadata = suppressor.should_scheduler_run(db)
+    
+    return SchedulerDecisionResponse(
+        should_run=should_run,
+        suppressed_count=metadata["suppressed_count"],
+        material_changes=metadata["material_changes"],
+        state_changed=metadata["state_changed"],
+        suppressed_since=metadata["suppressed_since"],
+        last_hash=metadata["last_hash"],
+        current_hash=metadata["current_hash"],
+    )
+
+
+@router.get("/scheduler/status", response_model=SuppressorStatusResponse)
+def scheduler_status() -> SuppressorStatusResponse:
+    """Get current suppression status for monitoring/debugging."""
+    from app.services.workflow_polling_suppressor import get_suppressor
+    
+    suppressor = get_suppressor()
+    status = suppressor.get_status()
+    
+    return SuppressorStatusResponse(
+        suppression_enabled=status["suppression_enabled"],
+        suppressed_count=status["suppressed_count"],
+        last_turn_at=status["last_turn_at"],
+        suppressed_since=status["suppressed_since"],
+        max_suppressed_turns=status["max_suppressed_turns"],
+        suppression_timeout_minutes=status["suppression_timeout_minutes"],
+    )
+
+
+@router.post("/scheduler/force-run")
+def scheduler_force_run() -> dict:
+    """Force the next scheduler turn to run (ignore suppression).
+    
+    Use this to override suppression behavior when needed.
+    """
+    from app.services.workflow_polling_suppressor import get_suppressor
+    
+    suppressor = get_suppressor()
+    suppressor.force_run_next()
+    
+    return {"status": "ok", "message": "Next scheduler run forced"}
+
+
+@router.post("/scheduler/configure")
+def scheduler_configure(
+    suppression_enabled: bool = True,
+    max_suppressed_turns: int = 5,
+    suppression_timeout_minutes: int = 60,
+) -> dict:
+    """Configure suppression behavior."""
+    from app.services.workflow_polling_suppressor import get_suppressor
+    
+    suppressor = get_suppressor()
+    suppressor.configure(
+        suppression_enabled=suppression_enabled,
+        max_suppressed_turns=max_suppressed_turns,
+        suppression_timeout_minutes=suppression_timeout_minutes,
+    )
+    
+    return {"status": "ok", "configured": {
+        "suppression_enabled": suppression_enabled,
+        "max_suppressed_turns": max_suppressed_turns,
+        "suppression_timeout_minutes": suppression_timeout_minutes,
+    }}

@@ -1,0 +1,81 @@
+{
+  "flow": "harden-workflow-publish-gates-ui-simplification",
+  "changeId": "harden-workflow-publish-gates",
+  "passed": false,
+  "checks": [
+    {
+      "name": "card does not show Runtime stage / Stage atual",
+      "ok": true
+    },
+    {
+      "name": "card does not show QA functional",
+      "ok": true
+    },
+    {
+      "name": "card shows Publish",
+      "ok": true
+    },
+    {
+      "name": "card shows Ready for homologation",
+      "ok": true
+    },
+    {
+      "name": "drawer does not show Runtime stage / Stage atual",
+      "ok": false
+    },
+    {
+      "name": "drawer does not show QA functional",
+      "ok": false
+    },
+    {
+      "name": "drawer shows Publish",
+      "ok": true
+    },
+    {
+      "name": "drawer shows Ready for homologation",
+      "ok": true
+    },
+    {
+      "name": "runtime change status remains Alan homologation",
+      "ok": true
+    },
+    {
+      "name": "board column remains Alan homologation",
+      "ok": true
+    }
+  ],
+  "runtime": {
+    "status": "Alan homologation",
+    "boardColumn": "Alan homologation",
+    "boardStatus": {
+      "PO": "approved",
+      "DESIGN": "approved",
+      "Alan approval": "approved",
+      "DEV": "approved",
+      "QA": "approved",
+      "Alan homologation": "pending",
+      "QA functional": "approved",
+      "Publish": "blocked",
+      "Runtime stage": "Alan homologation",
+      "Homologation readiness": "blocked: publish/reconcile pending"
+    }
+  },
+  "artifacts": {
+    "boardItem": "http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/01-board-item.json",
+    "change": "http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/02-change.json",
+    "commentsBefore": "http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/03-comments-before.json",
+    "board": "http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/04-board.png",
+    "drawer": "http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/05-drawer.png",
+    "uiChecks": "http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/06-ui-text-checks.json"
+  },
+  "commentPosted": {
+    "item": {
+      "id": "4bc3f70c-bf97-4df3-a6db-2306ebc11337",
+      "change": "harden-workflow-publish-gates",
+      "author": "QA",
+      "created_at": "2026-03-15T14:32:30.671381+00:00",
+      "body": "bloqueio: a simplificação visual de `harden-workflow-publish-gates` falhou na revalidação live do /kanban. checks com falha: drawer does not show Runtime stage / Stage atual; drawer does not show QA functional. próximo passo: ajustar a UI live para esconder `Runtime stage`/`Stage atual` e `QA functional`, mantendo `Publish` e `Ready for homologation` visíveis. Evidências: board http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/04-board.png | drawer http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/05-drawer.png | checks http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/06-ui-text-checks.json | runtime http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/02-change.json"
+    }
+  },
+  "commentBody": "bloqueio: a simplificação visual de `harden-workflow-publish-gates` falhou na revalidação live do /kanban. checks com falha: drawer does not show Runtime stage / Stage atual; drawer does not show QA functional. próximo passo: ajustar a UI live para esconder `Runtime stage`/`Stage atual` e `QA functional`, mantendo `Publish` e `Ready for homologation` visíveis. Evidências: board http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/04-board.png | drawer http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/05-drawer.png | checks http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/06-ui-text-checks.json | runtime http://72.60.150.140:5173/qa-artifacts/playwright/harden-workflow-publish-gates-ui-simplification/02-change.json"
+}

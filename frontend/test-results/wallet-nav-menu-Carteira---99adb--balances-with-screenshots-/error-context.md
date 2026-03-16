@@ -1,0 +1,193 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Crypto Lab Carteira · /external/balances" [ref=e6] [cursor=pointer]:
+        - /url: /external/balances
+        - generic [ref=e8]:
+          - generic [ref=e9]: Crypto Lab
+          - generic [ref=e10]: Carteira · /external/balances
+      - generic [ref=e11]:
+        - button "Exportar" [ref=e12] [cursor=pointer]
+        - button "Atualizar" [ref=e13] [cursor=pointer]
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - heading "Carteira" [level=1] [ref=e18]
+          - generic [ref=e19]:
+            - generic [ref=e20]: Binance Spot
+            - generic [ref=e21]: ·
+            - generic [ref=e22]: read-only
+            - generic [ref=e23]: ·
+            - generic [ref=e24]: as of 2026-03-16 09:46:53 UTC
+        - generic [ref=e25]:
+          - generic [ref=e26]: Total
+          - generic [ref=e27]: $448.03
+          - generic [ref=e28]: 7 ativos · filtro min USD 0.02
+      - generic [ref=e29]:
+        - article [ref=e30]:
+          - generic [ref=e31]: Total USD
+          - generic [ref=e32]: $448.03
+          - generic [ref=e33]: Soma do valor (USD) das linhas visíveis
+        - article [ref=e34]:
+          - generic [ref=e35]: Locked USD
+          - generic [ref=e36]: $447.71
+          - generic [ref=e37]: Estimado por “locked” × preço
+        - article [ref=e38]:
+          - generic [ref=e39]: PnL (parcial)
+          - generic [ref=e40]:
+            - text: $13.90
+            - generic [ref=e41]: (6/7)
+          - generic [ref=e42]: Apenas para ativos com avg cost / pnl calculados
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - generic [ref=e46]: Buscar
+            - textbox "Buscar" [ref=e47]:
+              - /placeholder: BTC, ETH, SOL...
+          - generic [ref=e48]:
+            - generic [ref=e49]: Dust threshold
+            - generic [ref=e50]:
+              - textbox "Dust threshold USD" [ref=e51]: "0.02"
+              - generic [ref=e52]: USD
+          - generic [ref=e53]:
+            - checkbox "Locked only" [ref=e56]
+            - text: Locked only
+          - generic [ref=e57]:
+            - generic [ref=e58]: Ordenar
+            - combobox "Ordenar" [ref=e59]:
+              - option "Maior valor" [selected]
+              - option "Menor valor"
+              - option "Ativo (A–Z)"
+              - option "Ativo (Z–A)"
+              - option "PnL (maior)"
+              - option "PnL (menor)"
+          - generic [ref=e60]: "min USD: 0.02 · sort: value/desc"
+        - generic [ref=e61]:
+          - generic [ref=e62]: Nota sobre PnL
+          - generic [ref=e63]:
+            - text: O backend calcula
+            - strong [ref=e64]: avg cost / pnl
+            - text: somente para um número limitado de ativos (budget de tempo). A UI deve sinalizar
+            - strong [ref=e65]: parcial
+            - text: e não sugerir contabilidade completa.
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - heading "Balances" [level=2] [ref=e69]
+            - generic [ref=e70]: "Layout responsivo: tabela (desktop) / cards (mobile)"
+          - button "Reset filtros" [ref=e71] [cursor=pointer]
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - button "Ativo" [ref=e74]
+            - generic [ref=e75]: Total
+            - generic [ref=e76]: Free
+            - generic [ref=e77]: Locked
+            - button "Valor (USD)" [ref=e78]
+            - generic [ref=e79]: Preço
+            - button "PnL" [ref=e80]
+          - generic [ref=e81]:
+            - generic [ref=e82]:
+              - generic [ref=e83]: B
+              - generic [ref=e84]:
+                - generic [ref=e85]: BTC
+                - generic [ref=e86]:
+                  - generic [ref=e87]: LOCKED
+                  - generic [ref=e88]: "locked: 0.00128"
+            - generic [ref=e89]: "0.00128"
+            - generic [ref=e90]: "0"
+            - generic [ref=e91]: "0.00128"
+            - generic [ref=e92]: $93.73
+            - generic [ref=e93]: $73229.19
+            - generic [ref=e94]: $6.92 (7.97%)
+          - generic [ref=e95]:
+            - generic [ref=e96]:
+              - generic [ref=e97]: E
+              - generic [ref=e98]:
+                - generic [ref=e99]: ETH
+                - generic [ref=e100]:
+                  - generic [ref=e101]: LOCKED
+                  - generic [ref=e102]: "locked: 0.0411"
+            - generic [ref=e103]: "0.0411"
+            - generic [ref=e104]: "0"
+            - generic [ref=e105]: "0.0411"
+            - generic [ref=e106]: $92.73
+            - generic [ref=e107]: $2256.11
+            - generic [ref=e108]: $6.75 (7.86%)
+          - generic [ref=e109]:
+            - generic [ref=e110]:
+              - generic [ref=e111]: H
+              - generic [ref=e112]:
+                - generic [ref=e113]: HBAR
+                - generic [ref=e114]:
+                  - generic [ref=e115]: LOCKED
+                  - generic [ref=e116]: "locked: 896"
+            - generic [ref=e117]: "896.103"
+            - generic [ref=e118]: "0.103"
+            - generic [ref=e119]: "896"
+            - generic [ref=e120]: $88.18
+            - generic [ref=e121]: $0.0984
+            - generic [ref=e122]: $0.04 (0.04%)
+          - generic [ref=e123]:
+            - generic [ref=e124]:
+              - generic [ref=e125]: F
+              - generic [ref=e126]:
+                - generic [ref=e127]: FET
+                - generic [ref=e128]:
+                  - generic [ref=e129]: LOCKED
+                  - generic [ref=e130]: "locked: 419.2"
+            - generic [ref=e131]: "419.2"
+            - generic [ref=e132]: "0"
+            - generic [ref=e133]: "419.2"
+            - generic [ref=e134]: $86.61
+            - generic [ref=e135]: $0.2066
+            - generic [ref=e136]: $0.17 (0.19%)
+          - generic [ref=e137]:
+            - generic [ref=e138]:
+              - generic [ref=e139]: U
+              - generic [ref=e140]:
+                - generic [ref=e141]: USDT
+                - generic [ref=e142]:
+                  - generic [ref=e143]: LOCKED
+                  - generic [ref=e144]: "locked: 86.4734"
+            - generic [ref=e145]: "86.47364469"
+            - generic [ref=e146]: "0.00024469"
+            - generic [ref=e147]: "86.4734"
+            - generic [ref=e148]: $86.47
+            - generic [ref=e149]: $1
+            - generic [ref=e150]: $0.00 (0%)
+          - generic [ref=e151]:
+            - generic [ref=e152]:
+              - generic [ref=e153]: B
+              - generic [ref=e154]:
+                - generic [ref=e155]: BNB
+                - generic [ref=e156]:
+                  - generic [ref=e157]: SPOT
+                  - generic [ref=e158]: spot
+            - generic [ref=e159]: "0.00035756"
+            - generic [ref=e160]: "0.00035756"
+            - generic [ref=e161]: "0"
+            - generic [ref=e162]: $0.24
+            - generic [ref=e163]: $676.24
+            - generic [ref=e164]: $0.02 (10.95%)
+          - generic [ref=e165]:
+            - generic [ref=e166]:
+              - generic [ref=e167]: B
+              - generic [ref=e168]:
+                - generic [ref=e169]: BRL
+                - generic [ref=e170]:
+                  - generic [ref=e171]: SPOT
+                  - generic [ref=e172]: spot
+            - generic [ref=e173]: "0.36659"
+            - generic [ref=e174]: "0.36659"
+            - generic [ref=e175]: "0"
+            - generic [ref=e176]: $0.07
+            - generic [ref=e177]: $0.189082
+            - generic [ref=e178]: —
+        - generic [ref=e179]:
+          - generic [ref=e180]: "total_usd (server): $448.03"
+          - generic [ref=e181]: as_of 2026-03-16 09:46:53 UTC
+```

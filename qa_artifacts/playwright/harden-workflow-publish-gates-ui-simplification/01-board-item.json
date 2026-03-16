@@ -1,0 +1,22 @@
+{
+  "id": "harden-workflow-publish-gates",
+  "title": "harden workflow publish gates",
+  "description": "Evitar QA funcional green travada por publish/upstream guard ou runtime stale.",
+  "card_number": 25,
+  "path": "openspec/changes/harden-workflow-publish-gates/proposal",
+  "status": {
+    "PO": "approved",
+    "DESIGN": "approved",
+    "Alan approval": "approved",
+    "DEV": "approved",
+    "QA": "approved",
+    "Alan homologation": "pending",
+    "QA functional": "approved",
+    "Publish": "blocked",
+    "Runtime stage": "Alan homologation",
+    "Homologation readiness": "blocked: publish/reconcile pending"
+  },
+  "archived": false,
+  "column": "Alan homologation",
+  "position": 0
+}

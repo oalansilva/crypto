@@ -1,0 +1,17 @@
+{
+  "id": "numera-o-cards",
+  "title": "numera-o-cards",
+  "description": "criar um codigo auto numeração pra cada card do kanban ex 1, 2 e assim consecutivamente isso vai facilitar a localização do mesmo",
+  "path": "openspec/changes/numera-o-cards/proposal",
+  "status": {
+    "PO": "approved",
+    "DESIGN": "approved",
+    "Alan approval": "approved",
+    "DEV": "approved",
+    "QA": "pending",
+    "Alan homologation": "pending"
+  },
+  "archived": false,
+  "column": "QA",
+  "position": 0
+}

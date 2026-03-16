@@ -1,0 +1,29 @@
+{
+  "change": "numera-o-cards",
+  "project": "crypto",
+  "checks": [
+    "GET /api/workflow/kanban/changes?project_slug=crypto -> card_number 16",
+    "GET /api/workflow/projects/crypto/changes/numera-o-cards -> card_number 16, status QA",
+    "UI /kanban board shows #16 on numera-o-cards",
+    "UI drawer shows #16 for numera-o-cards",
+    "Reload stability check -> #16 still visible after reload",
+    "PATCH promotion to Alan homologation attempted and blocked by upstream guard (HTTP 409)",
+    "QA blocker comment recorded in runtime"
+  ],
+  "result": "QA functional revalidation PASS for numbering on live runtime/UI; workflow advancement BLOCKED by upstream guard, so change remains in QA.",
+  "status_after": "QA",
+  "evidence": {
+    "kanban_api": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/kanban_changes.json",
+    "change_api": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/change_detail.json",
+    "board_snapshot": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/01-board.yaml",
+    "board_screenshot": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/02-board.png",
+    "drawer_snapshot": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/03-drawer.yaml",
+    "drawer_screenshot": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/04-drawer.png",
+    "after_reload_snapshot": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/05-after-reload.yaml",
+    "after_reload_screenshot": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/06-after-reload.png",
+    "promotion_block_409": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/runtime-update-error.json",
+    "promotion_block_headers": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/runtime-update-headers.txt",
+    "runtime_comment": "http://72.60.150.140:5173/qa-artifacts/playwright/numera-o-cards-live-recheck/runtime-comment.json"
+  },
+  "comment_recorded": "feito: QA revalidou no live que `numera-o-cards` expõe `card_number: 16` na API e mostra `#16` no board/drawer após reload. bloqueio: promoção para `Alan homologation` segue bloqueada pelo upstream guard (HTTP 409) exigindo publish/reconcile dos arquivos relevantes. próximo passo: DEV/publicar ou reconciliar e então repetir a promoção no runtime."
+}
