@@ -459,7 +459,7 @@ export default function KanbanPage() {
     },
   })
 
-  const [author, setAuthor] = useState(() => localStorage.getItem('kanban.commentAuthor') || '')
+  const [author, setAuthor] = useState(() => localStorage.getItem('kanban.commentAuthor') || 'User')
   const [body, setBody] = useState('')
   const [newTitle, setNewTitle] = useState('')
   const [newDescription, setNewDescription] = useState('')
