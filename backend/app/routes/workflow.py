@@ -1104,60 +1104,9 @@ def kanban_list_changes(
             )
         )
 
-    # Also include bugs as separate cards
-    # Query all bugs for this project
-    bugs = (
-        db.query(WorkItem)
-        .filter(WorkItem.type == WorkItemType.bug)
-        .all()
-    )
-
-    # Filter bugs that belong to changes in this project
-    for bug in bugs:
-        if bug.change_pk not in change_map:
-            continue
-        
-        parent_story = None
-        parent_story_title = None
-        if bug.parent_id:
-            parent_story = db.query(WorkItem).filter(WorkItem.id == bug.parent_id).first()
-            if parent_story:
-                parent_story_title = parent_story.title
-
-        # Get the parent change to determine column and status
-        parent_change = change_map.get(bug.change_pk)
-        if not parent_change:
-            continue
-
-        # Bug column is based on the change's status (or use a fixed column like "DEV")
-        # We'll use the change's column for the bug
-        bug_col = _normalize_column(parent_change.status)
-        if parent_change.change_id in openspec_archived_ids:
-            bug_col = "Archived"
-
-        # Bug status shows its own state
-        bug_status = {
-            "status": bug.state.value if bug.state else "unknown",
-            "story": parent_change.change_id,
-        }
-
-        out.append(
-            KanbanChangeItem(
-                id=f"{parent_change.change_id}-bug-{bug.id[:8]}",
-                title=bug.title,
-                description=bug.description or None,
-                card_number=None,
-                path=resolve_change_relative_path(parent_change.change_id, "tasks.md"),
-                status=bug_status,
-                archived=bug_col == "Archived",
-                column=bug_col,
-                position=999,  # Bugs appear after changes in the same column
-                has_bugs=False,
-                item_type="bug",
-                parent_story_id=bug.parent_id,
-                parent_story_title=parent_story_title,
-            )
-        )
+    # NOTE: Bug cards are now handled in frontend via showBugs toggle
+    # Backend returns has_bugs flag so frontend can decide whether to show bugs
+    # This keeps the kanban clean and avoids showing incorrectly-typed work_items
 
     column_index = {name: idx for idx, name in enumerate(KANBAN_COLUMNS)}
     out.sort(key=lambda item: (column_index.get(item.column, 999), item.position, (item.title or item.id).lower(), item.id))
