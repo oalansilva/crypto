@@ -1,10 +1,13 @@
-# Proposal Review — bug-creation-workflow
+# Proposal Review — bug-creation-workflow (v2)
 
 ## Resumo
 
-Implementar fluxo de criação de bugs:
-- QA cria bug vinculado à story
-- Story só termina quando bugs resolvidos
-- Bugs passam por DEV → QA → homologação
+**Mudança de conceito:** Bugs devem aparecer como **cards separados** no Kanban (não subtarefas).
 
-**Próximo passo:** Aprovação → DEV → QA → Homologação.
+**Solução:**
+- Bugs aparecem como cards próprios no board
+- Vincular à story pai via parent_id
+- Story não fecha enquanto houver bugs abertos
+- Bugs passam por DEV → QA → homologação como cards independentes
+
+**Próximo passo:** Revisão → Aprovação → DEV → QA → Homologação.

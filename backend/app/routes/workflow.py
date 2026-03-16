@@ -820,6 +820,9 @@ class KanbanChangeItem(BaseModel):
     column: str
     position: int = 0
     has_bugs: bool = False
+    item_type: str = "change"  # "change" or "bug"
+    parent_story_id: Optional[str] = None
+    parent_story_title: Optional[str] = None
 
 
 class KanbanChangeListResponse(BaseModel):
@@ -1065,6 +1068,9 @@ def kanban_list_changes(
     from app.services.coordination_service import _archived_change_ids_from_openspec
     openspec_archived_ids = _archived_change_ids_from_openspec()
 
+    # Build a map of change_pk to change for bug lookup
+    change_map = {c.id: c for c in items}
+
     for c in items:
         reconcile_change_forward(db, change=c)
         status = _kanban_change_status(db, c)
@@ -1092,6 +1098,64 @@ def kanban_list_changes(
                 column=col,
                 position=int(c.sort_order or 0),
                 has_bugs=has_bugs,
+                item_type="change",
+                parent_story_id=None,
+                parent_story_title=None,
+            )
+        )
+
+    # Also include bugs as separate cards
+    # Query all bugs for this project
+    bugs = (
+        db.query(WorkItem)
+        .filter(WorkItem.type == WorkItemType.bug)
+        .all()
+    )
+
+    # Filter bugs that belong to changes in this project
+    for bug in bugs:
+        if bug.change_pk not in change_map:
+            continue
+        
+        parent_story = None
+        parent_story_title = None
+        if bug.parent_id:
+            parent_story = db.query(WorkItem).filter(WorkItem.id == bug.parent_id).first()
+            if parent_story:
+                parent_story_title = parent_story.title
+
+        # Get the parent change to determine column and status
+        parent_change = change_map.get(bug.change_pk)
+        if not parent_change:
+            continue
+
+        # Bug column is based on the change's status (or use a fixed column like "DEV")
+        # We'll use the change's column for the bug
+        bug_col = _normalize_column(parent_change.status)
+        if parent_change.change_id in openspec_archived_ids:
+            bug_col = "Archived"
+
+        # Bug status shows its own state
+        bug_status = {
+            "status": bug.state.value if bug.state else "unknown",
+            "story": parent_change.change_id,
+        }
+
+        out.append(
+            KanbanChangeItem(
+                id=f"{parent_change.change_id}-bug-{bug.id[:8]}",
+                title=bug.title,
+                description=bug.description or None,
+                card_number=None,
+                path=resolve_change_relative_path(parent_change.change_id, "tasks.md"),
+                status=bug_status,
+                archived=bug_col == "Archived",
+                column=bug_col,
+                position=999,  # Bugs appear after changes in the same column
+                has_bugs=False,
+                item_type="bug",
+                parent_story_id=bug.parent_id,
+                parent_story_title=parent_story_title,
             )
         )
 

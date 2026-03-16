@@ -17,6 +17,9 @@ type CoordinationChangeItem = {
   column: string
   position?: number
   has_bugs?: boolean
+  item_type?: 'change' | 'bug'
+  parent_story_id?: string | null
+  parent_story_title?: string | null
 }
 
 type CoordinationChangeListResponse = {
@@ -117,9 +120,16 @@ function formatTs(iso: string) {
   return d.toLocaleString()
 }
 
+// Extract change ID from bug card ID (format: {change_id}-bug-{bug_id})
+function getChangeIdFromBugId(bugId: string): string | null {
+  const match = bugId.match(/^(.+)-bug-[a-f0-9]+$/)
+  return match ? match[1] : null
+}
+
 // Returns additional CSS classes for bug items (card #14: tipos-itens)
-function getBugCardClass(selected: boolean, hasBugs?: boolean): string {
-  if (!hasBugs) return ''
+function getBugCardClass(selected: boolean, hasBugs?: boolean, isBugCard?: boolean): string {
+  // Also apply bug styling when it's a bug card
+  if (!hasBugs && !isBugCard) return ''
   // Coral/red styling for bug items: border + subtle background tint
   return selected
     ? 'border-red-400/60 bg-red-950/30 ring-2 ring-red-400/30'
@@ -187,6 +197,7 @@ export default function KanbanPage() {
   const [activeMobileColumn, setActiveMobileColumn] = useState<(typeof COLUMNS_ORDER)[number]>('Pending')
   const [moveTarget, setMoveTarget] = useState<CoordinationChangeItem | null>(null)
   const [dragTargetColumn, setDragTargetColumn] = useState<string | null>(null)
+  const [showBugs, setShowBugs] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
   const longPressTimerRef = useRef<number | null>(null)
@@ -243,6 +254,11 @@ export default function KanbanPage() {
 
     let out = items
 
+    // Filter out bug items when showBugs is false
+    if (!showBugs) {
+      out = out.filter((it) => it.item_type !== 'bug')
+    }
+
     if (filterMode !== 'all') {
       out = out.filter((it) => (filterMode === 'archived' ? it.archived : !it.archived))
     }
@@ -276,7 +292,7 @@ export default function KanbanPage() {
     })
 
     return out
-  }, [items, query, filterMode, sortMode])
+  }, [items, query, filterMode, sortMode, showBugs])
 
   const byColumn = useMemo(() => {
     const map = new Map<string, CoordinationChangeItem[]>()
@@ -397,6 +413,17 @@ export default function KanbanPage() {
     if (suppressNextCardClickRef.current === it.id) {
       suppressNextCardClickRef.current = null
       return
+    }
+    // For bug cards, open the parent change instead
+    if (it.item_type === 'bug') {
+      const changeId = getChangeIdFromBugId(it.id)
+      if (changeId) {
+        const parentChange = items.find(c => c.id === changeId)
+        if (parentChange) {
+          setSelected(parentChange)
+          return
+        }
+      }
     }
     setSelected(it)
   }
@@ -810,6 +837,19 @@ export default function KanbanPage() {
               <option value="id">ID</option>
             </select>
 
+            <button
+              type="button"
+              onClick={() => setShowBugs(!showBugs)}
+              className={
+                'h-10 shrink-0 rounded-xl border px-3 text-sm font-medium transition-colors ' +
+                (showBugs
+                  ? 'border-red-400/40 bg-red-400/15 text-red-200'
+                  : 'border-white/10 bg-white/5 text-gray-300')
+              }
+            >
+              {showBugs ? '🐛 Bugs On' : '🐛 Bugs Off'}
+            </button>
+
             <div className="h-10 shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 grid place-items-center text-xs text-gray-300">
               {filteredItems.length} items
             </div>
@@ -887,17 +927,41 @@ export default function KanbanPage() {
                                 onDragEnd={handleDesktopDragEnd}
                                 onDragOver={(event) => handleDesktopDragOver(event, col)}
                                 onDrop={(event) => handleDesktopDrop(event, col)}
-                                onClick={() => setSelected(it)}
+                                onClick={() => {
+                                  // For bug cards, open the parent change instead
+                                  if (it.item_type === 'bug') {
+                                    const changeId = getChangeIdFromBugId(it.id)
+                                    if (changeId) {
+                                      const parentChange = items.find(c => c.id === changeId)
+                                      if (parentChange) {
+                                        setSelected(parentChange)
+                                        return
+                                      }
+                                    }
+                                  }
+                                  setSelected(it)
+                                }}
                                 onKeyDown={(event) => {
                                   if (event.key === 'Enter' || event.key === ' ') {
                                     event.preventDefault()
+                                    // For bug cards, open the parent change instead
+                                    if (it.item_type === 'bug') {
+                                      const changeId = getChangeIdFromBugId(it.id)
+                                      if (changeId) {
+                                        const parentChange = items.find(c => c.id === changeId)
+                                        if (parentChange) {
+                                          setSelected(parentChange)
+                                          return
+                                        }
+                                      }
+                                    }
                                     setSelected(it)
                                   }
                                 }}
                                 className={
                                   'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 cursor-pointer ' +
                                   (selected?.id === it.id ? 'ring-2 ring-white/20' : '') +
-                                  ' ' + getBugCardClass(selected?.id === it.id, it.has_bugs)
+                                  ' ' + getBugCardClass(selected?.id === it.id, it.has_bugs, it.item_type === 'bug')
                                 }
                                 aria-label={`Open details for ${it.id}`}
                                 role="button"
@@ -906,7 +970,14 @@ export default function KanbanPage() {
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
                                     {it.card_number ? <div className="text-[11px] font-semibold text-cyan-300">#{it.card_number}</div> : null}
+                                    {/* Show bug indicator and parent story for bug cards */}
+                                    {it.item_type === 'bug' && (
+                                      <div className="text-[10px] font-semibold text-red-300 mb-1">🐛 BUG</div>
+                                    )}
                                     <div className="text-sm font-semibold text-white truncate">{it.title || it.id}</div>
+                                    {it.item_type === 'bug' && it.parent_story_title && (
+                                      <div className="text-[10px] text-gray-400 truncate">Story: {it.parent_story_title}</div>
+                                    )}
                                     <div className="text-[11px] text-gray-400 font-mono truncate">{it.id}</div>
                                   </div>
                                   {it.archived ? (
@@ -1009,7 +1080,7 @@ export default function KanbanPage() {
                         const touch = e.touches[0]
                         handleCardTouchMove(touch?.clientX ?? 0, touch?.clientY ?? 0)
                       }}
-                      className={"w-full text-left rounded-2xl border border-white/10 bg-zinc-950/60 p-4 shadow-sm " + getBugCardClass(false, it.has_bugs)}
+                      className={"w-full text-left rounded-2xl border border-white/10 bg-zinc-950/60 p-4 shadow-sm " + getBugCardClass(false, it.has_bugs, it.item_type === 'bug')}
                       aria-label={`Open details for ${it.id}`}
                     >
                       <div className="flex items-start gap-3">
@@ -1019,8 +1090,12 @@ export default function KanbanPage() {
                             <div>
                               <div className="flex flex-wrap items-center gap-2 text-[11px]">
                                 {it.card_number ? <span className="font-semibold text-cyan-300">#{it.card_number}</span> : null}
+                                {it.item_type === 'bug' && <span className="font-semibold text-red-300">🐛 BUG</span>}
                                 <span className="font-mono text-gray-400">{it.id}</span>
                               </div>
+                              {it.item_type === 'bug' && it.parent_story_title && (
+                                <div className="text-[10px] text-gray-400 mt-1">Story: {it.parent_story_title}</div>
+                              )}
                               <div className="mt-1 text-base font-semibold leading-tight text-white">{it.title || it.id}</div>
                             </div>
                             {it.archived ? <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-gray-300">archived</div> : null}
