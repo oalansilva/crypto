@@ -146,8 +146,23 @@ async def lifespan(app: FastAPI):
 
         # Workflow DB (optional; enabled via WORKFLOW_DB_ENABLED=1)
         try:
-            from app.workflow_database import init_workflow_schema
+            from app.workflow_database import init_workflow_schema, get_workflow_db
+            from app.workflow_models import Project
+
             init_workflow_schema()
+
+            # Seed default project "crypto" if not exists
+            try:
+                db = next(get_workflow_db())
+                existing = db.query(Project).filter(Project.slug == "crypto").first()
+                if not existing:
+                    crypto_project = Project(slug="crypto", name="Crypto Project")
+                    db.add(crypto_project)
+                    db.commit()
+                    logger.info("Seeded default project 'crypto'")
+                db.close()
+            except Exception as proj_err:
+                logger.warning(f"Project seed skipped/failed: {proj_err}")
         except Exception as e:
             logger.warning(f"Workflow DB init skipped/failed: {e}")
 

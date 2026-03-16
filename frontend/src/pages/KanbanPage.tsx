@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { API_BASE_URL } from '@/lib/apiBase'
+import { ProjectSelector } from '@/components/ProjectSelector'
 
 type CardImage = {
   filename: string
@@ -199,6 +200,7 @@ function TaskTree({
 
 export default function KanbanPage() {
   const qc = useQueryClient()
+  const [selectedProject, setSelectedProject] = useState<string>('crypto')
   const [selected, setSelected] = useState<CoordinationChangeItem | null>(null)
   const [activeMobileColumn, setActiveMobileColumn] = useState<(typeof COLUMNS_ORDER)[number]>('Pending')
   const [moveTarget, setMoveTarget] = useState<CoordinationChangeItem | null>(null)
@@ -234,14 +236,19 @@ export default function KanbanPage() {
   }, [])
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['kanban', 'changes'],
+    queryKey: ['kanban', 'changes', selectedProject],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=crypto`)
+      const res = await fetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=${selectedProject}`)
       if (!res.ok) throw new Error(`Failed to load changes (${res.status})`)
       return (await res.json()) as CoordinationChangeListResponse
     },
     refetchOnWindowFocus: false,
   })
+
+  // Reset selected card when project changes
+  useEffect(() => {
+    setSelected(null)
+  }, [selectedProject])
 
   type FilterMode = 'all' | 'active' | 'archived'
   type SortMode = 'column' | 'title' | 'id'
@@ -431,7 +438,7 @@ export default function KanbanPage() {
     queryFn: async () => {
       const changeId = encodeURIComponent(selected!.id)
       const res = await fetch(
-        `${API_BASE_URL}/workflow/kanban/changes/${changeId}/tasks?project_slug=crypto`
+        `${API_BASE_URL}/workflow/kanban/changes/${changeId}/tasks?project_slug=${selectedProject}`
       )
       if (!res.ok) throw new Error(`Failed to load tasks (${res.status})`)
       return (await res.json()) as ChangeTasksChecklistResponse
@@ -441,12 +448,12 @@ export default function KanbanPage() {
 
   // Query to get work items with IDs for bug creation
   const workItemsQuery = useQuery({
-    queryKey: ['workflow', 'change', selected?.id, 'work-items'],
+    queryKey: ['workflow', 'change', selected?.id, 'work-items', selectedProject],
     enabled: Boolean(selected?.id),
     queryFn: async () => {
       const changeId = encodeURIComponent(selected!.id)
       const res = await fetch(
-        `${API_BASE_URL}/workflow/projects/crypto/changes/${changeId}/tasks`
+        `${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${changeId}/tasks`
       )
       if (!res.ok) throw new Error(`Failed to load work items (${res.status})`)
       return (await res.json()) as WorkItemOut[]
@@ -459,7 +466,7 @@ export default function KanbanPage() {
     enabled: Boolean(selected?.id),
     queryFn: async () => {
       const changeId = encodeURIComponent(selected!.id)
-      const url = `${API_BASE_URL}/workflow/kanban/changes/${changeId}/comments?project_slug=crypto`
+      const url = `${API_BASE_URL}/workflow/kanban/changes/${changeId}/comments?project_slug=${selectedProject}`
       const res = await fetch(url)
       if (!res.ok) throw new Error(`Failed to load comments (${res.status})`)
       return (await res.json()) as CoordinationCommentsListResponse
@@ -469,7 +476,7 @@ export default function KanbanPage() {
 
   const moveChange = useMutation({
     mutationFn: async ({ changeId, status }: { changeId: string; status: string }) => {
-      const res = await fetch(`${API_BASE_URL}/workflow/projects/crypto/changes/${encodeURIComponent(changeId)}`, {
+      const res = await fetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -506,7 +513,7 @@ export default function KanbanPage() {
 
   const reorderChange = useMutation({
     mutationFn: async ({ changeId, direction }: { changeId: string; direction: 'up' | 'down' }) => {
-      const res = await fetch(`${API_BASE_URL}/workflow/projects/crypto/changes/${encodeURIComponent(changeId)}`, {
+      const res = await fetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reorder: direction }),
@@ -592,7 +599,7 @@ export default function KanbanPage() {
       const description = newDescription.trim()
       if (!title) throw new Error('Title is required')
 
-      const res = await fetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=crypto`, {
+      const res = await fetch(`${API_BASE_URL}/workflow/kanban/changes?project_slug=${selectedProject}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, image_data: newImages }),
@@ -629,7 +636,7 @@ export default function KanbanPage() {
       changeId: string
       payload: { title?: string; description?: string; status?: string; cancel_archive?: boolean; image_data?: CardImage[] }
     }) => {
-      const res = await fetch(`${API_BASE_URL}/workflow/projects/crypto/changes/${encodeURIComponent(changeId)}`, {
+      const res = await fetch(`${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${encodeURIComponent(changeId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -684,7 +691,7 @@ export default function KanbanPage() {
       if (!title) throw new Error('Title is required')
 
       const changeId = encodeURIComponent(selected.id)
-      const url = `${API_BASE_URL}/workflow/projects/crypto/changes/${changeId}/tasks`
+      const url = `${API_BASE_URL}/workflow/projects/${selectedProject}/changes/${changeId}/tasks`
 
       const res = await fetch(url, {
         method: 'POST',
@@ -726,7 +733,7 @@ export default function KanbanPage() {
       if (b.length > 2000) throw new Error('Body too long (max 2000 chars)')
 
       const changeId = encodeURIComponent(selected.id)
-      const url = `${API_BASE_URL}/workflow/kanban/changes/${changeId}/comments?project_slug=crypto`
+      const url = `${API_BASE_URL}/workflow/kanban/changes/${changeId}/comments?project_slug=${selectedProject}`
 
       const res = await fetch(url, {
         method: 'POST',
@@ -762,6 +769,7 @@ export default function KanbanPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ProjectSelector selectedProject={selectedProject} onProjectChange={setSelectedProject} />
             <button
               type="button"
               className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 grid place-items-center"
@@ -815,6 +823,9 @@ export default function KanbanPage() {
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Kanban className="w-5 h-5" /> Kanban
               </h1>
+              <div className="mt-2">
+                <ProjectSelector selectedProject={selectedProject} onProjectChange={setSelectedProject} />
+              </div>
               <p className="text-sm text-gray-400">
                 Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
               </p>
