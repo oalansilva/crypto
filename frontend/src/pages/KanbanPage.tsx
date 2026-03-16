@@ -197,7 +197,7 @@ export default function KanbanPage() {
   const [activeMobileColumn, setActiveMobileColumn] = useState<(typeof COLUMNS_ORDER)[number]>('Pending')
   const [moveTarget, setMoveTarget] = useState<CoordinationChangeItem | null>(null)
   const [dragTargetColumn, setDragTargetColumn] = useState<string | null>(null)
-  const [showBugs, setShowBugs] = useState(false)
+  const [showBugs, setShowBugs] = useState(true)
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
   const longPressTimerRef = useRef<number | null>(null)
