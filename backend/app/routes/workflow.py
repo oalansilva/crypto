@@ -1098,7 +1098,7 @@ def kanban_create_change(
             archived=False,
             column="Pending",
             position=change.sort_order,
-            image_data=change.image_data if isinstance(change.image_data, list) else [],
+            image_data=_parse_json_field(change.image_data),
         )
     )
 
@@ -1162,7 +1162,7 @@ def kanban_list_changes(
                 item_type="change",
                 parent_story_id=None,
                 parent_story_title=None,
-                image_data=c.image_data if isinstance(c.image_data, list) else [],
+                image_data=_parse_json_field(c.image_data),
             )
         )
 
@@ -1219,7 +1219,7 @@ def kanban_list_changes(
                 item_type="bug",
                 parent_story_id=bug.parent_id,
                 parent_story_title=parent_story_title,
-                image_data=parent_change.image_data or [],
+                image_data=_parse_json_field(parent_change.image_data),
             )
         )
 
