@@ -46,6 +46,7 @@ def utcnow() -> datetime:
 
 class WorkItemType(str, enum.Enum):
     story = "story"
+    task = "task"
     bug = "bug"
 
 

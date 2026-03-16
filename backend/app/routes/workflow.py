@@ -137,9 +137,9 @@ def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> Li
     # Flush stories to get their IDs
     db.flush()
 
-    # Now create tasks (not bugs!) with proper parent references
-    # Note: Only create bugs via UI/API when QA finds a real bug
-    # Tasks from tasks.md should be regular work items, not bugs
+    # Now create tasks with proper parent references
+    # Tasks from tasks.md should be work items linked to stories (not separate stories or bugs)
+    # Bugs should only be created via UI when QA finds a real bug
     for section in sections:
         section_title = section.title.strip() if section.title else f"Section"
         section_code_match = re.match(r"^(\d+)", section_title)
@@ -151,11 +151,10 @@ def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> Li
             task_code = _parse_tasks_code(task_item.text)
             task_title = task_item.title or task_item.text
             
-            # Create task (not bug!) for this item
-            # Bugs should only be created via UI when QA finds a real bug
+            # Create task linked to story (tasks are child items of stories)
             task = WorkItem(
                 change_pk=change_pk,
-                type=WorkItemType.story,  # Changed from bug to story
+                type=WorkItemType.task,  # task type, not story or bug
                 state=WorkItemState.done if task_item.checked else WorkItemState.queued,
                 parent_id=parent_story.id if parent_story else None,
                 title=task_title,
