@@ -563,6 +563,28 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
     if payload.status is not None:
         new_status = _normalize_column(payload.status)
         if new_status == "Archived" and current_column != "Archived":
+            # Check for open bugs before allowing archive
+            open_bugs = (
+                db.query(WorkItem)
+                .filter(
+                    WorkItem.change_pk == c.id,
+                    WorkItem.type == WorkItemType.bug,
+                    WorkItem.state.notin([WorkItemState.done, WorkItemState.canceled]),
+                )
+                .all()
+            )
+            if open_bugs:
+                bug_titles = [b.title for b in open_bugs[:5]]
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "open_bugs_block_archive",
+                        "message": f"Cannot archive change with {len(open_bugs)} open bug(s). Close or cancel bugs first.",
+                        "open_bugs": bug_titles,
+                        "target": new_status,
+                    },
+                )
+            
             if payload.cancel_archive:
                 c.status = "Archived"
                 c.sort_order = _next_sort_order(db, c.project_id, "Archived", exclude_change_pk=c.id)

@@ -55,6 +55,22 @@ type CoordinationCommentsListResponse = {
   items: CoordinationCommentItem[]
 }
 
+type WorkItemType = 'story' | 'bug'
+
+type WorkItemOut = {
+  id: string
+  change_pk: string
+  type: WorkItemType
+  state: string
+  parent_id: string | null
+  title: string
+  description: string
+  priority: number
+  owner_run_id: string | null
+  created_at: string
+  updated_at: string
+}
+
 type ChangeUpdateResponse = {
   id: string
   project_id: string
@@ -399,6 +415,21 @@ export default function KanbanPage() {
     refetchOnWindowFocus: false,
   })
 
+  // Query to get work items with IDs for bug creation
+  const workItemsQuery = useQuery({
+    queryKey: ['workflow', 'change', selected?.id, 'work-items'],
+    enabled: Boolean(selected?.id),
+    queryFn: async () => {
+      const changeId = encodeURIComponent(selected!.id)
+      const res = await fetch(
+        `${API_BASE_URL}/workflow/projects/crypto/changes/${changeId}/tasks`
+      )
+      if (!res.ok) throw new Error(`Failed to load work items (${res.status})`)
+      return (await res.json()) as WorkItemOut[]
+    },
+    refetchOnWindowFocus: false,
+  })
+
   const commentsQuery = useQuery({
     queryKey: ['workflow', 'kanban', 'change', selected?.id, 'comments'],
     enabled: Boolean(selected?.id),
@@ -551,6 +582,53 @@ export default function KanbanPage() {
       await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'tasks'] })
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
+    },
+  })
+
+  // Bug creation state and modal
+  const [showBugForm, setShowBugForm] = useState(false)
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
+  const [bugTitle, setBugTitle] = useState('')
+  const [bugDescription, setBugDescription] = useState('')
+
+  const createBug = useMutation({
+    mutationFn: async () => {
+      if (!selected?.id) throw new Error('No change selected')
+      if (!selectedStoryId) throw new Error('No story selected')
+      const title = bugTitle.trim()
+      const description = bugDescription.trim()
+      if (!title) throw new Error('Title is required')
+
+      const changeId = encodeURIComponent(selected.id)
+      const url = `${API_BASE_URL}/workflow/projects/crypto/changes/${changeId}/tasks`
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'bug',
+          title,
+          description,
+          parent_id: selectedStoryId,
+          state: 'queued',
+        }),
+      })
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`Failed to create bug (${res.status})${txt ? `: ${txt}` : ''}`)
+      }
+
+      return (await res.json()) as WorkItemOut
+    },
+    onSuccess: async () => {
+      setBugTitle('')
+      setBugDescription('')
+      setShowBugForm(false)
+      setSelectedStoryId(null)
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', selected?.id, 'tasks'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'change', selected?.id, 'work-items'] })
+      await qc.invalidateQueries({ queryKey: ['kanban', 'changes'] })
     },
   })
 
@@ -1174,7 +1252,25 @@ export default function KanbanPage() {
                 </section>
 
                 <section className="space-y-2">
-                  <div className="text-sm font-semibold text-white">Tasks</div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-white">Tasks</div>
+                    {workItemsQuery.data && workItemsQuery.data.some((wi) => wi.type === 'story') && (
+                      <Button
+                        variant="secondary"
+                        className="text-xs py-1 px-2 h-7"
+                        onClick={() => {
+                          // Open bug form for the first story by default
+                          const firstStory = workItemsQuery.data?.find((wi) => wi.type === 'story')
+                          if (firstStory) {
+                            setSelectedStoryId(firstStory.id)
+                            setShowBugForm(true)
+                          }
+                        }}
+                      >
+                        + Create Bug
+                      </Button>
+                    )}
+                  </div>
                   {tasksQuery.isLoading ? (
                     <div className="text-sm text-gray-400">Carregando tasks…</div>
                   ) : tasksQuery.error ? (
@@ -1199,6 +1295,41 @@ export default function KanbanPage() {
                       )}
                     </div>
                   ) : null}
+                  
+                  {/* Stories list with Create Bug buttons */}
+                  {workItemsQuery.data && workItemsQuery.data.length > 0 && (
+                    <div className="rounded-xl border border-red-400/20 bg-red-950/10 p-3 space-y-2">
+                      <div className="text-xs font-semibold text-red-300">Stories (para criar bugs)</div>
+                      {workItemsQuery.data
+                        .filter((wi) => wi.type === 'story')
+                        .map((story) => {
+                          const bugs = workItemsQuery.data?.filter((wi) => wi.parent_id === story.id) || []
+                          const openBugs = bugs.filter((b) => b.state !== 'done' && b.state !== 'canceled')
+                          return (
+                            <div key={story.id} className="rounded-lg border border-white/10 bg-black/20 p-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm text-gray-200 truncate">{story.title}</div>
+                                  <div className="text-[10px] text-gray-500">
+                                    {openBugs.length} bug(s) aberto(s)
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="secondary"
+                                  className="text-xs py-1 px-2 h-6 shrink-0 border border-red-400/30 text-red-200 hover:bg-red-500/20"
+                                  onClick={() => {
+                                    setSelectedStoryId(story.id)
+                                    setShowBugForm(true)
+                                  }}
+                                >
+                                  + Bug
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  )}
                 </section>
 
                 <section className="space-y-2">
@@ -1271,6 +1402,84 @@ export default function KanbanPage() {
           </aside>
         </div>
       ) : null}
+
+      {/* Create Bug Modal */}
+      {showBugForm && selectedStoryId && (
+        <div className="fixed inset-0 z-[60]">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowBugForm(false)} aria-hidden="true" />
+          <aside className="absolute inset-0 h-full w-full bg-zinc-950 border-t border-white/10 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[420px] sm:border-t-0 sm:border-l sm:border-white/10">
+            <div className="h-full flex flex-col">
+              <div className="px-4 py-3 border-b border-white/10 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm text-gray-400">Criar Bug</div>
+                  <div className="text-lg font-semibold text-white truncate">Nova tarefa</div>
+                </div>
+                <Button variant="ghost" onClick={() => setShowBugForm(false)} aria-label="Close">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
+                  <div>
+                    <div className="text-[11px] text-gray-400 mb-1">Story (pai)</div>
+                    <div className="text-sm text-gray-200 bg-black/30 rounded-lg px-3 py-2">
+                      {workItemsQuery.data?.find((wi) => wi.id === selectedStoryId)?.title || 'Story não encontrada'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-gray-400 mb-1">Título do Bug</div>
+                    <Input
+                      value={bugTitle}
+                      onChange={(e) => setBugTitle(e.target.value)}
+                      maxLength={256}
+                      placeholder="Ex: Bug no cálculo de stop loss"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-gray-400 mb-1">Descrição</div>
+                    <textarea
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      rows={4}
+                      value={bugDescription}
+                      onChange={(e) => setBugDescription(e.target.value)}
+                      maxLength={10000}
+                      placeholder="Descreva o bug encontrado..."
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-2">
+                    <div className="text-xs text-gray-500">Bug será criado em DEV.</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setShowBugForm(false)}
+                        disabled={createBug.isPending}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={() => createBug.mutate()}
+                        disabled={createBug.isPending || !bugTitle.trim()}
+                      >
+                        {createBug.isPending ? 'Criando…' : 'Criar Bug'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {createBug.error ? (
+                    <div className="text-xs text-red-400">
+                      {createBug.error instanceof Error ? createBug.error.message : 'Falha ao criar bug'}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
     </main>
   )
 }
