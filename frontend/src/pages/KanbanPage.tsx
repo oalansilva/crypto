@@ -682,7 +682,7 @@ export default function KanbanPage() {
   })
 
   return (
-    <main className="mx-auto px-0 py-0 sm:container sm:px-6 sm:py-10">
+    <main className="min-h-screen w-full px-0 py-0">
       {/* Mobile-only topbar (match approved prototype layout; keep desktop unchanged) */}
       <header className="sm:hidden sticky top-0 z-40 border-b border-white/10 bg-zinc-950/70 backdrop-blur">
         <div className="h-14 px-4 flex items-center justify-between gap-3">
@@ -891,7 +891,7 @@ export default function KanbanPage() {
                       <section
                         key={col}
                         className={
-                          'w-[320px] shrink-0 rounded-xl border bg-zinc-900/40 transition-colors ' +
+                          'w-[28vw] min-w-[240px] max-w-[400px] shrink-0 rounded-xl border bg-zinc-900/40 transition-colors ' +
                           (dragTargetColumn === col ? 'border-cyan-400/50' : 'border-white/10')
                         }
                         onDragOver={(event) => handleDesktopDragOver(event, col)}
