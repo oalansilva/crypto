@@ -8,6 +8,11 @@
 - QA: done
 - Alan homologation: approved
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Fix
 - Frontend: botão agora envia status "Canceled"
 - Backend: tratamento case-insensitive
