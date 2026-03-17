@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Kanban, Search, X } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
+import { Kanban, Search, X, Menu, Sparkles, Bookmark, Layers, Shuffle, Wallet, Activity } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -259,6 +260,7 @@ export default function KanbanPage() {
   // Local search ("Localizar"): filters cards by id/title.
   const [query, setQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Mobile toolbar controls (match prototype intent).
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
@@ -761,12 +763,23 @@ export default function KanbanPage() {
       {/* Mobile-only topbar (match approved prototype layout; keep desktop unchanged) */}
       <header className="sm:hidden sticky top-0 z-40 border-b border-white/10 bg-zinc-950/70 backdrop-blur">
         <div className="h-14 px-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-gray-300">
-            <a href="/" className="opacity-80 hover:opacity-100">
-              Home
-            </a>
-            <span className="opacity-40">/</span>
-            <span className="font-semibold text-gray-100">Kanban</span>
+          <div className="flex items-center gap-2">
+            {/* Hamburger Menu Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Abrir menu"
+            >
+              <Menu className="w-5 h-5 text-white" />
+            </button>
+            <div className="flex items-center gap-2 text-xs text-gray-300">
+              <a href="/" className="opacity-80 hover:opacity-100">
+                Home
+              </a>
+              <span className="opacity-40">/</span>
+              <span className="font-semibold text-gray-100">Kanban</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -790,6 +803,65 @@ export default function KanbanPage() {
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu Bottom Sheet */}
+      {mobileMenuOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="fixed inset-x-0 bottom-0 z-50 bg-[rgba(10,15,30,0.98)] rounded-t-3xl shadow-2xl sm:hidden max-h-[85vh] flex flex-col">
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+            </div>
+            <div className="flex items-center justify-between px-4 pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div
+                  className="h-3.5 w-3.5 rounded-[4px]"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(138,166,255,1), rgba(53,208,127,1))',
+                    boxShadow: '0 0 0 2px rgba(255,255,255,0.04)',
+                  }}
+                />
+                <span className="font-bold text-white">Crypto Backtester</span>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5 text-white/70" />
+              </button>
+            </div>
+            <nav className="p-4 space-y-1 overflow-y-auto">
+              {[
+                { to: '/', label: 'Playground', icon: Sparkles },
+                { to: '/favorites', label: 'Favorites', icon: Bookmark },
+                { to: '/monitor', label: 'Monitor', icon: Activity },
+                { to: '/kanban', label: 'Kanban', icon: Kanban, active: true },
+                { to: '/lab', label: 'Lab', icon: Sparkles },
+                { to: '/arbitrage', label: 'Arbitragem', icon: Shuffle },
+                { to: '/combo/select', label: 'Combo', icon: Layers },
+                { to: '/external/balances', label: 'Carteira', icon: Wallet },
+              ].map(({ to, label, icon: Icon, active }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                    active
+                      ? 'text-white bg-[rgba(138,166,255,0.35)] border border-[rgba(138,166,255,0.7)]'
+                      : 'text-white bg-[rgba(255,255,255,0.12)] hover:text-white hover:bg-[rgba(255,255,255,0.2)]'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        </>
+      )}
 
 
       {mobileSearchOpen ? (

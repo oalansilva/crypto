@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Activity, TrendingUp, Sparkles, Bookmark, Layers, Shuffle, Wallet, Kanban, Menu, X, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -29,19 +29,37 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
     return location.pathname === to
   }
 
+  // Lock body scroll when menu is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Semi-transparent backdrop with blur */}
       <div 
-        className="fixed inset-0 z-40 bg-black sm:hidden"
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
         onClick={onClose}
       />
       
-      {/* Slide-in menu */}
-      <div className="fixed inset-y-0 left-0 z-50 w-72 bg-[rgba(10,15,30,0.98)] border-r border-white/10 shadow-2xl transform transition-transform duration-300 sm:hidden">
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+      {/* Bottom sheet menu */}
+      <div className="fixed inset-x-0 bottom-0 z-50 bg-[rgba(10,15,30,0.98)] rounded-t-3xl shadow-2xl transform transition-transform duration-300 sm:hidden max-h-[85vh] flex flex-col">
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+        </div>
+        
+        {/* Header with close button */}
+        <div className="flex items-center justify-between px-4 pb-4 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div
               className="h-3.5 w-3.5 rounded-[4px]"
@@ -60,7 +78,8 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
           </button>
         </div>
         
-        <nav className="p-4 space-y-1">
+        {/* Navigation items */}
+        <nav className="p-4 space-y-1 overflow-y-auto">
           {navItems.map(({ to, label, icon: Icon }) => {
             const active = isActive(to)
             return (
@@ -102,36 +121,50 @@ export function AppNav() {
 
   if (isWalletPage) {
     return (
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(10,15,30,0.72)] backdrop-blur-xl">
-        <div
-          className="flex min-h-16 items-center justify-between gap-4"
-          style={{ width: 'min(1120px, calc(100% - 28px))', marginInline: 'auto' }}
-        >
-          <NavLink to="/external/balances" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-            <div
-              aria-hidden="true"
-              className="h-3.5 w-3.5 rounded-[4px]"
-              style={{
-                background: 'linear-gradient(135deg, rgba(138,166,255,1), rgba(53,208,127,1))',
-                boxShadow: '0 0 0 2px rgba(255,255,255,0.04)',
-              }}
-            />
-            <div>
-              <div className="text-[15px] font-bold tracking-[0.2px] text-white">Crypto Lab</div>
-              <div className="mt-0.5 text-xs text-white/60">Carteira · /external/balances</div>
+      <>
+        <header className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(10,15,30,0.72)] backdrop-blur-xl">
+          <div
+            className="flex min-h-16 items-center justify-between gap-4"
+            style={{ width: 'min(1120px, calc(100% - 28px))', marginInline: 'auto' }}
+          >
+            <div className="flex items-center gap-3">
+              {/* Mobile Hamburger Button */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                className="sm:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+                aria-label="Abrir menu"
+              >
+                <Menu className="w-6 h-6 text-white" />
+              </button>
+              <NavLink to="/external/balances" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+                <div
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 rounded-[4px]"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(138,166,255,1), rgba(53,208,127,1))',
+                    boxShadow: '0 0 0 2px rgba(255,255,255,0.04)',
+                  }}
+                />
+                <div>
+                  <div className="text-[15px] font-bold tracking-[0.2px] text-white">Crypto Lab</div>
+                  <div className="mt-0.5 text-xs text-white/60">Carteira · /external/balances</div>
+                </div>
+              </NavLink>
             </div>
-          </NavLink>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="border border-white/10 bg-white/5 px-4 text-white/90 hover:bg-white/10" onClick={() => emitWalletAction('export')}>
-              Exportar
-            </Button>
-            <Button variant="primary" size="sm" className="px-4" onClick={() => emitWalletAction('refresh')}>
-              Atualizar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="border border-white/10 bg-white/5 px-4 text-white/90 hover:bg-white/10" onClick={() => emitWalletAction('export')}>
+                Exportar
+              </Button>
+              <Button variant="primary" size="sm" className="px-4" onClick={() => emitWalletAction('refresh')}>
+                Atualizar
+              </Button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+        <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      </>
     )
   }
 
