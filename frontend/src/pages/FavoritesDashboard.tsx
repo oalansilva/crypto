@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, ChevronDown, Activity, BarChart3, MessageCircle } from 'lucide-react';
+import { Trash2, Search, List, ChevronDown, Activity, BarChart3, MessageCircle, Menu } from 'lucide-react';
+import { openMobileMenu } from '../components/AppNav';
 import TradesViewModal from '../components/TradesViewModal';
 import { AgentChatModal } from '../components/AgentChatModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -386,6 +387,15 @@ const FavoritesDashboard: React.FC = () => {
                     <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-6">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex items-center gap-4">
+                                {/* Mobile Hamburger Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => openMobileMenu()}
+                                  className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                  aria-label="Abrir menu"
+                                >
+                                  <Menu className="w-6 h-6 text-white" />
+                                </button>
                                 <div className="relative">
                                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
                                     <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-xl shadow-glow-blue">

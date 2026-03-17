@@ -18,6 +18,11 @@ function emitWalletAction(action: 'refresh' | 'export') {
   window.dispatchEvent(new CustomEvent(`wallet:${action}`))
 }
 
+// Dispatch event to open mobile menu from anywhere
+export function openMobileMenu() {
+  window.dispatchEvent(new CustomEvent('nav:open-menu'))
+}
+
 function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const location = useLocation()
   
@@ -104,9 +109,20 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
   )
 }
 
-export function AppNav() {
+interface AppNavProps {
+  hideOnMobile?: boolean
+}
+
+export function AppNav({ hideOnMobile = false }: AppNavProps) {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Listen for external events to open mobile menu
+  useEffect(() => {
+    const handleOpenMenu = () => setMobileMenuOpen(true)
+    window.addEventListener('nav:open-menu', handleOpenMenu)
+    return () => window.removeEventListener('nav:open-menu', handleOpenMenu)
+  }, [])
 
   const isActive = (to: string) => {
     if (to === '/') return location.pathname === '/'
@@ -117,6 +133,11 @@ export function AppNav() {
   }
 
   const isWalletPage = location.pathname === '/external/balances'
+
+  // On mobile with hideOnMobile, still render MobileMenu but not the header
+  if (hideOnMobile) {
+    return <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+  }
 
   if (isWalletPage) {
     return (

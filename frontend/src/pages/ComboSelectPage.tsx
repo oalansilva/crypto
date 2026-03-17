@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, NavLink } from 'react-router-dom'
 import { Layers, Sparkles, ArrowRight, Database, Edit, Copy, Settings, Lock, Unlock, X, Trash2, Play, Menu, Kanban, Shuffle, Wallet, Activity, Bookmark } from 'lucide-react'
+import { openMobileMenu } from '../components/AppNav'
 import { API_BASE_URL } from '../lib/apiBase'
 
 interface Template {
@@ -20,7 +21,6 @@ export function ComboSelectPage() {
     const [templates, setTemplates] = useState<TemplateList | null>(null)
     const [loading, setLoading] = useState(true)
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     // Clone modal state
     const [cloneModalOpen, setCloneModalOpen] = useState(false)
@@ -154,7 +154,7 @@ export function ComboSelectPage() {
                             {/* Mobile Hamburger */}
                             <button
                                 type="button"
-                                onClick={() => setMobileMenuOpen(true)}
+                                onClick={() => openMobileMenu()}
                                 className="sm:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
                                 aria-label="Abrir menu"
                             >
@@ -174,65 +174,6 @@ export function ComboSelectPage() {
                     </div>
                 </div>
             </header>
-
-            {/* Mobile Menu Bottom Sheet */}
-            {mobileMenuOpen && (
-                <>
-                    <div 
-                        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
-                        onClick={() => setMobileMenuOpen(false)}
-                    />
-                    <div className="fixed inset-x-0 bottom-0 z-50 bg-[rgba(10,15,30,0.98)] rounded-t-3xl shadow-2xl sm:hidden max-h-[85vh] flex flex-col">
-                        <div className="flex justify-center pt-3 pb-1">
-                            <div className="w-12 h-1.5 bg-white/20 rounded-full" />
-                        </div>
-                        <div className="flex items-center justify-between px-4 pb-4 border-b border-white/10">
-                            <div className="flex items-center gap-3">
-                                <div
-                                    className="h-3.5 w-3.5 rounded-[4px]"
-                                    style={{
-                                        background: 'linear-gradient(135deg, rgba(138,166,255,1), rgba(53,208,127,1))',
-                                        boxShadow: '0 0 0 2px rgba(255,255,255,0.04)',
-                                    }}
-                                />
-                                <span className="font-bold text-white">Crypto Backtester</span>
-                            </div>
-                            <button
-                                onClick={() => setMobileMenuOpen(false)}
-                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                            >
-                                <X className="w-5 h-5 text-white/70" />
-                            </button>
-                        </div>
-                        <nav className="p-4 space-y-1 overflow-y-auto">
-                            {[
-                                { to: '/', label: 'Playground', icon: Sparkles },
-                                { to: '/favorites', label: 'Favorites', icon: Bookmark },
-                                { to: '/monitor', label: 'Monitor', icon: Activity },
-                                { to: '/kanban', label: 'Kanban', icon: Kanban },
-                                { to: '/lab', label: 'Lab', icon: Sparkles },
-                                { to: '/arbitrage', label: 'Arbitragem', icon: Shuffle },
-                                { to: '/combo/select', label: 'Combo', icon: Layers, active: true },
-                                { to: '/external/balances', label: 'Carteira', icon: Wallet },
-                            ].map(({ to, label, icon: Icon, active }) => (
-                                <NavLink
-                                    key={to}
-                                    to={to}
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                                        active
-                                            ? 'text-white bg-[rgba(138,166,255,0.35)] border border-[rgba(138,166,255,0.7)]'
-                                            : 'text-white bg-[rgba(255,255,255,0.12)] hover:text-white hover:bg-[rgba(255,255,255,0.2)]'
-                                    }`}
-                                >
-                                    <Icon className="w-5 h-5" />
-                                    {label}
-                                </NavLink>
-                            ))}
-                        </nav>
-                    </div>
-                </>
-            )}
 
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
