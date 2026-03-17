@@ -22,24 +22,24 @@
             - generic [ref=e21]: ·
             - generic [ref=e22]: read-only
             - generic [ref=e23]: ·
-            - generic [ref=e24]: as of 2026-03-17 11:15:21 UTC
+            - generic [ref=e24]: as of 2026-03-17 11:44:08 UTC
         - generic [ref=e25]:
           - generic [ref=e26]: Total
-          - generic [ref=e27]: $466.68
+          - generic [ref=e27]: $465.84
           - generic [ref=e28]: 7 ativos · filtro min USD 0.02
       - generic [ref=e29]:
         - article [ref=e30]:
           - generic [ref=e31]: Total USD
-          - generic [ref=e32]: $466.68
+          - generic [ref=e32]: $465.84
           - generic [ref=e33]: Soma do valor (USD) das linhas visíveis
         - article [ref=e34]:
           - generic [ref=e35]: Locked USD
-          - generic [ref=e36]: $466.43
+          - generic [ref=e36]: $465.58
           - generic [ref=e37]: Estimado por “locked” × preço
         - article [ref=e38]:
           - generic [ref=e39]: PnL (parcial)
           - generic [ref=e40]:
-            - text: $32.61
+            - text: $31.76
             - generic [ref=e41]: (6/7)
           - generic [ref=e42]: Apenas para ativos com avg cost / pnl calculados
       - generic [ref=e43]:
@@ -100,9 +100,9 @@
             - generic [ref=e89]: "419.2"
             - generic [ref=e90]: "0"
             - generic [ref=e91]: "419.2"
-            - generic [ref=e92]: $100.82
-            - generic [ref=e93]: $0.2405
-            - generic [ref=e94]: $14.38 (16.63%)
+            - generic [ref=e92]: $99.52
+            - generic [ref=e93]: $0.2374
+            - generic [ref=e94]: $13.08 (15.13%)
           - generic [ref=e95]:
             - generic [ref=e96]:
               - generic [ref=e97]: E
@@ -114,9 +114,9 @@
             - generic [ref=e103]: "0.0411"
             - generic [ref=e104]: "0"
             - generic [ref=e105]: "0.0411"
-            - generic [ref=e106]: $95.59
-            - generic [ref=e107]: $2325.72
-            - generic [ref=e108]: $9.61 (11.18%)
+            - generic [ref=e106]: $95.76
+            - generic [ref=e107]: $2329.84
+            - generic [ref=e108]: $9.78 (11.38%)
           - generic [ref=e109]:
             - generic [ref=e110]:
               - generic [ref=e111]: B
@@ -128,9 +128,9 @@
             - generic [ref=e117]: "0.00128"
             - generic [ref=e118]: "0"
             - generic [ref=e119]: "0.00128"
-            - generic [ref=e120]: $94.64
-            - generic [ref=e121]: $73934.36
-            - generic [ref=e122]: $7.82 (9.01%)
+            - generic [ref=e120]: $94.86
+            - generic [ref=e121]: $74106.71
+            - generic [ref=e122]: $8.04 (9.26%)
           - generic [ref=e123]:
             - generic [ref=e124]:
               - generic [ref=e125]: H
@@ -142,9 +142,9 @@
             - generic [ref=e131]: "896.103"
             - generic [ref=e132]: "0.103"
             - generic [ref=e133]: "896"
-            - generic [ref=e134]: $88.84
-            - generic [ref=e135]: $0.09914
-            - generic [ref=e136]: $0.70 (0.79%)
+            - generic [ref=e134]: $88.90
+            - generic [ref=e135]: $0.09921
+            - generic [ref=e136]: $0.76 (0.86%)
           - generic [ref=e137]:
             - generic [ref=e138]:
               - generic [ref=e139]: A
@@ -170,9 +170,9 @@
             - generic [ref=e159]: "0.00026168"
             - generic [ref=e160]: "0.00026168"
             - generic [ref=e161]: "0"
-            - generic [ref=e162]: $0.18
-            - generic [ref=e163]: $669.96
-            - generic [ref=e164]: $0.02 (9.92%)
+            - generic [ref=e162]: $0.17
+            - generic [ref=e163]: $668.47
+            - generic [ref=e164]: $0.02 (9.68%)
           - generic [ref=e165]:
             - generic [ref=e166]:
               - generic [ref=e167]: B
@@ -185,9 +185,9 @@
             - generic [ref=e174]: "0.36659"
             - generic [ref=e175]: "0"
             - generic [ref=e176]: $0.07
-            - generic [ref=e177]: $0.191007
+            - generic [ref=e177]: $0.191106
             - generic [ref=e178]: —
         - generic [ref=e179]:
-          - generic [ref=e180]: "total_usd (server): $466.68"
-          - generic [ref=e181]: as_of 2026-03-17 11:15:21 UTC
+          - generic [ref=e180]: "total_usd (server): $465.84"
+          - generic [ref=e181]: as_of 2026-03-17 11:44:08 UTC
 ```

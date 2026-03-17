@@ -70,8 +70,8 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
                 onClick={onClose}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                   active
-                    ? 'text-white bg-[rgba(138,166,255,0.18)] border border-[rgba(138,166,255,0.55)]'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                    ? 'text-white bg-[rgba(138,166,255,0.25)] border border-[rgba(138,166,255,0.55)]'
+                    : 'text-white bg-[rgba(255,255,255,0.08)] hover:text-white hover:bg-[rgba(255,255,255,0.15)]'
                 }`}
               >
                 <Icon className="w-5 h-5" />
