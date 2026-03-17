@@ -108,6 +108,7 @@ const COLUMNS_ORDER = [
   'QA',
   'Alan homologation',
   'Archived',
+  'Canceled',
 ] as const
 
 function StatusLine({ label, value }: { label: string; value?: string }) {
