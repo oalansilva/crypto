@@ -1353,17 +1353,6 @@ export default function KanbanPage() {
                       <div className="text-xs text-gray-500">Editar metadados preserva id, comments e gates.</div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setEditTitle(selected.title || '')
-                            setEditDescription(selected.description || '')
-                            setEditImages(selected.image_data || [])
-                          }}
-                          disabled={updateSelectedChange.isPending}
-                        >
-                          Reverter
-                        </Button>
-                        <Button
                           onClick={() => updateSelectedChange.mutate({
                             changeId: selected.id,
                             payload: { title: editTitle.trim(), description: editDescription.trim(), image_data: editImages },

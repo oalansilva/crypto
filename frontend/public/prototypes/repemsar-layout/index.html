@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repemsar Layout - Design System Prototype</title>
+    <style>
+        /* ============================================
+           DESIGN SYSTEM TOKENS - CSS CUSTOM PROPERTIES
+           ============================================ */
+        :root {
+            /* Colors */
+            --color-primary: #22c55e;
+            --color-primary-hover: #16a34a;
+            --color-secondary: #64748b;
+            --color-accent: #f59e0b;
+            
+            --color-bg: #0f172a;
+            --color-bg-secondary: #1e293b;
+            --color-surface: #334155;
+            
+            --color-text: #f8fafc;
+            --color-text-secondary: #94a3b8;
+            --color-text-muted: #64748b;
+            
+            --color-success: #22c55e;
+            --color-warning: #f59e0b;
+            --color-error: #ef4444;
+            --color-info: #3b82f6;
+            
+            /* Typography */
+            --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            
+            --text-xs: 0.75rem;
+            --text-sm: 0.875rem;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 1.875rem;
+            --text-4xl: 2.25rem;
+            
+            --font-normal: 400;
+            --font-medium: 500;
+            --font-semibold: 600;
+            --font-bold: 700;
+            
+            /* Spacing */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-10: 2.5rem;
+            --space-12: 3rem;
+            
+            /* Border Radius */
+            --radius-none: 0;
+            --radius-sm: 0.25rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-full: 9999px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            
+            /* Transitions */
+            --transition-fast: 150ms ease;
+            --transition-normal: 250ms ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-family);
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        /* ============================================
+           NAVIGATION
+           ============================================ */
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-4) var(--space-6);
+            background: var(--color-bg-secondary);
+            border-bottom: 1px solid var(--color-surface);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-logo {
+            font-size: var(--text-xl);
+            font-weight: var(--font-bold);
+            color: var(--color-primary);
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: var(--space-6);
+            list-style: none;
+        }
+        
+        .nav-link {
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            font-weight: var(--font-medium);
+            transition: color var(--transition-fast);
+        }
+        
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--color-primary);
+        }
+        
+        .nav-link.active {
+            border-bottom: 2px solid var(--color-primary);
+        }
+        
+        /* Hamburger */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: var(--space-2);
+            background: none;
+            border: none;
+        }
+        
+        .hamburger span {
+            width: 24px;
+            height: 2px;
+            background: var(--color-text);
+            transition: var(--transition-fast);
+        }
+        
+        /* Mobile Menu */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            padding: var(--space-6);
+            transform: translateY(100%);
+            transition: transform var(--transition-normal);
+            z-index: 200;
+        }
+        
+        .mobile-menu.open {
+            transform: translateY(0);
+        }
+        
+        .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+        }
+        
+        .mobile-menu-close {
+            background: none;
+            border: none;
+            color: var(--color-text);
+            font-size: var(--text-2xl);
+            cursor: pointer;
+        }
+        
+        .mobile-nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            list-style: none;
+        }
+        
+        .mobile-nav-link {
+            display: block;
+            padding: var(--space-3) var(--space-4);
+            color: var(--color-text);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: background var(--transition-fast);
+        }
+        
+        .mobile-nav-link:hover,
+        .mobile-nav-link.active {
+            background: var(--color-surface);
+            color: var(--color-primary);
+        }
+        
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 150;
+        }
+        
+        .mobile-overlay.open {
+            display: block;
+        }
+        
+        /* ============================================
+           RESPONSIVE STYLES
+           ============================================ */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .hamburger {
+                display: flex;
+            }
+            
+            .mobile-menu {
+                display: block;
+            }
+        }
+        
+        /* ============================================
+           SECTIONS
+           ============================================ */
+        .section {
+            padding: var(--space-8) var(--space-6);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-title {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-6);
+            color: var(--color-text);
+        }
+        
+        /* Colors Grid */
+        .colors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: var(--space-4);
+        }
+        
+        .color-swatch {
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            background: var(--color-surface);
+        }
+        
+        .color-preview {
+            height: 60px;
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-2);
+        }
+        
+        .color-name {
+            font-weight: var(--font-medium);
+            font-size: var(--text-sm);
+        }
+        
+        .color-value {
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            color: var(--color-text-muted);
+        }
+        
+        /* Typography Scale */
+        .type-scale {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+        }
+        
+        .type-sample {
+            display: flex;
+            align-items: baseline;
+            gap: var(--space-4);
+        }
+        
+        .type-size {
+            width: 60px;
+            font-size: var(--text-sm);
+            color: var(--color-text-muted);
+            font-family: var(--font-mono);
+        }
+        
+        /* Spacing Scale */
+        .spacing-scale {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-4);
+        }
+        
+        .spacing-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        
+        .spacing-box {
+            background: var(--color-primary);
+            min-width: 20px;
+            min-height: 20px;
+            border-radius: var(--radius-sm);
+        }
+        
+        .spacing-label {
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            color: var(--color-text-secondary);
+        }
+        
+        /* Buttons */
+        .button-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-4);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-3) var(--space-6);
+            border-radius: var(--radius-md);
+            font-weight: var(--font-medium);
+            font-size: var(--text-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border: none;
+        }
+        
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--color-primary-hover);
+        }
+        
+        .btn-secondary {
+            background: var(--color-surface);
+            color: var(--color-text);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--color-secondary);
+        }
+        
+        /* Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--space-6);
+        }
+        
+        .card {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            border: 1px solid var(--color-surface);
+        }
+        
+        .card-title {
+            font-size: var(--text-lg);
+            font-weight: var(--font-semibold);
+            margin-bottom: var(--space-2);
+        }
+        
+        .card-text {
+            color: var(--color-text-secondary);
+            font-size: var(--text-sm);
+        }
+        
+        /* Responsive Grid Demo */
+        .responsive-grid-demo {
+            display: grid;
+            gap: var(--space-4);
+            padding: var(--space-4);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+        }
+        
+        .grid-item {
+            background: var(--color-surface);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            text-align: center;
+            font-weight: var(--font-medium);
+        }
+        
+        @media (max-width: 768px) {
+            .responsive-grid-demo {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .responsive-grid-demo {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (min-width: 1025px) {
+            .responsive-grid-demo {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        /* Form Elements */
+        .form-group {
+            margin-bottom: var(--space-4);
+        }
+        
+        .form-label {
+            display: block;
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            margin-bottom: var(--space-2);
+            color: var(--color-text-secondary);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: var(--space-3) var(--space-4);
+            background: var(--color-surface);
+            border: 1px solid var(--color-surface);
+            border-radius: var(--radius-md);
+            color: var(--color-text);
+            font-size: var(--text-base);
+            transition: border-color var(--transition-fast);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+        
+        /* Mobile Touch Targets */
+        .touch-targets {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+        
+        .touch-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+        
+        .touch-box {
+            background: var(--color-primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+        }
+        
+        .touch-box.small {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .touch-box.target {
+            width: 44px;
+            height: 44px;
+        }
+        
+        .touch-label {
+            font-size: var(--text-sm);
+            color: var(--color-text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================
+         NAVIGATION COMPONENT
+         ============================================ -->
+    <nav class="navbar">
+        <a href="#" class="nav-logo">CryptoDash</a>
+        
+        <ul class="nav-links">
+            <li><a href="#" class="nav-link active">Home</a></li>
+            <li><a href="#" class="nav-link">Favorites</a></li>
+            <li><a href="#" class="nav-link">Monitor</a></li>
+            <li><a href="#" class="nav-link">Kanban</a></li>
+            <li><a href="#" class="nav-link">Lab</a></li>
+            <li><a href="#" class="nav-link">Arbitrage</a></li>
+            <li><a href="#" class="nav-link">Combo</a></li>
+            <li><a href="#" class="nav-link">Balances</a></li>
+        </ul>
+        
+        <button class="hamburger" onclick="toggleMobileMenu()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </nav>
+    
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileMenu()"></div>
+    
+    <!-- Mobile Menu (Bottom Sheet) -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+            <span style="font-weight: var(--font-semibold);">Menu</span>
+            <button class="mobile-menu-close" onclick="toggleMobileMenu()">&times;</button>
+        </div>
+        <ul class="mobile-nav-links">
+            <li><a href="#" class="mobile-nav-link active">Home</a></li>
+            <li><a href="#" class="mobile-nav-link">Favorites</a></li>
+            <li><a href="#" class="mobile-nav-link">Monitor</a></li>
+            <li><a href="#" class="mobile-nav-link">Kanban</a></li>
+            <li><a href="#" class="mobile-nav-link">Lab</a></li>
+            <li><a href="#" class="mobile-nav-link">Arbitrage</a></li>
+            <li><a href="#" class="mobile-nav-link">Combo</a></li>
+            <li><a href="#" class="mobile-nav-link">Balances</a></li>
+        </ul>
+    </div>
+    
+    <!-- ============================================
+         1. DESIGN SYSTEM COLORS
+         ============================================ -->
+    <section class="section">
+        <h2 class="section-title">1. Design System - Cores</h2>
+        
+        <h3 style="margin-bottom: var(--space-4); color: var(--color-text-secondary);">Cores Primárias</h3>
+        <div class="colors-grid">
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-primary);"></div>
+                <div class="color-name">Primary</div>
+                <div class="color-value">#22c55e</div>
+            </div>
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-primary-hover);"></div>
+                <div class="color-name">Primary Hover</div>
+                <div class="color-value">#16a34a</div>
+            </div>
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-secondary);"></div>
+                <div class="color-name">Secondary</div>
+                <div class="color-value">#64748b</div>
+            </div>
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-accent);"></div>
+                <div class="color-name">Accent</div>
+                <div class="color-value">#f59e0b</div>
+            </div>
+        </div>
+        
+        <h3 style="margin: var(--space-6) 0 var(--space-4); color: var(--color-text-secondary);">Cores de Fundo</h3>
+        <div class="colors-grid">
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-bg);"></div>
+                <div class="color-name">Background</div>
+                <div class="color-value">#0f172a</div>
+            </div>
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-bg-secondary);"></div>
+                <div class="color-name">Background Secondary</div>
+                <div class="color-value">#1e293b</div>
+            </div>
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-surface);"></div>
+                <div class="color-name">Surface</div>
+                <div class="color-value">#334155</div>
+            </div>
+        </div>
+        
+        <h3 style="margin: var(--space-6) 0 var(--space-4); color: var(--color-text-secondary);">Cores Semânticas</h3>
+        <div class="colors-grid">
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-success);"></div>
+                <div class="color-name">Success</div>
+                <div class="color-value">#22c55e</div>
+            </div>
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-warning);"></div>
+                <div class="color-name">Warning</div>
+                <div class="color-value">#f59e0b</div>
+            </div>
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-error);"></div>
+                <div class="color-name">Error</div>
+                <div class="color-value">#ef4444</div>
+            </div>
+            <div class="color-swatch">
+                <div class="color-preview" style="background: var(--color-info);"></div>
+                <div class="color-name">Info</div>
+                <div class="color-value">#3b82f6</div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ============================================
+         2. TYPOGRAPHY
+         ============================================ -->
+    <section class="section">
+        <h2 class="section-title">2. Design System - Tipografia</h2>
+        
+        <div class="type-scale">
+            <div class="type-sample">
+                <span class="type-size">4xl</span>
+                <span style="font-size: var(--text-4xl); font-weight: var(--font-bold);">Heading 4XL</span>
+            </div>
+            <div class="type-sample">
+                <span class="type-size">3xl</span>
+                <span style="font-size: var(--text-3xl); font-weight: var(--font-bold);">Heading 3XL</span>
+            </div>
+            <div class="type-sample">
+                <span class="type-size">2xl</span>
+                <span style="font-size: var(--text-2xl); font-weight: var(--font-bold);">Heading 2XL</span>
+            </div>
+            <div class="type-sample">
+                <span class="type-size">xl</span>
+                <span style="font-size: var(--text-xl); font-weight: var(--font-semibold);">Heading XL</span>
+            </div>
+            <div class="type-sample">
+                <span class="type-size">lg</span>
+                <span style="font-size: var(--text-lg); font-weight: var(--font-medium);">Large Text</span>
+            </div>
+            <div class="type-sample">
+                <span class="type-size">base</span>
+                <span style="font-size: var(--text-base);">Base Text - O padrão do corpo</span>
+            </div>
+            <div class="type-sample">
+                <span class="type-size">sm</span>
+                <span style="font-size: var(--text-sm);">Small Text - Textos secundários</span>
+            </div>
+            <div class="type-sample">
+                <span class="type-size">xs</span>
+                <span style="font-size: var(--text-xs);">Extra Small - Labels</span>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ============================================
+         3. SPACING
+         ============================================ -->
+    <section class="section">
+        <h2 class="section-title">3. Design System - Espaçamento</h2>
+        
+        <div class="spacing-scale">
+            <div class="spacing-item">
+                <div class="spacing-box" style="width: var(--space-1); height: var(--space-1);"></div>
+                <span class="spacing-label">space-1 (4px)</span>
+            </div>
+            <div class="spacing-item">
+                <div class="spacing-box" style="width: var(--space-2); height: var(--space-2);"></div>
+                <span class="spacing-label">space-2 (8px)</span>
+            </div>
+            <div class="spacing-item">
+                <div class="spacing-box" style="width: var(--space-3); height: var(--space-3);"></div>
+                <span class="spacing-label">space-3 (12px)</span>
+            </div>
+            <div class="spacing-item">
+                <div class="spacing-box" style="width: var(--space-4); height: var(--space-4);"></div>
+                <span class="spacing-label">space-4 (16px)</span>
+            </div>
+            <div class="spacing-item">
+                <div class="spacing-box" style="width: var(--space-5); height: var(--space-5);"></div>
+                <span class="spacing-label">space-5 (20px)</span>
+            </div>
+            <div class="spacing-item">
+                <div class="spacing-box" style="width: var(--space-6); height: var(--space-6);"></div>
+                <span class="spacing-label">space-6 (24px)</span>
+            </div>
+            <div class="spacing-item">
+                <div class="spacing-box" style="width: var(--space-8); height: var(--space-8);"></div>
+                <span class="spacing-label">space-8 (32px)</span>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ============================================
+         4. COMPONENTES
+         ============================================ -->
+    <section class="section">
+        <h2 class="section-title">4. Componentes</h2>
+        
+        <h3 style="margin-bottom: var(--space-4); color: var(--color-text-secondary);">Botões</h3>
+        <div class="button-grid">
+            <button class="btn btn-primary">Primary Button</button>
+            <button class="btn btn-secondary">Secondary Button</button>
+        </div>
+        
+        <h3 style="margin: var(--space-8) 0 var(--space-4); color: var(--color-text-secondary);">Cards</h3>
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-title">Card Title</div>
+                <div class="card-text">Este é um exemplo de card usando os tokens do design system.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Card Title</div>
+                <div class="card-text">Mesma estrutura, visual consistente em todo o dashboard.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Card Title</div>
+                <div class="card-text">Fácil de criar novos componentes com os tokens.</div>
+            </div>
+        </div>
+        
+        <h3 style="margin: var(--space-8) 0 var(--space-4); color: var(--color-text-secondary);">Formulários</h3>
+        <div style="max-width: 400px;">
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Senha</label>
+                <input type="password" class="form-input" placeholder="••••••••">
+            </div>
+        </div>
+    </section>
+    
+    <!-- ============================================
+         5. RESPONSIVE GRID
+         ============================================ -->
+    <section class="section">
+        <h2 class="section-title">5. Layout Responsivo</h2>
+        
+        <p style="color: var(--color-text-secondary); margin-bottom: var(--space-4);">
+            Redimensione a janela para ver a grade adaptar:
+        </p>
+        <ul style="color: var(--color-text-muted); font-size: var(--text-sm); margin-bottom: var(--space-4); list-style: none;">
+            <li>📱 Mobile (< 768px): 1 coluna</li>
+            <li>�Tablet (768-1024px): 2 colunas</li>
+            <li>💻 Desktop (> 1024px): 3 colunas</li>
+        </ul>
+        
+        <div class="responsive-grid-demo">
+            <div class="grid-item">Item 1</div>
+            <div class="grid-item">Item 2</div>
+            <div class="grid-item">Item 3</div>
+            <div class="grid-item">Item 4</div>
+            <div class="grid-item">Item 5</div>
+            <div class="grid-item">Item 6</div>
+        </div>
+    </section>
+    
+    <!-- ============================================
+         6. MOBILE TOUCH TARGETS
+         ============================================ -->
+    <section class="section">
+        <h2 class="section-title">6. Touch Targets (Mobile)</h2>
+        
+        <p style="color: var(--color-text-secondary); margin-bottom: var(--space-4);">
+            Todos os elementos interativos devem ter no mínimo 44x44px no mobile.
+        </p>
+        
+        <div class="touch-targets">
+            <div class="touch-item">
+                <div class="touch-box small">✕</div>
+                <span class="touch-label">32px - Pequeno demais (não acessível)</span>
+            </div>
+            <div class="touch-item">
+                <div class="touch-box target">✕</div>
+                <span class="touch-label">44px - Tamanho mínimo acessível</span>
+            </div>
+        </div>
+    </section>
+    
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('mobileOverlay');
+            menu.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+    </script>
+</body>
+</html>
