@@ -35,7 +35,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm sm:hidden"
+        className="fixed inset-0 z-40 bg-black/90 backdrop-blur-sm sm:hidden"
         onClick={onClose}
       />
       
@@ -70,8 +70,8 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
                 onClick={onClose}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                   active
-                    ? 'text-white bg-[rgba(138,166,255,0.25)] border border-[rgba(138,166,255,0.55)]'
-                    : 'text-white bg-[rgba(255,255,255,0.08)] hover:text-white hover:bg-[rgba(255,255,255,0.15)]'
+                    ? 'text-white bg-[rgba(138,166,255,0.35)] border border-[rgba(138,166,255,0.7)]'
+                    : 'text-white bg-[rgba(255,255,255,0.12)] hover:text-white hover:bg-[rgba(255,255,255,0.2)]'
                 }`}
               >
                 <Icon className="w-5 h-5" />
