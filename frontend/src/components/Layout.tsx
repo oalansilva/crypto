@@ -2,7 +2,14 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { AppNav } from './AppNav'
 
 export function Layout() {
-  // AppNav is always visible - unified navigation on all pages
+  const location = useLocation()
+  
+  // Pages that have custom headers with mobile menus/filters - hide AppNav on mobile
+  // but keep it on desktop for unified navigation
+  const pagesWithCustomMobileHeader = ['/favorites', '/kanban', '/arbitrage', '/combo/select']
+  const hasCustomMobileHeader = pagesWithCustomMobileHeader.some(path => 
+    location.pathname === path || location.pathname.startsWith(path + '/')
+  )
   return (
     <div className="relative min-h-screen w-full overflow-hidden text-white font-sans selection:bg-[rgba(138,166,255,0.30)] pb-20">
       {/* Global app background matches the approved Wallet prototype palette */}
@@ -16,7 +23,7 @@ export function Layout() {
         />
       </div>
 
-      <AppNav />
+      <AppNav hideOnMobile={hasCustomMobileHeader} />
       <Outlet />
     </div>
   )

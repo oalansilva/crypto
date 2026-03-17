@@ -3,6 +3,10 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Activity, TrendingUp, Sparkles, Bookmark, Layers, Shuffle, Wallet, Kanban, Menu, X, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
+interface AppNavProps {
+  hideOnMobile?: boolean
+}
+
 const navItems = [
   { to: '/', label: 'Playground', icon: Sparkles },
   { to: '/favorites', label: 'Favorites', icon: Bookmark },
@@ -116,6 +120,17 @@ interface AppNavProps {
 export function AppNav({ hideOnMobile = false }: AppNavProps) {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Track viewport width
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Listen for external events to open mobile menu
   useEffect(() => {
@@ -134,15 +149,17 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
 
   const isWalletPage = location.pathname === '/external/balances'
 
-  // On mobile with hideOnMobile, still render MobileMenu but not the header
-  if (hideOnMobile) {
-    return <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-  }
-
+  // Desktop nav shows on sm+ screens via CSS (hidden sm:flex)
+  // Mobile menu is controlled via CSS classes on the hamburger button
+  // Pages with custom headers handle their own mobile navigation
+  
   if (isWalletPage) {
     return (
       <>
-        <header className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(10,15,30,0.72)] backdrop-blur-xl">
+        <header 
+          className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(10,15,30,0.72)] backdrop-blur-xl"
+          style={{ display: isMobile && hideOnMobile ? 'none' : 'block' }}
+        >
           <div
             className="flex min-h-16 items-center justify-between gap-4"
             style={{ width: 'min(1120px, calc(100% - 28px))', marginInline: 'auto' }}
@@ -191,6 +208,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
   return (
     <header
       className={'glass-strong border-b border-white/10 sticky top-0 z-50 '}
+      style={{ display: isMobile && hideOnMobile ? 'none' : 'block' }}
     >
       <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex items-center justify-between">
