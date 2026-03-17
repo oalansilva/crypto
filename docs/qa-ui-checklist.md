@@ -2,6 +2,9 @@
 
 Run this checklist before sending any change to Alan homologation.
 
+## ⚠️ Before Testing - MANDATORY
+- [ ] **Run `./stop.sh && ./start.sh`** to ensure clean state and avoid cache issues
+
 ## Desktop Validation
 - [ ] Navigate to Kanban board
 - [ ] Verify all columns render correctly

@@ -35,7 +35,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
+        className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm sm:hidden"
         onClick={onClose}
       />
       

@@ -9,122 +9,157 @@
       - generic [ref=e9]: /
       - generic [ref=e10]: Kanban
     - generic [ref=e11]:
-      - button "Search" [ref=e12]:
+      - generic [ref=e12]:
         - img [ref=e13]
-      - button "Create new card" [disabled] [ref=e16]: New
-  - generic [ref=e18]:
-    - textbox "Novo card / backlog item" [ref=e21]
-    - textbox "Descrição opcional" [ref=e22]
-  - generic [ref=e25]:
-    - generic [ref=e26]:
-      - heading "Kanban" [level=1] [ref=e27]:
-        - img [ref=e28]
+        - button "crypto" [ref=e16]:
+          - generic [ref=e18]:
+            - img [ref=e19]
+            - text: crypto
+          - img [ref=e21]
+      - button "Search" [ref=e23]:
+        - img [ref=e24]
+      - button "Create new card" [ref=e27] [cursor=pointer]: New
+  - generic [ref=e30]:
+    - generic [ref=e31]:
+      - heading "Kanban" [level=1] [ref=e32]:
+        - img [ref=e33]
         - text: Kanban
-      - paragraph [ref=e29]: Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
-    - generic [ref=e30]:
-      - textbox "Novo card / backlog item" [ref=e33]
-      - textbox "Descrição opcional" [ref=e34]
       - generic [ref=e35]:
-        - generic [ref=e36]: Cria direto em Pending.
-        - button "Criar card" [disabled] [ref=e37]
-  - generic [ref=e38]:
-    - generic [ref=e39]:
-      - generic [ref=e40]:
-        - generic [ref=e41]: Opportunity Board
-        - generic [ref=e42]: Uma etapa por vez · swipe + tabs
-      - generic [ref=e43]:
-        - combobox "Filter" [ref=e44]:
+        - img [ref=e36]
+        - button "crypto" [ref=e39]:
+          - generic [ref=e41]:
+            - img [ref=e42]
+            - text: crypto
+          - img [ref=e44]
+      - paragraph [ref=e46]: Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
+    - button "+ Novo Card" [ref=e48] [cursor=pointer]
+  - generic [ref=e49]:
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]: Opportunity Board
+        - generic [ref=e53]: Uma etapa por vez · swipe + tabs
+      - generic [ref=e54]:
+        - combobox "Filter" [ref=e55]:
           - option "All" [selected]
           - option "Active"
           - option "Archived"
-        - combobox "Sort" [ref=e45]:
+        - combobox "Sort" [ref=e56]:
           - option "Priority" [selected]
           - option "Title"
           - option "ID"
-        - generic [ref=e46]: 1 items
-      - generic [ref=e47]:
-        - tablist "Workflow stages" [ref=e48]:
-          - tab "Pending 0" [ref=e49]
-          - tab "PO 0" [ref=e50]
-          - tab "DESIGN 0" [ref=e51]
-          - tab "Alan approval 0" [ref=e52]
-          - tab "DEV 1" [selected] [ref=e53]
-          - tab "QA 0" [ref=e54]
-          - tab "Alan homologation 0" [ref=e55]
-          - tab "Archived 0" [ref=e56]
-        - generic [ref=e57]: Swipe para trocar de etapa
-    - generic [ref=e59]:
-      - generic [ref=e61]:
-        - generic [ref=e62]:
-          - generic [ref=e63]: Current stage
-          - generic [ref=e64]: DEV
-        - generic [ref=e65]: 1 cards
-      - button "Open details for alterar-dados-dos-cards" [active] [ref=e67]:
-        - generic [ref=e70]:
-          - generic [ref=e72]:
-            - generic [ref=e74]: alterar-dados-dos-cards
-            - generic [ref=e75]: alterar dados dos cards
-          - generic [ref=e76]:
-            - generic [ref=e77]: DEV
-            - generic [ref=e78]: PO approved
-            - generic [ref=e79]: DEV in progress
-            - generic [ref=e80]: QA pending
-            - generic [ref=e81]: Publish —
-          - generic [ref=e82]:
-            - generic [ref=e83]: Alan approval · approved
-            - generic [ref=e84]: Ready for homologation · —
+        - button "🐛 Bugs On" [ref=e57]
+        - generic [ref=e58]: 1 items
+      - generic [ref=e59]:
+        - tablist "Workflow stages" [ref=e60]:
+          - tab "Pending 0" [ref=e61]
+          - tab "PO 0" [ref=e62]
+          - tab "DESIGN 0" [ref=e63]
+          - tab "Alan approval 0" [ref=e64]
+          - tab "DEV 1" [selected] [ref=e65]
+          - tab "QA 0" [ref=e66]
+          - tab "Alan homologation 0" [ref=e67]
+          - tab "Archived 0" [ref=e68]
+          - tab "Canceled 0" [ref=e69]
+        - generic [ref=e70]: Swipe para trocar de etapa
+    - generic [ref=e72]:
+      - generic [ref=e74]:
+        - generic [ref=e75]:
+          - generic [ref=e76]: Current stage
+          - generic [ref=e77]: DEV
+        - generic [ref=e78]: 1 cards
+      - button "Open details for alterar-dados-dos-cards" [active] [ref=e80]:
+        - generic [ref=e83]:
           - generic [ref=e85]:
-            - button "Move up" [disabled] [ref=e86]
-            - button "Move down" [disabled] [ref=e87]
-          - generic [ref=e88]: Pressione e segure para mover de etapa
-  - complementary [ref=e91]:
-    - generic [ref=e92]:
-      - generic [ref=e93]:
-        - generic [ref=e94]:
-          - generic [ref=e95]: Detalhes
-          - generic [ref=e97]: alterar dados dos cards
-          - generic [ref=e98]: alterar-dados-dos-cards
-        - button "Close panel" [ref=e99] [cursor=pointer]:
-          - img [ref=e100]
-      - generic [ref=e103]:
-        - generic [ref=e104]:
-          - generic [ref=e105]: Card
-          - generic [ref=e106]:
-            - button "Move up" [disabled] [ref=e107]
-            - button "Move down" [disabled] [ref=e108]
-          - generic [ref=e109]:
-            - generic [ref=e110]:
-              - generic [ref=e111]: Título
-              - textbox "Título do card" [ref=e114]: alterar dados dos cards
-            - generic [ref=e115]:
-              - generic [ref=e116]: Descrição
-              - textbox "Descrição do card" [ref=e117]: Editar título e descrição mantendo o histórico.
-            - generic [ref=e118]:
-              - generic [ref=e119]: Editar metadados preserva id, comments e gates.
-              - generic [ref=e120]:
-                - button "Reverter" [ref=e121] [cursor=pointer]
-                - button "Salvar" [ref=e122] [cursor=pointer]
+            - generic [ref=e87]: alterar-dados-dos-cards
+            - generic [ref=e88]: alterar dados dos cards
+          - generic [ref=e89]:
+            - generic [ref=e90]: DEV
+            - generic [ref=e91]: PO approved
+            - generic [ref=e92]: DEV in progress
+            - generic [ref=e93]: QA pending
+            - generic [ref=e94]: Publish —
+          - generic [ref=e95]:
+            - generic [ref=e96]: Alan approval · approved
+            - generic [ref=e97]: Ready for homologation · —
+          - generic [ref=e98]:
+            - button "Move up" [disabled] [ref=e99]
+            - button "Move down" [disabled] [ref=e100]
+          - generic [ref=e101]: Pressione e segure para mover de etapa
+  - complementary [ref=e104]:
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - generic [ref=e108]: Detalhes
+          - generic [ref=e110]: alterar dados dos cards
+          - generic [ref=e111]: alterar-dados-dos-cards
+        - button "Close panel" [ref=e112] [cursor=pointer]:
+          - img [ref=e113]
+      - generic [ref=e116]:
+        - generic [ref=e117]:
+          - generic [ref=e118]: Card
+          - generic [ref=e119]:
+            - button "Move up" [disabled] [ref=e120]
+            - button "Move down" [disabled] [ref=e121]
+          - generic [ref=e122]:
             - generic [ref=e123]:
-              - generic [ref=e124]:
-                - generic [ref=e125]: Cancelar card
-                - generic [ref=e126]: Retira do fluxo ativo sem apagar histórico.
-              - button "Cancelar card" [ref=e127] [cursor=pointer]
-        - generic [ref=e128]:
-          - generic [ref=e129]: Tasks
-          - generic [ref=e132]: Tasks
-        - generic [ref=e133]:
-          - generic [ref=e134]: Comments
-          - generic [ref=e135]:
+              - generic [ref=e124]: Título
+              - textbox "Título do card" [ref=e127]: alterar dados dos cards
+            - generic [ref=e128]:
+              - generic [ref=e129]: Descrição
+              - textbox "Descrição do card" [ref=e130]: Editar título e descrição mantendo o histórico.
+            - generic [ref=e131]:
+              - generic [ref=e132]: Imagens anexadas
+              - generic [ref=e135] [cursor=pointer]: +
             - generic [ref=e136]:
-              - generic [ref=e137]:
-                - generic [ref=e138]: Author
-                - textbox "Alan" [ref=e141]
+              - generic [ref=e137]: Editar metadados preserva id, comments e gates.
+              - generic [ref=e138]:
+                - button "Reverter" [ref=e139] [cursor=pointer]
+                - button "Salvar" [ref=e140] [cursor=pointer]
+            - generic [ref=e141]:
               - generic [ref=e142]:
-                - generic [ref=e143]: Body (max 2000)
-                - generic [ref=e144]: 0/2000
-            - textbox "Escreva um comentário…" [ref=e145]
-            - generic [ref=e146]:
-              - generic [ref=e147]: Append-only (sem editar/apagar) — v1
-              - button "Comentar" [disabled] [ref=e148]
-          - generic [ref=e150]: (sem comentários ainda)
+                - generic [ref=e143]: Cancelar card
+                - generic [ref=e144]: Retira do fluxo ativo sem apagar histórico.
+              - button "Cancelar card" [ref=e145] [cursor=pointer]
+        - generic [ref=e146]:
+          - generic [ref=e147]:
+            - generic [ref=e148]: Tasks
+            - button "+ Create Bug" [ref=e149] [cursor=pointer]
+          - generic [ref=e152]: Tasks
+          - generic [ref=e153]:
+            - generic [ref=e154]: Stories (para criar bugs)
+            - generic [ref=e156]:
+              - generic [ref=e157]:
+                - generic [ref=e158]: 1. Runtime / Backend
+                - generic [ref=e159]: 4 bug(s) aberto(s)
+              - button "+ Bug" [ref=e160] [cursor=pointer]
+            - generic [ref=e162]:
+              - generic [ref=e163]:
+                - generic [ref=e164]: 2. Frontend Kanban UX
+                - generic [ref=e165]: 0 bug(s) aberto(s)
+              - button "+ Bug" [ref=e166] [cursor=pointer]
+            - generic [ref=e168]:
+              - generic [ref=e169]:
+                - generic [ref=e170]: 3. Validation / Tests
+                - generic [ref=e171]: 2 bug(s) aberto(s)
+              - button "+ Bug" [ref=e172] [cursor=pointer]
+            - generic [ref=e174]:
+              - generic [ref=e175]:
+                - generic [ref=e176]: 4. Documentation / Handoff
+                - generic [ref=e177]: 3 bug(s) aberto(s)
+              - button "+ Bug" [ref=e178] [cursor=pointer]
+        - generic [ref=e179]:
+          - generic [ref=e180]: Comments
+          - generic [ref=e181]:
+            - generic [ref=e182]:
+              - generic [ref=e183]:
+                - generic [ref=e184]: Author
+                - textbox "Alan" [ref=e187]: User
+              - generic [ref=e188]:
+                - generic [ref=e189]: Body (max 2000)
+                - generic [ref=e190]: 0/2000
+            - textbox "Escreva um comentário…" [ref=e191]
+            - generic [ref=e192]:
+              - generic [ref=e193]: Append-only (sem editar/apagar) — v1
+              - button "Comentar" [disabled] [ref=e194]
+          - generic [ref=e196]: (sem comentários ainda)
 ```
