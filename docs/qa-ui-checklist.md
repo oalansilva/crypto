@@ -5,6 +5,22 @@ Run this checklist before sending any change to Alan homologation.
 ## ⚠️ Before Testing - MANDATORY
 - [ ] **Run `./stop.sh && ./start.sh`** to ensure clean state and avoid cache issues
 
+## Mobile Validation (REQUIRED for responsive/mobile changes)
+- [ ] Test on mobile viewport (375px width) for ALL pages:
+  - [ ] Home (/)
+  - [ ] Favorites (/favorites)
+  - [ ] Monitor (/monitor)
+  - [ ] Kanban (/kanban)
+  - [ ] Lab (/lab)
+  - [ ] Arbitrage (/arbitrage)
+  - [ ] Combo (/combo/select)
+  - [ ] Carteira (/external/balances)
+- [ ] Verify NO duplicate headers/menus appear on ANY page
+- [ ] Open hamburger/bottom-sheet menu on EACH page
+- [ ] Verify menu is readable (good contrast, no transparency issues)
+- [ ] Verify NO overlap/conflicts with page content
+- [ ] Take screenshots of each test case
+
 ## Desktop Validation
 - [ ] Navigate to Kanban board
 - [ ] Verify all columns render correctly

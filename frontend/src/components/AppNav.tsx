@@ -119,6 +119,7 @@ export function AppNav() {
   const isWalletPage = location.pathname === '/external/balances'
   // Hide AppNav on mobile for pages with custom headers (they have their own hamburger)
   const hideOnMobileCustomHeader = 
+    location.pathname.startsWith('/favorites') ||
     location.pathname.startsWith('/kanban') ||
     location.pathname.startsWith('/combo') ||
     location.pathname.startsWith('/arbitrage')
