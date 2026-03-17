@@ -619,6 +619,25 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                     },
                 )
         
+        # Validation: Cannot move to Alan approval without OpenSpec artifacts
+        if new_status == "Alan approval":
+            change_slug = c.change_id
+            openspec_dir = Path(REPO_ROOT) / "openspec" / "changes" / change_slug
+            
+            required_files = ["proposal.md", "review-ptbr.md", "tasks.md"]
+            missing_files = [f for f in required_files if not (openspec_dir / f).exists()]
+            
+            if missing_files:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "missing_openspec_artifacts",
+                        "message": f"Cannot move to Alan approval without required files: {', '.join(missing_files)}",
+                        "missing_files": missing_files,
+                        "target": new_status,
+                    },
+                )
+        
         if new_status == "Archived" and current_column != "Archived":
             # Check for open bugs before allowing archive
             open_bugs = (
