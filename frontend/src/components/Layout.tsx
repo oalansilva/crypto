@@ -3,7 +3,7 @@ import { AppNav } from './AppNav'
 
 export function Layout() {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden text-white font-sans selection:bg-[rgba(138,166,255,0.30)]">
+    <div className="relative min-h-screen w-full overflow-hidden text-white font-sans selection:bg-[rgba(138,166,255,0.30)] pb-20">
       {/* Global app background matches the approved Wallet prototype palette */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div
