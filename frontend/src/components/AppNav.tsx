@@ -117,7 +117,11 @@ export function AppNav() {
   }
 
   const isWalletPage = location.pathname === '/external/balances'
-  const hideOnMobileKanban = location.pathname.startsWith('/kanban')
+  // Hide AppNav on mobile for pages with custom headers (they have their own hamburger)
+  const hideOnMobileCustomHeader = 
+    location.pathname.startsWith('/kanban') ||
+    location.pathname.startsWith('/combo') ||
+    location.pathname.startsWith('/arbitrage')
 
   if (isWalletPage) {
     return (
@@ -172,7 +176,7 @@ export function AppNav() {
     <header
       className={
         'glass-strong border-b border-white/10 sticky top-0 z-50 ' +
-        (hideOnMobileKanban ? 'hidden sm:block' : '')
+        (hideOnMobileCustomHeader ? 'hidden sm:block' : '')
       }
     >
       <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
