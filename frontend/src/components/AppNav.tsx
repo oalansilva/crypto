@@ -52,12 +52,12 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
     <>
       {/* Semi-transparent backdrop with blur */}
       <div 
-        className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm sm:hidden"
+        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm sm:hidden"
         onClick={onClose}
       />
       
       {/* Bottom sheet menu */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 h-[85vh] bg-[rgba(10,15,30,0.98)] rounded-t-3xl shadow-2xl transform transition-transform duration-300 sm:hidden flex flex-col overflow-y-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-[110] h-[85vh] bg-[rgba(10,15,30,0.98)] rounded-t-3xl shadow-2xl transform transition-transform duration-300 sm:hidden flex flex-col overflow-y-auto">
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-12 h-1.5 bg-white/20 rounded-full" />
