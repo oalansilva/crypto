@@ -193,6 +193,9 @@ def reconcile_change_forward(db: Session, *, change: Change) -> bool:
         return False
     if current.lower() == "archived":
         current = "Archived"
+    if current.lower() == "canceled":
+        # Don't reconcile changes that were explicitly canceled
+        return False
 
     # Advance forward only.
     if _flow_index(desired_col) > _flow_index(current):

@@ -1374,12 +1374,12 @@ export default function KanbanPage() {
                           if (!window.confirm(`Cancelar o card ${selected.id}? O histórico será preservado.`)) return
                           updateSelectedChange.mutate({
                             changeId: selected.id,
-                            payload: { status: 'Archived', cancel_archive: true },
+                            payload: { status: 'Canceled' },
                           })
                         }}
-                        disabled={updateSelectedChange.isPending || selected.column === 'Archived'}
+                        disabled={updateSelectedChange.isPending || selected.column === 'Canceled'}
                       >
-                        {selected.column === 'Archived' ? 'Já cancelado' : 'Cancelar card'}
+                        {selected.column === 'Canceled' ? 'Já cancelado' : 'Cancelar card'}
                       </Button>
                     </div>
 

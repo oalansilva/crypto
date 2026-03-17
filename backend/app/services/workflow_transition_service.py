@@ -57,6 +57,8 @@ def _normalize_status(status: str | None) -> str:
     value = (status or "").strip()
     if value.lower() == "archived":
         return "Archived"
+    if value.lower() == "canceled":
+        return "Canceled"
     if value not in KANBAN_COLUMNS:
         return "DEV"
     return value

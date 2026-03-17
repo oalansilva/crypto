@@ -1005,7 +1005,7 @@ def _homologation_readiness(change: Change, gate_status: Dict[str, str], column:
         return "blocked: QA functional pending"
     if publish_state != "ready":
         return "blocked: publish/reconcile pending"
-    if column not in {"Alan homologation", "Archived"}:
+    if column not in {"Alan homologation", "Archived", "Canceled"}:
         return f"blocked: runtime stage still in {column}"
     return "ready"
 
@@ -1025,6 +1025,8 @@ def _normalize_column(raw: Optional[str]) -> str:
     col = raw.strip() if raw else "DEV"
     if col.lower() == "archived":
         col = "Archived"
+    if col.lower() == "canceled":
+        col = "Canceled"
     if col not in KANBAN_COLUMNS:
         col = "DEV"
     return col
