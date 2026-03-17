@@ -57,7 +57,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
       />
       
       {/* Bottom sheet menu */}
-      <div className="fixed inset-x-0 bottom-0 z-50 bg-[rgba(10,15,30,0.98)] rounded-t-3xl shadow-2xl transform transition-transform duration-300 sm:hidden max-h-[85vh] flex flex-col">
+      <div className="fixed bottom-0 left-0 right-0 z-50 h-[85vh] bg-[rgba(10,15,30,0.98)] rounded-t-3xl shadow-2xl transform transition-transform duration-300 sm:hidden flex flex-col overflow-y-auto">
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-12 h-1.5 bg-white/20 rounded-full" />
