@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { FolderKanban } from 'lucide-react'
+import { FolderKanban, ChevronDown } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/apiBase'
+import { Dropdown } from '@/components/ui/DropdownMenu'
 
 export type Project = {
   id: string
@@ -24,28 +25,41 @@ export function ProjectSelector({ selectedProject, onProjectChange }: ProjectSel
     refetchOnWindowFocus: false,
   })
 
+  const options = projects?.map((project) => ({
+    value: project.slug,
+    label: project.name,
+    icon: <FolderKanban className="w-4 h-4 text-gray-400" />,
+  })) || []
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2">
+        <FolderKanban className="w-4 h-4 text-gray-400" />
+        <div className="h-9 min-w-[140px] rounded-lg border border-white/10 bg-white/5 px-3 animate-pulse">
+          <div className="h-4 w-20 bg-white/10 rounded mt-2.5" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2">
+        <FolderKanban className="w-4 h-4 text-red-400" />
+        <span className="text-sm text-red-400">Erro ao carregar</span>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2">
       <FolderKanban className="w-4 h-4 text-gray-400" />
-      <select
+      <Dropdown
+        options={options}
         value={selectedProject}
-        onChange={(e) => onProjectChange(e.target.value)}
-        disabled={isLoading}
-        className="h-9 min-w-[140px] rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-400/30 disabled:opacity-50"
-        aria-label="Selecionar projeto"
-      >
-        {isLoading ? (
-          <option value="">Carregando...</option>
-        ) : error ? (
-          <option value="">Erro ao carregar</option>
-        ) : (
-          projects?.map((project) => (
-            <option key={project.id} value={project.slug}>
-              {project.name}
-            </option>
-          ))
-        )}
-      </select>
+        onChange={onProjectChange}
+        placeholder="Selecionar projeto..."
+      />
     </div>
   )
 }
