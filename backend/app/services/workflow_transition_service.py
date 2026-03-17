@@ -18,6 +18,7 @@ KANBAN_COLUMNS = [
     "QA",
     "Alan homologation",
     "Archived",
+    "Canceled",
 ]
 
 GATED_COLUMNS = {
@@ -33,14 +34,15 @@ GATED_COLUMNS = {
 GATE_SEQUENCE = ["PO", "DESIGN", "Alan approval", "DEV", "QA", "Alan homologation"]
 
 _ALLOWED_FORWARD_MOVES = {
-    "Pending": {"PO"},
-    "PO": {"DESIGN"},
-    "DESIGN": {"Alan approval"},
-    "Alan approval": {"DEV"},
-    "DEV": {"QA"},
-    "QA": {"Alan homologation"},
-    "Alan homologation": {"Archived"},
+    "Pending": {"PO", "Canceled"},
+    "PO": {"DESIGN", "Canceled"},
+    "DESIGN": {"Alan approval", "Canceled"},
+    "Alan approval": {"DEV", "Canceled"},
+    "DEV": {"QA", "Canceled"},
+    "QA": {"Alan homologation", "Canceled"},
+    "Alan homologation": {"Archived", "Canceled"},
     "Archived": set(),
+    "Canceled": set(),
 }
 
 

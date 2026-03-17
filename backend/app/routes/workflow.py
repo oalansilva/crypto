@@ -590,8 +590,6 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
         # Validation: Cannot move to Alan approval, homologation, or archive without DEV and QA approval
         if new_status in {"Alan approval", "Alan homologation", "Archived"}:
             approvals = (
-            approvals = (
-            approvals = (
                 db.query(WorkflowApproval)
                 .filter(
                     WorkflowApproval.change_pk == c.id,
