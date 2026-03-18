@@ -70,16 +70,16 @@ export default function ArbitragePage() {
   }, [autoRefresh, query])
 
   return (
-    <main className="container mx-auto px-6 py-10">
+    <main className="app-page arbitrage-page container mx-auto px-6 py-10">
       <div className="space-y-6">
-        <section className="glass-strong rounded-2xl p-6 border border-zinc-800 space-y-4">
+        <section className="glass-strong rounded-[28px] p-6 border border-zinc-800 space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <label className="flex flex-col gap-2 text-sm text-zinc-400">
               Símbolos (csv)
               <input
                 value={symbols}
                 onChange={(event) => setSymbols(event.target.value)}
-                className="rounded-lg bg-zinc-800 border border-zinc-700 px-4 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="rounded-[16px] bg-zinc-800 border border-zinc-700 px-4 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 placeholder="USDT/USDC,USDT/DAI,USDC/DAI"
               />
             </label>
@@ -88,7 +88,7 @@ export default function ArbitragePage() {
               <input
                 value={threshold}
                 onChange={(event) => setThreshold(event.target.value)}
-                className="rounded-lg bg-zinc-800 border border-zinc-700 px-4 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="rounded-[16px] bg-zinc-800 border border-zinc-700 px-4 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 placeholder="0.1"
               />
             </label>
@@ -97,7 +97,7 @@ export default function ArbitragePage() {
               <input
                 value={exchanges}
                 onChange={(event) => setExchanges(event.target.value)}
-                className="rounded-lg bg-zinc-800 border border-zinc-700 px-4 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="rounded-[16px] bg-zinc-800 border border-zinc-700 px-4 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 placeholder="binance,okx,bybit"
               />
             </label>
@@ -106,7 +106,7 @@ export default function ArbitragePage() {
           <div className="flex flex-wrap items-center gap-4">
             <button
               onClick={fetchData}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2 rounded-lg transition"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2 rounded-[16px] transition"
             >
               Atualizar
             </button>
@@ -124,7 +124,7 @@ export default function ArbitragePage() {
           </div>
         </section>
 
-        <section className="glass rounded-2xl border border-zinc-800 overflow-hidden">
+        <section className="glass rounded-[28px] border border-zinc-800 overflow-hidden">
           <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-white">Spreads atuais</h2>
@@ -140,7 +140,7 @@ export default function ArbitragePage() {
               const spreads = symbolResult?.spreads ?? []
               const symbolError = symbolResult?.error
               return (
-                <div key={sym} className="rounded-xl border border-zinc-800 overflow-hidden">
+                <div key={sym} className="rounded-[24px] border border-zinc-800 overflow-hidden">
                   <div className="px-4 py-3 bg-zinc-800/50 flex items-center justify-between">
                     <span className="font-semibold text-white">{sym}</span>
                     <span className="text-xs text-zinc-400">{spreads.length} pares</span>

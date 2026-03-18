@@ -42,8 +42,8 @@ const OpenSpecDetailPage: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-black text-slate-900 p-6">
-      <div className="max-w-5xl mx-auto">
+    <div className="app-page openspec-page text-slate-900 p-6">
+      <div className="page-card max-w-5xl mx-auto p-6 sm:p-8">
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="text-xs text-slate-400">{isChangeArtifact ? 'Change' : 'Spec'}</div>

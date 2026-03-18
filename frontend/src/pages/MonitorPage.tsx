@@ -2,6 +2,8 @@ import { MonitorStatusTab } from '@/components/monitor/MonitorStatusTab'
 
 export function MonitorPage() {
   return (
-    <MonitorStatusTab />
+    <div className="app-page monitor-page">
+      <MonitorStatusTab />
+    </div>
   )
 }

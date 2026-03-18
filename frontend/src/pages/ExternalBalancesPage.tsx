@@ -246,7 +246,7 @@ export default function ExternalBalancesPage() {
   const asOfLabel = formatAsOf(asOf)
 
   return (
-    <main className="w-full">
+    <main className="app-page balances-page w-full">
       <div
         className="pb-10 pt-[18px] sm:pb-12"
         style={{ width: 'min(1120px, calc(100% - 28px))', marginInline: 'auto' }}
@@ -281,17 +281,17 @@ export default function ExternalBalancesPage() {
         </section>
 
         <section className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <article className="glass rounded-[14px] p-[14px] shadow-md">
+          <article className="page-card p-4 sm:p-5">
             <div className="text-xs text-zinc-500">Total USD</div>
             <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900">{loading ? '—' : fmtUSD.format(summary.totalUsd)}</div>
             <div className="mt-1.5 text-xs text-zinc-500">Soma do valor (USD) das linhas visíveis</div>
           </article>
-          <article className="glass rounded-[14px] p-[14px] shadow-md">
+          <article className="page-card p-4 sm:p-5">
             <div className="text-xs text-zinc-500">Locked USD</div>
             <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900">{loading ? '—' : fmtUSD.format(summary.lockedUsd)}</div>
             <div className="mt-1.5 text-xs text-zinc-500">Estimado por “locked” × preço</div>
           </article>
-          <article className="glass rounded-[14px] p-[14px] shadow-md">
+          <article className="page-card p-4 sm:p-5">
             <div className="text-xs text-zinc-500">PnL (parcial)</div>
             <div className={`mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] ${summary.pnlSum >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
               {loading ? '—' : summary.pnlCount ? fmtUSD.format(summary.pnlSum) : '—'}

@@ -76,9 +76,9 @@ const LabPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
+    <div className="app-page lab-page text-zinc-100 p-6">
       <div className="max-w-3xl mx-auto">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 space-y-4">
+        <div className="page-card p-5 space-y-4">
           <div>
             <label className="text-xs text-zinc-400">Mensagem para o Lab</label>
             <textarea

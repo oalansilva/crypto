@@ -328,7 +328,7 @@ const LabRunPage: React.FC = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-black text-slate-900 p-6">
+    <div className="app-page lab-run-page text-slate-900 p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>

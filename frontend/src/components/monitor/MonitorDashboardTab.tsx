@@ -166,7 +166,7 @@ export function MonitorDashboardTab() {
                 key={item.symbol}
                 type="button"
                 onClick={() => setSelectedSymbol(item.symbol)}
-                className={`w-full rounded-xl border text-left px-3 py-3 min-h-11 transition-colors ${
+                className={`w-full rounded-[16px] border text-left px-3 py-3 min-h-11 transition-colors ${
                   active
                     ? 'border-blue-400 bg-blue-500/15 text-white'
                     : 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
@@ -185,7 +185,7 @@ export function MonitorDashboardTab() {
       ) : null}
 
       {selectedSymbol ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-4">
+        <div className="rounded-[28px] border border-white/10 bg-white/5 p-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-lg font-semibold text-white">{selectedSymbol}</h3>
@@ -211,7 +211,7 @@ export function MonitorDashboardTab() {
                   type="button"
                   onClick={() => setTimeframe(tf)}
                   disabled={isStock && tf !== '1d'}
-                  className={`rounded-lg border px-3 min-h-11 min-w-11 text-sm font-medium transition-colors ${
+                  className={`rounded-[12px] border px-3 min-h-11 min-w-11 text-sm font-medium transition-colors ${
                     active
                       ? 'border-blue-400 bg-blue-500/20 text-white'
                       : 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'

@@ -758,7 +758,7 @@ export default function KanbanPage() {
   })
 
   return (
-    <main className="min-h-screen w-full px-0 py-0">
+    <main className="app-page kanban-page w-full px-0 py-0">
       {mobileSearchOpen ? (
         <div className="sm:hidden border-b border-zinc-200 bg-zinc-900 backdrop-blur">
           <div className="px-4 py-3 flex items-center gap-2">
@@ -784,17 +784,19 @@ export default function KanbanPage() {
         </div>
       ) : null}
 
-      <div className="px-4 py-3 sm:px-0 sm:py-0 sm:mb-6">
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-800 p-4 sm:p-5">
+      <div className="page-stack">
+      <div className="px-0 py-0">
+        <div className="page-card p-5 sm:p-6">
           <div className="sm:flex sm:items-start sm:justify-between sm:gap-6">
             <div>
+              <div className="eyebrow mb-3">Workflow Board</div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Kanban className="w-5 h-5" /> Kanban
               </h1>
               <div className="mt-2">
                 <ProjectSelector selectedProject={selectedProject} onProjectChange={setSelectedProject} />
               </div>
-              <p className="text-sm text-zinc-400">
+              <p className="mt-3 text-sm text-zinc-400 max-w-3xl">
                 Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
               </p>
             </div>
@@ -807,8 +809,11 @@ export default function KanbanPage() {
         </div>
       </div>
 
-      <div className="px-4 py-4 sm:px-0 sm:py-0">
-        <div className="sm:hidden sticky top-14 z-30 -mx-4 mb-3 border-b border-zinc-200 bg-zinc-900 backdrop-blur">
+      <div className="px-0 py-0">
+        <div
+          className="sm:hidden sticky z-30 -mx-4 mb-4 rounded-b-[24px] border-b border-zinc-200 bg-zinc-900/95 backdrop-blur"
+          style={{ top: 'var(--app-header-mobile)' }}
+        >
           <div className="px-4 py-3">
             <div className="text-lg font-semibold text-zinc-900">Opportunity Board</div>
             <div className="text-xs text-zinc-400">Uma etapa por vez · swipe + tabs</div>
@@ -883,9 +888,17 @@ export default function KanbanPage() {
           </div>
         </div>
 
-        <Card className="hidden sm:block border border-zinc-200 glass">
+        <Card className="hidden sm:block border border-zinc-200 glass rounded-[28px] overflow-hidden">
           <CardHeader>
-            <div className="text-sm text-zinc-500">Board</div>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm text-zinc-500">Board</div>
+                <div className="mt-1 text-xs text-zinc-400">Cards maiores, colunas mais abertas e leitura mais próxima da home.</div>
+              </div>
+              <div className="page-card-muted px-3 py-2 text-xs text-zinc-400">
+                {filteredItems.length} items
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -894,30 +907,30 @@ export default function KanbanPage() {
               <div className="text-red-400 text-sm">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
             ) : (
               <div className="overflow-x-auto">
-                <div className="flex items-start gap-4 min-w-max pb-2">
+                <div className="flex items-start gap-4 min-w-max pb-3">
                   {COLUMNS_ORDER.map((col) => {
                     const colItems = byColumn.get(col) || []
                     return (
                       <section
                         key={col}
                         className={
-                          'w-[28vw] min-w-[240px] max-w-[400px] shrink-0 rounded-xl border bg-zinc-950/40 transition-colors ' +
+                          'w-[clamp(210px,9.4vw,236px)] min-w-[210px] max-w-[236px] shrink-0 rounded-[24px] border bg-zinc-950/40 transition-colors ' +
                           (dragTargetColumn === col ? 'border-cyan-400/50' : 'border-zinc-200')
                         }
                         onDragOver={(event) => handleDesktopDragOver(event, col)}
                         onDrop={(event) => handleDesktopDrop(event, col)}
                         onDragLeave={() => setDragTargetColumn((curr) => (curr === col ? null : curr))}
                       >
-                        <div className="px-4 py-3 border-b border-zinc-200">
+                        <div className="px-5 py-4 border-b border-zinc-200">
                           <div className="flex items-center justify-between gap-3">
                             <div className="font-semibold text-sm text-zinc-900">{col}</div>
                             <div className="text-xs text-zinc-400">{colItems.length}</div>
                           </div>
                         </div>
 
-                        <div className="p-3 space-y-3 min-h-[220px]">
+                        <div className="p-4 space-y-4 min-h-[280px]">
                           {colItems.length === 0 ? (
-                            <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-xs text-zinc-500">vazio</div>
+                            <div className="rounded-xl border border-dashed border-zinc-200 p-5 text-xs text-zinc-500">vazio</div>
                           ) : (
                             colItems.map((it) => (
                               <div
@@ -939,7 +952,7 @@ export default function KanbanPage() {
                                   }
                                 }}
                                 className={
-                                  'w-full text-left rounded-xl border border-zinc-200 bg-zinc-900 hover:bg-zinc-200 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer ' +
+                                  'w-full text-left rounded-2xl border border-zinc-200 bg-zinc-900 hover:bg-zinc-200 shadow-sm transition-colors p-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer ' +
                                   (selected?.id === it.id ? 'ring-2 ring-white/20' : '') +
                                   ' ' + getBugCardClass(selected?.id === it.id, it.has_bugs, it.item_type === 'bug')
                                 }
@@ -988,7 +1001,7 @@ export default function KanbanPage() {
                                   </div>
                                 )}
 
-                                <div className="mt-2 pt-2 border-t border-zinc-200 space-y-1">
+                                <div className="mt-3 pt-3 border-t border-zinc-200 space-y-1.5">
                                   <StatusLine label="PO" value={it.status?.['PO']} />
                                   <StatusLine label="DESIGN" value={it.status?.['DESIGN'] || 'skipped'} />
                                   <StatusLine label="Alan approval" value={it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)']} />
@@ -1045,7 +1058,7 @@ export default function KanbanPage() {
             <div className="text-red-400 text-sm">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
           ) : (
             <section
-              className="rounded-2xl border border-zinc-200 bg-zinc-950/40 overflow-hidden"
+              className="rounded-[28px] border border-zinc-200 bg-zinc-950/40 overflow-hidden"
               onTouchStart={(e) => handleBoardTouchStart(e.touches[0]?.clientX ?? 0)}
               onTouchMove={(e) => handleBoardTouchMove(e.touches[0]?.clientX ?? 0)}
               onTouchEnd={handleBoardTouchEnd}
@@ -1060,7 +1073,7 @@ export default function KanbanPage() {
                 </div>
               </div>
 
-              <div className="p-3 space-y-3 min-h-[50vh]">
+              <div className="p-4 space-y-4 min-h-[50vh]">
                 {(byColumn.get(activeMobileColumn)?.length || 0) === 0 ? (
                   <div className="rounded-xl border border-dashed border-zinc-200 p-5 text-sm text-zinc-500">Nenhum card nesta etapa.</div>
                 ) : (
@@ -1079,7 +1092,7 @@ export default function KanbanPage() {
                         const touch = e.touches[0]
                         handleCardTouchMove(touch?.clientX ?? 0, touch?.clientY ?? 0)
                       }}
-                      className={"w-full text-left rounded-2xl border border-zinc-200 bg-zinc-800 p-4 shadow-sm " + getBugCardClass(false, it.has_bugs, it.item_type === 'bug')}
+                      className={"w-full text-left rounded-[24px] border border-zinc-200 bg-zinc-800 p-4 shadow-sm " + getBugCardClass(false, it.has_bugs, it.item_type === 'bug')}
                       aria-label={`Open details for ${it.id}`}
                     >
                       <div className="flex items-start gap-3">
@@ -1148,6 +1161,7 @@ export default function KanbanPage() {
             </section>
           )}
         </div>
+      </div>
       </div>
 
       {moveTarget ? (
@@ -1582,7 +1596,7 @@ export default function KanbanPage() {
       {showCreateCardModal && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-zinc-800" onClick={() => setShowCreateCardModal(false)} aria-hidden="true" />
-          <aside className="absolute inset-0 h-full w-full bg-zinc-900 border-t border-zinc-200 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[480px] sm:border-t-0 sm:border-l sm:border-zinc-200">
+          <aside className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-auto max-h-[90vh] w-full max-w-lg bg-zinc-900 border border-zinc-200 shadow-2xl rounded-xl sm:rounded-xl sm:left-auto sm:right-4 sm:top-auto sm:bottom-4 sm:-translate-x-0 sm:-translate-y-0 sm:w-[480px] sm:border-t sm:border-l">
             <div className="h-full flex flex-col">
               <div className="px-4 py-3 border-b border-zinc-200 flex items-start justify-between gap-3">
                 <div className="min-w-0">

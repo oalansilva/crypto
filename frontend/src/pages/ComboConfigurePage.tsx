@@ -472,7 +472,7 @@ export function ComboConfigurePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
                 <div className="text-center">
                     <Settings className="w-12 h-12 animate-spin text-blue-400 mx-auto mb-4" />
                     <p className="text-zinc-400">Loading configuration...</p>
@@ -483,7 +483,7 @@ export function ComboConfigurePage() {
 
     if (!metadata) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
                 <div className="text-center">
                     <p className="text-red-400">Template not found</p>
                     <button onClick={() => navigate('/combo/select')} className="mt-4 text-blue-400">
@@ -495,18 +495,12 @@ export function ComboConfigurePage() {
     }
 
     return (
-        <div className="min-h-screen relative overflow-hidden">
-            {/* Animated background */}
-            <div className="fixed inset-0 -z-10">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-float"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
-            </div>
-
+        <div className="app-page combo-page relative overflow-hidden">
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-4xl mx-auto space-y-8">
                     {/* Template Info */}
-                    <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
+                    <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
                         <h2 className="text-xl font-bold text-zinc-900 mb-4">Template Information</h2>
                         <div className="space-y-3">
                             <div>
@@ -525,13 +519,13 @@ export function ComboConfigurePage() {
                             </div>
                             <div>
                                 <span className="text-zinc-400 text-sm">Entry Logic:</span>
-                                <code className="block mt-1 p-3 bg-white0 rounded-lg text-green-400 text-sm font-mono">
+                                <code className="block mt-1 p-3 bg-white0 rounded-[16px] text-green-400 text-sm font-mono">
                                     {metadata.entry_logic}
                                 </code>
                             </div>
                             <div>
                                 <span className="text-zinc-400 text-sm">Exit Logic:</span>
-                                <code className="block mt-1 p-3 bg-white0 rounded-lg text-red-400 text-sm font-mono">
+                                <code className="block mt-1 p-3 bg-white0 rounded-[16px] text-red-400 text-sm font-mono">
                                     {metadata.exit_logic}
                                 </code>
                             </div>
@@ -539,7 +533,7 @@ export function ComboConfigurePage() {
                     </div>
 
                     {/* Configuration */}
-                    <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
+                    <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
                         <h2 className="text-xl font-bold text-zinc-900 mb-6 flex items-center gap-2">
                             <TrendingUp className="w-5 h-5" />
                             Configuration
@@ -551,7 +545,7 @@ export function ComboConfigurePage() {
                                 <select
                                     value={market}
                                     onChange={(e) => setMarket(e.target.value as Market)}
-                                    className="w-full glass px-4 py-3 rounded-lg border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
+                                    className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
                                 >
                                     <option value="crypto" className="bg-zinc-900 text-zinc-900">Crypto</option>
                                     <option value="us-stocks" className="bg-zinc-900 text-zinc-900">US Stocks (NASDAQ-100)</option>
@@ -559,7 +553,7 @@ export function ComboConfigurePage() {
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">Market Data</label>
-                                <div className="glass px-4 py-3 rounded-lg border border-zinc-200 text-sm text-zinc-600">
+                                <div className="glass px-4 py-3 rounded-[16px] border border-zinc-200 text-sm text-zinc-600">
                                     {isUsStocksMarket ? 'Stooq (free EOD 1D)' : 'CCXT (crypto exchange data)'}
                                 </div>
                             </div>
@@ -609,7 +603,7 @@ export function ComboConfigurePage() {
                                         : <>1 ativo: otimiza o <strong>primeiro</strong>. N ativos: <strong>batch</strong> nos selecionados.</>}
                                 </p>
                                 {batchScope === 'all' ? (
-                                    <div className="py-6 rounded-lg bg-zinc-50 border border-zinc-200 text-center text-zinc-400 text-sm">
+                                    <div className="py-6 rounded-[16px] bg-zinc-50 border border-zinc-200 text-center text-zinc-400 text-sm">
                                         Modo Todos — todos os ativos do mercado selecionado serão usados. Altere para &quot;Seleciona&quot; para escolher ativos.
                                     </div>
                                 ) : (
@@ -618,14 +612,14 @@ export function ComboConfigurePage() {
                                             <button
                                                 type="button"
                                                 onClick={selectTopSymbols}
-                                                className="text-xs px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-lg hover:bg-purple-500/30 transition-colors"
+                                                className="text-xs px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-[16px] hover:bg-purple-500/30 transition-colors"
                                             >
                                                 Top 10
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={clearToDefault}
-                                                className="text-xs px-3 py-1.5 bg-zinc-100 text-zinc-500 rounded-lg hover:bg-zinc-100 transition-colors"
+                                                className="text-xs px-3 py-1.5 bg-zinc-100 text-zinc-500 rounded-[16px] hover:bg-zinc-100 transition-colors"
                                             >
                                                 Limpar (1 ativo)
                                             </button>
@@ -640,16 +634,16 @@ export function ComboConfigurePage() {
                                                         value={leftFilter}
                                                         onChange={(e) => setLeftFilter(e.target.value)}
                                                         placeholder="Filtrar ativo…"
-                                                        className="w-full pl-8 pr-3 py-1.5 rounded-sm border border-zinc-200 bg-white0 text-sm text-zinc-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+                                                        className="w-full pl-8 pr-3 py-1.5 rounded-[14px] border border-zinc-200 bg-white0 text-sm text-zinc-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
                                                     />
                                                 </div>
-                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-sm border border-zinc-200 bg-white0 p-1 space-y-0.5">
+                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-[16px] border border-zinc-200 bg-white0 p-1 space-y-0.5">
                                                     {availableFiltered.map(s => (
                                                         <div
                                                             key={s}
                                                             onClick={() => toggleLeft(s)}
                                                             onDoubleClick={() => { setSelectedSymbols(prev => [...prev, s]); setLeftHighlighted(prev => prev.filter(x => x !== s)) }}
-                                                            className={`px-3 py-1.5 rounded-sm text-sm cursor-pointer truncate ${leftHighlighted.includes(s) ? 'bg-blue-500/30 text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100'}`}
+                                                            className={`px-3 py-1.5 rounded-[12px] text-sm cursor-pointer truncate ${leftHighlighted.includes(s) ? 'bg-blue-500/30 text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100'}`}
                                                         >
                                                             {s}
                                                         </div>
@@ -666,7 +660,7 @@ export function ComboConfigurePage() {
                                                     type="button"
                                                     onClick={addSelected}
                                                     disabled={leftHighlighted.length === 0}
-                                                    className="p-1.5 rounded bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                     title="Adicionar selecionados"
                                                 >
                                                     <ChevronRight className="w-4 h-4" />
@@ -675,7 +669,7 @@ export function ComboConfigurePage() {
                                                     type="button"
                                                     onClick={removeSelected}
                                                     disabled={rightHighlighted.length === 0}
-                                                    className="p-1.5 rounded bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                     title="Remover selecionados"
                                                 >
                                                     <ChevronLeft className="w-4 h-4" />
@@ -684,7 +678,7 @@ export function ComboConfigurePage() {
                                                     type="button"
                                                     onClick={addAll}
                                                     disabled={availableFiltered.length === 0}
-                                                    className="p-1.5 rounded bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                     title={leftFilter.trim() ? 'Adicionar todos (filtrados)' : 'Adicionar todos'}
                                                 >
                                                     <ChevronsRight className="w-4 h-4" />
@@ -692,7 +686,7 @@ export function ComboConfigurePage() {
                                                 <button
                                                     type="button"
                                                     onClick={clearToDefault}
-                                                    className="p-1.5 rounded bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 transition-colors"
+                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 transition-colors"
                                                     title="Limpar seleção"
                                                 >
                                                     <ChevronsLeft className="w-4 h-4" />
@@ -700,13 +694,13 @@ export function ComboConfigurePage() {
                                             </div>
                                             <div className="flex flex-col min-h-0">
                                                 <div className="text-xs text-zinc-400 mb-1 font-medium">Selecionados</div>
-                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-sm border border-zinc-200 bg-white0 p-1 space-y-0.5">
+                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-[16px] border border-zinc-200 bg-white0 p-1 space-y-0.5">
                                                     {selectedSymbols.map(s => (
                                                         <div
                                                             key={s}
                                                             onClick={() => toggleRight(s)}
                                                             onDoubleClick={() => setSelectedSymbols(prev => (prev.filter(x => x !== s).length ? prev.filter(x => x !== s) : [defaultSymbol]))}
-                                                            className={`px-3 py-1.5 rounded-sm text-sm cursor-pointer truncate ${rightHighlighted.includes(s) ? 'bg-blue-500/30 text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100'}`}
+                                                            className={`px-3 py-1.5 rounded-[12px] text-sm cursor-pointer truncate ${rightHighlighted.includes(s) ? 'bg-blue-500/30 text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100'}`}
                                                         >
                                                             {s}
                                                         </div>
@@ -729,7 +723,7 @@ export function ComboConfigurePage() {
                                     value={timeframe}
                                     onChange={(e) => setTimeframe(e.target.value)}
                                     disabled={isUsStocksMarket}
-                                    className="w-full glass px-4 py-3 rounded-lg border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
+                                    className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
                                 >
                                     {!isUsStocksMarket && <option value="1m" className="bg-zinc-900 text-zinc-900">1 minute</option>}
                                     {!isUsStocksMarket && <option value="5m" className="bg-zinc-900 text-zinc-900">5 minutes</option>}
@@ -751,7 +745,7 @@ export function ComboConfigurePage() {
                                 <select
                                     value={period}
                                     onChange={(e) => setPeriod(e.target.value as PeriodKey)}
-                                    className="w-full glass px-4 py-3 rounded-lg border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
+                                    className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
                                 >
                                     <option value="6m" className="bg-zinc-900 text-zinc-900">Últimos 6 meses</option>
                                     <option value="2y" className="bg-zinc-900 text-zinc-900">Últimos 2 anos</option>
@@ -766,7 +760,7 @@ export function ComboConfigurePage() {
                             <select
                                 value={direction}
                                 onChange={(e) => setDirection(e.target.value as 'long' | 'short')}
-                                className="w-full glass px-4 py-3 rounded-lg border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none bg-zinc-50"
+                                className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none bg-zinc-50"
                             >
                                 <option value="long" className="bg-zinc-900 text-zinc-900">Long</option>
                                 <option value="short" className="bg-zinc-900 text-zinc-900">Short</option>
@@ -796,14 +790,14 @@ export function ComboConfigurePage() {
 
                         {/* Warning for tight stops without Deep Backtest */}
                         {!deepBacktest && metadata && metadata.stop_loss < 0.02 && (
-                            <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                            <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-[16px]">
                                 <p className="text-sm text-yellow-300 flex items-center gap-2">
                                     ⚠️ Tight stops may produce unrealistic results without Deep Backtesting
                                 </p>
                             </div>
                         )}
 
-                        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-[16px]">
                             <p className="text-sm text-blue-300 flex items-center gap-2">
                                 <Calendar className="w-4 h-4" />
                                 {period === 'all'
@@ -817,7 +811,7 @@ export function ComboConfigurePage() {
 
                     {/* Parameter Optimization Ranges */}
                     {params.length > 0 && (
-                        <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
+                        <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
                             <h2 className="text-xl font-bold text-zinc-900 mb-6 flex items-center gap-2">
                                 <Sliders className="w-5 h-5" />
                                 Parameter Optimization Ranges
@@ -825,7 +819,7 @@ export function ComboConfigurePage() {
 
                             <div className="space-y-4">
                                 {params.map((param, idx) => (
-                                    <div key={idx} className="bg-zinc-50 rounded-lg p-4">
+                                    <div key={idx} className="bg-zinc-50 rounded-[16px] p-4">
                                         <div className="flex justify-between items-center mb-3">
                                             <span className="text-sm font-medium text-purple-300 capitalize">
                                                 {param.name.replace(/_/g, ' ')}
@@ -842,7 +836,7 @@ export function ComboConfigurePage() {
                                                         newParams[idx].min = parseFloat(e.target.value)
                                                         setParams(newParams)
                                                     }}
-                                                    className="w-full bg-white0 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:border-purple-500 focus:outline-none"
+                                                    className="w-full bg-white0 border border-zinc-200 rounded-[14px] px-3 py-2 text-sm text-zinc-900 focus:border-purple-500 focus:outline-none"
                                                 />
                                             </div>
                                             <div>
@@ -855,7 +849,7 @@ export function ComboConfigurePage() {
                                                         newParams[idx].max = parseFloat(e.target.value)
                                                         setParams(newParams)
                                                     }}
-                                                    className="w-full bg-white0 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:border-purple-500 focus:outline-none"
+                                                    className="w-full bg-white0 border border-zinc-200 rounded-[14px] px-3 py-2 text-sm text-zinc-900 focus:border-purple-500 focus:outline-none"
                                                 />
                                             </div>
                                         </div>
@@ -866,7 +860,7 @@ export function ComboConfigurePage() {
                     )}
 
                     {/* Executar: 1 ou N ativos, mesmo botão */}
-                    <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
+                    <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
                         <h2 className="text-xl font-bold text-zinc-900 mb-4 flex items-center gap-2">
                             <Sliders className="w-5 h-5" />
                             Otimizar
@@ -887,7 +881,7 @@ export function ComboConfigurePage() {
                             <button
                                 onClick={handleRun}
                                 disabled={batchRunning || running}
-                                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-zinc-900 font-bold py-4 px-10 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-zinc-900 font-bold py-4 px-10 rounded-[16px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
                             >
                                 {batchRunning || running ? (
                                     <>
@@ -905,7 +899,7 @@ export function ComboConfigurePage() {
                             <button
                                 type="button"
                                 onClick={() => setLogViewerOpen(true)}
-                                className="bg-zinc-50 hover:bg-zinc-100 text-zinc-600 px-4 py-3 rounded-xl border border-zinc-200 transition-colors"
+                                className="bg-zinc-50 hover:bg-zinc-100 text-zinc-600 px-4 py-3 rounded-[16px] border border-zinc-200 transition-colors"
                                 title="Ver logs do backend (últimas linhas)"
                             >
                                 Ver logs
@@ -913,7 +907,7 @@ export function ComboConfigurePage() {
                         </div>
 
                         {batchRunning && (
-                            <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                            <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-[16px]">
                                 <div className="flex items-center gap-2 text-blue-300 font-medium mb-2">
                                     <Settings className="w-4 h-4 animate-spin" />
                                     {(batchProgress?.processed ?? 0)} de {batchProgress?.total ?? batchTotal} ativos
@@ -939,7 +933,7 @@ export function ComboConfigurePage() {
                                         type="button"
                                         onClick={handlePauseBatch}
                                         disabled={batchPauseCancelRequested}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-700 border border-amber-500/40 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[16px] bg-amber-500/20 text-amber-700 border border-amber-500/40 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
                                     >
                                         <Pause className="w-4 h-4" />
                                         Pausar
@@ -948,7 +942,7 @@ export function ComboConfigurePage() {
                                         type="button"
                                         onClick={handleCancelBatch}
                                         disabled={batchPauseCancelRequested}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[16px] bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
                                     >
                                         <Square className="w-4 h-4" />
                                         Encerrar
@@ -958,7 +952,7 @@ export function ComboConfigurePage() {
                         )}
 
                         {!batchRunning && batchProgress && ['completed', 'failed', 'paused', 'cancelled'].includes(batchProgress.status) && (
-                            <div className="mt-4 p-4 bg-zinc-50 border border-zinc-200 rounded-lg space-y-2">
+                            <div className="mt-4 p-4 bg-zinc-50 border border-zinc-200 rounded-[16px] space-y-2">
                                 <p className="text-sm font-medium text-zinc-900">
                                     {batchProgress.status === 'cancelled' && 'Encerrado pelo usuário. '}
                                     {batchProgress.status === 'paused' && 'Pausado pelo usuário. '}

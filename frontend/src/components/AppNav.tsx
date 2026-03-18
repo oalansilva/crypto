@@ -1,38 +1,137 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { 
-  Activity, TrendingUp, Sparkles, Bookmark, Layers, 
-  Shuffle, Wallet, Kanban, Menu, X, ChevronLeft,
-  Home, Settings, Beaker, Zap, TrendingDown
+import {
+  Activity,
+  Beaker,
+  Bookmark,
+  ChevronLeft,
+  Home,
+  Kanban,
+  Layers,
+  Menu,
+  Settings,
+  TrendingUp,
+  Wallet,
+  X,
+  Zap,
 } from 'lucide-react'
 
 interface AppNavProps {
   hideOnMobile?: boolean
 }
 
-const mainNavItems = [
+type NavItemConfig = {
+  to: string
+  label: string
+  icon: ComponentType<{ className?: string }>
+}
+
+const mainNavItems: NavItemConfig[] = [
   { to: '/', label: 'Playground', icon: Home },
-  { to: '/favorites', label: 'Favorites', icon: Bookmark },
+  { to: '/favorites', label: 'Favoritos', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
   { to: '/kanban', label: 'Kanban', icon: Kanban },
 ]
 
-const strategyNavItems = [
+const strategyNavItems: NavItemConfig[] = [
   { to: '/lab', label: 'Lab', icon: Beaker },
   { to: '/arbitrage', label: 'Arbitragem', icon: Zap },
   { to: '/combo/select', label: 'Combo', icon: Layers },
 ]
 
-const accountNavItems = [
+const accountNavItems: NavItemConfig[] = [
   { to: '/external/balances', label: 'Carteira', icon: Wallet },
 ]
 
-function emitWalletAction(action: 'refresh' | 'export') {
-  window.dispatchEvent(new CustomEvent(`wallet:${action}`))
-}
-
 export function openMobileMenu() {
   window.dispatchEvent(new CustomEvent('nav:open-menu'))
+}
+
+function resolvePageTitle(pathname: string) {
+  if (pathname === '/') return 'Dashboard principal'
+  if (pathname === '/favorites') return 'Favoritos'
+  if (pathname === '/monitor') return 'Monitor de sinais'
+  if (pathname === '/kanban') return 'Kanban'
+  if (pathname.startsWith('/lab')) return 'Laboratório'
+  if (pathname.startsWith('/arbitrage')) return 'Arbitragem'
+  if (pathname.startsWith('/combo')) return 'Combo estratégias'
+  if (pathname.startsWith('/external')) return 'Carteira'
+  if (pathname.startsWith('/openspec')) return 'OpenSpec'
+  return 'Crypto Lab'
+}
+
+function BrandBlock({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="flex h-10 w-10 items-center justify-center rounded-[18px] border border-emerald-300/20 bg-[linear-gradient(135deg,rgba(38,194,129,0.95),rgba(56,189,248,0.95))] shadow-[0_12px_24px_rgba(18,154,125,0.24)]">
+        <TrendingUp className="h-4.5 w-4.5 text-white" />
+      </div>
+      {!compact && (
+        <div className="min-w-0">
+          <span className="block truncate text-[13px] font-semibold text-[var(--text-primary)]">Crypto Lab</span>
+          <span className="block truncate text-xs text-[var(--text-tertiary)]">Operação, estratégia e execução</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NavSection({
+  title,
+  items,
+  collapsed,
+  pathname,
+  onNavigate,
+}: {
+  title: string
+  items: NavItemConfig[]
+  collapsed: boolean
+  pathname: string
+  onNavigate?: () => void
+}) {
+  return (
+    <section className="space-y-2">
+      {!collapsed && (
+        <div className="px-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{title}</span>
+        </div>
+      )}
+      <div className="space-y-1">
+        {items.map(({ to, label, icon: Icon }) => {
+          const isActive =
+            to === '/'
+              ? pathname === '/'
+              : to.startsWith('/combo')
+                ? pathname.startsWith('/combo')
+                : pathname === to || pathname.startsWith(`${to}/`)
+
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={onNavigate}
+              className={[
+                'group relative flex items-center gap-2.5 overflow-hidden rounded-[18px] border px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
+                collapsed ? 'justify-center px-0' : '',
+                isActive
+                  ? 'border-emerald-300/20 bg-[linear-gradient(135deg,rgba(38,194,129,0.16),rgba(56,189,248,0.12))] text-[var(--text-primary)] shadow-[0_14px_30px_rgba(10,18,28,0.22)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:border-white/8 hover:bg-white/[0.04] hover:text-white',
+              ].join(' ')}
+            >
+              {isActive && !collapsed && <span className="absolute inset-y-2 left-0 w-1 rounded-full bg-[var(--accent-primary)]" />}
+              <Icon
+                className={[
+                  'h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-105',
+                  isActive ? 'text-[var(--accent-primary-hover)]' : 'text-[var(--text-tertiary)] group-hover:text-white',
+                ].join(' ')}
+              />
+              {!collapsed && <span className="truncate">{label}</span>}
+            </NavLink>
+          )
+        })}
+      </div>
+    </section>
+  )
 }
 
 export function AppNav({ hideOnMobile = false }: AppNavProps) {
@@ -42,12 +141,10 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
+    const syncViewport = () => setIsMobile(window.innerWidth < 1024)
+    syncViewport()
+    window.addEventListener('resize', syncViewport)
+    return () => window.removeEventListener('resize', syncViewport)
   }, [])
 
   useEffect(() => {
@@ -56,244 +153,151 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
     return () => window.removeEventListener('nav:open-menu', handleOpenMenu)
   }, [])
 
-  const isActive = (to: string) => {
-    if (to === '/') return location.pathname === '/'
-    if (to.startsWith('/combo')) return location.pathname.startsWith('/combo')
-    if (to.startsWith('/lab')) return location.pathname.startsWith('/lab')
-    if (to.startsWith('/kanban')) return location.pathname.startsWith('/kanban')
-    return location.pathname === to
-  }
+  useEffect(() => {
+    const sidebarWidth = isMobile ? '0px' : collapsed ? '88px' : '224px'
+    document.documentElement.style.setProperty('--app-sidebar-width', sidebarWidth)
 
-  const NavItem = ({ to, label, icon: Icon }: { to: string; label: string; icon: any }) => (
-    <NavLink
-      to={to}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 group ${
-        isActive(to)
-          ? 'bg-emerald-500/15 text-emerald-400 border-l-2 border-emerald-500'
-          : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-      }`}
-    >
-      <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive(to) ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
-      {!collapsed && <span className="truncate">{label}</span>}
-    </NavLink>
-  )
+    return () => {
+      document.documentElement.style.setProperty('--app-sidebar-width', '224px')
+    }
+  }, [collapsed, isMobile])
 
-  const NavGroup = ({ title, items, isLast }: { title: string; items: { to: string; label: string; icon: any }[]; isLast?: boolean }) => (
-    <div className={!isLast ? 'mb-4 pb-4 border-b border-zinc-800' : ''}>
-      {!collapsed && (
-        <div className="px-3 mb-2">
-          <span className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">{title}</span>
-        </div>
-      )}
-      <nav className="space-y-1">
-        {items.map(item => (
-          <NavItem key={item.to} {...item} />
-        ))}
-      </nav>
-    </div>
-  )
+  const pathname = location.pathname
+  const pageTitle = resolvePageTitle(pathname)
 
-  // Mobile Menu
   if (isMobile) {
     return (
       <>
-        {/* Mobile Header */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 shadow-sm">
-          <div className="flex items-center justify-between px-4 h-14">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-xl hover:bg-zinc-800 transition-colors"
-              aria-label="Abrir menu"
-            >
-              <Menu className="w-6 h-6 text-zinc-300" />
-            </button>
-            <NavLink to="/" className="flex items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg"
-                style={{
-                  background: 'linear-gradient(135deg, #10b981, #06b6d4)',
-                }}
+        {!hideOnMobile && (
+          <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--border-subtle)] bg-[rgba(7,17,26,0.84)] backdrop-blur-xl">
+            <div className="mx-auto flex h-18 w-full max-w-[1480px] items-center justify-between gap-4 px-4">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[var(--text-primary)] hover:bg-white/[0.08]"
+                aria-label="Abrir menu"
               >
-                <TrendingUp className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-white">Crypto Lab</span>
-            </NavLink>
-            <div className="w-10" />
-          </div>
-        </header>
+                <Menu className="h-5 w-5" />
+              </button>
 
-        {/* Mobile Menu Overlay */}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{pageTitle}</div>
+                <div className="truncate text-xs text-[var(--text-tertiary)]">Navegação principal</div>
+              </div>
+
+              <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-200">
+                Live
+              </div>
+            </div>
+          </header>
+        )}
+
         {mobileMenuOpen && (
           <>
-            <div
-              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm lg:hidden"
+            <button
+              type="button"
+              className="fixed inset-0 z-[70] bg-[rgba(2,8,14,0.62)] backdrop-blur-sm"
               onClick={() => setMobileMenuOpen(false)}
+              aria-label="Fechar menu"
             />
-            <div className="fixed bottom-0 left-0 right-0 z-[110] h-[75vh] bg-zinc-900 rounded-t-3xl shadow-2xl lg:hidden overflow-y-auto">
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-12 h-1.5 bg-zinc-700 rounded-full" />
-              </div>
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 pb-4 border-b border-zinc-800">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
-                    style={{
-                      background: 'linear-gradient(135deg, #10b981, #06b6d4)',
-                    }}
-                  >
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-white">Crypto Lab</div>
-                    <div className="text-xs text-zinc-500">Navegação</div>
-                  </div>
-                </div>
+            <aside className="fixed inset-y-0 left-0 z-[80] flex w-[min(88vw,360px)] flex-col border-r border-[var(--border-default)] bg-[linear-gradient(180deg,rgba(9,19,30,0.98),rgba(10,21,33,0.98))] px-4 py-5 shadow-[24px_0_60px_rgba(0,0,0,0.4)]">
+              <div className="flex items-center justify-between gap-3 pb-5">
+                <BrandBlock />
                 <button
+                  type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-xl hover:bg-zinc-800 transition-colors"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-white"
+                  aria-label="Fechar menu"
                 >
-                  <X className="w-5 h-5 text-zinc-400" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              {/* Navigation */}
-              <nav className="p-4 space-y-1">
-                <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-3">Principal</div>
-                {mainNavItems.map(({ to, label, icon: Icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      isActive(to)
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                        : 'text-zinc-300 hover:bg-zinc-800'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {label}
-                  </NavLink>
-                ))}
+              <div className="page-card-muted mb-5 px-4 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Você está em</div>
+                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{pageTitle}</div>
+              </div>
 
-                <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-3 mt-6">Estratégias</div>
-                {strategyNavItems.map(({ to, label, icon: Icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      isActive(to)
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                        : 'text-zinc-300 hover:bg-zinc-800'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {label}
-                  </NavLink>
-                ))}
-
-                <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-3 mt-6">Conta</div>
-                {accountNavItems.map(({ to, label, icon: Icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      isActive(to)
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                        : 'text-zinc-300 hover:bg-zinc-800'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {label}
-                  </NavLink>
-                ))}
-              </nav>
-            </div>
+              <div className="flex-1 space-y-5 overflow-y-auto pr-1 custom-scrollbar">
+                <NavSection title="Principal" items={mainNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+                <NavSection title="Estratégias" items={strategyNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+                <NavSection title="Conta" items={accountNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+              </div>
+            </aside>
           </>
         )}
       </>
     )
   }
 
-  // Desktop Sidebar
   return (
     <>
       <aside
-        className={`fixed left-0 top-0 h-screen bg-zinc-900/95 backdrop-blur-md border-r border-zinc-800 z-40 transition-all duration-300 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.3)] ${
-          collapsed ? 'w-20' : 'w-64'
-        }`}
-        style={{ display: isMobile ? 'none' : 'flex' }}
+        className={[
+          'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-[var(--border-subtle)] bg-[linear-gradient(180deg,rgba(8,18,28,0.96),rgba(10,21,33,0.96))] px-2.5 py-3 backdrop-blur-xl transition-all duration-300',
+          collapsed ? 'w-[88px]' : 'w-[224px]',
+        ].join(' ')}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 h-16 border-b border-zinc-800">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg"
-            style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(6, 182, 212, 0.95))',
-              boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            <TrendingUp className="w-6 h-6 text-white" />
-          </div>
-          {!collapsed && (
-            <div>
-              <span className="font-bold text-white block">Crypto Lab</span>
-              <span className="text-xs text-zinc-500">Backtester Pro</span>
-            </div>
+        <div className="flex items-center justify-between gap-2 px-2 pb-4">
+          <BrandBlock compact={collapsed} />
+        </div>
+
+        <div className="page-card-muted mx-1 mb-4 px-3 py-2.5">
+          {!collapsed ? (
+            <>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Painel</div>
+              <div className="mt-1 text-[13px] font-semibold text-[var(--text-primary)]">{pageTitle}</div>
+            </>
+          ) : (
+            <div className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Menu</div>
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          <NavGroup title="Principal" items={mainNavItems} />
-          <NavGroup title="Estratégias" items={strategyNavItems} />
-          <NavGroup title="Conta" items={accountNavItems} isLast />
+        <nav className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-1 pb-3">
+          <NavSection title="Principal" items={mainNavItems} collapsed={collapsed} pathname={pathname} />
+          <NavSection title="Estratégias" items={strategyNavItems} collapsed={collapsed} pathname={pathname} />
+          <NavSection title="Conta" items={accountNavItems} collapsed={collapsed} pathname={pathname} />
         </nav>
 
-        {/* Collapse Button */}
-        <div className="p-4 border-t border-zinc-800">
+        <div className="mt-3 border-t border-white/6 pt-3">
           <button
-            onClick={() => setCollapsed(!collapsed)}
-            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl font-medium transition-all duration-200 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 ${
-              collapsed ? 'justify-center' : ''
-            }`}
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            className={[
+              'flex w-full items-center gap-2.5 rounded-[18px] border border-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--text-secondary)] hover:border-white/8 hover:bg-white/[0.04] hover:text-white',
+              collapsed ? 'justify-center px-0' : '',
+            ].join(' ')}
           >
-            <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
-            {!collapsed && <span>Recolher</span>}
+            <ChevronLeft className={['h-5 w-5 transition-transform duration-300', collapsed ? 'rotate-180' : ''].join(' ')} />
+            {!collapsed && <span>Recolher menu</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main Content Wrapper */}
-      <div className={`transition-all duration-300 ${collapsed ? 'ml-20' : 'ml-64'}`}>
-        <header className="sticky top-0 z-30 bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800 shadow-sm">
-          <div className="flex items-center justify-between px-6 h-14">
-            <div className="text-sm font-medium text-zinc-400">
-              {location.pathname === '/' && 'Dashboard Principal'}
-              {location.pathname === '/favorites' && 'Favoritos'}
-              {location.pathname === '/monitor' && 'Monitor de Sinais'}
-              {location.pathname === '/kanban' && 'Kanban de Tarefas'}
-              {location.pathname.startsWith('/lab') && 'Laboratório'}
-              {location.pathname.startsWith('/arbitrage') && 'Arbitragem'}
-              {location.pathname.startsWith('/combo') && 'Combo Estratégias'}
-              {location.pathname.startsWith('/external') && 'Carteira'}
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="p-2 rounded-xl hover:bg-zinc-800 transition-colors">
-                <Settings className="w-5 h-5 text-zinc-500" />
-              </button>
-            </div>
+      <header
+        className="fixed right-0 top-0 z-30 border-b border-[var(--border-subtle)] bg-[rgba(7,17,26,0.72)] backdrop-blur-xl transition-all duration-300"
+        style={{ left: 'var(--app-sidebar-width)' }}
+      >
+        <div className="mx-auto flex h-20 w-full max-w-[calc(1480px+4rem)] items-center justify-between gap-6 px-6">
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Workspace</div>
+            <div className="truncate text-lg font-semibold text-[var(--text-primary)]">{pageTitle}</div>
           </div>
-        </header>
-        <main className="min-h-[calc(100vh-3.5rem)]">
-          {/* This is a placeholder - actual content will be rendered by Outlet */}
-        </main>
-      </div>
+
+          <div className="flex items-center gap-3">
+            <div className="rounded-full border border-sky-300/14 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold text-sky-100">
+              Contraste otimizado
+            </div>
+            <button
+              type="button"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-white"
+              aria-label="Configurações"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </header>
     </>
   )
 }

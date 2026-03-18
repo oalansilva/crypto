@@ -112,13 +112,7 @@ export function ComboOptimizePage() {
     }
 
     return (
-        <div className="min-h-screen relative overflow-hidden text-zinc-700">
-            {/* Background */}
-            <div className="fixed inset-0 -z-10 bg-[#0f172a]">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
-            </div>
-
+        <div className="app-page combo-page relative overflow-hidden text-zinc-700">
             <main className="container mx-auto px-6 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 

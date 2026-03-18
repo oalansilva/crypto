@@ -128,7 +128,7 @@ export function ComboSelectPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
                 <div className="text-center">
                     <Sparkles className="w-12 h-12 animate-spin text-emerald-400 mx-auto mb-4" />
                     <p className="text-zinc-400">Loading templates...</p>
@@ -138,10 +138,10 @@ export function ComboSelectPage() {
     }
 
     return (
-        <div className="min-h-screen relative overflow-hidden">
+        <div className="app-page combo-page relative overflow-hidden">
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
-                <div className="max-w-6xl mx-auto space-y-8">
+                <div className="page-card max-w-6xl mx-auto space-y-8 p-6 sm:p-8 lg:p-10">
                     {/* Unified Templates Section */}
                     <section>
                         <div className="flex items-center gap-3 mb-6">
@@ -155,7 +155,7 @@ export function ComboSelectPage() {
                         </div>
 
                         {allTemplates.length === 0 ? (
-                            <div className="glass-strong rounded-xl p-12 text-center">
+                            <div className="glass-strong rounded-[28px] p-12 text-center">
                                 <Database className="w-16 h-16 text-zinc-500 mx-auto mb-4" />
                                 <p className="text-zinc-400">No templates available</p>
                             </div>
@@ -165,7 +165,7 @@ export function ComboSelectPage() {
                                     <div
                                         key={template.name}
                                         onClick={() => handleSelectTemplate(template.name)}
-                                        className={`relative glass-strong rounded-xl p-6 border transition-all duration-300 text-left group hover:scale-[1.02] cursor-pointer ${selectedTemplate === template.name
+                                        className={`relative glass-strong rounded-[24px] p-6 border transition-all duration-300 text-left group hover:scale-[1.02] cursor-pointer ${selectedTemplate === template.name
                                             ? 'border-blue-500 bg-blue-500/10'
                                             : 'border-zinc-200 hover:border-blue-500/50'
                                             }`}
@@ -261,7 +261,7 @@ export function ComboSelectPage() {
             {cloneModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-white0 backdrop-blur-sm" onClick={() => setCloneModalOpen(false)}></div>
-                    <div className="relative glass-strong rounded-2xl p-6 w-full max-w-md border border-zinc-300 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="relative glass-strong rounded-[28px] p-6 w-full max-w-md border border-zinc-300 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                         <button
                             onClick={() => setCloneModalOpen(false)}
                             className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900"

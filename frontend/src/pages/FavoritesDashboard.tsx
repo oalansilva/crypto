@@ -374,40 +374,42 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen relative overflow-hidden bg-black text-zinc-900 font-sans selection:bg-blue-500/30">
-            {/* Animated background */}
-            <div className="fixed inset-0 -z-10">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
-            </div>
-            <div className="max-w-[1920px] mx-auto border-l-4 border-primary-600 pl-4">
-                {/* Page Title & Filters */}
-                <div className="mb-6">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
-                                <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-xl shadow-glow-blue">
-                                    <Activity className="w-7 h-7 text-zinc-900" />
+        <div className="app-page favorites-page relative overflow-hidden text-zinc-900 font-sans selection:bg-blue-500/30">
+            <div className="max-w-[1920px] mx-auto page-stack">
+                <section className="page-card p-5 sm:p-6 lg:p-7">
+                    <div className="flex flex-col gap-6">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
+                                    <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-xl shadow-glow-blue">
+                                        <Activity className="w-7 h-7 text-zinc-900" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-bold gradient-text">Strategy Favorites</h1>
+                                    <p className="text-sm text-zinc-400 mt-0.5 flex items-center gap-2">
+                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                        System Operational
+                                    </p>
                                 </div>
                             </div>
-                            <div>
-                                <h1 className="text-3xl font-bold gradient-text">Strategy Favorites</h1>
-                                <p className="text-sm text-zinc-400 mt-0.5 flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                    System Operational
-                                </p>
+                            <div className="page-card-muted px-4 py-3 text-xs sm:text-sm text-zinc-400 flex flex-wrap items-center gap-2 sm:gap-3">
+                                <span className="eyebrow">Workspace</span>
+                                <span>{filteredFavorites.length} strategies after filters</span>
+                                <span className="hidden sm:inline text-zinc-500">|</span>
+                                <span>{selectedIds.length} selected for compare</span>
                             </div>
                         </div>
 
-                            <div className="w-full lg:w-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-                                {/* Filters */}
-                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:gap-2 w-full lg:w-auto">
+                        <div className="page-card-muted p-4 sm:p-5">
+                            <div className="flex flex-col gap-3 lg:gap-4">
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                                     <div className="relative group">
                                         <select
                                             value={tierFilter}
                                             onChange={(e) => setTierFilter(e.target.value as 'all' | '1' | '2' | '3' | '1_2' | 'none')}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
                                         >
                                             <option value="all" className="bg-zinc-900">Tier: All</option>
                                             <option value="1_2" className="bg-zinc-900">Tier 1 + Tier 2</option>
@@ -416,7 +418,7 @@ const FavoritesDashboard: React.FC = () => {
                                             <option value="3" className="bg-zinc-900">Tier 3</option>
                                             <option value="none" className="bg-zinc-900">Sem tier</option>
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
@@ -424,105 +426,106 @@ const FavoritesDashboard: React.FC = () => {
                                             aria-label="Asset Type"
                                             value={assetTypeFilter}
                                             onChange={(e) => setAssetTypeFilter(e.target.value as 'all' | 'crypto' | 'stocks')}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
                                         >
                                             <option value="all" className="bg-zinc-900">Asset Type: All</option>
                                             <option value="crypto" className="bg-zinc-900">Asset Type: Crypto</option>
                                             <option value="stocks" className="bg-zinc-900">Asset Type: Stocks</option>
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
                                         <select
                                             value={selectedSymbol}
                                             onChange={(e) => setSelectedSymbol(e.target.value)}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
                                         >
                                             <option value="ALL" className="bg-zinc-900">Symbol: All</option>
                                             {uniqueSymbols.map(sym => (
                                                 <option key={sym} value={sym} className="bg-zinc-900">{sym}</option>
                                             ))}
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
                                         <select
                                             value={selectedIndicator}
                                             onChange={(e) => setSelectedIndicator(e.target.value)}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
                                         >
                                             <option value="ALL" className="bg-zinc-900">Strategy: All</option>
                                             {uniqueIndicators.map(ind => (
                                                 <option key={ind} value={ind} className="bg-zinc-900">{ind}</option>
                                             ))}
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
                                         <select
                                             value={directionFilter}
                                             onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'long' | 'short')}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
                                         >
                                             <option value="all" className="bg-zinc-900">Direção: All</option>
                                             <option value="long" className="bg-zinc-900">Long</option>
                                             <option value="short" className="bg-zinc-900">Short</option>
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
                                         <select
                                             value={sortBy}
                                             onChange={(e) => setSortBy(e.target.value as SortByOption)}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
                                         >
                                             <option value="returnPerTrade" className="bg-zinc-900">Ordenar: Ret/T %</option>
                                             <option value="return" className="bg-zinc-900">Ordenar: Return</option>
                                             <option value="sharpe" className="bg-zinc-900">Ordenar: Sharpe</option>
                                             <option value="trades" className="bg-zinc-900">Ordenar: Trades</option>
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
                                 </div>
 
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500 w-4 h-4" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search strategies..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="bg-zinc-50 border border-zinc-200 rounded-lg pl-10 pr-4 py-2.5 lg:py-2 text-sm text-zinc-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none w-full lg:w-64 min-h-11 placeholder-gray-600 transition-colors hover:bg-zinc-100"
-                                    />
-                                </div>
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                    <div className="relative w-full lg:max-w-md">
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500 w-4 h-4" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search strategies..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-sm text-zinc-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none w-full min-h-12 placeholder-gray-600 transition-colors hover:bg-zinc-100"
+                                        />
+                                    </div>
 
-                                <div className="hidden lg:block h-8 w-[1px] bg-zinc-100 mx-2"></div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full lg:flex lg:w-auto">
-                                    <button
-                                        onClick={handleExportExcel}
-                                        className="bg-zinc-50 hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 px-4 py-2.5 lg:py-2 text-sm font-medium rounded-lg border border-zinc-200 hover:border-zinc-300 transition-all flex items-center justify-center gap-2 min-h-11"
-                                    >
-                                        <List className="w-4 h-4" /> Export
-                                    </button>
-                                    <button
-                                        onClick={() => navigate('/combo/select')}
-                                        className="px-6 py-2.5 lg:py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-zinc-900 text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5 min-h-11"
-                                    >
-                                        Find New
-                                    </button>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full lg:w-auto">
+                                        <button
+                                            onClick={handleExportExcel}
+                                            className="bg-zinc-50 hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 px-4 py-3 text-sm font-medium rounded-xl border border-zinc-200 hover:border-zinc-300 transition-all flex items-center justify-center gap-2 min-h-12"
+                                        >
+                                            <List className="w-4 h-4" /> Export
+                                        </button>
+                                        <button
+                                            onClick={() => navigate('/combo/select')}
+                                            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-zinc-900 text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5 min-h-12"
+                                        >
+                                            Find New
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </section>
 
                 <main className="container mx-auto px-3 sm:px-6 pb-12">
                     {/* Table Container */}
-                    <div className="glass-strong rounded-2xl border border-zinc-200 overflow-hidden shadow-2xl">
+                    <div className="glass-strong rounded-[28px] border border-zinc-200 overflow-hidden shadow-2xl">
 
                         <div className="lg:hidden p-3 sm:p-4 space-y-3">
                             {isLoading ? (
@@ -719,7 +722,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <th className="p-4 text-center text-zinc-400">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-industrial-800">
+                                        <tbody className="divide-y divide-zinc-200">
                                     {isLoading ? (
                                         <tr><td colSpan={21} className="p-12 text-center text-zinc-500 animate-pulse">Scanning database...</td></tr>
                                     ) : filteredFavorites.length === 0 ? (
@@ -895,7 +898,7 @@ const FavoritesDashboard: React.FC = () => {
                         </div>
 
                         {/* Footer / Status Bar - Replaces System Status */}
-                        <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center text-sm">
+                        <div className="p-4 sm:p-5 bg-zinc-50 border-t border-zinc-200 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center text-sm">
                             <div className="flex items-center gap-2 text-zinc-400">
                                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                 {hasMore
@@ -921,123 +924,119 @@ const FavoritesDashboard: React.FC = () => {
                 {/* Compare Modal */}
                 {
                     isCompareOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white0 backdrop-blur-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-industrial-900/50 via-black to-black">
-                            <div className="bg-black border-2 border-industrial-700 w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl relative">
-                                {/* Decorative corners */}
-                                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary-500"></div>
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary-500"></div>
-
-                                <div className="flex items-center justify-between p-4 border-b-2 border-industrial-800 bg-industrial-900/50">
-                                    <h2 className="text-xl font-black uppercase tracking-widest text-zinc-900 flex items-center gap-2">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[rgba(4,10,18,0.82)] backdrop-blur-sm">
+                            <div className="page-card w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl relative overflow-hidden">
+                                <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 bg-zinc-50/5">
+                                    <h2 className="text-lg sm:text-xl font-bold tracking-wide text-zinc-900 flex items-center gap-2">
                                         <Activity className="w-5 h-5 text-primary-500" />
-                                        Data.Comparison_Module
+                                        Strategy Comparison
                                     </h2>
                                     <button
                                         onClick={() => setIsCompareOpen(false)}
-                                        className="text-industrial-500 hover:text-red-500 font-mono text-xs uppercase hover:underline"
+                                        className="text-zinc-500 hover:text-red-400 text-xs font-semibold uppercase tracking-[0.2em]"
                                     >
-                                        [CLOSE]
+                                        Close
                                     </button>
                                 </div>
 
                                 <div className="flex-1 overflow-auto p-0">
-                                    <table className="w-full text-left border-collapse font-mono text-sm">
+                                    <table className="w-full text-left border-collapse text-sm">
                                         <thead>
                                             <tr>
-                                                <th className="p-4 bg-industrial-900 text-industrial-500 font-bold border-b border-industrial-800 sticky top-0 left-0 z-10 w-48 uppercase tracking-wider text-xs border-r border-industrial-800">
-                                                    Metric_ID
+                                                <th className="p-4 bg-zinc-50 text-zinc-500 font-bold border-b border-zinc-200 sticky top-0 left-0 z-10 w-48 uppercase tracking-wider text-xs border-r border-zinc-200">
+                                                    Metric
                                                 </th>
                                                 {selectedStrategies.map(s => (
-                                                    <th key={s.id} className="p-4 bg-black text-zinc-900 border-b border-industrial-800 sticky top-0 min-w-[200px] border-r border-industrial-800">
-                                                        <div className="text-primary-500 text-xs font-bold uppercase mb-1">Strat_ID: #{s.id}</div>
+                                                    <th key={s.id} className="p-4 bg-zinc-50 text-zinc-900 border-b border-zinc-200 sticky top-0 min-w-[200px] border-r border-zinc-200">
+                                                        <div className="text-primary-500 text-xs font-bold uppercase mb-1">Strat ID: #{s.id}</div>
                                                         <div className="font-bold truncate">{s.name}</div>
-                                                        <div className="text-[10px] text-industrial-500 font-normal mt-1 uppercase tracking-widest">{s.symbol} • {s.timeframe}</div>
+                                                        <div className="text-[10px] text-zinc-500 font-normal mt-1 uppercase tracking-widest">{s.symbol} • {s.timeframe}</div>
                                                     </th>
                                                 ))}
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-industrial-800">
-                                            <tr className="bg-industrial-900/20">
-                                                <td className="p-4 font-bold text-industrial-300 border-r border-industrial-800 text-xs uppercase">Total Return</td>
+                                        <tbody className="divide-y divide-zinc-200">
+                                            <tr className="bg-zinc-50/10">
+                                                <td className="p-4 font-bold text-zinc-400 border-r border-zinc-200 text-xs uppercase">Total Return</td>
                                                 {selectedStrategies.map(s => {
                                                     const val = s.metrics.total_return || s.metrics.total_return_pct || 0;
                                                     return (
-                                                        <td key={s.id} className={`p-4 font-bold text-lg border-r border-industrial-800 ${val >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                        <td key={s.id} className={`p-4 font-bold text-lg border-r border-zinc-200 ${val >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                             {formatPct(val)}
                                                         </td>
                                                     );
                                                 })}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Sharpe Ratio</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Sharpe Ratio</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{formatNum(s.metrics.sharpe_ratio)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-zinc-200">{formatNum(s.metrics.sharpe_ratio)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Win Rate</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Win Rate</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{formatPct(s.metrics.win_rate)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-zinc-200">{formatPct(s.metrics.win_rate)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Max Drawdown</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Max Drawdown</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-red-500 font-mono border-r border-industrial-800">{formatPct(s.metrics.max_drawdown)}</td>
+                                                    <td key={s.id} className="p-4 text-red-500 font-mono border-r border-zinc-200">{formatPct(s.metrics.max_drawdown)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Profit Factor</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Profit Factor</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{formatNum(s.metrics.profit_factor)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-zinc-200">{formatNum(s.metrics.profit_factor)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Sortino Ratio</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Sortino Ratio</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{formatNum(s.metrics.sortino_ratio ?? s.metrics.sortino)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-zinc-200">{formatNum(s.metrics.sortino_ratio ?? s.metrics.sortino)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Max Loss</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Max Loss</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-red-500 font-mono border-r border-industrial-800">{formatPct(s.metrics.max_loss)}</td>
+                                                    <td key={s.id} className="p-4 text-red-500 font-mono border-r border-zinc-200">{formatPct(s.metrics.max_loss)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Max Cons. Losses</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Max Cons. Losses</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{s.metrics.max_consecutive_losses ?? 0}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-zinc-200">{s.metrics.max_consecutive_losses ?? 0}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Avg ATR</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Avg ATR</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-industrial-200 font-mono border-r border-industrial-800">{formatNum(s.metrics.avg_atr)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-400 font-mono border-r border-zinc-200">{formatNum(s.metrics.avg_atr)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Win Rate Bull</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Win Rate Bull</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-green-600 font-mono border-r border-industrial-800">{formatPct(s.metrics.win_rate_bull)}</td>
+                                                    <td key={s.id} className="p-4 text-green-600 font-mono border-r border-zinc-200">{formatPct(s.metrics.win_rate_bull)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Win Rate Bear</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Win Rate Bear</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-red-600 font-mono border-r border-industrial-800">{formatPct(s.metrics.win_rate_bear)}</td>
+                                                    <td key={s.id} className="p-4 text-red-600 font-mono border-r border-zinc-200">{formatPct(s.metrics.win_rate_bear)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Avg ADX</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Avg ADX</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-industrial-200 font-mono border-r border-industrial-800">{formatNum(s.metrics.avg_adx)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-400 font-mono border-r border-zinc-200">{formatNum(s.metrics.avg_adx)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
-                                                <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Total Trades</td>
+                                                <td className="p-4 text-zinc-500 border-r border-zinc-200 text-xs uppercase">Total Trades</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-industrial-200 font-mono border-r border-industrial-800">{s.metrics.total_trades || s.metrics.trades || 0}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-400 font-mono border-r border-zinc-200">{s.metrics.total_trades || s.metrics.trades || 0}</td>
                                                 ))}
                                             </tr>
                                         </tbody>

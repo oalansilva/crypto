@@ -168,7 +168,7 @@ export function ComboResultsPage() {
 
     if (!result) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
                 <div className="text-center">
                     <p className="text-red-400">No results found</p>
                     <button onClick={() => navigate('/combo/select')} className="mt-4 text-blue-400">
@@ -285,19 +285,13 @@ export function ComboResultsPage() {
     })
 
     return (
-        <div className="min-h-screen relative overflow-hidden">
-            {/* Animated background */}
-            <div className="fixed inset-0 -z-10">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-float"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
-            </div>
-
+        <div className="app-page combo-page relative overflow-hidden">
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-7xl mx-auto space-y-8">
 
                     {/* Configuration Info */}
-                    <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
+                    <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="bg-emerald-500/20 p-2.5 rounded-lg border border-emerald-600/30">
                                 <Activity className="w-6 h-6 text-emerald-400" />
@@ -319,7 +313,7 @@ export function ComboResultsPage() {
                                     : value;
 
                                 return (
-                                    <div key={key} className="bg-zinc-50 rounded-xl p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
+                                    <div key={key} className="bg-zinc-50 rounded-[16px] p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
                                         <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
                                             {key.replace(/_/g, ' ')}
                                         </p>
@@ -344,7 +338,7 @@ export function ComboResultsPage() {
                             color="#3b82f6"
                         />
                     ) : (
-                        <div className="glass-strong rounded-2xl p-8 text-center border border-zinc-200 mb-8">
+                        <div className="glass-strong rounded-[28px] p-8 text-center border border-zinc-200 mb-8">
                             <BarChart3 className="w-12 h-12 mx-auto text-zinc-500 mb-4 opacity-50" />
                             <p className="text-zinc-400">Chart data not available for this run.</p>
                         </div>
@@ -353,7 +347,7 @@ export function ComboResultsPage() {
                     {/* Metrics Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Total Trades */}
-                        <div className="glass-strong rounded-xl p-6 border border-zinc-200">
+                        <div className="glass-strong rounded-[24px] p-6 border border-zinc-200">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-blue-500/20 p-2 rounded-lg">
                                     <Activity className="w-5 h-5 text-blue-400" />
@@ -364,7 +358,7 @@ export function ComboResultsPage() {
                         </div>
 
                         {/* Win Rate */}
-                        <div className="glass-strong rounded-xl p-6 border border-zinc-200">
+                        <div className="glass-strong rounded-[24px] p-6 border border-zinc-200">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-green-500/20 p-2 rounded-lg">
                                     <Target className="w-5 h-5 text-green-400" />
@@ -375,7 +369,7 @@ export function ComboResultsPage() {
                         </div>
 
                         {/* Total Return */}
-                        <div className="glass-strong rounded-xl p-6 border border-zinc-200">
+                        <div className="glass-strong rounded-[24px] p-6 border border-zinc-200">
                             <div className="flex items-center justify-between mb-3">
                                 <div className={`p-2 rounded-lg ${metrics.total_return >= 0 ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
                                     {metrics.total_return >= 0 ? (
@@ -392,7 +386,7 @@ export function ComboResultsPage() {
                         </div>
 
                         {/* Avg Profit */}
-                        <div className="glass-strong rounded-xl p-6 border border-zinc-200">
+                        <div className="glass-strong rounded-[24px] p-6 border border-zinc-200">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-purple-500/20 p-2 rounded-lg">
                                     <DollarSign className="w-5 h-5 text-purple-400" />
@@ -404,33 +398,33 @@ export function ComboResultsPage() {
                     </div>
 
                     {/* Trades Table - TradingView Style */}
-                    <div className="bg-zinc-900 rounded-lg overflow-hidden border border-zinc-200 shadow-sm">
+                    <div className="bg-zinc-900 rounded-[24px] overflow-hidden border border-zinc-200 shadow-sm">
                         <div className="p-4 border-b border-zinc-200 flex items-center justify-between bg-zinc-50">
                             <div className="flex items-center gap-4">
-                                <button className="px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-900 border border-zinc-300 rounded hover:bg-zinc-50">
+                                <button className="px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-900 border border-zinc-300 rounded-[12px] hover:bg-zinc-50">
                                     Metrics
                                 </button>
-                                <button className="px-3 py-1.5 text-sm font-medium text-white bg-zinc-900 border border-zinc-300 rounded border-b-2 border-b-blue-600">
+                                <button className="px-3 py-1.5 text-sm font-medium text-white bg-zinc-900 border border-zinc-300 rounded-[12px] border-b-2 border-b-blue-600">
                                     List of trades
                                 </button>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded">
+                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-[12px]">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                                     </svg>
                                 </button>
-                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded">
+                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-[12px]">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                     </svg>
                                 </button>
-                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded">
+                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-[12px]">
                                     <Download className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={handleExportTrades}
-                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded text-sm font-medium transition-colors"
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-[12px] text-sm font-medium transition-colors"
                                 >
                                     Exportar para Excel
                                 </button>
@@ -615,7 +609,7 @@ export function ComboResultsPage() {
 
 
                     {/* Indicator Info */}
-                    <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
+                    <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
                         <h2 className="text-xl font-bold text-zinc-900 mb-4 opacity-80">Indicators Used</h2>
                         <div className="flex flex-wrap gap-2">
                             {Object.keys(result.indicator_data).map((indicator) => (

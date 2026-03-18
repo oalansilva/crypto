@@ -1,25 +1,26 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { AppNav } from './AppNav'
 
 export function Layout() {
+  const location = useLocation()
+  const isKanbanRoute = location.pathname.startsWith('/kanban')
+
   return (
-    <div className="relative min-h-screen w-full overflow-hidden text-white font-sans selection:bg-emerald-500/30">
-      {/* Background - Dark theme */}
+    <div className="relative min-h-screen w-full overflow-hidden font-sans text-[var(--text-primary)] selection:bg-sky-400/30">
       <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_25%),radial-gradient(circle_at_85%_0%,rgba(38,194,129,0.1),transparent_22%),linear-gradient(180deg,#07111a_0%,#0b1520_42%,#0d1823_100%)]" />
         <div
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-70"
           style={{
             backgroundImage: `
-              radial-gradient(circle at 15% 30%, rgba(16, 185, 129, 0.15) 0%, transparent 45%),
-              radial-gradient(circle at 85% 15%, rgba(139, 92, 246, 0.1) 0%, transparent 40%),
-              radial-gradient(circle at 75% 70%, rgba(6, 182, 212, 0.08) 0%, transparent 35%)
+              radial-gradient(circle at 18% 24%, rgba(56, 189, 248, 0.1) 0%, transparent 36%),
+              radial-gradient(circle at 82% 16%, rgba(38, 194, 129, 0.12) 0%, transparent 32%),
+              radial-gradient(circle at 76% 76%, rgba(245, 158, 11, 0.08) 0%, transparent 24%)
             `,
           }}
         />
-        {/* Subtle grid pattern */}
         <div
-          className="absolute inset-0 opacity-[0.03]"
+          className="absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage: `
               linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
@@ -32,9 +33,8 @@ export function Layout() {
 
       <AppNav />
 
-      {/* Main content area managed by AppNav sidebar */}
-      <div className="lg:ml-64 lg:transition-all lg:duration-300">
-        <div className="p-6 lg:p-8">
+      <div className="app-main-offset" style={{ marginLeft: 'var(--app-sidebar-width)' }}>
+        <div className={isKanbanRoute ? 'page-shell page-shell-wide' : 'page-shell'}>
           <Outlet />
         </div>
       </div>
