@@ -1,13 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from fastapi import HTTPException
 
 from sqlalchemy.orm import Session
 
-from app.workflow_models import ApprovalScope, ApprovalState, Change, WorkflowApproval
+from app.workflow_models import (
+    ApprovalScope,
+    ApprovalState,
+    Change,
+    WorkItem,
+    WorkItemState,
+    WorkItemType,
+    WorkflowApproval,
+)
+
+if TYPE_CHECKING:
+    from app.services.workflow_validation_service import (
+        ApprovalGateStatus,
+        StoryClosureStatus,
+    )
 
 KANBAN_COLUMNS = [
     "Pending",
@@ -180,3 +194,165 @@ def sync_change_gates_for_column(
         mutated = True
 
     return mutated
+
+
+# --- Validation Hooks ---
+
+
+def validate_transition_hooks(
+    db: Session,
+    change: Change,
+    target_column: str,
+) -> None:
+    """Run validation hooks before allowing a transition.
+    
+    This function checks all relevant validations before a change
+    can move to the target column.
+    
+    Args:
+        db: Database session
+        change: The change being transitioned
+        target_column: The target Kanban column
+        
+    Raises:
+        HTTPException: If any validation fails
+    """
+    target = _normalize_status(target_column)
+    
+    # Validate DEV -> QA transition
+    if target == "QA":
+        _validate_dev_to_qa(db, change)
+    
+    # Validate QA -> Homologation transition  
+    if target == "Alan homologation":
+        _validate_qa_to_homologation(db, change)
+    
+    # Validate Homologation -> Archived transition
+    if target == "Archived":
+        _validate_homologation_to_archived(db, change)
+
+
+def _validate_dev_to_qa(db: Session, change: Change) -> None:
+    """Validate DEV -> QA transition.
+    
+    Requires:
+    - Approval gate files exist (proposal.md, review-ptbr.md, tasks.md)
+    
+    Args:
+        db: Database session
+        change: The change being transitioned
+        
+    Raises:
+        HTTPException: If validation fails
+    """
+    # Import here to avoid circular imports
+    from app.services.workflow_validation_service import validate_approval_gate
+    
+    gate_status = validate_approval_gate(change.change_id)
+    
+    if not gate_status.is_valid:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "approval_gate_not_met",
+                "message": f"Cannot move to QA. Missing required files: {', '.join(gate_status.missing_files)}",
+                "current": change.status,
+                "target": "QA",
+                "missing_files": gate_status.missing_files,
+            },
+        )
+
+
+def _validate_qa_to_homologation(db: Session, change: Change) -> None:
+    """Validate QA -> Homologation transition.
+    
+    Requires:
+    - All work items (stories/bugs) are done or canceled
+    
+    Args:
+        db: Database session
+        change: The change being transitioned
+        
+    Raises:
+        HTTPException: If validation fails
+    """
+    # Check that all work items are done or canceled
+    open_items = db.query(WorkItem).filter(
+        WorkItem.change_pk == change.id,
+        WorkItem.state.notin_([WorkItemState.done, WorkItemState.canceled]),
+    ).count()
+    
+    if open_items > 0:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "open_work_items",
+                "message": f"Cannot move to Homologation. There are {open_items} open work items.",
+                "current": change.status,
+                "target": "Alan homologation",
+                "open_items_count": open_items,
+            },
+        )
+
+
+def _validate_homologation_to_archived(db: Session, change: Change) -> None:
+    """Validate Homologation -> Archived transition.
+    
+    No additional requirements - this is the final state.
+    
+    Args:
+        db: Database session
+        change: The change being transitioned
+    """
+    # No additional validation needed for archived
+    pass
+
+
+def validate_work_item_transition(
+    db: Session,
+    work_item: WorkItem,
+    target_state: WorkItemState,
+) -> None:
+    """Validate work item state transition.
+    
+    Args:
+        db: Database session
+        work_item: The work item being transitioned
+        target_state: The target state
+        
+    Raises:
+        HTTPException: If validation fails
+    """
+    # Validate story -> done transition
+    if work_item.type == WorkItemType.story and target_state == WorkItemState.done:
+        _validate_story_done(db, work_item)
+
+
+def _validate_story_done(db: Session, story: WorkItem) -> None:
+    """Validate that a story can be marked as done.
+    
+    Requires:
+    - All child bugs are done or canceled
+    
+    Args:
+        db: Database session
+        story: The story being marked done
+        
+    Raises:
+        HTTPException: If validation fails
+    """
+    # Import here to avoid circular imports
+    from app.services.workflow_validation_service import validate_story_closure
+    
+    closure_status = validate_story_closure(db, story.id)
+    
+    if not closure_status.is_valid:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "blocking_child_bugs",
+                "message": f"Cannot close story. {len(closure_status.blocking_bugs)} child bug(s) are still open.",
+                "story_id": story.id,
+                "blocking_bugs": closure_status.blocking_bugs,
+            },
+        )
