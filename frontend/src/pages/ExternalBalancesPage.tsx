@@ -358,12 +358,6 @@ export default function ExternalBalancesPage() {
             </div>
           </div>
 
-          <div className="mt-3 rounded-[14px] border border-amber-400/30 bg-[rgba(255,176,32,0.10)] p-3 text-zinc-900/80 shadow-md">
-            <div className="text-[11px] font-extrabold tracking-wide text-zinc-800">Nota sobre PnL</div>
-            <div className="mt-1 text-sm leading-snug">
-              O backend calcula <strong>avg cost / pnl</strong> somente para um número limitado de ativos (budget de tempo). A UI deve sinalizar <strong>parcial</strong> e não sugerir contabilidade completa.
-            </div>
-          </div>
         </section>
 
         <section className="mt-4 overflow-hidden rounded-[14px] border border-zinc-200 bg-zinc-50 shadow-md lg:min-h-[642px]">
