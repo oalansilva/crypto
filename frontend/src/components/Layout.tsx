@@ -1,30 +1,43 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { AppNav } from './AppNav'
 
 export function Layout() {
-  const location = useLocation()
-  
-  // Pages that have custom headers with mobile menus/filters - hide AppNav on mobile
-  // but keep it on desktop for unified navigation
-  const pagesWithCustomMobileHeader = ['/favorites', '/kanban', '/arbitrage', '/combo/select']
-  const hasCustomMobileHeader = pagesWithCustomMobileHeader.some(path => 
-    location.pathname === path || location.pathname.startsWith(path + '/')
-  )
   return (
-    <div className="relative min-h-screen w-full overflow-hidden text-white font-sans selection:bg-[rgba(138,166,255,0.30)] pb-20">
-      {/* Global app background matches the approved Wallet prototype palette */}
+    <div className="relative min-h-screen w-full overflow-hidden text-white font-sans selection:bg-emerald-500/30">
+      {/* Background - Dark theme */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 opacity-30"
           style={{
-            background:
-              'radial-gradient(1000px 500px at 10% 0%, rgba(138,166,255,0.25), transparent 55%), radial-gradient(900px 500px at 100% 0%, rgba(53,208,127,0.14), transparent 60%), #0b1020',
+            backgroundImage: `
+              radial-gradient(circle at 15% 30%, rgba(16, 185, 129, 0.15) 0%, transparent 45%),
+              radial-gradient(circle at 85% 15%, rgba(139, 92, 246, 0.1) 0%, transparent 40%),
+              radial-gradient(circle at 75% 70%, rgba(6, 182, 212, 0.08) 0%, transparent 35%)
+            `,
+          }}
+        />
+        {/* Subtle grid pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+            `,
+            backgroundSize: '40px 40px',
           }}
         />
       </div>
 
-      <AppNav hideOnMobile={hasCustomMobileHeader} />
-      <Outlet />
+      <AppNav />
+
+      {/* Main content area managed by AppNav sidebar */}
+      <div className="lg:ml-64 lg:transition-all lg:duration-300">
+        <div className="p-6 lg:p-8">
+          <Outlet />
+        </div>
+      </div>
     </div>
   )
 }

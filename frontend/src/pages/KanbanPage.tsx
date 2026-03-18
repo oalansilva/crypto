@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { NavLink } from 'react-router-dom'
-import { Kanban, Search, X, Menu, Sparkles, Bookmark, Layers, Shuffle, Wallet, Activity } from 'lucide-react'
-import { openMobileMenu } from '../components/AppNav'
+import { Kanban, Search, X, Sparkles, Bookmark, Layers, Shuffle, Wallet, Activity } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -116,8 +115,8 @@ const COLUMNS_ORDER = [
 function StatusLine({ label, value }: { label: string; value?: string }) {
   if (!value) return null
   return (
-    <div className="flex items-center justify-between gap-2 text-[11px] text-gray-300">
-      <span className="text-gray-400">{label}</span>
+    <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-500">
+      <span className="text-zinc-400">{label}</span>
       <span className="font-mono capitalize">{value}</span>
     </div>
   )
@@ -170,18 +169,18 @@ function TaskTree({
             "mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] " +
             (checked
               ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
-              : 'bg-white/5 border-white/10 text-gray-400')
+              : 'bg-zinc-950 border-zinc-200 text-zinc-400')
           }
           aria-label={checked ? 'checked' : 'unchecked'}
         >
           {checked ? '✓' : ''}
         </span>
         <div className="min-w-0">
-          <div className="text-sm text-gray-200 break-words leading-snug">
+          <div className="text-sm text-zinc-300 break-words leading-snug">
             {item.title ? <span className="font-semibold">{item.title}: </span> : null}
             <span className={checked ? 'line-through opacity-80' : ''}>{item.text}</span>
           </div>
-          {item.code ? <div className="text-[11px] text-gray-500 font-mono">{item.code}</div> : null}
+          {item.code ? <div className="text-[11px] text-zinc-500 font-mono">{item.code}</div> : null}
         </div>
       </div>
 
@@ -760,52 +759,8 @@ export default function KanbanPage() {
 
   return (
     <main className="min-h-screen w-full px-0 py-0">
-      {/* Mobile-only topbar (match approved prototype layout; keep desktop unchanged) */}
-      <header className="sm:hidden sticky top-0 z-40 border-b border-white/10 bg-zinc-950/70 backdrop-blur">
-        <div className="h-14 px-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {/* Hamburger Menu Button */}
-            <button
-              type="button"
-              onClick={() => openMobileMenu()}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-              aria-label="Abrir menu"
-            >
-              <Menu className="w-5 h-5 text-white" />
-            </button>
-            <div className="flex items-center gap-2 text-xs text-gray-300">
-              <a href="/" className="opacity-80 hover:opacity-100">
-                Home
-              </a>
-              <span className="opacity-40">/</span>
-              <span className="font-semibold text-gray-100">Kanban</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <ProjectSelector selectedProject={selectedProject} onProjectChange={setSelectedProject} />
-            <button
-              type="button"
-              className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 grid place-items-center"
-              aria-label="Search"
-              onClick={() => setMobileSearchOpen((v) => !v)}
-            >
-              <Search className="w-4 h-4 text-gray-200" />
-            </button>
-            <Button
-              type="button"
-              onClick={() => setShowCreateCardModal(true)}
-              className="h-10 px-3 rounded-xl"
-              aria-label="Create new card"
-            >
-              New
-            </Button>
-          </div>
-        </div>
-      </header>
-
       {mobileSearchOpen ? (
-        <div className="sm:hidden border-b border-white/10 bg-zinc-950/70 backdrop-blur">
+        <div className="sm:hidden border-b border-zinc-200 bg-zinc-900 backdrop-blur">
           <div className="px-4 py-3 flex items-center gap-2">
             <div className="flex-1">
               <Input
@@ -830,7 +785,7 @@ export default function KanbanPage() {
       ) : null}
 
       <div className="px-4 py-3 sm:px-0 sm:py-0 sm:mb-6">
-        <div className="rounded-2xl border border-white/10 bg-zinc-950/60 p-4 sm:p-5">
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-800 p-4 sm:p-5">
           <div className="sm:flex sm:items-start sm:justify-between sm:gap-6">
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -839,7 +794,7 @@ export default function KanbanPage() {
               <div className="mt-2">
                 <ProjectSelector selectedProject={selectedProject} onProjectChange={setSelectedProject} />
               </div>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-zinc-400">
                 Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
               </p>
             </div>
@@ -853,15 +808,15 @@ export default function KanbanPage() {
       </div>
 
       <div className="px-4 py-4 sm:px-0 sm:py-0">
-        <div className="sm:hidden sticky top-14 z-30 -mx-4 mb-3 border-b border-white/10 bg-zinc-950/85 backdrop-blur">
+        <div className="sm:hidden sticky top-14 z-30 -mx-4 mb-3 border-b border-zinc-200 bg-zinc-900 backdrop-blur">
           <div className="px-4 py-3">
-            <div className="text-lg font-semibold text-white">Opportunity Board</div>
-            <div className="text-xs text-gray-400">Uma etapa por vez · swipe + tabs</div>
+            <div className="text-lg font-semibold text-zinc-900">Opportunity Board</div>
+            <div className="text-xs text-zinc-400">Uma etapa por vez · swipe + tabs</div>
           </div>
 
           <div className="px-4 pb-3 flex gap-2 overflow-x-auto">
             <select
-              className="h-10 min-w-[110px] rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100"
+              className="h-10 min-w-[110px] rounded-xl border border-zinc-200 bg-zinc-950 px-3 text-sm text-zinc-200"
               value={filterMode}
               onChange={(e) => setFilterMode(e.target.value as FilterMode)}
               aria-label="Filter"
@@ -872,7 +827,7 @@ export default function KanbanPage() {
             </select>
 
             <select
-              className="h-10 min-w-[110px] rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100"
+              className="h-10 min-w-[110px] rounded-xl border border-zinc-200 bg-zinc-950 px-3 text-sm text-zinc-200"
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as SortMode)}
               aria-label="Sort"
@@ -889,13 +844,13 @@ export default function KanbanPage() {
                 'h-10 shrink-0 rounded-xl border px-3 text-sm font-medium transition-colors ' +
                 (showBugs
                   ? 'border-red-400/40 bg-red-400/15 text-red-200'
-                  : 'border-white/10 bg-white/5 text-gray-300')
+                  : 'border-zinc-200 bg-zinc-950 text-zinc-500')
               }
             >
               {showBugs ? '🐛 Bugs On' : '🐛 Bugs Off'}
             </button>
 
-            <div className="h-10 shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 grid place-items-center text-xs text-gray-300">
+            <div className="h-10 shrink-0 rounded-xl border border-zinc-200 bg-zinc-950 px-3 grid place-items-center text-xs text-zinc-500">
               {filteredItems.length} items
             </div>
           </div>
@@ -915,26 +870,26 @@ export default function KanbanPage() {
                     className={
                       'h-11 rounded-2xl px-4 text-sm font-semibold border transition-colors ' +
                       (active
-                        ? 'border-cyan-400/40 bg-cyan-400/15 text-white'
-                        : 'border-white/10 bg-white/5 text-gray-300')
+                        ? 'border-cyan-400/40 bg-cyan-400/15 text-zinc-900'
+                        : 'border-zinc-200 bg-zinc-950 text-zinc-500')
                     }
                   >
-                    {col} <span className="ml-1 text-xs text-gray-400">{count}</span>
+                    {col} <span className="ml-1 text-xs text-zinc-400">{count}</span>
                   </button>
                 )
               })}
             </div>
-            <div className="mt-2 text-[11px] text-gray-400">Swipe para trocar de etapa</div>
+            <div className="mt-2 text-[11px] text-zinc-400">Swipe para trocar de etapa</div>
           </div>
         </div>
 
-        <Card className="hidden sm:block border border-white/10 glass">
+        <Card className="hidden sm:block border border-zinc-200 glass">
           <CardHeader>
-            <div className="text-sm text-gray-300">Board</div>
+            <div className="text-sm text-zinc-500">Board</div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-gray-400 text-sm">Carregando…</div>
+              <div className="text-zinc-400 text-sm">Carregando…</div>
             ) : error ? (
               <div className="text-red-400 text-sm">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
             ) : (
@@ -946,23 +901,23 @@ export default function KanbanPage() {
                       <section
                         key={col}
                         className={
-                          'w-[28vw] min-w-[240px] max-w-[400px] shrink-0 rounded-xl border bg-zinc-900/40 transition-colors ' +
-                          (dragTargetColumn === col ? 'border-cyan-400/50' : 'border-white/10')
+                          'w-[28vw] min-w-[240px] max-w-[400px] shrink-0 rounded-xl border bg-zinc-950/40 transition-colors ' +
+                          (dragTargetColumn === col ? 'border-cyan-400/50' : 'border-zinc-200')
                         }
                         onDragOver={(event) => handleDesktopDragOver(event, col)}
                         onDrop={(event) => handleDesktopDrop(event, col)}
                         onDragLeave={() => setDragTargetColumn((curr) => (curr === col ? null : curr))}
                       >
-                        <div className="px-4 py-3 border-b border-white/10">
+                        <div className="px-4 py-3 border-b border-zinc-200">
                           <div className="flex items-center justify-between gap-3">
-                            <div className="font-semibold text-sm text-white">{col}</div>
-                            <div className="text-xs text-gray-400">{colItems.length}</div>
+                            <div className="font-semibold text-sm text-zinc-900">{col}</div>
+                            <div className="text-xs text-zinc-400">{colItems.length}</div>
                           </div>
                         </div>
 
                         <div className="p-3 space-y-3 min-h-[220px]">
                           {colItems.length === 0 ? (
-                            <div className="rounded-lg border border-dashed border-white/10 p-4 text-xs text-gray-500">vazio</div>
+                            <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-xs text-zinc-500">vazio</div>
                           ) : (
                             colItems.map((it) => (
                               <div
@@ -984,7 +939,7 @@ export default function KanbanPage() {
                                   }
                                 }}
                                 className={
-                                  'w-full text-left rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/30 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-white/20 cursor-pointer ' +
+                                  'w-full text-left rounded-xl border border-zinc-200 bg-zinc-900 hover:bg-zinc-200 shadow-sm transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer ' +
                                   (selected?.id === it.id ? 'ring-2 ring-white/20' : '') +
                                   ' ' + getBugCardClass(selected?.id === it.id, it.has_bugs, it.item_type === 'bug')
                                 }
@@ -994,24 +949,24 @@ export default function KanbanPage() {
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
-                                    {it.card_number ? <div className="text-[11px] font-semibold text-cyan-300">#{it.card_number}</div> : null}
+                                    {it.card_number ? <div className="text-[11px] font-semibold text-cyan-700">#{it.card_number}</div> : null}
                                     {/* Show bug indicator and parent story for bug cards */}
                                     {it.item_type === 'bug' && (
                                       <div className="text-[10px] font-semibold text-red-300 mb-1">🐛 BUG</div>
                                     )}
-                                    <div className="text-sm font-semibold text-white truncate">{it.title || it.id}</div>
+                                    <div className="text-sm font-semibold text-zinc-900 truncate">{it.title || it.id}</div>
                                     {it.item_type === 'bug' && it.parent_story_title && (
-                                      <div className="text-[10px] text-gray-400 truncate">Story: {it.parent_story_title}</div>
+                                      <div className="text-[10px] text-zinc-400 truncate">Story: {it.parent_story_title}</div>
                                     )}
-                                    <div className="text-[11px] text-gray-400 font-mono truncate">{it.id}</div>
+                                    <div className="text-[11px] text-zinc-400 font-mono truncate">{it.id}</div>
                                   </div>
                                   {it.archived ? (
-                                    <div className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-gray-300">archived</div>
+                                    <div className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-200 text-zinc-500">archived</div>
                                   ) : null}
                                 </div>
 
                                 {it.description ? (
-                                  <div className="mt-2 text-xs text-gray-300 break-words">{it.description}</div>
+                                  <div className="mt-2 text-xs text-zinc-500 break-words">{it.description}</div>
                                 ) : null}
 
                                 {/* Image thumbnails on card */}
@@ -1022,18 +977,18 @@ export default function KanbanPage() {
                                         key={idx}
                                         src={img.data}
                                         alt={img.filename}
-                                        className="w-10 h-10 object-cover rounded border border-white/10"
+                                        className="w-10 h-10 object-cover rounded border border-zinc-200"
                                       />
                                     ))}
                                     {it.image_data.length > 3 && (
-                                      <div className="w-10 h-10 rounded border border-white/10 bg-white/5 flex items-center justify-center text-[10px] text-gray-400">
+                                      <div className="w-10 h-10 rounded border border-zinc-200 bg-zinc-950 flex items-center justify-center text-[10px] text-zinc-400">
                                         +{it.image_data.length - 3}
                                       </div>
                                     )}
                                   </div>
                                 )}
 
-                                <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
+                                <div className="mt-2 pt-2 border-t border-zinc-200 space-y-1">
                                   <StatusLine label="PO" value={it.status?.['PO']} />
                                   <StatusLine label="DESIGN" value={it.status?.['DESIGN'] || 'skipped'} />
                                   <StatusLine label="Alan approval" value={it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)']} />
@@ -1053,7 +1008,7 @@ export default function KanbanPage() {
                                         reorderChange.mutate({ changeId: it.id, direction: 'up' })
                                       }}
                                       disabled={!canReorder(it, 'up') || reorderChange.isPending || moveChange.isPending}
-                                      className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-gray-200 disabled:opacity-40"
+                                      className="rounded-lg border border-zinc-200 px-2 py-1 text-[11px] text-zinc-300 disabled:opacity-40"
                                     >
                                       Move up
                                     </button>
@@ -1064,7 +1019,7 @@ export default function KanbanPage() {
                                         reorderChange.mutate({ changeId: it.id, direction: 'down' })
                                       }}
                                       disabled={!canReorder(it, 'down') || reorderChange.isPending || moveChange.isPending}
-                                      className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-gray-200 disabled:opacity-40"
+                                      className="rounded-lg border border-zinc-200 px-2 py-1 text-[11px] text-zinc-300 disabled:opacity-40"
                                     >
                                       Move down
                                     </button>
@@ -1085,29 +1040,29 @@ export default function KanbanPage() {
 
         <div className="sm:hidden">
           {isLoading ? (
-            <div className="text-gray-400 text-sm">Carregando…</div>
+            <div className="text-zinc-400 text-sm">Carregando…</div>
           ) : error ? (
             <div className="text-red-400 text-sm">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
           ) : (
             <section
-              className="rounded-2xl border border-white/10 bg-zinc-900/40 overflow-hidden"
+              className="rounded-2xl border border-zinc-200 bg-zinc-950/40 overflow-hidden"
               onTouchStart={(e) => handleBoardTouchStart(e.touches[0]?.clientX ?? 0)}
               onTouchMove={(e) => handleBoardTouchMove(e.touches[0]?.clientX ?? 0)}
               onTouchEnd={handleBoardTouchEnd}
             >
-              <div className="px-4 py-3 border-b border-white/10 bg-zinc-950/70">
+              <div className="px-4 py-3 border-b border-zinc-200 bg-zinc-900">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs text-gray-400">Current stage</div>
-                    <div className="font-semibold text-white">{activeMobileColumn}</div>
+                    <div className="text-xs text-zinc-400">Current stage</div>
+                    <div className="font-semibold text-zinc-900">{activeMobileColumn}</div>
                   </div>
-                  <div className="text-sm text-gray-300">{(byColumn.get(activeMobileColumn)?.length || 0)} cards</div>
+                  <div className="text-sm text-zinc-500">{(byColumn.get(activeMobileColumn)?.length || 0)} cards</div>
                 </div>
               </div>
 
               <div className="p-3 space-y-3 min-h-[50vh]">
                 {(byColumn.get(activeMobileColumn)?.length || 0) === 0 ? (
-                  <div className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-gray-500">Nenhum card nesta etapa.</div>
+                  <div className="rounded-xl border border-dashed border-zinc-200 p-5 text-sm text-zinc-500">Nenhum card nesta etapa.</div>
                 ) : (
                   (byColumn.get(activeMobileColumn) || []).map((it) => (
                     <button
@@ -1124,7 +1079,7 @@ export default function KanbanPage() {
                         const touch = e.touches[0]
                         handleCardTouchMove(touch?.clientX ?? 0, touch?.clientY ?? 0)
                       }}
-                      className={"w-full text-left rounded-2xl border border-white/10 bg-zinc-950/60 p-4 shadow-sm " + getBugCardClass(false, it.has_bugs, it.item_type === 'bug')}
+                      className={"w-full text-left rounded-2xl border border-zinc-200 bg-zinc-800 p-4 shadow-sm " + getBugCardClass(false, it.has_bugs, it.item_type === 'bug')}
                       aria-label={`Open details for ${it.id}`}
                     >
                       <div className="flex items-start gap-3">
@@ -1133,29 +1088,29 @@ export default function KanbanPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                                {it.card_number ? <span className="font-semibold text-cyan-300">#{it.card_number}</span> : null}
+                                {it.card_number ? <span className="font-semibold text-cyan-700">#{it.card_number}</span> : null}
                                 {it.item_type === 'bug' && <span className="font-semibold text-red-300">🐛 BUG</span>}
-                                <span className="font-mono text-gray-400">{it.id}</span>
+                                <span className="font-mono text-zinc-400">{it.id}</span>
                               </div>
                               {it.item_type === 'bug' && it.parent_story_title && (
-                                <div className="text-[10px] text-gray-400 mt-1">Story: {it.parent_story_title}</div>
+                                <div className="text-[10px] text-zinc-400 mt-1">Story: {it.parent_story_title}</div>
                               )}
-                              <div className="mt-1 text-base font-semibold leading-tight text-white">{it.title || it.id}</div>
+                              <div className="mt-1 text-base font-semibold leading-tight text-zinc-900">{it.title || it.id}</div>
                             </div>
-                            {it.archived ? <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-gray-300">archived</div> : null}
+                            {it.archived ? <div className="rounded-full border border-zinc-200 px-2 py-1 text-[10px] text-zinc-500">archived</div> : null}
                           </div>
 
                           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                             <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-cyan-100">{activeMobileColumn}</span>
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">PO {it.status?.['PO'] || '—'}</span>
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">DEV {it.status?.['DEV'] || '—'}</span>
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">QA {it.status?.['QA'] || '—'}</span>
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">Publish {it.status?.['Publish'] || '—'}</span>
+                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">PO {it.status?.['PO'] || '—'}</span>
+                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">DEV {it.status?.['DEV'] || '—'}</span>
+                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">QA {it.status?.['QA'] || '—'}</span>
+                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">Publish {it.status?.['Publish'] || '—'}</span>
                           </div>
 
-                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
-                            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Alan approval · {(it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
-                            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">Ready for homologation · {(it.status?.['Homologation readiness'] || '—')}</div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-zinc-400">
+                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Alan approval · {(it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
+                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Ready for homologation · {(it.status?.['Homologation readiness'] || '—')}</div>
                           </div>
 
                           <div className="mt-3 flex items-center gap-2">
@@ -1166,7 +1121,7 @@ export default function KanbanPage() {
                                 reorderChange.mutate({ changeId: it.id, direction: 'up' })
                               }}
                               disabled={!canReorder(it, 'up') || reorderChange.isPending || moveChange.isPending}
-                              className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-gray-200 disabled:opacity-40"
+                              className="rounded-lg border border-zinc-200 px-2 py-1 text-[11px] text-zinc-300 disabled:opacity-40"
                             >
                               Move up
                             </button>
@@ -1177,7 +1132,7 @@ export default function KanbanPage() {
                                 reorderChange.mutate({ changeId: it.id, direction: 'down' })
                               }}
                               disabled={!canReorder(it, 'down') || reorderChange.isPending || moveChange.isPending}
-                              className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-gray-200 disabled:opacity-40"
+                              className="rounded-lg border border-zinc-200 px-2 py-1 text-[11px] text-zinc-300 disabled:opacity-40"
                             >
                               Move down
                             </button>
@@ -1197,19 +1152,19 @@ export default function KanbanPage() {
 
       {moveTarget ? (
         <div className="fixed inset-0 z-50 sm:hidden">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setMoveTarget(null)} aria-hidden="true" />
-          <aside className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-white/10 bg-zinc-950 shadow-2xl">
-            <div className="px-4 py-4 border-b border-white/10">
-              <div className="text-xs text-gray-400">Mover card</div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-base font-semibold text-white">
-                {moveTarget.card_number ? <span className="text-cyan-300">#{moveTarget.card_number}</span> : null}
+          <div className="absolute inset-0 bg-zinc-800" onClick={() => setMoveTarget(null)} aria-hidden="true" />
+          <aside className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-zinc-200 bg-zinc-900 shadow-2xl">
+            <div className="px-4 py-4 border-b border-zinc-200">
+              <div className="text-xs text-zinc-400">Mover card</div>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-base font-semibold text-zinc-900">
+                {moveTarget.card_number ? <span className="text-cyan-700">#{moveTarget.card_number}</span> : null}
                 <span>{moveTarget.title || moveTarget.id}</span>
               </div>
-              <div className="text-[11px] font-mono text-gray-500">{moveTarget.id}</div>
+              <div className="text-[11px] font-mono text-zinc-500">{moveTarget.id}</div>
             </div>
 
             <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
-              <div className="text-xs text-gray-400">Escolha a nova etapa no fluxo</div>
+              <div className="text-xs text-zinc-400">Escolha a nova etapa no fluxo</div>
               <div className="grid grid-cols-1 gap-2">
                 {COLUMNS_ORDER.map((col) => {
                   const active = moveTarget.column === col
@@ -1223,12 +1178,12 @@ export default function KanbanPage() {
                         'rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ' +
                         (active
                           ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100'
-                          : 'border-white/10 bg-white/5 text-gray-100 disabled:opacity-60')
+                          : 'border-zinc-200 bg-zinc-950 text-zinc-200 disabled:opacity-60')
                       }
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span>{col}</span>
-                        <span className="text-[11px] text-gray-400">{active ? 'Atual' : 'Mover'}</span>
+                        <span className="text-[11px] text-zinc-400">{active ? 'Atual' : 'Mover'}</span>
                       </div>
                     </button>
                   )
@@ -1253,17 +1208,17 @@ export default function KanbanPage() {
 
       {selected ? (
         <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setSelected(null)} aria-hidden="true" />
-          <aside className="absolute inset-0 h-full w-full bg-zinc-950 border-t border-white/10 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[520px] sm:border-t-0 sm:border-l sm:border-white/10">
+          <div className="absolute inset-0 bg-zinc-800" onClick={() => setSelected(null)} aria-hidden="true" />
+          <aside className="absolute inset-0 h-full w-full bg-zinc-900 border-t border-zinc-200 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[520px] sm:border-t-0 sm:border-l sm:border-zinc-200">
             <div className="h-full flex flex-col">
-              <div className="px-4 py-3 border-b border-white/10 flex items-start justify-between gap-3">
+              <div className="px-4 py-3 border-b border-zinc-200 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm text-gray-400">Detalhes</div>
-                  <div className="flex flex-wrap items-center gap-2 text-lg font-semibold text-white truncate">
-                    {selected.card_number ? <span className="text-cyan-300">#{selected.card_number}</span> : null}
+                  <div className="text-sm text-zinc-400">Detalhes</div>
+                  <div className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-900 truncate">
+                    {selected.card_number ? <span className="text-cyan-700">#{selected.card_number}</span> : null}
                     <span className="truncate">{selected.title || selected.id}</span>
                   </div>
-                  <div className="text-[11px] text-gray-500 font-mono truncate">{selected.id}</div>
+                  <div className="text-[11px] text-zinc-500 font-mono truncate">{selected.id}</div>
                 </div>
                 <Button variant="ghost" onClick={() => setSelected(null)} aria-label="Close panel">
                   <X className="w-4 h-4" />
@@ -1272,7 +1227,7 @@ export default function KanbanPage() {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 <section className="space-y-3">
-                  <div className="text-sm font-semibold text-white">Card</div>
+                  <div className="text-sm font-semibold text-zinc-900">Card</div>
 
                   {!selected.archived ? (
                     <div className="flex flex-wrap items-center gap-2">
@@ -1293,9 +1248,9 @@ export default function KanbanPage() {
                     </div>
                   ) : null}
 
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-3 space-y-3">
                     <div>
-                      <div className="text-[11px] text-gray-400 mb-1">Título</div>
+                      <div className="text-[11px] text-zinc-400 mb-1">Título</div>
                       <Input
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
@@ -1305,9 +1260,9 @@ export default function KanbanPage() {
                     </div>
 
                     <div>
-                      <div className="text-[11px] text-gray-400 mb-1">Descrição</div>
+                      <div className="text-[11px] text-zinc-400 mb-1">Descrição</div>
                       <textarea
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                        className="w-full rounded-lg border border-zinc-200 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         rows={4}
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
@@ -1318,25 +1273,25 @@ export default function KanbanPage() {
 
                     {/* Image upload/display for card details */}
                     <div className="space-y-2">
-                      <div className="text-[11px] text-gray-400">Imagens anexadas</div>
+                      <div className="text-[11px] text-zinc-400">Imagens anexadas</div>
                       <div className="flex flex-wrap gap-2">
                         {editImages.map((img, idx) => (
                           <div key={idx} className="relative group">
                             <img
                               src={img.data}
                               alt={img.filename}
-                              className="w-20 h-20 object-cover rounded border border-white/10"
+                              className="w-20 h-20 object-cover rounded border border-zinc-200"
                             />
                             <button
                               type="button"
                               onClick={() => removeEditImage(idx)}
-                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100"
+                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-zinc-900 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100"
                             >
                               ×
                             </button>
                           </div>
                         ))}
-                        <label className="flex items-center justify-center w-20 h-20 rounded border border-dashed border-white/20 text-gray-400 cursor-pointer hover:border-white/40 hover:text-gray-300">
+                        <label className="flex items-center justify-center w-20 h-20 rounded border border-dashed border-zinc-300 text-zinc-400 cursor-pointer hover:border-zinc-400 hover:text-zinc-500">
                           <span className="text-xs">+</span>
                           <input
                             type="file"
@@ -1350,7 +1305,7 @@ export default function KanbanPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="text-xs text-gray-500">Editar metadados preserva id, comments e gates.</div>
+                      <div className="text-xs text-zinc-500">Editar metadados preserva id, comments e gates.</div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
                           onClick={() => updateSelectedChange.mutate({
@@ -1364,10 +1319,10 @@ export default function KanbanPage() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-3">
                       <div>
                         <div className="text-sm font-medium text-red-300">Cancelar card</div>
-                        <div className="text-xs text-gray-500">Retira do fluxo ativo sem apagar histórico.</div>
+                        <div className="text-xs text-zinc-500">Retira do fluxo ativo sem apagar histórico.</div>
                       </div>
                       <Button
                         variant="secondary"
@@ -1395,7 +1350,7 @@ export default function KanbanPage() {
 
                 <section className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold text-white">Tasks</div>
+                    <div className="text-sm font-semibold text-zinc-900">Tasks</div>
                     {workItemsQuery.data && workItemsQuery.data.some((wi) => wi.type === 'story') && (
                       <Button
                         variant="secondary"
@@ -1414,7 +1369,7 @@ export default function KanbanPage() {
                     )}
                   </div>
                   {tasksQuery.isLoading ? (
-                    <div className="text-sm text-gray-400">Carregando tasks…</div>
+                    <div className="text-sm text-zinc-400">Carregando tasks…</div>
                   ) : tasksQuery.error ? (
                     <div className="text-sm text-red-400">
                       Erro: {tasksQuery.error instanceof Error ? tasksQuery.error.message : 'falha ao carregar'}
@@ -1422,11 +1377,11 @@ export default function KanbanPage() {
                   ) : tasksQuery.data ? (
                     <div className="space-y-4">
                       {tasksQuery.data.sections.length === 0 ? (
-                        <div className="text-xs text-gray-500">(sem checklist)</div>
+                        <div className="text-xs text-zinc-500">(sem checklist)</div>
                       ) : (
                         tasksQuery.data.sections.map((sec) => (
-                          <div key={sec.title} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                            <div className="text-sm font-semibold text-gray-100 mb-2">{sec.title}</div>
+                          <div key={sec.title} className="rounded-xl border border-zinc-200 bg-zinc-950 p-3">
+                            <div className="text-sm font-semibold text-zinc-200 mb-2">{sec.title}</div>
                             <div className="space-y-2">
                               {sec.items.map((it, idx) => (
                                 <TaskTree key={`${it.text}-${idx}`} item={it} depth={0} />
@@ -1448,11 +1403,11 @@ export default function KanbanPage() {
                           const bugs = workItemsQuery.data?.filter((wi) => wi.parent_id === story.id) || []
                           const openBugs = bugs.filter((b) => b.state !== 'done' && b.state !== 'canceled')
                           return (
-                            <div key={story.id} className="rounded-lg border border-white/10 bg-black/20 p-2">
+                            <div key={story.id} className="rounded-lg border border-zinc-200 bg-zinc-800 p-2">
                               <div className="flex items-center justify-between gap-2">
                                 <div className="min-w-0 flex-1">
-                                  <div className="text-sm text-gray-200 truncate">{story.title}</div>
-                                  <div className="text-[10px] text-gray-500">
+                                  <div className="text-sm text-zinc-300 truncate">{story.title}</div>
+                                  <div className="text-[10px] text-zinc-500">
                                     {openBugs.length} bug(s) aberto(s)
                                   </div>
                                 </div>
@@ -1475,22 +1430,22 @@ export default function KanbanPage() {
                 </section>
 
                 <section className="space-y-2">
-                  <div className="text-sm font-semibold text-white">Comments</div>
+                  <div className="text-sm font-semibold text-zinc-900">Comments</div>
 
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-3 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <div className="text-[11px] text-gray-400 mb-1">Author</div>
+                        <div className="text-[11px] text-zinc-400 mb-1">Author</div>
                         <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Alan" />
                       </div>
                       <div>
-                        <div className="text-[11px] text-gray-400 mb-1">Body (max 2000)</div>
-                        <div className="text-[11px] text-gray-500 text-right">{body.length}/2000</div>
+                        <div className="text-[11px] text-zinc-400 mb-1">Body (max 2000)</div>
+                        <div className="text-[11px] text-zinc-500 text-right">{body.length}/2000</div>
                       </div>
                     </div>
 
                     <textarea
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      className="w-full rounded-lg border border-zinc-200 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       rows={4}
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
@@ -1499,7 +1454,7 @@ export default function KanbanPage() {
                     />
 
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs text-gray-500">Append-only (sem editar/apagar) — v1</div>
+                      <div className="text-xs text-zinc-500">Append-only (sem editar/apagar) — v1</div>
                       <Button
                         onClick={() => createComment.mutate()}
                         disabled={createComment.isPending || !author.trim() || !body.trim()}
@@ -1516,7 +1471,7 @@ export default function KanbanPage() {
                   </div>
 
                   {commentsQuery.isLoading ? (
-                    <div className="text-sm text-gray-400">Carregando comentários…</div>
+                    <div className="text-sm text-zinc-400">Carregando comentários…</div>
                   ) : commentsQuery.error ? (
                     <div className="text-sm text-red-400">
                       Erro: {commentsQuery.error instanceof Error ? commentsQuery.error.message : 'falha ao carregar'}
@@ -1524,15 +1479,15 @@ export default function KanbanPage() {
                   ) : commentsQuery.data ? (
                     <div className="space-y-3">
                       {commentsQuery.data.items.length === 0 ? (
-                        <div className="text-xs text-gray-500">(sem comentários ainda)</div>
+                        <div className="text-xs text-zinc-500">(sem comentários ainda)</div>
                       ) : (
                         commentsQuery.data.items.map((c) => (
-                          <div key={c.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                          <div key={c.id} className="rounded-xl border border-zinc-200 bg-zinc-800 p-3">
                             <div className="flex items-baseline justify-between gap-3">
-                              <div className="text-sm font-semibold text-white truncate">{c.author}</div>
-                              <div className="text-[11px] text-gray-500 font-mono shrink-0">{formatTs(c.created_at)}</div>
+                              <div className="text-sm font-semibold text-zinc-900 truncate">{c.author}</div>
+                              <div className="text-[11px] text-zinc-500 font-mono shrink-0">{formatTs(c.created_at)}</div>
                             </div>
-                            <div className="mt-2 text-sm text-gray-200 whitespace-pre-wrap break-words">{c.body}</div>
+                            <div className="mt-2 text-sm text-zinc-300 whitespace-pre-wrap break-words">{c.body}</div>
                           </div>
                         ))
                       )}
@@ -1548,13 +1503,13 @@ export default function KanbanPage() {
       {/* Create Bug Modal */}
       {showBugForm && selectedStoryId && (
         <div className="fixed inset-0 z-[60]">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setShowBugForm(false)} aria-hidden="true" />
-          <aside className="absolute inset-0 h-full w-full bg-zinc-950 border-t border-white/10 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[420px] sm:border-t-0 sm:border-l sm:border-white/10">
+          <div className="absolute inset-0 bg-zinc-800" onClick={() => setShowBugForm(false)} aria-hidden="true" />
+          <aside className="absolute inset-0 h-full w-full bg-zinc-900 border-t border-zinc-200 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[420px] sm:border-t-0 sm:border-l sm:border-zinc-200">
             <div className="h-full flex flex-col">
-              <div className="px-4 py-3 border-b border-white/10 flex items-start justify-between gap-3">
+              <div className="px-4 py-3 border-b border-zinc-200 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm text-gray-400">Criar Bug</div>
-                  <div className="text-lg font-semibold text-white truncate">Nova tarefa</div>
+                  <div className="text-sm text-zinc-400">Criar Bug</div>
+                  <div className="text-lg font-semibold text-zinc-900 truncate">Nova tarefa</div>
                 </div>
                 <Button variant="ghost" onClick={() => setShowBugForm(false)} aria-label="Close">
                   <X className="w-4 h-4" />
@@ -1562,16 +1517,16 @@ export default function KanbanPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-3 space-y-3">
                   <div>
-                    <div className="text-[11px] text-gray-400 mb-1">Story (pai)</div>
-                    <div className="text-sm text-gray-200 bg-black/30 rounded-lg px-3 py-2">
+                    <div className="text-[11px] text-zinc-400 mb-1">Story (pai)</div>
+                    <div className="text-sm text-zinc-300 bg-zinc-800 rounded-lg px-3 py-2">
                       {workItemsQuery.data?.find((wi) => wi.id === selectedStoryId)?.title || 'Story não encontrada'}
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-[11px] text-gray-400 mb-1">Título do Bug</div>
+                    <div className="text-[11px] text-zinc-400 mb-1">Título do Bug</div>
                     <Input
                       value={bugTitle}
                       onChange={(e) => setBugTitle(e.target.value)}
@@ -1581,9 +1536,9 @@ export default function KanbanPage() {
                   </div>
 
                   <div>
-                    <div className="text-[11px] text-gray-400 mb-1">Descrição</div>
+                    <div className="text-[11px] text-zinc-400 mb-1">Descrição</div>
                     <textarea
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      className="w-full rounded-lg border border-zinc-200 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       rows={4}
                       value={bugDescription}
                       onChange={(e) => setBugDescription(e.target.value)}
@@ -1593,7 +1548,7 @@ export default function KanbanPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3 pt-2">
-                    <div className="text-xs text-gray-500">Bug será criado em DEV.</div>
+                    <div className="text-xs text-zinc-500">Bug será criado em DEV.</div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="secondary"
@@ -1626,13 +1581,13 @@ export default function KanbanPage() {
       {/* Create Card Modal */}
       {showCreateCardModal && (
         <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setShowCreateCardModal(false)} aria-hidden="true" />
-          <aside className="absolute inset-0 h-full w-full bg-zinc-950 border-t border-white/10 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[480px] sm:border-t-0 sm:border-l sm:border-white/10">
+          <div className="absolute inset-0 bg-zinc-800" onClick={() => setShowCreateCardModal(false)} aria-hidden="true" />
+          <aside className="absolute inset-0 h-full w-full bg-zinc-900 border-t border-zinc-200 shadow-2xl sm:rounded-none sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[480px] sm:border-t-0 sm:border-l sm:border-zinc-200">
             <div className="h-full flex flex-col">
-              <div className="px-4 py-3 border-b border-white/10 flex items-start justify-between gap-3">
+              <div className="px-4 py-3 border-b border-zinc-200 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm text-gray-400">Criar novo card</div>
-                  <div className="text-lg font-semibold text-white truncate">Novo card</div>
+                  <div className="text-sm text-zinc-400">Criar novo card</div>
+                  <div className="text-lg font-semibold text-zinc-900 truncate">Novo card</div>
                 </div>
                 <Button variant="ghost" onClick={() => setShowCreateCardModal(false)} aria-label="Close">
                   <X className="w-4 h-4" />
@@ -1640,9 +1595,9 @@ export default function KanbanPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-4">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-4 space-y-4">
                   <div>
-                    <div className="text-[11px] text-gray-400 mb-1">Título *</div>
+                    <div className="text-[11px] text-zinc-400 mb-1">Título *</div>
                     <Input
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
@@ -1653,9 +1608,9 @@ export default function KanbanPage() {
                   </div>
 
                   <div>
-                    <div className="text-[11px] text-gray-400 mb-1">Descrição</div>
+                    <div className="text-[11px] text-zinc-400 mb-1">Descrição</div>
                     <textarea
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      className="w-full rounded-lg border border-zinc-200 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       rows={4}
                       value={newDescription}
                       onChange={(e) => setNewDescription(e.target.value)}
@@ -1666,25 +1621,25 @@ export default function KanbanPage() {
 
                   {/* Image upload for new card */}
                   <div className="space-y-2">
-                    <div className="text-[11px] text-gray-400">Imagens</div>
+                    <div className="text-[11px] text-zinc-400">Imagens</div>
                     <div className="flex flex-wrap gap-2">
                       {newImages.map((img, idx) => (
                         <div key={idx} className="relative group">
                           <img
                             src={img.data}
                             alt={img.filename}
-                            className="w-20 h-20 object-cover rounded border border-white/10"
+                            className="w-20 h-20 object-cover rounded border border-zinc-200"
                           />
                           <button
                             type="button"
                             onClick={() => removeNewImage(idx)}
-                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-zinc-900 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100"
                           >
                             ×
                           </button>
                         </div>
                       ))}
-                      <label className="flex items-center justify-center w-20 h-20 rounded border border-dashed border-white/20 text-gray-400 cursor-pointer hover:border-white/40 hover:text-gray-300">
+                      <label className="flex items-center justify-center w-20 h-20 rounded border border-dashed border-zinc-300 text-zinc-400 cursor-pointer hover:border-zinc-400 hover:text-zinc-500">
                         <span className="text-xs">+</span>
                         <input
                           type="file"
@@ -1698,7 +1653,7 @@ export default function KanbanPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3 pt-2">
-                    <div className="text-xs text-gray-500">Cria direto em Pending.</div>
+                    <div className="text-xs text-zinc-500">Cria direto em Pending.</div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="secondary"

@@ -27,42 +27,42 @@ const OpenSpecListPage: React.FC = () => {
   const items = data?.items || [];
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-black text-slate-900 p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">OpenSpec</h1>
           <a
             href="/favorites"
-            className="text-sm text-gray-300 hover:text-white underline underline-offset-4"
+            className="text-sm text-slate-500 hover:text-slate-900 underline underline-offset-4"
           >
             voltar
           </a>
         </div>
 
         {isLoading ? (
-          <div className="text-gray-400">Carregando…</div>
+          <div className="text-slate-400">Carregando…</div>
         ) : error ? (
           <div className="text-red-400">Erro: {(error as any)?.message || 'falha ao carregar'}</div>
         ) : items.length === 0 ? (
-          <div className="text-gray-400">Nenhum spec encontrado.</div>
+          <div className="text-slate-400">Nenhum spec encontrado.</div>
         ) : (
           <div className="space-y-3">
             {items.map((it) => (
               <Link
                 key={it.id}
                 to={`/openspec/${it.id}`}
-                className="block rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors p-4"
+                className="block rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors p-4"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <div className="font-semibold truncate">
                       {it.title || it.id}
                     </div>
-                    <div className="text-xs text-gray-400 font-mono truncate">
+                    <div className="text-xs text-slate-400 font-mono truncate">
                       {it.path}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-400 text-right whitespace-nowrap">
+                  <div className="text-xs text-slate-400 text-right whitespace-nowrap">
                     {it.status ? <div className="uppercase">{it.status}</div> : null}
                     {it.updated_at ? <div>{it.updated_at}</div> : null}
                   </div>

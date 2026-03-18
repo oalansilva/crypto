@@ -63,31 +63,31 @@ const fmtNum = (v: any, digits = 2) => {
 const MetricCard: React.FC<{ title: string; subtitle?: string; metrics?: any }> = ({ title, subtitle, metrics }) => {
   const m = metrics || {};
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold">{title}</div>
-          {subtitle ? <div className="text-[11px] text-gray-500 mt-0.5">{subtitle}</div> : null}
+          <div className="text-sm font-semibold text-white">{title}</div>
+          {subtitle ? <div className="text-[11px] text-zinc-500 mt-0.5">{subtitle}</div> : null}
         </div>
-        <div className="text-xs text-gray-400">trades: <span className="font-mono text-gray-200">{m.total_trades ?? '-'}</span></div>
+        <div className="text-xs text-zinc-500">trades: <span className="font-mono text-zinc-400">{m.total_trades ?? '-'}</span></div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3">
         <div>
-          <div className="text-[10px] text-gray-500">return</div>
-          <div className="text-sm font-mono">{m.total_return_pct != null ? `${fmtNum(m.total_return_pct)}%` : (m.total_return != null ? fmtPct(m.total_return) : '-')}</div>
+          <div className="text-[10px] text-zinc-500">return</div>
+          <div className="text-sm font-mono text-white">{m.total_return_pct != null ? `${fmtNum(m.total_return_pct)}%` : (m.total_return != null ? fmtPct(m.total_return) : '-')}</div>
         </div>
         <div>
-          <div className="text-[10px] text-gray-500">max DD</div>
+          <div className="text-[10px] text-zinc-500">max DD</div>
           <div className="text-sm font-mono">
             {m.max_drawdown_pct != null ? `${fmtNum(m.max_drawdown_pct)}%` : (m.max_drawdown != null ? `${fmtNum(m.max_drawdown)}${m.max_drawdown > 1.5 ? '%' : ''}` : '-')}
           </div>
         </div>
         <div>
-          <div className="text-[10px] text-gray-500">sharpe</div>
+          <div className="text-[10px] text-slate-500">sharpe</div>
           <div className="text-sm font-mono">{m.sharpe_ratio != null ? fmtNum(m.sharpe_ratio) : '-'}</div>
         </div>
         <div>
-          <div className="text-[10px] text-gray-500">profit factor</div>
+          <div className="text-[10px] text-slate-500">profit factor</div>
           <div className="text-sm font-mono">{m.profit_factor != null ? fmtNum(m.profit_factor) : '-'}</div>
         </div>
       </div>
@@ -328,17 +328,17 @@ const LabRunPage: React.FC = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-black text-slate-900 p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <div className="text-xs text-gray-400">Lab run</div>
-            <div className="font-mono text-sm text-gray-200">{id}</div>
+            <div className="text-xs text-slate-400">Lab run</div>
+            <div className="font-mono text-sm text-slate-600">{id}</div>
           </div>
           <div className="flex items-center gap-4">
-            <a href="/openspec/07-strategy-lab-langgraph-v2" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">spec v2</a>
-            <Link to="/lab" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">novo run</Link>
-            <a href="/favorites" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">favorites</a>
+            <a href="/openspec/07-strategy-lab-langgraph-v2" className="text-sm text-slate-500 hover:text-slate-900 underline underline-offset-4">spec v2</a>
+            <Link to="/lab" className="text-sm text-slate-500 hover:text-slate-900 underline underline-offset-4">novo run</Link>
+            <a href="/favorites" className="text-sm text-slate-500 hover:text-slate-900 underline underline-offset-4">favorites</a>
           </div>
         </div>
 
@@ -346,23 +346,23 @@ const LabRunPage: React.FC = () => {
           <div className="text-sm text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg p-3">Erro: {error}</div>
         ) : null}
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
-              <div className="text-xs text-gray-400">Status</div>
+              <div className="text-xs text-slate-400">Status</div>
               <div className="mt-1 flex items-center gap-3">
                 <div className="text-sm font-semibold">{data?.status || '…'}</div>
-                <div className="text-xs text-gray-400">step: <span className="font-mono text-gray-200">{data?.step || '-'}</span></div>
-                <div className="text-xs text-gray-400">phase: <span className="font-mono text-gray-200">{data?.phase || '-'}</span></div>
+                <div className="text-xs text-slate-400">step: <span className="font-mono text-slate-600">{data?.step || '-'}</span></div>
+                <div className="text-xs text-slate-400">phase: <span className="font-mono text-slate-600">{data?.phase || '-'}</span></div>
               </div>
 
               {data?.backtest ? (
-                <div className="mt-2 text-xs text-gray-400">
-                  {data.backtest.symbol} • {data.backtest.timeframe} • template <span className="font-mono text-gray-200">{data.backtest.template}</span>
+                <div className="mt-2 text-xs text-slate-400">
+                  {data.backtest.symbol} • {data.backtest.timeframe} • template <span className="font-mono text-slate-600">{data.backtest.template}</span>
                 </div>
               ) : null}
 
-              <div className="mt-2 text-[10px] text-gray-500">Polling a cada 2s</div>
+              <div className="mt-2 text-[10px] text-slate-500">Polling a cada 2s</div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {canOpenLogs ? (
@@ -373,7 +373,7 @@ const LabRunPage: React.FC = () => {
                       if (!logsOpen && currentStep) setLogStep(currentStep);
                       setLogsOpen((prev) => !prev);
                     }}
-                    className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-200"
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs text-slate-600"
                   >
                     {logsOpen ? 'Ocultar Logs' : 'Ver Logs'}
                   </button>
@@ -381,7 +381,7 @@ const LabRunPage: React.FC = () => {
                 {logsOpen ? (
                   <div className={`text-[11px] px-2 py-1 rounded-full border ${
                     logConnectionState === 'connected'
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                      ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-200'
                       : logConnectionState === 'error'
                         ? 'border-red-500/40 bg-red-500/10 text-red-200'
                         : 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'
@@ -406,25 +406,25 @@ const LabRunPage: React.FC = () => {
               ) : null}
             </div>
 
-            <div className="text-xs text-gray-400 space-y-2">
+            <div className="text-xs text-slate-400 space-y-2">
               {data?.backtest_job?.job_id ? (
                 <div>
                   <div>
-                    Job: <span className="font-mono text-gray-200">{data.backtest_job.job_id}</span>
+                    Job: <span className="font-mono text-slate-600">{data.backtest_job.job_id}</span>
                     {data.backtest_job.status ? (
-                      <span className="ml-2">status: <span className="font-mono text-gray-200">{data.backtest_job.status}</span></span>
+                      <span className="ml-2">status: <span className="font-mono text-slate-600">{data.backtest_job.status}</span></span>
                     ) : null}
                   </div>
                   {data.backtest_job.progress ? (
                     <div className="mt-1">
-                      step: <span className="font-mono text-gray-200">{data.backtest_job.progress.step}</span> ({data.backtest_job.progress.pct}%)
-                      <div className="mt-1 h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-2 bg-white/40" style={{ width: `${Math.min(100, Math.max(0, Number(data.backtest_job.progress.pct) || 0))}%` }} />
+                      step: <span className="font-mono text-slate-600">{data.backtest_job.progress.step}</span> ({data.backtest_job.progress.pct}%)
+                      <div className="mt-1 h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-slate-100" style={{ width: `${Math.min(100, Math.max(0, Number(data.backtest_job.progress.pct) || 0))}%` }} />
                       </div>
                     </div>
                   ) : null}
                   <a
-                    className="inline-block mt-2 text-gray-300 hover:text-white underline underline-offset-4"
+                    className="inline-block mt-2 text-slate-500 hover:text-slate-900 underline underline-offset-4"
                     href={`${API_BASE_URL}/lab/jobs/${encodeURIComponent(data.backtest_job.job_id)}`}
                     target="_blank"
                     rel="noreferrer"
@@ -436,14 +436,14 @@ const LabRunPage: React.FC = () => {
 
               {data?.budget ? (
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-gray-300 hover:text-white">budget</summary>
-                  <pre className="mt-2 text-[11px] text-gray-300 font-mono whitespace-pre-wrap">{JSON.stringify(data.budget, null, 2)}</pre>
+                  <summary className="cursor-pointer text-slate-500 hover:text-slate-900">budget</summary>
+                  <pre className="mt-2 text-[11px] text-slate-500 font-mono whitespace-pre-wrap">{JSON.stringify(data.budget, null, 2)}</pre>
                 </details>
               ) : null}
 
               {data?.trace?.trace_url ? (
                 <a
-                  className="inline-block text-sm text-gray-300 hover:text-white underline underline-offset-4"
+                  className="inline-block text-sm text-slate-500 hover:text-slate-900 underline underline-offset-4"
                   href={String(data.trace.trace_url)}
                   target="_blank"
                   rel="noreferrer"
@@ -453,7 +453,7 @@ const LabRunPage: React.FC = () => {
               ) : null}
 
               {data?.trace?.api_url ? (
-                <div className="text-[11px] text-gray-500">
+                <div className="text-[11px] text-slate-500">
                   API: <span className="font-mono">{data.trace.api_url}</span>
                 </div>
               ) : null}
@@ -475,14 +475,14 @@ const LabRunPage: React.FC = () => {
           </div>
         ) : null}
 
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <details open={inUpstreamPhase}>
             <summary className="cursor-pointer flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold">Upstream (chat)</div>
-                <div className="text-xs text-gray-500">Humano ↔ Trader</div>
+                <div className="text-xs text-slate-500">Humano ↔ Trader</div>
               </div>
-              <div className={`text-xs px-2 py-1 rounded-full border ${upstreamApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'}`}>
+              <div className={`text-xs px-2 py-1 rounded-full border ${upstreamApproved ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-200' : 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'}`}>
                 {upstreamApproved ? 'aprovado' : 'aguardando input'}
               </div>
             </summary>
@@ -501,18 +501,18 @@ const LabRunPage: React.FC = () => {
                         className={`rounded-xl border p-3 ${isTrader ? 'border-purple-500/20 bg-purple-500/10' : 'border-blue-500/20 bg-blue-500/10'}`}
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <div className="text-xs font-mono text-gray-200">{isTrader ? 'Trader' : 'Humano'}</div>
-                          <div className="text-[10px] text-gray-500 font-mono">
+                          <div className="text-xs font-mono text-slate-600">{isTrader ? 'Trader' : 'Humano'}</div>
+                          <div className="text-[10px] text-slate-500 font-mono">
                             {ts ? new Date(ts).toISOString() : '-'}
                           </div>
                         </div>
-                        <div className="mt-1 text-sm text-gray-100 whitespace-pre-wrap">{text}</div>
+                        <div className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{text}</div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-sm text-gray-400">Sem mensagens no upstream ainda.</div>
+                <div className="text-sm text-slate-400">Sem mensagens no upstream ainda.</div>
               )}
 
               {inUpstreamPhase && !upstreamApproved ? (
@@ -523,19 +523,19 @@ const LabRunPage: React.FC = () => {
               ) : null}
 
               {inUpstreamPhase && !upstreamApproved ? (
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
                   <textarea
                     value={upstreamInput}
                     onChange={(e) => setUpstreamInput(e.target.value)}
                     rows={3}
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                    className="w-full bg-zinc-9000 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none"
                     placeholder="Responda ao Trader..."
                   />
                   <div className="mt-3 flex justify-end">
                     <button
                       onClick={sendUpstreamMessage}
                       disabled={sendingUpstream || !upstreamInput.trim()}
-                      className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold disabled:opacity-50"
+                      className="px-4 py-2 rounded-lg bg-zinc-900 text-black text-sm font-semibold disabled:opacity-50"
                     >
                       {sendingUpstream ? 'Enviando…' : 'Enviar'}
                     </button>
@@ -544,7 +544,7 @@ const LabRunPage: React.FC = () => {
               ) : null}
 
               {inUpstreamPhase && upstreamApproved && !readyForReview ? (
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                <div className="rounded-xl border border-emerald-600/30 bg-emerald-500/10 p-3">
                   <div className="text-sm text-emerald-200 font-semibold">Contrato upstream aprovado</div>
                   <div className="mt-1 text-xs text-emerald-100/90">
                     inputs: <span className="font-mono">{JSON.stringify(data?.upstream_contract?.inputs || {}, null, 0)}</span>
@@ -556,66 +556,66 @@ const LabRunPage: React.FC = () => {
               ) : null}
 
               {inUpstreamPhase && upstreamApproved && readyForReview ? (
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-zinc-9000 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold">Proposta do Trader</div>
-                      <div className="text-xs text-gray-500">Revise e aprove antes de iniciar a execução</div>
+                      <div className="text-xs text-slate-500">Revise e aprove antes de iniciar a execução</div>
                     </div>
-                    <div className="text-[10px] text-gray-500 font-mono">draft v{String(strategyDraft?.version ?? 1)}</div>
+                    <div className="text-[10px] text-slate-500 font-mono">draft v{String(strategyDraft?.version ?? 1)}</div>
                   </div>
 
                   <div className="mt-3">
-                    <div className="text-xs text-gray-400">one-liner</div>
-                    <div className="text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.one_liner || '') || '-'}</div>
+                    <div className="text-xs text-slate-400">one-liner</div>
+                    <div className="text-sm text-slate-700 whitespace-pre-wrap">{String(strategyDraft?.one_liner || '') || '-'}</div>
                   </div>
 
                   <div className="mt-3">
-                    <div className="text-xs text-gray-400">rationale</div>
-                    <div className="text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.rationale || '') || '-'}</div>
+                    <div className="text-xs text-slate-400">rationale</div>
+                    <div className="text-sm text-slate-700 whitespace-pre-wrap">{String(strategyDraft?.rationale || '') || '-'}</div>
                   </div>
 
                   <div className="mt-3">
-                    <div className="text-xs text-gray-400">indicators</div>
-                    <pre className="mt-1 text-[11px] text-gray-200 whitespace-pre-wrap font-mono">{JSON.stringify(strategyDraft?.indicators || [], null, 2)}</pre>
+                    <div className="text-xs text-slate-400">indicators</div>
+                    <pre className="mt-1 text-[11px] text-slate-600 whitespace-pre-wrap font-mono">{JSON.stringify(strategyDraft?.indicators || [], null, 2)}</pre>
                   </div>
 
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                      <div className="text-xs text-gray-400">entry</div>
-                      <div className="mt-1 text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.entry_idea || '') || '-'}</div>
+                    <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                      <div className="text-xs text-slate-400">entry</div>
+                      <div className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{String(strategyDraft?.entry_idea || '') || '-'}</div>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                      <div className="text-xs text-gray-400">exit</div>
-                      <div className="mt-1 text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.exit_idea || '') || '-'}</div>
+                    <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                      <div className="text-xs text-slate-400">exit</div>
+                      <div className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{String(strategyDraft?.exit_idea || '') || '-'}</div>
                     </div>
                   </div>
 
-                  <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-                    <div className="text-xs text-gray-400">risk plan</div>
-                    <div className="mt-1 text-sm text-gray-100 whitespace-pre-wrap">{String(strategyDraft?.risk_plan || '') || '-'}</div>
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                    <div className="text-xs text-slate-400">risk plan</div>
+                    <div className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{String(strategyDraft?.risk_plan || '') || '-'}</div>
                   </div>
 
                   <details className="mt-3">
-                    <summary className="cursor-pointer text-xs text-gray-300 hover:text-white">ver JSON completo</summary>
-                    <pre className="mt-2 text-[11px] text-gray-200 whitespace-pre-wrap font-mono">{JSON.stringify(strategyDraft || {}, null, 2)}</pre>
+                    <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-900">ver JSON completo</summary>
+                    <pre className="mt-2 text-[11px] text-slate-600 whitespace-pre-wrap font-mono">{JSON.stringify(strategyDraft || {}, null, 2)}</pre>
                   </details>
 
                   <div className="mt-4 flex flex-col gap-3">
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                      <div className="text-xs text-gray-400">Quero ajustar</div>
+                    <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                      <div className="text-xs text-slate-400">Quero ajustar</div>
                       <textarea
                         value={draftFeedback}
                         onChange={(e) => setDraftFeedback(e.target.value)}
                         rows={3}
-                        className="mt-2 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                        className="mt-2 w-full bg-zinc-9000 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none"
                         placeholder="Ex.: quero RSI + filtro de tendência, e reduzir número de operações"
                       />
                       <div className="mt-2 flex justify-end">
                         <button
                           onClick={sendDraftFeedback}
                           disabled={sendingDraftFeedback || !draftFeedback.trim()}
-                          className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold disabled:opacity-50"
+                          className="px-4 py-2 rounded-lg bg-zinc-900 text-black text-sm font-semibold disabled:opacity-50"
                         >
                           {sendingDraftFeedback ? 'Enviando…' : 'Enviar feedback'}
                         </button>
@@ -637,17 +637,17 @@ const LabRunPage: React.FC = () => {
         </div>
 
         {data?.backtest ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <div className="text-sm font-semibold">Backtest</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-slate-500">
                   {backtestIsPostCombo
                     ? 'Resultado final pós-Combo para validação do Trader • CP6: walk-forward 70/30 (IS vs Holdout)'
                     : 'CP6: walk-forward 70/30 (IS vs Holdout)'}
                 </div>
               </div>
-              <div className="text-xs text-gray-400">candles: <span className="font-mono text-gray-200">{data.backtest.candles ?? '-'}</span></div>
+              <div className="text-xs text-slate-400">candles: <span className="font-mono text-slate-600">{data.backtest.candles ?? '-'}</span></div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -657,8 +657,8 @@ const LabRunPage: React.FC = () => {
             </div>
 
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-gray-300 hover:text-white">ver JSON completo</summary>
-              <pre className="mt-3 text-xs text-gray-300 font-mono whitespace-pre-wrap">
+              <summary className="cursor-pointer text-sm text-slate-500 hover:text-slate-900">ver JSON completo</summary>
+              <pre className="mt-3 text-xs text-slate-500 font-mono whitespace-pre-wrap">
                 {JSON.stringify(data.backtest, null, 2)}
               </pre>
             </details>
@@ -666,15 +666,15 @@ const LabRunPage: React.FC = () => {
         ) : null}
 
         {comboOptimization ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold">Combo Optimization</div>
-                <div className="text-xs text-gray-500">Parâmetros aplicados automaticamente antes do backtest final.</div>
+                <div className="text-xs text-slate-500">Parâmetros aplicados automaticamente antes do backtest final.</div>
               </div>
               <div className={`text-xs px-2 py-1 rounded-full border ${
                 comboStatus === 'completed'
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                  ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-200'
                   : comboStatus === 'failed'
                     ? 'border-red-500/40 bg-red-500/10 text-red-200'
                     : 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'
@@ -684,17 +684,17 @@ const LabRunPage: React.FC = () => {
             </div>
 
             <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                <div className="text-gray-500">template</div>
-                <div className="mt-1 text-gray-100 font-mono break-all">{comboTemplateName || '-'}</div>
+              <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                <div className="text-slate-500">template</div>
+                <div className="mt-1 text-slate-700 font-mono break-all">{comboTemplateName || '-'}</div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                <div className="text-gray-500">applied_at</div>
-                <div className="mt-1 text-gray-100 font-mono">{comboAppliedAt}</div>
+              <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                <div className="text-slate-500">applied_at</div>
+                <div className="mt-1 text-slate-700 font-mono">{comboAppliedAt}</div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                <div className="text-gray-500">final context</div>
-                <div className="mt-1 text-gray-100">
+              <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                <div className="text-slate-500">final context</div>
+                <div className="mt-1 text-slate-700">
                   {comboStatus === 'completed'
                     ? 'Backtest final pós-Combo (sem etapa manual de aprovação de parâmetros).'
                     : 'Etapa Combo não concluída; revisar estado abaixo.'}
@@ -709,40 +709,40 @@ const LabRunPage: React.FC = () => {
             ) : null}
 
             <details className="mt-3">
-              <summary className="cursor-pointer text-sm text-gray-300 hover:text-white">ver detalhes (parâmetros, métricas, limites)</summary>
+              <summary className="cursor-pointer text-sm text-slate-500 hover:text-slate-900">ver detalhes (parâmetros, métricas, limites)</summary>
               <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="text-xs text-gray-400 mb-2">Best parameters aplicados</div>
+                <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                  <div className="text-xs text-slate-400 mb-2">Best parameters aplicados</div>
                   {Object.keys(comboBestParameters).length ? (
                     <div className="space-y-1">
                       {Object.entries(comboBestParameters).map(([key, value]) => (
                         <div key={key} className="flex items-start justify-between gap-3 text-xs">
-                          <span className="text-gray-400 font-mono">{key}</span>
-                          <span className="text-gray-100 font-mono break-all">{String(value)}</span>
+                          <span className="text-slate-400 font-mono">{key}</span>
+                          <span className="text-slate-700 font-mono break-all">{String(value)}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-500">Sem parâmetros aplicados.</div>
+                    <div className="text-xs text-slate-500">Sem parâmetros aplicados.</div>
                   )}
                 </div>
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="text-xs text-gray-400 mb-2">Best metrics</div>
-                  <pre className="text-[11px] text-gray-200 whitespace-pre-wrap font-mono">
+                <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                  <div className="text-xs text-slate-400 mb-2">Best metrics</div>
+                  <pre className="text-[11px] text-slate-600 whitespace-pre-wrap font-mono">
                     {JSON.stringify(comboBestMetrics, null, 2)}
                   </pre>
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="text-xs text-gray-400 mb-2">Limits snapshot</div>
-                  <pre className="text-[11px] text-gray-200 whitespace-pre-wrap font-mono">
+                <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                  <div className="text-xs text-slate-400 mb-2">Limits snapshot</div>
+                  <pre className="text-[11px] text-slate-600 whitespace-pre-wrap font-mono">
                     {JSON.stringify(comboLimitsSnapshot, null, 2)}
                   </pre>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="text-xs text-gray-400 mb-2">Stages</div>
-                  <pre className="text-[11px] text-gray-200 whitespace-pre-wrap font-mono">
+                <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
+                  <div className="text-xs text-slate-400 mb-2">Stages</div>
+                  <pre className="text-[11px] text-slate-600 whitespace-pre-wrap font-mono">
                     {JSON.stringify(comboStages, null, 2)}
                   </pre>
                 </div>
@@ -752,28 +752,28 @@ const LabRunPage: React.FC = () => {
         ) : null}
 
         {data?.outputs ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div className="text-sm font-semibold">Decisão do Trader</div>
             </div>
 
             {data.outputs.candidate_template_name ? (
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3 mb-3">
-                <div className="text-xs text-gray-400">Candidate template (CP8)</div>
+              <div className="rounded-xl border border-slate-200 bg-zinc-9000 p-3 mb-3">
+                <div className="text-xs text-slate-400">Candidate template (CP8)</div>
                 <div className="mt-1 flex items-center gap-3">
-                  <div className="text-xs text-gray-200 font-mono break-all">{data.outputs.candidate_template_name}</div>
+                  <div className="text-xs text-slate-600 font-mono break-all">{data.outputs.candidate_template_name}</div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500">Rascunho em contexto da run. Só persiste no banco após aprovação do Trader.</div>
+                <div className="mt-2 text-xs text-slate-500">Rascunho em contexto da run. Só persiste no banco após aprovação do Trader.</div>
               </div>
             ) : null}
 
             {savedTemplateName ? (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 mb-3">
+              <div className="rounded-xl border border-emerald-600/30 bg-emerald-500/10 p-3 mb-3">
                 <div className="text-xs text-emerald-200">Template aprovado</div>
                 <div className="mt-1 flex items-center gap-3">
                   <div className="text-xs text-emerald-100 font-mono break-all">{savedTemplateName}</div>
                   <a
-                    className="text-xs text-emerald-100 hover:text-white underline underline-offset-4"
+                    className="text-xs text-emerald-100 hover:text-slate-900 underline underline-offset-4"
                     href={`/combo/edit/${encodeURIComponent(savedTemplateName)}`}
                   >
                     abrir no editor
@@ -785,7 +785,7 @@ const LabRunPage: React.FC = () => {
             {reviewFeedback ? (
               <div className={`mt-3 rounded-xl border p-3 text-sm ${
                 reviewFeedback.kind === 'success'
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                  ? 'border-emerald-600/30 bg-emerald-500/10 text-emerald-200'
                   : 'border-red-500/30 bg-red-500/10 text-red-200'
               }`}>
                 {reviewFeedback.text}
@@ -793,13 +793,13 @@ const LabRunPage: React.FC = () => {
             ) : null}
 
             {readyForTraderReview ? (
-              <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3 space-y-3">
-                <div className="text-sm text-gray-100 font-semibold">Decisão final do Trader</div>
+              <div className="mt-3 rounded-xl border border-slate-200 bg-zinc-9000 p-3 space-y-3">
+                <div className="text-sm text-slate-700 font-semibold">Decisão final do Trader</div>
                 <textarea
                   value={reviewReason}
                   onChange={(e) => setReviewReason(e.target.value)}
                   rows={2}
-                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+                  className="w-full bg-zinc-9000 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none"
                   placeholder="Motivo da rejeição (opcional)"
                 />
                 <div className="flex flex-wrap items-center gap-2">
@@ -822,35 +822,35 @@ const LabRunPage: React.FC = () => {
             ) : null}
 
             {reviewDecision ? (
-              <div className="mt-3 text-xs text-gray-400">
-                decisão do Trader: <span className="font-mono text-gray-200">{reviewDecision}</span>
+              <div className="mt-3 text-xs text-slate-400">
+                decisão do Trader: <span className="font-mono text-slate-600">{reviewDecision}</span>
               </div>
             ) : null}
 
             {!data.outputs.coordinator_summary && !data.outputs.dev_summary && !data.outputs.trader_verdict ? (
-              <div className="text-sm text-gray-400">Aguardando execução das personas…</div>
+              <div className="text-sm text-slate-400">Aguardando execução das personas…</div>
             ) : null}
           </div>
         ) : null}
 
         {/* Conversa / Trace */}
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <div className="text-sm font-semibold">Conversa</div>
-              <div className="text-xs text-gray-500">Upstream/Execução em formato de chat</div>
+              <div className="text-xs text-slate-500">Upstream/Execução em formato de chat</div>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setTab('chat')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${tab === 'chat' ? 'border-white/20 bg-white/10 text-white' : 'border-white/10 bg-black/20 text-gray-400'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${tab === 'chat' ? 'border-slate-300 bg-slate-100 text-slate-900' : 'border-slate-200 bg-zinc-9000 text-slate-400'}`}
               >
                 Chat (simplificado)
               </button>
               <button
                 onClick={() => setTab('debug')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${tab === 'debug' ? 'border-white/20 bg-white/10 text-white' : 'border-white/10 bg-black/20 text-gray-400'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${tab === 'debug' ? 'border-slate-300 bg-slate-100 text-slate-900' : 'border-slate-200 bg-zinc-9000 text-slate-400'}`}
               >
                 Eventos (debug)
               </button>
@@ -861,19 +861,19 @@ const LabRunPage: React.FC = () => {
             <RunChatView traceEvents={(data?.trace_events || []) as TraceEvent[]} />
           ) : (
             <div>
-              <div className="text-xs text-gray-400 mb-3">
+              <div className="text-xs text-slate-400 mb-3">
                 {data?.trace_events?.length ? `${data.trace_events.length} eventos` : 'sem eventos'}
               </div>
               {data?.trace_events?.length ? (
                 <div className="space-y-3">
                   {data.trace_events.slice().reverse().map((ev, idx) => (
-                    <div key={`${ev.ts_ms}-${idx}`} className="rounded-xl border border-white/10 bg-black/30 p-3">
+                    <div key={`${ev.ts_ms}-${idx}`} className="rounded-xl border border-slate-200 bg-zinc-9000 p-3">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="text-xs text-gray-300 font-mono">{ev.type}</div>
-                        <div className="text-[10px] text-gray-500 font-mono">{new Date(ev.ts_ms).toISOString()}</div>
+                        <div className="text-xs text-slate-500 font-mono">{ev.type}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{new Date(ev.ts_ms).toISOString()}</div>
                       </div>
                       {ev.data ? (
-                        <pre className="mt-2 text-xs text-gray-200 whitespace-pre-wrap font-mono">
+                        <pre className="mt-2 text-xs text-slate-600 whitespace-pre-wrap font-mono">
                           {JSON.stringify(ev.data, null, 2)}
                         </pre>
                       ) : null}
@@ -881,7 +881,7 @@ const LabRunPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-gray-400">Nenhum evento de trace ainda.</div>
+                <div className="text-sm text-slate-400">Nenhum evento de trace ainda.</div>
               )}
             </div>
           )}

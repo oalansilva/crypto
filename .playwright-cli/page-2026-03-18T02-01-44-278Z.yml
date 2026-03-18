@@ -1,0 +1,26 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: Kanban de Tarefas
+        - button [ref=e9]:
+          - img [ref=e10]
+    - main [ref=e13]
+  - main [ref=e16]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - heading "Kanban" [level=1] [ref=e21]:
+          - img [ref=e22]
+          - text: Kanban
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - button "crypto" [ref=e28]:
+            - generic [ref=e30]:
+              - img [ref=e31]
+              - text: crypto
+            - img [ref=e33]
+        - paragraph [ref=e35]: Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
+      - button "+ Novo Card" [ref=e37] [cursor=pointer]
+    - generic [ref=e39]:
+      - generic [ref=e41]: Board
+      - generic [ref=e43]: Carregando…

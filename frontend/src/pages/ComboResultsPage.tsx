@@ -292,70 +292,18 @@ export function ComboResultsPage() {
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
             </div>
 
-            {/* Header */}
-            <header className="glass-strong border-b border-white/10 sticky top-0 z-50">
-                <div className="container mx-auto px-6 py-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
-                                <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-xl shadow-glow-blue">
-                                    <BarChart3 className="w-7 h-7 text-white" />
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-3">
-                                    <h1 className="text-3xl font-bold gradient-text">Backtest Results</h1>
-                                    {result.execution_mode === 'deep_15m' && (
-                                        <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-semibold border border-blue-500/30">
-                                            Deep (15m)
-                                        </span>
-                                    )}
-                                    {result.execution_mode === 'fast_1d' && (
-                                        <span className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded-lg text-xs font-semibold border border-gray-500/30">
-                                            Fast (1d)
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-sm text-gray-400 mt-0.5">{result.template_name} - {result.symbol} {result.timeframe}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            {saveSuccess && (
-                                <span className="text-sm text-green-400 font-medium animate-fade-in">
-                                    ✓ Salvo nos favoritos!
-                                </span>
-                            )}
-                            <button
-                                onClick={() => setIsModalOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-lg hover:shadow-blue-500/50"
-                            >
-                                <Star className="w-4 h-4" />
-                                Salvar nos Favoritos
-                            </button>
-                            <button
-                                onClick={() => navigate('/combo/select')}
-                                className="text-gray-400 hover:text-white transition-colors"
-                            >
-                                ← New Backtest
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-7xl mx-auto space-y-8">
 
                     {/* Configuration Info */}
-                    <div className="glass-strong rounded-2xl p-6 border border-white/10">
+                    <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="bg-emerald-500/20 p-2.5 rounded-lg border border-emerald-500/30">
+                            <div className="bg-emerald-500/20 p-2.5 rounded-lg border border-emerald-600/30">
                                 <Activity className="w-6 h-6 text-emerald-400" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-white leading-none">Winning Configuration</h2>
+                                <h2 className="text-xl font-bold text-zinc-900 leading-none">Winning Configuration</h2>
                                 <p className="text-sm text-emerald-400 mt-1 font-medium">Os parâmetros campeões escolhidos pelo algoritmo</p>
                             </div>
                         </div>
@@ -371,12 +319,12 @@ export function ComboResultsPage() {
                                     : value;
 
                                 return (
-                                    <div key={key} className="bg-white/5 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors group">
-                                        <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
+                                    <div key={key} className="bg-zinc-50 rounded-xl p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
+                                        <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
                                             {key.replace(/_/g, ' ')}
                                         </p>
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-xl font-bold text-white font-mono">
+                                            <span className="text-xl font-bold text-zinc-900 font-mono">
                                                 {formattedValue}
                                             </span>
                                         </div>
@@ -396,38 +344,38 @@ export function ComboResultsPage() {
                             color="#3b82f6"
                         />
                     ) : (
-                        <div className="glass-strong rounded-2xl p-8 text-center border border-white/10 mb-8">
-                            <BarChart3 className="w-12 h-12 mx-auto text-gray-500 mb-4 opacity-50" />
-                            <p className="text-gray-400">Chart data not available for this run.</p>
+                        <div className="glass-strong rounded-2xl p-8 text-center border border-zinc-200 mb-8">
+                            <BarChart3 className="w-12 h-12 mx-auto text-zinc-500 mb-4 opacity-50" />
+                            <p className="text-zinc-400">Chart data not available for this run.</p>
                         </div>
                     )}
 
                     {/* Metrics Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Total Trades */}
-                        <div className="glass-strong rounded-xl p-6 border border-white/10">
+                        <div className="glass-strong rounded-xl p-6 border border-zinc-200">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-blue-500/20 p-2 rounded-lg">
                                     <Activity className="w-5 h-5 text-blue-400" />
                                 </div>
-                                <span className="text-2xl font-bold text-white">{metrics.total_trades}</span>
+                                <span className="text-2xl font-bold text-zinc-900">{metrics.total_trades}</span>
                             </div>
-                            <p className="text-sm text-gray-400">Total Trades</p>
+                            <p className="text-sm text-zinc-400">Total Trades</p>
                         </div>
 
                         {/* Win Rate */}
-                        <div className="glass-strong rounded-xl p-6 border border-white/10">
+                        <div className="glass-strong rounded-xl p-6 border border-zinc-200">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-green-500/20 p-2 rounded-lg">
                                     <Target className="w-5 h-5 text-green-400" />
                                 </div>
-                                <span className="text-2xl font-bold text-white">{(metrics.win_rate * 100).toFixed(1)}%</span>
+                                <span className="text-2xl font-bold text-zinc-900">{(metrics.win_rate * 100).toFixed(1)}%</span>
                             </div>
-                            <p className="text-sm text-gray-400">Win Rate</p>
+                            <p className="text-sm text-zinc-400">Win Rate</p>
                         </div>
 
                         {/* Total Return */}
-                        <div className="glass-strong rounded-xl p-6 border border-white/10">
+                        <div className="glass-strong rounded-xl p-6 border border-zinc-200">
                             <div className="flex items-center justify-between mb-3">
                                 <div className={`p-2 rounded-lg ${metrics.total_return >= 0 ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
                                     {metrics.total_return >= 0 ? (
@@ -440,73 +388,73 @@ export function ComboResultsPage() {
                                     {(metrics.total_return * 100).toFixed(2)}%
                                 </span>
                             </div>
-                            <p className="text-sm text-gray-400">Total Return</p>
+                            <p className="text-sm text-zinc-400">Total Return</p>
                         </div>
 
                         {/* Avg Profit */}
-                        <div className="glass-strong rounded-xl p-6 border border-white/10">
+                        <div className="glass-strong rounded-xl p-6 border border-zinc-200">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-purple-500/20 p-2 rounded-lg">
                                     <DollarSign className="w-5 h-5 text-purple-400" />
                                 </div>
-                                <span className="text-2xl font-bold text-white">{(metrics.avg_profit * 100).toFixed(2)}%</span>
+                                <span className="text-2xl font-bold text-zinc-900">{(metrics.avg_profit * 100).toFixed(2)}%</span>
                             </div>
-                            <p className="text-sm text-gray-400">Avg Profit</p>
+                            <p className="text-sm text-zinc-400">Avg Profit</p>
                         </div>
                     </div>
 
                     {/* Trades Table - TradingView Style */}
-                    <div className="bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                    <div className="bg-zinc-900 rounded-lg overflow-hidden border border-zinc-200 shadow-sm">
+                        <div className="p-4 border-b border-zinc-200 flex items-center justify-between bg-zinc-50">
                             <div className="flex items-center gap-4">
-                                <button className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">
+                                <button className="px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-900 border border-zinc-300 rounded hover:bg-zinc-50">
                                     Metrics
                                 </button>
-                                <button className="px-3 py-1.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded border-b-2 border-b-blue-600">
+                                <button className="px-3 py-1.5 text-sm font-medium text-white bg-zinc-900 border border-zinc-300 rounded border-b-2 border-b-blue-600">
                                     List of trades
                                 </button>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                                     </svg>
                                 </button>
-                                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                     </svg>
                                 </button>
-                                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded">
                                     <Download className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={handleExportTrades}
-                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-medium transition-colors"
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded text-sm font-medium transition-colors"
                                 >
                                     Exportar para Excel
                                 </button>
                             </div>
                         </div>
-                        <div className="overflow-x-auto bg-white">
+                        <div className="overflow-x-auto bg-zinc-900">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-b border-gray-200">
+                                <thead className="bg-zinc-50 border-b border-zinc-200">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                            Trade # <span className="text-gray-400">↓</span>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+                                            Trade # <span className="text-zinc-400">↓</span>
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date and time</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Signal</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Position size</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Net P&L</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Favorable excursion</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Adverse excursion</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cumulative P&L</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Type</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Date and time</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Signal</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Price</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Position size</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Net P&L</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Favorable excursion</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Adverse excursion</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Cumulative P&L</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-slate-100">
                                     {(() => {
                                         // Preparar trades com cálculos
                                         const initialCapital = 100;
@@ -618,42 +566,42 @@ export function ComboResultsPage() {
                                             
                                             return [
                                                 // Linha de Entry
-                                                <tr key={`${trade.tradeNum}-entry`} className="hover:bg-gray-50">
-                                                    <td rowSpan={2} className="px-4 py-3 text-center border-r border-gray-200">
-                                                        <div className="font-medium text-gray-900">{trade.tradeNum}</div>
-                                                        <div className={`text-xs ${isShort ? 'text-orange-600' : 'text-gray-500'}`}>{isShort ? 'Short' : 'Long'}</div>
+                                                <tr key={`${trade.tradeNum}-entry`} className="hover:bg-zinc-50">
+                                                    <td rowSpan={2} className="px-4 py-3 text-center border-r border-zinc-200">
+                                                        <div className="font-medium text-white">{trade.tradeNum}</div>
+                                                        <div className={`text-xs ${isShort ? 'text-orange-600' : 'text-zinc-500'}`}>{isShort ? 'Short' : 'Long'}</div>
                                                     </td>
-                                                    <td className="px-4 py-2 text-gray-700">Entry</td>
-                                                    <td className="px-4 py-2 text-gray-700">{formatDate(trade.entry_time)}</td>
-                                                    <td className="px-4 py-2 text-gray-700">{isShort ? 'Vender' : 'Comprar'}</td>
-                                                    <td className="px-4 py-2 text-gray-900 font-medium">{formatPrice(trade.entry_price)}</td>
-                                                    <td className="px-4 py-2 text-gray-700">
+                                                    <td className="px-4 py-2 text-zinc-700">Entry</td>
+                                                    <td className="px-4 py-2 text-zinc-700">{formatDate(trade.entry_time)}</td>
+                                                    <td className="px-4 py-2 text-zinc-700">{isShort ? 'Vender' : 'Comprar'}</td>
+                                                    <td className="px-4 py-2 text-white font-medium">{formatPrice(trade.entry_price)}</td>
+                                                    <td className="px-4 py-2 text-zinc-700">
                                                         <div>{trade.positionSize.toFixed(2)}</div>
-                                                        <div className="text-xs text-gray-500">{(trade.positionValueUSD / 1000).toFixed(2)} K USD</div>
+                                                        <div className="text-xs text-zinc-500">{(trade.positionValueUSD / 1000).toFixed(2)} K USD</div>
                                                     </td>
                                                     <td colSpan={4} className="px-4 py-2"></td>
                                                 </tr>,
                                                 // Linha de Exit
-                                                <tr key={`${trade.tradeNum}-exit`} className="hover:bg-gray-50 border-b border-gray-200">
-                                                    <td className="px-4 py-2 text-gray-700">Exit</td>
-                                                    <td className="px-4 py-2 text-gray-700">{formatDate(trade.exit_time!)}</td>
-                                                    <td className="px-4 py-2 text-gray-700">{trade.signalType}</td>
-                                                    <td className="px-4 py-2 text-gray-900 font-medium">{formatPrice(trade.exit_price!)}</td>
+                                                <tr key={`${trade.tradeNum}-exit`} className="hover:bg-zinc-50 border-b border-zinc-200">
+                                                    <td className="px-4 py-2 text-zinc-700">Exit</td>
+                                                    <td className="px-4 py-2 text-zinc-700">{formatDate(trade.exit_time!)}</td>
+                                                    <td className="px-4 py-2 text-zinc-700">{trade.signalType}</td>
+                                                    <td className="px-4 py-2 text-white font-medium">{formatPrice(trade.exit_price!)}</td>
                                                     <td className="px-4 py-2"></td>
                                                     <td className="px-4 py-2">
                                                         {formatPnl(trade.netPnlUSD, trade.netPnlPct, trade.netPnlUSD >= 0)}
                                                     </td>
-                                                    <td className="px-4 py-2 text-gray-700">
+                                                    <td className="px-4 py-2 text-zinc-700">
                                                         <div>{trade.favorableExcursionUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
-                                                        <div className="text-xs text-gray-500">, {trade.favorableExcursionPct.toFixed(2)}%</div>
+                                                        <div className="text-xs text-zinc-500">, {trade.favorableExcursionPct.toFixed(2)}%</div>
                                                     </td>
                                                     <td className="px-4 py-2 text-red-600">
                                                         <div>-{trade.adverseExcursionUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
                                                         <div className="text-xs">, -{trade.adverseExcursionPct.toFixed(2)}%</div>
                                                     </td>
-                                                    <td className="px-4 py-2 text-gray-700">
+                                                    <td className="px-4 py-2 text-zinc-700">
                                                         <div>{trade.cumulativePnlUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
-                                                        <div className="text-xs text-gray-500">, {trade.cumulativePnlPct.toFixed(2)}%</div>
+                                                        <div className="text-xs text-zinc-500">, {trade.cumulativePnlPct.toFixed(2)}%</div>
                                                     </td>
                                                 </tr>
                                             ];
@@ -667,8 +615,8 @@ export function ComboResultsPage() {
 
 
                     {/* Indicator Info */}
-                    <div className="glass-strong rounded-2xl p-6 border border-white/10">
-                        <h2 className="text-xl font-bold text-white mb-4 opacity-80">Indicators Used</h2>
+                    <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
+                        <h2 className="text-xl font-bold text-zinc-900 mb-4 opacity-80">Indicators Used</h2>
                         <div className="flex flex-wrap gap-2">
                             {Object.keys(result.indicator_data).map((indicator) => (
                                 <span key={indicator} className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-sm border border-blue-500/20 opacity-70 hover:opacity-100 transition-opacity">

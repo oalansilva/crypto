@@ -17,23 +17,23 @@ export function Input({
     return (
         <div className="w-full">
             {label && (
-                <label className="block text-xs text-[var(--text-secondary)] mb-2 uppercase font-semibold tracking-wide">
+                <label className="block text-xs text-zinc-400 mb-2 uppercase font-semibold tracking-wide">
                     {label}
                 </label>
             )}
             <div className="relative">
                 {icon && (
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
                         {icon}
                     </div>
                 )}
                 <input
-                    className={`input ${icon ? 'pl-12' : ''} ${error ? 'border-[var(--accent-danger)]' : ''} ${className}`}
+                    className={`input ${icon ? 'pl-12' : ''} ${error ? 'border-red-500 ring-2 ring-red-500/20 focus:border-red-500 focus:ring-red-500/20' : ''} ${className}`}
                     {...props}
                 />
             </div>
             {error && (
-                <p className="mt-1 text-xs text-[var(--accent-danger)]">{error}</p>
+                <p className="mt-1 text-xs text-red-400">{error}</p>
             )}
         </div>
     )

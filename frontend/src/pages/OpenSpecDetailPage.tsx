@@ -42,28 +42,28 @@ const OpenSpecDetailPage: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-black text-slate-900 p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <div className="text-xs text-gray-400">{isChangeArtifact ? 'Change' : 'Spec'}</div>
+            <div className="text-xs text-slate-400">{isChangeArtifact ? 'Change' : 'Spec'}</div>
             <h1 className="text-xl font-bold font-mono">{specId}</h1>
           </div>
           <Link
             to="/openspec"
-            className="text-sm text-gray-300 hover:text-white underline underline-offset-4"
+            className="text-sm text-slate-500 hover:text-slate-900 underline underline-offset-4"
           >
             voltar
           </Link>
         </div>
 
         {isLoading ? (
-          <div className="text-gray-400">Carregando…</div>
+          <div className="text-slate-400">Carregando…</div>
         ) : error ? (
           <div className="text-red-400">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
         ) : (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-100 font-mono">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 font-mono">
               {data?.markdown || ''}
             </pre>
           </div>

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, ChevronDown, Activity, BarChart3, MessageCircle, Menu } from 'lucide-react';
-import { openMobileMenu } from '../components/AppNav';
+import { Trash2, Search, List, ChevronDown, Activity, BarChart3, MessageCircle } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
 import { AgentChatModal } from '../components/AgentChatModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -106,7 +105,7 @@ const FavoritesDashboard: React.FC = () => {
             case 3:
                 return { color: 'bg-red-500', textColor: 'text-red-400', label: 'Tier 3', borderColor: 'border-red-500' };
             default:
-                return { color: 'bg-gray-500', textColor: 'text-gray-400', label: 'Sem tier', borderColor: 'border-gray-500' };
+                return { color: 'bg-zinc-400', textColor: 'text-zinc-400', label: 'Sem tier', borderColor: 'border-zinc-500' };
         }
     };
 
@@ -375,41 +374,31 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen relative overflow-hidden bg-black text-white font-sans selection:bg-blue-500/30">
+        <div className="min-h-screen relative overflow-hidden bg-black text-zinc-900 font-sans selection:bg-blue-500/30">
             {/* Animated background */}
             <div className="fixed inset-0 -z-10">
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
             </div>
             <div className="max-w-[1920px] mx-auto border-l-4 border-primary-600 pl-4">
-                {/* Header */}
-                <header className="glass-strong border-b border-white/10 sticky top-0 z-50 mb-8">
-                    <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-6">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="flex items-center gap-4">
-                                {/* Mobile Hamburger Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => openMobileMenu()}
-                                  className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
-                                  aria-label="Abrir menu"
-                                >
-                                  <Menu className="w-6 h-6 text-white" />
-                                </button>
-                                <div className="relative">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
-                                    <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-xl shadow-glow-blue">
-                                        <Activity className="w-7 h-7 text-white" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <h1 className="text-3xl font-bold gradient-text">Strategy Favorites</h1>
-                                    <p className="text-sm text-gray-400 mt-0.5 flex items-center gap-2">
-                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                        System Operational
-                                    </p>
+                {/* Page Title & Filters */}
+                <div className="mb-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
+                                <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-xl shadow-glow-blue">
+                                    <Activity className="w-7 h-7 text-zinc-900" />
                                 </div>
                             </div>
+                            <div>
+                                <h1 className="text-3xl font-bold gradient-text">Strategy Favorites</h1>
+                                <p className="text-sm text-zinc-400 mt-0.5 flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                    System Operational
+                                </p>
+                            </div>
+                        </div>
 
                             <div className="w-full lg:w-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
                                 {/* Filters */}
@@ -418,16 +407,16 @@ const FavoritesDashboard: React.FC = () => {
                                         <select
                                             value={tierFilter}
                                             onChange={(e) => setTierFilter(e.target.value as 'all' | '1' | '2' | '3' | '1_2' | 'none')}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
                                         >
-                                            <option value="all" className="bg-gray-900">Tier: All</option>
-                                            <option value="1_2" className="bg-gray-900">Tier 1 + Tier 2</option>
-                                            <option value="1" className="bg-gray-900">Tier 1 – Core obrigatório</option>
-                                            <option value="2" className="bg-gray-900">Tier 2 – Bons complementares</option>
-                                            <option value="3" className="bg-gray-900">Tier 3</option>
-                                            <option value="none" className="bg-gray-900">Sem tier</option>
+                                            <option value="all" className="bg-zinc-900">Tier: All</option>
+                                            <option value="1_2" className="bg-zinc-900">Tier 1 + Tier 2</option>
+                                            <option value="1" className="bg-zinc-900">Tier 1 – Core obrigatório</option>
+                                            <option value="2" className="bg-zinc-900">Tier 2 – Bons complementares</option>
+                                            <option value="3" className="bg-zinc-900">Tier 3</option>
+                                            <option value="none" className="bg-zinc-900">Sem tier</option>
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
@@ -435,94 +424,94 @@ const FavoritesDashboard: React.FC = () => {
                                             aria-label="Asset Type"
                                             value={assetTypeFilter}
                                             onChange={(e) => setAssetTypeFilter(e.target.value as 'all' | 'crypto' | 'stocks')}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
                                         >
-                                            <option value="all" className="bg-gray-900">Asset Type: All</option>
-                                            <option value="crypto" className="bg-gray-900">Asset Type: Crypto</option>
-                                            <option value="stocks" className="bg-gray-900">Asset Type: Stocks</option>
+                                            <option value="all" className="bg-zinc-900">Asset Type: All</option>
+                                            <option value="crypto" className="bg-zinc-900">Asset Type: Crypto</option>
+                                            <option value="stocks" className="bg-zinc-900">Asset Type: Stocks</option>
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
                                         <select
                                             value={selectedSymbol}
                                             onChange={(e) => setSelectedSymbol(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
                                         >
-                                            <option value="ALL" className="bg-gray-900">Symbol: All</option>
+                                            <option value="ALL" className="bg-zinc-900">Symbol: All</option>
                                             {uniqueSymbols.map(sym => (
-                                                <option key={sym} value={sym} className="bg-gray-900">{sym}</option>
+                                                <option key={sym} value={sym} className="bg-zinc-900">{sym}</option>
                                             ))}
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
                                         <select
                                             value={selectedIndicator}
                                             onChange={(e) => setSelectedIndicator(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
                                         >
-                                            <option value="ALL" className="bg-gray-900">Strategy: All</option>
+                                            <option value="ALL" className="bg-zinc-900">Strategy: All</option>
                                             {uniqueIndicators.map(ind => (
-                                                <option key={ind} value={ind} className="bg-gray-900">{ind}</option>
+                                                <option key={ind} value={ind} className="bg-zinc-900">{ind}</option>
                                             ))}
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
                                         <select
                                             value={directionFilter}
                                             onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'long' | 'short')}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
                                         >
-                                            <option value="all" className="bg-gray-900">Direção: All</option>
-                                            <option value="long" className="bg-gray-900">Long</option>
-                                            <option value="short" className="bg-gray-900">Short</option>
+                                            <option value="all" className="bg-zinc-900">Direção: All</option>
+                                            <option value="long" className="bg-zinc-900">Long</option>
+                                            <option value="short" className="bg-zinc-900">Short</option>
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
 
                                     <div className="relative group">
                                         <select
                                             value={sortBy}
                                             onChange={(e) => setSortBy(e.target.value as SortByOption)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-white/10 min-h-11"
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-3 pr-8 py-2.5 lg:py-2 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-11"
                                         >
-                                            <option value="returnPerTrade" className="bg-gray-900">Ordenar: Ret/T %</option>
-                                            <option value="return" className="bg-gray-900">Ordenar: Return</option>
-                                            <option value="sharpe" className="bg-gray-900">Ordenar: Sharpe</option>
-                                            <option value="trades" className="bg-gray-900">Ordenar: Trades</option>
+                                            <option value="returnPerTrade" className="bg-zinc-900">Ordenar: Ret/T %</option>
+                                            <option value="return" className="bg-zinc-900">Ordenar: Return</option>
+                                            <option value="sharpe" className="bg-zinc-900">Ordenar: Sharpe</option>
+                                            <option value="trades" className="bg-zinc-900">Ordenar: Trades</option>
                                         </select>
-                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>
                                 </div>
 
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500 w-4 h-4" />
                                     <input
                                         type="text"
                                         placeholder="Search strategies..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 lg:py-2 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none w-full lg:w-64 min-h-11 placeholder-gray-600 transition-colors hover:bg-white/10"
+                                        className="bg-zinc-50 border border-zinc-200 rounded-lg pl-10 pr-4 py-2.5 lg:py-2 text-sm text-zinc-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none w-full lg:w-64 min-h-11 placeholder-gray-600 transition-colors hover:bg-zinc-100"
                                     />
                                 </div>
 
-                                <div className="hidden lg:block h-8 w-[1px] bg-white/10 mx-2"></div>
+                                <div className="hidden lg:block h-8 w-[1px] bg-zinc-100 mx-2"></div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full lg:flex lg:w-auto">
                                     <button
                                         onClick={handleExportExcel}
-                                        className="bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white px-4 py-2.5 lg:py-2 text-sm font-medium rounded-lg border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2 min-h-11"
+                                        className="bg-zinc-50 hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 px-4 py-2.5 lg:py-2 text-sm font-medium rounded-lg border border-zinc-200 hover:border-zinc-300 transition-all flex items-center justify-center gap-2 min-h-11"
                                     >
                                         <List className="w-4 h-4" /> Export
                                     </button>
                                     <button
                                         onClick={() => navigate('/combo/select')}
-                                        className="px-6 py-2.5 lg:py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5 min-h-11"
+                                        className="px-6 py-2.5 lg:py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-zinc-900 text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5 min-h-11"
                                     >
                                         Find New
                                     </button>
@@ -530,17 +519,16 @@ const FavoritesDashboard: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                </header>
 
                 <main className="container mx-auto px-3 sm:px-6 pb-12">
                     {/* Table Container */}
-                    <div className="glass-strong rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+                    <div className="glass-strong rounded-2xl border border-zinc-200 overflow-hidden shadow-2xl">
 
                         <div className="lg:hidden p-3 sm:p-4 space-y-3">
                             {isLoading ? (
-                                <div className="p-8 text-center text-gray-500 animate-pulse">Scanning database...</div>
+                                <div className="p-8 text-center text-zinc-500 animate-pulse">Scanning database...</div>
                             ) : filteredFavorites.length === 0 ? (
-                                <div className="p-8 text-center text-gray-500">No favorite strategies found.</div>
+                                <div className="p-8 text-center text-zinc-500">No favorite strategies found.</div>
                             ) : (
                                 visibleFavorites.map((fav: FavoriteStrategy) => {
                                     const isSelected = selectedIds.includes(fav.id);
@@ -551,14 +539,14 @@ const FavoritesDashboard: React.FC = () => {
                                     return (
                                         <article
                                             key={fav.id}
-                                            className={`rounded-xl border bg-white/5 p-3 space-y-3 ${
+                                            className={`rounded-xl border bg-zinc-50 p-3 space-y-3 ${
                                                 fav.tier === 1
                                                     ? 'border-green-500/40'
                                                     : fav.tier === 2
                                                         ? 'border-yellow-500/40'
                                                         : fav.tier === 3
                                                             ? 'border-red-500/40'
-                                                            : 'border-white/10'
+                                                            : 'border-zinc-200'
                                             } ${isSelected ? 'ring-1 ring-blue-500/60' : ''}`}
                                         >
                                             <div className="flex items-start justify-between gap-3">
@@ -566,18 +554,18 @@ const FavoritesDashboard: React.FC = () => {
                                                     <p className="text-base font-bold tracking-wide break-words">{fav.symbol}</p>
                                                     <p className="text-sm text-blue-300 break-words">{fav.strategy_name.replace(/_/g, ' ')}</p>
                                                 </div>
-                                                <span className={`px-2 py-1 rounded-md text-xs font-semibold border ${statusLabel === 'HOLD' ? 'text-emerald-300 border-emerald-500/50 bg-emerald-500/10' : 'text-gray-300 border-white/20 bg-white/10'}`}>
+                                                <span className={`px-2 py-1 rounded-md text-xs font-semibold border ${statusLabel === 'HOLD' ? 'text-emerald-700 border-emerald-600/50 bg-emerald-500/10' : 'text-zinc-500 border-zinc-300 bg-zinc-100'}`}>
                                                     {statusLabel}
                                                 </span>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                                <div className="rounded-lg bg-white/5 border border-white/10 p-2">
-                                                    <p className="text-gray-500">Tier</p>
+                                                <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-2">
+                                                    <p className="text-zinc-500">Tier</p>
                                                     <p className={`font-medium ${tierInfo.textColor}`}>{tierInfo.label}</p>
                                                 </div>
-                                                <div className="rounded-lg bg-white/5 border border-white/10 p-2">
-                                                    <p className="text-gray-500">Return</p>
+                                                <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-2">
+                                                    <p className="text-zinc-500">Return</p>
                                                     <p className={`font-semibold ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPct(totalReturn)}</p>
                                                 </div>
                                             </div>
@@ -596,7 +584,7 @@ const FavoritesDashboard: React.FC = () => {
                                                                 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
                                                                 : fav.tier === 3
                                                                     ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30'
-                                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+                                                                    : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'
                                                     }`}
                                                 >
                                                     <option value="">Sem tier</option>
@@ -609,7 +597,7 @@ const FavoritesDashboard: React.FC = () => {
                                                     className={`min-h-11 rounded-lg border text-sm font-medium transition-colors ${
                                                         isSelected
                                                             ? 'border-blue-500/60 bg-blue-500/15 text-blue-300'
-                                                            : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                                                            : 'border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100'
                                                     }`}
                                                 >
                                                     {isSelected ? 'Selected for compare' : 'Select to compare'}
@@ -619,7 +607,7 @@ const FavoritesDashboard: React.FC = () => {
                                             <div className="grid grid-cols-2 gap-2">
                                                 <button
                                                     onClick={() => handleViewTrades(fav)}
-                                                    className="min-h-11 rounded-lg border border-white/10 bg-white/5 text-gray-200 text-sm font-medium flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                                                    className="min-h-11 rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-600 text-sm font-medium flex items-center justify-center gap-2 hover:bg-zinc-100 transition-colors"
                                                 >
                                                     <List className="w-4 h-4" />
                                                     Trades
@@ -652,38 +640,38 @@ const FavoritesDashboard: React.FC = () => {
                                                 </button>
                                             </div>
 
-                                            <details className="rounded-lg border border-white/10 bg-black/20">
-                                                <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-gray-200 flex items-center justify-between min-h-11">
+                                            <details className="rounded-lg border border-zinc-200 bg-white0">
+                                                <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-zinc-600 flex items-center justify-between min-h-11">
                                                     <span>More details</span>
-                                                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                                                    <ChevronDown className="w-4 h-4 text-zinc-400" />
                                                 </summary>
-                                                <div className="px-3 pb-3 space-y-3 text-xs text-gray-300">
+                                                <div className="px-3 pb-3 space-y-3 text-xs text-zinc-500">
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div>
-                                                            <p className="text-gray-500">Timeframe</p>
+                                                            <p className="text-zinc-500">Timeframe</p>
                                                             <p className="font-mono">{fav.timeframe}</p>
                                                         </div>
                                                         <div>
-                                                            <p className="text-gray-500">Período</p>
+                                                            <p className="text-zinc-500">Período</p>
                                                             <p>{formatPeriod(fav)}</p>
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <p className="text-gray-500 mb-1">Params</p>
+                                                        <p className="text-zinc-500 mb-1">Params</p>
                                                         <p className="font-mono break-words">{formatParams(fav.parameters).split('&').join(' ')}</p>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div>
-                                                            <p className="text-gray-500">Sharpe</p>
+                                                            <p className="text-zinc-500">Sharpe</p>
                                                             <p>{formatNum(m.sharpe_ratio)}</p>
                                                         </div>
                                                         <div>
-                                                            <p className="text-gray-500">Trades</p>
+                                                            <p className="text-zinc-500">Trades</p>
                                                             <p>{getTradesCount(fav)}</p>
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <p className="text-gray-500 mb-1">Notes</p>
+                                                        <p className="text-zinc-500 mb-1">Notes</p>
                                                         <p className="break-words italic">{fav.notes || '-'}</p>
                                                     </div>
                                                 </div>
@@ -693,7 +681,7 @@ const FavoritesDashboard: React.FC = () => {
                                 })
                             )}
                             {!isLoading && filteredFavorites.length > 0 && hasMore && (
-                                <div className="p-4 text-center text-gray-500 text-sm">
+                                <div className="p-4 text-center text-zinc-500 text-sm">
                                     <div ref={sentinelRef} />
                                     <span className="animate-pulse">Carregando mais…</span>
                                 </div>
@@ -702,40 +690,40 @@ const FavoritesDashboard: React.FC = () => {
 
                         <div className="hidden lg:block overflow-x-auto">
                             <table className="w-full text-left border-collapse text-sm">
-                                <thead className="bg-white/5 border-b border-white/10 text-gray-400 font-semibold uppercase tracking-wider text-xs">
+                                <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-400 font-semibold uppercase tracking-wider text-xs">
                                     <tr>
                                         <th className="p-4 w-10 text-center">
-                                            <div className="w-4 h-4 rounded border border-white/20"></div>
+                                            <div className="w-4 h-4 rounded border border-zinc-300"></div>
                                         </th>
-                                        <th className="p-4 border-r border-white/5 text-center text-gray-400 w-32">Tier</th>
-                                        <th className="p-4 border-r border-white/5 font-medium text-white">Symbol</th>
-                                        <th className="p-4 border-r border-white/5 font-medium text-white">Strategy</th>
-                                        <th className="p-4 border-r border-white/5 text-center text-gray-400 whitespace-nowrap">Direção</th>
-                                        <th className="p-4 border-r border-white/5 text-center text-gray-400">Timeframe</th>
-                                        <th className="p-4 border-r border-white/5 text-center text-gray-400 whitespace-nowrap">Período</th>
-                                        <th className="p-4 border-r border-white/5 text-gray-400 w-96">Config</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400">Stop</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-blue-400">Sharpe</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400">Trades</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400">Win%</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-white">Return</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-red-400">Max DD</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400">PF</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400">Sort</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-red-400">Max L</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400">ATR</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-green-400">Bull</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-red-400">Bear</th>
-                                        <th className="p-4 border-r border-white/5 text-right text-gray-400">ADX</th>
-                                        <th className="p-4 border-r border-white/5 text-left text-gray-500">Notes</th>
-                                        <th className="p-4 text-center text-gray-400">Actions</th>
+                                        <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 w-32">Tier</th>
+                                        <th className="p-4 border-r border-zinc-100 font-medium text-zinc-900">Symbol</th>
+                                        <th className="p-4 border-r border-zinc-100 font-medium text-zinc-900">Strategy</th>
+                                        <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 whitespace-nowrap">Direção</th>
+                                        <th className="p-4 border-r border-zinc-100 text-center text-zinc-400">Timeframe</th>
+                                        <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 whitespace-nowrap">Período</th>
+                                        <th className="p-4 border-r border-zinc-100 text-zinc-400 w-96">Config</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Stop</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-blue-400">Sharpe</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Trades</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Win%</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-900">Return</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-red-400">Max DD</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">PF</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Sort</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-red-400">Max L</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">ATR</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-green-400">Bull</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-red-400">Bear</th>
+                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">ADX</th>
+                                        <th className="p-4 border-r border-zinc-100 text-left text-zinc-500">Notes</th>
+                                        <th className="p-4 text-center text-zinc-400">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-industrial-800">
                                     {isLoading ? (
-                                        <tr><td colSpan={21} className="p-12 text-center text-gray-500 animate-pulse">Scanning database...</td></tr>
+                                        <tr><td colSpan={21} className="p-12 text-center text-zinc-500 animate-pulse">Scanning database...</td></tr>
                                     ) : filteredFavorites.length === 0 ? (
-                                        <tr><td colSpan={21} className="p-12 text-center text-gray-500">No favorite strategies found.</td></tr>
+                                        <tr><td colSpan={21} className="p-12 text-center text-zinc-500">No favorite strategies found.</td></tr>
                                     ) : (
                                         visibleFavorites.map((fav: FavoriteStrategy) => {
                                             const isSelected = selectedIds.includes(fav.id);
@@ -754,14 +742,14 @@ const FavoritesDashboard: React.FC = () => {
                                                 <tr
                                                     key={fav.id}
                                                     className={`
-                                                    group transition-all duration-200 border-b border-white/5 hover:bg-white/5
+                                                    group transition-all duration-200 border-b border-zinc-100 hover:bg-zinc-50
                                                     ${isSelected ? 'bg-blue-500/10 border-blue-500/30' : ''}
                                                     ${fav.tier === 1 ? 'bg-green-500/5 border-l-2 border-l-green-500' : ''}
                                                     ${fav.tier === 2 ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''}
                                                     ${fav.tier === 3 ? 'bg-red-500/5 border-l-2 border-l-red-500' : ''}
                                                 `}
                                                 >
-                                                    <td className="p-4 border-r border-white/5 text-center">
+                                                    <td className="p-4 border-r border-zinc-100 text-center">
                                                         <div
                                                             onClick={() => toggleSelection(fav.id)}
                                                             className={`w-5 h-5 rounded-md border mx-auto cursor-pointer flex items-center justify-center transition-all
@@ -771,7 +759,7 @@ const FavoritesDashboard: React.FC = () => {
                                                             {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                                         </div>
                                                     </td>
-                                                    <td className="p-4 border-r border-white/5 text-center">
+                                                    <td className="p-4 border-r border-zinc-100 text-center">
                                                         <select
                                                             value={fav.tier ?? ''}
                                                             onChange={(e) => {
@@ -785,7 +773,7 @@ const FavoritesDashboard: React.FC = () => {
                                                                     ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
                                                                     : fav.tier === 3
                                                                     ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30'
-                                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+                                                                    : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'
                                                             }`}
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
@@ -795,70 +783,70 @@ const FavoritesDashboard: React.FC = () => {
                                                             <option value="3">Tier 3</option>
                                                         </select>
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 font-bold text-white tracking-wide">{fav.symbol}</td>
-                                                    <td className="p-2 border-r border-white/5 text-blue-300 font-medium">{fav.strategy_name.replace(/_/g, ' ')}</td>
-                                                    <td className="p-2 border-r border-white/5 text-center" title="Long = compra na entrada / Short = venda na entrada">
+                                                    <td className="p-2 border-r border-zinc-100 font-bold text-zinc-900 tracking-wide">{fav.symbol}</td>
+                                                    <td className="p-2 border-r border-zinc-100 text-blue-300 font-medium">{fav.strategy_name.replace(/_/g, ' ')}</td>
+                                                    <td className="p-2 border-r border-zinc-100 text-center" title="Long = compra na entrada / Short = venda na entrada">
                                                         {((fav.parameters?.direction as string) || 'long').toLowerCase() === 'short' ? (
                                                             <span className="px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/40">Short</span>
                                                         ) : (
-                                                            <span className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">Long</span>
+                                                            <span className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-600/40">Long</span>
                                                         )}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-center text-white/90" title="Timeframe rodado">
-                                                        <span className="px-2 py-1 rounded bg-white/5 text-xs font-mono">{fav.timeframe}</span>
+                                                    <td className="p-2 border-r border-zinc-100 text-center text-zinc-900/90" title="Timeframe rodado">
+                                                        <span className="px-2 py-1 rounded bg-zinc-50 text-xs font-mono">{fav.timeframe}</span>
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-center text-gray-300 text-xs whitespace-nowrap" title="Período em que a estratégia foi testada">
+                                                    <td className="p-2 border-r border-zinc-100 text-center text-zinc-500 text-xs whitespace-nowrap" title="Período em que a estratégia foi testada">
                                                         {formatPeriod(fav)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-gray-400 truncate max-w-xs text-xs font-mono" title={formatParams(fav.parameters)}>
+                                                    <td className="p-2 border-r border-zinc-100 text-zinc-400 truncate max-w-xs text-xs font-mono" title={formatParams(fav.parameters)}>
                                                         {formatParams(fav.parameters).split('&').join(' ')}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-gray-300 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
                                                         {formatPct(stopLoss)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-blue-400 font-bold text-sm font-mono bg-blue-500/5">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-blue-400 font-bold text-sm font-mono bg-blue-500/5">
                                                         {formatNum(m.sharpe_ratio)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-gray-300 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
                                                         {getTradesCount(fav)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-gray-300 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
                                                         {formatPct(m.win_rate)}
                                                     </td>
-                                                    <td className={`p-2 border-r border-white/5 text-right font-bold font-mono ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    <td className={`p-2 border-r border-zinc-100 text-right font-bold font-mono ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                                         {formatPct(totalReturn)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-red-400 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-red-400 font-mono">
                                                         {formatPct(m.max_drawdown)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-gray-300 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
                                                         {formatNum(m.profit_factor)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-gray-300 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
                                                         {formatNum(m.sortino_ratio ?? m.sortino)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-red-400 font-bold font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-red-400 font-bold font-mono">
                                                         {formatPct(m.max_loss)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-gray-400 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-400 font-mono">
                                                         {formatNum(m.avg_atr)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-green-500/80 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-green-500/80 font-mono">
                                                         {formatPct(m.win_rate_bull)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-red-500/80 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-red-500/80 font-mono">
                                                         {formatPct(m.win_rate_bear)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-right text-gray-500 font-mono">
+                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
                                                         {formatNum(m.avg_adx)}
                                                     </td>
-                                                    <td className="p-2 border-r border-white/5 text-left text-gray-500 text-xs italic max-w-[150px] truncate" title={fav.notes || ''}>
+                                                    <td className="p-2 border-r border-zinc-100 text-left text-zinc-500 text-xs italic max-w-[150px] truncate" title={fav.notes || ''}>
                                                         {fav.notes || '-'}
                                                     </td>
                                                     <td className="p-2 text-center flex items-center justify-center gap-2">
                                                         <button
                                                             onClick={() => handleViewTrades(fav)}
-                                                            className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                                                            className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors"
                                                             title="View Trades"
                                                         >
                                                             <List className="w-4 h-4" />
@@ -877,14 +865,14 @@ const FavoritesDashboard: React.FC = () => {
                                                         </button>
                                                         <button
                                                             onClick={() => handleOpenAgent(fav)}
-                                                            className="p-1.5 hover:bg-purple-500/20 rounded-lg text-gray-400 hover:text-purple-300 transition-colors"
+                                                            className="p-1.5 hover:bg-purple-500/20 rounded-lg text-zinc-400 hover:text-purple-300 transition-colors"
                                                             title="Chat com o agente"
                                                         >
                                                             <MessageCircle className="w-4 h-4" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(fav.id)}
-                                                            className="p-1.5 hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-400 transition-colors"
+                                                            className="p-1.5 hover:bg-red-500/20 rounded-lg text-zinc-400 hover:text-red-400 transition-colors"
                                                             title="Delete"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -896,7 +884,7 @@ const FavoritesDashboard: React.FC = () => {
                                     )}
                                     {!isLoading && filteredFavorites.length > 0 && hasMore && (
                                         <tr>
-                                            <td colSpan={21} className="p-6 text-center text-gray-500 text-sm">
+                                            <td colSpan={21} className="p-6 text-center text-zinc-500 text-sm">
                                                 <div ref={sentinelRef} />
                                                 <span className="animate-pulse">Carregando mais…</span>
                                             </td>
@@ -907,8 +895,8 @@ const FavoritesDashboard: React.FC = () => {
                         </div>
 
                         {/* Footer / Status Bar - Replaces System Status */}
-                        <div className="p-4 bg-white/5 border-t border-white/10 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center text-sm">
-                            <div className="flex items-center gap-2 text-gray-400">
+                        <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center text-sm">
+                            <div className="flex items-center gap-2 text-zinc-400">
                                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                 {hasMore
                                     ? `Mostrando ${visibleFavorites.length} de ${filteredFavorites.length} estratégias — role para carregar mais`
@@ -920,7 +908,7 @@ const FavoritesDashboard: React.FC = () => {
                                     <button
                                         onClick={() => setIsCompareOpen(true)}
                                         disabled={selectedIds.length < 2}
-                                        className="px-4 py-2.5 lg:py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-11 lg:min-h-0 w-full sm:w-auto"
+                                        className="px-4 py-2.5 lg:py-1.5 bg-blue-600 hover:bg-blue-500 text-zinc-900 text-sm font-semibold rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-11 lg:min-h-0 w-full sm:w-auto"
                                     >
                                         Compare Strategies
                                     </button>
@@ -933,14 +921,14 @@ const FavoritesDashboard: React.FC = () => {
                 {/* Compare Modal */}
                 {
                     isCompareOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-industrial-900/50 via-black to-black">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-white0 backdrop-blur-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-industrial-900/50 via-black to-black">
                             <div className="bg-black border-2 border-industrial-700 w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl relative">
                                 {/* Decorative corners */}
                                 <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary-500"></div>
                                 <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary-500"></div>
 
                                 <div className="flex items-center justify-between p-4 border-b-2 border-industrial-800 bg-industrial-900/50">
-                                    <h2 className="text-xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+                                    <h2 className="text-xl font-black uppercase tracking-widest text-zinc-900 flex items-center gap-2">
                                         <Activity className="w-5 h-5 text-primary-500" />
                                         Data.Comparison_Module
                                     </h2>
@@ -960,7 +948,7 @@ const FavoritesDashboard: React.FC = () => {
                                                     Metric_ID
                                                 </th>
                                                 {selectedStrategies.map(s => (
-                                                    <th key={s.id} className="p-4 bg-black text-white border-b border-industrial-800 sticky top-0 min-w-[200px] border-r border-industrial-800">
+                                                    <th key={s.id} className="p-4 bg-black text-zinc-900 border-b border-industrial-800 sticky top-0 min-w-[200px] border-r border-industrial-800">
                                                         <div className="text-primary-500 text-xs font-bold uppercase mb-1">Strat_ID: #{s.id}</div>
                                                         <div className="font-bold truncate">{s.name}</div>
                                                         <div className="text-[10px] text-industrial-500 font-normal mt-1 uppercase tracking-widest">{s.symbol} • {s.timeframe}</div>
@@ -983,13 +971,13 @@ const FavoritesDashboard: React.FC = () => {
                                             <tr>
                                                 <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Sharpe Ratio</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-white font-mono border-r border-industrial-800">{formatNum(s.metrics.sharpe_ratio)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{formatNum(s.metrics.sharpe_ratio)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
                                                 <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Win Rate</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-white font-mono border-r border-industrial-800">{formatPct(s.metrics.win_rate)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{formatPct(s.metrics.win_rate)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
@@ -1001,13 +989,13 @@ const FavoritesDashboard: React.FC = () => {
                                             <tr>
                                                 <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Profit Factor</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-white font-mono border-r border-industrial-800">{formatNum(s.metrics.profit_factor)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{formatNum(s.metrics.profit_factor)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
                                                 <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Sortino Ratio</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-white font-mono border-r border-industrial-800">{formatNum(s.metrics.sortino_ratio ?? s.metrics.sortino)}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{formatNum(s.metrics.sortino_ratio ?? s.metrics.sortino)}</td>
                                                 ))}
                                             </tr>
                                             <tr>
@@ -1019,7 +1007,7 @@ const FavoritesDashboard: React.FC = () => {
                                             <tr>
                                                 <td className="p-4 text-industrial-400 border-r border-industrial-800 text-xs uppercase">Max Cons. Losses</td>
                                                 {selectedStrategies.map(s => (
-                                                    <td key={s.id} className="p-4 text-white font-mono border-r border-industrial-800">{s.metrics.max_consecutive_losses ?? 0}</td>
+                                                    <td key={s.id} className="p-4 text-zinc-900 font-mono border-r border-industrial-800">{s.metrics.max_consecutive_losses ?? 0}</td>
                                                 ))}
                                             </tr>
                                             <tr>

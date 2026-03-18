@@ -251,7 +251,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <div className="flex items-center gap-1">
                         <button
                             type="button"
-                            className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${preference.in_portfolio ? 'border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-200' : 'border-slate-300 text-slate-700 bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200'}`}
+                            className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${preference.in_portfolio ? 'border-amber-500 text-amber-400 bg-amber-500/20' : 'border-zinc-600 text-zinc-300 bg-zinc-800'}`}
                             onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
                             data-testid={`portfolio-toggle-${symbolTestKey}`}
                             title={preference.in_portfolio ? 'Remove from In Portfolio' : 'Add to In Portfolio'}
@@ -263,7 +263,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
                         <button
                             type="button"
-                            className="rounded-md border border-slate-300 px-2 py-1 text-xs flex items-center gap-1 bg-white text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
+                            className="rounded-md border border-zinc-600 px-2 py-1 text-xs flex items-center gap-1 bg-zinc-800 text-zinc-300"
                             onClick={() => onToggleCardMode(symbol, isPriceMode ? 'strategy' : 'price')}
                             data-testid={`mode-toggle-${symbolTestKey}`}
                             title={isPriceMode ? 'Switch to strategy mode' : 'Switch to price mode'}

@@ -253,16 +253,16 @@ export default function ExternalBalancesPage() {
       >
         <section className="flex flex-col gap-[14px] border-b border-transparent px-0 pb-[10px] pt-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-[28px] font-bold tracking-[-0.4px] text-white lg:text-[32px]">Carteira</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2.5 text-sm text-white/62">
-              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs text-white/92">
+            <h1 className="text-[28px] font-bold tracking-[-0.4px] text-zinc-900 lg:text-[32px]">Carteira</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2.5 text-sm text-zinc-500">
+              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-xs text-zinc-800">
                 Binance Spot
               </span>
-              <span className="text-white/44">·</span>
+              <span className="text-zinc-400">·</span>
               <span>read-only</span>
               {asOfLabel && (
                 <>
-                  <span className="text-white/44">·</span>
+                  <span className="text-zinc-400">·</span>
                   <span>as of {asOfLabel}</span>
                 </>
               )}
@@ -270,43 +270,43 @@ export default function ExternalBalancesPage() {
           </div>
 
           <div className="text-left sm:min-w-[180px] sm:text-right">
-            <div className="text-xs text-white/62">Total</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.2px] text-white lg:text-[24px]">
+            <div className="text-xs text-zinc-500">Total</div>
+            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900 lg:text-[24px]">
               {loading ? '—' : fmtUSD.format(summary.totalUsd)}
             </div>
-            <div className="mt-0.5 text-xs text-white/62">
+            <div className="mt-0.5 text-xs text-zinc-500">
               {loading ? '—' : `${summary.count} ativos · filtro min USD ${Number(minUsd).toFixed(2)}`}
             </div>
           </div>
         </section>
 
         <section className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <article className="glass rounded-[14px] p-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.40)]">
-            <div className="text-xs text-white/62">Total USD</div>
-            <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-white">{loading ? '—' : fmtUSD.format(summary.totalUsd)}</div>
-            <div className="mt-1.5 text-xs text-white/62">Soma do valor (USD) das linhas visíveis</div>
+          <article className="glass rounded-[14px] p-[14px] shadow-md">
+            <div className="text-xs text-zinc-500">Total USD</div>
+            <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900">{loading ? '—' : fmtUSD.format(summary.totalUsd)}</div>
+            <div className="mt-1.5 text-xs text-zinc-500">Soma do valor (USD) das linhas visíveis</div>
           </article>
-          <article className="glass rounded-[14px] p-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.40)]">
-            <div className="text-xs text-white/62">Locked USD</div>
-            <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-white">{loading ? '—' : fmtUSD.format(summary.lockedUsd)}</div>
-            <div className="mt-1.5 text-xs text-white/62">Estimado por “locked” × preço</div>
+          <article className="glass rounded-[14px] p-[14px] shadow-md">
+            <div className="text-xs text-zinc-500">Locked USD</div>
+            <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900">{loading ? '—' : fmtUSD.format(summary.lockedUsd)}</div>
+            <div className="mt-1.5 text-xs text-zinc-500">Estimado por “locked” × preço</div>
           </article>
-          <article className="glass rounded-[14px] p-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.40)]">
-            <div className="text-xs text-white/62">PnL (parcial)</div>
-            <div className={`mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] ${summary.pnlSum >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+          <article className="glass rounded-[14px] p-[14px] shadow-md">
+            <div className="text-xs text-zinc-500">PnL (parcial)</div>
+            <div className={`mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] ${summary.pnlSum >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
               {loading ? '—' : summary.pnlCount ? fmtUSD.format(summary.pnlSum) : '—'}
-              {!loading && summary.pnlCount ? <span className="ml-1 text-sm text-white/72">({summary.pnlCount}/{summary.count})</span> : null}
+              {!loading && summary.pnlCount ? <span className="ml-1 text-sm text-zinc-600">({summary.pnlCount}/{summary.count})</span> : null}
             </div>
-            <div className="mt-1.5 text-xs text-white/62">Apenas para ativos com avg cost / pnl calculados</div>
+            <div className="mt-1.5 text-xs text-zinc-500">Apenas para ativos com avg cost / pnl calculados</div>
           </article>
         </section>
 
         <section className="mt-4">
           <div className="grid grid-cols-1 items-end gap-3 lg:grid-cols-[1.25fr_0.75fr_0.65fr_0.9fr_0.9fr]">
             <label className="grid gap-1.5">
-              <span className="text-xs text-white/62">Buscar</span>
+              <span className="text-xs text-zinc-500">Buscar</span>
               <input
-                className="h-11 rounded-[10px] border border-white/10 bg-black/18 px-3 text-white outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
+                className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 text-zinc-900 outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
                 placeholder="BTC, ETH, SOL..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -314,30 +314,30 @@ export default function ExternalBalancesPage() {
             </label>
 
             <label className="grid gap-1.5">
-              <span className="text-xs text-white/62">Dust threshold</span>
+              <span className="text-xs text-zinc-500">Dust threshold</span>
               <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                 <input
                   inputMode="decimal"
-                  className="h-11 rounded-[10px] border border-white/10 bg-black/18 px-3 font-mono text-white outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
+                  className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 font-mono text-zinc-900 outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
                   value={minUsd}
                   onChange={(e) => setMinUsd(e.target.value)}
                 />
-                <span className="text-xs text-white/62">USD</span>
+                <span className="text-xs text-zinc-500">USD</span>
               </div>
             </label>
 
-            <label className="flex h-11 items-center gap-3 rounded-[10px] border border-white/10 bg-white/5 px-3 text-sm text-white/92">
-              <span className={`relative h-[22px] w-[38px] rounded-full border border-white/10 transition ${lockedOnly ? 'bg-[rgba(53,208,127,0.22)] border-[rgba(53,208,127,0.45)]' : 'bg-white/14'}`}>
-                <span className={`absolute top-[1px] h-[18px] w-[18px] rounded-full bg-white/86 transition ${lockedOnly ? 'left-[17px]' : 'left-[1px]'}`} />
+            <label className="flex h-11 items-center gap-3 rounded-[10px] border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-800">
+              <span className={`relative h-[22px] w-[38px] rounded-full border border-zinc-200 transition ${lockedOnly ? 'bg-[rgba(53,208,127,0.22)] border-[rgba(53,208,127,0.45)]' : 'bg-zinc-50'}`}>
+                <span className={`absolute top-[1px] h-[18px] w-[18px] rounded-full bg-zinc-200 transition ${lockedOnly ? 'left-[17px]' : 'left-[1px]'}`} />
               </span>
               <input type="checkbox" className="sr-only" checked={lockedOnly} onChange={(e) => setLockedOnly(e.target.checked)} />
               Locked only
             </label>
 
             <label className="grid gap-1.5">
-              <span className="text-xs text-white/62">Ordenar</span>
+              <span className="text-xs text-zinc-500">Ordenar</span>
               <select
-                className="h-11 rounded-[10px] border border-white/10 bg-black/18 px-3 text-white outline-none"
+                className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 text-zinc-900 outline-none"
                 value={sortValue}
                 onChange={(e) => {
                   setSortValue(e.target.value)
@@ -353,26 +353,26 @@ export default function ExternalBalancesPage() {
               </select>
             </label>
 
-            <div className="flex min-h-11 items-center rounded-[10px] border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/75">
+            <div className="flex min-h-11 items-center rounded-[10px] border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
               {metaLine}
             </div>
           </div>
 
-          <div className="mt-3 rounded-[14px] border border-amber-400/30 bg-[rgba(255,176,32,0.10)] p-3 text-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.24)]">
-            <div className="text-[11px] font-extrabold tracking-wide text-white/92">Nota sobre PnL</div>
+          <div className="mt-3 rounded-[14px] border border-amber-400/30 bg-[rgba(255,176,32,0.10)] p-3 text-zinc-900/80 shadow-md">
+            <div className="text-[11px] font-extrabold tracking-wide text-zinc-800">Nota sobre PnL</div>
             <div className="mt-1 text-sm leading-snug">
               O backend calcula <strong>avg cost / pnl</strong> somente para um número limitado de ativos (budget de tempo). A UI deve sinalizar <strong>parcial</strong> e não sugerir contabilidade completa.
             </div>
           </div>
         </section>
 
-        <section className="mt-4 overflow-hidden rounded-[14px] border border-white/10 bg-[rgba(255,255,255,0.06)] shadow-[0_10px_30px_rgba(0,0,0,0.40)] lg:min-h-[642px]">
-          <div className="flex items-start justify-between gap-[14px] border-b border-white/10 bg-[rgba(255,255,255,0.03)] px-[14px] py-[14px]">
+        <section className="mt-4 overflow-hidden rounded-[14px] border border-zinc-200 bg-zinc-50 shadow-md lg:min-h-[642px]">
+          <div className="flex items-start justify-between gap-[14px] border-b border-zinc-200 bg-zinc-50 px-[14px] py-[14px]">
             <div>
-              <h2 className="text-base font-bold text-white">Balances</h2>
-              <div className="mt-1 text-xs text-white/62">Layout responsivo: tabela (desktop) / cards (mobile)</div>
+              <h2 className="text-base font-bold text-zinc-900">Balances</h2>
+              <div className="mt-1 text-xs text-zinc-500">Layout responsivo: tabela (desktop) / cards (mobile)</div>
             </div>
-            <Button variant="ghost" size="sm" className="rounded-[10px] border border-white/10 bg-white/5 px-[10px] text-xs font-semibold text-white/90 hover:bg-white/10" onClick={reset}>
+            <Button variant="ghost" size="sm" className="rounded-[10px] border border-zinc-200 bg-zinc-50 px-[10px] text-xs font-semibold text-zinc-900/90 hover:bg-zinc-100" onClick={reset}>
               Reset filtros
             </Button>
           </div>
@@ -380,8 +380,8 @@ export default function ExternalBalancesPage() {
           {error && !loading ? (
             <div className="p-4">
               <div className="rounded-[14px] border border-rose-400/30 bg-rose-400/10 p-4">
-                <div className="font-bold text-white">Erro ao carregar</div>
-                <div className="mt-1 text-sm text-white/75">{error}</div>
+                <div className="font-bold text-zinc-900">Erro ao carregar</div>
+                <div className="mt-1 text-sm text-zinc-600">{error}</div>
                 <div className="mt-3">
                   <Button variant="secondary" onClick={() => void load()}>
                     Tentar novamente
@@ -391,9 +391,9 @@ export default function ExternalBalancesPage() {
             </div>
           ) : view.items.length === 0 && !loading ? (
             <div className="p-4">
-              <div className="rounded-[14px] border border-white/10 bg-white/5 p-4">
-                <div className="font-bold text-white">Nada para mostrar</div>
-                <div className="mt-1 text-sm text-white/70">
+              <div className="rounded-[14px] border border-zinc-200 bg-zinc-50 p-4">
+                <div className="font-bold text-zinc-900">Nada para mostrar</div>
+                <div className="mt-1 text-sm text-zinc-600">
                   Pode ser que todos os ativos tenham ficado abaixo do min USD, ou que a busca não encontrou nenhum símbolo.
                 </div>
               </div>
@@ -401,14 +401,14 @@ export default function ExternalBalancesPage() {
           ) : (
             <>
               <div className="hidden md:block lg:min-h-[392px]">
-                <div className="grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_1fr] gap-[10px] border-b border-white/10 bg-[rgba(10,15,30,0.85)] px-[14px] py-[10px] text-xs text-white/60 backdrop-blur-xl">
-                  <button className="text-left hover:text-white/90" onClick={() => onHeaderSort('asset')}>Ativo</button>
+                <div className="grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_1fr] gap-[10px] border-b border-zinc-200 bg-zinc-100 px-[14px] py-[10px] text-xs text-zinc-500 backdrop-blur-xl">
+                  <button className="text-left hover:text-zinc-900/90" onClick={() => onHeaderSort('asset')}>Ativo</button>
                   <div className="text-right">Total</div>
                   <div className="text-right">Free</div>
                   <div className="text-right">Locked</div>
-                  <button className="text-right hover:text-white/90" onClick={() => onHeaderSort('value')}>Valor (USD)</button>
+                  <button className="text-right hover:text-zinc-900/90" onClick={() => onHeaderSort('value')}>Valor (USD)</button>
                   <div className="text-right">Preço</div>
-                  <button className="text-right hover:text-white/90" onClick={() => onHeaderSort('pnl')}>PnL</button>
+                  <button className="text-right hover:text-zinc-900/90" onClick={() => onHeaderSort('pnl')}>PnL</button>
                 </div>
 
                 {(loading ? Array.from({ length: 8 }).map((_, i) => ({ asset: `loading-${i}`, free: 0, locked: 0, total: 0 })) : view.items).map((row: any) => {
@@ -417,17 +417,17 @@ export default function ExternalBalancesPage() {
                   const price = row.price_usdt
                   const pnlUsd = row.pnl_usd
                   const pnlPct = row.pnl_pct
-                  const pnlColor = typeof pnlUsd === 'number' ? (pnlUsd >= 0 ? 'text-emerald-300' : 'text-rose-300') : 'text-white/70'
+                  const pnlColor = typeof pnlUsd === 'number' ? (pnlUsd >= 0 ? 'text-emerald-700' : 'text-rose-700') : 'text-zinc-600'
 
                   return (
-                    <div key={row.asset} className="grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_1fr] gap-[10px] border-b border-white/5 px-[14px] py-[10px] text-[13px] leading-[1.2]" style={{ opacity: loading ? 0.7 : 1 }}>
+                    <div key={row.asset} className="grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_1fr] gap-[10px] border-b border-zinc-100 px-[14px] py-[10px] text-[13px] leading-[1.2]" style={{ opacity: loading ? 0.7 : 1 }}>
                       <div className="flex items-center gap-[10px]">
-                        <div className="grid h-[26px] w-[26px] place-items-center rounded-[9px] border border-white/10 bg-white/5 text-[13px] font-black tracking-[0.4px] text-white">{String(row.asset || '—').slice(0, 1)}</div>
+                        <div className="grid h-[26px] w-[26px] place-items-center rounded-[9px] border border-zinc-200 bg-zinc-50 text-[13px] font-black tracking-[0.4px] text-zinc-900">{String(row.asset || '—').slice(0, 1)}</div>
                         <div className="min-w-0">
-                          <div className="truncate font-extrabold tracking-[0.2px] text-white">{loading ? '—' : row.asset}</div>
-                          <div className="mt-[2px] flex items-center gap-1.5 text-xs text-white/44">
+                          <div className="truncate font-extrabold tracking-[0.2px] text-zinc-900">{loading ? '—' : row.asset}</div>
+                          <div className="mt-[2px] flex items-center gap-1.5 text-xs text-zinc-400">
                             {!loading && (
-                              <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-2 py-[3px] text-[11px] text-white/78">
+                              <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2 py-[3px] text-[11px] text-zinc-700">
                                 {locked > 0 ? 'LOCKED' : 'SPOT'}
                               </span>
                             )}
@@ -435,11 +435,11 @@ export default function ExternalBalancesPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right font-mono text-white/85">{loading ? '—' : fmtNum(row.total, 8)}</div>
-                      <div className="text-right font-mono text-white/70">{loading ? '—' : fmtNum(row.free, 8)}</div>
-                      <div className={`text-right font-mono ${locked > 0 ? 'font-bold text-amber-300' : 'text-white/70'}`}>{loading ? '—' : fmtNum(row.locked, 8)}</div>
-                      <div className="text-right font-mono font-extrabold text-white">{loading ? '—' : typeof value === 'number' ? fmtUSD.format(value) : '—'}</div>
-                      <div className="text-right font-mono text-white/70">{loading ? '—' : typeof price === 'number' ? `$${fmtNum(price, 6)}` : '—'}</div>
+                      <div className="text-right font-mono text-zinc-900/85">{loading ? '—' : fmtNum(row.total, 8)}</div>
+                      <div className="text-right font-mono text-zinc-600">{loading ? '—' : fmtNum(row.free, 8)}</div>
+                      <div className={`text-right font-mono ${locked > 0 ? 'font-bold text-amber-700' : 'text-zinc-600'}`}>{loading ? '—' : fmtNum(row.locked, 8)}</div>
+                      <div className="text-right font-mono font-extrabold text-zinc-900">{loading ? '—' : typeof value === 'number' ? fmtUSD.format(value) : '—'}</div>
+                      <div className="text-right font-mono text-zinc-600">{loading ? '—' : typeof price === 'number' ? `$${fmtNum(price, 6)}` : '—'}</div>
                       <div className={`text-right font-mono ${pnlColor}`}>
                         {loading ? '—' : typeof pnlUsd === 'number' ? `${fmtUSD.format(pnlUsd)} (${fmtNum(pnlPct, 2)}%)` : '—'}
                       </div>
@@ -455,41 +455,41 @@ export default function ExternalBalancesPage() {
                   const price = row.price_usdt
                   const pnlUsd = row.pnl_usd
                   const pnlPct = row.pnl_pct
-                  const pnlColor = typeof pnlUsd === 'number' ? (pnlUsd >= 0 ? 'text-emerald-300' : 'text-rose-300') : 'text-white/70'
+                  const pnlColor = typeof pnlUsd === 'number' ? (pnlUsd >= 0 ? 'text-emerald-700' : 'text-rose-700') : 'text-zinc-600'
 
                   return (
-                    <div key={row.asset} className="border-b border-white/5 px-[14px] py-3" style={{ opacity: loading ? 0.7 : 1 }}>
+                    <div key={row.asset} className="border-b border-zinc-100 px-[14px] py-3" style={{ opacity: loading ? 0.7 : 1 }}>
                       <div className="flex items-center justify-between gap-[10px]">
                         <div className="flex items-center gap-[10px]">
-                          <div className="grid h-[26px] w-[26px] place-items-center rounded-[9px] border border-white/10 bg-white/5 text-[13px] font-black tracking-[0.4px] text-white">{String(row.asset || '—').slice(0, 1)}</div>
+                          <div className="grid h-[26px] w-[26px] place-items-center rounded-[9px] border border-zinc-200 bg-zinc-50 text-[13px] font-black tracking-[0.4px] text-zinc-900">{String(row.asset || '—').slice(0, 1)}</div>
                           <div>
-                            <div className="font-extrabold tracking-[0.2px] text-white">{loading ? '—' : row.asset}</div>
-                            <div className="mt-[2px] text-xs text-white/55">{locked > 0 ? `Locked: ${fmtNum(locked, 8)}` : 'Spot'}</div>
+                            <div className="font-extrabold tracking-[0.2px] text-zinc-900">{loading ? '—' : row.asset}</div>
+                            <div className="mt-[2px] text-xs text-zinc-400">{locked > 0 ? `Locked: ${fmtNum(locked, 8)}` : 'Spot'}</div>
                           </div>
                         </div>
 
                         <div className="text-right">
-                          <div className="font-mono text-[15px] font-extrabold text-white">{loading ? '—' : typeof value === 'number' ? fmtUSD.format(value) : '—'}</div>
-                          <div className="mt-[2px] text-xs text-white/62">Total: {loading ? '—' : fmtNum(row.total, 8)}</div>
+                          <div className="font-mono text-[15px] font-extrabold text-zinc-900">{loading ? '—' : typeof value === 'number' ? fmtUSD.format(value) : '—'}</div>
+                          <div className="mt-[2px] text-xs text-zinc-500">Total: {loading ? '—' : fmtNum(row.total, 8)}</div>
                         </div>
                       </div>
 
                       <div className="mt-[10px] grid grid-cols-2 gap-[10px]">
-                        <div className="rounded-xl border border-white/10 bg-white/5 p-[10px]">
-                          <div className="text-[11px] text-white/60">Preço</div>
-                          <div className="mt-1 font-mono text-xs text-white">{loading ? '—' : typeof price === 'number' ? `$${fmtNum(price, 6)}` : '—'}</div>
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
+                          <div className="text-[11px] text-zinc-500">Preço</div>
+                          <div className="mt-1 font-mono text-xs text-zinc-900">{loading ? '—' : typeof price === 'number' ? `$${fmtNum(price, 6)}` : '—'}</div>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-white/5 p-[10px]">
-                          <div className="text-[11px] text-white/60">PnL</div>
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
+                          <div className="text-[11px] text-zinc-500">PnL</div>
                           <div className={`mt-1 font-mono text-xs ${pnlColor}`}>{loading ? '—' : typeof pnlUsd === 'number' ? `${fmtUSD.format(pnlUsd)} (${fmtNum(pnlPct, 2)}%)` : '—'}</div>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-white/5 p-[10px]">
-                          <div className="text-[11px] text-white/60">Free</div>
-                          <div className="mt-1 font-mono text-xs text-white">{loading ? '—' : fmtNum(row.free, 8)}</div>
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
+                          <div className="text-[11px] text-zinc-500">Free</div>
+                          <div className="mt-1 font-mono text-xs text-zinc-900">{loading ? '—' : fmtNum(row.free, 8)}</div>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-white/5 p-[10px]">
-                          <div className="text-[11px] text-white/60">Locked</div>
-                          <div className={`mt-1 font-mono text-xs ${locked > 0 ? 'font-bold text-amber-300' : 'text-white/80'}`}>{loading ? '—' : fmtNum(row.locked, 8)}</div>
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
+                          <div className="text-[11px] text-zinc-500">Locked</div>
+                          <div className={`mt-1 font-mono text-xs ${locked > 0 ? 'font-bold text-amber-700' : 'text-zinc-900/80'}`}>{loading ? '—' : fmtNum(row.locked, 8)}</div>
                         </div>
                       </div>
                     </div>
@@ -497,7 +497,7 @@ export default function ExternalBalancesPage() {
                 })}
               </div>
 
-              <div className="flex items-center justify-between gap-3 bg-white/5 p-4 text-xs text-white/60">
+              <div className="flex items-center justify-between gap-3 bg-zinc-50 p-4 text-xs text-zinc-500">
                 <div>{serverTotalUsd != null ? `total_usd (server): ${fmtUSD.format(serverTotalUsd)}` : `Carteira · ${summary.count} rows visíveis`}</div>
                 <div>{asOfLabel ? `as_of ${asOfLabel}` : ''}</div>
               </div>

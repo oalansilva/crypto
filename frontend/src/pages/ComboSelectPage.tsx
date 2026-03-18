@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, NavLink } from 'react-router-dom'
-import { Layers, Sparkles, ArrowRight, Database, Edit, Copy, Settings, Lock, Unlock, X, Trash2, Play, Menu, Kanban, Shuffle, Wallet, Activity, Bookmark } from 'lucide-react'
-import { openMobileMenu } from '../components/AppNav'
+import { Layers, Sparkles, ArrowRight, Database, Edit, Copy, Settings, Lock, Unlock, X, Trash2, Play, Kanban, Shuffle, Wallet, Activity, Bookmark } from 'lucide-react'
 import { API_BASE_URL } from '../lib/apiBase'
 
 interface Template {
@@ -131,8 +130,8 @@ export function ComboSelectPage() {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <Sparkles className="w-12 h-12 animate-spin text-blue-400 mx-auto mb-4" />
-                    <p className="text-gray-400">Loading templates...</p>
+                    <Sparkles className="w-12 h-12 animate-spin text-emerald-400 mx-auto mb-4" />
+                    <p className="text-zinc-400">Loading templates...</p>
                 </div>
             </div>
         )
@@ -140,41 +139,6 @@ export function ComboSelectPage() {
 
     return (
         <div className="min-h-screen relative overflow-hidden">
-            {/* Animated background */}
-            <div className="fixed inset-0 -z-10">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-float"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
-            </div>
-
-            {/* Header */}
-            <header className="glass-strong border-b border-white/10 sticky top-0 z-50">
-                <div className="container mx-auto px-6 py-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            {/* Mobile Hamburger */}
-                            <button
-                                type="button"
-                                onClick={() => openMobileMenu()}
-                                className="sm:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
-                                aria-label="Abrir menu"
-                            >
-                                <Menu className="w-6 h-6 text-white" />
-                            </button>
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
-                                <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-xl shadow-glow-blue">
-                                    <Layers className="w-7 h-7 text-white" />
-                                </div>
-                            </div>
-                            <div>
-                                <h1 className="text-3xl font-bold gradient-text">Combo Strategies</h1>
-                                <p className="text-sm text-gray-400 mt-0.5">Select a template to backtest or edit</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-6xl mx-auto space-y-8">
@@ -182,18 +146,18 @@ export function ComboSelectPage() {
                     <section>
                         <div className="flex items-center gap-3 mb-6">
                             <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-2 rounded-lg">
-                                <Database className="w-5 h-5 text-white" />
+                                <Database className="w-5 h-5 text-zinc-900" />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-bold text-white">Available Templates</h2>
-                                <p className="text-sm text-gray-400">{allTemplates.length} strategies stored in database</p>
+                                <h2 className="text-2xl font-bold text-zinc-900">Available Templates</h2>
+                                <p className="text-sm text-zinc-400">{allTemplates.length} strategies stored in database</p>
                             </div>
                         </div>
 
                         {allTemplates.length === 0 ? (
                             <div className="glass-strong rounded-xl p-12 text-center">
-                                <Database className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                                <p className="text-gray-400">No templates available</p>
+                                <Database className="w-16 h-16 text-zinc-500 mx-auto mb-4" />
+                                <p className="text-zinc-400">No templates available</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -203,7 +167,7 @@ export function ComboSelectPage() {
                                         onClick={() => handleSelectTemplate(template.name)}
                                         className={`relative glass-strong rounded-xl p-6 border transition-all duration-300 text-left group hover:scale-[1.02] cursor-pointer ${selectedTemplate === template.name
                                             ? 'border-blue-500 bg-blue-500/10'
-                                            : 'border-white/10 hover:border-blue-500/50'
+                                            : 'border-zinc-200 hover:border-blue-500/50'
                                             }`}
                                     >
                                         <div className="flex items-start justify-between mb-3">
@@ -212,8 +176,8 @@ export function ComboSelectPage() {
                                                     <Layers className="w-5 h-5 text-blue-400" />
                                                 </div>
                                                 {template.is_readonly ? (
-                                                    <div className="p-1.5 rounded-md bg-gray-500/20" title='Read-Only (Clone to edit)'>
-                                                        <Lock className="w-3 h-3 text-gray-400" />
+                                                    <div className="p-1.5 rounded-md bg-zinc-400/20" title='Read-Only (Clone to edit)'>
+                                                        <Lock className="w-3 h-3 text-zinc-400" />
                                                     </div>
                                                 ) : (
                                                     <div className="p-1.5 rounded-md bg-green-500/20" title='Editable'>
@@ -228,7 +192,7 @@ export function ComboSelectPage() {
                                                         e.stopPropagation();
                                                         navigate(`/combo/configure?template=${encodeURIComponent(template.name)}`);
                                                     }}
-                                                    className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                                                    className="p-1.5 hover:bg-zinc-100 rounded-md transition-colors"
                                                     title="Run Strategy"
                                                 >
                                                     <Play className="w-4 h-4 text-green-400" />
@@ -236,7 +200,7 @@ export function ComboSelectPage() {
 
                                                 <button
                                                     onClick={(e) => handleEdit(e, template)}
-                                                    className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                                                    className="p-1.5 hover:bg-zinc-100 rounded-md transition-colors"
                                                     title={template.is_readonly ? "Clone & Edit" : "Edit Template"}
                                                 >
                                                     {template.is_readonly ? <Copy className="w-4 h-4 text-purple-400" /> : <Edit className="w-4 h-4 text-blue-400" />}
@@ -245,7 +209,7 @@ export function ComboSelectPage() {
                                                 {!template.is_readonly && (
                                                     <button
                                                         onClick={(e) => handleDelete(e, template.name)}
-                                                        className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                                                        className="p-1.5 hover:bg-zinc-100 rounded-md transition-colors"
                                                         title="Delete Template"
                                                     >
                                                         <Trash2 className="w-4 h-4 text-red-400" />
@@ -254,22 +218,22 @@ export function ComboSelectPage() {
 
                                                 <button
                                                     onClick={(e) => handleClone(e, template.name)}
-                                                    className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                                                    className="p-1.5 hover:bg-zinc-100 rounded-md transition-colors"
                                                     title="Clone Template"
                                                 >
-                                                    <Copy className="w-4 h-4 text-gray-400 hover:text-white" />
+                                                    <Copy className="w-4 h-4 text-zinc-400 hover:text-zinc-900" />
                                                 </button>
                                             </div>
                                         </div>
 
-                                        <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
+                                        <h3 className="text-lg font-bold text-zinc-900 mb-2 group-hover:text-blue-400 transition-colors">
                                             {template.name.replace(/^Example: /, '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                                         </h3>
-                                        <p className="text-sm text-gray-400 line-clamp-2">{template.description}</p>
+                                        <p className="text-sm text-zinc-400 line-clamp-2">{template.description}</p>
 
                                         {selectedTemplate === template.name && (
                                             <div className="absolute top-4 right-4 bg-blue-500 rounded-full p-1 animate-in fade-in zoom-in">
-                                                <ArrowRight className="w-4 h-4 text-white" />
+                                                <ArrowRight className="w-4 h-4 text-zinc-900" />
                                             </div>
                                         )}
                                     </div>
@@ -283,7 +247,7 @@ export function ComboSelectPage() {
                         <div className="flex justify-center pt-8 animate-in fade-in duration-500">
                             <button
                                 onClick={handleContinue}
-                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center gap-3 shadow-lg shadow-blue-500/50 hover:scale-105"
+                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-zinc-900 font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center gap-3 shadow-lg shadow-blue-500/50 hover:scale-105"
                             >
                                 Continue with Backtest
                                 <ArrowRight className="w-5 h-5" />
@@ -296,33 +260,33 @@ export function ComboSelectPage() {
             {/* Clone Modal */}
             {cloneModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCloneModalOpen(false)}></div>
-                    <div className="relative glass-strong rounded-2xl p-6 w-full max-w-md border border-white/20 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="absolute inset-0 bg-white0 backdrop-blur-sm" onClick={() => setCloneModalOpen(false)}></div>
+                    <div className="relative glass-strong rounded-2xl p-6 w-full max-w-md border border-zinc-300 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                         <button
                             onClick={() => setCloneModalOpen(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                            className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900"
                         >
                             <X className="w-5 h-5" />
                         </button>
 
-                        <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-zinc-900 mb-2 flex items-center gap-2">
                             <Copy className="w-5 h-5 text-purple-400" />
                             Clone Template
                         </h2>
-                        <p className="text-gray-400 text-sm mb-6">
+                        <p className="text-zinc-400 text-sm mb-6">
                             Create a copy of <span className="font-mono text-blue-300">{templateToClone}</span> to customize it.
                         </p>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
                                     New Template Name
                                 </label>
                                 <input
                                     type="text"
                                     value={newTemplateName}
                                     onChange={(e) => setNewTemplateName(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-purple-500 outline-none font-mono text-sm"
+                                    className="w-full bg-white0 border border-zinc-200 rounded-lg p-3 text-zinc-900 focus:border-purple-500 outline-none font-mono text-sm"
                                     placeholder="my_strategy_copy"
                                     autoFocus
                                 />
@@ -331,16 +295,16 @@ export function ComboSelectPage() {
                             <div className="flex gap-3 pt-2">
                                 <button
                                     onClick={() => setCloneModalOpen(false)}
-                                    className="flex-1 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors"
+                                    className="flex-1 px-4 py-2 rounded-lg bg-zinc-50 hover:bg-zinc-100 text-zinc-900 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={submitClone}
                                     disabled={!newTemplateName || cloning}
-                                    className="flex-1 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-zinc-900 font-semibold transition-colors flex items-center justify-center gap-2"
                                 >
-                                    {cloning ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                                    {cloning ? <div className="w-4 h-4 border-2 border-zinc-300 border-t-white rounded-full animate-spin" /> : null}
                                     Clone & Edit
                                 </button>
                             </div>

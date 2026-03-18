@@ -112,36 +112,19 @@ export function ComboOptimizePage() {
     }
 
     return (
-        <div className="min-h-screen relative overflow-hidden text-gray-100">
+        <div className="min-h-screen relative overflow-hidden text-zinc-700">
             {/* Background */}
             <div className="fixed inset-0 -z-10 bg-[#0f172a]">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
             </div>
 
-            {/* Header */}
-            <header className="glass-strong border-b border-white/10 sticky top-0 z-50">
-                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => navigate('/combo/configure')} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                            <ArrowLeft className="w-5 h-5 text-gray-400" />
-                        </button>
-                        <div className="flex items-center gap-3">
-                            <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-2 rounded-lg">
-                                <Sliders className="w-5 h-5 text-white" />
-                            </div>
-                            <h1 className="text-xl font-bold">Strategy Optimizer</h1>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             <main className="container mx-auto px-6 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* CONFIGURATION PANEL */}
                     <div className="lg:col-span-1 space-y-6">
-                        <div className="glass-strong rounded-2xl p-6 border border-white/10">
+                        <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
                             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                                 <Settings className="w-4 h-4 text-purple-400" /> Configuration
                             </h2>
@@ -149,11 +132,11 @@ export function ComboOptimizePage() {
                             <div className="space-y-4">
                                 {/* Template Selection */}
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Strategy Template</label>
+                                    <label className="block text-sm text-zinc-400 mb-1">Strategy Template</label>
                                     <select
                                         value={selectedTemplate}
                                         onChange={(e) => setSelectedTemplate(e.target.value)}
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500 transition-colors"
+                                        className="w-full bg-white0 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-purple-500 transition-colors"
                                     >
                                         <option value="">Select Strategy...</option>
                                         {templates.map(t => (
@@ -165,20 +148,20 @@ export function ComboOptimizePage() {
                                 {/* Symbol & Timeframe */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Symbol</label>
+                                        <label className="block text-sm text-zinc-400 mb-1">Symbol</label>
                                         <input
                                             type="text"
                                             value={symbol}
                                             onChange={(e) => setSymbol(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
+                                            className="w-full bg-white0 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Timeframe</label>
+                                        <label className="block text-sm text-zinc-400 mb-1">Timeframe</label>
                                         <select
                                             value={timeframe}
                                             onChange={(e) => setTimeframe(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
+                                            className="w-full bg-white0 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
                                         >
                                             {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
                                         </select>
@@ -187,17 +170,17 @@ export function ComboOptimizePage() {
 
                                 {/* Parameters Ranges */}
                                 {params.length > 0 && (
-                                    <div className="space-y-4 pt-4 border-t border-white/10">
-                                        <h3 className="text-sm font-semibold text-gray-300">Parameter Ranges</h3>
+                                    <div className="space-y-4 pt-4 border-t border-zinc-200">
+                                        <h3 className="text-sm font-semibold text-zinc-500">Parameter Ranges</h3>
                                         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                             {params.map((param, idx) => (
-                                                <div key={idx} className="bg-white/5 rounded-lg p-3">
+                                                <div key={idx} className="bg-zinc-50 rounded-lg p-3">
                                                     <div className="flex justify-between mb-2">
                                                         <span className="text-sm font-medium text-purple-300">{param.name}</span>
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-2">
                                                         <div>
-                                                            <label className="text-xs text-gray-500">Min</label>
+                                                            <label className="text-xs text-zinc-500">Min</label>
                                                             <input
                                                                 type="number"
                                                                 value={param.min}
@@ -206,11 +189,11 @@ export function ComboOptimizePage() {
                                                                     newParams[idx].min = parseFloat(e.target.value)
                                                                     setParams(newParams)
                                                                 }}
-                                                                className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1 text-sm"
+                                                                className="w-full bg-white0 border border-zinc-200 rounded-lg px-2 py-1 text-sm"
                                                             />
                                                         </div>
                                                         <div>
-                                                            <label className="text-xs text-gray-500">Max</label>
+                                                            <label className="text-xs text-zinc-500">Max</label>
                                                             <input
                                                                 type="number"
                                                                 value={param.max}
@@ -219,11 +202,11 @@ export function ComboOptimizePage() {
                                                                     newParams[idx].max = parseFloat(e.target.value)
                                                                     setParams(newParams)
                                                                 }}
-                                                                className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1 text-sm"
+                                                                className="w-full bg-white0 border border-zinc-200 rounded-lg px-2 py-1 text-sm"
                                                             />
                                                         </div>
                                                         <div>
-                                                            <label className="text-xs text-gray-500">Step</label>
+                                                            <label className="text-xs text-zinc-500">Step</label>
                                                             <input
                                                                 type="number"
                                                                 value={param.step}
@@ -232,7 +215,7 @@ export function ComboOptimizePage() {
                                                                     newParams[idx].step = parseFloat(e.target.value)
                                                                     setParams(newParams)
                                                                 }}
-                                                                className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1 text-sm"
+                                                                className="w-full bg-white0 border border-zinc-200 rounded-lg px-2 py-1 text-sm"
                                                             />
                                                         </div>
                                                     </div>
@@ -245,7 +228,7 @@ export function ComboOptimizePage() {
                                 <button
                                     onClick={handleRunOptimization}
                                     disabled={isOptimizing || !selectedTemplate}
-                                    className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+                                    className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-zinc-900 font-bold py-4 rounded-xl shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
                                 >
                                     {isOptimizing ? (
                                         <>
@@ -265,12 +248,12 @@ export function ComboOptimizePage() {
                     {/* RESULTS PANEL */}
                     <div className="lg:col-span-2 space-y-6">
                         {!results ? (
-                            <div className="h-full min-h-[400px] glass-strong rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center p-8">
-                                <div className="bg-white/5 p-4 rounded-full mb-4">
-                                    <Search className="w-12 h-12 text-gray-600" />
+                            <div className="h-full min-h-[400px] glass-strong rounded-2xl border border-zinc-200 flex flex-col items-center justify-center text-center p-8">
+                                <div className="bg-zinc-50 p-4 rounded-full mb-4">
+                                    <Search className="w-12 h-12 text-zinc-600" />
                                 </div>
-                                <h3 className="text-xl font-semibold text-gray-300 mb-2">Ready to Optimize</h3>
-                                <p className="text-gray-500 max-w-md">
+                                <h3 className="text-xl font-semibold text-zinc-500 mb-2">Ready to Optimize</h3>
+                                <p className="text-zinc-500 max-w-md">
                                     Select a strategy template and configure parameter ranges to find the best performing combination.
                                 </p>
                             </div>
@@ -278,51 +261,51 @@ export function ComboOptimizePage() {
                             <div className="space-y-6 animate-fade-in">
 
                                 {/* Best Result Card */}
-                                <div className="glass-strong rounded-2xl p-6 border border-emerald-500/20 bg-emerald-500/5">
+                                <div className="glass-strong rounded-2xl p-6 border border-emerald-600/20 bg-emerald-500/5">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="bg-emerald-500 p-2 rounded-lg">
-                                            <CheckCircle className="w-6 h-6 text-white" />
+                                            <CheckCircle className="w-6 h-6 text-zinc-900" />
                                         </div>
                                         <div>
-                                            <h2 className="text-2xl font-bold text-white">Optimization Complete</h2>
+                                            <h2 className="text-2xl font-bold text-zinc-900">Optimization Complete</h2>
                                             <p className="text-emerald-400">Found optimal parameters</p>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                        <div className="bg-black/20 p-4 rounded-xl">
-                                            <p className="text-xs text-gray-400 mb-1">Total Return</p>
+                                        <div className="bg-white0 p-4 rounded-xl">
+                                            <p className="text-xs text-zinc-400 mb-1">Total Return</p>
                                             <p className="text-2xl font-bold text-emerald-400">
                                                 {(results.best_metrics.total_return * 100).toFixed(2)}%
                                             </p>
                                         </div>
-                                        <div className="bg-black/20 p-4 rounded-xl">
-                                            <p className="text-xs text-gray-400 mb-1">Win Rate</p>
+                                        <div className="bg-white0 p-4 rounded-xl">
+                                            <p className="text-xs text-zinc-400 mb-1">Win Rate</p>
                                             <p className="text-2xl font-bold text-blue-400">
                                                 {(results.best_metrics.win_rate * 100).toFixed(1)}%
                                             </p>
                                         </div>
-                                        <div className="bg-black/20 p-4 rounded-xl">
-                                            <p className="text-xs text-gray-400 mb-1">Sharpe Ratio</p>
+                                        <div className="bg-white0 p-4 rounded-xl">
+                                            <p className="text-xs text-zinc-400 mb-1">Sharpe Ratio</p>
                                             <p className="text-2xl font-bold text-purple-400">
                                                 {results.best_metrics.sharpe_ratio.toFixed(2)}
                                             </p>
                                         </div>
-                                        <div className="bg-black/20 p-4 rounded-xl">
-                                            <p className="text-xs text-gray-400 mb-1">Trades</p>
-                                            <p className="text-2xl font-bold text-white">
+                                        <div className="bg-white0 p-4 rounded-xl">
+                                            <p className="text-xs text-zinc-400 mb-1">Trades</p>
+                                            <p className="text-2xl font-bold text-zinc-900">
                                                 {results.best_metrics.total_trades}
                                             </p>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h3 className="text-sm font-semibold text-gray-400 mb-3">Optimal Parameters</h3>
+                                        <h3 className="text-sm font-semibold text-zinc-400 mb-3">Optimal Parameters</h3>
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                             {Object.entries(results.best_parameters).map(([key, val]) => (
-                                                <div key={key} className="flex justify-between items-center bg-black/20 px-4 py-3 rounded-lg border border-white/5">
-                                                    <span className="text-gray-400 text-sm">{key}</span>
-                                                    <span className="font-mono font-bold text-white">{String(val)}</span>
+                                                <div key={key} className="flex justify-between items-center bg-white0 px-4 py-3 rounded-lg border border-zinc-100">
+                                                    <span className="text-zinc-400 text-sm">{key}</span>
+                                                    <span className="font-mono font-bold text-zinc-900">{String(val)}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -330,17 +313,17 @@ export function ComboOptimizePage() {
                                 </div>
 
                                 {/* Stages Log (Simplificado) */}
-                                <div className="glass-strong rounded-2xl p-6 border border-white/10">
+                                <div className="glass-strong rounded-2xl p-6 border border-zinc-200">
                                     <h3 className="text-lg font-semibold mb-4">Optimization Stages</h3>
                                     <div className="space-y-2">
                                         {results.stages.map((stage: any, i: number) => (
-                                            <div key={i} className="flex items-center gap-4 p-3 hover:bg-white/5 rounded-lg transition-colors">
+                                            <div key={i} className="flex items-center gap-4 p-3 hover:bg-zinc-50 rounded-lg transition-colors">
                                                 <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-sm">
                                                     {stage.stage_num}
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-white">{stage.stage_name}</p>
-                                                    <p className="text-xs text-gray-400">Tested {stage.values.length} variations</p>
+                                                    <p className="font-medium text-zinc-900">{stage.stage_name}</p>
+                                                    <p className="text-xs text-zinc-400">Tested {stage.values.length} variations</p>
                                                 </div>
                                             </div>
                                         ))}

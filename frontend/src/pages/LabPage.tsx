@@ -76,39 +76,26 @@ const LabPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 space-y-4">
           <div>
-            <h1 className="text-2xl font-bold">Agent Trader</h1>
-            <div className="text-xs text-gray-500 mt-1">
-              Spec v2: <a href="/openspec/07-strategy-lab-langgraph-v2" className="underline underline-offset-4 text-gray-300 hover:text-white">openspec/07-strategy-lab-langgraph-v2</a>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <a href="/openspec/07-strategy-lab-langgraph-v2" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">spec v2</a>
-            <a href="/favorites" className="text-sm text-gray-300 hover:text-white underline underline-offset-4">voltar</a>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
-          <div>
-            <label className="text-xs text-gray-400">Mensagem para o Lab</label>
+            <label className="text-xs text-zinc-400">Mensagem para o Lab</label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={5}
-              className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+              className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none text-zinc-100 placeholder:text-zinc-500"
               placeholder="Ex.: Quero rodar o lab com symbol=BTC/USDT timeframe=1h, foco em robustez e DD < 20%."
             />
-            <div className="text-[10px] text-gray-500 mt-1">
+            <div className="text-[10px] text-zinc-500 mt-1">
               Use formato explícito no chat: <span className="font-mono">symbol=BTC/USDT timeframe=1h</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between gap-3">
-            <label className="text-xs text-gray-400">Período</label>
-            <label className="flex items-center gap-2 text-xs text-gray-300">
+            <label className="text-xs text-zinc-400">Período</label>
+            <label className="flex items-center gap-2 text-xs text-zinc-500">
               <input
                 type="checkbox"
                 checked={fullHistory}
@@ -117,7 +104,7 @@ const LabPage: React.FC = () => {
               usar full history
             </label>
           </div>
-          <div className="text-[10px] text-gray-500 -mt-2">
+          <div className="text-[10px] text-zinc-500 -mt-2">
             Se marcado: since padrão = 2017-01-01 (pode demorar mais em intraday).
           </div>
 
@@ -142,13 +129,13 @@ const LabPage: React.FC = () => {
             <button
               onClick={run}
               disabled={busy}
-              className="px-5 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-bold disabled:opacity-50"
+              className="px-5 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-slate-900 text-sm font-bold disabled:opacity-50"
             >
               {busy ? 'Rodando…' : 'Run Lab'}
             </button>
           </div>
 
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-slate-500">
             Inputs obrigatórios (symbol/timeframe) agora entram via chat.
           </div>
         </div>
