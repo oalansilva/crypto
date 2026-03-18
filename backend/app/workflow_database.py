@@ -52,7 +52,9 @@ def get_workflow_db_url() -> str | None:
         return None
 
     settings = get_settings()
-    url = getattr(settings, "workflow_database_url", None) or os.getenv("WORKFLOW_DATABASE_URL")
+    url = getattr(settings, "workflow_database_url", None) or os.getenv(
+        "WORKFLOW_DATABASE_URL"
+    )
     return url or _default_sqlite_url()
 
 
@@ -72,7 +74,9 @@ workflow_engine = get_workflow_engine()
 
 WorkflowSessionLocal = None
 if workflow_engine is not None:
-    WorkflowSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=workflow_engine)
+    WorkflowSessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=workflow_engine
+    )
 
 
 def init_workflow_schema() -> None:
@@ -101,7 +105,10 @@ def init_workflow_schema() -> None:
         try:
             is_sqlite = str(workflow_engine.url).startswith("sqlite:")
             if is_sqlite:
-                cols = {row[1] for row in conn.execute(text("PRAGMA table_info(wf_changes)"))}
+                cols = {
+                    row[1]
+                    for row in conn.execute(text("PRAGMA table_info(wf_changes)"))
+                }
             else:
                 rows = conn.execute(
                     text(
@@ -115,13 +122,72 @@ def init_workflow_schema() -> None:
                 )
                 cols = {str(row[0]) for row in rows}
             if "description" not in cols:
-                conn.execute(text("ALTER TABLE wf_changes ADD COLUMN description TEXT NOT NULL DEFAULT ''"))
+                conn.execute(
+                    text(
+                        "ALTER TABLE wf_changes ADD COLUMN description TEXT NOT NULL DEFAULT ''"
+                    )
+                )
             if "sort_order" not in cols:
-                conn.execute(text("ALTER TABLE wf_changes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"))
+                conn.execute(
+                    text(
+                        "ALTER TABLE wf_changes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"
+                    )
+                )
             if "card_number" not in cols:
-                conn.execute(text("ALTER TABLE wf_changes ADD COLUMN card_number INTEGER"))
+                conn.execute(
+                    text("ALTER TABLE wf_changes ADD COLUMN card_number INTEGER")
+                )
             if "image_data" not in cols:
-                conn.execute(text("ALTER TABLE wf_changes ADD COLUMN image_data TEXT NOT NULL DEFAULT '[]'"))
+                conn.execute(
+                    text(
+                        "ALTER TABLE wf_changes ADD COLUMN image_data TEXT NOT NULL DEFAULT '[]'"
+                    )
+                )
+
+            # Lightweight forward-only migration for work_items table
+            work_items_cols = None
+            try:
+                if is_sqlite:
+                    work_items_cols = {
+                        row[1]
+                        for row in conn.execute(
+                            text("PRAGMA table_info(wf_work_items)")
+                        )
+                    }
+                else:
+                    rows = conn.execute(
+                        text(
+                            """
+                            SELECT column_name
+                            FROM information_schema.columns
+                            WHERE table_schema = current_schema()
+                              AND table_name = 'wf_work_items'
+                            """
+                        )
+                    )
+                    work_items_cols = {str(row[0]) for row in rows}
+            except Exception:
+                pass
+
+            if work_items_cols is not None:
+                if "stage_started_at" not in work_items_cols:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE wf_work_items ADD COLUMN stage_started_at TIMESTAMP WITH TIME ZONE"
+                        )
+                    )
+                if "stage_completed_at" not in work_items_cols:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE wf_work_items ADD COLUMN stage_completed_at TIMESTAMP WITH TIME ZONE"
+                        )
+                    )
+                if "last_agent_acted" not in work_items_cols:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE wf_work_items ADD COLUMN last_agent_acted VARCHAR(64)"
+                        )
+                    )
         except Exception:
             # Best-effort lightweight compatibility shim.
             pass

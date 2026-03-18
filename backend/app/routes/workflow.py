@@ -23,8 +23,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.services.coordination_service import resolve_change_relative_path
-from app.services.upstream_guard import ENFORCED_STATUSES, UpstreamGuardError, require_upstream_published
-from app.services.workflow_transition_service import KANBAN_COLUMNS, sync_change_gates_for_column
+from app.services.upstream_guard import (
+    ENFORCED_STATUSES,
+    UpstreamGuardError,
+    require_upstream_published,
+)
+from app.services.workflow_transition_service import (
+    KANBAN_COLUMNS,
+    sync_change_gates_for_column,
+)
 from app.workflow_database import get_workflow_db, get_workflow_db_url
 from app.workflow_models import (
     ApprovalScope,
@@ -95,9 +102,11 @@ def _parse_tasks_code(text: str) -> Optional[str]:
     return None
 
 
-def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> List[WorkItem]:
+def sync_tasks_to_workflow_db(
+    db: Session, change_pk: str, change_id: str
+) -> List[WorkItem]:
     """Sync tasks.md to wf_work_items table.
-    
+
     Creates Story work items for each section, and Bug work items for each task.
     This function clears existing work items and recreates them from tasks.md to ensure
     the database is in sync with the file.
@@ -129,11 +138,11 @@ def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> Li
     # First, create all stories
     for section in sections:
         section_title = section.title.strip() if section.title else f"Section"
-        
+
         # Extract section code (e.g., "1" from "1. Runtime / Backend")
         section_code_match = re.match(r"^(\d+)", section_title)
         section_code = section_code_match.group(1) if section_code_match else None
-        
+
         # Create story for this section
         story = WorkItem(
             change_pk=change_pk,
@@ -145,7 +154,7 @@ def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> Li
         )
         db.add(story)
         synced_items.append(story)
-        
+
         if section_code:
             section_code_to_story[section_code] = story
 
@@ -159,13 +168,13 @@ def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> Li
         section_title = section.title.strip() if section.title else f"Section"
         section_code_match = re.match(r"^(\d+)", section_title)
         section_code = section_code_match.group(1) if section_code_match else None
-        
+
         parent_story = section_code_to_story.get(section_code)
 
         for task_item in section.items:
             task_code = _parse_tasks_code(task_item.text)
             task_title = task_item.title or task_item.text
-            
+
             # Create task linked to story (tasks are child items of stories)
             task = WorkItem(
                 change_pk=change_pk,
@@ -180,7 +189,7 @@ def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> Li
             synced_items.append(task)
 
     db.commit()
-    
+
     # Refresh all items to get IDs
     for item in synced_items:
         db.refresh(item)
@@ -194,7 +203,9 @@ WorkflowScope = Literal["change", "work_item"]
 def _require_db_url() -> str:
     url = get_workflow_db_url()
     if not url:
-        raise HTTPException(status_code=503, detail="Workflow DB disabled. Set WORKFLOW_DB_ENABLED=1.")
+        raise HTTPException(
+            status_code=503, detail="Workflow DB disabled. Set WORKFLOW_DB_ENABLED=1."
+        )
     return url
 
 
@@ -212,6 +223,7 @@ def workflow_health() -> dict:
 
 # --- Audit/sync helpers (Phase 1 transition) ---
 
+
 class CoordinationAuditResponse(BaseModel):
     project_slug: str
     coordination_active: int
@@ -221,7 +233,9 @@ class CoordinationAuditResponse(BaseModel):
 
 
 @router.get("/audit/coordination", response_model=CoordinationAuditResponse)
-def audit_coordination(project_slug: str = Query(..., min_length=1), db: Session = Depends(get_workflow_db)):
+def audit_coordination(
+    project_slug: str = Query(..., min_length=1), db: Session = Depends(get_workflow_db)
+):
     """Audit drift between file-based coordination artifacts and the workflow DB.
 
     Policy (Phase 1): DB is operational source of truth. `docs/coordination/*.md`
@@ -231,17 +245,25 @@ def audit_coordination(project_slug: str = Query(..., min_length=1), db: Session
     accidentally-created DB-only changes.
     """
 
-    from app.services.coordination_service import list_coordination_changes  # local import to keep workflow router isolated
+    from app.services.coordination_service import (
+        list_coordination_changes,
+    )  # local import to keep workflow router isolated
 
     p = _get_project_by_slug(db, project_slug)
 
     coord = list_coordination_changes()
-    active_ids = sorted([it["id"] for it in coord if not bool(it.get("archived")) and it.get("id")])
+    active_ids = sorted(
+        [it["id"] for it in coord if not bool(it.get("archived")) and it.get("id")]
+    )
 
-    db_ids = sorted([c.change_id for c in db.query(Change).filter(Change.project_id == p.id).all()])
+    db_ids = sorted(
+        [c.change_id for c in db.query(Change).filter(Change.project_id == p.id).all()]
+    )
 
     missing_in_db = sorted([cid for cid in active_ids if cid not in set(db_ids)])
-    missing_in_coordination = sorted([cid for cid in db_ids if cid not in set(active_ids)])
+    missing_in_coordination = sorted(
+        [cid for cid in db_ids if cid not in set(active_ids)]
+    )
 
     return CoordinationAuditResponse(
         project_slug=project_slug,
@@ -342,6 +364,9 @@ class WorkItemOut(BaseModel):
     description: str
     priority: int
     owner_run_id: Optional[str]
+    stage_started_at: Optional[datetime] = None
+    stage_completed_at: Optional[datetime] = None
+    last_agent_acted: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -410,11 +435,20 @@ def _get_project_by_slug(db: Session, slug: str) -> Project:
     return p
 
 
-def _get_change_by_slug_and_id(db: Session, project_slug: str, change_id: str) -> Change:
+def _get_change_by_slug_and_id(
+    db: Session, project_slug: str, change_id: str
+) -> Change:
     project = _get_project_by_slug(db, project_slug)
-    change = db.query(Change).filter(Change.project_id == project.id, Change.change_id == change_id).first()
+    change = (
+        db.query(Change)
+        .filter(Change.project_id == project.id, Change.change_id == change_id)
+        .first()
+    )
     if not change:
-        raise HTTPException(status_code=404, detail=f"Unknown change '{change_id}' in project '{project_slug}'")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown change '{change_id}' in project '{project_slug}'",
+        )
     return change
 
 
@@ -426,24 +460,40 @@ def _get_change_by_pk(db: Session, change_pk: str) -> Change:
 
 
 def _get_work_item(db: Session, change_pk: str, work_item_id: str) -> WorkItem:
-    item = db.query(WorkItem).filter(WorkItem.id == work_item_id, WorkItem.change_pk == change_pk).first()
+    item = (
+        db.query(WorkItem)
+        .filter(WorkItem.id == work_item_id, WorkItem.change_pk == change_pk)
+        .first()
+    )
     if not item:
-        raise HTTPException(status_code=404, detail=f"Unknown work item '{work_item_id}'")
+        raise HTTPException(
+            status_code=404, detail=f"Unknown work item '{work_item_id}'"
+        )
     return item
 
 
-def _next_card_number(db: Session, project_id: str, exclude_change_pk: Optional[str] = None) -> int:
-    query = db.query(Change).filter(Change.project_id == project_id, Change.card_number.is_not(None))
+def _next_card_number(
+    db: Session, project_id: str, exclude_change_pk: Optional[str] = None
+) -> int:
+    query = db.query(Change).filter(
+        Change.project_id == project_id, Change.card_number.is_not(None)
+    )
     if exclude_change_pk:
         query = query.filter(Change.id != exclude_change_pk)
     latest = query.order_by(Change.card_number.desc()).first()
-    return int(latest.card_number or 0) + 1 if latest and latest.card_number is not None else 1
+    return (
+        int(latest.card_number or 0) + 1
+        if latest and latest.card_number is not None
+        else 1
+    )
 
 
 def _ensure_change_card_number(db: Session, change: Change) -> int:
     if change.card_number is not None:
         return int(change.card_number)
-    change.card_number = _next_card_number(db, change.project_id, exclude_change_pk=change.id)
+    change.card_number = _next_card_number(
+        db, change.project_id, exclude_change_pk=change.id
+    )
     db.flush()
     return int(change.card_number)
 
@@ -474,13 +524,17 @@ def _change_out(change: Change) -> ChangeOut:
     )
 
 
-def _validate_parent(db: Session, change_pk: str, parent_id: Optional[str], child_type: WorkItemType) -> Optional[str]:
+def _validate_parent(
+    db: Session, change_pk: str, parent_id: Optional[str], child_type: WorkItemType
+) -> Optional[str]:
     if parent_id is None:
         return None
 
     parent = _get_work_item(db, change_pk, parent_id)
     if child_type == WorkItemType.story:
-        raise HTTPException(status_code=400, detail="Stories cannot have parents in MVP")
+        raise HTTPException(
+            status_code=400, detail="Stories cannot have parents in MVP"
+        )
     if child_type == WorkItemType.bug and parent.type != WorkItemType.story:
         raise HTTPException(status_code=400, detail="Bug parent must be a story in MVP")
     return parent.id
@@ -530,16 +584,27 @@ def list_changes(project_slug: str, db: Session = Depends(get_workflow_db)):
     p = _get_project_by_slug(db, project_slug)
     _backfill_project_card_numbers(db, p.id)
     db.commit()
-    items = db.query(Change).filter(Change.project_id == p.id).order_by(Change.created_at.asc()).all()
+    items = (
+        db.query(Change)
+        .filter(Change.project_id == p.id)
+        .order_by(Change.created_at.asc())
+        .all()
+    )
     return [_change_out(c) for c in items]
 
 
 @router.post("/projects/{project_slug}/changes", response_model=ChangeOut)
-def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depends(get_workflow_db)):
+def create_change(
+    project_slug: str, payload: ChangeCreate, db: Session = Depends(get_workflow_db)
+):
     p = _get_project_by_slug(db, project_slug)
     change_id = payload.change_id.strip()
 
-    existing = db.query(Change).filter(Change.project_id == p.id, Change.change_id == change_id).first()
+    existing = (
+        db.query(Change)
+        .filter(Change.project_id == p.id, Change.change_id == change_id)
+        .first()
+    )
     if existing:
         _ensure_change_card_number(db, existing)
         db.commit()
@@ -562,7 +627,9 @@ def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depend
 
 
 @router.get("/projects/{project_slug}/changes/{change_id}", response_model=ChangeOut)
-def get_change(project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)):
+def get_change(
+    project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)
+):
     c = _get_change_by_slug_and_id(db, project_slug, change_id)
     _ensure_change_card_number(db, c)
     db.commit()
@@ -571,7 +638,12 @@ def get_change(project_slug: str, change_id: str, db: Session = Depends(get_work
 
 
 @router.patch("/projects/{project_slug}/changes/{change_id}", response_model=ChangeOut)
-def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: Session = Depends(get_workflow_db)):
+def update_change(
+    project_slug: str,
+    change_id: str,
+    payload: ChangeUpdate,
+    db: Session = Depends(get_workflow_db),
+):
     c = _get_change_by_slug_and_id(db, project_slug, change_id)
     _ensure_change_card_number(db, c)
     current_column = _normalize_column(c.status)
@@ -586,7 +658,24 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
         _reorder_change_within_column(db, c, payload.reorder)
     if payload.status is not None:
         new_status = _normalize_column(payload.status)
-        
+
+        # Stage Gate Validation: Prevent stage skipping
+        from app.services.stage_gate_service import validate_stage_transition
+
+        gate_result = validate_stage_transition(current_column, new_status)
+        if not gate_result.allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "stage_skip_blocked",
+                    "message": gate_result.message
+                    or f"Cannot skip stages. Current: {current_column}, Target: {new_status}",
+                    "current_stage": gate_result.current_stage,
+                    "target_stage": gate_result.target_stage,
+                    "skipped_stage": gate_result.skipped_stage,
+                },
+            )
+
         # Validation: Cannot move to Alan approval, homologation, or archive without DEV and QA approval
         if new_status in {"Alan approval", "Alan homologation", "Archived"}:
             approvals = (
@@ -598,10 +687,10 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                 .all()
             )
             gate_status = {a.gate: a.state.value for a in approvals}
-            
+
             dev_approved = gate_status.get("DEV") == "approved"
             qa_approved = gate_status.get("QA") == "approved"
-            
+
             if not dev_approved:
                 raise HTTPException(
                     status_code=409,
@@ -618,15 +707,17 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                         "message": f"Cannot move to {new_status} without QA approval",
                     },
                 )
-        
+
         # Validation: Cannot move to Alan approval without OpenSpec artifacts
         if new_status == "Alan approval":
             change_slug = c.change_id
             openspec_dir = Path(REPO_ROOT) / "openspec" / "changes" / change_slug
-            
+
             required_files = ["proposal.md", "review-ptbr.md", "tasks.md"]
-            missing_files = [f for f in required_files if not (openspec_dir / f).exists()]
-            
+            missing_files = [
+                f for f in required_files if not (openspec_dir / f).exists()
+            ]
+
             if missing_files:
                 raise HTTPException(
                     status_code=409,
@@ -637,7 +728,7 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                         "target": new_status,
                     },
                 )
-        
+
         if new_status == "Archived" and current_column != "Archived":
             # Check for open bugs before allowing archive
             open_bugs = (
@@ -660,10 +751,12 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
                         "target": new_status,
                     },
                 )
-            
+
             if payload.cancel_archive:
                 c.status = "Archived"
-                c.sort_order = _next_sort_order(db, c.project_id, "Archived", exclude_change_pk=c.id)
+                c.sort_order = _next_sort_order(
+                    db, c.project_id, "Archived", exclude_change_pk=c.id
+                )
                 db.commit()
             else:
                 try:
@@ -702,7 +795,9 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
             sync_change_gates_for_column(db, change=c, target_column=new_status)
             if new_status != current_column:
                 _normalize_column_sort_orders(db, c.project_id, current_column)
-                c.sort_order = _next_sort_order(db, c.project_id, new_status, exclude_change_pk=c.id)
+                c.sort_order = _next_sort_order(
+                    db, c.project_id, new_status, exclude_change_pk=c.id
+                )
             db.commit()
     if payload.status is None or new_status == "Archived":
         db.commit()
@@ -710,15 +805,32 @@ def update_change(project_slug: str, change_id: str, payload: ChangeUpdate, db: 
     return _change_out(c)
 
 
-@router.get("/projects/{project_slug}/changes/{change_id}/tasks", response_model=List[WorkItemOut])
-def list_tasks(project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)):
+@router.get(
+    "/projects/{project_slug}/changes/{change_id}/tasks",
+    response_model=List[WorkItemOut],
+)
+def list_tasks(
+    project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)
+):
     change = _get_change_by_slug_and_id(db, project_slug, change_id)
-    items = db.query(WorkItem).filter(WorkItem.change_pk == change.id).order_by(WorkItem.priority.desc(), WorkItem.created_at.asc()).all()
+    items = (
+        db.query(WorkItem)
+        .filter(WorkItem.change_pk == change.id)
+        .order_by(WorkItem.priority.desc(), WorkItem.created_at.asc())
+        .all()
+    )
     return [WorkItemOut.model_validate(item, from_attributes=True) for item in items]
 
 
-@router.post("/projects/{project_slug}/changes/{change_id}/tasks", response_model=WorkItemOut)
-def create_task(project_slug: str, change_id: str, payload: WorkItemCreate, db: Session = Depends(get_workflow_db)):
+@router.post(
+    "/projects/{project_slug}/changes/{change_id}/tasks", response_model=WorkItemOut
+)
+def create_task(
+    project_slug: str,
+    change_id: str,
+    payload: WorkItemCreate,
+    db: Session = Depends(get_workflow_db),
+):
     change = _get_change_by_slug_and_id(db, project_slug, change_id)
     parent_id = _validate_parent(db, change.id, payload.parent_id, payload.type)
     item = WorkItem(
@@ -737,13 +849,19 @@ def create_task(project_slug: str, change_id: str, payload: WorkItemCreate, db: 
 
 
 @router.patch("/work-items/{work_item_id}", response_model=WorkItemOut)
-def update_task(work_item_id: str, payload: WorkItemUpdate, db: Session = Depends(get_workflow_db)):
+def update_task(
+    work_item_id: str, payload: WorkItemUpdate, db: Session = Depends(get_workflow_db)
+):
     item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
     if not item:
-        raise HTTPException(status_code=404, detail=f"Unknown work item '{work_item_id}'")
+        raise HTTPException(
+            status_code=404, detail=f"Unknown work item '{work_item_id}'"
+        )
 
     if payload.parent_id is not None:
-        item.parent_id = _validate_parent(db, item.change_pk, payload.parent_id, item.type)
+        item.parent_id = _validate_parent(
+            db, item.change_pk, payload.parent_id, item.type
+        )
     if payload.title is not None:
         item.title = payload.title.strip()
     if payload.description is not None:
@@ -758,7 +876,10 @@ def update_task(work_item_id: str, payload: WorkItemUpdate, db: Session = Depend
     return WorkItemOut.model_validate(item, from_attributes=True)
 
 
-@router.get("/projects/{project_slug}/changes/{change_id}/comments", response_model=List[CommentOut])
+@router.get(
+    "/projects/{project_slug}/changes/{change_id}/comments",
+    response_model=List[CommentOut],
+)
 def list_comments(
     project_slug: str,
     change_id: str,
@@ -771,18 +892,31 @@ def list_comments(
         _get_work_item(db, change.id, work_item_id)
         query = query.filter(WorkflowComment.work_item_id == work_item_id)
     else:
-        query = query.filter(WorkflowComment.change_pk == change.id, WorkflowComment.scope == CommentScope.change)
+        query = query.filter(
+            WorkflowComment.change_pk == change.id,
+            WorkflowComment.scope == CommentScope.change,
+        )
     items = query.order_by(WorkflowComment.created_at.asc()).all()
     return [_comment_out(item) for item in items]
 
 
-@router.post("/projects/{project_slug}/changes/{change_id}/comments", response_model=CommentOut)
-def create_comment(project_slug: str, change_id: str, payload: CommentCreate, db: Session = Depends(get_workflow_db)):
+@router.post(
+    "/projects/{project_slug}/changes/{change_id}/comments", response_model=CommentOut
+)
+def create_comment(
+    project_slug: str,
+    change_id: str,
+    payload: CommentCreate,
+    db: Session = Depends(get_workflow_db),
+):
     change = _get_change_by_slug_and_id(db, project_slug, change_id)
     work_item_id = None
     if payload.scope == "work_item":
         if not payload.work_item_id:
-            raise HTTPException(status_code=400, detail="work_item_id is required for work_item scoped comments")
+            raise HTTPException(
+                status_code=400,
+                detail="work_item_id is required for work_item scoped comments",
+            )
         work_item_id = _get_work_item(db, change.id, payload.work_item_id).id
     item = WorkflowComment(
         scope=CommentScope(payload.scope),
@@ -797,7 +931,10 @@ def create_comment(project_slug: str, change_id: str, payload: CommentCreate, db
     return _comment_out(item)
 
 
-@router.get("/projects/{project_slug}/changes/{change_id}/approvals", response_model=List[ApprovalOut])
+@router.get(
+    "/projects/{project_slug}/changes/{change_id}/approvals",
+    response_model=List[ApprovalOut],
+)
 def list_approvals(
     project_slug: str,
     change_id: str,
@@ -810,18 +947,31 @@ def list_approvals(
         _get_work_item(db, change.id, work_item_id)
         query = query.filter(WorkflowApproval.work_item_id == work_item_id)
     else:
-        query = query.filter(WorkflowApproval.change_pk == change.id, WorkflowApproval.scope == ApprovalScope.change)
+        query = query.filter(
+            WorkflowApproval.change_pk == change.id,
+            WorkflowApproval.scope == ApprovalScope.change,
+        )
     items = query.order_by(WorkflowApproval.created_at.asc()).all()
     return [_approval_out(item) for item in items]
 
 
-@router.post("/projects/{project_slug}/changes/{change_id}/approvals", response_model=ApprovalOut)
-def create_approval(project_slug: str, change_id: str, payload: ApprovalCreate, db: Session = Depends(get_workflow_db)):
+@router.post(
+    "/projects/{project_slug}/changes/{change_id}/approvals", response_model=ApprovalOut
+)
+def create_approval(
+    project_slug: str,
+    change_id: str,
+    payload: ApprovalCreate,
+    db: Session = Depends(get_workflow_db),
+):
     change = _get_change_by_slug_and_id(db, project_slug, change_id)
     work_item_id = None
     if payload.scope == "work_item":
         if not payload.work_item_id:
-            raise HTTPException(status_code=400, detail="work_item_id is required for work_item scoped approvals")
+            raise HTTPException(
+                status_code=400,
+                detail="work_item_id is required for work_item scoped approvals",
+            )
         work_item_id = _get_work_item(db, change.id, payload.work_item_id).id
     item = WorkflowApproval(
         scope=ApprovalScope(payload.scope),
@@ -838,7 +988,10 @@ def create_approval(project_slug: str, change_id: str, payload: ApprovalCreate, 
     return _approval_out(item)
 
 
-@router.get("/projects/{project_slug}/changes/{change_id}/handoffs", response_model=List[HandoffOut])
+@router.get(
+    "/projects/{project_slug}/changes/{change_id}/handoffs",
+    response_model=List[HandoffOut],
+)
 def list_handoffs(
     project_slug: str,
     change_id: str,
@@ -851,18 +1004,31 @@ def list_handoffs(
         _get_work_item(db, change.id, work_item_id)
         query = query.filter(WorkflowHandoff.work_item_id == work_item_id)
     else:
-        query = query.filter(WorkflowHandoff.change_pk == change.id, WorkflowHandoff.scope == HandoffScope.change)
+        query = query.filter(
+            WorkflowHandoff.change_pk == change.id,
+            WorkflowHandoff.scope == HandoffScope.change,
+        )
     items = query.order_by(WorkflowHandoff.created_at.asc()).all()
     return [_handoff_out(item) for item in items]
 
 
-@router.post("/projects/{project_slug}/changes/{change_id}/handoffs", response_model=HandoffOut)
-def create_handoff(project_slug: str, change_id: str, payload: HandoffCreate, db: Session = Depends(get_workflow_db)):
+@router.post(
+    "/projects/{project_slug}/changes/{change_id}/handoffs", response_model=HandoffOut
+)
+def create_handoff(
+    project_slug: str,
+    change_id: str,
+    payload: HandoffCreate,
+    db: Session = Depends(get_workflow_db),
+):
     change = _get_change_by_slug_and_id(db, project_slug, change_id)
     work_item_id = None
     if payload.scope == "work_item":
         if not payload.work_item_id:
-            raise HTTPException(status_code=400, detail="work_item_id is required for work_item scoped handoffs")
+            raise HTTPException(
+                status_code=400,
+                detail="work_item_id is required for work_item scoped handoffs",
+            )
         work_item_id = _get_work_item(db, change.id, payload.work_item_id).id
     item = WorkflowHandoff(
         scope=HandoffScope(payload.scope),
@@ -882,7 +1048,6 @@ def create_handoff(project_slug: str, change_id: str, payload: HandoffCreate, db
 
 # These endpoints intentionally mirror the legacy `/api/coordination/*` response
 # shapes so the Kanban UI can run exclusively on the DB-backed workflow model.
-
 
 
 class KanbanChangeItem(BaseModel):
@@ -980,7 +1145,10 @@ def _latest_change_gate_status(db: Session, change_pk: str) -> Dict[str, str]:
     out: Dict[str, str] = {}
     approvals = (
         db.query(WorkflowApproval)
-        .filter(WorkflowApproval.scope == ApprovalScope.change, WorkflowApproval.change_pk == change_pk)
+        .filter(
+            WorkflowApproval.scope == ApprovalScope.change,
+            WorkflowApproval.change_pk == change_pk,
+        )
         .order_by(WorkflowApproval.created_at.asc())
         .all()
     )
@@ -991,13 +1159,17 @@ def _latest_change_gate_status(db: Session, change_pk: str) -> Dict[str, str]:
 
 def _publish_state_for_change(change: Change) -> str:
     try:
-        result = require_upstream_published(REPO_ROOT, target_statuses=["Alan homologation"])
+        result = require_upstream_published(
+            REPO_ROOT, target_statuses=["Alan homologation"]
+        )
         return "ready" if result.ok else "blocked"
     except UpstreamGuardError:
         return "blocked"
 
 
-def _homologation_readiness(change: Change, gate_status: Dict[str, str], column: str) -> str:
+def _homologation_readiness(
+    change: Change, gate_status: Dict[str, str], column: str
+) -> str:
     qa_functional = gate_status.get("QA") or "pending"
     publish_state = _publish_state_for_change(change)
 
@@ -1032,8 +1204,12 @@ def _normalize_column(raw: Optional[str]) -> str:
     return col
 
 
-def _next_sort_order(db: Session, project_id: str, column: str, exclude_change_pk: Optional[str] = None) -> int:
-    query = db.query(Change).filter(Change.project_id == project_id, Change.status == column)
+def _next_sort_order(
+    db: Session, project_id: str, column: str, exclude_change_pk: Optional[str] = None
+) -> int:
+    query = db.query(Change).filter(
+        Change.project_id == project_id, Change.status == column
+    )
     if exclude_change_pk:
         query = query.filter(Change.id != exclude_change_pk)
     peers = query.order_by(Change.sort_order.desc(), Change.created_at.desc()).all()
@@ -1044,7 +1220,9 @@ def _normalize_column_sort_orders(db: Session, project_id: str, column: str) -> 
     peers = (
         db.query(Change)
         .filter(Change.project_id == project_id, Change.status == column)
-        .order_by(Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc())
+        .order_by(
+            Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc()
+        )
         .all()
     )
     for idx, peer in enumerate(peers):
@@ -1055,13 +1233,17 @@ def _normalize_column_sort_orders(db: Session, project_id: str, column: str) -> 
     db.flush()
 
 
-def _reorder_change_within_column(db: Session, change: Change, direction: Literal["up", "down"]) -> None:
+def _reorder_change_within_column(
+    db: Session, change: Change, direction: Literal["up", "down"]
+) -> None:
     column = _normalize_column(change.status)
     _normalize_column_sort_orders(db, change.project_id, column)
     peers = (
         db.query(Change)
         .filter(Change.project_id == change.project_id, Change.status == column)
-        .order_by(Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc())
+        .order_by(
+            Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc()
+        )
         .all()
     )
     idx = next((i for i, peer in enumerate(peers) if peer.id == change.id), None)
@@ -1090,7 +1272,11 @@ def kanban_create_change(
     base_id = _slugify_change_title(payload.title)
     change_id = base_id
     suffix = 2
-    while db.query(Change).filter(Change.project_id == project.id, Change.change_id == change_id).first():
+    while (
+        db.query(Change)
+        .filter(Change.project_id == project.id, Change.change_id == change_id)
+        .first()
+    ):
         change_id = f"{base_id}-{suffix}"
         suffix += 1
 
@@ -1148,6 +1334,7 @@ def kanban_list_changes(
 
     # Get OpenSpec archived IDs to ensure Kanban stays consistent
     from app.services.coordination_service import _archived_change_ids_from_openspec
+
     openspec_archived_ids = _archived_change_ids_from_openspec()
 
     # Build a map of change_pk to change for bug lookup
@@ -1189,7 +1376,9 @@ def kanban_list_changes(
 
     # Also include bugs as separate cards
     # Query only bugs from non-archived changes in this project
-    active_change_ids = [c.id for c in items if c.change_id not in openspec_archived_ids]
+    active_change_ids = [
+        c.id for c in items if c.change_id not in openspec_archived_ids
+    ]
     bugs = (
         db.query(WorkItem)
         .filter(WorkItem.type == WorkItemType.bug)
@@ -1201,11 +1390,13 @@ def kanban_list_changes(
     for bug in bugs:
         if bug.change_pk not in change_map:
             continue
-        
+
         parent_story = None
         parent_story_title = None
         if bug.parent_id:
-            parent_story = db.query(WorkItem).filter(WorkItem.id == bug.parent_id).first()
+            parent_story = (
+                db.query(WorkItem).filter(WorkItem.id == bug.parent_id).first()
+            )
             if parent_story:
                 parent_story_title = parent_story.title
 
@@ -1245,7 +1436,14 @@ def kanban_list_changes(
         )
 
     column_index = {name: idx for idx, name in enumerate(KANBAN_COLUMNS)}
-    out.sort(key=lambda item: (column_index.get(item.column, 999), item.position, (item.title or item.id).lower(), item.id))
+    out.sort(
+        key=lambda item: (
+            column_index.get(item.column, 999),
+            item.position,
+            (item.title or item.id).lower(),
+            item.id,
+        )
+    )
     return KanbanChangeListResponse(items=out)
 
 
@@ -1263,7 +1461,9 @@ def _extract_task_code(description: str) -> Optional[str]:
     return None
 
 
-def _kanban_task_item(it: WorkItem, children: Optional[List[TaskChecklistItem]] = None) -> TaskChecklistItem:
+def _kanban_task_item(
+    it: WorkItem, children: Optional[List[TaskChecklistItem]] = None
+) -> TaskChecklistItem:
     # Extract task code from description
     task_code = _extract_task_code(it.description)
     # Use title without the code prefix if present
@@ -1274,7 +1474,7 @@ def _kanban_task_item(it: WorkItem, children: Optional[List[TaskChecklistItem]] 
         match = re.match(r"^\d+\.\s+(.+)$", title)
         if match:
             title = match.group(1)
-    
+
     return TaskChecklistItem(
         text=it.title,
         checked=_kanban_task_checked(it.state),
@@ -1284,7 +1484,9 @@ def _kanban_task_item(it: WorkItem, children: Optional[List[TaskChecklistItem]] 
     )
 
 
-@router.get("/kanban/changes/{change_id}/tasks", response_model=KanbanTasksChecklistResponse)
+@router.get(
+    "/kanban/changes/{change_id}/tasks", response_model=KanbanTasksChecklistResponse
+)
 def kanban_change_tasks(
     change_id: str,
     project_slug: Optional[str] = Query(default=None),
@@ -1294,7 +1496,7 @@ def kanban_change_tasks(
 
     We expose a checklist/tree so the existing Kanban UI can render work-items
     without needing to understand the full workflow schema yet.
-    
+
     This endpoint syncs tasks.md to the database before returning results.
     """
 
@@ -1344,7 +1546,9 @@ def kanban_change_tasks(
     )
 
 
-@router.get("/kanban/changes/{change_id}/comments", response_model=KanbanCommentsListResponse)
+@router.get(
+    "/kanban/changes/{change_id}/comments", response_model=KanbanCommentsListResponse
+)
 def kanban_list_comments(
     change_id: str,
     project_slug: Optional[str] = Query(default=None),
@@ -1361,14 +1565,19 @@ def kanban_list_comments(
             migrate_coordination_comments_into_workflow_db,
         )
 
-        migrate_coordination_comments_into_workflow_db(db, change_pk=change.id, change_id=change_id)
+        migrate_coordination_comments_into_workflow_db(
+            db, change_pk=change.id, change_id=change_id
+        )
     except Exception:
         # Never break Kanban if migration fails.
         pass
 
     items = (
         db.query(WorkflowComment)
-        .filter(WorkflowComment.scope == CommentScope.change, WorkflowComment.change_pk == change.id)
+        .filter(
+            WorkflowComment.scope == CommentScope.change,
+            WorkflowComment.change_pk == change.id,
+        )
         .order_by(WorkflowComment.created_at.asc())
         .all()
     )
@@ -1387,7 +1596,9 @@ def kanban_list_comments(
     return KanbanCommentsListResponse(change_id=change_id, items=out)
 
 
-@router.post("/kanban/changes/{change_id}/comments", response_model=KanbanCommentCreateResponse)
+@router.post(
+    "/kanban/changes/{change_id}/comments", response_model=KanbanCommentCreateResponse
+)
 def kanban_post_comment(
     change_id: str,
     payload: KanbanCommentCreateRequest,
@@ -1421,6 +1632,7 @@ def kanban_post_comment(
 
 # --- Scheduler Polling Suppression (reduce-workflow-scheduler-polling) ---
 
+
 class SchedulerDecisionResponse(BaseModel):
     should_run: bool
     suppressed_count: int
@@ -1445,20 +1657,20 @@ def scheduler_should_run(
     db: Session = Depends(get_workflow_db),
 ) -> SchedulerDecisionResponse:
     """Decision endpoint for workflow scheduler.
-    
+
     The scheduler should call this before running a turn. Returns whether
     the scheduler should proceed based on material workflow state changes.
-    
+
     This implements the reduce-workflow-scheduler-polling change:
     - Suppresses redundant turns when no material state changed
     - Breaks suppression on meaningful events (approvals, handoffs, blockers)
     - Forces periodic runs to avoid getting stuck in suppression
     """
     from app.services.workflow_polling_suppressor import get_suppressor
-    
+
     suppressor = get_suppressor()
     should_run, metadata = suppressor.should_scheduler_run(db)
-    
+
     return SchedulerDecisionResponse(
         should_run=should_run,
         suppressed_count=metadata["suppressed_count"],
@@ -1474,10 +1686,10 @@ def scheduler_should_run(
 def scheduler_status() -> SuppressorStatusResponse:
     """Get current suppression status for monitoring/debugging."""
     from app.services.workflow_polling_suppressor import get_suppressor
-    
+
     suppressor = get_suppressor()
     status = suppressor.get_status()
-    
+
     return SuppressorStatusResponse(
         suppression_enabled=status["suppression_enabled"],
         suppressed_count=status["suppressed_count"],
@@ -1491,14 +1703,14 @@ def scheduler_status() -> SuppressorStatusResponse:
 @router.post("/scheduler/force-run")
 def scheduler_force_run() -> dict:
     """Force the next scheduler turn to run (ignore suppression).
-    
+
     Use this to override suppression behavior when needed.
     """
     from app.services.workflow_polling_suppressor import get_suppressor
-    
+
     suppressor = get_suppressor()
     suppressor.force_run_next()
-    
+
     return {"status": "ok", "message": "Next scheduler run forced"}
 
 
@@ -1510,16 +1722,19 @@ def scheduler_configure(
 ) -> dict:
     """Configure suppression behavior."""
     from app.services.workflow_polling_suppressor import get_suppressor
-    
+
     suppressor = get_suppressor()
     suppressor.configure(
         suppression_enabled=suppression_enabled,
         max_suppressed_turns=max_suppressed_turns,
         suppression_timeout_minutes=suppression_timeout_minutes,
     )
-    
-    return {"status": "ok", "configured": {
-        "suppression_enabled": suppression_enabled,
-        "max_suppressed_turns": max_suppressed_turns,
-        "suppression_timeout_minutes": suppression_timeout_minutes,
-    }}
+
+    return {
+        "status": "ok",
+        "configured": {
+            "suppression_enabled": suppression_enabled,
+            "max_suppressed_turns": max_suppressed_turns,
+            "suppression_timeout_minutes": suppression_timeout_minutes,
+        },
+    }
