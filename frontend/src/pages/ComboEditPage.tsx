@@ -234,19 +234,6 @@ export function ComboEditPage() {
 
             {/* Main Content */}
             <main className="container mx-auto px-6 py-8">
-                                disabled={saving}
-                                className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-zinc-900 px-6 py-2 rounded-lg font-bold flex items-center gap-2 transition-all"
-                            >
-                                {saving ? <div className="w-4 h-4 border-2 border-zinc-300 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
-                                Save Changes
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="container mx-auto px-6 py-8">
                 {advancedMode ? (
                     // JSON Editor Mode
                     <div className="h-[80vh] glass-strong rounded-xl border border-zinc-200 overflow-hidden">
