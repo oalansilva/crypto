@@ -30,10 +30,12 @@ test('external balances page loads and shows balances', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Carteira' })).toBeVisible()
 
-  // Column headers (regression: PnL columns present)
-  await expect(page.getByText('Avg Cost (USDT)')).toBeVisible()
-  await expect(page.getByText('PnL (USD)')).toBeVisible()
-  await expect(page.getByText('PnL (%)')).toBeVisible()
+  await expect(page.getByText('Total USD')).toBeVisible()
+  await expect(page.getByText('PnL (parcial)')).toBeVisible()
+  await expect(page.getByText('Locked only')).toHaveCount(0)
+  await expect(page.getByText('Locked USD')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Locked' })).toHaveCount(0)
+  await expect(page.getByText('Locked', { exact: true })).toHaveCount(0)
 
   // Rows present
   await expect(page.getByText('HBAR', { exact: true })).toBeVisible()
