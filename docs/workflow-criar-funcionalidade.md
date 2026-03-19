@@ -100,10 +100,13 @@ Gerar instruções e escrever os artefatos:
 
 - `openspec validate <change-name> --type change`
 
-### 6) Aprovação do PO (antes do Alan)
+### 6) Encerrar PO e disparar DESIGN
 
 - PO revisa os artefatos, garante que decisões e critérios de aceitação estão travados.
-- PO atualiza o kanban (`docs/coordination/<change>.md`) marcando PO como **done**.
+- **PO move o card de PO → DESIGN no Kanban runtime** (`PATCH /api/workflow/projects/crypto/changes/<change_id>` com `{"status": "DESIGN"}`).
+- PO registra handoff comment no card: "📋 PO done. Artefatos prontos (proposal/specs/design/tasks). DESIGN responsavel por prototipar UI."
+- **PO dispara o agente DESIGN** (via spawn ou mensagem interna).
+- Somente após DESIGN finalizar (protótipo + links publicados) o card vai para **Alan approval**.
 
 ### 7) Revisão do Alan (antes de implementar)
 
