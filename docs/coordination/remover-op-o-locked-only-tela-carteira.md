@@ -8,6 +8,11 @@
 - Alan approval: approved
 - Alan homologation: approved
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## DEV Handoff (2026-03-19 20:37 UTC)
 **feito:**
 - Removido toggle "Locked only" da barra de filtros (ExternalBalancesPage.tsx)
