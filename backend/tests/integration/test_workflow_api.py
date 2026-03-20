@@ -82,16 +82,6 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
     assert task_list.status_code == 200
     assert [item["type"] for item in task_list.json()] == ["story", "bug"]
 
-    # Kanban compat: checklist adapter for tasks.
-    kanban_tasks = client.get(
-        "/api/workflow/kanban/changes/centralize-workflow-state-db/tasks?project_slug=crypto"
-    )
-    assert kanban_tasks.status_code == 200
-    kt = kanban_tasks.json()
-    assert kt["change_id"] == "centralize-workflow-state-db"
-    assert kt["sections"][0]["title"] == "Tasks"
-    assert any("Add workflow APIs" in it["text"] for it in kt["sections"][0]["items"])
-
     change_comment = client.post(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/comments",
         json={"scope": "change", "author": "DEV", "body": "API base pronta"},

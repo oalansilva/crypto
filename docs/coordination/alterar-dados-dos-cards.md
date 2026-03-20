@@ -34,3 +34,12 @@
 ## Next actions
 - [x] Publicação/reconciliação: limpar/publicar o conjunto de mudanças relevantes para o `upstream_guard` permitir entrada em `QA` sem bypass inseguro.
 - [ ] QA: reexecutar no próprio card a checagem final de edição + cancelamento no runtime agora que a change já está em `QA`, e anexar a evidência conclusiva.
+
+## Turn Scheduler (2026-03-19 22:36 UTC)
+**feito:** Verificado — card está em `QA` no runtime, bug de cancelamento foi corrigido por DEV (commit 82fefba) e publicado em origin/main.
+**próximo passo:** QA revalidar no runtime: (1) editar title/description preserva id/gates, (2) cancelar card persiste em Archived, (3) drawer consistente após reload. Evidência conclusiva necessária antes de promover para homologação.
+
+## Turn Scheduler (2026-03-19 23:06 UTC)
+**feito:** Sem ativos subagents rodando QA. Card segue em QA aguardando revalidação.
+**bloqueio:** QA não executou a revalidação desde 2026-03-14. O bug de cancelamento foi corrigido e publicado (commit 82fefba).
+**próximo passo:** QA precisa revalidar no runtime: (1) editar title/description preserva id/gates, (2) cancelar card persiste em Archived, (3) drawer consistente após reload. Sem resposta, considerar notificar Alan.
