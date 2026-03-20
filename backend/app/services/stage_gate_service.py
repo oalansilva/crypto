@@ -107,6 +107,13 @@ def validate_stage_transition(
 
     expected_stage_idx = current_idx + 1
     if target_idx != expected_stage_idx:
+        # Backward moves to Canceled/Archived are always allowed
+        if target in {"Archived", "Canceled"}:
+            return StageGateResult(
+                allowed=True,
+                current_stage=current,
+                target_stage=target,
+            )
         skipped_stage = STAGE_ORDER[expected_stage_idx]
         return StageGateResult(
             allowed=False,
