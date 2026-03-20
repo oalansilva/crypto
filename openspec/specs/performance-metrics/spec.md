@@ -1,11 +1,11 @@
 # performance-metrics Specification
 
 ## Purpose
-TBD - created by archiving change enhance-backtesting-metrics. Update Purpose after archive.
+Define strict performance metrics for backtest results including CAGR, monthly average return, and UI display requirements.
+
 ## Requirements
 ### Requirement: Calculate CAGR (Compound Annual Growth Rate)
-
-O sistema deve calcular o CAGR para permitir comparação justa entre estratégias testadas em períodos diferentes.
+O sistema SHALL calcular o CAGR para permitir comparação justa entre estratégias testadas em períodos diferentes.
 
 **Fórmula**: `CAGR = (Final Value / Initial Value)^(1/Years) - 1`
 
@@ -34,8 +34,7 @@ O sistema deve calcular o CAGR para permitir comparação justa entre estratégi
 **Then** o CAGR deve ser anualizado corretamente
 
 ### Requirement: Calculate Monthly Average Return
-
-O sistema deve calcular o retorno médio mensal para avaliar consistência da estratégia.
+O sistema SHALL calcular o retorno médio mensal para avaliar consistência da estratégia.
 
 #### Scenario: Retornos mensais consistentes
 
@@ -49,12 +48,11 @@ O sistema deve calcular o retorno médio mensal para avaliar consistência da es
 **Given** um backtest de 12 meses  
 **And** retornos mensais de [20%, -10%, 15%, -5%, 25%, -15%, 10%, 5%, -8%, 12%, 8%, -7%]  
 **When** as métricas são calculadas  
-**Then** o retorno médio mensal deve refletir a média aritmética
+**Then** o retorno médio mensal deve refletir a média aritmética  
 **And** a volatilidade deve ser calculada separadamente
 
 ### Requirement: Display Performance Metrics in UI
-
-O frontend deve exibir métricas de performance de forma clara e comparável.
+O frontend SHALL exibir métricas de performance de forma clara e comparável.
 
 #### Scenario: Exibição de métricas de performance
 

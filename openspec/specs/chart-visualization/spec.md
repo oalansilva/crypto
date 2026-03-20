@@ -1,7 +1,7 @@
 # chart-visualization Specification
 
 ## Purpose
-TBD - created by archiving change enhance-chart-legend. Update Purpose after archive.
+Define chart visualization requirements including SMA/EMA indicators, RSI panel, and Fibonacci levels with consistent styling and legend display.
 ## Requirements
 ### Requirement: Configuração de Parâmetros de Estratégia
 O formulário Custom Backtest SHALL permitir que o usuário configure os parâmetros da estratégia selecionada.
@@ -51,7 +51,22 @@ Os metadados MUST incluir: nome do indicador com parâmetros, cor sugerida, e da
 ### Requirement: Visualização de EMA 50 e EMA 200
 O gráfico de resultados SHALL exibir as linhas EMA 50 e EMA 200 quando a estratégia EMA RSI Volume é executada. EMA 50 em laranja (#fb923c), EMA 200 em azul (#3b82f6). Legendas "EMA 50" e "EMA 200" com cores correspondentes.
 
+#### Scenario: Visualização de EMA 50 e EMA 200
+- **GIVEN** a estratégia EMA RSI Volume foi executada
+- **WHEN** o usuário visualiza o gráfico de resultados
+- **THEN** a linha EMA 50 é exibida em laranja (#fb923c)
+- **AND** a linha EMA 200 é exibida em azul (#3b82f6)
+- **AND** a legenda mostra "EMA 50" em laranja e "EMA 200" em azul
+
 ### Requirement: Visualização de RSI em Painel Separado
-O gráfico SHALL exibir RSI em painel inferior (lower). RSI em roxo (#8b5cf6), legenda "RSI(14)" ou período configurado. Painel RSI MUST incluir linhas de referência em rsi_min e rsi_max.### Requirement: Sincronização de Indicadores com Parâmetros
+O gráfico SHALL exibir RSI em painel inferior (lower). RSI em roxo (#8b5cf6), legenda "RSI(14)" ou período configurado. Painel RSI MUST incluir linhas de referência em rsi_min e rsi_max.
+
+#### Scenario: Visualização de RSI em Painel Separado
+- **GIVEN** um backtest com RSI foi executado
+- **WHEN** o usuário visualiza o gráfico
+- **THEN** o RSI é exibido em um painel inferior separado
+- **AND** a linha RSI é exibida em roxo (#8b5cf6)
+- **AND** a legenda mostra "RSI(14)" ou o período configurado
+- **AND** linhas de referência são exibidas em rsi_min e rsi_max### Requirement: Sincronização de Indicadores com Parâmetros
 Os indicadores visualizados MUST refletir os parâmetros configurados (ema_fast, ema_slow, rsi_period). Backend MUST retornar metadados com name, color, data, panel ("main" para EMAs, "lower" para RSI).### Requirement: Visualização Fibonacci EMA
 O gráfico SHALL exibir EMA 200 e níveis Fibonacci (0.5, 0.618) quando a estratégia Fibonacci EMA é executada. Cores distintas para EMA e níveis.

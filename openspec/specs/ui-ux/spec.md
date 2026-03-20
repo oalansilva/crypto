@@ -1,7 +1,8 @@
 # ui-ux Specification
 
 ## Purpose
-TBD - created by archiving change improve-defaults-and-ui. Update Purpose after archive.
+Improve default values and UI styling for backtest form including date range, timeframe, and dropdown styling.
+
 ## Requirements
 ### Requirement: Padrão de Data de Início
 O formulário de backtest SHALL iniciar com a data de início ("Start Date") configurada para 1 ano antes da data atual.
@@ -33,5 +34,22 @@ Elementos `<option>` devem respeitar o tema escuro.
 - E não deve haver fundo branco ofuscante
 
 ### Requirement: Pre-Optimization Parameter Review (Sequential)
-The system MUST display a configuration screen before starting optimization where the user reviews and can modify ALL optimization ranges for indicator parameters and risk management. System pre-fills with market best practices; user can accept defaults or customize; clear indication of market standard vs custom.### Requirement: Live Progress Tracking (Sequential)
+The system MUST display a configuration screen before starting optimization where the user reviews and can modify ALL optimization ranges for indicator parameters and risk management. System pre-fills with market best practices; user can accept defaults or customize; clear indication of market standard vs custom.
+
+#### Scenario: Review parameters before optimization
+- **GIVEN** the user has configured a strategy for optimization
+- **WHEN** the user clicks "Start Optimization"
+- **THEN** a configuration screen is displayed
+- **AND** all optimization ranges are shown for review
+- **AND** the user can modify ranges or accept defaults
+- **AND** market standard vs custom values are clearly indicated
+
+### Requirement: Live Progress Tracking (Sequential)
 The system MUST provide a real-time web interface showing current stage, progress within stage (e.g., "Testing 5/13 values"), and stage results as they complete.
+
+#### Scenario: Track optimization progress in real-time
+- **GIVEN** an optimization is running
+- **WHEN** the user views the progress interface
+- **THEN** current stage is displayed
+- **AND** progress within stage is shown (e.g., "Testing 5/13 values")
+- **AND** stage results are shown as they complete

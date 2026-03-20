@@ -15,7 +15,19 @@ E ele MUST executar apenas backtests para combinações onde `media_curta < medi
 ### Requirement: Iterative Convergence
 The optimization process MUST iterate through parameter stages (Rounds) until the set of best parameters stabilizes or a maximum round limit is reached. When Round N+1 finds identical optimal parameters to Round N, the system MUST stop and return the Converged Best Solution.
 
+#### Scenario: Convergence stops optimization
+- **GIVEN** Round N returns optimal parameters P
+- **WHEN** Round N+1 finds identical parameters P
+- **THEN** the system stops and returns P as the Converged Best Solution
+- **AND** no further rounds are executed
+
 ### Requirement: Parallelize Optimization Loop
-The system MUST execute backtests for parameter variations in parallel processes to utilize available CPU cores. Workers distribute parameter values; on unpicklable or worker errors the system MUST catch, mark that value failed, continue other tests, and log clearly.### Requirement: Stage-Based Parameter Locking (Sequential Optimization)
-The system MUST execute optimization in sequential stages: each stage optimizes ONE parameter or group; previous results are LOCKED for subsequent stages; best result from each stage becomes baseline for next. Stages may include timeframe, then fast/slow/signal, then stop_loss, then stop_gain.### Requirement: Full History Backtesting (Sequential)
-The system MUST use complete available historical data for ALL tests in ALL stages. No date range selection; auto-detect earliest/latest; entire dataset per backtest.
+The system MUST execute backtests for parameter variations in parallel processes to utilize available CPU cores. Workers distribute parameter values; on unpicklable or worker errors the system MUST catch, mark that value failed, continue other tests, and log clearly.
+
+#### Scenario: Parallel execution with error handling
+- **GIVEN** a grid of parameter variations to test
+- **WHEN** optimization runs
+- **THEN** backtests execute in parallel processes utilizing available CPU cores
+- **AND** worker errors are caught and marked as failed
+- **AND** other tests continue to completion
+- **AND** failures are logged clearly

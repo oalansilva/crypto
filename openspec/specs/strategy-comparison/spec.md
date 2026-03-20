@@ -1,7 +1,7 @@
 # strategy-comparison Specification
 
 ## Purpose
-TBD - created by syncing delta from change add-favorite-strategies. Side-by-side comparison of favorites.
+Enable side-by-side comparison of favorite strategies with visual highlighting of best performing metrics.
 
 ## Requirements
 
@@ -13,3 +13,10 @@ Given I have two favorites "Aggressive" and "Conservative" and I am on the "Save
 
 ### Requirement: Metrics Visualization
 The interface MUST visually highlight the best performing metrics (e.g., highest Return, lowest Drawdown) in the comparison table.
+
+#### Scenario: Highlight best metrics in comparison
+- **GIVEN** a comparison table with multiple strategies
+- **WHEN** the table is displayed
+- **THEN** the highest Return is visually highlighted
+- **AND** the lowest Drawdown is visually highlighted
+- **AND** other best-in-class metrics are similarly highlighted

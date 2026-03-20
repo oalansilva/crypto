@@ -1,7 +1,7 @@
 # strategy-enablement Specification
 
 ## Purpose
-TBD - created by archiving change enable-rsi-bb-strategies. Update Purpose after archive.
+Enable RSI, Bollinger Bands, and other strategy indicators with proper backend metadata and UI display.
 ## Requirements
 ### Requirement: Habilitar Estratégia RSI Reversal
 O formulário Custom Backtest SHALL permitir selecionar a estratégia "RSI Reversal".
@@ -77,18 +77,68 @@ Os metadados MUST incluir nome formatado com parâmetros e cores específicas.
 - ENTÃO a resposta inclui indicadores com `name` formatado (ex: "RSI(14)"), `color`, e `data`
 
 ### Requirement: Habilitar Estratégia ESTRATEGIAAXS
-O formulário Custom Backtest SHALL permitir selecionar a estratégia "ESTRATEGIAAXS". O frontend DEVE renderizar os campos de parâmetros dinamicamente com base nos metadados do backend. O backend DEVE expor metadados para os 3 parâmetros (Media Curta EMA=6, Media Longa SMA=38, Media Intermediaria SMA=21). A estratégia DEVE suportar Stop Loss, Take Profit e otimização e estar disponível em `/optimize/parameters` e `/optimize/risk`. O gráfico de resultados SHALL exibir as médias (Curta Vermelho, Longa Azul, Intermediaria Laranja).
+O formulário Custom Backtest SHALL permitir selecionar a estratégia "ESTRATEGIAAXS". O frontend SHALL renderizar os campos de parâmetros dinamicamente com base nos metadados do backend. O backend SHALL expor metadados para os 3 parâmetros (Media Curta EMA=6, Media Longa SMA=38, Media Intermediaria SMA=21). A estratégia SHALL suportar Stop Loss, Take Profit e otimização e estar disponível em `/optimize/parameters` e `/optimize/risk`. O gráfico de resultados SHALL exibir as médias (Curta Vermelho, Longa Azul, Intermediaria Laranja).
+
+#### Scenario: Selecionar e configurar ESTRATEGIAAXS
+- **GIVEN** o usuário está no formulário Custom Backtest
+- **WHEN** o usuário seleciona "ESTRATEGIAAXS"
+- **THEN** campos de parâmetros são renderizados dinamicamente
+- **AND** o gráfico exibe médias em cores correspondentes
 
 ### Requirement: Habilitar Estratégia EMA 50/200 + RSI + Volume
-O formulário SHALL permitir selecionar a estratégia "EMA 50/200 + RSI + Volume" (ID "emarsivolume"). Parâmetros: ema_fast, ema_slow, rsi_period, rsi_min, rsi_max com defaults 50, 200, 14, 40, 50. A estratégia MUST gerar compra quando preço acima EMA 200, pullback na EMA 50 e RSI entre rsi_min e rsi_max; venda quando preço cruza abaixo EMA 50 ou RSI &lt; rsi_min. MUST suportar otimização e Stop Loss/Take Profit. Backend SHALL incluir metadados completos.### Requirement: Habilitar Estratégia Fibonacci + EMA 200
-O formulário SHALL permitir selecionar "Fibonacci (0.5 / 0.618) + EMA 200" (ID "fibonacciema"). Parâmetros: ema_period=200, swing_lookback=20, fib_level_1=0.5, fib_level_2=0.618, level_tolerance=0.005. A estratégia MUST detectar swing high/low, calcular níveis Fibonacci e gerar compra quando preço acima EMA 200 e dentro da tolerância de um nível Fib com bounce. MUST suportar otimização e Stop Loss/Take Profit.
+O formulário SHALL permitir selecionar a estratégia "EMA 50/200 + RSI + Volume" (ID "emarsivolume"). Parâmetros: ema_fast, ema_slow, rsi_period, rsi_min, rsi_max com defaults 50, 200, 14, 40, 50. A estratégia SHALL gerar compra quando preço acima EMA 200, pullback na EMA 50 e RSI entre rsi_min e rsi_max; venda quando preço cruza abaixo EMA 50 ou RSI < rsi_min. SHALL suportar otimização e Stop Loss/Take Profit. Backend SHALL incluir metadados completos.
+
+#### Scenario: Executar estratégia EMA 50/200 + RSI + Volume
+- **GIVEN** "EMA 50/200 + RSI + Volume" está selecionada
+- **WHEN** o backtest é executado
+- **THEN** compra ocorre quando preço acima EMA 200, pullback na EMA 50, RSI entre rsi_min e rsi_max
+- **AND** venda ocorre quando preço cruza abaixo EMA 50 ou RSI < rsi_min
+
+### Requirement: Habilitar Estratégia Fibonacci + EMA 200
+O formulário SHALL permitir selecionar "Fibonacci (0.5 / 0.618) + EMA 200" (ID "fibonacciema"). Parâmetros: ema_period=200, swing_lookback=20, fib_level_1=0.5, fib_level_2=0.618, level_tolerance=0.005. A estratégia SHALL detectar swing high/low, calcular níveis Fibonacci e gerar compra quando preço acima EMA 200 e dentro da tolerância de um nível Fib com bounce. SHALL suportar otimização e Stop Loss/Take Profit.
+
+#### Scenario: Executar estratégia Fibonacci + EMA 200
+- **GIVEN** "Fibonacci + EMA 200" está selecionada
+- **WHEN** o backtest é executado
+- **THEN** swing high/low são detectados
+- **AND** níveis Fibonacci são calculados
+- **AND** compra ocorre quando preço acima EMA 200 e dentro da tolerância de nível Fib
 
 ### Requirement: Template Editing via API (REQ-STRAT-EDIT-001)
-O sistema SHALL permitir atualizar templates de estratégia via API REST. PUT /api/combos/meta/{template_name} atualiza optimization_schema para templates com is_readonly=0; 403 para templates somente-leitura; 400 para ranges inválidos (min >= max).### Requirement: Template Clonagem (REQ-STRAT-CLONE-001)
+O sistema SHALL permitir atualizar templates de estratégia via API REST. PUT /api/combos/meta/{template_name} atualiza optimization_schema para templates com is_readonly=0; 403 para templates somente-leitura; 400 para ranges inválidos (min >= max).
+
+#### Scenario: Update template via API
+- **GIVEN** um template com is_readonly=0
+- **WHEN** PUT /api/combos/meta/{template_name} é chamado com optimization_schema
+- **THEN** o schema é atualizado
+- **AND** 403 é retornado para templates somente-leitura
+- **AND** 400 é retornado para ranges inválidos (min >= max)
+
+### Requirement: Template Clonagem (REQ-STRAT-CLONE-001)
 O sistema SHALL permitir clonar templates. POST /api/combos/meta/{name}/clone?new_name=... cria novo template com is_readonly=0, is_prebuilt=0; 409 se nome duplicado.
+
+#### Scenario: Clone a template
+- **GIVEN** um template existente
+- **WHEN** POST /api/combos/meta/{name}/clone?new_name=... é chamado
+- **THEN** um novo template é criado com is_readonly=0 e is_prebuilt=0
+- **AND** 409 é retornado se o nome já existe
 
 ### Requirement: UI de Edição de Template (REQ-STRAT-UI-001)
 O sistema SHALL fornecer interface em `/combo/edit/{template_name}` com formulário de min/max/step, botão Salvar (PUT), validação em tempo real. Modo Avançado com editor JSON, syntax highlighting e validação.
 
+#### Scenario: Edit template via UI
+- **GIVEN** o usuário acessa `/combo/edit/{template_name}`
+- **WHEN** o formulário é carregado
+- **THEN** campos min/max/step são exibidos
+- **AND** botão Salvar (PUT) está disponível
+- **AND** validação em tempo real funciona
+- **AND** Modo Avançado oferece editor JSON com syntax highlighting
+
 ### Requirement: Acesso ao Editor pela Página de Seleção (REQ-STRAT-NAV-001)
-Em `/combo/select`, templates customizados mostram botão "Editar"; templates pré-construídos mostram "Clonar & Editar" com modal de nome e redirecionamento ao editor do clone.
+O sistema SHALL exibir em `/combo/select` o botão "Editar" para templates customizados e "Clonar & Editar" para templates pré-construídos, com modal de nome e redirecionamento ao editor do clone.
+
+#### Scenario: Navigate to template editor
+- **GIVEN** o usuário está em `/combo/select`
+- **WHEN** visualiza templates customizados ou pré-construídos
+- **THEN** templates customizados mostram botão "Editar"
+- **AND** templates pré-construídos mostram "Clonar & Editar" com modal de nome
