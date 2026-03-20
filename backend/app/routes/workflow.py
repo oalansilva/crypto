@@ -676,8 +676,8 @@ def update_change(
                 },
             )
 
-        # Validation: Cannot move to Alan approval, homologation, or archive without DEV and QA approval
-        if new_status in {"Alan approval", "Alan homologation", "Archived"}:
+        # Validation: Cannot move to Alan homologation or archive without DEV and QA approval
+        if new_status in {"Alan homologation", "Archived"}:
             approvals = (
                 db.query(WorkflowApproval)
                 .filter(
@@ -696,7 +696,7 @@ def update_change(
                     status_code=409,
                     detail={
                         "code": "dev_not_approved",
-                        "message": "Cannot move to Alan approval without DEV approval",
+                        "message": f"Cannot move to {new_status} without DEV approval",
                     },
                 )
             if not qa_approved:
