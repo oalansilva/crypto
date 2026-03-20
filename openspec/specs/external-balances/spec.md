@@ -97,6 +97,10 @@ The Wallet balances endpoint MUST accept a query param `min_usd` (optional float
 - **THEN** the UI MUST show only rows where `locked > 0`
 
 ### Requirement: Wallet UI MUST be usable on mobile
-- **WHEN** the viewport is narrow
+The Wallet UI SHALL render correctly on narrow viewports without horizontal scrolling.
+
+#### Scenario: Mobile balance inspection
+- **WHEN** the user opens the Wallet on a mobile device (viewport < 768px)
 - **THEN** the UI MUST not require horizontal scrolling to inspect balances
+- **AND** the balance list SHALL adapt to a single-column layout
 

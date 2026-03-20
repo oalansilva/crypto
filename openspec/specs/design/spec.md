@@ -18,14 +18,29 @@ Para escolhas com menos de 5 opções (ex: Mode, Timeframe populares), a UI SHAL
 - ENTÃO os timeframes mais comuns (15m, 1h, 4h, 1d) devem estar visíveis como botões clicáveis imediatos.
 
 ### Requirement: Feedback Visual
-Elementos interativos SHALL fornecer feedback imediato.
-- Hover: Ligeiro brilho ou mudança de fundo.
-- Focus: Borda colorida (Azul/Roxo).
-- Active: Estado "pressionado" ou cor sólida vibrante.
+Elementos interativos SHALL fornecer feedback visual imediato em todas as interações do usuário.
+
+#### Scenario: Hover feedback
+- **WHEN** the user hovers over an interactive element
+- **THEN** the element SHALL display a subtle glow or background color change
+
+#### Scenario: Focus feedback
+- **WHEN** an interactive element receives keyboard focus
+- **THEN** the element SHALL display a colored border (Azul/Roxo)
+
+#### Scenario: Active/press feedback
+- **WHEN** the user presses an interactive element
+- **THEN** the element SHALL display a pressed state or solid vibrant color
 
 ### Requirement: Estética Glassmorphism
-O container e os inputs DEVEM respeitar a estética "Glass":
-- Background: `bg-white/5` ou `bg-slate-900/50`
-- Border: `border-white/10`
-- Backdrop Filter: `backdrop-blur-md` (onde suportado)
+O container e os inputs SHALL respeitar a estética "Glass" com background, border e backdrop filter conforme especificado.
+
+#### Scenario: Glass container styling
+- **WHEN** the user views a glass container on a supported browser
+- **THEN** the background SHALL use `bg-white/5` or `bg-slate-900/50`
+- **AND** the border SHALL use `border-white/10`
+
+#### Scenario: Glass backdrop filter
+- **WHEN** the user views a glass container on a supported browser
+- **THEN** the element SHALL apply `backdrop-blur-md` where supported
 
