@@ -1,0 +1,224 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]:
+      - img [ref=e8]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Crypto Lab
+        - generic [ref=e13]: Operação, estratégia e execução
+    - generic [ref=e14]:
+      - generic [ref=e15]: Painel
+      - generic [ref=e16]: Dashboard principal
+    - navigation [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: Principal
+        - generic [ref=e20]:
+          - link "Playground" [ref=e21] [cursor=pointer]:
+            - /url: /
+            - img [ref=e23]
+            - generic [ref=e26]: Playground
+          - link "Favoritos" [ref=e27] [cursor=pointer]:
+            - /url: /favorites
+            - img [ref=e28]
+            - generic [ref=e30]: Favoritos
+          - link "Monitor" [ref=e31] [cursor=pointer]:
+            - /url: /monitor
+            - img [ref=e32]
+            - generic [ref=e34]: Monitor
+          - link "Kanban" [ref=e35] [cursor=pointer]:
+            - /url: /kanban
+            - img [ref=e36]
+            - generic [ref=e37]: Kanban
+      - generic [ref=e38]:
+        - generic [ref=e39]: Estratégias
+        - generic [ref=e40]:
+          - link "Lab" [ref=e41] [cursor=pointer]:
+            - /url: /lab
+            - img [ref=e42]
+            - generic [ref=e44]: Lab
+          - link "Combo" [ref=e45] [cursor=pointer]:
+            - /url: /combo/select
+            - img [ref=e46]
+            - generic [ref=e50]: Combo
+      - generic [ref=e51]:
+        - generic [ref=e52]: Conta
+        - link "Carteira" [ref=e54] [cursor=pointer]:
+          - /url: /external/balances
+          - img [ref=e55]
+          - generic [ref=e58]: Carteira
+    - button "Recolher menu" [ref=e60]:
+      - img [ref=e61]
+      - generic [ref=e63]: Recolher menu
+  - banner [ref=e64]:
+    - generic [ref=e65]:
+      - generic [ref=e66]:
+        - generic [ref=e67]: Workspace
+        - generic [ref=e68]: Dashboard principal
+      - generic [ref=e69]:
+        - generic [ref=e70]: Contraste otimizado
+        - button "Configurações" [ref=e71]:
+          - img [ref=e72]
+  - main [ref=e77]:
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - generic [ref=e81]: Cockpit diário
+          - heading "Seu snapshot diário de crypto" [level=1] [ref=e82]
+          - paragraph [ref=e83]: Como estou indo, o que precisa atenção e qual o próximo passo mais rápido.
+          - generic [ref=e84]:
+            - button "Rodar um backtest Escolha estratégia · timeframe" [ref=e85]:
+              - generic [ref=e86]:
+                - generic [ref=e87]:
+                  - generic [ref=e88]: Rodar um backtest
+                  - generic [ref=e89]: Escolha estratégia · timeframe
+                - img [ref=e90]
+            - button "Atualizar dados Explorar candles · Lab" [ref=e92]:
+              - generic [ref=e93]:
+                - generic [ref=e94]:
+                  - generic [ref=e95]: Atualizar dados
+                  - generic [ref=e96]: Explorar candles · Lab
+                - img [ref=e97]
+            - button "Abrir monitor Sinais · posições" [ref=e99]:
+              - generic [ref=e100]:
+                - generic [ref=e101]:
+                  - generic [ref=e102]: Abrir monitor
+                  - generic [ref=e103]: Sinais · posições
+                - img [ref=e104]
+        - complementary [ref=e106]:
+          - generic [ref=e107]:
+            - heading "Saúde do sistema" [level=2] [ref=e108]
+            - generic [ref=e109]: OK
+          - generic [ref=e110]:
+            - generic [ref=e111]:
+              - term [ref=e112]: Último check
+              - definition [ref=e113]: 24 de mar., 15:21
+            - generic [ref=e114]:
+              - term [ref=e115]: API
+              - definition [ref=e116]: crypto-backtester-api
+            - generic [ref=e117]:
+              - term [ref=e118]: Carteira
+              - definition [ref=e119]: External balances
+          - generic [ref=e120]:
+            - button "OpenSpec" [ref=e121]:
+              - img [ref=e122]
+              - text: OpenSpec
+            - button "Lab" [ref=e125]:
+              - img [ref=e126]
+              - text: Lab
+      - generic [ref=e129]:
+        - generic [ref=e130]:
+          - generic [ref=e131]: Portfolio PnL (hoje)
+          - generic [ref=e132]: +2.34%
+          - generic [ref=e133]: "vs. BTC: +0.40%"
+        - generic [ref=e134]:
+          - generic [ref=e135]: Drawdown (30d)
+          - generic [ref=e136]: "-6.10%"
+          - generic [ref=e137]: "Pico: 12 Fev"
+        - generic [ref=e138]:
+          - generic [ref=e139]: Melhor estratégia (7d)
+          - generic [ref=e140]: MA Crossover
+          - generic [ref=e141]: "ROI: +8.9%"
+        - generic [ref=e142]:
+          - generic [ref=e143]: Data freshness
+          - generic [ref=e144]: 200 candles
+          - generic [ref=e145]: BTC/USDT · 1h
+      - generic [ref=e146]:
+        - generic [ref=e147]:
+          - generic [ref=e148]:
+            - generic [ref=e149]:
+              - heading "Foco de hoje" [level=2] [ref=e150]
+              - link "Ver tudo" [ref=e151] [cursor=pointer]:
+                - /url: /kanban
+            - list [ref=e152]:
+              - listitem [ref=e153]:
+                - generic [ref=e154]: Action
+                - generic [ref=e155]:
+                  - generic [ref=e156]: Revisar dados (candles) para ETH/USDT
+                  - generic [ref=e157]: Sugestão v0
+                - button "Abrir" [ref=e158]
+              - listitem [ref=e159]:
+                - generic [ref=e160]: Info
+                - generic [ref=e161]:
+                  - generic [ref=e162]: Resultados recentes
+                  - generic [ref=e163]: Momentum v2 · ROI +12.1%
+                - button "Ver" [ref=e164]
+              - listitem [ref=e165]:
+                - generic [ref=e166]: OK
+                - generic [ref=e167]:
+                  - generic [ref=e168]: External balances
+                  - generic [ref=e169]: Binance · 24 de mar., 15:21
+                - button "Abrir" [ref=e170]
+          - generic [ref=e171]:
+            - generic [ref=e172]:
+              - heading "Runs recentes" [level=2] [ref=e173]
+              - link "Lab" [ref=e174] [cursor=pointer]:
+                - /url: /lab
+            - generic [ref=e175]:
+              - generic [ref=e176]:
+                - generic [ref=e177]: Strategy
+                - generic [ref=e178]: Pair
+                - generic [ref=e179]: TF
+                - generic [ref=e180]: ROI
+                - generic [ref=e181]: DD
+                - generic [ref=e182]: Status
+              - generic [ref=e183]:
+                - generic [ref=e184]: Momentum v2
+                - generic [ref=e185]: BTC/USDT
+                - generic [ref=e186]: 4h
+                - generic [ref=e187]: +12.1%
+                - generic [ref=e188]: "-4.0%"
+                - generic [ref=e190]: Done
+              - generic [ref=e191]:
+                - generic [ref=e192]: Mean reversion
+                - generic [ref=e193]: ETH/USDT
+                - generic [ref=e194]: 1h
+                - generic [ref=e195]: "-1.2%"
+                - generic [ref=e196]: "-7.6%"
+                - generic [ref=e198]: Done
+              - generic [ref=e199]:
+                - generic [ref=e200]: MA Crossover
+                - generic [ref=e201]: SOL/USDT
+                - generic [ref=e202]: 1h
+                - generic [ref=e203]: +8.9%
+                - generic [ref=e204]: "-3.4%"
+                - generic [ref=e206]: Queued
+            - paragraph [ref=e207]: "Obs: tabela com dados de exemplo até termos endpoint de listagem."
+        - complementary [ref=e208]:
+          - generic [ref=e209]:
+            - generic [ref=e210]:
+              - heading "Market watch" [level=2] [ref=e211]
+              - link "Monitor" [ref=e212] [cursor=pointer]:
+                - /url: /monitor
+            - list [ref=e213]:
+              - listitem [ref=e214]:
+                - generic [ref=e215]: BTC/USDT
+                - generic [ref=e216]: $62,340
+                - generic [ref=e217]: +1.2%
+              - listitem [ref=e218]:
+                - generic [ref=e219]: ETH/USDT
+                - generic [ref=e220]: $3,420
+                - generic [ref=e221]: "-0.4%"
+              - listitem [ref=e222]:
+                - generic [ref=e223]: SOL/USDT
+                - generic [ref=e224]: $128
+                - generic [ref=e225]: +3.1%
+            - button "Abrir monitor" [ref=e227]:
+              - img [ref=e228]
+              - text: Abrir monitor
+          - generic [ref=e230]:
+            - heading "Atalhos" [level=2] [ref=e231]
+            - generic [ref=e232]:
+              - link "Combo" [ref=e233] [cursor=pointer]:
+                - /url: /combo/select
+                - img [ref=e234]
+                - text: Combo
+              - link "Kanban" [ref=e238] [cursor=pointer]:
+                - /url: /kanban
+                - img [ref=e239]
+                - text: Kanban
+              - link "Carteira" [ref=e240] [cursor=pointer]:
+                - /url: /external/balances
+                - img [ref=e241]
+                - text: Carteira
+          - generic [ref=e243]:
+            - heading "Notas" [level=2] [ref=e244]
+            - paragraph [ref=e245]: Implementação guiada pelo prototype. Algumas seções usam placeholders até termos endpoints dedicados.
