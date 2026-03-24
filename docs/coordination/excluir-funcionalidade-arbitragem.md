@@ -5,7 +5,7 @@
 - DESIGN: skipped
 - Alan approval: not reviewed
 - DEV: **done** ✅
-- QA: not started
+- QA: **blocked - server restart required** ⚠️
 - Alan homologation: not reviewed
 
 ## DEV Handoff
@@ -42,5 +42,31 @@
 - Proposal: http://72.60.150.140:5173/openspec/changes/excluir-funcionalidade-arbitragem/proposal
 - Review PT-BR: http://72.60.150.140:5173/openspec/changes/excluir-funcionalidade-arbitragem/review-ptbr
 
+## QA Findings (2026-03-24 15:23 UTC)
+
+### Validation Results:
+1. ✅ **Frontend (Working Tree)**: `/arbitrage` route removed, no "Arbitragem" nav item, ArbitragePage.tsx deleted
+2. ✅ **Frontend (Running)**: Nav correctly shows no Arbitragem item (Vite serves modified files)
+3. ❌ **API (Running Server)**: `/api/arbitrage/spreads` returns 200 with live data
+4. ✅ **Health check**: `/api/health` returns 200 OK
+
+### Issue Found:
+**Backend server NOT restarted after staging changes.**
+
+The DEV agent correctly staged changes to remove arbitrage from api.py/main.py. However, uvicorn (PID 677767, started 2026-03-24 13:59) is still running the OLD committed code.
+
+**Evidence:**
+- `curl http://72.60.150.140:5173/api/arbitrage/spreads` → 200 with spreads data
+- Backend process running from old commit (before staged changes)
+- Grep confirms staged api.py has no arbitrage, but running server has old code
+
+### Next Step:
+1. DEV: Restart backend server to apply staged changes
+2. DEV: Commit the staged changes after restart verification
+3. QA: Re-validate to confirm `/api/arbitrage/spreads` returns 404
+
 ## Next actions
-- [ ] QA: validate the removal (navigate UI, check /arbitrage route returns 404, check /api/arbitrage/spreads returns 404)
+- [x] QA: validate the removal (PARTIAL - frontend OK, backend blocked by server restart)
+- [ ] DEV: Restart backend server to apply staged changes
+- [ ] DEV: Commit staged changes after restart verification
+- [ ] QA: Re-validate after restart
