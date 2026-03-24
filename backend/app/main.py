@@ -25,6 +25,7 @@ from app.routes.external_balances import router as external_balances_router
 from app.routes.coordination import router as coordination_router
 from app.routes.workflow import router as workflow_router
 from app.routes.workflow_validation import router as workflow_validation_router
+from app.routes.market import router as market_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -207,6 +208,7 @@ app.include_router(external_balances_router)
 app.include_router(coordination_router)
 app.include_router(workflow_router)
 app.include_router(workflow_validation_router)
+app.include_router(market_router)
 
 @app.get("/")
 async def root():

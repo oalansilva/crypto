@@ -1,18 +1,107 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Activity, ArrowRight, FileText, Kanban, Layers, Settings } from 'lucide-react'
-import { backtestApi } from '@/lib/api'
+import { apiUrl } from '@/lib/apiBase'
 
 type HealthState = {
-  status: 'loading' | 'ok' | 'error'
+  status?: string
   service?: string
 }
+
+type FavoriteStrategy = {
+  id: number
+  name: string
+  symbol: string
+  timeframe: string
+  strategy_name: string
+  metrics?: Record<string, unknown> | null
+  created_at: string
+}
+
+type BalancesSnapshot = {
+  balances?: Array<Record<string, unknown>>
+  total_usd?: number | null
+  as_of?: string | null
+}
+
+type CoordinationChangeItem = {
+  id: string
+  title?: string | null
+  description?: string | null
+  card_number?: number | null
+  path: string
+  status: Record<string, string>
+  archived: boolean
+  column: string
+  position?: number
+  item_type?: 'change' | 'bug'
+}
+
+type CoordinationChangeListResponse = {
+  items: CoordinationChangeItem[]
+}
+
+type ChangeDetailResponse = {
+  id: string
+  project_id: string
+  change_id: string
+  title: string
+  description: string
+  status: string
+  card_number?: number | null
+  created_at: string
+  updated_at: string
+}
+
+type FocusChange = CoordinationChangeItem & {
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+type LabRunSummary = {
+  run_id: string
+  status: string
+  step?: string | null
+  created_at_ms: number
+  updated_at_ms: number
+  viewer_url: string
+}
+
+type LabRunsResponse = {
+  runs: LabRunSummary[]
+}
+
+type MarketPrice = {
+  symbol: string
+  price: number
+  change_24h_pct: number
+}
+
+type MarketPricesResponse = {
+  prices: MarketPrice[]
+  fetched_at: string | null
+}
+
+
 
 function cx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(' ')
 }
 
-function formatDt(dt: Date) {
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(apiUrl(path).toString())
+  const payload = await res.json().catch(() => null)
+  if (!res.ok) {
+    const detail = payload && typeof payload === 'object' ? (payload as { detail?: string }).detail : undefined
+    throw new Error(detail || `Falha ao carregar ${path}`)
+  }
+  return payload as T
+}
+
+function formatDt(value: string | Date) {
+  const dt = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(dt.getTime())) return '—'
   return dt.toLocaleString('pt-BR', {
     day: '2-digit',
     month: 'short',
@@ -21,42 +110,239 @@ function formatDt(dt: Date) {
   })
 }
 
+function formatPercent(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return null
+  return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
+}
+
+function formatCurrency(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: value >= 1000 ? 2 : 4,
+  }).format(value)
+}
+
+function formatFreshness(value: string | null | undefined) {
+  if (!value) return null
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return null
+  const diffMs = Date.now() - dt.getTime()
+  if (diffMs <= 60_000) return 'agora'
+  const diffMinutes = Math.round(diffMs / 60_000)
+  if (diffMinutes < 60) return `há ${diffMinutes} min`
+  const diffHours = Math.round(diffMinutes / 60)
+  if (diffHours < 24) return `há ${diffHours} h`
+  const diffDays = Math.round(diffHours / 24)
+  return `há ${diffDays} d`
+}
+
+function getReturnPct(metrics: Record<string, unknown> | null | undefined) {
+  if (!metrics) return null
+  const totalReturnPct = metrics.total_return_pct
+  if (typeof totalReturnPct === 'number' && Number.isFinite(totalReturnPct)) return totalReturnPct
+  const totalReturn = metrics.total_return
+  if (typeof totalReturn === 'number' && Number.isFinite(totalReturn)) return totalReturn * 100
+  return null
+}
+
+function getBestFavorite(favorites: FavoriteStrategy[]) {
+  if (!favorites.length) return null
+
+  return favorites
+    .slice()
+    .sort((left, right) => {
+      const leftRoi = getReturnPct(left.metrics)
+      const rightRoi = getReturnPct(right.metrics)
+      const leftHasRoi = leftRoi != null
+      const rightHasRoi = rightRoi != null
+
+      if (leftHasRoi && rightHasRoi && leftRoi !== rightRoi) {
+        return (rightRoi || 0) - (leftRoi || 0)
+      }
+      if (leftHasRoi !== rightHasRoi) {
+        return leftHasRoi ? -1 : 1
+      }
+
+      const leftTs = new Date(left.created_at).getTime()
+      const rightTs = new Date(right.created_at).getTime()
+      return rightTs - leftTs
+    })[0]
+}
+
+function toneForColumn(column: string) {
+  const normalized = String(column || '').toLowerCase()
+  if (normalized.includes('qa')) return 'ok'
+  if (normalized.includes('dev') || normalized.includes('design') || normalized.includes('po')) return 'warn'
+  return 'idle'
+}
+
+function toneForRunStatus(status: string) {
+  const normalized = String(status || '').toLowerCase()
+  if (['done', 'completed', 'success'].includes(normalized)) return 'ok'
+  if (['running', 'queued', 'pending', 'created'].includes(normalized)) return 'warn'
+  return 'idle'
+}
+
+function formatRunStep(step: string | null | undefined) {
+  const value = String(step || '').trim()
+  if (!value) return 'Etapa não informada'
+  return value.replaceAll('_', ' ')
+}
+
+function SnapshotBadge({ children }: { children: string }) {
+  return (
+    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">
+      {children}
+    </span>
+  )
+}
+
+function SectionTag({ label, tone = 'idle' }: { label: string; tone?: 'ok' | 'warn' | 'idle' }) {
+  return (
+    <span
+      className={cx(
+        'inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold tracking-[0.12em]',
+        tone === 'ok' && 'bg-emerald-400/12 text-emerald-300',
+        tone === 'warn' && 'bg-amber-400/12 text-amber-300',
+        tone === 'idle' && 'bg-white/10 text-[var(--text-secondary)]',
+      )}
+    >
+      {label}
+    </span>
+  )
+}
+
+function KpiSkeleton() {
+  return (
+    <div className="mt-3 space-y-2 animate-pulse">
+      <div className="h-7 w-28 rounded-lg bg-white/10" />
+      <div className="h-4 w-40 rounded bg-white/5" />
+    </div>
+  )
+}
+
+function SectionSkeletonRows({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="mt-5 space-y-3 animate-pulse">
+      {Array.from({ length: rows }).map((_, index) => (
+        <div key={index} className="h-20 rounded-2xl border border-white/8 bg-white/[0.03]" />
+      ))}
+    </div>
+  )
+}
+
+function KpiCard({
+  title,
+  label,
+  children,
+  testId,
+}: {
+  title: string
+  label?: string
+  children: React.ReactNode
+  testId?: string
+}) {
+  return (
+    <div className="page-card p-5" data-testid={testId}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">{title}</div>
+        {label ? <SnapshotBadge>{label}</SnapshotBadge> : null}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 export default function HomePage() {
   const navigate = useNavigate()
-  const [health, setHealth] = useState<HealthState>({ status: 'loading' })
 
-  useEffect(() => {
-    let mounted = true
+  const healthQuery = useQuery<HealthState>({
+    queryKey: ['home', 'health'],
+    queryFn: () => fetchJson<HealthState>('/health'),
+    refetchOnWindowFocus: false,
+  })
 
-    backtestApi
-      .health()
-      .then((res) => {
-        if (!mounted) return
-        const data = (res?.data || {}) as { status?: string; service?: string }
-        setHealth({ status: data.status === 'ok' ? 'ok' : 'error', service: data.service })
-      })
-      .catch(() => {
-        if (!mounted) return
-        setHealth({ status: 'error' })
-      })
+  const favoritesQuery = useQuery<FavoriteStrategy[]>({
+    queryKey: ['home', 'favorites'],
+    queryFn: () => fetchJson<FavoriteStrategy[]>('/favorites/'),
+    refetchOnWindowFocus: false,
+  })
 
-    return () => {
-      mounted = false
-    }
-  }, [])
+  const balancesQuery = useQuery<BalancesSnapshot>({
+    queryKey: ['home', 'balances'],
+    queryFn: () => fetchJson<BalancesSnapshot>('/external/binance/spot/balances'),
+    refetchOnWindowFocus: false,
+  })
+
+  const focusQuery = useQuery<FocusChange[]>({
+    queryKey: ['home', 'focus'],
+    queryFn: async () => {
+      const response = await fetchJson<CoordinationChangeListResponse>('/workflow/kanban/changes?project_slug=crypto')
+      const activeChanges = (response.items || [])
+        .filter((item) => item.item_type !== 'bug')
+        .filter((item) => !item.archived)
+        .filter((item) => !['Archived', 'Canceled'].includes(item.column))
+        .slice(-3)
+        .reverse()
+
+      const detailed = await Promise.all(
+        activeChanges.map(async (item) => {
+          try {
+            const detail = await fetchJson<ChangeDetailResponse>(
+              `/workflow/projects/crypto/changes/${encodeURIComponent(item.id)}`,
+            )
+            return {
+              ...item,
+              created_at: detail.created_at,
+              updated_at: detail.updated_at,
+            }
+          } catch {
+            return {
+              ...item,
+              created_at: null,
+              updated_at: null,
+            }
+          }
+        }),
+      )
+
+      return detailed
+    },
+    refetchOnWindowFocus: false,
+  })
+
+  const runsQuery = useQuery<LabRunsResponse>({
+    queryKey: ['home', 'lab-runs'],
+    queryFn: () => fetchJson<LabRunsResponse>('/lab/runs?limit=5'),
+    refetchOnWindowFocus: false,
+  })
+
+  const marketQuery = useQuery<MarketPricesResponse>({
+    queryKey: ['home', 'market-prices'],
+    queryFn: () => fetchJson<MarketPricesResponse>('/market/prices'),
+    refetchOnWindowFocus: false,
+    refetchInterval: 30_000,
+  })
 
   const nowLabel = useMemo(() => formatDt(new Date()), [])
+  const bestFavorite = useMemo(() => getBestFavorite(favoritesQuery.data || []), [favoritesQuery.data])
+  const bestFavoriteRoi = getReturnPct(bestFavorite?.metrics)
+  const balancesFreshness = formatFreshness(balancesQuery.data?.as_of)
+  const activeChanges = focusQuery.data || []
+  const recentRuns = runsQuery.data?.runs || []
+  const marketPrices = marketQuery.data?.prices || []
+  const marketFreshness = formatFreshness(marketQuery.data?.fetched_at || undefined)
+  const healthStatus = healthQuery.data?.status === 'ok' ? 'ok' : healthQuery.isLoading ? 'loading' : 'error'
 
   return (
     <main className="page-stack">
       <div className="page-stack">
-        {/* Hero */}
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.45fr_0.95fr]">
           <div className="page-card p-6 sm:p-8 lg:p-10">
             <span className="eyebrow mb-5">Cockpit diário</span>
-            <h1 className="section-title">
-              Seu snapshot diário de crypto
-            </h1>
+            <h1 className="section-title">Seu snapshot diário de crypto</h1>
             <p className="section-copy mt-4 text-sm sm:text-base">
               Como estou indo, o que precisa atenção e qual o próximo passo mais rápido.
             </p>
@@ -112,12 +398,12 @@ export default function HomePage() {
               <span
                 className={cx(
                   'rounded-full px-3 py-1 text-[10px] font-semibold tracking-[0.12em]',
-                  health.status === 'ok' && 'bg-emerald-400/12 text-emerald-300',
-                  health.status === 'loading' && 'bg-white/[0.06] text-[var(--text-secondary)]',
-                  health.status === 'error' && 'bg-red-400/12 text-red-300'
+                  healthStatus === 'ok' && 'bg-emerald-400/12 text-emerald-300',
+                  healthStatus === 'loading' && 'bg-white/[0.06] text-[var(--text-secondary)]',
+                  healthStatus === 'error' && 'bg-red-400/12 text-red-300',
                 )}
               >
-                {health.status === 'loading' ? 'CHECK' : health.status.toUpperCase()}
+                {healthStatus === 'loading' ? 'CHECK' : healthStatus.toUpperCase()}
               </span>
             </div>
 
@@ -128,7 +414,7 @@ export default function HomePage() {
               </div>
               <div className="flex justify-between gap-4 rounded-2xl bg-white/[0.03] px-4 py-3">
                 <dt className="text-[var(--text-tertiary)]">API</dt>
-                <dd className="text-[var(--text-secondary)]">{health.service || '—'}</dd>
+                <dd className="text-[var(--text-secondary)]">{healthQuery.data?.service || '—'}</dd>
               </div>
               <div className="flex justify-between gap-4 rounded-2xl bg-white/[0.03] px-4 py-3">
                 <dt className="text-[var(--text-tertiary)]">Carteira</dt>
@@ -157,189 +443,230 @@ export default function HomePage() {
           </aside>
         </section>
 
-        {/* KPI grid */}
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="page-card p-5">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Portfolio PnL (hoje)</div>
+          <KpiCard title="Portfolio PnL (hoje)" label="valor ilustrativo" testId="home-kpi-pnl">
             <div className="mt-3 text-2xl font-semibold text-emerald-300">+2.34%</div>
             <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">vs. BTC: +0.40%</div>
-          </div>
-          <div className="page-card p-5">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Drawdown (30d)</div>
+          </KpiCard>
+
+          <KpiCard title="Drawdown (30d)" label="valor ilustrativo" testId="home-kpi-drawdown">
             <div className="mt-3 text-2xl font-semibold text-rose-300">-6.10%</div>
             <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">Pico: 12 Fev</div>
-          </div>
-          <div className="page-card p-5">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Melhor estratégia (7d)</div>
-            <div className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">MA Crossover</div>
-            <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">ROI: +8.9%</div>
-          </div>
-          <div className="page-card p-5">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">Data freshness</div>
-            <div className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">200 candles</div>
-            <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">BTC/USDT · 1h</div>
-          </div>
+          </KpiCard>
+
+          <KpiCard title="Melhor estratégia (7d)" testId="home-kpi-best-strategy">
+            {favoritesQuery.isLoading ? (
+              <KpiSkeleton />
+            ) : favoritesQuery.error ? (
+              <>
+                <div className="mt-3 text-xl font-semibold text-[var(--text-primary)]">não disponível</div>
+                <div className="mt-1 text-[12px] text-rose-300">Não foi possível carregar `/api/favorites`.</div>
+              </>
+            ) : !bestFavorite ? (
+              <>
+                <div className="mt-3 text-xl font-semibold text-[var(--text-primary)]">Nenhuma estratégia favoritada</div>
+                <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">Salve uma estratégia para acompanhar aqui.</div>
+              </>
+            ) : (
+              <>
+                <div className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
+                  {bestFavorite.strategy_name || bestFavorite.name}
+                </div>
+                <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">
+                  {bestFavorite.symbol} · {bestFavorite.timeframe}
+                  {bestFavoriteRoi != null ? ` · ROI ${formatPercent(bestFavoriteRoi)}` : ' · ROI não disponível'}
+                </div>
+              </>
+            )}
+          </KpiCard>
+
+          <KpiCard title="Data freshness" testId="home-kpi-freshness">
+            {balancesQuery.isLoading ? (
+              <KpiSkeleton />
+            ) : balancesQuery.error ? (
+              <>
+                <div className="mt-3 text-xl font-semibold text-[var(--text-primary)]">não disponível</div>
+                <div className="mt-1 text-[12px] text-rose-300">Não foi possível carregar `/api/external/binance/spot/balances`.</div>
+              </>
+            ) : !balancesQuery.data?.as_of ? (
+              <>
+                <div className="mt-3 text-xl font-semibold text-[var(--text-primary)]">Sem snapshot disponível</div>
+                <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">O endpoint respondeu sem timestamp utilizável.</div>
+              </>
+            ) : (
+              <>
+                <div className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">{balancesFreshness || 'Snapshot recente'}</div>
+                <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">Snapshot em {formatDt(balancesQuery.data.as_of)}</div>
+              </>
+            )}
+          </KpiCard>
         </section>
 
-        {/* Main layout */}
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.45fr_0.95fr]">
           <div className="flex flex-col gap-4">
-            <div className="page-card p-6">
+            <div className="page-card p-6" data-testid="home-focus-section">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Foco de hoje</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Mudanças ativas</h2>
+                  <SnapshotBadge>kanban real</SnapshotBadge>
+                </div>
                 <Link to="/kanban" className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200">
                   Ver tudo
                 </Link>
               </div>
 
-              <ul className="mt-5 space-y-3">
-                <li className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 hover:bg-white/[0.05]">
-                  <span className="rounded-full bg-amber-400/12 px-3 py-1 text-[10px] font-semibold tracking-[0.12em] text-amber-300">
-                    Action
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-sm text-[var(--text-primary)]">Revisar dados (candles) para ETH/USDT</div>
-                    <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">Sugestão v0</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/lab')}
-                    className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-white"
-                  >
-                    Abrir
-                  </button>
-                </li>
+              {focusQuery.isLoading ? <SectionSkeletonRows /> : null}
+              {focusQuery.error ? (
+                <div className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-400/5 px-4 py-4 text-sm text-rose-200">
+                  não disponível · Falha ao carregar mudanças ativas.
+                </div>
+              ) : null}
+              {!focusQuery.isLoading && !focusQuery.error && activeChanges.length === 0 ? (
+                <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-[var(--text-tertiary)]">
+                  Nenhuma mudança ativa no momento
+                </div>
+              ) : null}
 
-                <li className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 hover:bg-white/[0.05]">
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold tracking-[0.12em] text-[var(--text-secondary)]">
-                    Info
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-sm text-[var(--text-primary)]">Resultados recentes</div>
-                    <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">Momentum v2 · ROI +12.1%</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/combo/results')}
-                    className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-white"
-                  >
-                    Ver
-                  </button>
-                </li>
+              {!focusQuery.isLoading && !focusQuery.error && activeChanges.length > 0 ? (
+                <ul className="mt-5 space-y-3">
+                  {activeChanges.map((item) => {
+                    const tone = toneForColumn(item.column)
+                    const statusLabel = item.column || item.status?.status || 'Ativa'
+                    const dateLabel = item.updated_at ? formatDt(item.updated_at) : 'Data indisponível'
 
-                <li className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 hover:bg-white/[0.05]">
-                  <span className="rounded-full bg-emerald-400/12 px-3 py-1 text-[10px] font-semibold tracking-[0.12em] text-emerald-300">
-                    OK
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-sm text-[var(--text-primary)]">External balances</div>
-                    <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">Binance · {nowLabel}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/external/balances')}
-                    className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-white"
-                  >
-                    Abrir
-                  </button>
-                </li>
-              </ul>
+                    return (
+                      <li
+                        key={item.id}
+                        className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 hover:bg-white/[0.05]"
+                      >
+                        <SectionTag label={statusLabel} tone={tone} />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm text-[var(--text-primary)]">{item.title || item.id}</div>
+                          <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
+                            {item.card_number ? `Card #${item.card_number}` : item.id} · {dateLabel}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/kanban')}
+                          className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-white"
+                        >
+                          Abrir
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
             </div>
 
-            <div className="page-card p-6">
+            <div className="page-card p-6" data-testid="home-runs-section">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Runs recentes</h2>
-                <Link to="/lab" className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200">
-                  Lab
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Runs recentes</h2>
+                  <SnapshotBadge>lab real</SnapshotBadge>
+                </div>
+                <Link to="/lab" className="text-[11px] font-semibold text-sky-300 hover:text-sky-200">
+                  Abrir Lab
                 </Link>
               </div>
 
-              <div className="mt-5 overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03]">
-                <div className="grid grid-cols-[1.5fr_1fr_0.5fr_0.7fr_0.7fr_0.8fr] gap-2 bg-white/[0.04] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                  <div>Strategy</div>
-                  <div>Pair</div>
-                  <div>TF</div>
-                  <div>ROI</div>
-                  <div>DD</div>
-                  <div>Status</div>
+              {runsQuery.isLoading ? <SectionSkeletonRows rows={4} /> : null}
+              {runsQuery.error ? (
+                <div className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-400/5 px-4 py-4 text-sm text-rose-200">
+                  não disponível · Falha ao carregar `/api/lab/runs`.
                 </div>
+              ) : null}
+              {!runsQuery.isLoading && !runsQuery.error && recentRuns.length === 0 ? (
+                <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-[var(--text-tertiary)]">
+                  Nenhuma run recente encontrada.
+                </div>
+              ) : null}
 
-                {[
-                  { s: 'Momentum v2', p: 'BTC/USDT', tf: '4h', roi: '+12.1%', dd: '-4.0%', st: 'Done', tone: 'ok' as const },
-                  { s: 'Mean reversion', p: 'ETH/USDT', tf: '1h', roi: '-1.2%', dd: '-7.6%', st: 'Done', tone: 'idle' as const },
-                  { s: 'MA Crossover', p: 'SOL/USDT', tf: '1h', roi: '+8.9%', dd: '-3.4%', st: 'Queued', tone: 'warn' as const },
-                ].map((r, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-[1.5fr_1fr_0.5fr_0.7fr_0.7fr_0.8fr] gap-2 border-t border-white/6 px-4 py-3 text-xs hover:bg-white/[0.04]"
-                  >
-                    <div className="truncate text-[var(--text-primary)]">{r.s}</div>
-                    <div className="truncate text-[var(--text-tertiary)]">{r.p}</div>
-                    <div className="text-[var(--text-tertiary)]">{r.tf}</div>
-                    <div className={cx('font-semibold', r.roi.startsWith('-') ? 'text-rose-300' : 'text-emerald-300')}>{r.roi}</div>
-                    <div className="text-[var(--text-tertiary)]">{r.dd}</div>
-                    <div>
-                      <span
-                        className={cx(
-                          'inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold tracking-[0.12em]',
-                          r.tone === 'ok' && 'bg-emerald-400/12 text-emerald-300',
-                          r.tone === 'warn' && 'bg-amber-400/12 text-amber-300',
-                          r.tone === 'idle' && 'bg-white/10 text-[var(--text-secondary)]'
-                        )}
+              {!runsQuery.isLoading && !runsQuery.error && recentRuns.length > 0 ? (
+                <ul className="mt-5 space-y-3">
+                  {recentRuns.map((run) => (
+                    <li
+                      key={run.run_id}
+                      className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 hover:bg-white/[0.05]"
+                    >
+                      <SectionTag label={run.status || 'unknown'} tone={toneForRunStatus(run.status)} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm text-[var(--text-primary)]">{run.run_id}</div>
+                        <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
+                          {formatRunStep(run.step)} · {formatDt(new Date(run.created_at_ms || run.updated_at_ms || 0))}
+                        </div>
+                      </div>
+                      <a
+                        href={run.viewer_url}
+                        className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-white"
                       >
-                        {r.st}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <p className="mt-3 text-[11px] text-[var(--text-tertiary)]">
-                Obs: tabela com dados de exemplo até termos endpoint de listagem.
-              </p>
+                        Ver trace
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
+
+
           </div>
 
           <aside className="flex flex-col gap-4">
-            <div className="page-card p-6">
+            <div className="page-card p-6" data-testid="home-market-section">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Market watch</h2>
-                <Link to="/monitor" className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200">
-                  Monitor
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Market watch</h2>
+                  <SnapshotBadge>binance 24h</SnapshotBadge>
+                </div>
+                <Link to="/monitor" className="text-[11px] font-semibold text-amber-300 hover:text-amber-200">
+                  Abrir monitor
                 </Link>
               </div>
 
-              <ul className="mt-5 space-y-3">
-                {[
-                  { pair: 'BTC/USDT', price: '$62,340', chg: '+1.2%' },
-                  { pair: 'ETH/USDT', price: '$3,420', chg: '-0.4%' },
-                  { pair: 'SOL/USDT', price: '$128', chg: '+3.1%' },
-                ].map((row) => (
-                  <li key={row.pair} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-3">
-                    <div className="text-sm font-semibold text-[var(--text-primary)]">{row.pair}</div>
-                    <div className="text-xs tabular-nums text-[var(--text-secondary)]">{row.price}</div>
-                    <div
-                      className={cx(
-                        'text-xs font-semibold tabular-nums',
-                        row.chg.startsWith('-') ? 'text-rose-300' : 'text-emerald-300'
-                      )}
-                    >
-                      {row.chg}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {marketQuery.isLoading ? <SectionSkeletonRows rows={3} /> : null}
+              {marketQuery.error ? (
+                <div className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-400/5 px-4 py-4 text-sm text-rose-200">
+                  não disponível · Falha ao carregar `/api/market/prices`.
+                </div>
+              ) : null}
+              {!marketQuery.isLoading && !marketQuery.error && marketPrices.length === 0 ? (
+                <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-[var(--text-tertiary)]">
+                  Nenhum preço disponível agora.
+                </div>
+              ) : null}
 
-              <div className="mt-4 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => navigate('/monitor')}
-                  className="rounded-full border border-white/10 px-3.5 py-2 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-white"
-                >
-                  <Activity className="mr-1.5 inline-block h-3.5 w-3.5" />
-                  Abrir monitor
-                </button>
-              </div>
+              {!marketQuery.isLoading && !marketQuery.error && marketPrices.length > 0 ? (
+                <div className="mt-5 space-y-3">
+                  {marketPrices.map((item) => {
+                    const changeLabel = formatPercent(item.change_24h_pct)
+                    return (
+                      <div key={item.symbol} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-[var(--text-primary)]">{item.symbol}</div>
+                            <div className="mt-1 text-[11px] text-[var(--text-tertiary)]">{formatCurrency(item.price)}</div>
+                          </div>
+                          <div
+                            className={cx(
+                              'text-sm font-semibold',
+                              item.change_24h_pct >= 0 ? 'text-emerald-300' : 'text-rose-300',
+                            )}
+                          >
+                            {changeLabel || '—'}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  <div className="text-[11px] text-[var(--text-tertiary)]">
+                    {marketQuery.data?.fetched_at
+                      ? `Atualizado ${marketFreshness || formatDt(marketQuery.data.fetched_at)}`
+                      : 'Sem timestamp de atualização.'}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="page-card p-6">
@@ -365,7 +692,7 @@ export default function HomePage() {
             <div className="page-card p-6">
               <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Notas</h2>
               <p className="mt-3 text-[12px] leading-6 text-[var(--text-tertiary)]">
-                Implementação guiada pelo prototype. Algumas seções usam placeholders até termos endpoints dedicados.
+                Home usa dados reais para saúde, favoritos, carteira, Kanban, runs recentes e market watch. Só os KPIs marcados continuam ilustrativos.
               </p>
             </div>
           </aside>

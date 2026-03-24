@@ -360,6 +360,19 @@ class LabRunStatusResponse(BaseModel):
     input: Optional[Dict[str, Any]] = None
 
 
+class LabRunListItem(BaseModel):
+    run_id: str
+    status: str
+    step: Optional[str] = None
+    created_at_ms: int
+    updated_at_ms: int
+    viewer_url: str
+
+
+class LabRunListResponse(BaseModel):
+    runs: List[LabRunListItem] = Field(default_factory=list)
+
+
 class LabRunContinueRequest(BaseModel):
     message: Optional[str] = None
     symbol: Optional[str] = Field(default=None, max_length=30)
@@ -4541,6 +4554,41 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
         upstream=data.get("upstream") or {"messages": [], "pending_question": ""},
         input=data.get("input") or {},
     )
+
+
+@router.get("/runs", response_model=LabRunListResponse)
+async def list_runs(limit: int = Query(default=5, ge=1, le=20)) -> LabRunListResponse:
+    items: List[LabRunListItem] = []
+
+    for path in _runs_dir().glob("*.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        if not isinstance(payload, dict):
+            continue
+
+        run_id = str(payload.get("run_id") or path.stem).strip()
+        if not run_id:
+            continue
+
+        trace = payload.get("trace") if isinstance(payload.get("trace"), dict) else {}
+        viewer_url = str(trace.get("viewer_url") or f"http://31.97.92.212:5173/lab/runs/{run_id}")
+
+        items.append(
+            LabRunListItem(
+                run_id=run_id,
+                status=str(payload.get("status") or "unknown"),
+                step=str(payload.get("step") or "") or None,
+                created_at_ms=int(payload.get("created_at_ms") or 0),
+                updated_at_ms=int(payload.get("updated_at_ms") or payload.get("created_at_ms") or 0),
+                viewer_url=viewer_url,
+            )
+        )
+
+    items.sort(key=lambda item: item.created_at_ms, reverse=True)
+    return LabRunListResponse(runs=items[:limit])
 
 
 def _resolve_step_for_log_stream(run_id: str, run: Dict[str, Any], requested_step: Optional[str]) -> str:
