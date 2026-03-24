@@ -13,7 +13,6 @@ import {
   TrendingUp,
   Wallet,
   X,
-  Zap,
 } from 'lucide-react'
 
 interface AppNavProps {
@@ -35,7 +34,6 @@ const mainNavItems: NavItemConfig[] = [
 
 const strategyNavItems: NavItemConfig[] = [
   { to: '/lab', label: 'Lab', icon: Beaker },
-  { to: '/arbitrage', label: 'Arbitragem', icon: Zap },
   { to: '/combo/select', label: 'Combo', icon: Layers },
 ]
 
@@ -53,7 +51,6 @@ function resolvePageTitle(pathname: string) {
   if (pathname === '/monitor') return 'Monitor de sinais'
   if (pathname === '/kanban') return 'Kanban'
   if (pathname.startsWith('/lab')) return 'Laboratório'
-  if (pathname.startsWith('/arbitrage')) return 'Arbitragem'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
   if (pathname.startsWith('/openspec')) return 'OpenSpec'

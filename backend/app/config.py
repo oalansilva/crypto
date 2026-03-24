@@ -21,9 +21,6 @@ class Settings(BaseSettings):
     # Market data providers (optional)
     alphavantage_api_key: str | None = None
 
-    # Background jobs
-    arbitrage_monitor_enabled: str = "1"
-
     # Workflow DB (centralize-workflow-state-db)
     # NOTE: We declare these explicitly so values from backend/.env are available
     # through Settings even if they are not exported into os.environ.

@@ -164,39 +164,6 @@ async def get_indicator_schema_endpoint(strategy_name: str):
     return schema
 
 
-@router.get("/arbitrage/spreads")
-async def get_arbitrage_spreads(
-    symbols: str = Query(
-        "USDT/USDC,USDT/DAI,USDC/DAI",
-        description="Lista de símbolos separados por vírgula",
-    ),
-    exchanges: str = Query("binance,okx,bybit", description="Lista de exchanges separadas por vírgula"),
-    threshold: float = Query(0.0, description="Spread mínimo em %"),
-):
-    """Detecta spreads entre exchanges via WebSocket (sem executar trades)."""
-    from app.services.arbitrage_spread_service import get_spreads_for_symbols
-
-    exchange_list = [e.strip() for e in exchanges.split(",") if e.strip()]
-    symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
-    try:
-        results = await get_spreads_for_symbols(
-            symbols=symbol_list,
-            exchanges=exchange_list,
-            threshold_pct=threshold,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    return {
-        "symbols": symbol_list,
-        "threshold": threshold,
-        "exchanges": exchange_list,
-        "results": results,
-    }
-
-
 def _classify_asset(symbol: str) -> str:
     return "crypto" if "/" in symbol else "stock"
 

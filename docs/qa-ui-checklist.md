@@ -12,7 +12,6 @@ Run this checklist before sending any change to Alan homologation.
   - [ ] Monitor (/monitor)
   - [ ] Kanban (/kanban)
   - [ ] Lab (/lab)
-  - [ ] Arbitrage (/arbitrage)
   - [ ] Combo (/combo/select)
   - [ ] Carteira (/external/balances)
 - [ ] Verify NO duplicate headers/menus appear on ANY page
