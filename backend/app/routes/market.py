@@ -44,7 +44,9 @@ def _coerce_float(value: Any) -> float | None:
 
 
 async def _fetch_binance_prices(symbols: Tuple[str, ...]) -> Dict[str, Any]:
-    params = {"symbols": json.dumps(list(symbols))}
+    # Build symbols param: ["BTCUSDT","ETHUSDT"] without spaces (Binance is strict about spaces)
+    symbols_param = "[" + ",".join(f'"{s}"' for s in symbols) + "]"
+    params = {"symbols": symbols_param}
     timeout = httpx.Timeout(_TIMEOUT_SECONDS)
 
     async with httpx.AsyncClient(timeout=timeout) as client:
