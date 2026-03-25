@@ -72,6 +72,20 @@ type LabRunsResponse = {
   runs: LabRunSummary[]
 }
 
+type PortfolioKPI = {
+  pnl_today_pct: number | null
+  pnl_today_vs_btc_pct: number | null
+  drawdown_30d_pct: number
+  drawdown_peak_date: string | null
+  btc_change_24h_pct: number | null
+  total_usd: number
+  btc_value: number
+  usdt_value: number
+  eth_value: number
+  other_usd: number
+  _history_insufficient: boolean
+}
+
 type MarketPrice = {
   symbol: string
   price: number
@@ -276,6 +290,12 @@ export default function HomePage() {
     refetchOnWindowFocus: false,
   })
 
+  const portfolioKpiQuery = useQuery<PortfolioKPI>({
+    queryKey: ['home', 'portfolio-kpi'],
+    queryFn: () => fetchJson<PortfolioKPI>('/portfolio/kpi'),
+    refetchOnWindowFocus: false,
+  })
+
   const focusQuery = useQuery<FocusChange[]>({
     queryKey: ['home', 'focus'],
     queryFn: async () => {
@@ -444,14 +464,46 @@ export default function HomePage() {
         </section>
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard title="Portfolio PnL (hoje)" label="valor ilustrativo" testId="home-kpi-pnl">
-            <div className="mt-3 text-2xl font-semibold text-emerald-300">+2.34%</div>
-            <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">vs. BTC: +0.40%</div>
+          <KpiCard title="Portfolio PnL (hoje)" testId="home-kpi-pnl">
+            {portfolioKpiQuery.isLoading ? (
+              <KpiSkeleton />
+            ) : portfolioKpiQuery.error ? (
+              <>
+                <div className="mt-3 text-xl font-semibold text-[var(--text-primary)]">não disponível</div>
+                <div className="mt-1 text-[12px] text-rose-300">Não foi possível carregar `/api/portfolio/kpi`.</div>
+              </>
+            ) : (
+              <>
+                <div className={`mt-3 text-2xl font-semibold ${(portfolioKpiQuery.data?.pnl_today_pct ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {portfolioKpiQuery.data?.pnl_today_pct != null ? `${portfolioKpiQuery.data.pnl_today_pct >= 0 ? '+' : ''}${portfolioKpiQuery.data.pnl_today_pct.toFixed(2)}%` : 'N/A'}
+                </div>
+                <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">
+                  {portfolioKpiQuery.data?.pnl_today_vs_btc_pct != null
+                    ? `vs. BTC: ${portfolioKpiQuery.data.pnl_today_vs_btc_pct >= 0 ? '+' : ''}${portfolioKpiQuery.data.pnl_today_vs_btc_pct.toFixed(2)}%`
+                    : 'vs. BTC: N/A'}
+                </div>
+              </>
+            )}
           </KpiCard>
 
-          <KpiCard title="Drawdown (30d)" label="valor ilustrativo" testId="home-kpi-drawdown">
-            <div className="mt-3 text-2xl font-semibold text-rose-300">-6.10%</div>
-            <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">Pico: 12 Fev</div>
+          <KpiCard title="Drawdown (30d)" testId="home-kpi-drawdown">
+            {portfolioKpiQuery.isLoading ? (
+              <KpiSkeleton />
+            ) : portfolioKpiQuery.error ? (
+              <>
+                <div className="mt-3 text-xl font-semibold text-[var(--text-primary)]">não disponível</div>
+                <div className="mt-1 text-[12px] text-rose-300">Não foi possível carregar `/api/portfolio/kpi`.</div>
+              </>
+            ) : (
+              <>
+                <div className={`mt-3 text-2xl font-semibold ${(portfolioKpiQuery.data?.drawdown_30d_pct ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {portfolioKpiQuery.data?.drawdown_30d_pct != null ? `${portfolioKpiQuery.data.drawdown_30d_pct.toFixed(2)}%` : 'N/A'}
+                </div>
+                <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">
+                  {portfolioKpiQuery.data?.drawdown_peak_date ? `Pico: ${new Date(portfolioKpiQuery.data.drawdown_peak_date).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}` : 'Pico: N/A'}
+                </div>
+              </>
+            )}
           </KpiCard>
 
           <KpiCard title="Melhor estratégia (7d)" testId="home-kpi-best-strategy">
