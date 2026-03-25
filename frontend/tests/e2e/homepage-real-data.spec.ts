@@ -189,7 +189,10 @@ test('HomePage desktop renders real data and explicit snapshot labels', async ({
   await expect(page.getByTestId('home-market-section').getByText('BTCUSDT')).toBeVisible()
   await expect(page.getByTestId('home-market-section').getByText('+2.4%')).toBeVisible()
 
-  await expect(page.getByText('valor ilustrativo').first()).toBeVisible()
+  // Portfolio KPIs now show real data or "não disponível" instead of "valor ilustrativo"
+  // KPI cards should be visible (Portfolio PnL and Drawdown)
+  await expect(page.getByTestId('home-kpi-pnl')).toBeVisible()
+  await expect(page.getByTestId('home-kpi-drawdown')).toBeVisible()
 })
 
 test('HomePage mobile shows empty and error fallbacks without blank sections', async ({ page }) => {
