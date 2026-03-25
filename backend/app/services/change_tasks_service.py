@@ -82,6 +82,34 @@ def _read_text(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+def toggle_task_checkbox(change_id: str, task_code: str, checked: bool) -> bool:
+    p = _tasks_path(change_id)
+    if not p.exists():
+        return False
+
+    target_box = "[x]" if checked else "[ ]"
+    task_line_re = re.compile(
+        rf"^(?P<indent>\s*)-\s+(?P<box>\[[ xX]\])\s+(?P<code>{re.escape(task_code)})\b",
+        re.MULTILINE,
+    )
+
+    try:
+        md = _read_text(p)
+    except FileNotFoundError:
+        return False
+
+    updated_md, count = task_line_re.subn(
+        lambda match: f"{match.group('indent')}- {target_box} {match.group('code')}",
+        md,
+        count=1,
+    )
+    if count == 0:
+        return False
+
+    p.write_text(updated_md, encoding="utf-8")
+    return True
+
+
 def parse_tasks_markdown(md: str) -> List[TaskSection]:
     sections: List[TaskSection] = []
     current: Optional[TaskSection] = None
