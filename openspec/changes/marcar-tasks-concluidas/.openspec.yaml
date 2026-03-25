@@ -1,0 +1,23 @@
+---
+schema: spec-driven
+created: 2026-03-24
+updated_at: 2026-03-24
+status: draft
+owner: PO
+card_number: 50
+change_id: marcar-tasks-concluidas
+title: "Marcar tasks concluídas na interface"
+type: change
+tags:
+  - tasks
+  - workflow
+  - frontend
+  - backend
+  - quick-win
+---
+
+# Card #50 — Marcar Tasks Concluídas
+
+**Status:** PO Draft  
+**Column:** PO  
+**Runtime stage:** PO
