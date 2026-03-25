@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useToast } from '@/components/ui/use-toast'
 import { NavLink } from 'react-router-dom'
 import { Kanban, Search, X, Sparkles, Bookmark, Layers, Shuffle, Wallet, Activity } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -149,10 +150,14 @@ function TaskTree({
   item,
   depth,
   inheritedChecked = false,
+  onToggle,
+  workItemId,
 }: {
   item: TaskChecklistItem
   depth: number
   inheritedChecked?: boolean
+  onToggle?: (taskCode: string, workItemId: string, checked: boolean) => void
+  workItemId?: string | null
 }) {
   const children = item.children || []
 
@@ -161,20 +166,36 @@ function TaskTree({
   const hasExplicitChecked = typeof item.checked === 'boolean'
   const checked = hasExplicitChecked ? Boolean(item.checked) : inheritedChecked
 
+  const handleToggle = () => {
+    if (!onToggle || !workItemId || !item.code) return
+    onToggle(item.code, workItemId, !checked)
+  }
+
+  const isInteractive = Boolean(onToggle && workItemId && item.code)
+
   return (
     <div className="space-y-1">
       <div className="flex items-start gap-2" style={{ paddingLeft: `${depth * 14}px` }}>
-        <span
-          className={
-            "mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] " +
-            (checked
-              ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
-              : 'bg-zinc-950 border-zinc-200 text-zinc-400')
-          }
-          aria-label={checked ? 'checked' : 'unchecked'}
-        >
-          {checked ? '✓' : ''}
-        </span>
+        {isInteractive ? (
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={handleToggle}
+            className="mt-0.5 h-4 w-4 rounded border-zinc-500 bg-zinc-900 accent-emerald-500 cursor-pointer"
+          />
+        ) : (
+          <span
+            className={
+              "mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] " +
+              (checked
+                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
+                : 'bg-zinc-950 border-zinc-200 text-zinc-400')
+            }
+            aria-label={checked ? 'checked' : 'unchecked'}
+          >
+            {checked ? '✓' : ''}
+          </span>
+        )}
         <div className="min-w-0">
           <div className="text-sm text-zinc-300 break-words leading-snug">
             {item.title ? <span className="font-semibold">{item.title}: </span> : null}
@@ -192,6 +213,8 @@ function TaskTree({
               item={ch}
               depth={depth + 1}
               inheritedChecked={checked}
+              onToggle={onToggle}
+              workItemId={workItemId}
             />
           ))}
         </div>
@@ -532,6 +555,48 @@ export default function KanbanPage() {
       await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', vars.changeId, 'comments'] })
     },
   })
+
+  const { toast } = useToast()
+
+  // Mutation to toggle task checkbox via PATCH work-items
+  const toggleTaskMutation = useMutation({
+    mutationFn: async ({ workItemId, state }: { workItemId: string; state: 'done' | 'queued' }) => {
+      const res = await fetch(`${API_BASE_URL}/workflow/work-items/${encodeURIComponent(workItemId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state }),
+      })
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`Failed to update task (${res.status})${txt ? `: ${txt}` : ''}`)
+      }
+      return (await res.json()) as WorkItemOut
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['workflow', 'kanban', 'change', selected?.id, 'tasks'] })
+      await qc.invalidateQueries({ queryKey: ['workflow', 'change', selected?.id, 'work-items', selectedProject] })
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao atualizar task', description: err.message, variant: 'destructive' })
+    },
+  })
+
+  // Build mapping from task_code to work_item_id
+  const taskCodeToWorkItemId = useMemo(() => {
+    const map: Record<string, string> = {}
+    if (!workItemsQuery.data) return map
+    for (const wi of workItemsQuery.data) {
+      const match = wi.description.match(/code:\s*(\d+(?:\.\d+)+)/)
+      if (match) {
+        map[match[1]] = wi.id
+      }
+    }
+    return map
+  }, [workItemsQuery.data])
+
+  const handleTaskToggle = (taskCode: string, workItemId: string, checked: boolean) => {
+    toggleTaskMutation.mutate({ workItemId, state: checked ? 'done' : 'queued' })
+  }
 
   const [author, setAuthor] = useState(() => localStorage.getItem('kanban.commentAuthor') || 'User')
   const [body, setBody] = useState('')
@@ -1398,7 +1463,13 @@ export default function KanbanPage() {
                             <div className="text-sm font-semibold text-zinc-200 mb-2">{sec.title}</div>
                             <div className="space-y-2">
                               {sec.items.map((it, idx) => (
-                                <TaskTree key={`${it.text}-${idx}`} item={it} depth={0} />
+                                <TaskTree
+                                  key={`${it.text}-${idx}`}
+                                  item={it}
+                                  depth={0}
+                                  onToggle={handleTaskToggle}
+                                  workItemId={it.code ? taskCodeToWorkItemId[it.code] : undefined}
+                                />
                               ))}
                             </div>
                           </div>

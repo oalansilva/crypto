@@ -22,6 +22,7 @@ import subprocess
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.services.change_tasks_service import toggle_task_checkbox
 from app.services.coordination_service import resolve_change_relative_path
 from app.services.upstream_guard import (
     ENFORCED_STATUSES,
@@ -858,6 +859,11 @@ def update_task(
             status_code=404, detail=f"Unknown work item '{work_item_id}'"
         )
 
+    # Track if state is changing for tasks.md sync
+    old_state = item.state
+    new_state = payload.state if payload.state is not None else old_state
+    state_changed = payload.state is not None and old_state != payload.state
+
     if payload.parent_id is not None:
         item.parent_id = _validate_parent(
             db, item.change_pk, payload.parent_id, item.type
@@ -871,8 +877,33 @@ def update_task(
     if payload.priority is not None:
         item.priority = payload.priority
 
-    db.commit()
-    db.refresh(item)
+    # Sync to tasks.md when state changes to done/queued
+    file_sync_ok = True
+    if state_changed and new_state in (WorkItemState.done, WorkItemState.queued):
+        # Extract task_code from description (format: "code:1.1" or "code: 1.1" or just "1.1 ...")
+        task_code_match = re.search(r"code:\s*(\d+(?:\.\d+)+)", item.description or "")
+        if task_code_match:
+            task_code = task_code_match.group(1)
+            # Get change_id from change_pk
+            change = db.query(Change).filter(Change.id == item.change_pk).first()
+            if change:
+                checked = new_state == WorkItemState.done
+                file_sync_ok = toggle_task_checkbox(change.change_id, task_code, checked)
+                if not file_sync_ok:
+                    # File sync failed - rollback DB transaction
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Failed to sync checkbox in tasks.md for task '{task_code}'",
+                    )
+        else:
+            # No task code found in description - skip file sync but continue
+            pass
+
+    if file_sync_ok:
+        db.commit()
+        db.refresh(item)
+
     return WorkItemOut.model_validate(item, from_attributes=True)
 
 
