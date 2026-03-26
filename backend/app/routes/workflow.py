@@ -108,9 +108,10 @@ def sync_tasks_to_workflow_db(
 ) -> List[WorkItem]:
     """Sync tasks.md to wf_work_items table.
 
-    Creates Story work items for each section, and Bug work items for each task.
-    This function clears existing work items and recreates them from tasks.md to ensure
-    the database is in sync with the file.
+    Creates Story work items for each section, and Task work items for each checklist item.
+    Uses upsert logic: existing work items are updated (title/description) but their
+    state is PRESERVED to avoid overwriting changes made via API (e.g., checkbox toggles).
+    Only new items get their initial state from tasks.md.
     """
     tasks_path = _get_tasks_file_path(change_id)
     if not tasks_path.exists():
@@ -128,15 +129,19 @@ def sync_tasks_to_workflow_db(
     if not sections:
         return []
 
-    # Clear existing work items for this change to avoid duplicates
-    # (tasks.md is the source of truth)
-    db.query(WorkItem).filter(WorkItem.change_pk == change_pk).delete()
-    db.commit()
+    # Build a map of existing work items keyed by (type, description/code) for upsert
+    existing_by_code: Dict[tuple, WorkItem] = {}
+    for item in db.query(WorkItem).filter(WorkItem.change_pk == change_pk).all():
+        # Extract code from description (format: "code:1.1" or "code:1")
+        code_match = re.search(r"code:([\d.]+)", item.description or "")
+        if code_match:
+            key = (item.type.value, code_match.group(1))
+            existing_by_code[key] = item
 
     synced_items: List[WorkItem] = []
     section_code_to_story: Dict[str, WorkItem] = {}
 
-    # First, create all stories
+    # First, upsert all stories (sections)
     for section in sections:
         section_title = section.title.strip() if section.title else f"Section"
 
@@ -144,27 +149,34 @@ def sync_tasks_to_workflow_db(
         section_code_match = re.match(r"^(\d+)", section_title)
         section_code = section_code_match.group(1) if section_code_match else None
 
-        # Create story for this section
-        story = WorkItem(
-            change_pk=change_pk,
-            type=WorkItemType.story,
-            state=WorkItemState.queued,
-            title=section_title,
-            description=f"code:{section_code}" if section_code else "",
-            priority=0,
-        )
-        db.add(story)
-        synced_items.append(story)
+        # Try to find existing story by code
+        story = None
+        if section_code:
+            story = existing_by_code.get((WorkItemType.story.value, section_code))
 
+        if story:
+            # Update existing story title but PRESERVE state
+            story.title = section_title
+        else:
+            # Create new story
+            story = WorkItem(
+                change_pk=change_pk,
+                type=WorkItemType.story,
+                state=WorkItemState.queued,
+                title=section_title,
+                description=f"code:{section_code}" if section_code else "",
+                priority=0,
+            )
+            db.add(story)
+
+        synced_items.append(story)
         if section_code:
             section_code_to_story[section_code] = story
 
     # Flush stories to get their IDs
     db.flush()
 
-    # Now create tasks with proper parent references
-    # Tasks from tasks.md should be work items linked to stories (not separate stories or bugs)
-    # Bugs should only be created via UI when QA finds a real bug
+    # Now upsert tasks with proper parent references
     for section in sections:
         section_title = section.title.strip() if section.title else f"Section"
         section_code_match = re.match(r"^(\d+)", section_title)
@@ -176,17 +188,31 @@ def sync_tasks_to_workflow_db(
             task_code = _parse_tasks_code(task_item.text)
             task_title = task_item.title or task_item.text
 
-            # Create task linked to story (tasks are child items of stories)
-            task = WorkItem(
-                change_pk=change_pk,
-                type=WorkItemType.task,  # task type, not story or bug
-                state=WorkItemState.done if task_item.checked else WorkItemState.queued,
-                parent_id=parent_story.id if parent_story else None,
-                title=task_title,
-                description=f"code:{task_code}" if task_code else "",
-                priority=0,
-            )
-            db.add(task)
+            if not task_code:
+                continue
+
+            # Try to find existing task by code
+            task = existing_by_code.get((WorkItemType.task.value, task_code))
+
+            if task:
+                # Update existing task title but PRESERVE state
+                task.title = task_title
+                task.description = f"code:{task_code}"
+                if parent_story:
+                    task.parent_id = parent_story.id
+            else:
+                # Create new task with initial state from tasks.md
+                task = WorkItem(
+                    change_pk=change_pk,
+                    type=WorkItemType.task,
+                    state=WorkItemState.done if task_item.checked else WorkItemState.queued,
+                    parent_id=parent_story.id if parent_story else None,
+                    title=task_title,
+                    description=f"code:{task_code}" if task_code else "",
+                    priority=0,
+                )
+                db.add(task)
+
             synced_items.append(task)
 
     db.commit()
