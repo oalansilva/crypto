@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, ArrowRight, FileText, Kanban, Layers, Settings } from 'lucide-react'
 import { apiUrl } from '@/lib/apiBase'
+import PortfolioAllocation from '@/components/PortfolioAllocation'
 
 type HealthState = {
   status?: string
@@ -553,6 +554,8 @@ export default function HomePage() {
             )}
           </KpiCard>
         </section>
+
+        <PortfolioAllocation />
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.45fr_0.95fr]">
           <div className="flex flex-col gap-4">
