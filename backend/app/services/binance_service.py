@@ -29,16 +29,19 @@ from app.schemas.signal import (
 logger = logging.getLogger(__name__)
 
 BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
-DEFAULT_ASSETS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+BINANCE_EXCHANGE_INFO_URL = "https://api.binance.com/api/v3/exchangeInfo"
 CACHE_TTL_SECONDS = 300.0
 KLINES_LIMIT = 120
 KLINES_INTERVAL = "1h"
 REQUEST_TIMEOUT_SECONDS = 8.0
 MAX_RETRIES = 3
+MAX_CONCURRENT_KLINES = 20
+_KLINES_SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_KLINES)
 
 _CACHE_LOCK = threading.Lock()
 _KLINES_CACHE: dict[tuple[str, str, int], dict[str, Any]] = {}
 _SIGNAL_LOOKUP: dict[str, dict[str, Any]] = {}
+_USDT_PAIRS_CACHE: dict[str, Any] = {}
 
 _PROFILE_SETTINGS: dict[RiskProfile, dict[str, float]] = {
     RiskProfile.conservative: {
@@ -69,6 +72,56 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+async def _fetch_all_usdt_pairs_from_binance() -> list[str]:
+    """Fetch all USDT trading pairs from Binance exchangeInfo."""
+    timeout = httpx.Timeout(REQUEST_TIMEOUT_SECONDS)
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.get(BINANCE_EXCHANGE_INFO_URL)
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After")
+                delay = float(retry_after) if retry_after else float(attempt)
+                await asyncio.sleep(min(delay, 5.0))
+                continue
+            response.raise_for_status()
+            payload = response.json()
+            symbols = payload.get("symbols", [])
+            usdt_pairs = [
+                sym["symbol"]
+                for sym in symbols
+                if sym.get("status") == "TRADING"
+                and sym.get("quoteAsset") == "USDT"
+                and sym.get("isSpotTradingAllowed", False)
+            ]
+            return sorted(usdt_pairs)
+        except (httpx.HTTPError, ValueError) as exc:
+            if attempt >= MAX_RETRIES:
+                raise RuntimeError(f"Unable to fetch Binance exchangeInfo: {exc}") from exc
+            await asyncio.sleep(min(2 ** (attempt - 1), 4))
+    return []
+
+
+async def _get_all_usdt_pairs() -> list[str]:
+    """Get all USDT pairs with 5-minute cache."""
+    now = time.time()
+    with _CACHE_LOCK:
+        cached = _USDT_PAIRS_CACHE.get("usdt_pairs")
+        if cached:
+            expires_at = float(cached.get("expires_at") or 0)
+            if expires_at > now:
+                return list(cached.get("pairs") or [])
+            _USDT_PAIRS_CACHE.pop("usdt_pairs", None)
+
+    pairs = await _fetch_all_usdt_pairs_from_binance()
+    with _CACHE_LOCK:
+        _USDT_PAIRS_CACHE["usdt_pairs"] = {
+            "pairs": pairs,
+            "expires_at": time.time() + CACHE_TTL_SECONDS,
+        }
+    return pairs
+
+
 def _normalize_asset(asset: str) -> str:
     normalized = str(asset or "").strip().upper()
     if not normalized:
@@ -76,10 +129,10 @@ def _normalize_asset(asset: str) -> str:
     return normalized
 
 
-def _normalize_assets(asset: str | None) -> list[str]:
+async def _normalize_assets(asset: str | None) -> list[str]:
     if asset:
         return [_normalize_asset(asset)]
-    return list(DEFAULT_ASSETS)
+    return await _get_all_usdt_pairs()
 
 
 def _read_cache(cache_key: tuple[str, str, int], *, allow_stale: bool = False) -> dict[str, Any] | None:
@@ -345,11 +398,16 @@ async def build_signal_feed(
     risk_profile: RiskProfile = RiskProfile.moderate,
     limit: int = 20,
 ) -> SignalListResponse:
-    assets = _normalize_assets(asset)
+    assets = await _normalize_assets(asset)
+    all_usdt_pairs = await _get_all_usdt_pairs()
     requested_limit = max(1, min(int(limit or 20), 50))
     threshold = int(confidence_min if confidence_min is not None else _PROFILE_SETTINGS[risk_profile]["default_confidence_min"])
 
-    snapshots = await asyncio.gather(*(get_klines(item) for item in assets))
+    async def _get_klines_with_semaphore(item: str) -> dict[str, Any]:
+        async with _KLINES_SEMAPHORE:
+            return await get_klines(item)
+
+    snapshots = await asyncio.gather(*(_get_klines_with_semaphore(item) for item in assets))
     cached_candidates = [item.get("cached_at") for item in snapshots if item.get("cached_at")]
     cached_at = max(cached_candidates) if cached_candidates else None
     is_stale = any(bool(item.get("is_stale")) for item in snapshots)
@@ -374,7 +432,7 @@ async def build_signal_feed(
         total=total,
         cached_at=cached_at,
         is_stale=is_stale,
-        available_assets=list(DEFAULT_ASSETS),
+        available_assets=all_usdt_pairs,
     )
 
 
@@ -383,8 +441,10 @@ async def get_signal_detail(signal_id: str) -> Signal:
     if remembered is not None:
         return remembered
 
+    all_pairs = await _get_all_usdt_pairs()
+    signal_limit = min(100, len(all_pairs))
     for risk_profile in RiskProfile:
-        feed = await build_signal_feed(risk_profile=risk_profile, confidence_min=0, limit=len(DEFAULT_ASSETS))
+        feed = await build_signal_feed(risk_profile=risk_profile, confidence_min=0, limit=signal_limit)
         for signal in feed.signals:
             if signal.id == signal_id:
                 return signal
@@ -392,8 +452,10 @@ async def get_signal_detail(signal_id: str) -> Signal:
 
 
 async def get_latest_high_confidence_signals() -> SignalListResponse:
+    all_pairs = await _get_all_usdt_pairs()
+    signal_limit = min(150, len(all_pairs))
     feeds = await asyncio.gather(
-        *(build_signal_feed(risk_profile=risk_profile, confidence_min=70, limit=len(DEFAULT_ASSETS)) for risk_profile in RiskProfile)
+        *(build_signal_feed(risk_profile=risk_profile, confidence_min=70, limit=signal_limit) for risk_profile in RiskProfile)
     )
 
     signals: list[Signal] = []
@@ -419,5 +481,5 @@ async def get_latest_high_confidence_signals() -> SignalListResponse:
         total=total,
         cached_at=latest_cached_at,
         is_stale=is_stale,
-        available_assets=list(DEFAULT_ASSETS),
+        available_assets=all_pairs,
     )

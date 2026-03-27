@@ -77,6 +77,20 @@
 
 ---
 
+## 8. Expansão para Todos os Pares USDT
+
+- [x] **8.1** Adicionar função `_fetch_all_usdt_pairs_from_binance()` usando `GET /api/v3/exchangeInfo`
+- [x] **8.2** Filtrar pares: status=TRADING, quoteAsset=USDT, isSpotTradingAllowed=true
+- [x] **8.3** Implementar cache de 5 minutos para lista de pares USDT (`_USDT_PAIRS_CACHE`)
+- [x] **8.4** Substituir `DEFAULT_ASSETS` fixo por fetch dinâmico em `_normalize_assets()`
+- [x] **8.5** Atualizar `build_signal_feed()` para gerar sinais para todos os pares USDT
+- [x] **8.6** Adicionar semáforo `MAX_CONCURRENT_KLINES=20` para limitar requests concorrentes
+- [x] **8.7** Atualizar `available_assets` no response para conter todos os pares USDT
+- [x] **8.8** Atualizar `get_latest_high_confidence_signals()` para usar todos os pares
+- [x] **8.9** Atualizar `get_signal_detail()` com limite maior para busca
+
+---
+
 ## Dependências
 
 - Card #55 (indicadores RSI/MACD/Bollinger Bands) — implementação completa do modelo
