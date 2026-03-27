@@ -88,6 +88,7 @@
 - [x] **8.7** Atualizar `available_assets` no response para conter todos os pares USDT
 - [x] **8.8** Atualizar `get_latest_high_confidence_signals()` para usar todos os pares
 - [x] **8.9** Atualizar `get_signal_detail()` com limite maior para busca
+- [x] **8.10** Adicionar error handling em `build_signal_feed()` para ignorar pares com dados inválidos
 
 ---
 

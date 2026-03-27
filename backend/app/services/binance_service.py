@@ -412,10 +412,14 @@ async def build_signal_feed(
     cached_at = max(cached_candidates) if cached_candidates else None
     is_stale = any(bool(item.get("is_stale")) for item in snapshots)
 
-    signals = [
-        _build_signal(asset=current_asset, risk_profile=risk_profile, candles=snapshot["candles"])
-        for current_asset, snapshot in zip(assets, snapshots)
-    ]
+    signals = []
+    for current_asset, snapshot in zip(assets, snapshots):
+        try:
+            signal = _build_signal(asset=current_asset, risk_profile=risk_profile, candles=snapshot["candles"])
+            signals.append(signal)
+        except Exception as exc:
+            logger.warning("Failed to build signal for %s: %s", current_asset, exc)
+            continue
 
     if signal_type is not None:
         signals = [signal for signal in signals if signal.type == signal_type]
