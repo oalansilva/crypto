@@ -29,6 +29,7 @@ const mainNavItems: NavItemConfig[] = [
   { to: '/', label: 'Playground', icon: Home },
   { to: '/favorites', label: 'Favoritos', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
+  { to: '/signals', label: 'Sinais', icon: TrendingUp },
   { to: '/kanban', label: 'Kanban', icon: Kanban },
 ]
 
@@ -49,6 +50,7 @@ function resolvePageTitle(pathname: string) {
   if (pathname === '/') return 'Dashboard principal'
   if (pathname === '/favorites') return 'Favoritos'
   if (pathname === '/monitor') return 'Monitor de sinais'
+  if (pathname === '/signals') return 'Sinais de trading'
   if (pathname === '/kanban') return 'Kanban'
   if (pathname.startsWith('/lab')) return 'Laboratório'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'

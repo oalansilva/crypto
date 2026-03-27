@@ -9,7 +9,7 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.api import router
@@ -27,6 +27,7 @@ from app.routes.workflow import router as workflow_router
 from app.routes.workflow_validation import router as workflow_validation_router
 from app.routes.market import router as market_router
 from app.routes.portfolio import router as portfolio_router
+from app.routes.signals import router as signals_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -195,6 +196,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_signals_disclaimer_header(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/signals"):
+        response.headers["X-Disclaimer"] = "Isenção de responsabilidade: este não é advice financeiro."
+    return response
+
 # Include API routes
 app.include_router(router)
 app.include_router(favorites_router)
@@ -211,6 +220,7 @@ app.include_router(workflow_router)
 app.include_router(workflow_validation_router)
 app.include_router(market_router)
 app.include_router(portfolio_router)
+app.include_router(signals_router)
 
 @app.get("/")
 async def root():

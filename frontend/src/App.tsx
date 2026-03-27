@@ -15,6 +15,7 @@ import LabPage from './pages/LabPage'
 import LabRunPage from './pages/LabRunPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
 import KanbanPage from './pages/KanbanPage'
+import SignalsPage from './pages/SignalsPage'
 import { Toaster } from "@/components/ui/toaster"
 
 function PrototypeRedirect({ to }: { to: string }) {
@@ -48,6 +49,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
+          <Route path="/signals" element={<SignalsPage />} />
           <Route path="/combo/select" element={<ComboSelectPage />} />
           {/* Backward-compat route (old link/bookmark) */}
           <Route path="/combo/selectCrypto" element={<ComboSelectPage />} />
