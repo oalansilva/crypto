@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import threading
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models_signal_history import SignalHistory
+from app.models_signal_history import SAO_PAULO_TZ, SignalHistory, sao_paulo_now
 from app.schemas.signal import RiskProfile, Signal, SignalListResponse, SignalType
 from app.services import binance_service, sentiment_service
 
@@ -59,6 +59,58 @@ class UpdateStatusRequest(BaseModel):
     status: str
     exit_price: float | None = None
     quantity: float | None = None
+
+
+def _ensure_sao_paulo(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=SAO_PAULO_TZ)
+    return dt.astimezone(SAO_PAULO_TZ)
+
+
+def _convert_utc_to_sao_paulo(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(SAO_PAULO_TZ)
+
+
+def _parse_history_datetime(value: str) -> datetime:
+    normalized = value.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=SAO_PAULO_TZ)
+    return parsed.astimezone(SAO_PAULO_TZ)
+
+
+def _build_history_item(row: SignalHistory) -> SignalHistoryItem:
+    indicators = None
+    if row.indicators:
+        try:
+            indicators = json.loads(row.indicators)
+        except Exception:
+            indicators = None
+
+    return SignalHistoryItem(
+        id=row.id,
+        asset=row.asset,
+        type=row.type,
+        confidence=row.confidence,
+        target_price=row.target_price,
+        stop_loss=row.stop_loss,
+        indicators=indicators,
+        created_at=_ensure_sao_paulo(row.created_at),
+        risk_profile=row.risk_profile,
+        status=row.status,
+        entry_price=row.entry_price,
+        exit_price=row.exit_price,
+        quantity=row.quantity,
+        pnl=row.pnl,
+        trigger_price=row.trigger_price,
+        updated_at=_ensure_sao_paulo(row.updated_at),
+    )
 
 
 def _get_db():
@@ -153,13 +205,13 @@ async def get_signal_history(
             query = query.filter(SignalHistory.status == status)
         if data_inicio:
             try:
-                dt_inicio = datetime.fromisoformat(data_inicio)
+                dt_inicio = _parse_history_datetime(data_inicio)
                 query = query.filter(SignalHistory.created_at >= dt_inicio)
             except ValueError:
                 pass
         if data_fim:
             try:
-                dt_fim = datetime.fromisoformat(data_fim)
+                dt_fim = _parse_history_datetime(data_fim)
                 query = query.filter(SignalHistory.created_at <= dt_fim)
             except ValueError:
                 pass
@@ -169,34 +221,7 @@ async def get_signal_history(
         total = query.count()
         rows = query.order_by(SignalHistory.created_at.desc()).offset(offset).limit(limit).all()
 
-        signals = []
-        for row in rows:
-            indicators = None
-            if row.indicators:
-                try:
-                    indicators = json.loads(row.indicators)
-                except Exception:
-                    indicators = None
-            signals.append(
-                SignalHistoryItem(
-                    id=row.id,
-                    asset=row.asset,
-                    type=row.type,
-                    confidence=row.confidence,
-                    target_price=row.target_price,
-                    stop_loss=row.stop_loss,
-                    indicators=indicators,
-                    created_at=row.created_at,
-                    risk_profile=row.risk_profile,
-                    status=row.status,
-                    entry_price=row.entry_price,
-                    exit_price=row.exit_price,
-                    quantity=row.quantity,
-                    pnl=row.pnl,
-                    trigger_price=row.trigger_price,
-                    updated_at=row.updated_at,
-                )
-            )
+        signals = [_build_history_item(row) for row in rows]
         return SignalHistoryResponse(signals=signals, total=total, limit=limit, offset=offset)
     finally:
         db.close()
@@ -213,30 +238,7 @@ async def get_signal_history_detail(signal_id: str):
         row = db.query(SignalHistory).filter(SignalHistory.id == signal_id).first()
         if not row:
             raise HTTPException(status_code=404, detail="Signal not found")
-        indicators = None
-        if row.indicators:
-            try:
-                indicators = json.loads(row.indicators)
-            except Exception:
-                indicators = None
-        return SignalHistoryItem(
-            id=row.id,
-            asset=row.asset,
-            type=row.type,
-            confidence=row.confidence,
-            target_price=row.target_price,
-            stop_loss=row.stop_loss,
-            indicators=indicators,
-            created_at=row.created_at,
-            risk_profile=row.risk_profile,
-            status=row.status,
-            entry_price=row.entry_price,
-            exit_price=row.exit_price,
-            quantity=row.quantity,
-            pnl=row.pnl,
-            trigger_price=row.trigger_price,
-            updated_at=row.updated_at,
-        )
+        return _build_history_item(row)
     finally:
         db.close()
 
@@ -257,7 +259,7 @@ async def update_signal_status(
             raise HTTPException(status_code=404, detail="Signal not found")
 
         row.status = req.status
-        row.updated_at = datetime.utcnow()
+        row.updated_at = sao_paulo_now()
 
         if req.exit_price is not None:
             row.exit_price = req.exit_price
@@ -271,30 +273,7 @@ async def update_signal_status(
         db.commit()
         db.refresh(row)
 
-        indicators = None
-        if row.indicators:
-            try:
-                indicators = json.loads(row.indicators)
-            except Exception:
-                indicators = None
-        return SignalHistoryItem(
-            id=row.id,
-            asset=row.asset,
-            type=row.type,
-            confidence=row.confidence,
-            target_price=row.target_price,
-            stop_loss=row.stop_loss,
-            indicators=indicators,
-            created_at=row.created_at,
-            risk_profile=row.risk_profile,
-            status=row.status,
-            entry_price=row.entry_price,
-            exit_price=row.exit_price,
-            quantity=row.quantity,
-            pnl=row.pnl,
-            trigger_price=row.trigger_price,
-            updated_at=row.updated_at,
-        )
+        return _build_history_item(row)
     finally:
         db.close()
 
@@ -314,13 +293,13 @@ async def get_signal_stats(
 
         if data_inicio:
             try:
-                dt_inicio = datetime.fromisoformat(data_inicio)
+                dt_inicio = _parse_history_datetime(data_inicio)
                 query = query.filter(SignalHistory.created_at >= dt_inicio)
             except ValueError:
                 pass
         if data_fim:
             try:
-                dt_fim = datetime.fromisoformat(data_fim)
+                dt_fim = _parse_history_datetime(data_fim)
                 query = query.filter(SignalHistory.created_at <= dt_fim)
             except ValueError:
                 pass
@@ -399,7 +378,7 @@ def _save_signal_to_history(signal: Signal) -> None:
             target_price=signal.target_price,
             stop_loss=signal.stop_loss,
             indicators=json.dumps(signal.indicators.model_dump(by_alias=True), default=str),
-            created_at=signal.created_at,
+            created_at=_convert_utc_to_sao_paulo(signal.created_at),
             risk_profile=signal.risk_profile.value,
             status="ativo",
             entry_price=entry_price,
@@ -411,4 +390,3 @@ def _save_signal_to_history(signal: Signal) -> None:
         print(f"[signal_history] Failed to save signal {signal.id}: {e}")
     finally:
         db.close()
-

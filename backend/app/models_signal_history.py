@@ -1,6 +1,16 @@
-from sqlalchemy import Column, String, Float, Integer, DateTime, Text, Index
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text
+
 from app.database import Base
-from datetime import datetime
+
+
+SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
+
+
+def sao_paulo_now() -> datetime:
+    return datetime.now(timezone.utc).astimezone(SAO_PAULO_TZ)
 
 
 class SignalHistory(Base):
@@ -13,7 +23,7 @@ class SignalHistory(Base):
     target_price = Column(Float, nullable=False)
     stop_loss = Column(Float, nullable=False)
     indicators = Column(Text, nullable=True)  # JSON string
-    created_at = Column(DateTime, nullable=False, index=True, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True, default=lambda: sao_paulo_now())
     risk_profile = Column(String, nullable=False)
     status = Column(String, nullable=False, default="ativo", index=True)  # ativo, disparado, expirado, cancelado
 
@@ -25,7 +35,7 @@ class SignalHistory(Base):
 
     # Metadata
     trigger_price = Column(Float, nullable=True)
-    updated_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)
     archived = Column(String, default="no", index=True)  # yes/no
 
     __table_args__ = (
