@@ -19,6 +19,7 @@ import httpx
 
 from app.schemas.signal import (
     BollingerBandsPayload,
+    ConfidenceBreakdown,
     RiskProfile,
     Signal,
     SignalIndicators,
@@ -313,6 +314,7 @@ def _build_signal(
     asset: str,
     risk_profile: RiskProfile,
     candles: list[dict[str, Any]],
+    sentiment_score: int | float | None = None,
 ) -> Signal:
     closes = [float(candle["close"]) for candle in candles]
     latest_close = closes[-1]
@@ -372,6 +374,22 @@ def _build_signal(
         target_price = latest_close * (1 + settings["target_pct"] / 2)
         stop_loss = latest_close * (1 - settings["stop_pct"] / 2)
 
+    breakdown: ConfidenceBreakdown | None = None
+    if sentiment_score is not None:
+        normalized_sentiment = max(0.0, min(100.0, float(sentiment_score)))
+        technical_confidence = max(0.0, min(100.0, float(confidence)))
+        rsi_contribution = technical_confidence * 0.7 * 0.7
+        macd_contribution = technical_confidence * 0.7 * 0.3
+        sentiment_contribution = normalized_sentiment * 0.3
+        display_total = rsi_contribution + macd_contribution + sentiment_contribution
+        confidence = int(round(max(0.0, min(100.0, display_total))))
+        breakdown = ConfidenceBreakdown(
+            rsi_contribution=rsi_contribution,
+            macd_contribution=macd_contribution,
+            sentiment_contribution=sentiment_contribution,
+            display_total=display_total,
+        )
+
     signal_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"signal:{asset}:{risk_profile.value}:{latest_time.isoformat()}"))
     return Signal(
         id=signal_id,
@@ -387,6 +405,7 @@ def _build_signal(
         ),
         created_at=latest_time,
         risk_profile=risk_profile,
+        breakdown=breakdown,
     )
 
 
@@ -397,6 +416,7 @@ async def build_signal_feed(
     asset: str | None = None,
     risk_profile: RiskProfile = RiskProfile.moderate,
     limit: int = 20,
+    sentiment_score: int | float | None = None,
 ) -> SignalListResponse:
     assets = await _normalize_assets(asset)
     all_usdt_pairs = await _get_all_usdt_pairs()
@@ -415,8 +435,16 @@ async def build_signal_feed(
     signals = []
     for current_asset, snapshot in zip(assets, snapshots):
         try:
-            signal = _build_signal(asset=current_asset, risk_profile=risk_profile, candles=snapshot["candles"])
+            signal = _build_signal(
+                asset=current_asset,
+                risk_profile=risk_profile,
+                candles=snapshot["candles"],
+                sentiment_score=sentiment_score,
+            )
             signals.append(signal)
+            # Save to history (fire-and-forget in background thread)
+            from app.routes.signals import _save_signal_to_history
+            threading.Thread(target=_save_signal_to_history, args=(signal,), daemon=True).start()
         except Exception as exc:
             logger.warning("Failed to build signal for %s: %s", current_asset, exc)
             continue
