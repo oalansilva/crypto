@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alocação do Portfólio — CryptoTrading</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #1c2128;
+      --border: #30363d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --accent: #14F195;
+      --btc: #F7931A;
+      --eth: #627EEA;
+      --sol: #9945FF;
+      --usdt: #26A17B;
+      --bnb: #F3BA2F;
+      --ada: #0033AD;
+      --dot: #E6007A;
+      --other: #484F58;
+      --danger: #f85149;
+      --warning: #d29922;
+      --success: #14F195;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 960px;
+    }
+
+    /* ── Header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .section-header .icon {
+      font-size: 22px;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ── Main card ── */
+    .portfolio-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    /* ── Chart + Legend layout ── */
+    .portfolio-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    @media (max-width: 640px) {
+      .portfolio-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+    }
+
+    /* ── Donut chart ── */
+    .chart-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .donut-svg {
+      width: 220px;
+      height: 220px;
+      transform: rotate(-90deg);
+      filter: drop-shadow(0 0 24px rgba(20,241,149,0.15));
+    }
+
+    .chart-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    .chart-center .label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .chart-center .total {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 2px;
+    }
+    .chart-center .sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* ── Legend ── */
+    .legend {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      border: 1px solid transparent;
+    }
+    .legend-item:hover, .legend-item.active {
+      background: rgba(20,241,149,0.06);
+      border-color: rgba(20,241,149,0.2);
+      transform: translateX(3px);
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .legend-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .legend-pct {
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 44px;
+      text-align: right;
+    }
+    .legend-val {
+      font-size: 13px;
+      color: var(--text-secondary);
+      min-width: 88px;
+      text-align: right;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+    }
+    .total-row .tl {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .total-row .tv {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* ── Tooltip ── */
+    .tooltip {
+      position: fixed;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 9999;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      min-width: 160px;
+    }
+    .tooltip.visible { opacity: 1; }
+    .tooltip .tt-name { font-weight: 600; margin-bottom: 4px; }
+    .tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; color: var(--text-secondary); }
+    .tooltip .tt-row span:last-child { color: var(--text-primary); font-weight: 500; }
+
+    /* ── Loading state ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+      gap: 12px;
+    }
+    .empty-state .empty-icon {
+      font-size: 40px;
+      opacity: 0.5;
+    }
+    .empty-state .empty-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .empty-state .empty-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 260px;
+    }
+
+    /* ── Error state ── */
+    .error-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+      gap: 12px;
+    }
+    .error-state .error-icon {
+      font-size: 40px;
+    }
+    .error-state .error-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .error-state .error-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 260px;
+    }
+    .retry-btn {
+      margin-top: 8px;
+      padding: 8px 20px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .retry-btn:hover {
+      border-color: var(--accent);
+      background: rgba(20,241,149,0.06);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Section header -->
+  <div class="section-header">
+    <span class="icon">📊</span>
+    <h2 class="section-title">Alocação do Portfólio</h2>
+  </div>
+
+  <!-- Main portfolio card -->
+  <div class="portfolio-card" id="portfolio-view">
+
+    <!-- Loading skeleton -->
+    <div id="loading-state" style="display:none;">
+      <div style="display:grid;grid-template-columns:220px 1fr;gap:32px;align-items:center;" class="portfolio-grid">
+        <div class="skeleton" style="width:220px;height:220px;border-radius:50%;margin:0 auto;"></div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="skeleton" style="height:44px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:44px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:44px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:44px;border-radius:10px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="empty-state" style="display:none;">
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">Portfólio vazio</div>
+        <div class="empty-desc">Você ainda não possui ativos. Comece a investir para ver a alocação aqui.</div>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error-state" style="display:none;">
+      <div class="error-state">
+        <div class="error-icon">⚠️</div>
+        <div class="error-title">Erro ao carregar</div>
+        <div class="error-desc">Não foi possível obter os dados do portfólio. Tente novamente.</div>
+        <button class="retry-btn" onclick="loadPortfolio()">Tentar novamente</button>
+      </div>
+    </div>
+
+    <!-- Populated state -->
+    <div id="populated-state" style="display:none;">
+      <div class="portfolio-grid">
+        <!-- Donut chart -->
+        <div class="chart-wrapper">
+          <svg class="donut-svg" viewBox="0 0 220 220" id="donut-chart"></svg>
+          <div class="chart-center">
+            <div class="label">Total</div>
+            <div class="total" id="chart-total">$0</div>
+            <div class="sub">USD</div>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <ul class="legend" id="legend"></ul>
+      </div>
+
+      <div class="divider"></div>
+      <div class="total-row">
+        <span class="tl">Valor Total do Portfólio</span>
+        <span class="tv" id="footer-total">$0 USD</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-row"><span>Percentual</span><span id="tt-pct"></span></div>
+  <div class="tt-row"><span>Valor</span><span id="tt-val"></span></div>
+</div>
+
+<script>
+  // ── Data ──────────────────────────────────────────────────────
+  const assets = [
+    { symbol: 'BTC',  name: 'Bitcoin',   color: '#F7931A', pct: 50,  value: 50000 },
+    { symbol: 'ETH',  name: 'Ethereum',  color: '#627EEA', pct: 25,  value: 25000 },
+    { symbol: 'SOL',  name: 'Solana',    color: '#9945FF', pct: 10,  value: 10000 },
+    { symbol: 'USDT', name: 'Tether',    color: '#26A17B', pct: 8,   value:  8000 },
+    { symbol: 'BNB',  name: 'BNB',       color: '#F3BA2F', pct: 4,   value:  4000 },
+    { symbol: 'ADA',  name: 'Cardano',   color: '#0033AD', pct: 2,   value:  2000 },
+    { symbol: 'DOT',  name: 'Polkadot',  color: '#E6007A', pct: 1,   value:  1000 },
+  ];
+
+  // ── Donut chart renderer ──────────────────────────────────────
+  function buildDonut(assets) {
+    const svg = document.getElementById('donut-chart');
+    const totalValue = assets.reduce((s, a) => s + a.value, 0);
+    const cx = 110, cy = 110, r = 80, stroke = 32;
+    const circumference = 2 * Math.PI * r;
+    let offset = 0;
+    let paths = '';
+
+    assets.forEach((asset, i) => {
+      const dashLen  = (asset.pct / 100) * circumference;
+      const dashGap  = circumference - dashLen;
+      const rot      = offset;
+      const color    = asset.color;
+      const id       = `seg-${i}`;
+      const midAngle = (offset / circumference) * 360 + (dashLen / circumference) * 180 - 90;
+
+      paths += `
+        <circle
+          id="${id}"
+          cx="${cx}" cy="${cy}" r="${r}"
+          fill="none"
+          stroke="${color}"
+          stroke-width="${stroke}"
+          stroke-dasharray="${dashLen} ${dashGap}"
+          stroke-linecap="butt"
+          transform="rotate(${rot / circumference * 360} ${cx} ${cy})"
+          style="cursor:pointer; transition: opacity 0.2s; filter: drop-shadow(0 0 8px ${color}66);"
+          data-index="${i}"
+          onmouseenter="showTooltip(event, ${i})"
+          onmousemove="moveTooltip(event)"
+          onmouseleave="hideTooltip()"
+        />
+      `;
+      offset += dashLen;
+    });
+
+    svg.innerHTML = paths;
+    document.getElementById('chart-total').textContent = fmtCurrency(totalValue);
+  }
+
+  // ── Legend renderer ────────────────────────────────────────────
+  function buildLegend(assets) {
+    const el = document.getElementById('legend');
+    el.innerHTML = '';
+    assets.forEach((asset, i) => {
+      const li = document.createElement('li');
+      li.className = 'legend-item';
+      li.dataset.index = i;
+      li.innerHTML = `
+        <span class="legend-dot" style="background:${asset.color}; box-shadow: 0 0 6px ${asset.color}66;"></span>
+        <span class="legend-name">${asset.name}</span>
+        <span class="legend-pct" style="color:${asset.color};">${asset.pct}%</span>
+        <span class="legend-val">${fmtCurrency(asset.value)}</span>
+      `;
+      li.addEventListener('mouseenter', () => {
+        document.querySelectorAll('.legend-item').forEach(el => el.classList.remove('active'));
+        li.classList.add('active');
+      });
+      li.addEventListener('mouseleave', () => {
+        li.classList.remove('active');
+      });
+      el.appendChild(li);
+    });
+    document.getElementById('footer-total').textContent = fmtCurrency(
+      assets.reduce((s, a) => s + a.value, 0)
+    ) + ' USD';
+  }
+
+  // ── Tooltip ────────────────────────────────────────────────────
+  function showTooltip(e, idx) {
+    const asset = assets[idx];
+    document.getElementById('tt-name').textContent = asset.name;
+    document.getElementById('tt-pct').textContent  = asset.pct + '%';
+    document.getElementById('tt-val').textContent  = fmtCurrency(asset.value);
+    document.getElementById('tooltip').classList.add('visible');
+    moveTooltip(e);
+  }
+  function moveTooltip(e) {
+    const tt = document.getElementById('tooltip');
+    const x = e.clientX + 14;
+    const y = e.clientY - 20;
+    tt.style.left = (x + tt.offsetWidth > window.innerWidth ? e.clientX - tt.offsetWidth - 14 : x) + 'px';
+    tt.style.top  = y + 'px';
+  }
+  function hideTooltip() {
+    document.getElementById('tooltip').classList.remove('visible');
+  }
+
+  // ── State management ──────────────────────────────────────────
+  function showState(state) {
+    document.getElementById('loading-state').style.display  = state === 'loading'  ? 'block' : 'none';
+    document.getElementById('empty-state').style.display    = state === 'empty'    ? 'flex'  : 'none';
+    document.getElementById('error-state').style.display   = state === 'error'     ? 'flex'  : 'none';
+    document.getElementById('populated-state').style.display = state === 'populated' ? 'block' : 'none';
+  }
+
+  function loadPortfolio() {
+    showState('loading');
+
+    setTimeout(() => {
+      // Demo: switch state here to test different states
+      // 'empty' → mostra empty state
+      // 'error'  → mostra error state
+      // 'populated' → mostra portfólio
+      const state = 'populated';
+      showState(state);
+
+      if (state === 'populated') {
+        buildDonut(assets);
+        buildLegend(assets);
+      }
+    }, 800);
+  }
+
+  function fmtCurrency(val) {
+    return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
+  // ── Init ────────────────────────────────────────────────────────
+  loadPortfolio();
+</script>
+</body>
+</html>

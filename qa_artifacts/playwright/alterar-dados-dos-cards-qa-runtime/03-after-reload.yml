@@ -140,7 +140,7 @@
                 - generic [ref=e171]: QA
                 - generic [ref=e172]: pending
               - generic [ref=e173]:
-                - generic [ref=e174]: Alan homologation
+                - generic [ref=e174]: Homologation
                 - generic [ref=e175]: pending
         - generic [ref=e176]:
           - generic [ref=e178]:
@@ -173,7 +173,7 @@
                 - generic [ref=e209]: QA
                 - generic [ref=e210]: pending
               - generic [ref=e211]:
-                - generic [ref=e212]: Alan homologation
+                - generic [ref=e212]: Homologation
                 - generic [ref=e213]: pending
         - generic [ref=e214]:
           - generic [ref=e216]:
@@ -182,7 +182,7 @@
           - generic [ref=e220]: vazio
         - generic [ref=e221]:
           - generic [ref=e223]:
-            - generic [ref=e224]: Alan homologation
+            - generic [ref=e224]: Homologation
             - generic [ref=e225]: "0"
           - generic [ref=e227]: vazio
         - generic [ref=e228]:
@@ -213,7 +213,7 @@
                   - generic [ref=e254]: QA
                   - generic [ref=e255]: pending
                 - generic [ref=e256]:
-                  - generic [ref=e257]: Alan homologation
+                  - generic [ref=e257]: Homologation
                   - generic [ref=e258]: pending
             - button "Open details for centralize-workflow-state-db" [ref=e259]:
               - generic [ref=e260]:
@@ -238,7 +238,7 @@
                   - generic [ref=e279]: QA
                   - generic [ref=e280]: pending
                 - generic [ref=e281]:
-                  - generic [ref=e282]: Alan homologation
+                  - generic [ref=e282]: Homologation
                   - generic [ref=e283]: pending
             - button "Open details for corrigir-cadencia-do-turn-scheduler" [ref=e284]:
               - generic [ref=e285]:
@@ -264,7 +264,7 @@
                   - generic [ref=e305]: QA
                   - generic [ref=e306]: pending
                 - generic [ref=e307]:
-                  - generic [ref=e308]: Alan homologation
+                  - generic [ref=e308]: Homologation
                   - generic [ref=e309]: pending
             - button "Open details for evolve-multiagent-kadro-operating-model" [ref=e310]:
               - generic [ref=e311]:
@@ -289,7 +289,7 @@
                   - generic [ref=e330]: QA
                   - generic [ref=e331]: approved
                 - generic [ref=e332]:
-                  - generic [ref=e333]: Alan homologation
+                  - generic [ref=e333]: Homologation
                   - generic [ref=e334]: approved
             - button "Open details for harden-multiagent-kadro-execution-model" [ref=e335]:
               - generic [ref=e336]:
@@ -314,7 +314,7 @@
                   - generic [ref=e355]: QA
                   - generic [ref=e356]: approved
                 - generic [ref=e357]:
-                  - generic [ref=e358]: Alan homologation
+                  - generic [ref=e358]: Homologation
                   - generic [ref=e359]: approved
             - button "Open details for improve-wallet-screen" [ref=e360]:
               - generic [ref=e361]:
@@ -339,7 +339,7 @@
                   - generic [ref=e380]: QA
                   - generic [ref=e381]: approved
                 - generic [ref=e382]:
-                  - generic [ref=e383]: Alan homologation
+                  - generic [ref=e383]: Homologation
                   - generic [ref=e384]: approved
             - button "Open details for kanban-manual-backlog-and-drag-drop" [ref=e385]:
               - generic [ref=e386]:
@@ -364,7 +364,7 @@
                   - generic [ref=e405]: QA
                   - generic [ref=e406]: approved
                 - generic [ref=e407]:
-                  - generic [ref=e408]: Alan homologation
+                  - generic [ref=e408]: Homologation
                   - generic [ref=e409]: approved
             - button "Open details for mobile-kanban-ui-rethink" [ref=e410]:
               - generic [ref=e411]:
@@ -389,7 +389,7 @@
                   - generic [ref=e430]: QA
                   - generic [ref=e431]: approved
                 - generic [ref=e432]:
-                  - generic [ref=e433]: Alan homologation
+                  - generic [ref=e433]: Homologation
                   - generic [ref=e434]: approved
             - button "Open details for pnl-use-last-buy-trade" [ref=e435]:
               - generic [ref=e436]:
@@ -414,7 +414,7 @@
                   - generic [ref=e455]: QA
                   - generic [ref=e456]: approved
                 - generic [ref=e457]:
-                  - generic [ref=e458]: Alan homologation
+                  - generic [ref=e458]: Homologation
                   - generic [ref=e459]: approved
             - button "Open details for qa-ui-playwright-regression" [ref=e460]:
               - generic [ref=e461]:
@@ -439,7 +439,7 @@
                   - generic [ref=e480]: QA
                   - generic [ref=e481]: approved
                 - generic [ref=e482]:
-                  - generic [ref=e483]: Alan homologation
+                  - generic [ref=e483]: Homologation
                   - generic [ref=e484]: approved
             - button "Open details for standardize-multiagent-kadro-operating-model" [ref=e485]:
               - generic [ref=e486]:
@@ -464,7 +464,7 @@
                   - generic [ref=e505]: QA
                   - generic [ref=e506]: approved
                 - generic [ref=e507]:
-                  - generic [ref=e508]: Alan homologation
+                  - generic [ref=e508]: Homologation
                   - generic [ref=e509]: approved
             - button "Open details for system-blue-theme" [ref=e510]:
               - generic [ref=e511]:
@@ -489,7 +489,7 @@
                   - generic [ref=e530]: QA
                   - generic [ref=e531]: pending
                 - generic [ref=e532]:
-                  - generic [ref=e533]: Alan homologation
+                  - generic [ref=e533]: Homologation
                   - generic [ref=e534]: pending
     - complementary [ref=e537]:
       - generic [ref=e538]:

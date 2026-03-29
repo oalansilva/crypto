@@ -110,12 +110,12 @@ Next step: ...
 - Evidence or blocker/bug reference is attached in the handoff/comment.
 - Runtime reflects whether the change advances or returns for rework.
 
-### `Alan homologation`
+### `Homologation`
 - QA has already completed or explicitly handed off a non-QA case if applicable.
 - Alan has the managerial summary and knows the exact approval ask.
 
 ### `Archived`
-- Alan homologation is complete.
+- Homologation is complete.
 - OpenSpec archive step is done.
 - Runtime/Kanban and artifacts no longer show the change as active.
 

@@ -10,7 +10,7 @@
       "Alan approval": "pending",
       "DEV": "pending",
       "QA": "pending",
-      "Alan homologation": "pending"
+      "Homologation": "pending"
     },
     "archived": false,
     "column": "PO"
@@ -26,7 +26,7 @@
       "Alan approval": "approved",
       "DEV": "pending",
       "QA": "pending",
-      "Alan homologation": "pending"
+      "Homologation": "pending"
     },
     "archived": false,
     "column": "DEV"

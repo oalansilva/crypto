@@ -134,7 +134,7 @@ try {
     state.verdict = 'PASS';
     state.summary.push('Move up/down atualizou a ordem da coluna QA no runtime real.');
     state.summary.push('Refresh preservou a ordem e nenhuma coluna/gate mudou.');
-    state.nextStep = 'Promover para Alan homologation.';
+    state.nextStep = 'Promover para Homologation.';
   }
 } catch (error) {
   state.verdict = 'FAIL';

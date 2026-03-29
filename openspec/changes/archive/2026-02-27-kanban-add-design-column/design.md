@@ -7,7 +7,7 @@ The workflow now includes a DESIGN stage (HTML/CSS prototypes) before Alan appro
 **Goals**
 - Add DESIGN column to Kanban (always visible).
 - Parse `DESIGN:` status from coordination files.
-- Update derive-column rules: PO → DESIGN → Alan approval → DEV → QA → Alan homologation → Archived.
+- Update derive-column rules: PO → DESIGN → Alan approval → DEV → QA → Homologation → Archived.
 
 **Non-Goals**
 - Making tasks checklist interactive.

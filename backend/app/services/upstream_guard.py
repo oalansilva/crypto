@@ -18,7 +18,7 @@ DEFAULT_EPHEMERAL_PATTERNS = [
     ".pytest_cache/**",
 ]
 
-ENFORCED_STATUSES = {"Alan homologation", "Archived"}
+ENFORCED_STATUSES = {"Homologation", "Archived"}
 
 
 class UpstreamGuardError(RuntimeError):

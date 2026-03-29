@@ -10,7 +10,7 @@ Today the workflow kanban lives in markdown files (`docs/coordination/*.md`) and
   - Alan approval
   - DEV
   - QA
-  - Alan homologation
+  - Homologation
   - Archived (optional view)
 - Provide a **card details panel** that shows:
   - current status + next step

@@ -12,7 +12,7 @@ Esta change propõe transformar o `/kanban` em uma superfície de entrada de bac
 ### Fluxo desejado
 - Alan cria ideias direto em **Pending**
 - PO puxa de **Pending** para **PO** quando for começar o planejamento
-- depois o fluxo segue normal: DESIGN → Alan approval → DEV → QA → Alan homologation → Archived
+- depois o fluxo segue normal: DESIGN → Alan approval → DEV → QA → Homologation → Archived
 
 ### Pontos importantes
 - o runtime/Kanban continua sendo a fonte operacional de verdade

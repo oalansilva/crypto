@@ -30,7 +30,7 @@ KANBAN_COLUMNS = [
     "Alan approval",
     "DEV",
     "QA",
-    "Alan homologation",
+    "Homologation",
     "Archived",
     "Canceled",
 ]
@@ -41,11 +41,11 @@ GATED_COLUMNS = {
     "Alan approval",
     "DEV",
     "QA",
-    "Alan homologation",
+    "Homologation",
     "Archived",
 }
 
-GATE_SEQUENCE = ["PO", "DESIGN", "Alan approval", "DEV", "QA", "Alan homologation"]
+GATE_SEQUENCE = ["PO", "DESIGN", "Alan approval", "DEV", "QA", "Homologation"]
 
 _ALLOWED_FORWARD_MOVES = {
     "Pending": {"PO", "Canceled"},
@@ -53,8 +53,8 @@ _ALLOWED_FORWARD_MOVES = {
     "DESIGN": {"Alan approval", "Canceled"},
     "Alan approval": {"DEV", "Canceled"},
     "DEV": {"QA", "Canceled"},
-    "QA": {"Alan homologation", "Canceled"},
-    "Alan homologation": {"Archived", "Canceled"},
+    "QA": {"Homologation", "Canceled"},
+    "Homologation": {"Archived", "Canceled"},
     "Archived": set(),
     "Canceled": set(),
 }
@@ -69,6 +69,8 @@ class GateDecision:
 
 def _normalize_status(status: str | None) -> str:
     value = (status or "").strip()
+    if value == "Alan homologation":
+        return "Homologation"
     if value.lower() == "archived":
         return "Archived"
     if value.lower() == "canceled":
@@ -93,7 +95,7 @@ def desired_gate_states_for_column(column: str) -> list[GateDecision]:
         approved_until = 2
     elif target == "QA":
         approved_until = 3
-    elif target == "Alan homologation":
+    elif target == "Homologation":
         approved_until = 4
     else:  # Archived
         approved_until = 5
@@ -224,7 +226,7 @@ def validate_transition_hooks(
         _validate_dev_to_qa(db, change)
     
     # Validate QA -> Homologation transition  
-    if target == "Alan homologation":
+    if target == "Homologation":
         _validate_qa_to_homologation(db, change)
     
     # Validate Homologation -> Archived transition
@@ -289,7 +291,7 @@ def _validate_qa_to_homologation(db: Session, change: Change) -> None:
                 "code": "open_work_items",
                 "message": f"Cannot move to Homologation. There are {open_items} open work items.",
                 "current": change.status,
-                "target": "Alan homologation",
+                "target": "Homologation",
                 "open_items_count": open_items,
             },
         )

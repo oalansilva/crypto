@@ -44,7 +44,7 @@ def test_upstream_guard_ignores_ephemeral_qa_artifacts(tmp_path: Path):
     out.mkdir(parents=True)
     (out / "index.html").write_text("report\n", encoding="utf-8")
 
-    result = evaluate_upstream_guard(repo, target_statuses=["Alan homologation"])
+    result = evaluate_upstream_guard(repo, target_statuses=["Homologation"])
 
     assert result.ok is True
     assert "frontend/playwright-report/index.html" in result.ignored_ephemeral_changes

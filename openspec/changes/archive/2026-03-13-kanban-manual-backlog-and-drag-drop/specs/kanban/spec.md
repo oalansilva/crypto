@@ -8,7 +8,7 @@ The system MUST provide a Kanban UI page that lists active OpenSpec/workflow cha
 - Alan approval
 - DEV
 - QA
-- Alan homologation
+- Homologation
 - Archived
 
 #### Scenario: Pending cards appear
@@ -27,7 +27,7 @@ The Kanban board MUST include **Pending** before **PO**, and **DESIGN** between 
   4) Alan approval
   5) DEV
   6) QA
-  7) Alan homologation
+  7) Homologation
   8) Archived
 
 ### Requirement: Column derivation MUST include DESIGN

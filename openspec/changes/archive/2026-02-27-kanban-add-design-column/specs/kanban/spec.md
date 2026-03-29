@@ -11,7 +11,7 @@ The Kanban board MUST include a DESIGN column between PO and Alan approval.
   3) Alan approval
   4) DEV
   5) QA
-  6) Alan homologation
+  6) Homologation
   7) Archived
 
 ### Requirement: Coordination MUST support DESIGN status

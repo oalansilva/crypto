@@ -161,8 +161,8 @@ Só após QA OK a change pode ser considerada pronta para homologação.
 
 ### 10) Homologação (Alan)
 
-Antes de mover a change para `Alan homologation`, rode:
-- `./scripts/verify_upstream_published.py --for-status "Alan homologation"`
+Antes de mover a change para `Homologation`, rode:
+- `./scripts/verify_upstream_published.py --for-status "Homologation"`
 
 - Alan testa e confirma “ok”.
 

@@ -108,7 +108,7 @@ const COLUMNS_ORDER = [
   'Alan approval',
   'DEV',
   'QA',
-  'Alan homologation',
+  'Homologation',
   'Archived',
   'Canceled',
 ] as const
@@ -1074,7 +1074,7 @@ export default function KanbanPage() {
                                   <StatusLine label="QA" value={it.status?.['QA']} />
                                   <StatusLine label="Publish" value={it.status?.['Publish']} />
                                   <StatusLine label="Ready for homologation" value={it.status?.['Homologation readiness']} />
-                                  <StatusLine label="Alan homologation" value={it.status?.['Alan homologation'] || it.status?.['Alan (Stakeholder)']} />
+                                  <StatusLine label="Homologation" value={it.status?.['Homologation']} />
                                 </div>
 
                                 {!it.archived ? (

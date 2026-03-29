@@ -9,7 +9,7 @@ Currently, workflow rules (approval gates, story-bug dependencies, required comm
 - Implement story-bug closure validation (story cannot close if bugs active)
 - Implement handoff comment requirement (require status/evidence in comments)
 - Add sync verification endpoint (check DB ↔ OpenSpec consistency)
-- Auto-update DB state on Alan homologation approval
+- Auto-update DB state on Homologation approval
 - Enforce DEV→QA→publish sequence in transition service
 
 ## Capabilities

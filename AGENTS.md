@@ -10,7 +10,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Playbook operacional canônico (Phase 1):** seguir `docs/multiagent-operating-playbook.md` para responsabilidades por papel, contrato padrão de handoff, Definition of Done por coluna e regra de fechamento com runtime + handoff.
 - **Criação de change:** use `scripts/create_change_and_seed.sh <change-name>` para garantir OpenSpec + coordination + workflow DB/Kanban no mesmo passo.
 - **QA UI/browser:** preferir **Microsoft Playwright CLI** (`playwright-cli`) em vez de MCP para automação de interface; usar como base a skill oficial local `skills/playwright-cli-official/`; salvar evidências por fluxo (screenshots e, quando útil, trace/video), registrar os caminhos/links no card/tracking e abrir work item do tipo `bug` quando houver problema real.
-- **Gates:** PO → DESIGN (quando UI) → Alan approval → DEV → QA → Alan homologation → archive.
+- **Gates:** PO → DESIGN (quando UI) → Alan approval → DEV → QA → Homologation → archive.
 - **Testes UI/E2E:** QA é o dono da validação; Playwright é a ferramenta principal de automação; Codex CLI entra como apoio para escrever/ajustar/depurar/rodar os testes, sem substituir a decisão de QA.
 - **Design de interface em Codex CLI:** usar `skills/interface-design-codex/` como referência padrão para trabalho de DESIGN e apoio de revisão visual.
 - **Playwright headed neste servidor:** preferir `/usr/local/bin/playwright-cli-headed` e um único `run-code` com `goto + interações + screenshot` no mesmo fluxo.
@@ -130,7 +130,7 @@ Valida + análise profunda de bugs.
 - **Regra de validação QA:** Antes de enviar para homologação Alan, QA deve rodar o checklist de validação UI (`docs/qa-ui-checklist.md`) e testes E2E (`frontend/tests/*.spec.ts`).
 - Lock padrão fica no nível da **story**; bug filho herda esse lock salvo reassignment explícito.
 - Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
-- Antes de promover para `QA`, `Alan homologation` ou `Archived`, reconciliar runtime/Kanban + `tasks.md` + handoff; para archive, preferir `scripts/archive_change_safe.sh`.
+- Antes de promover para `QA`, `Homologation` ou `Archived`, reconciliar runtime/Kanban + `tasks.md` + handoff; para archive, preferir `scripts/archive_change_safe.sh`.
 
 ## Engenharia de prompt
 

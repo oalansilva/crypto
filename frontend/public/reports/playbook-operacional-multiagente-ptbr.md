@@ -34,7 +34,7 @@ Ele define a forma de trabalho da **Fase 1**:
 - `Alan approval`
 - `DEV`
 - `QA`
-- `Alan homologation`
+- `Homologation`
 - `Archived`
 
 ## Regras operacionais centrais
@@ -159,7 +159,7 @@ Toda transição de etapa deve deixar um comentário/handoff curto no Kanban.
 - mudanças locais da própria change **não** devem bloquear sozinhas esta passagem
 - sequência preferida: **DEV implementa → QA valida → commit/publish depois**
 
-### `QA` → `Alan homologation`
+### `QA` → `Homologation`
 - validação real executada
 - evidências publicadas
 - bugs reais registrados se existirem
@@ -167,7 +167,7 @@ Toda transição de etapa deve deixar um comentário/handoff curto no Kanban.
 - runtime atualizado
 - se a política/runtime exigir publish antes de gates posteriores, commit/publish deve acontecer aqui ou logo antes desta promoção
 
-### `Alan homologation` → `Archived`
+### `Homologation` → `Archived`
 - homologação aprovada
 - runtime atualizado
 - archive completa runtime + OpenSpec

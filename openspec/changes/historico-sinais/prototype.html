@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico de Sinais — Prototype</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #07111a;
+      --bg-secondary: #101c2a;
+      --bg-elevated: #162536;
+      --bg-overlay: rgba(8, 16, 26, 0.9);
+      --accent-primary: #26c281;
+      --accent-success: #10b981;
+      --accent-warning: #f59e0b;
+      --accent-danger: #ef4444;
+      --accent-secondary: #38bdf8;
+      --text-primary: #f5f7fb;
+      --text-secondary: #d4deea;
+      --text-tertiary: #a2b4c8;
+      --text-muted: #72849a;
+      --border-subtle: rgba(148, 163, 184, 0.12);
+      --border-default: rgba(148, 163, 184, 0.2);
+      --border-strong: rgba(148, 163, 184, 0.34);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-2xl: 24px;
+      --radius-full: 9999px;
+      --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+      --shadow-glow-emerald: 0 0 20px rgba(16, 185, 129, 0.3);
+      --shadow-glow-red: 0 0 20px rgba(239, 68, 68, 0.25);
+      --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(1200px 500px at 10% 0%, rgba(122, 167, 255, 0.12), transparent),
+        radial-gradient(1000px 600px at 90% 10%, rgba(47, 224, 139, 0.08), transparent),
+        var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ===== LAYOUT ===== */
+    .app-page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    /* ===== HEADER ===== */
+    .page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .page-header__meta {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+    }
+
+    .page-header__title {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 8px;
+    }
+
+    .page-header__desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      max-width: 600px;
+    }
+
+    .header-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ===== BADGE ===== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+
+    .badge--success { background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: #34d399; }
+    .badge--danger { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.3); color: #f87171; }
+    .badge--warning { background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24; }
+    .badge--info { background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; }
+    .badge--neutral { background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.3); color: #94a3b8; }
+    .badge--outline { background: transparent; border-color: var(--border-default); color: var(--text-secondary); }
+
+    /* ===== STATS CARDS ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .stat-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-strong);
+    }
+
+    .stat-card__label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+    }
+
+    .stat-card__value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 8px;
+    }
+
+    .stat-card__sub {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+
+    .stat-card--accent { border-color: rgba(38, 194, 129, 0.3); }
+    .stat-card--accent:hover { box-shadow: var(--shadow-glow-emerald); }
+
+    .stat-card--danger { border-color: rgba(239, 68, 68, 0.3); }
+    .stat-card--danger:hover { box-shadow: var(--shadow-glow-red); }
+
+    /* ===== LAYOUT: SIDEBAR + CONTENT ===== */
+    .history-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .history-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ===== FILTERS PANEL ===== */
+    .filters-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      position: sticky;
+      top: 24px;
+    }
+
+    .filters-panel__title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+    }
+
+    .filter-group {
+      margin-bottom: 16px;
+    }
+
+    .filter-group__label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .filter-group__hint {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+
+    select, input[type="text"], input[type="date"], input[type="number"] {
+      width: 100%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color var(--transition-fast);
+      appearance: none;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2372849a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 30px;
+      cursor: pointer;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-full);
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      accent-color: var(--accent-primary);
+    }
+
+    .range-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .range-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-primary);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .btn--primary {
+      background: var(--accent-primary);
+      color: #07111a;
+    }
+
+    .btn--primary:hover {
+      background: #3ed39a;
+      box-shadow: var(--shadow-glow-emerald);
+    }
+
+    .btn--ghost {
+      background: transparent;
+      border-color: var(--border-default);
+      color: var(--text-secondary);
+    }
+
+    .btn--ghost:hover {
+      background: var(--bg-elevated);
+      border-color: var(--border-strong);
+    }
+
+    .btn--sm {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .filters-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .filters-actions .btn {
+      flex: 1;
+    }
+
+    /* ===== SIGNAL LIST ===== */
+    .signal-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .signal-list-header__title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .signal-list-header__count {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .signal-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .signal-table th {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+
+    .signal-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      color: var(--text-secondary);
+      vertical-align: middle;
+    }
+
+    .signal-table tbody tr {
+      background: var(--bg-secondary);
+      transition: background var(--transition-fast);
+      cursor: pointer;
+    }
+
+    .signal-table tbody tr:hover {
+      background: var(--bg-elevated);
+    }
+
+    .signal-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .asset-cell {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .type-badge--buy { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .type-badge--sell { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .type-badge--hold { background: rgba(148, 163, 184, 0.12); color: #94a3b8; }
+
+    .confidence-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .confidence-bar__track {
+      flex: 1;
+      height: 4px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .confidence-bar__fill {
+      height: 100%;
+      border-radius: var(--radius-full);
+      background: var(--accent-primary);
+    }
+
+    .confidence-bar__fill--high { background: #34d399; }
+    .confidence-bar__fill--medium { background: #fbbf24; }
+    .confidence-bar__fill--low { background: #f87171; }
+
+    .confidence-bar__value {
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 32px;
+      text-align: right;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .status-pill--ativo { background: rgba(56, 189, 248, 0.12); color: #38bdf8; }
+    .status-pill--disparado { background: rgba(16, 185, 129, 0.12); color: #34d399; }
+    .status-pill--expirado { background: rgba(148, 163, 184, 0.12); color: #94a3b8; }
+    .status-pill--cancelado { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+
+    .date-cell {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .action-btn {
+      background: transparent;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .action-btn:hover {
+      background: var(--bg-elevated);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    /* ===== SIGNAL DETAIL DRAWER ===== */
+    .detail-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 480px;
+      max-width: 100%;
+      height: 100vh;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-subtle);
+      z-index: 100;
+      transform: translateX(100%);
+      transition: transform var(--transition-base);
+      overflow-y: auto;
+    }
+
+    .detail-drawer.is-open {
+      transform: translateX(0);
+    }
+
+    .detail-drawer__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      background: var(--bg-secondary);
+      z-index: 1;
+    }
+
+    .detail-drawer__title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .detail-drawer__close {
+      background: transparent;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .detail-drawer__close:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+
+    .detail-drawer__body {
+      padding: 20px;
+    }
+
+    .detail-section {
+      margin-bottom: 24px;
+    }
+
+    .detail-section__title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .detail-item {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px;
+    }
+
+    .detail-item__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
+
+    .detail-item__value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 4px;
+    }
+
+    .detail-item__value--success { color: #34d399; }
+    .detail-item__value--danger { color: #f87171; }
+
+    .timeline {
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 4px;
+      bottom: 4px;
+      width: 2px;
+      background: var(--border-default);
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-bottom: 16px;
+    }
+
+    .timeline-item:last-child { padding-bottom: 0; }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -18px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      border: 2px solid var(--bg-secondary);
+    }
+
+    .timeline-item__time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .timeline-item__event {
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .indicators-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .indicator-chip {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    .indicator-chip__name {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .indicator-chip__value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 4px;
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .pagination__info {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .pagination__controls {
+      display: flex;
+      gap: 6px;
+    }
+
+    .page-btn {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-default);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .page-btn:hover:not(:disabled) {
+      background: var(--bg-elevated);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    .page-btn.is-active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: #07111a;
+    }
+
+    .page-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state__icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state__title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .empty-state__desc {
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    /* ===== OVERLAY ===== */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 17, 26, 0.7);
+      z-index: 99;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-base);
+    }
+
+    .overlay.is-active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ===== RESPONSIVE TABLE ===== */
+    @media (max-width: 768px) {
+      .signal-table { display: block; overflow-x: auto; }
+      .app-page { padding: 20px 16px 60px; }
+      .detail-drawer { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-page">
+    <!-- Header -->
+    <header class="page-header">
+      <div>
+        <p class="page-header__meta">Card #57 · historico-sinais</p>
+        <h1 class="page-header__title">Histórico de Sinais</h1>
+        <p class="page-header__desc">Veja todos os sinais gerados com filtros avançados, estatísticas de performance e detalhes completos.</p>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge--info">87 sinais</span>
+        <span class="badge badge--success">+18.2% avg</span>
+      </div>
+    </header>
+
+    <!-- Stats Section -->
+    <section class="stats-grid">
+      <div class="stat-card stat-card--accent">
+        <div class="stat-card__label">Total de Sinais</div>
+        <div class="stat-card__value">347</div>
+        <div class="stat-card__sub">últimos 30 dias</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Win Rate</div>
+        <div class="stat-card__value" style="color: #34d399">68.4%</div>
+        <div class="stat-card__sub">sinais disparados com lucro</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Confiança Média</div>
+        <div class="stat-card__value">76.3%</div>
+        <div class="stat-card__sub">média ponderada</div>
+      </div>
+      <div class="stat-card stat-card--danger">
+        <div class="stat-card__label">Taxa de Expirados</div>
+        <div class="stat-card__value" style="color: #f87171">12.1%</div>
+        <div class="stat-card__sub">sinais não disparados</div>
+      </div>
+    </section>
+
+    <!-- Main Layout -->
+    <div class="history-layout">
+      <!-- Filters Panel -->
+      <aside class="filters-panel">
+        <h2 class="filters-panel__title">Filtros</h2>
+
+        <div class="filter-group">
+          <label class="filter-group__label">Ativo</label>
+          <select>
+            <option value="">Todos</option>
+            <option value="BTCUSDT" selected>BTCUSDT</option>
+            <option value="ETHUSDT">ETHUSDT</option>
+            <option value="SOLUSDT">SOLUSDT</option>
+            <option value="BNBUSDT">BNBUSDT</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-group__label">Tipo</label>
+          <select>
+            <option value="">Todos</option>
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
+            <option value="HOLD">HOLD</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-group__label">Status</label>
+          <select>
+            <option value="">Todos</option>
+            <option value="ativo">Ativo</option>
+            <option value="disparado">Disparado</option>
+            <option value="expirado">Expirado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-group__label">Período</label>
+          <div style="display: grid; gap: 8px;">
+            <input type="date" value="2026-02-28" style="width: 100%;">
+            <input type="date" value="2026-03-28" style="width: 100%;">
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-group__label">Confiança Mínima</label>
+          <input type="range" min="0" max="100" value="70">
+          <div class="range-row">
+            <span class="filter-group__hint">0%</span>
+            <span class="range-value">70%</span>
+          </div>
+        </div>
+
+        <div class="filters-actions">
+          <button class="btn btn--primary btn--sm" onclick="alert('Aplicar filtros')">Aplicar</button>
+          <button class="btn btn--ghost btn--sm" onclick="alert('Limpar filtros')">Limpar</button>
+        </div>
+      </aside>
+
+      <!-- Signal List -->
+      <div>
+        <div class="signal-list-header">
+          <span class="signal-list-header__title">Sinais</span>
+          <span class="signal-list-header__count">Mostrando 1-10 de 87</span>
+        </div>
+
+        <table class="signal-table">
+          <thead>
+            <tr>
+              <th>Ativo</th>
+              <th>Tipo</th>
+              <th>Confiança</th>
+              <th>Target</th>
+              <th>Stop Loss</th>
+              <th>Status</th>
+              <th>PnL</th>
+              <th>Data</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="openDrawer(0)">
+              <td class="asset-cell">BTCUSDT</td>
+              <td><span class="type-badge type-badge--buy">↑ BUY</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--high" style="width: 89%"></div></div>
+                  <span class="confidence-bar__value">89%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">97,450.00</td>
+              <td style="color: #f87171; font-weight: 600;">94,200.00</td>
+              <td><span class="status-pill status-pill--disparado">● Disparado</span></td>
+              <td style="color: #34d399; font-weight: 600;">+2.34%</td>
+              <td class="date-cell">28/03 09:15</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(0)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(1)">
+              <td class="asset-cell">ETHUSDT</td>
+              <td><span class="type-badge type-badge--sell">↓ SELL</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--medium" style="width: 72%"></div></div>
+                  <span class="confidence-bar__value">72%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">2,845.00</td>
+              <td style="color: #f87171; font-weight: 600;">2,920.00</td>
+              <td><span class="status-pill status-pill--ativo">● Ativo</span></td>
+              <td style="color: var(--text-muted); font-weight: 600;">—</td>
+              <td class="date-cell">28/03 08:42</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(1)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(2)">
+              <td class="asset-cell">SOLUSDT</td>
+              <td><span class="type-badge type-badge--buy">↑ BUY</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--high" style="width: 91%"></div></div>
+                  <span class="confidence-bar__value">91%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">148.50</td>
+              <td style="color: #f87171; font-weight: 600;">142.80</td>
+              <td><span class="status-pill status-pill--disparado">● Disparado</span></td>
+              <td style="color: #34d399; font-weight: 600;">+1.89%</td>
+              <td class="date-cell">27/03 21:05</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(2)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(3)">
+              <td class="asset-cell">BTCUSDT</td>
+              <td><span class="type-badge type-badge--hold">⏸ HOLD</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--low" style="width: 58%"></div></div>
+                  <span class="confidence-bar__value">58%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">96,800.00</td>
+              <td style="color: #f87171; font-weight: 600;">95,500.00</td>
+              <td><span class="status-pill status-pill--expirado">● Expirado</span></td>
+              <td style="color: var(--text-muted); font-weight: 600;">—</td>
+              <td class="date-cell">27/03 14:30</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(3)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(4)">
+              <td class="asset-cell">BNBUSDT</td>
+              <td><span class="type-badge type-badge--sell">↓ SELL</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--high" style="width: 83%"></div></div>
+                  <span class="confidence-bar__value">83%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">584.20</td>
+              <td style="color: #f87171; font-weight: 600;">598.00</td>
+              <td><span class="status-pill status-pill--disparado">● Disparado</span></td>
+              <td style="color: #f87171; font-weight: 600;">-0.82%</td>
+              <td class="date-cell">27/03 11:22</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(4)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(5)">
+              <td class="asset-cell">ETHUSDT</td>
+              <td><span class="type-badge type-badge--buy">↑ BUY</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--high" style="width: 86%"></div></div>
+                  <span class="confidence-bar__value">86%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">2,890.00</td>
+              <td style="color: #f87171; font-weight: 600;">2,810.00</td>
+              <td><span class="status-pill status-pill--cancelado">● Cancelado</span></td>
+              <td style="color: var(--text-muted); font-weight: 600;">—</td>
+              <td class="date-cell">26/03 18:45</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(5)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(6)">
+              <td class="asset-cell">BTCUSDT</td>
+              <td><span class="type-badge type-badge--sell">↓ SELL</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--medium" style="width: 77%"></div></div>
+                  <span class="confidence-bar__value">77%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">94,100.00</td>
+              <td style="color: #f87171; font-weight: 600;">96,350.00</td>
+              <td><span class="status-pill status-pill--disparado">● Disparado</span></td>
+              <td style="color: #34d399; font-weight: 600;">+1.12%</td>
+              <td class="date-cell">26/03 09:30</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(6)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(7)">
+              <td class="asset-cell">SOLUSDT</td>
+              <td><span class="type-badge type-badge--buy">↑ BUY</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--high" style="width: 94%"></div></div>
+                  <span class="confidence-bar__value">94%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">152.40</td>
+              <td style="color: #f87171; font-weight: 600;">146.20</td>
+              <td><span class="status-pill status-pill--ativo">● Ativo</span></td>
+              <td style="color: var(--text-muted); font-weight: 600;">—</td>
+              <td class="date-cell">25/03 22:15</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(7)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(8)">
+              <td class="asset-cell">ETHUSDT</td>
+              <td><span class="type-badge type-badge--sell">↓ SELL</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--low" style="width: 61%"></div></div>
+                  <span class="confidence-bar__value">61%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">2,760.00</td>
+              <td style="color: #f87171; font-weight: 600;">2,830.00</td>
+              <td><span class="status-pill status-pill--expirado">● Expirado</span></td>
+              <td style="color: var(--text-muted); font-weight: 600;">—</td>
+              <td class="date-cell">25/03 15:00</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(8)">Ver</button></td>
+            </tr>
+            <tr onclick="openDrawer(9)">
+              <td class="asset-cell">BNBUSDT</td>
+              <td><span class="type-badge type-badge--buy">↑ BUY</span></td>
+              <td>
+                <div class="confidence-bar">
+                  <div class="confidence-bar__track"><div class="confidence-bar__fill confidence-bar__fill--high" style="width: 88%"></div></div>
+                  <span class="confidence-bar__value">88%</span>
+                </div>
+              </td>
+              <td style="color: #34d399; font-weight: 600;">612.00</td>
+              <td style="color: #f87171; font-weight: 600;">598.50</td>
+              <td><span class="status-pill status-pill--disparado">● Disparado</span></td>
+              <td style="color: #34d399; font-weight: 600;">+2.05%</td>
+              <td class="date-cell">25/03 10:30</td>
+              <td><button class="action-btn" onclick="event.stopPropagation(); openDrawer(9)">Ver</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <span class="pagination__info">Página 1 de 9</span>
+          <div class="pagination__controls">
+            <button class="page-btn" disabled>‹</button>
+            <button class="page-btn is-active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">4</button>
+            <button class="page-btn">5</button>
+            <span style="color: var(--text-muted); padding: 0 4px;">...</span>
+            <button class="page-btn">9</button>
+            <button class="page-btn">›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+
+  <!-- Detail Drawer -->
+  <aside class="detail-drawer" id="detailDrawer">
+    <div class="detail-drawer__header">
+      <h3 class="detail-drawer__title" id="drawerTitle">BTCUSDT — BUY</h3>
+      <button class="detail-drawer__close" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="detail-drawer__body">
+      <!-- Status -->
+      <div class="detail-section">
+        <div class="detail-section__title">Status</div>
+        <span class="status-pill status-pill--disparado" id="drawerStatus">● Disparado</span>
+      </div>
+
+      <!-- Key Metrics -->
+      <div class="detail-section">
+        <div class="detail-section__title">Métricas</div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-item__label">Confiança</div>
+            <div class="detail-item__value" style="color: #34d399" id="drawerConfidence">89%</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item__label">Target</div>
+            <div class="detail-item__value detail-item__value--success" id="drawerTarget">97,450.00</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item__label">Stop Loss</div>
+            <div class="detail-item__value detail-item__value--danger" id="drawerStopLoss">94,200.00</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item__label">Preço no Trigger</div>
+            <div class="detail-item__value" id="drawerTriggerPrice">97,380.00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PnL Section -->
+      <div class="detail-section">
+        <div class="detail-section__title">PnL</div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-item__label">Valor</div>
+            <div class="detail-item__value" style="color: #34d399" id="drawerPnlValue">+2.34%</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item__label">Preço Saída</div>
+            <div class="detail-item__value" id="drawerExitPrice">97,450.00</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item__label">Entrada</div>
+            <div class="detail-item__value" id="drawerEntryPrice">97,380.00</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item__label">Quantidade</div>
+            <div class="detail-item__value" id="drawerQuantity">0.01 BTC</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Indicators Snapshot -->
+      <div class="detail-section">
+        <div class="detail-section__title">Indicadores (snapshot)</div>
+        <div class="indicators-grid">
+          <div class="indicator-chip">
+            <div class="indicator-chip__name">RSI</div>
+            <div class="indicator-chip__value" id="drawerRSI">42.3</div>
+          </div>
+          <div class="indicator-chip">
+            <div class="indicator-chip__name">MACD</div>
+            <div class="indicator-chip__value" id="drawerMACD">bullish</div>
+          </div>
+          <div class="indicator-chip">
+            <div class="indicator-chip__name">EMA 20</div>
+            <div class="indicator-chip__value" id="drawerEMA">96,120</div>
+          </div>
+          <div class="indicator-chip">
+            <div class="indicator-chip__name">BB Lower</div>
+            <div class="indicator-chip__value" id="drawerBBLower">93,450</div>
+          </div>
+          <div class="indicator-chip">
+            <div class="indicator-chip__name">BB Upper</div>
+            <div class="indicator-chip__value" id="drawerBBUpper">98,230</div>
+          </div>
+          <div class="indicator-chip">
+            <div class="indicator-chip__name">Volume</div>
+            <div class="indicator-chip__value" id="drawerVolume">1.24x</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="detail-section">
+        <div class="detail-section__title">Timeline</div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-item__time">28/03/2026 09:15</div>
+            <div class="timeline-item__event">Sinal criado com confiança 89%</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item__time">28/03/2026 11:42</div>
+            <div class="timeline-item__event">Preço atingiu target — DISPARADO</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item__time">28/03/2026 11:42</div>
+            <div class="timeline-item__event">Preço no trigger: 97,380.00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    const signalData = [
+      { asset: 'BTCUSDT', type: 'BUY', confidence: 89, target: '97,450.00', stopLoss: '94,200.00', status: 'disparado', date: '28/03 09:15', rsi: '42.3', macd: 'bullish', ema: '96,120', bbLower: '93,450', bbUpper: '98,230', volume: '1.24x', triggerPrice: '97,380.00', pnl: '+2.34%', pnlValue: '+2.34%', exitPrice: '97,450.00', entryPrice: '97,380.00', quantity: '0.01 BTC' },
+      { asset: 'ETHUSDT', type: 'SELL', confidence: 72, target: '2,845.00', stopLoss: '2,920.00', status: 'ativo', date: '28/03 08:42', rsi: '68.9', macd: 'bearish', ema: '2,870', bbLower: '2,780', bbUpper: '2,940', volume: '0.98x', triggerPrice: '—', pnl: '—', pnlValue: '—', exitPrice: '—', entryPrice: '—', quantity: '—' },
+      { asset: 'SOLUSDT', type: 'BUY', confidence: 91, target: '148.50', stopLoss: '142.80', status: 'disparado', date: '27/03 21:05', rsi: '38.2', macd: 'bullish', ema: '145.80', bbLower: '140.20', bbUpper: '150.60', volume: '1.56x', triggerPrice: '148.10', pnl: '+1.89%', pnlValue: '+1.89%', exitPrice: '148.50', entryPrice: '148.10', quantity: '1.0 SOL' },
+      { asset: 'BTCUSDT', type: 'HOLD', confidence: 58, target: '96,800.00', stopLoss: '95,500.00', status: 'expirado', date: '27/03 14:30', rsi: '50.1', macd: 'neutral', ema: '96,340', bbLower: '94,800', bbUpper: '97,800', volume: '0.85x', triggerPrice: '—', pnl: '—', pnlValue: '—', exitPrice: '—', entryPrice: '—', quantity: '—' },
+      { asset: 'BNBUSDT', type: 'SELL', confidence: 83, target: '584.20', stopLoss: '598.00', status: 'disparado', date: '27/03 11:22', rsi: '71.4', macd: 'bearish', ema: '590.50', bbLower: '572.00', bbUpper: '608.00', volume: '1.12x', triggerPrice: '584.80', pnl: '-0.82%', pnlValue: '-0.82%', exitPrice: '598.00', entryPrice: '584.80', quantity: '1.0 BNB' },
+      { asset: 'ETHUSDT', type: 'BUY', confidence: 86, target: '2,890.00', stopLoss: '2,810.00', status: 'cancelado', date: '26/03 18:45', rsi: '45.6', macd: 'bullish', ema: '2,840', bbLower: '2,760', bbUpper: '2,920', volume: '1.08x', triggerPrice: '—', pnl: '—', pnlValue: '—', exitPrice: '—', entryPrice: '—', quantity: '—' },
+      { asset: 'BTCUSDT', type: 'SELL', confidence: 77, target: '94,100.00', stopLoss: '96,350.00', status: 'disparado', date: '26/03 09:30', rsi: '65.8', macd: 'bearish', ema: '95,200', bbLower: '93,200', bbUpper: '97,100', volume: '1.33x', triggerPrice: '94,250', pnl: '+1.12%', pnlValue: '+1.12%', exitPrice: '94,100.00', entryPrice: '94,250.00', quantity: '0.01 BTC' },
+      { asset: 'SOLUSDT', type: 'BUY', confidence: 94, target: '152.40', stopLoss: '146.20', status: 'ativo', date: '25/03 22:15', rsi: '35.1', macd: 'bullish', ema: '148.20', bbLower: '143.50', bbUpper: '153.80', volume: '1.78x', triggerPrice: '—', pnl: '—', pnlValue: '—', exitPrice: '—', entryPrice: '—', quantity: '—' },
+      { asset: 'ETHUSDT', type: 'SELL', confidence: 61, target: '2,760.00', stopLoss: '2,830.00', status: 'expirado', date: '25/03 15:00', rsi: '55.3', macd: 'neutral', ema: '2,795', bbLower: '2,720', bbUpper: '2,870', volume: '0.92x', triggerPrice: '—', pnl: '—', pnlValue: '—', exitPrice: '—', entryPrice: '—', quantity: '—' },
+      { asset: 'BNBUSDT', type: 'BUY', confidence: 88, target: '612.00', stopLoss: '598.50', status: 'disparado', date: '25/03 10:30', rsi: '44.7', macd: 'bullish', ema: '604.00', bbLower: '590.00', bbUpper: '618.00', volume: '1.41x', triggerPrice: '611.20', pnl: '+2.05%', pnlValue: '+2.05%', exitPrice: '612.00', entryPrice: '611.20', quantity: '1.0 BNB' },
+    ];
+
+    function openDrawer(index) {
+      const signal = signalData[index];
+      document.getElementById('drawerTitle').textContent = `${signal.asset} — ${signal.type}`;
+      document.getElementById('drawerConfidence').textContent = `${signal.confidence}%`;
+      document.getElementById('drawerTarget').textContent = signal.target;
+      document.getElementById('drawerStopLoss').textContent = signal.stopLoss;
+      document.getElementById('drawerTriggerPrice').textContent = signal.triggerPrice;
+      document.getElementById('drawerRSI').textContent = signal.rsi;
+      document.getElementById('drawerMACD').textContent = signal.macd;
+      document.getElementById('drawerEMA').textContent = signal.ema;
+      document.getElementById('drawerBBLower').textContent = signal.bbLower;
+      document.getElementById('drawerBBUpper').textContent = signal.bbUpper;
+      document.getElementById('drawerVolume').textContent = signal.volume;
+      document.getElementById('drawerPnlValue').textContent = signal.pnl;
+      document.getElementById('drawerExitPrice').textContent = signal.exitPrice;
+      document.getElementById('drawerEntryPrice').textContent = signal.entryPrice;
+      document.getElementById('drawerQuantity').textContent = signal.quantity;
+
+      // Color PnL based on value
+      const pnlEl = document.getElementById('drawerPnlValue');
+      if (signal.pnl.startsWith('+')) {
+        pnlEl.style.color = '#34d399';
+      } else if (signal.pnl.startsWith('-')) {
+        pnlEl.style.color = '#f87171';
+      } else {
+        pnlEl.style.color = 'var(--text-muted)';
+      }
+
+      const statusEl = document.getElementById('drawerStatus');
+      statusEl.className = `status-pill status-pill--${signal.status}`;
+      statusEl.innerHTML = `● ${signal.status.charAt(0).toUpperCase() + signal.status.slice(1)}`;
+
+      document.getElementById('overlay').classList.add('is-active');
+      document.getElementById('detailDrawer').classList.add('is-open');
+    }
+
+    function closeDrawer() {
+      document.getElementById('overlay').classList.remove('is-active');
+      document.getElementById('detailDrawer').classList.remove('is-open');
+    }
+
+    // Close on ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDrawer();
+    });
+  </script>
+</body>
+</html>

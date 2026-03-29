@@ -54,7 +54,7 @@ This playbook standardizes how the existing team operates without changing the c
 - Validates against acceptance criteria, runtime behavior, and supplied evidence.
 - Opens or preserves blocking bugs/work items when a defect is real.
 - Must not approve based only on intent or code inspection without explicit validation evidence.
-- **Must run QA UI checklist** (`docs/qa-ui-checklist.md`) before sending to Alan homologation. This includes desktop, mobile, and bug-specific validations.
+- **Must run QA UI checklist** (`docs/qa-ui-checklist.md`) before sending to Homologation. This includes desktop, mobile, and bug-specific validations.
 - Must run E2E tests for new UI features (`frontend/tests/*.spec.ts`).
 
 ## Standard Kanban handoff/comment contract
@@ -115,12 +115,12 @@ Next step: ...
 - Evidence or blocker/bug reference is attached in the handoff/comment.
 - Runtime reflects whether the change advances or returns for rework.
 
-### `Alan homologation`
+### `Homologation`
 - QA has already completed or explicitly handed off a non-QA case if applicable.
 - Alan has the managerial summary and knows the exact approval ask.
 
 ### `Archived`
-- Alan homologation is complete.
+- Homologation is complete.
 - OpenSpec archive step is done.
 - Runtime/Kanban and artifacts no longer show the change as active.
 
@@ -164,9 +164,9 @@ When drift exists:
 
 - Preferred sequence for workflow changes: **DEV implements -> QA validates -> commit/publish after QA**.
 - Local unpublished changes from the current change should not, by themselves, block `DEV -> QA`.
-- If publish/upstream guard is required for later transitions (for example `QA -> Alan homologation` or `Alan homologation -> Archived`), do the commit/publish at that later point, not as an early blocker right after DEV.
+- If publish/upstream guard is required for later transitions (for example `QA -> Homologation` or `Homologation -> Archived`), do the commit/publish at that later point, not as an early blocker right after DEV.
 - `DEV -> QA` for runtime/API/UI changes is only operationally complete after a live reconcile/smoke step is called out in the handoff.
-- `QA -> Alan homologation` must distinguish three things explicitly: **QA functional**, **publish/reconcile**, and **runtime stage**.
+- `QA -> Homologation` must distinguish three things explicitly: **QA functional**, **publish/reconcile**, and **runtime stage**.
 - Do not announce “ready for homologation” unless all three are aligned.
 
 ## Practical turn checklist

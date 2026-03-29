@@ -58,7 +58,7 @@ O fluxo existente é adequado e deve ser preservado:
 4. `Alan approval`
 5. `DEV`
 6. `QA`
-7. `Alan homologation`
+7. `Homologation`
 8. `Archived`
 
 ### 4.3 Base arquitetural atual
@@ -156,7 +156,7 @@ Em resumo:
 - `Alan approval`
 - `DEV`
 - `QA`
-- `Alan homologation`
+- `Homologation`
 - `Archived`
 
 ---
@@ -229,7 +229,7 @@ Formalizar o critério de pronto para cada coluna do fluxo.
 - Alan approval
 - DEV
 - QA
-- Alan homologation
+- Homologation
 - Archived
 
 #### Entregáveis
@@ -498,14 +498,14 @@ A fase 2 estará completa quando:
 - runtime atualizado
 - próxima validação explicitada
 
-### QA → Alan homologation
+### QA → Homologation
 - validação real executada
 - evidências publicadas
 - bugs reais registrados se existirem
 - comentário QA publicado
 - runtime atualizado
 
-### Alan homologation → Archived
+### Homologation → Archived
 - homologação aprovada
 - runtime atualizado
 - archive completa runtime + OpenSpec

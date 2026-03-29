@@ -20,8 +20,8 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 ### Delivery workflow (must follow)
 
-- Always follow the agreed flow: **PO → DESIGN (when UI is involved) → Alan approval → DEV → QA → Alan homologation → archive**.
-- If a change is already open and Alan requests a **small adjustment**, **DEV may implement it within the same change**, but the rest of the flow remains mandatory (**QA validation + Alan homologation + archive**).
+- Always follow the agreed flow: **PO → DESIGN (when UI is involved) → Alan approval → DEV → QA → Homologation → archive**.
+- If a change is already open and Alan requests a **small adjustment**, **DEV may implement it within the same change**, but the rest of the flow remains mandatory (**QA validation + Homologation + archive**).
 
 ### Autonomy & turn-based execution
 
@@ -40,7 +40,7 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 - PO/DEV/QA may communicate asynchronously **via Kanban card comments** (single place, auditable).
 - Use comments for handoffs, questions, decisions, blockers, ownership clarifications, and dependency notes.
-- This does **not** change gate order: **PO → Alan approval → DEV → QA → Alan homologation → archive**.
+- This does **not** change gate order: **PO → Alan approval → DEV → QA → Homologation → archive**.
 
 ### Update policy (reduce noise)
 
@@ -71,9 +71,9 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 
 - Preferred publish sequence for workflow changes: **DEV implements -> QA validates -> commit/publish after QA**.
 - Local unpublished changes from the current change should not, by themselves, block `DEV -> QA`.
-- If publish/upstream guards are enforced for later gates such as `Alan homologation` or `Archived`, run `./scripts/verify_upstream_published.py --for-status <status>` before that later transition.
+- If publish/upstream guards are enforced for later gates such as `Homologation` or `Archived`, run `./scripts/verify_upstream_published.py --for-status <status>` before that later transition.
 - The guard blocks progression when there are relevant tracked/untracked repo changes or unpushed commits; Playwright/QA ephemeral artifacts under `frontend/playwright-report/**`, `frontend/test-results/**`, `qa_artifacts/**`, and similar cache dirs are ignored by default.
-- Important: `QA PASS` alone does not justify saying `next step: Alan homologation`. If the publish guard blocks the `QA -> Alan homologation` move, the required handoff is: `QA passed, promotion blocked by upstream publish guard`, plus the unblock owner and explicit confirmation that runtime did **not** advance yet.
+- Important: `QA PASS` alone does not justify saying `next step: Homologation`. If the publish guard blocks the `QA -> Homologation` move, the required handoff is: `QA passed, promotion blocked by upstream publish guard`, plus the unblock owner and explicit confirmation that runtime did **not** advance yet.
 - An agent may only claim a work item/stage done after updating:
   1) runtime/Kanban state
   2) Kanban card comment (handoff)
@@ -85,7 +85,7 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - Telegram notifications to Alan only on milestones:
   - PO ready for Alan approval
   - DEV ready for QA
-  - QA ready for Alan homologation
+  - QA ready for Homologation
   - Any real blocker needing Alan action
 
 ### Archiving rule (keep Kanban + OpenSpec in sync)
@@ -93,7 +93,7 @@ Chat messages are ephemeral. These notes provide a shared, versioned view of:
 - When Alan says **"ok pode arquivar"**, validate the flow and close coordination first:
   - Ensure gates are satisfied in `docs/coordination/<change>.md`: PO/DEV/QA done, Alan approval approved.
   - Ensure `openspec/changes/<change>/tasks.md` has **no unchecked** items.
-  - Then set `Alan homologation: approved` and add a `## Closed` section.
+  - Then set `Homologation: approved` and add a `## Closed` section.
 - Only after that, run `openspec archive ...`.
 - Helper script (recommended): `scripts/archive_change_safe.sh <change>`
 

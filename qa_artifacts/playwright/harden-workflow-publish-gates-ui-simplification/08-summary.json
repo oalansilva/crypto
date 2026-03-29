@@ -36,27 +36,27 @@
       "ok": true
     },
     {
-      "name": "runtime change status remains Alan homologation",
+      "name": "runtime change status remains Homologation",
       "ok": true
     },
     {
-      "name": "board column remains Alan homologation",
+      "name": "board column remains Homologation",
       "ok": true
     }
   ],
   "runtime": {
-    "status": "Alan homologation",
-    "boardColumn": "Alan homologation",
+    "status": "Homologation",
+    "boardColumn": "Homologation",
     "boardStatus": {
       "PO": "approved",
       "DESIGN": "approved",
       "Alan approval": "approved",
       "DEV": "approved",
       "QA": "approved",
-      "Alan homologation": "pending",
+      "Homologation": "pending",
       "QA functional": "approved",
       "Publish": "blocked",
-      "Runtime stage": "Alan homologation",
+      "Runtime stage": "Homologation",
       "Homologation readiness": "blocked: publish/reconcile pending"
     }
   },

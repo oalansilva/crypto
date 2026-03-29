@@ -20,4 +20,4 @@
 ## 4. Review / Handoff
 
 - [x] 4.1 Prepare a short PT-BR review summary for Alan.
-- [x] 4.2 Move through DEV -> QA -> Alan homologation in the normal workflow.
+- [x] 4.2 Move through DEV -> QA -> Homologation in the normal workflow.

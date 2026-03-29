@@ -5,7 +5,7 @@
 - DEV: done
 - QA: done
 - Alan approval: approved
-- Alan homologation: approved
+- Homologation: approved
 - Alan (Stakeholder): approved
 
 > Gate order: PO must be **done** before Alan approves to implement.
@@ -18,7 +18,7 @@
 - Goal: Add a visual Kanban board inside the web app so Alan can easily track progress across active changes, view the task checklist, and read/write comments.
 - Surface (mobile/desktop): Web app (desktop-first). Scope is internal coordination UI.
 - Defaults:
-  - Column set (ordered): PO → Alan approval → DEV → QA → Alan homologation → Archived.
+  - Column set (ordered): PO → Alan approval → DEV → QA → Homologation → Archived.
   - Archived handling: archived changes are **always listed** (not optional).
   - Cards: each change is one card; board shows active + archived.
 - Data sources:
@@ -33,18 +33,18 @@
     - Alan values (for both approval + homologation): `not reviewed` | `reviewed` | `approved`
       - Preferred explicit fields (new standard):
         - `Alan approval:` (same 3 values)
-        - `Alan homologation:` (same 3 values)
+        - `Homologation:` (same 3 values)
       - Backward-compatible fallback: if either explicit field is missing, use `Alan (Stakeholder):` as the value for the missing field(s).
   - **Archived detection** (Archived column): a change is considered `archived=true` if **any** of the following is true:
     - The file contains a section heading exactly `## Closed` (anywhere), **or**
-    - All gates are complete: `PO=done` and `DEV=done` and `QA=done` and `Alan approval=approved` and `Alan homologation=approved`.
+    - All gates are complete: `PO=done` and `DEV=done` and `QA=done` and `Alan approval=approved` and `Homologation=approved`.
   - **Column selection algorithm** (evaluate in this exact order; first match wins):
     1) If `archived=true` → `Archived`
     2) Else if `PO != done` → `PO`
     3) Else if `Alan approval != approved` → `Alan approval`
     4) Else if `DEV != done` → `DEV`
     5) Else if `QA != done` → `QA`
-    6) Else if `Alan homologation != approved` → `Alan homologation`
+    6) Else if `Homologation != approved` → `Homologation`
     7) Else → `Archived`
   - **Representation note**: the board shows two Alan columns. The coordination file must therefore track Alan’s state separately for approval vs homologation (preferred via the two explicit fields above). If only `Alan (Stakeholder):` is present, it will be used for both.
 - Persistence:
@@ -73,14 +73,14 @@
 Alan approval is already **approved** for this change (no action needed).
 
 Review criteria (what you are approving):
-- Column set + order: `PO → Alan approval → DEV → QA → Alan homologation → Archived`
+- Column set + order: `PO → Alan approval → DEV → QA → Homologation → Archived`
 - Status → column derivation rules (source-of-truth fields + allowed values + evaluation order)
 - Archived detection rules
 - Comment persistence expectations (append-only, retention, no edit/delete in v1)
 - Tasks checklist behavior in the Kanban UI: read-only display (v1)
 
 ## Next actions
-Archived: Alan homologation approved and change is closed. No further actions pending.
+Archived: Homologation approved and change is closed. No further actions pending.
 
 - [x] **Alan approval (required to start DEV):** Approved (`Alan approval: approved` in `## Status`).
 - [x] PO:

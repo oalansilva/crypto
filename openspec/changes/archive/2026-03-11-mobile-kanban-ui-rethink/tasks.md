@@ -20,6 +20,6 @@
 - [x] 3.2 Validate card readability and detail interaction
 - [x] 3.3 Validate drag/move interaction and no major regression on desktop
 - [x] 3.4 Validate mobile performance assumptions on realistic card counts
-  - Evidence 2026-03-11: runtime Playwright on `http://127.0.0.1:5173/kanban` confirmed mobile tab `DEV 0` stays selected on an empty stage and shows `Nenhum card nesta etapa.`; mobile detail sheet filled the `390x844` viewport; long-press move sheet successfully moved the change to `Alan homologation` through the live workflow API and QA reverted it to `QA`; desktop still rendered the multi-column board and a right-side `520px` detail drawer on `1440x900`.
+  - Evidence 2026-03-11: runtime Playwright on `http://127.0.0.1:5173/kanban` confirmed mobile tab `DEV 0` stays selected on an empty stage and shows `Nenhum card nesta etapa.`; mobile detail sheet filled the `390x844` viewport; long-press move sheet successfully moved the change to `Homologation` through the live workflow API and QA reverted it to `QA`; desktop still rendered the multi-column board and a right-side `520px` detail drawer on `1440x900`.
   - Quick performance assessment 2026-03-11: no obvious runtime hitch seen in validation, and `KanbanPage.tsx` still renders only the active mobile stage instead of every column, which is the main realistic guardrail shipped in this change.
-  - Tracking note 2026-03-11: after QA closeout, PO reconciled the handoff artifacts so this change is no longer described as `in QA`; final post-QA state is `awaiting Alan homologation`.
+  - Tracking note 2026-03-11: after QA closeout, PO reconciled the handoff artifacts so this change is no longer described as `in QA`; final post-QA state is `awaiting Homologation`.

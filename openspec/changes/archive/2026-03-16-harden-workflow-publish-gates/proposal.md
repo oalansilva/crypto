@@ -15,7 +15,7 @@ This creates confusing states such as:
 ## What Changes
 
 - make the DEV → QA handoff explicitly require live/runtime reconciliation when the change affects runtime/API/UI
-- make the QA → Alan homologation transition robust against publish/upstream guard friction
+- make the QA → Homologation transition robust against publish/upstream guard friction
 - distinguish clearly between:
   - functional validation result
   - publish/reconcile status
@@ -25,7 +25,7 @@ This creates confusing states such as:
 ## Scope
 
 This change covers:
-- workflow/runtime rules for promotion between DEV, QA, and Alan homologation
+- workflow/runtime rules for promotion between DEV, QA, and Homologation
 - guard-rail behavior when QA is functionally green but publish/runtime is not yet reconciled
 - required handoff notes/checks for runtime-affecting changes
 

@@ -4,10 +4,10 @@
 Goal:
 - If a change is archived under openspec/changes/archive/<...>/.openspec.yaml,
   then ensure docs/coordination/<change>.md reflects closure:
-  - Alan homologation: approved
+  - Homologation: approved
   - add a '## Closed' section
 
-This prevents Kanban showing archived changes in 'Alan homologation' due to stale coordination.
+This prevents Kanban showing archived changes in 'Homologation' due to stale coordination.
 
 Safe:
 - Only edits existing docs/coordination/<change>.md files.
@@ -75,7 +75,7 @@ def ensure_closed(md: str) -> str:
 def set_homologation_approved(md: str) -> str:
     # Replace within Status bullet lines.
     md = re.sub(
-        r"(^\s*-\s*Alan homologation:\s*).*$",
+        r"(^\s*-\s*Homologation:\s*).*$",
         r"\1approved",
         md,
         flags=re.MULTILINE,

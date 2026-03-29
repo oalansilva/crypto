@@ -4,7 +4,7 @@
   "change_id": "harden-workflow-publish-gates",
   "title": "harden workflow publish gates",
   "description": "Evitar QA funcional green travada por publish/upstream guard ou runtime stale.",
-  "status": "Alan homologation",
+  "status": "Homologation",
   "card_number": 25,
   "created_at": "2026-03-15T12:50:05.804669Z",
   "updated_at": "2026-03-15T14:10:53.442707Z"

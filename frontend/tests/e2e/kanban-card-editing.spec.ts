@@ -26,7 +26,7 @@ test('Kanban drawer edits title/description and cancels card without losing iden
               'Alan approval': 'approved',
               DEV: 'in progress',
               QA: 'pending',
-              'Alan homologation': 'pending',
+              'Homologation': 'pending',
             },
             archived: currentColumn === 'Archived',
             column: currentColumn,

@@ -73,8 +73,8 @@ try {
     { name: 'drawer does not show QA functional', ok: !/QA functional/i.test(drawerText) },
     { name: 'drawer shows Publish', ok: /Publish/i.test(drawerText) },
     { name: 'drawer shows Ready for homologation', ok: /Ready for homologation/i.test(drawerText) },
-    { name: 'runtime change status remains Alan homologation', ok: changeRes.status === 'Alan homologation' },
-    { name: 'board column remains Alan homologation', ok: boardItem.column === 'Alan homologation' },
+    { name: 'runtime change status remains Homologation', ok: changeRes.status === 'Homologation' },
+    { name: 'board column remains Homologation', ok: boardItem.column === 'Homologation' },
   );
 
   const passed = checks.every((c) => c.ok);
@@ -95,7 +95,7 @@ try {
   };
 
   commentBody = passed
-    ? `feito: revalidei no live a simplificação visual de \`${CHANGE_ID}\` no /kanban; a UI padrão não mostra mais \`Runtime stage\`/\`Stage atual\` nem \`QA functional\`, e mantém visíveis só os auxiliares \`Publish\` e \`Ready for homologation\`. bloqueio: nenhum. próximo passo: seguir com Alan homologation; coluna/runtime foram preservados sem nova movimentação. Evidências: board ${boardShot.url} | drawer ${drawerShot.url} | checks ${uiArtifact.url} | runtime ${summary.artifacts.change}`
+    ? `feito: revalidei no live a simplificação visual de \`${CHANGE_ID}\` no /kanban; a UI padrão não mostra mais \`Runtime stage\`/\`Stage atual\` nem \`QA functional\`, e mantém visíveis só os auxiliares \`Publish\` e \`Ready for homologation\`. bloqueio: nenhum. próximo passo: seguir com Homologation; coluna/runtime foram preservados sem nova movimentação. Evidências: board ${boardShot.url} | drawer ${drawerShot.url} | checks ${uiArtifact.url} | runtime ${summary.artifacts.change}`
     : `bloqueio: a simplificação visual de \`${CHANGE_ID}\` falhou na revalidação live do /kanban. checks com falha: ${checks.filter((c) => !c.ok).map((c) => c.name).join('; ')}. próximo passo: ajustar a UI live para esconder \`Runtime stage\`/\`Stage atual\` e \`QA functional\`, mantendo \`Publish\` e \`Ready for homologation\` visíveis. Evidências: board ${boardShot.url} | drawer ${drawerShot.url} | checks ${uiArtifact.url} | runtime ${summary.artifacts.change}`;
 
   const postRes = await fetch(`${API_BASE}/workflow/kanban/changes/${CHANGE_ID}/comments?project_slug=crypto`, {

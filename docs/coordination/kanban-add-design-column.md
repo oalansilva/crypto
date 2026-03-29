@@ -6,7 +6,7 @@
 - Alan approval: approved
 - DEV: done
 - QA: done
-- Alan homologation: approved
+- Homologation: approved
 
 
 ## Closed
@@ -14,7 +14,7 @@
 - Homologated by Alan and archived.
 
 ## Decisions (locked)
-- Add DESIGN as always-visible column: PO → DESIGN → Alan approval → DEV → QA → Alan homologation → Archived.
+- Add DESIGN as always-visible column: PO → DESIGN → Alan approval → DEV → QA → Homologation → Archived.
 - Coordination supports `DESIGN:` status with values: not started | in progress | blocked | done | skipped.
 - Backward compatibility: missing DESIGN defaults to skipped.
 

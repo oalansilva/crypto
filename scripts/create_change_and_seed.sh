@@ -33,7 +33,7 @@ if [ ! -f "$COORD_FILE" ]; then
 - Alan approval: not reviewed
 - DEV: not started
 - QA: not started
-- Alan homologation: not reviewed
+- Homologation: not reviewed
 
 ## Decisions (draft)
 - Change created and awaiting PO elaboration.

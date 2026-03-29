@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype Card #58 - Sentiment compõe Confiança</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* === SIGNAL CARD === */
+  .signal-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 16px;
+    padding: 24px;
+    width: 380px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  .signal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .pair-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pair-logo {
+    width: 36px;
+    height: 36px;
+    background: #f7931a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    color: white;
+  }
+
+  .pair-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+
+  .pair-type {
+    font-size: 12px;
+    color: #7d8590;
+    margin-top: 2px;
+  }
+
+  .signal-badge {
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: #7d8590;
+  }
+
+  /* === CONFIDENCE GAUGE === */
+  .confidence-section {
+    margin-bottom: 20px;
+  }
+
+  .confidence-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .confidence-label {
+    font-size: 13px;
+    color: #7d8590;
+    font-weight: 500;
+  }
+
+  .confidence-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #58a6ff;
+  }
+
+  .confidence-hint {
+    font-size: 11px;
+    color: #484f58;
+    margin-top: 4px;
+  }
+
+  .gauge-bar {
+    background: #21262d;
+    border-radius: 8px;
+    height: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .gauge-fill {
+    height: 100%;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #1f6feb 0%, #58a6ff 100%);
+    transition: width 0.6s ease;
+  }
+
+  .gauge-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: #1c2128;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 10;
+  }
+
+  .gauge-wrapper:hover .gauge-tooltip {
+    opacity: 1;
+  }
+
+  .tooltip-title {
+    color: #e6edf3;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #7d8590;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  .tooltip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .tooltip-dot.rsi { background: #a371f7; }
+  .tooltip-dot.macd { background: #3fb950; }
+  .tooltip-dot.sentiment { background: #f78166; }
+
+  .gauge-wrapper {
+    position: relative;
+  }
+
+  /* === SIGNAL DETAILS === */
+  .signal-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .detail-item {
+    background: #21262d;
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .detail-label {
+    font-size: 11px;
+    color: #7d8590;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .detail-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+
+  .detail-value.high { color: #3fb950; }
+  .detail-value.medium { color: #d29922; }
+  .detail-value.low { color: #f85149; }
+
+  /* === SENTIMENT BADGE === */
+  .sentiment-section {
+    border-top: 1px solid #30363d;
+    padding-top: 16px;
+  }
+
+  .sentiment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .sentiment-badge.positive {
+    background: rgba(63, 185, 80, 0.15);
+    border: 1px solid rgba(63, 185, 80, 0.4);
+    color: #3fb950;
+  }
+
+  .sentiment-badge.negative {
+    background: rgba(248, 81, 73, 0.15);
+    border: 1px solid rgba(248, 81, 73, 0.4);
+    color: #f85149;
+  }
+
+  .sentiment-badge.neutral {
+    background: rgba(139, 148, 158, 0.15);
+    border: 1px solid rgba(139, 148, 158, 0.4);
+    color: #8b949e;
+  }
+
+  .sentiment-arrow {
+    font-size: 14px;
+  }
+
+  .sentiment-note {
+    font-size: 11px;
+    color: #484f58;
+    margin-top: 8px;
+  }
+
+  /* === DIVIDER === */
+  .divider {
+    border: none;
+    border-top: 1px solid #30363d;
+    margin: 16px 0;
+  }
+
+  /* === PROTOTYPE ANNOTATION === */
+  .proto-note {
+    margin-top: 20px;
+    padding: 12px;
+    background: rgba(88, 166, 255, 0.1);
+    border: 1px dashed #58a6ff;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #58a6ff;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<!-- PROTOTYPE: Card #58 - SignalCard BTC/USDT -->
+<div class="signal-card">
+
+  <!-- Header -->
+  <div class="signal-header">
+    <div class="pair-info">
+      <div class="pair-logo">₿</div>
+      <div>
+        <div class="pair-name">BTC/USDT</div>
+        <div class="pair-type">Long · 15m</div>
+      </div>
+    </div>
+    <div class="signal-badge">Sinais</div>
+  </div>
+
+  <!-- Confidence Gauge -->
+  <div class="confidence-section">
+    <div class="confidence-header">
+      <span class="confidence-label">CONFIANÇA</span>
+      <span class="confidence-value">78%</span>
+    </div>
+    <div class="gauge-wrapper">
+      <div class="gauge-bar">
+        <div class="gauge-fill" style="width: 78%"></div>
+      </div>
+      <div class="gauge-tooltip">
+        <div class="tooltip-title">Composição da Confiança</div>
+        <div class="tooltip-row"><span class="tooltip-dot rsi"></span>RSI: 35%</div>
+        <div class="tooltip-row"><span class="tooltip-dot macd"></span>MACD: 15%</div>
+        <div class="tooltip-row"><span class="tooltip-dot sentiment"></span>Sentiment: 28%</div>
+      </div>
+    </div>
+    <div class="confidence-hint">Passe o mouse na barra para ver composição</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Signal Details -->
+  <div class="signal-details">
+    <div class="detail-item">
+      <div class="detail-label">Preço Entrada</div>
+      <div class="detail-value">$67,420</div>
+    </div>
+    <div class="detail-item">
+      <div class="detail-label">Alvo</div>
+      <div class="detail-value high">$68,150</div>
+    </div>
+    <div class="detail-item">
+      <div class="detail-label">Stop Loss</div>
+      <div class="detail-value low">$66,890</div>
+    </div>
+    <div class="detail-item">
+      <div class="detail-label">Tempo Restante</div>
+      <div class="detail-value">14 min</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Sentiment Badge (QUALITATIVE - indica se reforça ou questiona) -->
+  <div class="sentiment-section">
+    <div class="sentiment-badge positive">
+      <span class="sentiment-arrow">↑</span>
+      <span>Sentiment reforça sinal</span>
+    </div>
+    <div class="sentiment-note">Sentiment está integrado na confiança (não é valor separado)</div>
+  </div>
+
+</div>
+
+<!-- Annotation -->
+<div class="proto-note">
+  <strong>Card #58 - Correção:</strong><br>
+  ✓ ConfidenceGauge mostra 78% (valor que JÁ INCLUI sentiment)<br>
+  ✓ Tooltip revela composição: RSI 35% + MACD 15% + Sentiment 28%<br>
+  ✓ SentimentBadge é <strong>qualitativo</strong> (↑ reforça, ↓ questiona) — não mostra valor<br>
+  ✓ Sentiment compõe a confiança, não é badge separado na gauge
+</div>
+
+</body>
+</html>

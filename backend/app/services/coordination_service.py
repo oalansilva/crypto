@@ -120,7 +120,12 @@ def parse_status(md: str) -> Dict[str, str]:
         v = (m.group(2) or "").strip()
         if not k or not v:
             continue
-        out[k] = v
+        canonical_key = "Homologation" if k == "Alan homologation" else k
+        out[canonical_key] = v
+
+    if "Homologation" not in out and "Alan (Stakeholder)" in out:
+        out["Homologation"] = out["Alan (Stakeholder)"]
+
     return out
 
 
@@ -163,7 +168,7 @@ def is_archived(md: str, status: Dict[str, str]) -> bool:
     dev = _get_gate(status, "DEV")
     qa = _get_gate(status, "QA")
     alan_approval = _alan_field(status, "Alan approval")
-    alan_homologation = _alan_field(status, "Alan homologation")
+    alan_homologation = _alan_field(status, "Homologation")
 
     return (
         po == "done"
@@ -185,7 +190,7 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     4) Alan approval != approved -> Alan approval
     5) DEV != done -> DEV
     6) QA != done -> QA
-    7) Alan homologation != approved -> Alan homologation
+    7) Homologation != approved -> Homologation
     8) else -> Archived
     """
 
@@ -197,7 +202,7 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     dev = _get_gate(status, "DEV")
     qa = _get_gate(status, "QA")
     alan_approval = _alan_field(status, "Alan approval")
-    alan_homologation = _alan_field(status, "Alan homologation")
+    alan_homologation = _alan_field(status, "Homologation")
 
     if po != "done":
         return "PO"
@@ -210,7 +215,7 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     if qa != "done":
         return "QA"
     if alan_homologation != "approved":
-        return "Alan homologation"
+        return "Homologation"
     return "Archived"
 
 

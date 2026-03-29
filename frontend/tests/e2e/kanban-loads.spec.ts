@@ -22,7 +22,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
             'Alan approval': 'approved',
             DEV: 'done',
             QA: 'in progress',
-            'Alan homologation': 'not reviewed',
+            'Homologation': 'not reviewed',
           },
           archived: false,
           column: 'QA',

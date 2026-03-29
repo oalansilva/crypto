@@ -703,8 +703,39 @@ def update_change(
                 },
             )
 
-        # Validation: Cannot move to Alan homologation or archive without DEV and QA approval
-        if new_status in {"Alan homologation", "Archived"}:
+        # Git Branch Validation: Ensure DEV work happens on correct branch
+        if new_status == "DEV":
+            _validate_dev_branch(db, c, REPO_ROOT)
+
+        # PO-to-DEV Block: PO must not act as DEV
+        # Valid flow: PO → DESIGN → Alan approval → DEV
+        # PO can only move to DESIGN (if UI) or Alan approval (backend-only)
+        if new_status == "DEV" and current_column == "PO":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "po_cannot_act_as_dev",
+                    "message": "PO cannot move directly to DEV. PO only creates artifacts. Move to DESIGN (if UI) or Alan approval first.",
+                    "current_status": current_column,
+                    "target_status": new_status,
+                },
+            )
+
+        # DESIGN-to-DEV Block: Must go through Alan approval first
+        # Valid flow: PO → DESIGN → Alan approval → DEV
+        if new_status == "DEV" and current_column == "DESIGN":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "design_cannot_skip_approval",
+                    "message": "Cannot move from DESIGN directly to DEV. Must go through Alan approval first.",
+                    "current_status": current_column,
+                    "target_status": new_status,
+                },
+            )
+
+        # Validation: Cannot move to Homologation or archive without DEV and QA approval
+        if new_status in {"Homologation", "Archived"}:
             approvals = (
                 db.query(WorkflowApproval)
                 .filter(
@@ -1210,14 +1241,15 @@ def _latest_change_gate_status(db: Session, change_pk: str) -> Dict[str, str]:
         .all()
     )
     for a in approvals:
-        out[a.gate] = a.state.value
+        gate = "Homologation" if a.gate == "Alan homologation" else a.gate
+        out[gate] = a.state.value
     return out
 
 
 def _publish_state_for_change(change: Change) -> str:
     try:
         result = require_upstream_published(
-            REPO_ROOT, target_statuses=["Alan homologation"]
+            REPO_ROOT, target_statuses=["Homologation"]
         )
         return "ready" if result.ok else "blocked"
     except UpstreamGuardError:
@@ -1234,7 +1266,7 @@ def _homologation_readiness(
         return "blocked: QA functional pending"
     if publish_state != "ready":
         return "blocked: publish/reconcile pending"
-    if column not in {"Alan homologation", "Archived", "Canceled"}:
+    if column not in {"Homologation", "Archived", "Canceled"}:
         return f"blocked: runtime stage still in {column}"
     return "ready"
 
@@ -1252,6 +1284,8 @@ def _kanban_change_status(db: Session, change: Change) -> Dict[str, str]:
 
 def _normalize_column(raw: Optional[str]) -> str:
     col = raw.strip() if raw else "DEV"
+    if col == "Alan homologation":
+        col = "Homologation"
     if col.lower() == "archived":
         col = "Archived"
     if col.lower() == "canceled":
@@ -1259,6 +1293,59 @@ def _normalize_column(raw: Optional[str]) -> str:
     if col not in KANBAN_COLUMNS:
         col = "DEV"
     return col
+
+
+def _get_current_git_branch(repo_root: Path) -> str:
+    """Returns the current git branch name, or 'main' if detached HEAD."""
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            branch = result.stdout.strip()
+            return branch if branch else "main"
+    except Exception:
+        pass
+    return "main"
+
+
+def _validate_dev_branch(db: Session, change: Change, repo_root: Path) -> None:
+    """Validate that current git branch matches the expected feature branch for this card.
+
+    Raises HTTPException if branch mismatch.
+    """
+    if change.card_number is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "missing_card_number",
+                "message": f"Card {change.change_id} has no card_number assigned. Cannot validate branch.",
+            },
+        )
+
+    expected_branch = f"feature/card{change.card_number}-{change.change_id}"
+    current_branch = _get_current_git_branch(repo_root)
+
+    if current_branch != expected_branch:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "wrong_git_branch",
+                "message": (
+                    f"DEV work must be done on branch '{expected_branch}', "
+                    f"but currently on '{current_branch}'. "
+                    f"Run: git checkout -b {expected_branch} (or git checkout {expected_branch})"
+                ),
+                "current_branch": current_branch,
+                "expected_branch": expected_branch,
+                "card_number": change.card_number,
+                "change_id": change.change_id,
+            },
+        )
 
 
 def _next_sort_order(

@@ -85,6 +85,6 @@ className={'w-[320px] shrink-0 rounded-xl border bg-zinc-900/40...'}
 ## Notes
 
 - Tailwind CSS is used for styling
-- The board has 8 columns: Pending, PO, DESIGN, Alan approval, DEV, QA, Alan homologation, Archived
+- The board has 8 columns: Pending, PO, DESIGN, Alan approval, DEV, QA, Homologation, Archived
 - Current column width is 320px × 8 = 2560px minimum - which exceeds most laptop screens
 - Solution should scale columns appropriately based on viewport

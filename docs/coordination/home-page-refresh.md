@@ -6,7 +6,7 @@
 - Alan approval: approved
 - DEV: done
 - QA: done (UI confere com prototype Option A; build ok; sem bloqueadores)
-- Alan homologation: approved
+- Homologation: approved
 
 ## Decisions (draft)
 - Goal: reformulate the Home page to improve clarity and daily usability.

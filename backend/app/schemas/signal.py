@@ -86,6 +86,14 @@ class Signal(BaseModel):
     breakdown: ConfidenceBreakdown | None = Field(default=None, description="Optional confidence composition details")
 
 
+class ConfidenceBreakdown(BaseModel):
+    """Breakdown of confidence score by contributing factors."""
+    rsi_contribution: float = Field(description="RSI contribution to confidence (0-100)")
+    macd_contribution: float = Field(description="MACD contribution to confidence (0-100)")
+    sentiment_contribution: float = Field(description="Sentiment contribution to confidence (0-100)")
+    display_total: float = Field(description="Sum of all contributions before capping")
+
+
 class SignalListResponse(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "example": {

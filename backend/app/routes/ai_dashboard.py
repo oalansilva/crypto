@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/ai", tags=["ai-dashboard"])
 
 logger = logging.getLogger(__name__)
 
-COINGECKO_TRENDING_URL = "https://api.coingecko.com/api/v3/search/trending"
+COINGECKO_NEWS_URL = "https://api.coingecko.com/api/v3/news"
 REQUEST_TIMEOUT_SECONDS = 8.0
 
 
@@ -204,39 +204,60 @@ def _default_news() -> list[DashboardNewsItem]:
 
 
 async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
+    """Fetch real crypto news from CoinGecko News API (aggregates multiple sources)."""
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
-            response = await client.get(COINGECKO_TRENDING_URL)
+            response = await client.get(f"{COINGECKO_NEWS_URL}?per_page=5&page=1")
             response.raise_for_status()
             payload = response.json()
     except Exception as exc:
-        logger.warning("CoinGecko trending fetch failed for AI dashboard: %s", exc)
+        logger.warning("CoinGecko news fetch failed for AI dashboard: %s", exc)
         raise
 
-    coins = payload.get("coins", [])[:5]
-    if not coins:
-        raise RuntimeError("CoinGecko returned no trending coins")
+    data = payload.get("data", [])
+    if not data:
+        raise RuntimeError("CoinGecko returned no news")
 
     news_items: list[DashboardNewsItem] = []
-    for index, coin_wrapper in enumerate(coins):
-        coin = coin_wrapper.get("item", {})
-        name = str(coin.get("name") or "Crypto")
-        symbol = str(coin.get("symbol") or name[:3]).upper()
-        slug = str(coin.get("slug") or "").strip()
-        market_cap_rank = coin.get("market_cap_rank")
-        sentiment = "bullish" if index < 2 else "neutral"
-        published_at = _dt_ago(15 + index * 18)
-        rank_text = f"top {market_cap_rank}" if market_cap_rank else "em destaque"
+    for item in data[:5]:
+        title = str(item.get("title") or "")
+        news_url = str(item.get("url") or item.get("news_site", ""))
+        news_site = str(item.get("news_site") or "CoinGecko")
+        crawled_at = item.get("crawled_at") or item.get("created_at")
+        news_id = str(item.get("id", ""))
+
+        # Convert Unix timestamp to datetime
+        if crawled_at:
+            published_at = datetime.fromtimestamp(crawled_at, tz=UTC)
+        else:
+            published_at = datetime.now(UTC)
+
+        # Simple keyword-based sentiment
+        title_lower = title.lower()
+        if any(w in title_lower for w in ["surge", "soar", "bull", "rise", "gain", "up", "high", "record", "growth", "adoption"]):
+            sentiment = "bullish"
+        elif any(w in title_lower for w in ["fall", "drop", "bear", "loss", "crash", "decline", "risk", "fear", "sell"]):
+            sentiment = "bearish"
+        else:
+            sentiment = "neutral"
+
+        # Extract related asset from title if mentioned
+        related_asset = None
+        for pair in ["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "MATIC"]:
+            if pair in title.upper():
+                related_asset = f"{pair}/USDT"
+                break
+
         news_items.append(
             DashboardNewsItem(
-                id=f"cg-{slug or symbol.lower()}",
-                title=f"{name} aparece {rank_text} entre os ativos em alta no radar da CoinGecko",
-                source="CoinGecko",
-                url=f"https://www.coingecko.com/en/coins/{slug}" if slug else "https://www.coingecko.com/",
+                id=f"cg-news-{news_id}",
+                title=title[:120],  # Limit title length
+                source=news_site,
+                url=news_url,
                 published_at=published_at,
                 relative_time=_relative_time(published_at),
                 sentiment=sentiment,
-                related_asset=f"{symbol}/USDT",
+                related_asset=related_asset,
             )
         )
 

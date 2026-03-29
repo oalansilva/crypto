@@ -6,7 +6,7 @@
 - Alan approval: approved
 - DEV: done (mobile-only: hide global navbar on /kanban + add Filter/Sort row + improve column/card rendering/contrast; added mobile search toggle)
 - QA: done (Playwright E2E 16/16; mobile viewports 390x844 + 412x915; desktop unchanged)
-- Alan homologation: approved
+- Homologation: approved
 
 ## Decisions (draft)
 - Scope: MVP for mobile only, focused on `/kanban`.

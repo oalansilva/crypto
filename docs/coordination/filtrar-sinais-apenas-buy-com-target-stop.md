@@ -5,7 +5,7 @@
 - DEV: done
 - QA: in progress
 - Alan approval: approved
-- Alan homologation: not reviewed
+- Homologation: not reviewed
 
 > Gate order: PO must be **done** before Alan approves to implement.
 

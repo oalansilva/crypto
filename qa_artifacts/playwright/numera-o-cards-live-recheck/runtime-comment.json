@@ -16,7 +16,7 @@
     "change_pk": "01a20a52-e900-433b-9903-94ef6804d116",
     "work_item_id": null,
     "author": "QA",
-    "body": "feito: QA revalidou no live que `numera-o-cards` expõe `card_number: 16` na API e mostra `#16` no board/drawer após reload. bloqueio: promoção para `Alan homologation` segue bloqueada pelo upstream guard (HTTP 409) exigindo publish/reconcile dos arquivos relevantes. próximo passo: DEV/publicar ou reconciliar e então repetir a promoção no runtime.",
+    "body": "feito: QA revalidou no live que `numera-o-cards` expõe `card_number: 16` na API e mostra `#16` no board/drawer após reload. bloqueio: promoção para `Homologation` segue bloqueada pelo upstream guard (HTTP 409) exigindo publish/reconcile dos arquivos relevantes. próximo passo: DEV/publicar ou reconciliar e então repetir a promoção no runtime.",
     "created_at": "2026-03-15T12:31:23.404203Z"
   },
   "latest_comment": {
@@ -25,7 +25,7 @@
     "change_pk": "01a20a52-e900-433b-9903-94ef6804d116",
     "work_item_id": null,
     "author": "QA",
-    "body": "feito: QA revalidou no live que `numera-o-cards` expõe `card_number: 16` na API e mostra `#16` no board/drawer após reload. bloqueio: promoção para `Alan homologation` segue bloqueada pelo upstream guard (HTTP 409) exigindo publish/reconcile dos arquivos relevantes. próximo passo: DEV/publicar ou reconciliar e então repetir a promoção no runtime.",
+    "body": "feito: QA revalidou no live que `numera-o-cards` expõe `card_number: 16` na API e mostra `#16` no board/drawer após reload. bloqueio: promoção para `Homologation` segue bloqueada pelo upstream guard (HTTP 409) exigindo publish/reconcile dos arquivos relevantes. próximo passo: DEV/publicar ou reconciliar e então repetir a promoção no runtime.",
     "created_at": "2026-03-15T12:31:23.404203Z"
   }
 }

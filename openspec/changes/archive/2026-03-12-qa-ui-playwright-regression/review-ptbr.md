@@ -10,7 +10,7 @@ Situação atual:
 - não houve reprodução de defeito real de produto nesta rodada.
 
 Estado de handoff:
-- change pronta para **Alan homologation**;
+- change pronta para **Homologation**;
 - `QA=approved`;
 - sem blocker ativo no momento.
 

@@ -10,13 +10,13 @@
     "Alan approval": "approved",
     "DEV": "approved",
     "QA": "approved",
-    "Alan homologation": "pending",
+    "Homologation": "pending",
     "QA functional": "approved",
     "Publish": "blocked",
-    "Runtime stage": "Alan homologation",
+    "Runtime stage": "Homologation",
     "Homologation readiness": "blocked: publish/reconcile pending"
   },
   "archived": false,
-  "column": "Alan homologation",
+  "column": "Homologation",
   "position": 0
 }

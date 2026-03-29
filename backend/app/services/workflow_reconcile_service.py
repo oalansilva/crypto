@@ -37,12 +37,14 @@ KANBAN_FLOW_ORDER = [
     "Alan approval",
     "DEV",
     "QA",
-    "Alan homologation",
+    "Homologation",
     "Archived",
 ]
 
 
 def _flow_index(col: str) -> int:
+    if col == "Alan homologation":
+        col = "Homologation"
     try:
         return KANBAN_FLOW_ORDER.index(col)
     except Exception:
@@ -183,12 +185,14 @@ def reconcile_change_forward(db: Session, *, change: Change) -> bool:
         desired_col = "DEV"
     elif not ok("QA"):
         desired_col = "QA"
-    elif not ok("Alan homologation"):
-        desired_col = "Alan homologation"
+    elif not ok("Homologation"):
+        desired_col = "Homologation"
     else:
         desired_col = "Archived"
 
     current = (change.status or "").strip() or "PO"
+    if current == "Alan homologation":
+        current = "Homologation"
     if current == "Pending":
         return False
     if current.lower() == "archived":

@@ -20,7 +20,7 @@ ADD COLUMN last_agent_acted VARCHAR(64);
 ### Stage Order Definition
 
 ```
-pending → PO → DESIGN → DEV → QA → Alan homologation → QA functional → Published
+pending → PO → DESIGN → DEV → QA → Homologation → QA functional → Published
 ```
 
 ### Core Service: Stage Gate Validation
@@ -34,7 +34,7 @@ STAGE_ORDER = [
     "DESIGN",
     "DEV",
     "QA",
-    "Alan homologation",
+    "Homologation",
     "QA functional",
     "Published"
 ]

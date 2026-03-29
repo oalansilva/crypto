@@ -78,7 +78,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "pending",
-        "Alan homologation": "pending"
+        "Homologation": "pending"
       },
       "archived": false,
       "column": "QA",
@@ -96,7 +96,7 @@
         "Alan approval": "pending",
         "DEV": "pending",
         "QA": "pending",
-        "Alan homologation": "pending"
+        "Homologation": "pending"
       },
       "archived": true,
       "column": "Archived",
@@ -114,7 +114,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -143,7 +143,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "pending",
-        "Alan homologation": "pending"
+        "Homologation": "pending"
       },
       "archived": true,
       "column": "Archived",
@@ -161,7 +161,7 @@
         "Alan approval": "pending",
         "DEV": "pending",
         "QA": "pending",
-        "Alan homologation": "pending"
+        "Homologation": "pending"
       },
       "archived": true,
       "column": "Archived",
@@ -179,7 +179,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -197,7 +197,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -215,7 +215,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -233,7 +233,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -251,7 +251,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -269,7 +269,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -287,7 +287,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -305,7 +305,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -323,7 +323,7 @@
         "Alan approval": "approved",
         "DEV": "approved",
         "QA": "approved",
-        "Alan homologation": "approved"
+        "Homologation": "approved"
       },
       "archived": true,
       "column": "Archived",
@@ -341,7 +341,7 @@
         "Alan approval": "pending",
         "DEV": "pending",
         "QA": "pending",
-        "Alan homologation": "pending",
+        "Homologation": "pending",
         "Alan-Approval": "pending"
       },
       "archived": true,

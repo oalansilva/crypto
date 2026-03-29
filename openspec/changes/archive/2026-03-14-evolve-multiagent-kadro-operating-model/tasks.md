@@ -13,7 +13,7 @@
 - [x] 2.3 Define the minimum evidence expected in a handoff.
 
 ### 3. Definition of Done by stage
-- [x] 3.1 Define Definition of Done for `Pending`, `PO`, `DESIGN`, `Alan approval`, `DEV`, `QA`, `Alan homologation`, and `Archived`.
+- [x] 3.1 Define Definition of Done for `Pending`, `PO`, `DESIGN`, `Alan approval`, `DEV`, `QA`, `Homologation`, and `Archived`.
 - [x] 3.2 Define the rule that a stage is only complete when runtime state and handoff comment are both updated.
 - [x] 3.3 Define stage-specific failure / blocked-state expectations when a handoff cannot proceed.
 

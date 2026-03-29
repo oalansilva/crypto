@@ -11,7 +11,7 @@ Examples:
   WORKFLOW_DB_ENABLED=1 \
     .venv/bin/python backend/scripts/set_change_status.py \
       --project crypto --change my-change --status Archived \
-      --approve-gates "PO,DEV,QA,Alan approval,Alan homologation"
+      --approve-gates "PO,DEV,QA,Alan approval,Homologation"
 
 Exit codes:
   0 success

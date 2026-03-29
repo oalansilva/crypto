@@ -51,7 +51,7 @@
               - tab "Alan approval 0" [ref=e53]
               - tab "DEV 1" [selected] [ref=e54]
               - tab "QA 0" [ref=e55]
-              - tab "Alan homologation 0" [ref=e56]
+              - tab "Homologation 0" [ref=e56]
               - tab "Archived 0" [ref=e57]
               - tab "Canceled 0" [ref=e58]
             - generic [ref=e59]: Swipe para trocar de etapa

@@ -16,7 +16,7 @@ STAGE_ORDER = [
     "Alan approval",
     "DEV",
     "QA",
-    "Alan homologation",
+    "Homologation",
     "Archived",
     "Canceled",
 ]
@@ -27,8 +27,8 @@ STAGE_GATES = {
     "Alan approval": {"required_agent": "DESIGN", "previous_stage": "DESIGN"},
     "DEV": {"required_agent": "DEV", "previous_stage": "Alan approval"},
     "QA": {"required_agent": "DEV", "previous_stage": "DEV"},
-    "Alan homologation": {"required_agent": "QA", "previous_stage": "QA"},
-    "Archived": {"required_agent": None, "previous_stage": "Alan homologation"},
+    "Homologation": {"required_agent": "QA", "previous_stage": "QA"},
+    "Archived": {"required_agent": None, "previous_stage": "Homologation"},
     "Canceled": {"required_agent": None, "previous_stage": None},
 }
 
@@ -47,6 +47,8 @@ def _normalize_stage(stage: Optional[str]) -> str:
     if not stage:
         return "Pending"
     normalized = stage.strip()
+    if normalized == "Alan homologation":
+        return "Homologation"
     if normalized.lower() == "archived":
         return "Archived"
     if normalized.lower() == "canceled":

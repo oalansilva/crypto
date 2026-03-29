@@ -71,7 +71,7 @@ try {
       qaFunctionalCount: (text.match(/QA functional/gi) || []).length,
       publishCount: (text.match(/Publish/gi) || []).length,
       readyForHomologationCount: (text.match(/Ready for homologation/gi) || []).length,
-      alanHomologationCount: (text.match(/Alan homologation/gi) || []).length,
+      alanHomologationCount: (text.match(/Homologation/gi) || []).length,
       currentStageCount: (text.match(/Current stage/gi) || []).length,
     };
   });
@@ -98,8 +98,8 @@ try {
     { name: 'drawer does not show QA functional', ok: !drawerHasQaFunctional },
     { name: 'drawer shows Publish', ok: drawerHasPublish },
     { name: 'drawer shows Ready for homologation', ok: drawerHasReady },
-    { name: 'runtime change status remains Alan homologation', ok: changeRes.status === 'Alan homologation' },
-    { name: 'board column remains Alan homologation', ok: boardItem.column === 'Alan homologation' },
+    { name: 'runtime change status remains Homologation', ok: changeRes.status === 'Homologation' },
+    { name: 'board column remains Homologation', ok: boardItem.column === 'Homologation' },
   );
 
   passed = checks.every((c) => c.ok);
@@ -125,7 +125,7 @@ try {
   };
 
   if (passed) {
-    commentBody = `feito: revalidei no live a simplificação visual de \`${CHANGE_ID}\` no /kanban; a UI padrão não mostra mais \`Runtime stage\`/\`Stage atual\` nem \`QA functional\`, e mantém visíveis só os auxiliares \`Publish\` e \`Ready for homologation\`. bloqueio: nenhum. próximo passo: seguir com Alan homologation; coluna/runtime foram preservados sem nova movimentação. Evidências: board ${boardShot.url} | drawer ${drawerShot.url} | checks ${uiArtifact.url} | runtime ${summary.artifacts.change}`;
+    commentBody = `feito: revalidei no live a simplificação visual de \`${CHANGE_ID}\` no /kanban; a UI padrão não mostra mais \`Runtime stage\`/\`Stage atual\` nem \`QA functional\`, e mantém visíveis só os auxiliares \`Publish\` e \`Ready for homologation\`. bloqueio: nenhum. próximo passo: seguir com Homologation; coluna/runtime foram preservados sem nova movimentação. Evidências: board ${boardShot.url} | drawer ${drawerShot.url} | checks ${uiArtifact.url} | runtime ${summary.artifacts.change}`;
     const postRes = await fetch(`${API_BASE}/workflow/kanban/changes/${CHANGE_ID}/comments?project_slug=crypto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -45,7 +45,7 @@ need "PO" "done"
 need "DEV" "done"
 need "QA" "done"
 need "Alan approval" "approved"
-need "Alan homologation" "approved"
+need "Homologation" "approved"
 
 if rg -n "^- \[ \]" "$TASKS" >/dev/null; then
   echo "ERROR: tasks.md still has unchecked items" >&2
@@ -75,7 +75,7 @@ if [[ -f backend/.env ]]; then
 fi
 
 # --- Close coordination BEFORE archive (mirror/audit layer) ---
-if rg -n "^- Alan homologation:" "$COORD" >/dev/null; then
+if rg -n "^- Homologation:" "$COORD" >/dev/null; then
   "$PY_BIN" - <<'PY' "$COORD"
 from pathlib import Path
 import sys
@@ -84,7 +84,7 @@ md = coord.read_text(encoding='utf-8').splitlines()
 out=[]
 for line in md:
     if line.strip().lower().startswith('- alan homologation:'):
-        out.append('- Alan homologation: approved')
+        out.append('- Homologation: approved')
     else:
         out.append(line)
 text='\n'.join(out)+'\n'
@@ -109,7 +109,7 @@ if '## Closed' not in text:
 coord.write_text(text,encoding='utf-8')
 PY
 else
-  echo "ERROR: coordination file missing 'Alan homologation' field" >&2
+  echo "ERROR: coordination file missing 'Homologation' field" >&2
   exit 1
 fi
 
@@ -141,7 +141,7 @@ PREV_STATUS=$(
   WORKFLOW_DB_ENABLED=1 PYTHONPATH=backend \
     "$PY_BIN" backend/scripts/set_change_status.py \
       --project "$PROJECT_SLUG" --change "$CHANGE_ID" --status "Archived" \
-      --approve-gates "PO,DEV,QA,Alan approval,Alan homologation" \
+      --approve-gates "PO,DEV,QA,Alan approval,Homologation" \
       --actor "archive_change_safe.sh"
 )
 

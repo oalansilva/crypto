@@ -74,6 +74,20 @@ def test_alan_fallback_for_missing_explicit_fields_affects_column_and_archived()
     assert archived2 is True
 
 
+def test_parse_status_normalizes_legacy_alan_homologation_label():
+    md = """# legacy-homologation
+
+## Status
+- PO: done
+- Alan homologation: approved
+"""
+
+    status = coordination_service.parse_status(md)
+
+    assert status["Homologation"] == "approved"
+    assert "Alan homologation" not in status
+
+
 def test_archived_by_closed_heading_overrides_gates():
     md = """# closed-change
 
@@ -99,7 +113,7 @@ def test_derive_column_gate_order_includes_design_between_po_and_approval():
 - DEV: done
 - QA: done
 - Alan approval: approved
-- Alan homologation: approved
+- Homologation: approved
 """
     status = coordination_service.parse_status(md)
     assert coordination_service.derive_column(status, archived=False) == "PO"
@@ -113,7 +127,7 @@ def test_derive_column_gate_order_includes_design_between_po_and_approval():
 - DEV: done
 - QA: done
 - Alan approval: approved
-- Alan homologation: approved
+- Homologation: approved
 """
     status2 = coordination_service.parse_status(md2)
     assert coordination_service.derive_column(status2, archived=False) == "DESIGN"
@@ -126,7 +140,7 @@ def test_derive_column_gate_order_includes_design_between_po_and_approval():
 - DEV: done
 - QA: done
 - Alan approval: reviewed
-- Alan homologation: approved
+- Homologation: approved
 """
     status3 = coordination_service.parse_status(md3)
     assert coordination_service.derive_column(status3, archived=False) == "Alan approval"

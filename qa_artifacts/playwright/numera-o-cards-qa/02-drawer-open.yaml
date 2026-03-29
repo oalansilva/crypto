@@ -173,14 +173,14 @@
                 - generic [ref=e210]: QA
                 - generic [ref=e211]: pending
               - generic [ref=e212]:
-                - generic [ref=e213]: Alan homologation
+                - generic [ref=e213]: Homologation
                 - generic [ref=e214]: pending
             - generic [ref=e215]:
               - button "Move up" [disabled] [ref=e216]
               - button "Move down" [disabled] [ref=e217]
         - generic [ref=e218]:
           - generic [ref=e220]:
-            - generic [ref=e221]: Alan homologation
+            - generic [ref=e221]: Homologation
             - generic [ref=e222]: "0"
           - generic [ref=e224]: vazio
         - generic [ref=e225]:
@@ -211,7 +211,7 @@
                   - generic [ref=e251]: QA
                   - generic [ref=e252]: pending
                 - generic [ref=e253]:
-                  - generic [ref=e254]: Alan homologation
+                  - generic [ref=e254]: Homologation
                   - generic [ref=e255]: pending
             - button "Open details for alterar-dados-dos-cards" [ref=e256] [cursor=pointer]:
               - generic [ref=e257]:
@@ -237,7 +237,7 @@
                   - generic [ref=e277]: QA
                   - generic [ref=e278]: approved
                 - generic [ref=e279]:
-                  - generic [ref=e280]: Alan homologation
+                  - generic [ref=e280]: Homologation
                   - generic [ref=e281]: approved
             - button "Open details for cancel-smoke-2026-03-14-13-05-utc" [ref=e282] [cursor=pointer]:
               - generic [ref=e283]:
@@ -272,7 +272,7 @@
                   - generic [ref=e313]: QA
                   - generic [ref=e314]: pending
                 - generic [ref=e315]:
-                  - generic [ref=e316]: Alan homologation
+                  - generic [ref=e316]: Homologation
                   - generic [ref=e317]: pending
             - button "Open details for corrigir-cadencia-do-turn-scheduler" [ref=e318] [cursor=pointer]:
               - generic [ref=e319]:
@@ -298,7 +298,7 @@
                   - generic [ref=e339]: QA
                   - generic [ref=e340]: pending
                 - generic [ref=e341]:
-                  - generic [ref=e342]: Alan homologation
+                  - generic [ref=e342]: Homologation
                   - generic [ref=e343]: pending
             - button "Open details for evolve-multiagent-kadro-operating-model" [ref=e344] [cursor=pointer]:
               - generic [ref=e345]:
@@ -323,7 +323,7 @@
                   - generic [ref=e364]: QA
                   - generic [ref=e365]: approved
                 - generic [ref=e366]:
-                  - generic [ref=e367]: Alan homologation
+                  - generic [ref=e367]: Homologation
                   - generic [ref=e368]: approved
             - button "Open details for harden-multiagent-kadro-execution-model" [ref=e369] [cursor=pointer]:
               - generic [ref=e370]:
@@ -348,7 +348,7 @@
                   - generic [ref=e389]: QA
                   - generic [ref=e390]: approved
                 - generic [ref=e391]:
-                  - generic [ref=e392]: Alan homologation
+                  - generic [ref=e392]: Homologation
                   - generic [ref=e393]: approved
             - button "Open details for improve-wallet-screen" [ref=e394] [cursor=pointer]:
               - generic [ref=e395]:
@@ -373,7 +373,7 @@
                   - generic [ref=e414]: QA
                   - generic [ref=e415]: approved
                 - generic [ref=e416]:
-                  - generic [ref=e417]: Alan homologation
+                  - generic [ref=e417]: Homologation
                   - generic [ref=e418]: approved
             - button "Open details for kanban-manual-backlog-and-drag-drop" [ref=e419] [cursor=pointer]:
               - generic [ref=e420]:
@@ -398,7 +398,7 @@
                   - generic [ref=e439]: QA
                   - generic [ref=e440]: approved
                 - generic [ref=e441]:
-                  - generic [ref=e442]: Alan homologation
+                  - generic [ref=e442]: Homologation
                   - generic [ref=e443]: approved
             - button "Open details for mobile-kanban-ui-rethink" [ref=e444] [cursor=pointer]:
               - generic [ref=e445]:
@@ -423,7 +423,7 @@
                   - generic [ref=e464]: QA
                   - generic [ref=e465]: approved
                 - generic [ref=e466]:
-                  - generic [ref=e467]: Alan homologation
+                  - generic [ref=e467]: Homologation
                   - generic [ref=e468]: approved
             - button "Open details for orden-execu-o-dos-cards" [ref=e469] [cursor=pointer]:
               - generic [ref=e470]:
@@ -449,7 +449,7 @@
                   - generic [ref=e490]: QA
                   - generic [ref=e491]: approved
                 - generic [ref=e492]:
-                  - generic [ref=e493]: Alan homologation
+                  - generic [ref=e493]: Homologation
                   - generic [ref=e494]: approved
             - button "Open details for pnl-use-last-buy-trade" [ref=e495] [cursor=pointer]:
               - generic [ref=e496]:
@@ -474,7 +474,7 @@
                   - generic [ref=e515]: QA
                   - generic [ref=e516]: approved
                 - generic [ref=e517]:
-                  - generic [ref=e518]: Alan homologation
+                  - generic [ref=e518]: Homologation
                   - generic [ref=e519]: approved
             - button "Open details for qa-ui-playwright-regression" [ref=e520] [cursor=pointer]:
               - generic [ref=e521]:
@@ -499,7 +499,7 @@
                   - generic [ref=e540]: QA
                   - generic [ref=e541]: approved
                 - generic [ref=e542]:
-                  - generic [ref=e543]: Alan homologation
+                  - generic [ref=e543]: Homologation
                   - generic [ref=e544]: approved
             - button "Open details for standardize-multiagent-kadro-operating-model" [ref=e545] [cursor=pointer]:
               - generic [ref=e546]:
@@ -524,7 +524,7 @@
                   - generic [ref=e565]: QA
                   - generic [ref=e566]: approved
                 - generic [ref=e567]:
-                  - generic [ref=e568]: Alan homologation
+                  - generic [ref=e568]: Homologation
                   - generic [ref=e569]: approved
             - button "Open details for system-blue-theme" [ref=e570] [cursor=pointer]:
               - generic [ref=e571]:
@@ -549,7 +549,7 @@
                   - generic [ref=e590]: QA
                   - generic [ref=e591]: pending
                 - generic [ref=e592]:
-                  - generic [ref=e593]: Alan homologation
+                  - generic [ref=e593]: Homologation
                   - generic [ref=e594]: pending
             - button "Open details for teste" [ref=e595] [cursor=pointer]:
               - generic [ref=e596]:

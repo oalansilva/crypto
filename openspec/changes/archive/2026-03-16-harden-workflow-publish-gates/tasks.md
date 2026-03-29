@@ -17,4 +17,4 @@
 
 ## 4. Documentation
 - [ ] 4.1 Atualizar a documentação operacional do workflow.
-- [ ] 4.2 Registrar a nova regra de handoff e promoção entre DEV, QA e Alan homologation.
+- [ ] 4.2 Registrar a nova regra de handoff e promoção entre DEV, QA e Homologation.

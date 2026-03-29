@@ -1,6 +1,6 @@
 # QA UI Validation Checklist
 
-Run this checklist before sending any change to Alan homologation.
+Run this checklist before sending any change to Homologation.
 
 ## ⚠️ Before Testing - MANDATORY
 - [ ] **Run `./stop.sh && ./start.sh`** to ensure clean state and avoid cache issues

@@ -6,7 +6,7 @@ The system MUST provide a Kanban UI page that lists **active** OpenSpec changes 
 - Alan approval
 - DEV
 - QA
-- Alan homologation
+- Homologation
 - Archived
 
 #### Scenario: Active changes appear

@@ -20,7 +20,7 @@ The design principle is:
   - Alan approval
   - DEV
   - QA
-  - Alan homologation
+  - Homologation
   - Archived
 
 ## Main design decisions

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sinais BUY Only - Protótipo</title>
+<style>
+  :root {
+    --green: #22c55e;
+    --green-light: #bbf7d0;
+    --bg: #0f1117;
+    --card-bg: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+  }
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+  
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .header h1 { margin: 0; font-size: 1.5rem; }
+  
+  .risk-profile { display: flex; gap: 8px; margin-bottom: 16px; }
+  .risk-btn { padding: 8px 16px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); border-radius: 8px; cursor: pointer; }
+  .risk-btn.active { background: var(--green); color: #000; border-color: var(--green); }
+  
+  .filter-bar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+  .filter-bar select, .filter-bar input { padding: 8px 12px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); border-radius: 8px; }
+  .filter-bar label { color: var(--text-muted); font-size: 0.875rem; }
+  
+  .signals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  
+  .signal-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: border-color 0.2s; }
+  .signal-card:hover { border-color: var(--green); }
+  
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .badge-buy { background: var(--green); color: #000; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 4px; }
+  .badge-buy::before { content: '🟢'; }
+  .asset { font-weight: 600; font-size: 1.125rem; }
+  
+  .confidence-bar { height: 8px; background: var(--border); border-radius: 4px; margin: 8px 0; overflow: hidden; }
+  .confidence-fill { height: 100%; background: linear-gradient(90deg, var(--green), #4ade80); border-radius: 4px; transition: width 0.3s; }
+  .confidence-label { font-size: 0.75rem; color: var(--text-muted); }
+  
+  .prices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .price-item { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; }
+  .price-label { font-size: 0.75rem; color: var(--text-muted); }
+  .price-value { font-weight: 600; font-size: 1rem; }
+  .price-value.target { color: var(--green); }
+  .price-value.stop { color: #ef4444; }
+  .price-value.entry { color: #60a5fa; }
+  
+  .indicators { font-size: 0.875rem; color: var(--text-muted); margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .indicator { background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px; }
+  .timestamp { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; text-align: right; }
+  
+  .disclaimer { margin-top: 24px; padding: 12px; background: rgba(255,255,0,0.1); border: 1px solid rgba(255,255,0,0.2); border-radius: 8px; font-size: 0.875rem; color: #fcd34d; display: flex; align-items: center; gap: 8px; }
+  .disclaimer::before { content: '⚠️'; font-size: 1.2rem; }
+
+  .note { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 0.875rem; color: var(--green-light); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 Sinais de Trading</h1>
+</div>
+
+<div class="note">
+  <strong>Card #68:</strong> Exibindo apenas sinais BUY com Target e Stop. SELL e HOLD foram removidos da interface.
+</div>
+
+<div class="risk-profile">
+  <button class="risk-btn">Conservative</button>
+  <button class="risk-btn active">Moderate</button>
+  <button class="risk-btn">Aggressive</button>
+</div>
+
+<div class="filter-bar">
+  <label>Ativo:</label>
+  <select>
+    <option value="">Todos</option>
+    <option>BTCUSDT</option>
+    <option>ETHUSDT</option>
+    <option>BNBUSDT</option>
+    <option>SOLUSDT</option>
+  </select>
+  <label>≥Conf:</label>
+  <input type="number" value="70" min="0" max="100" style="width: 60px;">
+</div>
+
+<div class="signals-grid">
+  <div class="signal-card">
+    <div class="card-header">
+      <span class="badge-buy">BUY</span>
+      <span class="asset">BTCUSDT</span>
+    </div>
+    <div class="confidence-bar"><div class="confidence-fill" style="width: 82%"></div></div>
+    <div class="confidence-label">82% confiança • Threshold: 70%</div>
+    <div class="prices">
+      <div class="price-item">
+        <div class="price-label">Entrada</div>
+        <div class="price-value entry">$93,000</div>
+      </div>
+      <div class="price-item">
+        <div class="price-label">Target</div>
+        <div class="price-value target">$97,500</div>
+      </div>
+      <div class="price-item">
+        <div class="price-label">Stop</div>
+        <div class="price-value stop">$91,000</div>
+      </div>
+    </div>
+    <div class="indicators">
+      <span class="indicator">RSI: 35</span>
+      <span class="indicator">MACD: bullish</span>
+      <span class="indicator">BB: 95k-92k</span>
+    </div>
+    <div class="timestamp">28/03 12:00 BRT</div>
+  </div>
+
+  <div class="signal-card">
+    <div class="card-header">
+      <span class="badge-buy">BUY</span>
+      <span class="asset">ETHUSDT</span>
+    </div>
+    <div class="confidence-bar"><div class="confidence-fill" style="width: 78%"></div></div>
+    <div class="confidence-label">78% confiança • Threshold: 70%</div>
+    <div class="prices">
+      <div class="price-item">
+        <div class="price-label">Entrada</div>
+        <div class="price-value entry">$3,200</div>
+      </div>
+      <div class="price-item">
+        <div class="price-label">Target</div>
+        <div class="price-value target">$3,500</div>
+      </div>
+      <div class="price-item">
+        <div class="price-label">Stop</div>
+        <div class="price-value stop">$3,000</div>
+      </div>
+    </div>
+    <div class="indicators">
+      <span class="indicator">RSI: 42</span>
+      <span class="indicator">MACD: bullish</span>
+      <span class="indicator">BB: 3.4k-3.1k</span>
+    </div>
+    <div class="timestamp">28/03 12:05 BRT</div>
+  </div>
+
+  <div class="signal-card">
+    <div class="card-header">
+      <span class="badge-buy">BUY</span>
+      <span class="asset">BNBUSDT</span>
+    </div>
+    <div class="confidence-bar"><div class="confidence-fill" style="width: 75%"></div></div>
+    <div class="confidence-label">75% confiança • Threshold: 70%</div>
+    <div class="prices">
+      <div class="price-item">
+        <div class="price-label">Entrada</div>
+        <div class="price-value entry">$605</div>
+      </div>
+      <div class="price-item">
+        <div class="price-label">Target</div>
+        <div class="price-value target">$630</div>
+      </div>
+      <div class="price-item">
+        <div class="price-label">Stop</div>
+        <div class="price-value stop">$590</div>
+      </div>
+    </div>
+    <div class="indicators">
+      <span class="indicator">RSI: 38</span>
+      <span class="indicator">MACD: bullish</span>
+      <span class="indicator">BB: 620-595</span>
+    </div>
+    <div class="timestamp">28/03 12:10 BRT</div>
+  </div>
+</div>
+
+<div class="disclaimer">
+  Isenção de responsabilidade: este não é advice financeiro. Os sinais mostrados são gerados automaticamente e podem conter erros.
+</div>
+
+</body>
+</html>

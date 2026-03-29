@@ -6,7 +6,7 @@
 - Alan approval: not reviewed
 - DEV: **done** ✅
 - QA: **blocked - server restart required** ⚠️
-- Alan homologation: not reviewed
+- Homologation: not reviewed
 
 ## DEV Handoff
 - Feature branch: `feature/card49-remove-arbitrage`
