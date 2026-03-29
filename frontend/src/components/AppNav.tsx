@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   Activity,
   Beaker,
+  Brain,
   Bookmark,
   ChevronLeft,
   Home,
@@ -29,6 +30,7 @@ const mainNavItems: NavItemConfig[] = [
   { to: '/', label: 'Playground', icon: Home },
   { to: '/favorites', label: 'Favoritos', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
+  { to: '/ai-dashboard', label: 'AI Dashboard', icon: Brain },
   { to: '/signals', label: 'Sinais', icon: TrendingUp },
   { to: '/signals/history', label: 'Histórico', icon: TrendingUp },
   { to: '/kanban', label: 'Kanban', icon: Kanban },
@@ -51,6 +53,7 @@ function resolvePageTitle(pathname: string) {
   if (pathname === '/') return 'Dashboard principal'
   if (pathname === '/favorites') return 'Favoritos'
   if (pathname === '/monitor') return 'Monitor de sinais'
+  if (pathname === '/ai-dashboard') return 'AI Dashboard'
   if (pathname === '/signals') return 'Sinais de trading'
   if (pathname === '/signals/history') return 'Histórico de Sinais'
   if (pathname === '/kanban') return 'Kanban'

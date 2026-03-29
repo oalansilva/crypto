@@ -17,6 +17,7 @@ import ExternalBalancesPage from './pages/ExternalBalancesPage'
 import KanbanPage from './pages/KanbanPage'
 import SignalsPage from './pages/SignalsPage'
 import SignalsHistoryPage from './pages/SignalsHistoryPage'
+import AIDashboardPage from './pages/AIDashboardPage'
 import { Toaster } from "@/components/ui/toaster"
 
 function PrototypeRedirect({ to }: { to: string }) {
@@ -52,6 +53,7 @@ function App() {
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/signals" element={<SignalsPage />} />
           <Route path="/signals/history" element={<SignalsHistoryPage />} />
+          <Route path="/ai-dashboard" element={<AIDashboardPage />} />
           <Route path="/combo/select" element={<ComboSelectPage />} />
           {/* Backward-compat route (old link/bookmark) */}
           <Route path="/combo/selectCrypto" element={<ComboSelectPage />} />

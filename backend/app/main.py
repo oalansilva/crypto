@@ -28,6 +28,7 @@ from app.routes.workflow_validation import router as workflow_validation_router
 from app.routes.market import router as market_router
 from app.routes.portfolio import router as portfolio_router
 from app.routes.signals import router as signals_router
+from app.routes.ai_dashboard import router as ai_dashboard_router
 from app.services.signal_monitor import signal_monitor
 
 # Configure logging to file
@@ -224,6 +225,7 @@ app.include_router(workflow_validation_router)
 app.include_router(market_router)
 app.include_router(portfolio_router)
 app.include_router(signals_router)
+app.include_router(ai_dashboard_router)
 
 @app.get("/")
 async def root():
