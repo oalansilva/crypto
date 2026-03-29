@@ -367,8 +367,14 @@ def _save_signal_to_history(signal: Signal) -> None:
             db.close()
             return
 
-        # entry_price = the current close price at signal creation (use target_price as proxy for now)
-        entry_price = signal.target_price if signal.type == "SELL" else signal.stop_loss if signal.type == "BUY" else None
+        # Skip SELL signals - they are not actual trades, just market timing indicators
+        if signal.type.value == "SELL":
+            db.close()
+            return
+
+        # entry_price is the actual execution price when the trade is triggered,
+        # so it should remain unset when the signal is first created.
+        entry_price = None
 
         record = SignalHistory(
             id=signal.id,
