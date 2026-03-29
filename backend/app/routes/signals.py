@@ -372,9 +372,7 @@ def _save_signal_to_history(signal: Signal) -> None:
             db.close()
             return
 
-        # entry_price is the actual execution price when the trade is triggered,
-        # so it should remain unset when the signal is first created.
-        entry_price = None
+        entry_price = signal.entry_price
 
         record = SignalHistory(
             id=signal.id,

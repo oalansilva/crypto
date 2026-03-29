@@ -318,6 +318,7 @@ def _build_signal(
 ) -> Signal:
     closes = [float(candle["close"]) for candle in candles]
     latest_close = closes[-1]
+    entry_price = latest_close
     latest_time = candles[-1]["open_time"]
     settings = _PROFILE_SETTINGS[risk_profile]
     rsi = round(_compute_rsi(closes), 2)
@@ -405,6 +406,7 @@ def _build_signal(
         ),
         created_at=latest_time,
         risk_profile=risk_profile,
+        entry_price=entry_price,
         breakdown=breakdown,
     )
 

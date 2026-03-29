@@ -35,6 +35,15 @@ class SignalIndicators(BaseModel):
     )
 
 
+class ConfidenceBreakdown(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    rsi_contribution: float = Field(alias="rsiContribution", ge=0, le=100, description="RSI share of the displayed confidence")
+    macd_contribution: float = Field(alias="macdContribution", ge=0, le=100, description="MACD share of the displayed confidence")
+    sentiment_contribution: float = Field(alias="sentimentContribution", ge=0, le=100, description="Sentiment share of the displayed confidence")
+    display_total: float = Field(alias="displayTotal", ge=0, le=100, description="Displayed confidence after technical and sentiment composition")
+
+
 class Signal(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -55,6 +64,12 @@ class Signal(BaseModel):
             },
             "created_at": "2026-03-26T12:00:00Z",
             "risk_profile": "moderate",
+            "breakdown": {
+                "rsi_contribution": 40.18,
+                "macd_contribution": 17.22,
+                "sentiment_contribution": 22.2,
+                "display_total": 79.6,
+            },
         }
     })
 
@@ -67,6 +82,8 @@ class Signal(BaseModel):
     indicators: SignalIndicators
     created_at: datetime = Field(description="Signal creation timestamp in UTC")
     risk_profile: RiskProfile = Field(description="Risk profile used to compute the signal")
+    entry_price: float | None = Field(default=None, description="Entry price when signal was generated (close price at signal creation)")
+    breakdown: ConfidenceBreakdown | None = Field(default=None, description="Optional confidence composition details")
 
 
 class SignalListResponse(BaseModel):

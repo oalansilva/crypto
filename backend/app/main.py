@@ -28,6 +28,7 @@ from app.routes.workflow_validation import router as workflow_validation_router
 from app.routes.market import router as market_router
 from app.routes.portfolio import router as portfolio_router
 from app.routes.signals import router as signals_router
+from app.services.signal_monitor import signal_monitor
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -172,10 +173,12 @@ async def lifespan(app: FastAPI):
 
         # Seed combo_templates if empty
         seed_combo_templates_if_empty()
+        signal_monitor.start()
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 
     yield
+    signal_monitor.stop()
 
 settings = get_settings()
 
