@@ -230,6 +230,20 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                 <NavSection title="Principal" items={mainNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
                 <NavSection title="Estratégias" items={strategyNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
                 <NavSection title="Conta" items={accountNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+
+                <div className="border-t border-white/6 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      logout()
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-[18px] border border-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--text-secondary)] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span>Sair</span>
+                  </button>
+                </div>
               </div>
             </aside>
           </>
