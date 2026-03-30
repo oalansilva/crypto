@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models_signal_history import SAO_PAULO_TZ, SignalHistory, sao_paulo_now
 from app.schemas.signal import RiskProfile, Signal, SignalListResponse, SignalType
-from app.middleware.authMiddleware import get_current_user_optional
+from app.middleware.authMiddleware import get_current_user
 from app.services import binance_service, sentiment_service
 
 router = APIRouter(prefix="/api/signals", tags=["signals"])
@@ -187,7 +187,7 @@ async def get_latest_signals():
     summary="Signal history with filters and pagination",
 )
 async def get_signal_history(
-    current_user_id: str | None = Depends(get_current_user_optional),
+    current_user_id: str = Depends(get_current_user),
     asset: str | None = Query(default=None, description="Filter by asset, e.g. BTCUSDT"),
     type: str | None = Query(default=None, description="Filter by BUY, SELL or HOLD"),
     status: str | None = Query(default=None, description="Filter by status: ativo, disparado, expirado, cancelado"),
@@ -197,10 +197,6 @@ async def get_signal_history(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
-    # Multi-tenant: usuário não autenticado não vê dados de outros
-    if current_user_id is None:
-        return SignalHistoryResponse(signals=[], total=0, limit=limit, offset=offset)
-
     db: Session = SessionLocal()
     try:
         query = db.query(SignalHistory).filter(SignalHistory.archived == "no")
@@ -295,20 +291,10 @@ async def update_signal_status(
     summary="Signal history statistics",
 )
 async def get_signal_stats(
-    current_user_id: str | None = Depends(get_current_user_optional),
+    current_user_id: str = Depends(get_current_user),
     data_inicio: str | None = Query(default=None),
     data_fim: str | None = Query(default=None),
 ):
-    # Multi-tenant: usuário não autenticado não vê dados de outros
-    if current_user_id is None:
-        return SignalStatsResponse(
-            total_signals=0,
-            win_rate=0.0,
-            avg_confidence=0.0,
-            expired_rate=0.0,
-            total_pnl=0.0,
-        )
-
     db: Session = SessionLocal()
     try:
         query = db.query(SignalHistory).filter(SignalHistory.archived == "no")

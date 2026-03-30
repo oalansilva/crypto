@@ -10,7 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.middleware.authMiddleware import get_current_user_optional
+from app.middleware.authMiddleware import get_current_user
 from app.services.binance_spot import BinanceConfigError, fetch_spot_balances_snapshot
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
@@ -145,7 +145,7 @@ def _calculate_drawdown_30d(snapshots: List[Dict[str, Any]]) -> tuple[float, Opt
 
 @router.get("/kpi")
 async def get_portfolio_kpi(
-    current_user_id: str | None = Depends(get_current_user_optional),
+    current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
