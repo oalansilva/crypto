@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Layout } from './components/Layout'
+import { AuthLayout } from './components/AuthLayout'
+import { AuthProvider } from './stores/authStore'
 import HomePage from './pages/HomePage'
 import FavoritesDashboard from './pages/FavoritesDashboard'
 import { MonitorPage } from './pages/MonitorPage'
@@ -18,6 +20,8 @@ import KanbanPage from './pages/KanbanPage'
 import SignalsPage from './pages/SignalsPage'
 import SignalsHistoryPage from './pages/SignalsHistoryPage'
 import AIDashboardPage from './pages/AIDashboardPage'
+import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import { Toaster } from "@/components/ui/toaster"
 
 function PrototypeRedirect({ to }: { to: string }) {
@@ -35,6 +39,7 @@ function PrototypeRedirect({ to }: { to: string }) {
 
 function App() {
   return (
+    <AuthProvider>
     <BrowserRouter>
       <Routes>
         {/*
@@ -46,6 +51,12 @@ function App() {
           path="/prototypes/improve-wallet-screen"
           element={<PrototypeRedirect to="/prototypes/improve-wallet-screen/" />}
         />
+
+        {/* Auth routes - no sidebar */}
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        </Route>
 
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
@@ -72,6 +83,7 @@ function App() {
       </Routes>
       <Toaster />
     </BrowserRouter>
+    </AuthProvider>
   )
 }
 

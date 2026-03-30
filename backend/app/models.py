@@ -192,3 +192,13 @@ class MonitorPreference(Base):
     # Monitor-only theme preference (defaults to dark-green).
     theme = Column(String, nullable=False, default="dark-green")
     updated_at = Column(DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUIDType, primary_key=True, default=uuid.uuid4)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
