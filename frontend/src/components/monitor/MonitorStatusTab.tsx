@@ -7,6 +7,7 @@ import { RefreshCw, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '@/lib/apiBase';
+import { authFetch } from '@/lib/authFetch';
 
 type SortOption = 'distance' | 'tier_distance' | 'symbol';
 type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
@@ -41,8 +42,8 @@ export const MonitorStatusTab: React.FC = () => {
     const fetchMonitorContext = async () => {
         try {
             const [favoritesResponse, preferencesResponse] = await Promise.all([
-                fetch(`${API_BASE_URL}/favorites/`),
-                fetch(`${API_BASE_URL}/monitor/preferences`),
+                authFetch(`${API_BASE_URL}/favorites/`),
+                authFetch(`${API_BASE_URL}/monitor/preferences`),
             ]);
 
             if (!favoritesResponse.ok) {
@@ -100,7 +101,7 @@ export const MonitorStatusTab: React.FC = () => {
 
             const baseUrl = import.meta.env.VITE_API_URL || "/api";
             const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}`;
-            const response = await fetch(url);
+            const response = await authFetch(url);
             if (!response.ok) throw new Error('Failed to fetch opportunities');
             const data = await response.json();
             setOpportunities(data);
@@ -134,7 +135,7 @@ export const MonitorStatusTab: React.FC = () => {
         setSavingSymbols((current) => ({ ...current, [symbol]: true }));
 
         try {
-            const response = await fetch(`${API_BASE_URL}/monitor/preferences/${encodeURIComponent(symbol)}`, {
+            const response = await authFetch(`${API_BASE_URL}/monitor/preferences/${encodeURIComponent(symbol)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(patch),

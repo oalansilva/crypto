@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Target, Activity, Settings, Star, BarChart3 } from "lucide-react";
 import { API_BASE_URL, apiUrl } from '../../lib/apiBase';
+import { authFetch } from '@/lib/authFetch';
 import { MiniCandlesChart, type MarketCandle } from './MiniCandlesChart';
 
 import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe } from './types';
@@ -106,7 +107,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 url.searchParams.set('timeframe', effectiveTimeframe);
                 url.searchParams.set('limit', CANDLE_LIMIT);
 
-                const response = await fetch(url.toString(), { signal: controller.signal });
+                const response = await authFetch(url.toString(), { signal: controller.signal });
                 const payload = await response.json();
                 if (!response.ok) {
                     throw new Error(String(payload?.detail || `Failed to load candles (${response.status})`));
@@ -456,7 +457,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                                             onClick={async () => {
                                                 try {
                                                     setIsSavingNotes(true);
-                                                    const res = await fetch(`${API_BASE_URL}/favorites/${opportunity.id}`, {
+                                                    const res = await authFetch(`${API_BASE_URL}/favorites/${opportunity.id}`, {
                                                         method: 'PATCH',
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({ notes: notesValue }),

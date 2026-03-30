@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/apiBase';
+import { authFetch } from '@/lib/authFetch';
 
 export interface AgentChatFavorite {
   id: number;
@@ -70,7 +71,7 @@ export const AgentChatModal: React.FC<{
     setMessages((m) => [...m, { role: 'user', text, ts }]);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/agent/chat`, {
+      const res = await authFetch(`${API_BASE_URL}/agent/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

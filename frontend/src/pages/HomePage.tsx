@@ -105,7 +105,12 @@ function cx(...xs: Array<string | false | null | undefined>) {
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(path).toString())
+  const token = localStorage.getItem('auth_access_token')
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  const res = await fetch(apiUrl(path).toString(), { headers })
   const payload = await res.json().catch(() => null)
   if (!res.ok) {
     const detail = payload && typeof payload === 'object' ? (payload as { detail?: string }).detail : undefined

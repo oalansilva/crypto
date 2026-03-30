@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Bookmark, Save, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/apiBase';
+import { authFetch } from '../lib/authFetch';
 
 interface SaveFavoriteButtonProps {
     config: {
@@ -51,7 +52,7 @@ const SaveFavoriteButton: React.FC<SaveFavoriteButtonProps> = ({ config, metrics
             console.log('💾 Saving favorite with payload:', payload);
             console.log('   max_loss in metrics:', metrics.max_loss);
 
-            const response = await fetch(`${API_BASE_URL}/favorites/`, {
+            const response = await authFetch(`${API_BASE_URL}/favorites/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

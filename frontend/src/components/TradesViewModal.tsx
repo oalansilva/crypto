@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, ArrowUp, ArrowDown, Download } from 'lucide-react';
 import { API_BASE_URL } from '../lib/apiBase';
+import { authFetch } from '@/lib/authFetch';
 
 interface Trade {
     entry_time: string;
@@ -77,7 +78,7 @@ const TradesViewModal: React.FC<TradesViewModalProps> = ({
                 };
             });
 
-            const response = await fetch(`${API_BASE_URL}/combos/export-trades`, {
+            const response = await authFetch(`${API_BASE_URL}/combos/export-trades`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

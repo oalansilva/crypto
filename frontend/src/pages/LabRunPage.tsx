@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { API_BASE_URL } from '@/lib/apiBase';
+import { authFetch } from '@/lib/authFetch';
 import RunChatView, { type TraceEvent } from '@/components/lab/RunChatView';
 import LogPanel from '@/components/lab/LogPanel';
 import { useLogSSE } from '@/hooks/useLogSSE';
@@ -120,7 +121,7 @@ const LabRunPage: React.FC = () => {
 
     const tick = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}`);
+        const res = await authFetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}`);
         const j = (await res.json().catch(() => null)) as any;
         if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
         if (!alive) return;
@@ -144,7 +145,7 @@ const LabRunPage: React.FC = () => {
     if (!id) return;
     setContinuing(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/continue`, { method: 'POST' });
+      const res = await authFetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/continue`, { method: 'POST' });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
       // polling will refresh
@@ -162,7 +163,7 @@ const LabRunPage: React.FC = () => {
 
     setSendingUpstream(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/message`, {
+      const res = await authFetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text }),
@@ -185,7 +186,7 @@ const LabRunPage: React.FC = () => {
 
     setSendingDraftFeedback(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/feedback`, {
+      const res = await authFetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text }),
@@ -205,7 +206,7 @@ const LabRunPage: React.FC = () => {
     if (!id) return;
     setApprovingDraft(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/approve`, { method: 'POST' });
+      const res = await authFetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/upstream/approve`, { method: 'POST' });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
       setError(null);
@@ -220,7 +221,7 @@ const LabRunPage: React.FC = () => {
     if (!id) return;
     setApprovingReview(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+      const res = await authFetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/approve`, { method: 'POST' });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(String(j?.detail || `HTTP ${res.status}`));
       const templateName = String(j?.template_name || '');
@@ -242,7 +243,7 @@ const LabRunPage: React.FC = () => {
     if (!id) return;
     setRejectingReview(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/reject`, {
+      const res = await authFetch(`${API_BASE_URL}/lab/runs/${encodeURIComponent(id)}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reviewReason.trim() || undefined }),

@@ -37,7 +37,12 @@ const ALLOCATION_META: Array<{
 ]
 
 async function fetchPortfolioKpi(): Promise<PortfolioKPI> {
-  const response = await fetch(apiUrl('/portfolio/kpi').toString())
+  const token = localStorage.getItem('auth_access_token')
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  const response = await fetch(apiUrl('/portfolio/kpi').toString(), { headers })
   const payload = await response.json().catch(() => null)
 
   if (!response.ok) {

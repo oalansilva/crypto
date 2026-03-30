@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '@/lib/apiBase';
+import { authFetch } from '@/lib/authFetch';
 
 type ParsedLabInputs = {
   symbol?: string;
@@ -35,7 +36,7 @@ const LabPage: React.FC = () => {
 
     try {
       const parsed = parseLabInputsFromPrompt(message);
-      const res = await fetch(`${API_BASE_URL}/lab/run`, {
+      const res = await authFetch(`${API_BASE_URL}/lab/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE_URL } from '@/lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
 import { MiniCandlesChart, type MarketCandle } from './MiniCandlesChart'
 
 type Timeframe = '15m' | '1h' | '4h' | '1d'
@@ -70,7 +71,7 @@ export function MonitorDashboardTab() {
       setFavoritesLoading(true)
       setFavoritesError(null)
       try {
-        const response = await fetch(`${API_BASE_URL}/favorites/`, { signal: controller.signal })
+        const response = await authFetch(`${API_BASE_URL}/favorites/`, { signal: controller.signal })
         if (!response.ok) {
           throw new Error(`Failed to load favorites (${response.status})`)
         }
@@ -114,7 +115,7 @@ export function MonitorDashboardTab() {
         url.searchParams.set('symbol', selectedSymbol)
         url.searchParams.set('timeframe', timeframe)
         url.searchParams.set('limit', '300')
-        const response = await fetch(url.toString(), { signal: controller.signal })
+        const response = await authFetch(url.toString(), { signal: controller.signal })
         const payload = await response.json()
         if (!response.ok) {
           throw new Error(String(payload?.detail || `Failed to load candles (${response.status})`))

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE_URL } from '@/lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -117,7 +118,7 @@ export default function ExternalBalancesPage() {
     if (Number.isFinite(min)) qs.set('min_usd', String(min))
 
     try {
-      const res = await fetch(`${API_BASE_URL}/external/binance/spot/balances?${qs.toString()}`)
+      const res = await authFetch(`${API_BASE_URL}/external/binance/spot/balances?${qs.toString()}`)
       const payload = await res.json()
       if (!res.ok) throw new Error(String(payload?.detail || 'Falha ao carregar saldos externos'))
       if (fetchId !== lastFetchId.current) return
