@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import axios from 'axios'
+import { queryClient } from '../lib/queryClient'
 
 const API_BASE = '/api'
 
@@ -108,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(ACCESS_TOKEN_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+    queryClient.clear() // Clear React Query cache on logout
     setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
   }, [])
 
