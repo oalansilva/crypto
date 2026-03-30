@@ -38,6 +38,9 @@ class SignalHistory(Base):
     updated_at = Column(DateTime(timezone=True), nullable=True)
     archived = Column(String, default="no", index=True)  # yes/no
 
+    # Multi-tenant isolation
+    user_id = Column(String, nullable=True)  # UUID do usuário, NULL para dados legados
+
     __table_args__ = (
         Index("ix_signal_history_asset_created", "asset", "created_at"),
         Index("ix_signal_history_status_created", "status", "created_at"),

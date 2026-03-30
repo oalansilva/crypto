@@ -38,6 +38,7 @@ class SignalHistoryItem(BaseModel):
     pnl: float | None = None
     trigger_price: float | None = None
     updated_at: datetime | None = None
+    user_id: str | None = None
 
 
 class SignalHistoryResponse(BaseModel):
@@ -110,6 +111,7 @@ def _build_history_item(row: SignalHistory) -> SignalHistoryItem:
         pnl=row.pnl,
         trigger_price=row.trigger_price,
         updated_at=_ensure_sao_paulo(row.updated_at),
+        user_id=row.user_id,
     )
 
 
@@ -184,6 +186,7 @@ async def get_latest_signals():
     summary="Signal history with filters and pagination",
 )
 async def get_signal_history(
+    user_id: str | None = Query(default=None, description="Filter by user_id (UUID)"),
     asset: str | None = Query(default=None, description="Filter by asset, e.g. BTCUSDT"),
     type: str | None = Query(default=None, description="Filter by BUY, SELL or HOLD"),
     status: str | None = Query(default=None, description="Filter by status: ativo, disparado, expirado, cancelado"),
@@ -196,6 +199,10 @@ async def get_signal_history(
     db: Session = SessionLocal()
     try:
         query = db.query(SignalHistory).filter(SignalHistory.archived == "no")
+
+        # Multi-tenant: filtrar por user_id se fornecido
+        if user_id:
+            query = query.filter(SignalHistory.user_id == user_id)
 
         if asset:
             query = query.filter(SignalHistory.asset == asset.upper())
@@ -284,12 +291,17 @@ async def update_signal_status(
     summary="Signal history statistics",
 )
 async def get_signal_stats(
+    user_id: str | None = Query(default=None, description="Filter by user_id (UUID)"),
     data_inicio: str | None = Query(default=None),
     data_fim: str | None = Query(default=None),
 ):
     db: Session = SessionLocal()
     try:
         query = db.query(SignalHistory).filter(SignalHistory.archived == "no")
+
+        # Multi-tenant: filtrar por user_id se fornecido
+        if user_id:
+            query = query.filter(SignalHistory.user_id == user_id)
 
         if data_inicio:
             try:
@@ -355,7 +367,7 @@ async def get_signal_by_id(signal_id: str):
         raise HTTPException(status_code=404, detail="Signal not found") from exc
 
 
-def _save_signal_to_history(signal: Signal) -> None:
+def _save_signal_to_history(signal: Signal, user_id: str | None = None) -> None:
     """Save a generated signal to the history table (sync, called from async context)."""
     import json
     from app.database import SessionLocal
@@ -386,6 +398,7 @@ def _save_signal_to_history(signal: Signal) -> None:
             risk_profile=signal.risk_profile.value,
             status="ativo",
             entry_price=entry_price,
+            user_id=user_id,
         )
         db.add(record)
         db.commit()

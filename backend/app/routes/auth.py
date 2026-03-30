@@ -59,6 +59,7 @@ class TokenResponse(BaseModel):
     refreshToken: str
     expiresIn: int
     id: str
+    userId: str
     email: str
     name: str
 
@@ -93,6 +94,7 @@ def _verify_password(password: str, hashed: str) -> bool:
 def _generate_access_token(user: User) -> str:
     payload = {
         "sub": str(user.id),
+        "user_id": str(user.id),
         "email": user.email,
         "type": "access",
         "iat": datetime.now(timezone.utc),
@@ -158,6 +160,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         refreshToken=refresh_token,
         expiresIn=JWT_ACCESS_EXPIRE_MINUTES * 60,
         id=str(user.id),
+        userId=str(user.id),
         email=user.email,
         name=user.name,
     )
@@ -229,6 +232,7 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
         refreshToken=refresh_token,
         expiresIn=JWT_ACCESS_EXPIRE_MINUTES * 60,
         id=str(user.id),
+        userId=str(user.id),
         email=user.email,
         name=user.name,
     )

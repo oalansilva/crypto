@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -15,11 +15,17 @@ from app.services.binance_spot import BinanceConfigError, fetch_spot_balances_sn
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
 
-def _get_latest_snapshot(db: Session) -> Optional[Dict[str, Any]]:
-    """Get the most recent portfolio snapshot."""
-    result = db.execute(
-        text("SELECT * FROM portfolio_snapshots ORDER BY recorded_at DESC LIMIT 1")
-    )
+def _get_latest_snapshot(db: Session, user_id: str | None = None) -> Optional[Dict[str, Any]]:
+    """Get the most recent portfolio snapshot for a user."""
+    if user_id:
+        result = db.execute(
+            text("SELECT * FROM portfolio_snapshots WHERE user_id = :user_id ORDER BY recorded_at DESC LIMIT 1"),
+            {"user_id": user_id}
+        )
+    else:
+        result = db.execute(
+            text("SELECT * FROM portfolio_snapshots ORDER BY recorded_at DESC LIMIT 1")
+        )
     row = result.fetchone()
     if not row:
         return None
@@ -35,6 +41,7 @@ def _get_latest_snapshot(db: Session) -> Optional[Dict[str, Any]]:
         "drawdown_30d_pct": row[8],
         "drawdown_peak_date": row[9],
         "btc_change_24h_pct": row[10],
+        "user_id": row[11] if len(row) > 11 else None,
     }
 
 
@@ -49,15 +56,16 @@ def _save_snapshot(
     drawdown_30d_pct: Optional[float],
     drawdown_peak_date: Optional[str],
     btc_change_24h_pct: Optional[float],
+    user_id: str | None = None,
 ) -> int:
     """Save a portfolio snapshot and return its id."""
     result = db.execute(
         text("""
-            INSERT INTO portfolio_snapshots 
-            (total_usd, btc_value, usdt_value, eth_value, other_usd, 
-             pnl_today_pct, drawdown_30d_pct, drawdown_peak_date, btc_change_24h_pct)
+            INSERT INTO portfolio_snapshots
+            (total_usd, btc_value, usdt_value, eth_value, other_usd,
+             pnl_today_pct, drawdown_30d_pct, drawdown_peak_date, btc_change_24h_pct, user_id)
             VALUES (:total_usd, :btc_value, :usdt_value, :eth_value, :other_usd,
-                    :pnl_today_pct, :drawdown_30d_pct, :drawdown_peak_date, :btc_change_24h_pct)
+                    :pnl_today_pct, :drawdown_30d_pct, :drawdown_peak_date, :btc_change_24h_pct, :user_id)
         """),
         {
             "total_usd": total_usd,
@@ -69,23 +77,34 @@ def _save_snapshot(
             "drawdown_30d_pct": drawdown_30d_pct,
             "drawdown_peak_date": drawdown_peak_date,
             "btc_change_24h_pct": btc_change_24h_pct,
+            "user_id": user_id,
         },
     )
     db.commit()
     return result.lastrowid
 
 
-def _get_30d_snapshots(db: Session) -> List[Dict[str, Any]]:
+def _get_30d_snapshots(db: Session, user_id: str | None = None) -> List[Dict[str, Any]]:
     """Get snapshots from the last 30 days for drawdown calculation."""
     cutoff = (datetime.now() - timedelta(days=30)).isoformat()
-    result = db.execute(
-        text("""
-            SELECT total_usd, recorded_at FROM portfolio_snapshots 
-            WHERE recorded_at >= :cutoff 
-            ORDER BY recorded_at ASC
-        """),
-        {"cutoff": cutoff},
-    )
+    if user_id:
+        result = db.execute(
+            text("""
+                SELECT total_usd, recorded_at FROM portfolio_snapshots
+                WHERE recorded_at >= :cutoff AND user_id = :user_id
+                ORDER BY recorded_at ASC
+            """),
+            {"cutoff": cutoff, "user_id": user_id},
+        )
+    else:
+        result = db.execute(
+            text("""
+                SELECT total_usd, recorded_at FROM portfolio_snapshots
+                WHERE recorded_at >= :cutoff
+                ORDER BY recorded_at ASC
+            """),
+            {"cutoff": cutoff},
+        )
     rows = result.fetchall()
     return [{"total_usd": row[0], "recorded_at": row[1]} for row in rows]
 
@@ -124,10 +143,13 @@ def _calculate_drawdown_30d(snapshots: List[Dict[str, Any]]) -> tuple[float, Opt
 
 
 @router.get("/kpi")
-async def get_portfolio_kpi(db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_portfolio_kpi(
+    user_id: str | None = Query(default=None, description="Filter by user_id (UUID)"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
     """
     Get portfolio KPIs with real data.
-    
+
     Returns:
     {
         "pnl_today_pct": float or None,
@@ -174,6 +196,7 @@ async def get_portfolio_kpi(db: Session = Depends(get_db)) -> Dict[str, Any]:
     # Get BTC 24h change
     btc_change_24h_pct = None
     try:
+        import httpx
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
                 "https://api.binance.com/api/v3/ticker/24hr",
@@ -189,14 +212,24 @@ async def get_portfolio_kpi(db: Session = Depends(get_db)) -> Dict[str, Any]:
 
     # Get previous day's snapshot for PnL calculation
     yesterday = (datetime.now() - timedelta(days=1)).date().isoformat()
-    prev_result = db.execute(
-        text("""
-            SELECT total_usd FROM portfolio_snapshots 
-            WHERE date(recorded_at) = :yesterday
-            ORDER BY recorded_at DESC LIMIT 1
-        """),
-        {"yesterday": yesterday},
-    )
+    if user_id:
+        prev_result = db.execute(
+            text("""
+                SELECT total_usd FROM portfolio_snapshots
+                WHERE date(recorded_at) = :yesterday AND user_id = :user_id
+                ORDER BY recorded_at DESC LIMIT 1
+            """),
+            {"yesterday": yesterday, "user_id": user_id},
+        )
+    else:
+        prev_result = db.execute(
+            text("""
+                SELECT total_usd FROM portfolio_snapshots
+                WHERE date(recorded_at) = :yesterday
+                ORDER BY recorded_at DESC LIMIT 1
+            """),
+            {"yesterday": yesterday},
+        )
     prev_row = prev_result.fetchone()
     prev_total = prev_row[0] if prev_row else None
 
@@ -208,7 +241,7 @@ async def get_portfolio_kpi(db: Session = Depends(get_db)) -> Dict[str, Any]:
             pnl_today_vs_btc_pct = round(pnl_today_pct - btc_change_24h_pct, 2)
 
     # Calculate 30d drawdown
-    snapshots_30d = _get_30d_snapshots(db)
+    snapshots_30d = _get_30d_snapshots(db, user_id=user_id)
     drawdown_30d_pct, drawdown_peak_date = _calculate_drawdown_30d(snapshots_30d)
 
     # Save current snapshot
@@ -223,6 +256,7 @@ async def get_portfolio_kpi(db: Session = Depends(get_db)) -> Dict[str, Any]:
         drawdown_30d_pct=drawdown_30d_pct,
         drawdown_peak_date=drawdown_peak_date,
         btc_change_24h_pct=btc_change_24h_pct,
+        user_id=user_id,
     )
 
     history_insufficient = len(snapshots_30d) < 2
