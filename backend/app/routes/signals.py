@@ -239,11 +239,17 @@ async def get_signal_history(
     response_model=SignalHistoryItem,
     summary="Get a single signal from history",
 )
-async def get_signal_history_detail(signal_id: str):
+async def get_signal_history_detail(
+    signal_id: str,
+    current_user_id: str = Depends(get_current_user),
+):
     db: Session = SessionLocal()
     try:
         row = db.query(SignalHistory).filter(SignalHistory.id == signal_id).first()
         if not row:
+            raise HTTPException(status_code=404, detail="Signal not found")
+        # Multi-tenant: usuário só pode ver seu próprio signal
+        if row.user_id != current_user_id:
             raise HTTPException(status_code=404, detail="Signal not found")
         return _build_history_item(row)
     finally:
@@ -258,11 +264,15 @@ async def get_signal_history_detail(signal_id: str):
 async def update_signal_status(
     signal_id: str,
     req: UpdateStatusRequest,
+    current_user_id: str = Depends(get_current_user),
 ):
     db: Session = SessionLocal()
     try:
         row = db.query(SignalHistory).filter(SignalHistory.id == signal_id).first()
         if not row:
+            raise HTTPException(status_code=404, detail="Signal not found")
+        # Multi-tenant: usuário só pode alterar seu próprio signal
+        if row.user_id != current_user_id:
             raise HTTPException(status_code=404, detail="Signal not found")
 
         row.status = req.status
