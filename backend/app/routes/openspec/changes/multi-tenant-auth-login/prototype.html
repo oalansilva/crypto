@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autenticação</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0b0e13;
+      --bg-secondary: #151920;
+      --bg-card: #1a1f2e;
+      --bg-input: #111827;
+      --border: #2a2f3e;
+      --border-focus: #e6b800;
+      --accent: #f0b90b;
+      --accent-hover: #d4a40a;
+      --accent-green: #b8b42a;
+      --text-primary: #e8e8e8;
+      --text-secondary: #8892a4;
+      --text-muted: #4b5563;
+      --error: #ef4444;
+      --error-bg: rgba(239,68,68,0.1);
+      --success: #22c55e;
+      --success-bg: rgba(34,197,94,0.1);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .logo p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 28px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 28px;
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      background: transparent;
+    }
+    .tab.active {
+      background: var(--bg-card);
+      color: var(--accent);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    .tab:hover:not(.active) {
+      color: var(--text-primary);
+    }
+
+    .form-view { display: none; }
+    .form-view.active { display: block; }
+
+    .field {
+      margin-bottom: 16px;
+    }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input::placeholder { color: var(--text-muted); }
+    .field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(240,185,11,0.12);
+    }
+    .field input.error { border-color: var(--error); }
+    .field input.error:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
+
+    .field-error {
+      font-size: 12px;
+      color: var(--error);
+      margin-top: 5px;
+      display: none;
+    }
+    .field.has-error .field-error { display: block; }
+
+    .password-wrapper { position: relative; }
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 13px;
+      padding: 4px 6px;
+    }
+    .password-toggle:hover { color: var(--text-primary); }
+    .password-wrapper input { padding-right: 80px; }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 13px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:active { transform: scale(0.99); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .btn-primary.loading .spinner { display: block; }
+    .btn-primary.loading .btn-text { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert {
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .alert.show { display: flex; }
+    .alert-error {
+      background: var(--error-bg);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--error);
+    }
+    .alert-success {
+      background: var(--success-bg);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--success);
+    }
+    .alert-icon { font-size: 16px; flex-shrink: 0; }
+
+    .form-footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .form-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .form-footer a:hover { text-decoration: underline; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .success-view {
+      display: none;
+      text-align: center;
+      padding: 20px 0;
+    }
+    .success-view.active { display: block; }
+    .success-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+    .success-view h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .success-view p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 24px 20px; }
+      .logo h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="auth-container">
+  <div class="logo">
+    <h1>CryptoPlatform</h1>
+    <p>Plataforma multi-tenant</p>
+  </div>
+
+  <div class="card" id="authCard">
+    <!-- ── LOGIN ── -->
+    <div class="form-view active" id="viewLogin">
+      <div class="alert alert-error" id="loginAlert">
+        <span class="alert-icon">⚠️</span>
+        <span class="alert-text"></span>
+      </div>
+
+      <div class="field" id="loginEmailField">
+        <label for="loginEmail">E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email" />
+        <div class="field-error">Digite um e-mail válido.</div>
+      </div>
+
+      <div class="field" id="loginPasswordField">
+        <label for="loginPassword">Senha</label>
+        <div class="password-wrapper">
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" />
+          <button type="button" class="password-toggle" data-target="loginPassword">Mostrar</button>
+        </div>
+        <div class="field-error">Senha obrigatória.</div>
+      </div>
+
+      <button class="btn-primary" id="btnLogin" onclick="handleLogin()">
+        <span class="btn-text">Entrar</span>
+        <div class="spinner"></div>
+      </button>
+
+      <div class="form-footer">
+        Não tem conta? <a onclick="showRegister()">Criar conta</a>
+      </div>
+    </div>
+
+    <!-- ── REGISTRO ── -->
+    <div class="form-view" id="viewRegister">
+      <div class="alert alert-error" id="registerAlert">
+        <span class="alert-icon">⚠️</span>
+        <span class="alert-text"></span>
+      </div>
+
+      <div class="field" id="regNameField">
+        <label for="regName">Nome</label>
+        <input type="text" id="regName" placeholder="Seu nome" autocomplete="name" />
+        <div class="field-error">Nome é obrigatório.</div>
+      </div>
+
+      <div class="field" id="regEmailField">
+        <label for="regEmail">E-mail</label>
+        <input type="email" id="regEmail" placeholder="seu@email.com" autocomplete="email" />
+        <div class="field-error">Digite um e-mail válido.</div>
+      </div>
+
+      <div class="field" id="regPasswordField">
+        <label for="regPassword">Senha</label>
+        <div class="password-wrapper">
+          <input type="password" id="regPassword" placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
+          <button type="button" class="password-toggle" data-target="regPassword">Mostrar</button>
+        </div>
+        <div class="field-error">Mínimo 8 caracteres.</div>
+      </div>
+
+      <div class="field" id="regConfirmField">
+        <label for="regConfirm">Confirmar Senha</label>
+        <div class="password-wrapper">
+          <input type="password" id="regConfirm" placeholder="Repita a senha" autocomplete="new-password" />
+          <button type="button" class="password-toggle" data-target="regConfirm">Mostrar</button>
+        </div>
+        <div class="field-error">As senhas não coincidem.</div>
+      </div>
+
+      <button class="btn-primary" id="btnRegister" onclick="handleRegister()">
+        <span class="btn-text">Cadastrar</span>
+        <div class="spinner"></div>
+      </button>
+
+      <div class="form-footer">
+        Já tem conta? <a onclick="showLogin()">Entrar</a>
+      </div>
+    </div>
+
+    <!-- ── SUCESSO ── -->
+    <div class="success-view" id="viewSuccess">
+      <div class="success-icon">✅</div>
+      <h2 id="successTitle">Bem-vindo!</h2>
+      <p id="successMessage">Login realizado com sucesso.<br>Redirecionando...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── helpers ── */
+  function isValidEmail(v) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  }
+
+  function setLoading(btn, on) {
+    btn.classList.toggle('loading', on);
+    btn.disabled = on;
+  }
+
+  function showFieldError(fieldId, show) {
+    document.getElementById(fieldId).classList.toggle('has-error', show);
+    const input = document.getElementById(fieldId).querySelector('input');
+    if (input) input.classList.toggle('error', show);
+  }
+
+  function showAlert(id, msg) {
+    const el = document.getElementById(id);
+    el.querySelector('.alert-text').textContent = msg;
+    el.classList.add('show');
+  }
+
+  function hideAlert(id) {
+    document.getElementById(id).classList.remove('show');
+  }
+
+  function clearErrors() {
+    ['loginEmailField','loginPasswordField','regNameField','regEmailField','regPasswordField','regConfirmField']
+      .forEach(id => showFieldError(id, false));
+    hideAlert('loginAlert');
+    hideAlert('registerAlert');
+  }
+
+  /* ── toggle ── */
+  function showRegister() {
+    clearErrors();
+    document.getElementById('viewLogin').classList.remove('active');
+    document.getElementById('viewRegister').classList.add('active');
+    document.getElementById('viewSuccess').classList.remove('active');
+  }
+
+  function showLogin() {
+    clearErrors();
+    document.getElementById('viewRegister').classList.remove('active');
+    document.getElementById('viewLogin').classList.add('active');
+    document.getElementById('viewSuccess').classList.remove('active');
+  }
+
+  function showSuccess(title, message) {
+    document.getElementById('viewLogin').classList.remove('active');
+    document.getElementById('viewRegister').classList.remove('active');
+    document.getElementById('successTitle').textContent = title;
+    document.getElementById('successMessage').innerHTML = message;
+    document.getElementById('viewSuccess').classList.add('active');
+  }
+
+  /* ── password toggle ── */
+  document.querySelectorAll('.password-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Ocultar';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Mostrar';
+      }
+    });
+  });
+
+  /* ── LOGIN ── */
+  async function handleLogin() {
+    clearErrors();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    let valid = true;
+
+    if (!isValidEmail(email)) { showFieldError('loginEmailField', true); valid = false; }
+    if (!password) { showFieldError('loginPasswordField', true); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('btnLogin');
+    setLoading(btn, true);
+
+    await delay(1200);
+
+    // Simular resposta da API
+    if (email === 'admin@admin.com' && password === 'admin123') {
+      showSuccess('Bem-vindo!', 'Login realizado com sucesso.<br>Redirecionando...');
+    } else {
+      showAlert('loginAlert', 'Credenciais inválidas. Verifique e-mail e senha.');
+    }
+
+    setLoading(btn, false);
+  }
+
+  /* ── REGISTRO ── */
+  async function handleRegister() {
+    clearErrors();
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirm = document.getElementById('regConfirm').value;
+    let valid = true;
+
+    if (!name) { showFieldError('regNameField', true); valid = false; }
+    if (!isValidEmail(email)) { showFieldError('regEmailField', true); valid = false; }
+    if (password.length < 8) { showFieldError('regPasswordField', true); valid = false; }
+    if (password !== confirm) { showFieldError('regConfirmField', true); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('btnRegister');
+    setLoading(btn, true);
+
+    await delay(1500);
+
+    // Simular resposta da API (email já existe)
+    if (email === 'admin@admin.com') {
+      showAlert('registerAlert', 'Este e-mail já está cadastrado.');
+    } else {
+      showSuccess('Conta criada!', `Olá, ${name}!<br>Sua conta foi criada com sucesso.<br>Faça login para continuar.`);
+    }
+
+    setLoading(btn, false);
+  }
+
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+</script>
+</body>
+</html>

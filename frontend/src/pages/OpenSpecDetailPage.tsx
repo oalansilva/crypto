@@ -61,6 +61,15 @@ const OpenSpecDetailPage: React.FC = () => {
           <div className="text-slate-400">Carregando…</div>
         ) : error ? (
           <div className="text-red-400">Erro: {error instanceof Error ? error.message : 'falha ao carregar'}</div>
+        ) : changeArtifact === 'prototype' ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-0 overflow-hidden">
+            <iframe
+              srcDoc={data?.markdown || ''}
+              sandbox="allow-scripts allow-forms allow-modals"
+              className="w-full min-h-screen border-0"
+              title="Prototype preview"
+            />
+          </div>
         ) : (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 font-mono">

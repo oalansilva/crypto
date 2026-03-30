@@ -30,6 +30,8 @@ _ALLOWED_CHANGE_ARTIFACTS = {
     "readme": "README.md",
     # Non-canonical PT-BR review file (optional)
     "review-ptbr": "review-ptbr.md",
+    # Prototype artifact (HTML)
+    "prototype": "prototype.html",
 }
 
 
@@ -218,7 +220,12 @@ async def get_change_artifact(change_id: str, artifact: str) -> OpenSpecChangeAr
     if p == base or base not in p.parents:
         raise HTTPException(status_code=400, detail="Invalid path")
     if not p.exists() or not p.is_file():
-        raise HTTPException(status_code=404, detail="Artifact not found")
+        # Fallback: try artifact subdirectory (e.g., prototype/prototype.html)
+        p_fallback = (base / artifact / fname).resolve()
+        if p_fallback.exists() and p_fallback.is_file() and base in p_fallback.parents:
+            p = p_fallback
+        elif not p.exists() or not p.is_file():
+            raise HTTPException(status_code=404, detail="Artifact not found")
 
     try:
         md = p.read_text(encoding="utf-8")

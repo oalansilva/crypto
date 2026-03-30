@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openclaw.ai/schema/tasks.json",
+  "change_id": "CHANGE_ID_AQUI",
+  "card_number": 0,
+  "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "tasks": [
+    {
+      "code": "TASK-1",
+      "description": "Descrição da primeira task",
+      "status": "pending",
+      "tested_via": null,
+      "tested_at": null,
+      "notes": ""
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "pending": 1,
+    "pass": 0,
+    "fail": 0
+  }
+}
