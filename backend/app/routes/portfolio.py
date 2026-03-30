@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.middleware.authMiddleware import get_current_user_optional
 from app.services.binance_spot import BinanceConfigError, fetch_spot_balances_snapshot
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
@@ -144,7 +145,7 @@ def _calculate_drawdown_30d(snapshots: List[Dict[str, Any]]) -> tuple[float, Opt
 
 @router.get("/kpi")
 async def get_portfolio_kpi(
-    user_id: str | None = Query(default=None, description="Filter by user_id (UUID)"),
+    current_user_id: str | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -212,14 +213,14 @@ async def get_portfolio_kpi(
 
     # Get previous day's snapshot for PnL calculation
     yesterday = (datetime.now() - timedelta(days=1)).date().isoformat()
-    if user_id:
+    if current_user_id:
         prev_result = db.execute(
             text("""
                 SELECT total_usd FROM portfolio_snapshots
                 WHERE date(recorded_at) = :yesterday AND user_id = :user_id
                 ORDER BY recorded_at DESC LIMIT 1
             """),
-            {"yesterday": yesterday, "user_id": user_id},
+            {"yesterday": yesterday, "user_id": current_user_id},
         )
     else:
         prev_result = db.execute(
@@ -241,7 +242,7 @@ async def get_portfolio_kpi(
             pnl_today_vs_btc_pct = round(pnl_today_pct - btc_change_24h_pct, 2)
 
     # Calculate 30d drawdown
-    snapshots_30d = _get_30d_snapshots(db, user_id=user_id)
+    snapshots_30d = _get_30d_snapshots(db, user_id=current_user_id)
     drawdown_30d_pct, drawdown_peak_date = _calculate_drawdown_30d(snapshots_30d)
 
     # Save current snapshot
@@ -256,7 +257,7 @@ async def get_portfolio_kpi(
         drawdown_30d_pct=drawdown_30d_pct,
         drawdown_peak_date=drawdown_peak_date,
         btc_change_24h_pct=btc_change_24h_pct,
-        user_id=user_id,
+        user_id=current_user_id,
     )
 
     history_insufficient = len(snapshots_30d) < 2
