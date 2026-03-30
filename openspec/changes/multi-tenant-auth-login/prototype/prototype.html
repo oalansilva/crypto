@@ -271,7 +271,6 @@
 <div class="auth-container">
   <div class="logo">
     <h1>CryptoPlatform</h1>
-    <p>Plataforma multi-tenant</p>
   </div>
 
   <div class="card" id="authCard">
@@ -303,6 +302,8 @@
       </button>
 
       <div class="form-footer">
+        <a onclick="showForgotPassword()">Esqueci minha senha</a>
+        <span class="separator">·</span>
         Não tem conta? <a onclick="showRegister()">Criar conta</a>
       </div>
     </div>
@@ -354,6 +355,29 @@
       </div>
     </div>
 
+    <!-- ── ESQUECI SENHA ── -->
+    <div class="form-view" id="viewForgotPassword">
+      <div class="alert alert-success" id="forgotAlert">
+        <span class="alert-icon">✅</span>
+        <span class="alert-text"></span>
+      </div>
+
+      <div class="field" id="forgotEmailField">
+        <label for="forgotEmail">E-mail</label>
+        <input type="email" id="forgotEmail" placeholder="seu@email.com" autocomplete="email" />
+        <div class="field-error">Digite um e-mail válido.</div>
+      </div>
+
+      <button class="btn-primary" id="btnForgot" onclick="handleForgotPassword()">
+        <span class="btn-text">Enviar link de recuperação</span>
+        <div class="spinner"></div>
+      </button>
+
+      <div class="form-footer">
+        <a onclick="showLogin()">Voltar ao login</a>
+      </div>
+    </div>
+
     <!-- ── SUCESSO ── -->
     <div class="success-view" id="viewSuccess">
       <div class="success-icon">✅</div>
@@ -391,10 +415,11 @@
   }
 
   function clearErrors() {
-    ['loginEmailField','loginPasswordField','regNameField','regEmailField','regPasswordField','regConfirmField']
+    ['loginEmailField','loginPasswordField','regNameField','regEmailField','regPasswordField','regConfirmField','forgotEmailField']
       .forEach(id => showFieldError(id, false));
     hideAlert('loginAlert');
     hideAlert('registerAlert');
+    hideAlert('forgotAlert');
   }
 
   /* ── toggle ── */
@@ -403,11 +428,30 @@
     document.getElementById('viewLogin').classList.remove('active');
     document.getElementById('viewRegister').classList.add('active');
     document.getElementById('viewSuccess').classList.remove('active');
+    document.getElementById('viewForgotPassword').classList.remove('active');
+  }
+
+  function showForgotPassword() {
+    clearErrors();
+    document.getElementById('viewLogin').classList.remove('active');
+    document.getElementById('viewForgotPassword').classList.add('active');
+    document.getElementById('viewSuccess').classList.remove('active');
+  }
+
+  function handleForgotPassword() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showFieldError('forgotEmailField', true);
+      return;
+    }
+    showAlert('forgotAlert', 'success', 'Link de recuperação enviado! Verifique seu e-mail.');
   }
 
   function showLogin() {
     clearErrors();
     document.getElementById('viewRegister').classList.remove('active');
+    document.getElementById('viewForgotPassword').classList.remove('active');
     document.getElementById('viewLogin').classList.add('active');
     document.getElementById('viewSuccess').classList.remove('active');
   }
@@ -415,6 +459,7 @@
   function showSuccess(title, message) {
     document.getElementById('viewLogin').classList.remove('active');
     document.getElementById('viewRegister').classList.remove('active');
+    document.getElementById('viewForgotPassword').classList.remove('active');
     document.getElementById('successTitle').textContent = title;
     document.getElementById('successMessage').innerHTML = message;
     document.getElementById('viewSuccess').classList.add('active');

@@ -237,6 +237,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                     onClick={() => {
                       setMobileMenuOpen(false)
                       logout()
+                      window.location.href = '/login'
                     }}
                     className="flex w-full items-center gap-2.5 rounded-[18px] border border-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--text-secondary)] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
                   >
@@ -319,7 +320,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                   <span className="text-sm font-medium text-[var(--text-secondary)]">{user.name}</span>
                   <button
                     type="button"
-                    onClick={logout}
+                    onClick={() => { logout(); window.location.href = '/login' }}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-red-400"
                     aria-label="Sair"
                   >
