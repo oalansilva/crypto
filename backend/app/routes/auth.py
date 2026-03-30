@@ -58,6 +58,9 @@ class TokenResponse(BaseModel):
     accessToken: str
     refreshToken: str
     expiresIn: int
+    id: str
+    email: str
+    name: str
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -154,6 +157,9 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         accessToken=access_token,
         refreshToken=refresh_token,
         expiresIn=JWT_ACCESS_EXPIRE_MINUTES * 60,
+        id=str(user.id),
+        email=user.email,
+        name=user.name,
     )
 
 
@@ -222,4 +228,7 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
         accessToken=access_token,
         refreshToken=refresh_token,
         expiresIn=JWT_ACCESS_EXPIRE_MINUTES * 60,
+        id=str(user.id),
+        email=user.email,
+        name=user.name,
     )
