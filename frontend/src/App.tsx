@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Layout } from './components/Layout'
+import { ProtectedLayout } from './components/ProtectedLayout'
 import { AuthLayout } from './components/AuthLayout'
 import { AuthProvider } from './stores/authStore'
 import HomePage from './pages/HomePage'
@@ -58,7 +59,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Route>
 
-        <Route element={<Layout />}>
+        <Route element={<ProtectedLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
