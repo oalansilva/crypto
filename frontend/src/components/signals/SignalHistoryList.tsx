@@ -12,11 +12,14 @@ interface SignalHistoryListProps {
 
 export type FiltersState = {
   asset: string
-  type: string
   status: string
+  risk_profile: string
   data_inicio: string
   data_fim: string
   confidence_min: number
+  pnl_filter: string
+  sort_by: string
+  sort_order: string
 }
 
 const PAGE_SIZE = 20
@@ -45,17 +48,12 @@ function formatDate(value: string): string {
 }
 
 const STATUS_CLASSES: Record<string, string> = {
-  ativo: 'bg-sky-500/12 text-sky-300 border-sky-400/25',
-  disparado: 'bg-emerald-500/12 text-emerald-300 border-emerald-400/25',
-  expirado: 'bg-white/8 text-zinc-300 border-white/15',
-  cancelado: 'bg-red-500/12 text-red-300 border-red-400/25',
+  open: 'bg-sky-500/12 text-sky-300 border-sky-400/25',
+  closed: 'bg-emerald-500/12 text-emerald-300 border-emerald-400/25',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  ativo: 'Ativo',
-  disparado: 'Disparado',
-  expirado: 'Expirado',
-  cancelado: 'Cancelado',
+function getDisplayStatus(status: string): 'open' | 'closed' {
+  return status === 'ativo' ? 'open' : 'closed'
 }
 
 export function SignalHistoryList({ data, isLoading, onFiltersChange, filters, onPageChange }: SignalHistoryListProps) {
@@ -80,17 +78,64 @@ export function SignalHistoryList({ data, isLoading, onFiltersChange, filters, o
   function handleClearFilters() {
     onFiltersChange({
       asset: '',
-      type: '',
       status: '',
+      risk_profile: '',
       data_inicio: '',
       data_fim: '',
       confidence_min: 0,
+      pnl_filter: '',
+      sort_by: 'created_at',
+      sort_order: 'desc',
     })
     setCurrentPage(1)
   }
 
   const hasActiveFilters =
-    filters.asset || filters.type || filters.status || filters.data_inicio || filters.data_fim || filters.confidence_min > 0
+    filters.asset ||
+    filters.status ||
+    filters.risk_profile ||
+    filters.data_inicio ||
+    filters.data_fim ||
+    filters.confidence_min > 0 ||
+    filters.pnl_filter ||
+    filters.sort_by !== 'created_at' ||
+    filters.sort_order !== 'desc'
+
+  function applyPreset(preset: 'best' | 'winners' | 'open') {
+    if (preset === 'best') {
+      onFiltersChange({
+        ...filters,
+        status: 'closed',
+        confidence_min: 70,
+        pnl_filter: 'positive',
+        sort_by: 'pnl',
+        sort_order: 'desc',
+      })
+      setCurrentPage(1)
+      return
+    }
+
+    if (preset === 'winners') {
+      onFiltersChange({
+        ...filters,
+        status: 'closed',
+        pnl_filter: 'positive',
+        sort_by: 'pnl',
+        sort_order: 'desc',
+      })
+      setCurrentPage(1)
+      return
+    }
+
+    onFiltersChange({
+      ...filters,
+      status: 'open',
+      pnl_filter: '',
+      sort_by: 'created_at',
+      sort_order: 'desc',
+    })
+    setCurrentPage(1)
+  }
 
   return (
     <>
@@ -99,6 +144,35 @@ export function SignalHistoryList({ data, isLoading, onFiltersChange, filters, o
         <h2 className="mb-4 text-sm font-semibold text-[var(--text-primary)]">Filtros</h2>
 
         <div className="space-y-4">
+          <div>
+            <div className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+              Atalhos
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => applyPreset('best')}
+                className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-300 transition-all hover:bg-emerald-400/20"
+              >
+                Melhores sinais
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset('winners')}
+                className="rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-2 text-xs font-semibold text-sky-300 transition-all hover:bg-sky-400/20"
+              >
+                Só vencedores
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset('open')}
+                className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition-all hover:bg-white/[0.06]"
+              >
+                Só abertos
+              </button>
+            </div>
+          </div>
+
           {/* Asset */}
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
@@ -120,21 +194,6 @@ export function SignalHistoryList({ data, isLoading, onFiltersChange, filters, o
           </div>
 
           {/* Type */}
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-              Tipo
-            </label>
-            <select
-              value={filters.type}
-              onChange={(e) => handleFilterChange('type', e.target.value)}
-              className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-emerald-400/50"
-            >
-              <option value="">Todos</option>
-              <option value="BUY">BUY</option>
-              <option value="SELL">SELL</option>
-            </select>
-          </div>
-
           {/* Status */}
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
@@ -146,10 +205,24 @@ export function SignalHistoryList({ data, isLoading, onFiltersChange, filters, o
               className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-emerald-400/50"
             >
               <option value="">Todos</option>
-              <option value="ativo">Ativo</option>
-              <option value="disparado">Disparado</option>
-              <option value="expirado">Expirado</option>
-              <option value="cancelado">Cancelado</option>
+              <option value="open">Aberto</option>
+              <option value="closed">Fechado</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+              Perfil de risco
+            </label>
+            <select
+              value={filters.risk_profile}
+              onChange={(e) => handleFilterChange('risk_profile', e.target.value)}
+              className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-emerald-400/50"
+            >
+              <option value="">Todos</option>
+              <option value="conservative">Conservative</option>
+              <option value="moderate">Moderate</option>
+              <option value="aggressive">Aggressive</option>
             </select>
           </div>
 
@@ -190,6 +263,52 @@ export function SignalHistoryList({ data, isLoading, onFiltersChange, filters, o
             <div className="mt-1 flex justify-between text-xs text-[var(--text-muted)]">
               <span>0%</span>
               <span className="font-semibold text-emerald-400">{filters.confidence_min}%</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+              Resultado
+            </label>
+            <select
+              value={filters.pnl_filter}
+              onChange={(e) => handleFilterChange('pnl_filter', e.target.value)}
+              className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-emerald-400/50"
+            >
+              <option value="">Todos</option>
+              <option value="positive">PnL positivo</option>
+              <option value="negative">PnL negativo</option>
+              <option value="realized">Só encerrados</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                Ordenar por
+              </label>
+              <select
+                value={filters.sort_by}
+                onChange={(e) => handleFilterChange('sort_by', e.target.value)}
+                className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-emerald-400/50"
+              >
+                <option value="created_at">Data</option>
+                <option value="confidence">Confiança</option>
+                <option value="pnl">PnL</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                Ordem
+              </label>
+              <select
+                value={filters.sort_order}
+                onChange={(e) => handleFilterChange('sort_order', e.target.value)}
+                className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-emerald-400/50"
+              >
+                <option value="desc">Maior primeiro</option>
+                <option value="asc">Menor primeiro</option>
+              </select>
             </div>
           </div>
 
@@ -255,6 +374,7 @@ export function SignalHistoryList({ data, isLoading, onFiltersChange, filters, o
               </thead>
               <tbody>
                 {signals.map((signal) => {
+                  const displayStatus = getDisplayStatus(signal.status)
                   const pnlPct =
                     signal.entry_price && signal.exit_price && signal.type === 'BUY'
                       ? (((signal.exit_price - signal.entry_price) / signal.entry_price) * 100).toFixed(2)
@@ -320,11 +440,11 @@ export function SignalHistoryList({ data, isLoading, onFiltersChange, filters, o
                         <span
                           className={[
                             'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide border',
-                            STATUS_CLASSES[signal.status] || 'bg-white/8 text-zinc-300 border-white/15',
+                            STATUS_CLASSES[displayStatus] || 'bg-white/8 text-zinc-300 border-white/15',
                           ].join(' ')}
                         >
                           <span className="h-1 w-1 rounded-full bg-current" />
-                          {STATUS_LABELS[signal.status] || signal.status}
+                          {displayStatus === 'open' ? 'Aberto' : 'Fechado'}
                         </span>
                       </td>
 

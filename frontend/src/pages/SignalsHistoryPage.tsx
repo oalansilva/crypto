@@ -25,11 +25,14 @@ function useDebouncedValue<T>(value: T, delay = 300) {
 
 const DEFAULT_FILTERS: FiltersState = {
   asset: '',
-  type: '',
   status: '',
+  risk_profile: '',
   data_inicio: '',
   data_fim: '',
   confidence_min: 0,
+  pnl_filter: '',
+  sort_by: 'created_at',
+  sort_order: 'desc',
 }
 
 export default function SignalsHistoryPage() {
@@ -47,11 +50,15 @@ export default function SignalsHistoryPage() {
       url.searchParams.set('offset', String((page - 1) * PAGE_SIZE))
 
       if (debouncedFilters.asset) url.searchParams.set('asset', debouncedFilters.asset)
-      if (debouncedFilters.type) url.searchParams.set('type', debouncedFilters.type)
       if (debouncedFilters.status) url.searchParams.set('status', debouncedFilters.status)
+      if (debouncedFilters.risk_profile) url.searchParams.set('risk_profile', debouncedFilters.risk_profile)
       if (debouncedFilters.data_inicio) url.searchParams.set('data_inicio', debouncedFilters.data_inicio)
       if (debouncedFilters.data_fim) url.searchParams.set('data_fim', debouncedFilters.data_fim)
       if (debouncedFilters.confidence_min > 0) url.searchParams.set('confidence_min', String(debouncedFilters.confidence_min))
+      if (debouncedFilters.pnl_filter) url.searchParams.set('pnl_filter', debouncedFilters.pnl_filter)
+      if (debouncedFilters.sort_by) url.searchParams.set('sort_by', debouncedFilters.sort_by)
+      if (debouncedFilters.sort_order) url.searchParams.set('sort_order', debouncedFilters.sort_order)
+      url.searchParams.set('apply_quality_gate', 'true')
 
       const response = await authFetch(url.toString())
       if (!response.ok) {
@@ -66,8 +73,14 @@ export default function SignalsHistoryPage() {
     queryKey: ['signals-stats'],
     queryFn: async (): Promise<SignalStatsType> => {
       const url = apiUrl('/signals/stats')
+      if (debouncedFilters.asset) url.searchParams.set('asset', debouncedFilters.asset)
+      if (debouncedFilters.status) url.searchParams.set('status', debouncedFilters.status)
+      if (debouncedFilters.risk_profile) url.searchParams.set('risk_profile', debouncedFilters.risk_profile)
       if (debouncedFilters.data_inicio) url.searchParams.set('data_inicio', debouncedFilters.data_inicio)
       if (debouncedFilters.data_fim) url.searchParams.set('data_fim', debouncedFilters.data_fim)
+      if (debouncedFilters.confidence_min > 0) url.searchParams.set('confidence_min', String(debouncedFilters.confidence_min))
+      if (debouncedFilters.pnl_filter) url.searchParams.set('pnl_filter', debouncedFilters.pnl_filter)
+      url.searchParams.set('apply_quality_gate', 'true')
 
       const response = await authFetch(url.toString())
       if (!response.ok) {
@@ -104,7 +117,7 @@ export default function SignalsHistoryPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Card #57</p>
           <h1 className="mt-2 text-3xl font-bold text-[var(--text-primary)]">Histórico de Sinais</h1>
           <p className="mt-2 max-w-3xl text-sm text-[var(--text-secondary)]">
-            Acompanha todos os sinais gerados, com filtros, paginação e PnL por posição.
+            Acompanha entradas BUY filtradas pelo gate atual, com paginação e PnL até o desfecho da posição.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

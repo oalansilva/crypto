@@ -45,7 +45,7 @@ find_backend_pid() {
 }
 
 find_frontend_pid() {
-  pgrep -fo "vite.*--port 5173|node.*vite.*--port 5173|npm run dev -- --host 0.0.0.0 --port 5173" 2>/dev/null || true
+  pgrep -fo "node .*vite.*--port 5173|vite.*--port 5173|npm run dev -- --host 0.0.0.0 --port 5173" 2>/dev/null || true
 }
 
 store_runtime_pid() {
@@ -124,11 +124,24 @@ start_frontend_with_nohup() {
   (
     cd "$FRONTEND_DIR"
     if command -v setsid >/dev/null 2>&1; then
-      setsid npm run dev -- --host 0.0.0.0 --port 5173 >"$FRONTEND_LOG" 2>&1 < /dev/null &
+      setsid /bin/bash -lc 'exec npm run dev -- --host 0.0.0.0 --port 5173' >"$FRONTEND_LOG" 2>&1 < /dev/null &
     else
-      nohup npm run dev -- --host 0.0.0.0 --port 5173 >"$FRONTEND_LOG" 2>&1 < /dev/null &
+      nohup /bin/bash -lc 'exec npm run dev -- --host 0.0.0.0 --port 5173' >"$FRONTEND_LOG" 2>&1 < /dev/null &
     fi
+    echo "$!" >"$FRONTEND_PID_FILE"
   )
+
+  if ! wait_for_http_ok "$FRONTEND_URL" 30 1; then
+    echo "Frontend failed to respond on $FRONTEND_URL. Check frontend logs at $FRONTEND_LOG."
+    return 1
+  fi
+
+  sleep 2
+  if ! wait_for_http_ok "$FRONTEND_URL" 3 1; then
+    echo "Frontend responded once but did not stay up. Check frontend logs at $FRONTEND_LOG."
+    return 1
+  fi
+
   store_runtime_pid "$FRONTEND_PID_FILE" find_frontend_pid || true
   echo "Frontend started with nohup (log: $FRONTEND_LOG)."
 }
@@ -170,10 +183,16 @@ fi
 if command -v curl >/dev/null 2>&1; then
   echo "Running backend health check: $HEALTH_URL"
   if wait_for_http_ok "$HEALTH_URL" 30 1; then
-    echo "Health check passed."
-    echo "Backend:  http://127.0.0.1:8003"
-    echo "Frontend: http://127.0.0.1:5173"
-    exit 0
+    echo "Backend health check passed."
+    echo "Running frontend health check: $FRONTEND_URL"
+    if wait_for_http_ok "$FRONTEND_URL" 30 1; then
+      echo "Frontend health check passed."
+      echo "Backend:  http://127.0.0.1:8003"
+      echo "Frontend: http://127.0.0.1:5173"
+      exit 0
+    fi
+    echo "Frontend health check failed. Check frontend logs at $FRONTEND_LOG."
+    exit 1
   fi
   if pid_file_is_alive "$BACKEND_PID_FILE" && grep -q "Uvicorn running on http://0.0.0.0:8003" "$BACKEND_LOG" 2>/dev/null; then
     echo "Health check could not be confirmed from this environment, but backend process is alive and uvicorn reported successful startup."

@@ -21,6 +21,10 @@ export type Signal = {
   indicators: SignalIndicators
   created_at: string
   risk_profile: RiskProfile
+  entry_price?: number | null
+  current_price?: number | null
+  pnl_percent?: number | null
+  is_open_position?: boolean
 }
 
 export type SignalListResponse = {

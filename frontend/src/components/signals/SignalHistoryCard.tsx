@@ -38,11 +38,8 @@ function formatDateFull(value: string | null | undefined): string {
   }).format(new Date(value))
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  ativo: 'Ativo',
-  disparado: 'Disparado',
-  expirado: 'Expirado',
-  cancelado: 'Cancelado',
+function getDisplayStatus(status: string): 'open' | 'closed' {
+  return status === 'ativo' ? 'open' : 'closed'
 }
 
 export function SignalHistoryCard({ signal, onClose }: SignalHistoryCardProps) {
@@ -56,6 +53,7 @@ export function SignalHistoryCard({ signal, onClose }: SignalHistoryCardProps) {
   }, [onClose])
 
   if (!signal) return null
+  const displayStatus = getDisplayStatus(signal.status)
 
   const pnlValue = signal.pnl
   const pnlPercent =
@@ -107,17 +105,13 @@ export function SignalHistoryCard({ signal, onClose }: SignalHistoryCardProps) {
             <span
               className={[
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide',
-                signal.status === 'disparado'
-                  ? 'bg-emerald-500/12 text-emerald-300 border border-emerald-400/25'
-                  : signal.status === 'ativo'
-                    ? 'bg-sky-500/12 text-sky-300 border border-sky-400/25'
-                    : signal.status === 'expirado'
-                      ? 'bg-white/8 text-zinc-300 border border-white/15'
-                      : 'bg-red-500/12 text-red-300 border border-red-400/25',
+                displayStatus === 'open'
+                  ? 'bg-sky-500/12 text-sky-300 border border-sky-400/25'
+                  : 'bg-emerald-500/12 text-emerald-300 border border-emerald-400/25',
               ].join(' ')}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-current" />
-              {STATUS_LABELS[signal.status] || signal.status}
+              {displayStatus === 'open' ? 'Aberto' : 'Fechado'}
             </span>
           </div>
 
@@ -266,14 +260,14 @@ export function SignalHistoryCard({ signal, onClose }: SignalHistoryCardProps) {
               </div>
 
               {/* Trigger (if applicable) */}
-              {signal.status === 'disparado' && signal.trigger_price && (
+              {displayStatus === 'closed' && signal.trigger_price && (
                 <div className="relative pb-4">
                   <div className="absolute -left-[18px] top-[5px] h-2.5 w-2.5 rounded-full border-2 border-emerald-400 bg-[#101c2a]" />
                   <div className="text-[11px] text-[var(--text-muted)]">
                     {signal.updated_at ? formatDateFull(signal.updated_at) : '—'}
                   </div>
                   <div className="mt-0.5 text-sm font-medium text-emerald-300">
-                    Preço atingiu target — DISPARADO
+                    Sinal passou para fechado
                   </div>
                   {signal.trigger_price && (
                     <div className="mt-0.5 text-xs text-[var(--text-tertiary)]">

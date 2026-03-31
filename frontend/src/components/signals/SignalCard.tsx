@@ -49,6 +49,19 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
+function formatPercent(value: number | null | undefined) {
+  if (value === null || value === undefined) return 'Sem dados'
+  const signal = value > 0 ? '+' : ''
+  return `${signal}${value.toFixed(2)}%`
+}
+
+function pnlTone(value: number | null | undefined) {
+  if (value === null || value === undefined) return 'text-[var(--text-primary)]'
+  if (value > 0) return 'text-emerald-300'
+  if (value < 0) return 'text-red-300'
+  return 'text-[var(--text-primary)]'
+}
+
 export function SignalCard({ signal }: SignalCardProps) {
   return (
     <Card className={cn('border-white/8 bg-[rgba(9,18,28,0.92)] transition-all duration-200', toneClasses(signal.type))}>
@@ -60,6 +73,7 @@ export function SignalCard({ signal }: SignalCardProps) {
                 <span className="mr-1 inline-flex">{signalIcon(signal.type)}</span>
                 {signal.type}
               </Badge>
+              {signal.is_open_position ? <Badge variant="outline">Em acompanhamento</Badge> : null}
               <span className="text-sm font-semibold text-[var(--text-primary)]">{signal.asset}</span>
             </div>
             <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">Perfil {signal.risk_profile}</p>
@@ -71,6 +85,25 @@ export function SignalCard({ signal }: SignalCardProps) {
 
         <div className="mt-5">
           <ConfidenceGauge value={signal.confidence} />
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">Entrada</div>
+            <div className="mt-1 font-semibold text-[var(--text-primary)]">
+              {signal.entry_price == null ? 'Sem dados' : formatPrice(signal.entry_price)}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">Preco atual</div>
+            <div className="mt-1 font-semibold text-[var(--text-primary)]">
+              {signal.current_price == null ? 'Sem dados' : formatPrice(signal.current_price)}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">PnL</div>
+            <div className={cn('mt-1 font-semibold', pnlTone(signal.pnl_percent))}>{formatPercent(signal.pnl_percent)}</div>
+          </div>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 text-sm">

@@ -98,6 +98,7 @@ export default function SignalsPage() {
     },
     placeholderData: (previousData) => previousData,
     retry: 2,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   })
 
@@ -142,6 +143,7 @@ export default function SignalsPage() {
       </header>
 
       <RiskProfileSelector value={riskProfile} onChange={setRiskProfile} />
+
       <FilterBar
         signalType={signalType}
         asset={asset}

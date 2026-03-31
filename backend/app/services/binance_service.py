@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 BINANCE_EXCHANGE_INFO_URL = "https://api.binance.com/api/v3/exchangeInfo"
+BINANCE_TICKER_PRICE_URL = "https://api.binance.com/api/v3/ticker/price"
 CACHE_TTL_SECONDS = 300.0
 KLINES_LIMIT = 120
 KLINES_INTERVAL = "1h"
@@ -121,6 +122,27 @@ async def _fetch_all_usdt_pairs_from_binance() -> list[str]:
                 raise RuntimeError(f"Unable to fetch Binance exchangeInfo: {exc}") from exc
             await asyncio.sleep(min(2 ** (attempt - 1), 4))
     return []
+
+
+async def _fetch_latest_price_from_binance(asset: str) -> float:
+    timeout = httpx.Timeout(REQUEST_TIMEOUT_SECONDS)
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.get(BINANCE_TICKER_PRICE_URL, params={"symbol": asset})
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After")
+                delay = float(retry_after) if retry_after else float(attempt)
+                await asyncio.sleep(min(delay, 5.0))
+                continue
+            response.raise_for_status()
+            payload = response.json()
+            return float(payload["price"])
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            if attempt >= MAX_RETRIES:
+                raise RuntimeError(f"Unable to fetch Binance ticker price for {asset}: {exc}") from exc
+            await asyncio.sleep(min(2 ** (attempt - 1), 4))
+    raise RuntimeError(f"Unable to fetch Binance ticker price for {asset}")
 
 
 async def _get_all_usdt_pairs() -> list[str]:
@@ -461,6 +483,42 @@ def _load_open_buy_positions(user_id: str | None) -> set[tuple[str, str]]:
         db.close()
 
 
+def _load_open_buy_position_entries(user_id: str | None) -> dict[tuple[str, str], float]:
+    if not user_id:
+        return {}
+
+    from app.database import SessionLocal
+    from app.models_signal_history import SignalHistory
+
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(
+                SignalHistory.asset,
+                SignalHistory.risk_profile,
+                SignalHistory.entry_price,
+            )
+            .filter(
+                SignalHistory.user_id == user_id,
+                SignalHistory.archived == "no",
+                SignalHistory.type == "BUY",
+                SignalHistory.status == "ativo",
+                SignalHistory.entry_price.isnot(None),
+            )
+            .order_by(SignalHistory.created_at.desc())
+            .all()
+        )
+        entries: dict[tuple[str, str], float] = {}
+        for asset, risk_profile, entry_price in rows:
+            key = (str(asset), str(risk_profile))
+            if key in entries:
+                continue
+            entries[key] = float(entry_price)
+        return entries
+    finally:
+        db.close()
+
+
 def _build_signal(
     *,
     asset: str,
@@ -551,6 +609,8 @@ def _build_signal(
         created_at=latest_time,
         risk_profile=risk_profile,
         entry_price=entry_price,
+        current_price=latest_close,
+        pnl_percent=0.0 if signal_type == SignalType.BUY else None,
         breakdown=breakdown,
     )
 
@@ -566,6 +626,42 @@ async def _fetch_market_snapshots(assets: list[str]) -> tuple[dict[str, dict[str
     cached_at = max(cached_candidates) if cached_candidates else None
     is_stale = any(bool(item.get("is_stale")) for item in raw_snapshots)
     return snapshots_by_asset, cached_at, is_stale
+
+
+async def get_latest_prices(assets: list[str]) -> tuple[dict[str, float], datetime | None, bool]:
+    normalized_assets = [_normalize_asset(asset) for asset in assets if str(asset or "").strip()]
+    if not normalized_assets:
+        return {}, None, False
+
+    async def _get_price(asset: str) -> tuple[str, float | None]:
+        try:
+            return asset, await _fetch_latest_price_from_binance(asset)
+        except Exception as exc:
+            logger.warning("Failed to fetch latest Binance ticker price for %s: %s", asset, exc)
+            return asset, None
+
+    raw_prices = await asyncio.gather(*(_get_price(asset) for asset in normalized_assets))
+    prices: dict[str, float] = {}
+    for asset, price in raw_prices:
+        if price is None:
+            continue
+        prices[asset] = price
+
+    if len(prices) == len(normalized_assets):
+        return prices, _utc_now(), False
+
+    snapshots_by_asset, cached_at, is_stale = await _fetch_market_snapshots(normalized_assets)
+    for asset, snapshot in snapshots_by_asset.items():
+        if asset in prices:
+            continue
+        candles = snapshot.get("candles") or []
+        if not candles:
+            continue
+        try:
+            prices[asset] = float(candles[-1]["close"])
+        except (TypeError, ValueError, KeyError):
+            continue
+    return prices, cached_at, True if prices else is_stale
 
 
 def _build_signals_for_profile(
@@ -721,16 +817,38 @@ async def build_signal_feed(
     if signal_type is not None:
         signals = [signal for signal in signals if signal.type == signal_type]
 
+    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices([signal.asset for signal in signals])
+    if latest_prices:
+        cached_at = latest_prices_cached_at or cached_at
+        is_stale = is_stale or latest_prices_stale
+        signals = [
+            signal.model_copy(update={"current_price": latest_prices.get(signal.asset, signal.current_price)})
+            for signal in signals
+        ]
+
     open_positions = _load_open_buy_positions(user_id)
+    open_position_entries = _load_open_buy_position_entries(user_id)
     actionable_signals: list[Signal] = []
     for signal in signals:
         position_key = (signal.asset, signal.risk_profile.value)
         if signal.type == SignalType.HOLD:
             continue
-        if signal.type == SignalType.BUY and position_key in open_positions:
-            continue
         if signal.type == SignalType.SELL and position_key not in open_positions:
             continue
+        tracked_entry = open_position_entries.get(position_key)
+        if tracked_entry is not None:
+            current_price = signal.current_price or signal.entry_price
+            pnl_percent = None
+            if current_price is not None and tracked_entry > 0:
+                pnl_percent = round(((current_price - tracked_entry) / tracked_entry) * 100, 4)
+            signal = signal.model_copy(
+                update={
+                    "entry_price": tracked_entry,
+                    "current_price": current_price,
+                    "pnl_percent": pnl_percent,
+                    "is_open_position": True,
+                }
+            )
         actionable_signals.append(signal)
 
     signals = actionable_signals
@@ -785,6 +903,7 @@ async def get_latest_high_confidence_signals(user_id: str | None = None) -> Sign
     cached_candidates: list[datetime] = []
     is_stale = False
     available_assets: list[str] = []
+    latest_cached_at: datetime | None = None
 
     snapshots = await asyncio.gather(*(get_or_refresh_signal_feed_snapshot(risk_profile) for risk_profile in RiskProfile))
     for snapshot in snapshots:
@@ -796,17 +915,40 @@ async def get_latest_high_confidence_signals(user_id: str | None = None) -> Sign
             available_assets = list(snapshot.available_assets)
 
     signals = [signal for signal in signals if signal.confidence >= 70]
+
+    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices([signal.asset for signal in signals])
+    if latest_prices:
+        latest_cached_at = latest_prices_cached_at
+        is_stale = is_stale or latest_prices_stale
+        signals = [
+            signal.model_copy(update={"current_price": latest_prices.get(signal.asset, signal.current_price)})
+            for signal in signals
+        ]
+
     open_positions = _load_open_buy_positions(user_id)
+    open_position_entries = _load_open_buy_position_entries(user_id)
     if user_id:
         filtered: list[Signal] = []
         for signal in signals:
             position_key = (signal.asset, signal.risk_profile.value)
             if signal.type == SignalType.HOLD:
                 continue
-            if signal.type == SignalType.BUY and position_key in open_positions:
-                continue
             if signal.type == SignalType.SELL and position_key not in open_positions:
                 continue
+            tracked_entry = open_position_entries.get(position_key)
+            if tracked_entry is not None:
+                current_price = signal.current_price or signal.entry_price
+                pnl_percent = None
+                if current_price is not None and tracked_entry > 0:
+                    pnl_percent = round(((current_price - tracked_entry) / tracked_entry) * 100, 4)
+                signal = signal.model_copy(
+                    update={
+                        "entry_price": tracked_entry,
+                        "current_price": current_price,
+                        "pnl_percent": pnl_percent,
+                        "is_open_position": True,
+                    }
+                )
             filtered.append(signal)
         signals = filtered
 
@@ -814,7 +956,8 @@ async def get_latest_high_confidence_signals(user_id: str | None = None) -> Sign
     total = len(signals)
     signals = signals[:5]
 
-    latest_cached_at = max(cached_candidates) if cached_candidates else None
+    if latest_cached_at is None:
+        latest_cached_at = max(cached_candidates) if cached_candidates else None
     for signal in signals:
         _remember_signal(signal, latest_cached_at, is_stale)
     if user_id:

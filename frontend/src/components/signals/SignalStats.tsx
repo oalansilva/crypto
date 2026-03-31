@@ -28,13 +28,13 @@ export function SignalStats({ stats, isLoading }: SignalStatsProps) {
     {
       label: 'Total de Sinais',
       value: stats.total_signals.toLocaleString('pt-BR'),
-      sub: 'últimos 30 dias',
+      sub: 'histórico filtrado',
       accent: true,
     },
     {
       label: 'Win Rate',
       value: `${stats.win_rate.toFixed(1)}%`,
-      sub: 'sinais disparados com lucro',
+      sub: 'posições fechadas com lucro',
       accent: false,
       positive: stats.win_rate > 50,
     },
@@ -45,9 +45,9 @@ export function SignalStats({ stats, isLoading }: SignalStatsProps) {
       accent: false,
     },
     {
-      label: 'Taxa de Expirados',
+      label: 'Fechados sem lucro',
       value: `${stats.expired_rate.toFixed(1)}%`,
-      sub: 'sinais não disparados',
+      sub: 'posições fechadas sem ganho',
       accent: false,
       danger: true,
     },

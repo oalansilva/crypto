@@ -83,6 +83,9 @@ class Signal(BaseModel):
     created_at: datetime = Field(description="Signal creation timestamp in UTC")
     risk_profile: RiskProfile = Field(description="Risk profile used to compute the signal")
     entry_price: float | None = Field(default=None, description="Entry price when signal was generated (close price at signal creation)")
+    current_price: float | None = Field(default=None, description="Latest observed market price for the signal asset")
+    pnl_percent: float | None = Field(default=None, description="Open PnL percentage versus the tracked entry price")
+    is_open_position: bool = Field(default=False, description="True when the signal already maps to an active open BUY position")
     breakdown: ConfidenceBreakdown | None = Field(default=None, description="Optional confidence composition details")
 
 
