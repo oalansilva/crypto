@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
+import json
 
 from app.database import get_db
 from app.models import FavoriteStrategy
@@ -13,6 +14,28 @@ router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
 class ExistsResponse(BaseModel):
     exists: bool
+
+
+def _decode_jsonish(value):
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return value
+        if isinstance(parsed, str):
+            try:
+                parsed_again = json.loads(parsed)
+                return parsed_again
+            except json.JSONDecodeError:
+                return parsed
+        return parsed
+    return value
+
+
+def _normalize_favorite_json_fields(row: FavoriteStrategy) -> FavoriteStrategy:
+    row.parameters = _decode_jsonish(row.parameters)
+    row.metrics = _decode_jsonish(row.metrics)
+    return row
 
 
 @router.get("/exists", response_model=ExistsResponse)
@@ -40,6 +63,7 @@ def favorite_exists(
             FavoriteStrategy.end_date.is_(None),
         )
     rows = q.all()
+    rows = [_normalize_favorite_json_fields(r) for r in rows]
     if direction is not None:
         want = (direction or "long").lower()
         if want not in ("long", "short"):
@@ -57,7 +81,8 @@ def list_favorites(
     db: Session = Depends(get_db),
 ):
     """List all favorited strategies"""
-    return db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
+    rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
+    return [_normalize_favorite_json_fields(row) for row in rows]
 
 @router.post("/", response_model=FavoriteStrategyResponse)
 def create_favorite(
@@ -71,7 +96,7 @@ def create_favorite(
         db.add(db_favorite)
         db.commit()
         db.refresh(db_favorite)
-        return db_favorite
+        return _normalize_favorite_json_fields(db_favorite)
     except Exception as e:
         import traceback
         import logging
@@ -109,7 +134,7 @@ def update_favorite(
     
     db.commit()
     db.refresh(favorite)
-    return favorite
+    return _normalize_favorite_json_fields(favorite)
 
 @router.delete("/{favorite_id}")
 def delete_favorite(

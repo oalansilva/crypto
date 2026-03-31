@@ -40,7 +40,7 @@ class ConfidenceBreakdown(BaseModel):
 
     rsi_contribution: float = Field(alias="rsiContribution", ge=0, le=100, description="RSI share of the displayed confidence")
     macd_contribution: float = Field(alias="macdContribution", ge=0, le=100, description="MACD share of the displayed confidence")
-    sentiment_contribution: float = Field(alias="sentimentContribution", ge=0, le=100, description="Sentiment share of the displayed confidence")
+    sentiment_contribution: float = Field(alias="sentimentContribution", ge=-100, le=100, description="Sentiment adjustment applied to the technical confidence")
     display_total: float = Field(alias="displayTotal", ge=0, le=100, description="Displayed confidence after technical and sentiment composition")
 
 
@@ -84,14 +84,6 @@ class Signal(BaseModel):
     risk_profile: RiskProfile = Field(description="Risk profile used to compute the signal")
     entry_price: float | None = Field(default=None, description="Entry price when signal was generated (close price at signal creation)")
     breakdown: ConfidenceBreakdown | None = Field(default=None, description="Optional confidence composition details")
-
-
-class ConfidenceBreakdown(BaseModel):
-    """Breakdown of confidence score by contributing factors."""
-    rsi_contribution: float = Field(description="RSI contribution to confidence (0-100)")
-    macd_contribution: float = Field(description="MACD contribution to confidence (0-100)")
-    sentiment_contribution: float = Field(description="Sentiment contribution to confidence (0-100)")
-    display_total: float = Field(description="Sum of all contributions before capping")
 
 
 class SignalListResponse(BaseModel):

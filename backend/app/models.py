@@ -1,5 +1,15 @@
 # file: backend/app/models.py
-from sqlalchemy import Column, String, Float, Boolean, JSON, DateTime, Numeric, Text, Integer
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 # from sqlalchemy.dialects.postgresql import UUID, JSONB  <-- Remove Postgres types
 from app.database import Base
 from sqlalchemy import TypeDecorator
@@ -224,3 +234,36 @@ class SystemPreference(Base):
     value = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by_user_id = Column(String, nullable=True)
+
+
+class PortfolioSnapshot(Base):
+    __tablename__ = "portfolio_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recorded_at = Column(DateTime, default=datetime.utcnow)
+    total_usd = Column(Float, nullable=True)
+    btc_value = Column(Float, nullable=True)
+    usdt_value = Column(Float, nullable=True)
+    eth_value = Column(Float, nullable=True)
+    other_usd = Column(Float, nullable=True)
+    pnl_today_pct = Column(Float, nullable=True)
+    drawdown_30d_pct = Column(Float, nullable=True)
+    drawdown_peak_date = Column(String, nullable=True)
+    btc_change_24h_pct = Column(Float, nullable=True)
+    user_id = Column(String, nullable=True, index=True)
+
+
+class OptimizationResult(Base):
+    __tablename__ = "optimization_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(String, nullable=False, index=True)
+    result_index = Column(Integer, nullable=False)
+    params_json = Column(JSONType, nullable=False)
+    metrics_json = Column(JSONType, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("job_id", "result_index", name="uq_optimization_results_job_idx"),
+        Index("idx_optimization_results_job_created", "job_id", "created_at"),
+    )

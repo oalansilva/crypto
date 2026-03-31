@@ -150,11 +150,11 @@ async def get_sentiment():
     "",
     response_model=SignalListResponse,
     summary="List trading signals",
-    description="Returns BUY/SELL/HOLD signals generated from Binance OHLCV data and temporary heuristics until Card #55 ships the final ML ensemble.",
+    description="Returns actionable BUY/SELL signals generated from Binance OHLCV data and temporary heuristics until Card #55 ships the final ML ensemble.",
 )
 async def get_signals(
     current_user_id: str | None = Depends(get_current_user_optional),
-    type: SignalType | None = Query(default=None, description="Filter by BUY, SELL or HOLD"),
+    type: SignalType | None = Query(default=None, description="Filter by BUY or SELL"),
     confidence_min: int | None = Query(default=None, ge=0, le=100, description="Minimum confidence threshold"),
     asset: str | None = Query(default=None, description="Binance symbol, e.g. BTCUSDT"),
     risk_profile: RiskProfile = Query(default=RiskProfile.moderate, description="Signal risk profile"),
@@ -191,7 +191,7 @@ async def get_latest_signals(current_user_id: str | None = Depends(get_current_u
 async def get_signal_history(
     current_user_id: str = Depends(get_current_user),
     asset: str | None = Query(default=None, description="Filter by asset, e.g. BTCUSDT"),
-    type: str | None = Query(default=None, description="Filter by BUY, SELL or HOLD"),
+    type: str | None = Query(default=None, description="Filter by BUY or SELL"),
     status: str | None = Query(default=None, description="Filter by status: ativo, disparado, expirado, cancelado"),
     data_inicio: str | None = Query(default=None, description="Start date ISO, e.g. 2026-01-01"),
     data_fim: str | None = Query(default=None, description="End date ISO, e.g. 2026-03-28"),
@@ -387,12 +387,38 @@ def _save_signal_to_history(signal: Signal, user_id: str | None = None) -> None:
     try:
         existing = db.query(SignalHistory).filter(SignalHistory.id == signal.id).first()
         if existing:
-            db.close()
             return
 
-        # Skip SELL signals - they are not actual trades, just market timing indicators
+        if signal.type.value == "HOLD":
+            return
+
         if signal.type.value == "SELL":
-            db.close()
+            if not user_id:
+                return
+
+            open_buy = (
+                db.query(SignalHistory)
+                .filter(
+                    SignalHistory.user_id == user_id,
+                    SignalHistory.archived == "no",
+                    SignalHistory.asset == signal.asset,
+                    SignalHistory.risk_profile == signal.risk_profile.value,
+                    SignalHistory.type == "BUY",
+                    SignalHistory.status == "ativo",
+                )
+                .order_by(SignalHistory.created_at.desc())
+                .first()
+            )
+            if open_buy is None or open_buy.entry_price is None:
+                return
+
+            exit_price = signal.entry_price or signal.target_price
+            pnl_pct = ((exit_price - open_buy.entry_price) / open_buy.entry_price) * 100
+            open_buy.status = "disparado"
+            open_buy.exit_price = exit_price
+            open_buy.pnl = round(pnl_pct, 4)
+            open_buy.updated_at = sao_paulo_now()
+            db.commit()
             return
 
         entry_price = signal.entry_price

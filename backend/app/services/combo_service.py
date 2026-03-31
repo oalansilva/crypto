@@ -1,16 +1,14 @@
-"""
-Combo Strategy Service
-
-Handles combo strategy instantiation, backtesting, and optimization.
-All strategies are now loaded from database - no hard-coded Python classes.
-"""
-
-import sqlite3
 import json
 import re
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
+from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker
+
+from app.database import SessionLocal
+from app.models import ComboTemplate
 from app.strategies.combos import ComboStrategy
 
 
@@ -18,11 +16,26 @@ class ComboService:
     """Service for managing combo strategies (database-driven)."""
     
     def __init__(self, db_path: str = None):
-        if db_path is None:
-            # Use the canonical DB path from app.database
-            from app.database import DB_PATH
-            db_path = str(DB_PATH)
         self.db_path = db_path
+        if db_path is None:
+            self._session_factory = SessionLocal
+            return
+
+        db_url = db_path if "://" in db_path else f"sqlite:///{Path(db_path).resolve()}"
+        if db_url.startswith("sqlite:"):
+            engine = create_engine(db_url, connect_args={"check_same_thread": False})
+        else:
+            engine = create_engine(db_url, pool_pre_ping=True)
+        self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    @staticmethod
+    def _decode_json_field(value: Any) -> Any:
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return value
+        return value
     
     def list_templates(self) -> Dict[str, List[Dict[str, Any]]]:
         """
@@ -31,44 +44,25 @@ class ComboService:
         Returns:
             Dict with prebuilt, examples, and custom templates
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Get pre-built templates from database
-        cursor.execute("""
-            SELECT name, description, is_readonly
-            FROM combo_templates
-            WHERE is_prebuilt = 1
-        """)
-        prebuilt = [
-            {"name": row[0], "description": row[1] or "", "is_readonly": bool(row[2])}
-            for row in cursor.fetchall()
-        ]
-        
-        # Get example templates from database
-        cursor.execute("""
-            SELECT name, description, is_readonly
-            FROM combo_templates
-            WHERE is_example = 1
-        """)
-        examples = [
-            {"name": row[0], "description": row[1] or "", "is_readonly": bool(row[2])}
-            for row in cursor.fetchall()
-        ]
-        
-        # Get custom templates from database
-        cursor.execute("""
-            SELECT name, description, is_readonly
-            FROM combo_templates
-            WHERE is_example = 0 AND is_prebuilt = 0
-        """)
-        custom = [
-            {"name": row[0], "description": row[1] or "", "is_readonly": bool(row[2])}
-            for row in cursor.fetchall()
-        ]
-        
-        conn.close()
-        
+        with self._session_factory() as db:
+            rows = db.query(ComboTemplate).order_by(ComboTemplate.name.asc()).all()
+
+        prebuilt: list[dict[str, Any]] = []
+        examples: list[dict[str, Any]] = []
+        custom: list[dict[str, Any]] = []
+        for row in rows:
+            item = {
+                "name": row.name,
+                "description": row.description or "",
+                "is_readonly": bool(row.is_readonly),
+            }
+            if row.is_prebuilt:
+                prebuilt.append(item)
+            elif row.is_example:
+                examples.append(item)
+            else:
+                custom.append(item)
+
         return {
             "prebuilt": prebuilt,
             "examples": examples,
@@ -85,21 +79,16 @@ class ComboService:
         Returns:
             Template metadata or None if not found
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-           SELECT name, description, is_example, is_prebuilt, template_data, optimization_schema, is_readonly
-            FROM combo_templates
-            WHERE name = ?
-        """, (template_name,))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
+        with self._session_factory() as db:
+            row = (
+                db.query(ComboTemplate)
+                .filter(ComboTemplate.name == template_name)
+                .first()
+            )
+
         if row:
-            template_data = json.loads(row[4])
-            optimization_schema = json.loads(row[5]) if row[5] else None
+            template_data = self._decode_json_field(row.template_data) or {}
+            optimization_schema = self._decode_json_field(row.optimization_schema)
             
             # Normalize stop_loss to always be a dict for Pydantic validation
             stop_loss = template_data.get("stop_loss", 0.015)
@@ -107,11 +96,11 @@ class ComboService:
                 template_data["stop_loss"] = {"default": stop_loss}
             
             return {
-                "name": row[0],
-                "description": row[1] or "",
-                "is_example": bool(row[2]),
-                "is_prebuilt": bool(row[3]),
-                "is_readonly": bool(row[6]),
+                "name": row.name,
+                "description": row.description or "",
+                "is_example": bool(row.is_example),
+                "is_prebuilt": bool(row.is_prebuilt),
+                "is_readonly": bool(row.is_readonly),
                 "optimization_schema": optimization_schema,
                 **template_data
             }
@@ -213,9 +202,6 @@ class ComboService:
         Returns:
             ID of the saved template
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
         # Build template data JSON
         template_data = {
             "indicators": indicators,
@@ -224,26 +210,19 @@ class ComboService:
             "stop_loss": stop_loss
         }
         
-        # Insert template
-        cursor.execute("""
-            INSERT INTO combo_templates (
-                name, description, is_example, is_prebuilt,
-                template_data, optimization_schema
-            ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            name,
-            description,
-            is_example,
-            is_prebuilt,
-            json.dumps(template_data),
-            json.dumps(optimization_schema) if optimization_schema else None
-        ))
-        
-        template_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
-        return template_id
+        with self._session_factory() as db:
+            row = ComboTemplate(
+                name=name,
+                description=description,
+                is_example=is_example,
+                is_prebuilt=is_prebuilt,
+                template_data=template_data,
+                optimization_schema=optimization_schema,
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+            return int(row.id)
 
     def _normalize_stop_loss_value(self, stop_loss: Any) -> float:
         """Normalize stop loss into a positive decimal float."""
@@ -356,70 +335,6 @@ class ComboService:
 
     def create_template(
         self,
-        *,
-        name: str,
-        template_data: Optional[Dict[str, Any]] = None,
-        category: str = "custom",
-        metadata: Optional[Dict[str, Any]] = None,
-        strategy_draft: Optional[Dict[str, Any]] = None,
-        description: str = "",
-    ) -> Dict[str, Any]:
-        """
-        Create and persist a combo template.
-
-        Supports both:
-        - direct template_data payload
-        - strategy_draft payload (mapped to template_data)
-        """
-        template_name = str(name or "").strip()
-        if not template_name:
-            raise ValueError("Invalid template data: missing required field(s): name.")
-
-        normalized_template_data = (
-            self._normalize_template_data(template_data)
-            if template_data is not None
-            else self._build_template_data_from_strategy_draft(strategy_draft)
-        )
-
-        category_norm = str(category or "custom").strip().lower()
-        is_example = category_norm == "example"
-        is_prebuilt = category_norm == "prebuilt"
-
-        template_description = str(description or "").strip()
-        if not template_description and isinstance(metadata, dict):
-            one_liner = metadata.get("one_liner")
-            if isinstance(one_liner, str):
-                template_description = one_liner.strip()
-
-        try:
-            template_id = self.save_template(
-                name=template_name,
-                description=template_description,
-                indicators=normalized_template_data["indicators"],
-                entry_logic=normalized_template_data["entry_logic"],
-                exit_logic=normalized_template_data["exit_logic"],
-                stop_loss=normalized_template_data["stop_loss"],
-                is_example=is_example,
-                is_prebuilt=is_prebuilt,
-                optimization_schema=None,
-            )
-        except sqlite3.IntegrityError as exc:
-            raise ValueError(f"Template '{template_name}' already exists.") from exc
-
-        saved = self.get_template_metadata(template_name) or {
-            "name": template_name,
-            "description": template_description,
-            **normalized_template_data,
-        }
-        saved["id"] = template_id
-        saved["category"] = category_norm
-        if isinstance(metadata, dict):
-            saved["metadata"] = metadata
-
-        return saved
-
-    def create_template(
-        self,
         name: str,
         template_data: Dict[str, Any],
         category: str = "custom",
@@ -512,16 +427,21 @@ class ComboService:
         if not isinstance(description, str):
             description = str(description)
 
-        self.save_template(
-            name=template_name,
-            description=description.strip(),
-            indicators=indicators,
-            entry_logic=entry_logic.strip(),
-            exit_logic=exit_logic.strip(),
-            stop_loss=stop_loss,
-            is_example=(normalized_category == "example"),
-            is_prebuilt=(normalized_category == "prebuilt"),
-        )
+        try:
+            self.save_template(
+                name=template_name,
+                description=description.strip(),
+                indicators=indicators,
+                entry_logic=entry_logic.strip(),
+                exit_logic=exit_logic.strip(),
+                stop_loss=stop_loss,
+                is_example=(normalized_category == "example"),
+                is_prebuilt=(normalized_category == "prebuilt"),
+            )
+        except IntegrityError as exc:
+            raise ValueError(
+                f"Template creation failed: template '{template_name}' already exists"
+            ) from exc
 
         saved = self.get_template_metadata(template_name)
         if not saved:
@@ -546,20 +466,17 @@ class ComboService:
         Returns:
             True if update was successful
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            UPDATE combo_templates
-            SET optimization_schema = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE name = ?
-        """, (json.dumps(optimization_schema), template_name))
-        
-        success = cursor.rowcount > 0
-        conn.commit()
-        conn.close()
-        
-        return success
+        with self._session_factory() as db:
+            row = (
+                db.query(ComboTemplate)
+                .filter(ComboTemplate.name == template_name)
+                .first()
+            )
+            if not row:
+                return False
+            row.optimization_schema = optimization_schema
+            db.commit()
+            return True
     
     def delete_template(self, template_id: int) -> bool:
         """
@@ -571,20 +488,21 @@ class ComboService:
         Returns:
             True if deletion was successful
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Only allow deleting custom templates (not prebuilt or examples)
-        cursor.execute("""
-            DELETE FROM combo_templates
-            WHERE id = ? AND is_example = 0 AND is_prebuilt = 0
-        """, (template_id,))
-        
-        deleted = cursor.rowcount > 0
-        conn.commit()
-        conn.close()
-        
-        return deleted
+        with self._session_factory() as db:
+            row = (
+                db.query(ComboTemplate)
+                .filter(
+                    ComboTemplate.id == template_id,
+                    ComboTemplate.is_example.is_(False),
+                    ComboTemplate.is_prebuilt.is_(False),
+                )
+                .first()
+            )
+            if not row:
+                return False
+            db.delete(row)
+            db.commit()
+            return True
     
     def delete_template_by_name(self, template_name: str) -> bool:
         """
@@ -596,20 +514,21 @@ class ComboService:
         Returns:
             True if deletion was successful
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Only allow deleting custom templates (not prebuilt or examples)
-        cursor.execute("""
-            DELETE FROM combo_templates
-            WHERE name = ? AND is_example = 0 AND is_prebuilt = 0
-        """, (template_name,))
-        
-        deleted = cursor.rowcount > 0
-        conn.commit()
-        conn.close()
-        
-        return deleted
+        with self._session_factory() as db:
+            row = (
+                db.query(ComboTemplate)
+                .filter(
+                    ComboTemplate.name == template_name,
+                    ComboTemplate.is_example.is_(False),
+                    ComboTemplate.is_prebuilt.is_(False),
+                )
+                .first()
+            )
+            if not row:
+                return False
+            db.delete(row)
+            db.commit()
+            return True
     
     def update_template(
         self,
@@ -633,62 +552,31 @@ class ComboService:
         Raises:
             ValueError: If template is read-only or doesn't exist
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Check if template exists and is not read-only
-        cursor.execute("""
-            SELECT is_readonly, template_data, optimization_schema
-            FROM combo_templates
-            WHERE name = ?
-        """, (template_name,))
-        
-        row = cursor.fetchone()
-        if not row:
-            conn.close()
-            raise ValueError(f"Template '{template_name}' not found")
-        
-        if row[0]:  # is_readonly
-            conn.close()
-            raise ValueError(f"Template '{template_name}' is read-only. Clone it to make changes.")
-        
-        # Build update query dynamically based on what's provided
-        updates = []
-        params = []
-        
-        if description is not None:
-            updates.append("description = ?")
-            params.append(description)
-        
-        if optimization_schema is not None:
-            # Validate optimization schema
-            self._validate_optimization_schema(optimization_schema)
-            updates.append("optimization_schema = ?")
-            params.append(json.dumps(optimization_schema))
-        
-        if template_data is not None:
-            # Merge with existing template_data if only partial update
-            existing_data = json.loads(row[1])
-            merged_data = {**existing_data, **template_data}
-            updates.append("template_data = ?")
-            params.append(json.dumps(merged_data))
-        
-        if not updates:
-            conn.close()
-            return True  # Nothing to update
-        
-        # Add updated_at timestamp
-        updates.append("updated_at = CURRENT_TIMESTAMP")
-        params.append(template_name)
-        
-        query = f"UPDATE combo_templates SET {', '.join(updates)} WHERE name = ?"
-        cursor.execute(query, params)
-        
-        success = cursor.rowcount > 0
-        conn.commit()
-        conn.close()
-        
-        return success
+        with self._session_factory() as db:
+            row = (
+                db.query(ComboTemplate)
+                .filter(ComboTemplate.name == template_name)
+                .first()
+            )
+            if not row:
+                raise ValueError(f"Template '{template_name}' not found")
+            
+            if row.is_readonly:
+                raise ValueError(f"Template '{template_name}' is read-only. Clone it to make changes.")
+
+            if description is not None:
+                row.description = description
+            
+            if optimization_schema is not None:
+                self._validate_optimization_schema(optimization_schema)
+                row.optimization_schema = optimization_schema
+            
+            if template_data is not None:
+                existing_data = self._decode_json_field(row.template_data) or {}
+                row.template_data = {**existing_data, **template_data}
+
+            db.commit()
+            return True
     
     def clone_template(self, template_name: str, new_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -704,39 +592,35 @@ class ComboService:
         Raises:
             ValueError: If source template doesn't exist or new name already exists
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Check if source template exists
-        cursor.execute("""
-            SELECT description, template_data, optimization_schema
-            FROM combo_templates
-            WHERE name = ?
-        """, (template_name,))
-        
-        source = cursor.fetchone()
-        if not source:
-            conn.close()
-            raise ValueError(f"Source template '{template_name}' not found")
-        
-        # Check if new name already exists
-        cursor.execute("SELECT 1 FROM combo_templates WHERE name = ?", (new_name,))
-        if cursor.fetchone():
-            conn.close()
-            raise ValueError(f"Template '{new_name}' already exists")
-        
-        # Insert cloned template (always as custom, editable template)
-        cursor.execute("""
-            INSERT INTO combo_templates (
-                name, description, is_example, is_prebuilt, is_readonly,
-                template_data, optimization_schema
-            ) VALUES (?, ?, 0, 0, 0, ?, ?)
-        """, (new_name, source[0], source[1], source[2]))
-        
-        conn.commit()
-        conn.close()
-        
-        # Return metadata of cloned template
+        with self._session_factory() as db:
+            source = (
+                db.query(ComboTemplate)
+                .filter(ComboTemplate.name == template_name)
+                .first()
+            )
+            if not source:
+                raise ValueError(f"Source template '{template_name}' not found")
+
+            existing = (
+                db.query(ComboTemplate)
+                .filter(ComboTemplate.name == new_name)
+                .first()
+            )
+            if existing:
+                raise ValueError(f"Template '{new_name}' already exists")
+
+            clone = ComboTemplate(
+                name=new_name,
+                description=source.description,
+                is_example=False,
+                is_prebuilt=False,
+                is_readonly=False,
+                template_data=self._decode_json_field(source.template_data),
+                optimization_schema=self._decode_json_field(source.optimization_schema),
+            )
+            db.add(clone)
+            db.commit()
+
         return self.get_template_metadata(new_name)
     
     def _validate_optimization_schema(self, schema: Dict[str, Any]) -> None:

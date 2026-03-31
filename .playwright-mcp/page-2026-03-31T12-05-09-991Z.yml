@@ -1,0 +1,64 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button "Abrir menu" [ref=e6]:
+        - img [ref=e7]
+      - generic [ref=e8]:
+        - generic [ref=e9]: Sinais de trading
+        - generic [ref=e10]: Navegação principal
+      - button "Abrir conta" [ref=e12]: AS
+  - generic [ref=e15]:
+    - banner [ref=e16]:
+      - generic [ref=e17]:
+        - paragraph [ref=e18]: "Card #53"
+        - heading "Sinais de Trading" [level=1] [ref=e19]
+        - paragraph [ref=e20]: Recomendações BUY, SELL e HOLD com confidence gauge, target price, stop loss e filtros por risco.
+      - generic [ref=e22]: Atualizando…
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - paragraph [ref=e26]: Risk profile
+        - paragraph [ref=e27]: Selecione a estratégia de exposição para os sinais.
+      - generic [ref=e28]:
+        - button "Conservative" [ref=e29]:
+          - img [ref=e30]
+          - text: Conservative
+        - button "Moderate" [ref=e33]:
+          - img [ref=e34]
+          - text: Moderate
+        - button "Aggressive" [ref=e36]:
+          - img [ref=e37]
+          - text: Aggressive
+    - generic [ref=e39]:
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - paragraph [ref=e42]: Filtros
+          - paragraph [ref=e43]: Tipo, ativo e confidence mínima.
+        - button "Limpar filtros" [ref=e44] [cursor=pointer]
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]: Tipo
+          - generic [ref=e48]:
+            - combobox "Tipo" [ref=e49] [cursor=pointer]:
+              - option "Todos" [selected]
+              - option "BUY"
+              - option "SELL"
+              - option "HOLD"
+            - img
+        - generic [ref=e50]:
+          - generic [ref=e51]: Ativo
+          - combobox "Ativo" [ref=e52] [cursor=pointer]:
+            - option "Todos" [selected]
+            - option "BTCUSDT"
+            - option "ETHUSDT"
+            - option "SOLUSDT"
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - generic [ref=e55]: Confidence mínima
+            - 'slider "Confidence mínima Threshold atual: 70%" [ref=e56]': "70"
+            - generic [ref=e57]: "Threshold atual: 70%"
+          - generic [ref=e58]:
+            - generic [ref=e59]: Valor
+            - spinbutton [ref=e61]: "70"
+    - generic [ref=e142]:
+      - img [ref=e143]
+      - generic [ref=e145]: "Isenção de responsabilidade: este não é advice financeiro."

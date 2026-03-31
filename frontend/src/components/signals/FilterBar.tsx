@@ -30,7 +30,7 @@ export function FilterBar({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Filtros</p>
-          <p className="text-sm text-[var(--text-secondary)]">Tipo, ativo e confidence mínima.</p>
+          <p className="text-sm text-[var(--text-secondary)]">Entrada, saída, ativo e confidence mínima.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={onClear} className="whitespace-nowrap">
           Limpar filtros
@@ -49,7 +49,6 @@ export function FilterBar({
               <option value="ALL">Todos</option>
               <option value="BUY">BUY</option>
               <option value="SELL">SELL</option>
-              <option value="HOLD">HOLD</option>
             </select>
             <SlidersHorizontal className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
           </div>

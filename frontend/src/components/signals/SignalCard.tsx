@@ -29,7 +29,17 @@ function signalIcon(type: Signal['type']) {
 }
 
 function formatPrice(value: number) {
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)
+  const absValue = Math.abs(value)
+  let maximumFractionDigits = 2
+
+  if (absValue < 1000) maximumFractionDigits = 4
+  if (absValue < 1) maximumFractionDigits = 6
+  if (absValue < 0.01) maximumFractionDigits = 8
+
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  }).format(value)
 }
 
 function formatDate(value: string) {

@@ -1,12 +1,16 @@
 ﻿import json
-import os
-import sqlite3
 import threading
 import uuid
 from datetime import datetime
 from typing import Dict, Optional, List, Any
 import logging
 from pathlib import Path
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.database import DB_URL
+from app.models import Base, OptimizationResult
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -33,11 +37,16 @@ class JobManager:
         self._initialized = True
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.db_path = self.DATA_DIR / "results.db"
+        if DB_URL.startswith("sqlite:"):
+            self.engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+        else:
+            self.engine = create_engine(DB_URL, pool_pre_ping=True)
+        self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         self.active_jobs: Dict[str, Dict] = {}
         # In-memory flags for signaling pause
         self.pause_signals: Dict[str, bool] = {}
         self._init_database()
-        logger.info(f"JobManager initialized. Data dir: {self.DATA_DIR}, DB: {self.db_path}")
+        logger.info(f"JobManager initialized. Data dir: {self.DATA_DIR}, DB URL: {self.engine.url}")
 
     def create_job(self, config: Dict) -> str:
         """Create a new job and return its ID"""
@@ -152,77 +161,59 @@ class JobManager:
         return None
 
     def _init_database(self):
-        """Initialize SQLite database with schema for optimization results"""
-        conn = sqlite3.connect(str(self.db_path))
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS optimization_results (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                job_id TEXT NOT NULL,
-                result_index INTEGER NOT NULL,
-                params_json TEXT NOT NULL,
-                metrics_json TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(job_id, result_index)
-            )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_job_id ON optimization_results(job_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_job_created ON optimization_results(job_id, created_at DESC)")
-        
-        # Enable WAL mode for better concurrency
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA cache_size=10000")
-        conn.commit()
-        conn.close()
-        logger.info(f"SQLite database initialized at {self.db_path}")
+        """Initialize optimization results table in the main app database."""
+        Base.metadata.create_all(bind=self.engine, tables=[OptimizationResult.__table__])
+        logger.info("Optimization results table initialized on %s", self.engine.url)
     
     def save_result(self, job_id: str, result: Dict, index: int):
-        """Save a single optimization result to SQLite database"""
+        """Save a single optimization result to the main database."""
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.execute("""
-                INSERT OR REPLACE INTO optimization_results 
-                (job_id, result_index, params_json, metrics_json)
-                VALUES (?, ?, ?, ?)
-            """, (
-                job_id,
-                index,
-                json.dumps(result.get('params', {})),
-                json.dumps(result.get('metrics', {}))
-            ))
-            conn.commit()
-            conn.close()
+            with self._session_factory() as db:
+                row = (
+                    db.query(OptimizationResult)
+                    .filter(
+                        OptimizationResult.job_id == job_id,
+                        OptimizationResult.result_index == index,
+                    )
+                    .first()
+                )
+                if row is None:
+                    row = OptimizationResult(job_id=job_id, result_index=index)
+                    db.add(row)
+                row.params_json = result.get("params", {})
+                row.metrics_json = result.get("metrics", {})
+                db.commit()
         except Exception as e:
             logger.error(f"Failed to save result {index} for job {job_id}: {e}")
     
     def get_results(self, job_id: str, page: int = 1, limit: int = 50) -> Dict:
-        """Get paginated optimization results from SQLite database"""
+        """Get paginated optimization results from the main database."""
         offset = (page - 1) * limit
         
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.execute("""
-                SELECT params_json, metrics_json 
-                FROM optimization_results
-                WHERE job_id = ?
-                ORDER BY result_index
-                LIMIT ? OFFSET ?
-            """, (job_id, limit, offset))
-            
-            results = []
-            for row in cursor:
-                results.append({
-                    'params': json.loads(row[0]),
-                    'metrics': json.loads(row[1])
-                })
-            
-            # Get total count
-            total = conn.execute(
-                "SELECT COUNT(*) FROM optimization_results WHERE job_id = ?",
-                (job_id,)
-            ).fetchone()[0]
-            
-            conn.close()
-            
+            with self._session_factory() as db:
+                rows = (
+                    db.query(OptimizationResult)
+                    .filter(OptimizationResult.job_id == job_id)
+                    .order_by(OptimizationResult.result_index.asc())
+                    .offset(offset)
+                    .limit(limit)
+                    .all()
+                )
+                total = (
+                    db.query(OptimizationResult)
+                    .filter(OptimizationResult.job_id == job_id)
+                    .count()
+                )
+
+            results = [
+                {
+                    "params": row.params_json or {},
+                    "metrics": row.metrics_json or {},
+                }
+                for row in rows
+            ]
+
             return {
                 'results': results,
                 'pagination': {
@@ -268,29 +259,28 @@ class JobManager:
             return
         
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.execute('BEGIN TRANSACTION')
-            
-            batch_data = []
-            for i, result in enumerate(results):
-                batch_data.append((
-                    job_id,
-                    start_index + i,
-                    json.dumps(result.get('params', {})),
-                    json.dumps(result.get('metrics', {}))
-                ))
-            
-            conn.executemany("""
-                INSERT OR REPLACE INTO optimization_results 
-                (job_id, result_index, params_json, metrics_json)
-                VALUES (?, ?, ?, ?)
-            """, batch_data)
-            
-            conn.commit()
-            conn.close()
+            with self._session_factory() as db:
+                indexes = [start_index + i for i in range(len(results))]
+                existing_rows = (
+                    db.query(OptimizationResult)
+                    .filter(
+                        OptimizationResult.job_id == job_id,
+                        OptimizationResult.result_index.in_(indexes),
+                    )
+                    .all()
+                )
+                existing_by_index = {row.result_index: row for row in existing_rows}
+
+                for i, result in enumerate(results):
+                    idx = start_index + i
+                    row = existing_by_index.get(idx)
+                    if row is None:
+                        row = OptimizationResult(job_id=job_id, result_index=idx)
+                        db.add(row)
+                    row.params_json = result.get("params", {})
+                    row.metrics_json = result.get("metrics", {})
+
+                db.commit()
             logger.info(f"Saved batch of {len(results)} results for job {job_id}")
         except Exception as e:
             logger.error(f"Failed to save batch for job {job_id}: {e}")
-            if conn:
-                conn.rollback()
-                conn.close()

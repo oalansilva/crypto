@@ -1,4 +1,3 @@
-import sqlite3
 import pandas as pd
 import logging
 import json
@@ -17,7 +16,8 @@ from app.services.market_data_providers import (
     resolve_data_source_for_symbol,
 )
 from app.symbols_config import get_excluded_symbols, is_excluded_symbol
-from app.database import DB_PATH
+from app.database import SessionLocal
+from app.models import FavoriteStrategy
 
 logger = logging.getLogger(__name__)
 _OHLCV_CACHE_TTL_SECONDS = 300.0
@@ -249,44 +249,55 @@ class OpportunityService:
     """
 
     def __init__(self, db_path: str = None):
-        if db_path is None:
-            # Use the canonical DB path from app.database
-            db_path = str(DB_PATH)
         self.db_path = db_path
         self.combo_service = ComboService(db_path)
         self.analyzer = ProximityAnalyzer()
+        if db_path is None:
+            self._session_factory = SessionLocal
+        else:
+            db_url = db_path if "://" in db_path else f"sqlite:///{db_path}"
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker
+
+            if db_url.startswith("sqlite:"):
+                engine = create_engine(db_url, connect_args={"check_same_thread": False})
+            else:
+                engine = create_engine(db_url, pool_pre_ping=True)
+            self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     def get_favorites(self, user_id: str, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
         """List relevant favorites for one user from existing table."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        with self._session_factory() as db:
+            query = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == user_id)
 
-        query = """
-            SELECT id, name, symbol, timeframe, strategy_name, parameters, notes, tier
-            FROM favorite_strategies
-            WHERE user_id = ?
-        """
-        params: list[Any] = [user_id]
+            normalized_tier_filter = str(tier_filter or "").strip().lower()
+            if not normalized_tier_filter or normalized_tier_filter == "all":
+                query = query.filter(FavoriteStrategy.tier.in_([1, 2, 3]))
+            elif normalized_tier_filter == "none":
+                query = query.filter(FavoriteStrategy.tier.is_(None))
+            else:
+                allowed_tiers = [
+                    int(t.strip())
+                    for t in normalized_tier_filter.split(",")
+                    if t.strip().isdigit()
+                ]
+                if allowed_tiers:
+                    query = query.filter(FavoriteStrategy.tier.in_(allowed_tiers))
 
-        normalized_tier_filter = str(tier_filter or "").strip().lower()
-        if not normalized_tier_filter or normalized_tier_filter == "all":
-            query += " AND tier IN (1, 2, 3)"
-        elif normalized_tier_filter == "none":
-            query += " AND tier IS NULL"
-        else:
-            allowed_tiers = [int(t.strip()) for t in normalized_tier_filter.split(",") if t.strip().isdigit()]
-            if allowed_tiers:
-                placeholders = ",".join("?" for _ in allowed_tiers)
-                query += f" AND tier IN ({placeholders})"
-                params.extend(allowed_tiers)
-
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
+            rows = query.all()
         
         favorites = []
         for row in rows:
-            r = dict(row)
+            r = {
+                "id": row.id,
+                "name": row.name,
+                "symbol": row.symbol,
+                "timeframe": row.timeframe,
+                "strategy_name": row.strategy_name,
+                "parameters": row.parameters,
+                "notes": row.notes,
+                "tier": row.tier,
+            }
             # Parse parameters JSON if string
             if isinstance(r['parameters'], str):
                 try:
@@ -299,8 +310,7 @@ class OpportunityService:
         logger.info(f"Loaded {len(favorites)} favorite strategies from database")
         for fav in favorites:
             logger.debug(f"  - ID {fav['id']}: {fav['symbol']} {fav['timeframe']} - {fav['strategy_name']}")
-            
-        conn.close()
+
         return favorites
 
     def _filter_by_tier(self, favorites: List[Dict[str, Any]], tier_filter: Optional[str]) -> List[Dict[str, Any]]:

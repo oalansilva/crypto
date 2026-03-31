@@ -68,6 +68,7 @@ def _save_snapshot(
              pnl_today_pct, drawdown_30d_pct, drawdown_peak_date, btc_change_24h_pct, user_id)
             VALUES (:total_usd, :btc_value, :usdt_value, :eth_value, :other_usd,
                     :pnl_today_pct, :drawdown_30d_pct, :drawdown_peak_date, :btc_change_24h_pct, :user_id)
+            RETURNING id
         """),
         {
             "total_usd": total_usd,
@@ -83,7 +84,7 @@ def _save_snapshot(
         },
     )
     db.commit()
-    return result.lastrowid
+    return int(result.scalar_one())
 
 
 def _get_30d_snapshots(db: Session, user_id: str | None = None) -> List[Dict[str, Any]]:

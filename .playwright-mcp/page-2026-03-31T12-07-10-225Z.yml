@@ -1,0 +1,732 @@
+- generic [ref=e5]:
+  - banner [ref=e6]:
+    - generic [ref=e7]:
+      - button "Abrir menu" [ref=e8]:
+        - img [ref=e9]
+      - generic [ref=e10]:
+        - generic [ref=e11]: Sinais de trading
+        - generic [ref=e12]: Navegação principal
+      - button "Abrir conta" [ref=e14]: AS
+  - generic [ref=e17]:
+    - banner [ref=e18]:
+      - generic [ref=e19]:
+        - paragraph [ref=e20]: "Card #53"
+        - heading "Sinais de Trading" [level=1] [ref=e21]
+        - paragraph [ref=e22]: Recomendações BUY, SELL e HOLD com confidence gauge, target price, stop loss e filtros por risco.
+      - generic [ref=e24]: Atualizado em 31/03/2026, 12:05
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - paragraph [ref=e28]: Risk profile
+        - paragraph [ref=e29]: Selecione a estratégia de exposição para os sinais.
+      - generic [ref=e30]:
+        - button "Conservative" [ref=e31]:
+          - img [ref=e32]
+          - text: Conservative
+        - button "Moderate" [ref=e35]:
+          - img [ref=e36]
+          - text: Moderate
+        - button "Aggressive" [ref=e38]:
+          - img [ref=e39]
+          - text: Aggressive
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - paragraph [ref=e44]: Filtros
+          - paragraph [ref=e45]: Tipo, ativo e confidence mínima.
+        - button "Limpar filtros" [ref=e46] [cursor=pointer]
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]: Tipo
+          - generic [ref=e50]:
+            - combobox "Tipo" [ref=e51] [cursor=pointer]:
+              - option "Todos" [selected]
+              - option "BUY"
+              - option "SELL"
+              - option "HOLD"
+            - img
+        - generic [ref=e52]:
+          - generic [ref=e53]: Ativo
+          - combobox "Ativo" [ref=e54] [cursor=pointer]:
+            - option "Todos" [selected]
+            - option "0GUSDT"
+            - option "1000CATUSDT"
+            - option "1000CHEEMSUSDT"
+            - option "1000SATSUSDT"
+            - option "1INCHUSDT"
+            - option "1MBABYDOGEUSDT"
+            - option "2ZUSDT"
+            - option "A2ZUSDT"
+            - option "AAVEUSDT"
+            - option "ACEUSDT"
+            - option "ACHUSDT"
+            - option "ACMUSDT"
+            - option "ACTUSDT"
+            - option "ACXUSDT"
+            - option "ADAUSDT"
+            - option "ADXUSDT"
+            - option "AEURUSDT"
+            - option "AEVOUSDT"
+            - option "AGLDUSDT"
+            - option "AIUSDT"
+            - option "AIXBTUSDT"
+            - option "ALCXUSDT"
+            - option "ALGOUSDT"
+            - option "ALICEUSDT"
+            - option "ALLOUSDT"
+            - option "ALPINEUSDT"
+            - option "ALTUSDT"
+            - option "AMPUSDT"
+            - option "ANIMEUSDT"
+            - option "ANKRUSDT"
+            - option "APEUSDT"
+            - option "API3USDT"
+            - option "APTUSDT"
+            - option "ARBUSDT"
+            - option "ARDRUSDT"
+            - option "ARKMUSDT"
+            - option "ARKUSDT"
+            - option "ARPAUSDT"
+            - option "ARUSDT"
+            - option "ASRUSDT"
+            - option "ASTERUSDT"
+            - option "ASTRUSDT"
+            - option "ATAUSDT"
+            - option "ATMUSDT"
+            - option "ATOMUSDT"
+            - option "ATUSDT"
+            - option "AUCTIONUSDT"
+            - option "AUDIOUSDT"
+            - option "AUSDT"
+            - option "AVAUSDT"
+            - option "AVAXUSDT"
+            - option "AVNTUSDT"
+            - option "AWEUSDT"
+            - option "AXLUSDT"
+            - option "AXSUSDT"
+            - option "BABYUSDT"
+            - option "BANANAS31USDT"
+            - option "BANANAUSDT"
+            - option "BANDUSDT"
+            - option "BANKUSDT"
+            - option "BARDUSDT"
+            - option "BARUSDT"
+            - option "BATUSDT"
+            - option "BBUSDT"
+            - option "BCHUSDT"
+            - option "BEAMXUSDT"
+            - option "BELUSDT"
+            - option "BERAUSDT"
+            - option "BFUSDUSDT"
+            - option "BICOUSDT"
+            - option "BIFIUSDT"
+            - option "BIGTIMEUSDT"
+            - option "BIOUSDT"
+            - option "BLURUSDT"
+            - option "BMTUSDT"
+            - option "BNBUSDT"
+            - option "BNSOLUSDT"
+            - option "BNTUSDT"
+            - option "BOMEUSDT"
+            - option "BONKUSDT"
+            - option "BREVUSDT"
+            - option "BROCCOLI714USDT"
+            - option "BTCUSDT"
+            - option "BTTCUSDT"
+            - option "C98USDT"
+            - option "CAKEUSDT"
+            - option "CATIUSDT"
+            - option "CELOUSDT"
+            - option "CELRUSDT"
+            - option "CETUSUSDT"
+            - option "CFGUSDT"
+            - option "CFXUSDT"
+            - option "CGPTUSDT"
+            - option "CHRUSDT"
+            - option "CHZUSDT"
+            - option "CITYUSDT"
+            - option "CKBUSDT"
+            - option "COMPUSDT"
+            - option "COOKIEUSDT"
+            - option "COSUSDT"
+            - option "COTIUSDT"
+            - option "COWUSDT"
+            - option "CRVUSDT"
+            - option "CTKUSDT"
+            - option "CTSIUSDT"
+            - option "CUSDT"
+            - option "CVCUSDT"
+            - option "CVXUSDT"
+            - option "CYBERUSDT"
+            - option "DASHUSDT"
+            - option "DCRUSDT"
+            - option "DEGOUSDT"
+            - option "DENTUSDT"
+            - option "DEXEUSDT"
+            - option "DGBUSDT"
+            - option "DIAUSDT"
+            - option "DODOUSDT"
+            - option "DOGEUSDT"
+            - option "DOGSUSDT"
+            - option "DOLOUSDT"
+            - option "DOTUSDT"
+            - option "DUSDT"
+            - option "DUSKUSDT"
+            - option "DYDXUSDT"
+            - option "DYMUSDT"
+            - option "EDENUSDT"
+            - option "EDUUSDT"
+            - option "EGLDUSDT"
+            - option "EIGENUSDT"
+            - option "ENAUSDT"
+            - option "ENJUSDT"
+            - option "ENSOUSDT"
+            - option "ENSUSDT"
+            - option "EPICUSDT"
+            - option "ERAUSDT"
+            - option "ESPUSDT"
+            - option "ETCUSDT"
+            - option "ETHFIUSDT"
+            - option "ETHUSDT"
+            - option "EULUSDT"
+            - option "EURIUSDT"
+            - option "EURUSDT"
+            - option "FARMUSDT"
+            - option "FDUSDUSDT"
+            - option "FETUSDT"
+            - option "FFUSDT"
+            - option "FIDAUSDT"
+            - option "FILUSDT"
+            - option "FIOUSDT"
+            - option "FLOKIUSDT"
+            - option "FLOWUSDT"
+            - option "FLUXUSDT"
+            - option "FOGOUSDT"
+            - option "FORMUSDT"
+            - option "FORTHUSDT"
+            - option "FRAXUSDT"
+            - option "FTTUSDT"
+            - option "FUNUSDT"
+            - option "FUSDT"
+            - option "GALAUSDT"
+            - option "GASUSDT"
+            - option "GIGGLEUSDT"
+            - option "GLMRUSDT"
+            - option "GLMUSDT"
+            - option "GMTUSDT"
+            - option "GMXUSDT"
+            - option "GNOUSDT"
+            - option "GNSUSDT"
+            - option "GPSUSDT"
+            - option "GRTUSDT"
+            - option "GTCUSDT"
+            - option "GUNUSDT"
+            - option "GUSDT"
+            - option "HAEDALUSDT"
+            - option "HBARUSDT"
+            - option "HEIUSDT"
+            - option "HEMIUSDT"
+            - option "HFTUSDT"
+            - option "HIGHUSDT"
+            - option "HIVEUSDT"
+            - option "HMSTRUSDT"
+            - option "HOLOUSDT"
+            - option "HOMEUSDT"
+            - option "HOOKUSDT"
+            - option "HOTUSDT"
+            - option "HUMAUSDT"
+            - option "HYPERUSDT"
+            - option "ICPUSDT"
+            - option "ICXUSDT"
+            - option "IDEXUSDT"
+            - option "IDUSDT"
+            - option "ILVUSDT"
+            - option "IMXUSDT"
+            - option "INITUSDT"
+            - option "INJUSDT"
+            - option "IOSTUSDT"
+            - option "IOTAUSDT"
+            - option "IOTXUSDT"
+            - option "IOUSDT"
+            - option "IQUSDT"
+            - option "JASMYUSDT"
+            - option "JOEUSDT"
+            - option "JSTUSDT"
+            - option "JTOUSDT"
+            - option "JUPUSDT"
+            - option "JUVUSDT"
+            - option "KAIAUSDT"
+            - option "KAITOUSDT"
+            - option "KATUSDT"
+            - option "KAVAUSDT"
+            - option "KERNELUSDT"
+            - option "KGSTUSDT"
+            - option "KITEUSDT"
+            - option "KMNOUSDT"
+            - option "KNCUSDT"
+            - option "KSMUSDT"
+            - option "LAUSDT"
+            - option "LAYERUSDT"
+            - option "LAZIOUSDT"
+            - option "LDOUSDT"
+            - option "LINEAUSDT"
+            - option "LINKUSDT"
+            - option "LISTAUSDT"
+            - option "LPTUSDT"
+            - option "LQTYUSDT"
+            - option "LRCUSDT"
+            - option "LSKUSDT"
+            - option "LTCUSDT"
+            - option "LUMIAUSDT"
+            - option "LUNAUSDT"
+            - option "LUNCUSDT"
+            - option "MAGICUSDT"
+            - option "MANAUSDT"
+            - option "MANTAUSDT"
+            - option "MANTRAUSDT"
+            - option "MASKUSDT"
+            - option "MAVUSDT"
+            - option "MBLUSDT"
+            - option "MBOXUSDT"
+            - option "MDTUSDT"
+            - option "MEMEUSDT"
+            - option "METISUSDT"
+            - option "METUSDT"
+            - option "MEUSDT"
+            - option "MINAUSDT"
+            - option "MIRAUSDT"
+            - option "MITOUSDT"
+            - option "MLNUSDT"
+            - option "MMTUSDT"
+            - option "MORPHOUSDT"
+            - option "MOVEUSDT"
+            - option "MOVRUSDT"
+            - option "MTLUSDT"
+            - option "MUBARAKUSDT"
+            - option "NEARUSDT"
+            - option "NEIROUSDT"
+            - option "NEOUSDT"
+            - option "NEWTUSDT"
+            - option "NEXOUSDT"
+            - option "NFPUSDT"
+            - option "NIGHTUSDT"
+            - option "NILUSDT"
+            - option "NMRUSDT"
+            - option "NOMUSDT"
+            - option "NOTUSDT"
+            - option "NTRNUSDT"
+            - option "NXPCUSDT"
+            - option "OGNUSDT"
+            - option "OGUSDT"
+            - option "ONDOUSDT"
+            - option "ONEUSDT"
+            - option "ONGUSDT"
+            - option "ONTUSDT"
+            - option "OPENUSDT"
+            - option "OPNUSDT"
+            - option "OPUSDT"
+            - option "ORCAUSDT"
+            - option "ORDIUSDT"
+            - option "OSMOUSDT"
+            - option "OXTUSDT"
+            - option "PARTIUSDT"
+            - option "PAXGUSDT"
+            - option "PENDLEUSDT"
+            - option "PENGUUSDT"
+            - option "PEOPLEUSDT"
+            - option "PEPEUSDT"
+            - option "PHAUSDT"
+            - option "PHBUSDT"
+            - option "PIVXUSDT"
+            - option "PIXELUSDT"
+            - option "PLUMEUSDT"
+            - option "PNUTUSDT"
+            - option "POLUSDT"
+            - option "POLYXUSDT"
+            - option "PONDUSDT"
+            - option "PORTALUSDT"
+            - option "PORTOUSDT"
+            - option "POWRUSDT"
+            - option "PROMUSDT"
+            - option "PROVEUSDT"
+            - option "PSGUSDT"
+            - option "PUMPUSDT"
+            - option "PUNDIXUSDT"
+            - option "PYRUSDT"
+            - option "PYTHUSDT"
+            - option "QIUSDT"
+            - option "QKCUSDT"
+            - option "QNTUSDT"
+            - option "QTUMUSDT"
+            - option "QUICKUSDT"
+            - option "RADUSDT"
+            - option "RAREUSDT"
+            - option "RAYUSDT"
+            - option "RDNTUSDT"
+            - option "REDUSDT"
+            - option "RENDERUSDT"
+            - option "REQUSDT"
+            - option "RESOLVUSDT"
+            - option "REZUSDT"
+            - option "RIFUSDT"
+            - option "RLCUSDT"
+            - option "RLUSDUSDT"
+            - option "ROBOUSDT"
+            - option "RONINUSDT"
+            - option "ROSEUSDT"
+            - option "RPLUSDT"
+            - option "RSRUSDT"
+            - option "RUNEUSDT"
+            - option "RVNUSDT"
+            - option "SAGAUSDT"
+            - option "SAHARAUSDT"
+            - option "SANDUSDT"
+            - option "SANTOSUSDT"
+            - option "SAPIENUSDT"
+            - option "SCRTUSDT"
+            - option "SCRUSDT"
+            - option "SCUSDT"
+            - option "SEIUSDT"
+            - option "SENTUSDT"
+            - option "SFPUSDT"
+            - option "SHELLUSDT"
+            - option "SHIBUSDT"
+            - option "SIGNUSDT"
+            - option "SKLUSDT"
+            - option "SKYUSDT"
+            - option "SLPUSDT"
+            - option "SNXUSDT"
+            - option "SOLUSDT"
+            - option "SOLVUSDT"
+            - option "SOMIUSDT"
+            - option "SOPHUSDT"
+            - option "SPELLUSDT"
+            - option "SPKUSDT"
+            - option "SSVUSDT"
+            - option "STEEMUSDT"
+            - option "STGUSDT"
+            - option "STORJUSDT"
+            - option "STOUSDT"
+            - option "STRAXUSDT"
+            - option "STRKUSDT"
+            - option "STXUSDT"
+            - option "SUIUSDT"
+            - option "SUNUSDT"
+            - option "SUPERUSDT"
+            - option "SUSDT"
+            - option "SUSHIUSDT"
+            - option "SXPUSDT"
+            - option "SXTUSDT"
+            - option "SYNUSDT"
+            - option "SYRUPUSDT"
+            - option "SYSUSDT"
+            - option "TAOUSDT"
+            - option "TFUELUSDT"
+            - option "THETAUSDT"
+            - option "THEUSDT"
+            - option "TIAUSDT"
+            - option "TKOUSDT"
+            - option "TLMUSDT"
+            - option "TNSRUSDT"
+            - option "TONUSDT"
+            - option "TOWNSUSDT"
+            - option "TRBUSDT"
+            - option "TREEUSDT"
+            - option "TRUMPUSDT"
+            - option "TRUUSDT"
+            - option "TRXUSDT"
+            - option "TSTUSDT"
+            - option "TURBOUSDT"
+            - option "TURTLEUSDT"
+            - option "TUSDT"
+            - option "TUSDUSDT"
+            - option "TUTUSDT"
+            - option "TWTUSDT"
+            - option "UMAUSDT"
+            - option "UNIUSDT"
+            - option "USD1USDT"
+            - option "USDCUSDT"
+            - option "USDEUSDT"
+            - option "USDPUSDT"
+            - option "USTCUSDT"
+            - option "USUALUSDT"
+            - option "UTKUSDT"
+            - option "UUSDT"
+            - option "VANAUSDT"
+            - option "VANRYUSDT"
+            - option "VELODROMEUSDT"
+            - option "VETUSDT"
+            - option "VICUSDT"
+            - option "VIRTUALUSDT"
+            - option "VTHOUSDT"
+            - option "WALUSDT"
+            - option "WANUSDT"
+            - option "WAXPUSDT"
+            - option "WBETHUSDT"
+            - option "WBTCUSDT"
+            - option "WCTUSDT"
+            - option "WIFUSDT"
+            - option "WINUSDT"
+            - option "WLDUSDT"
+            - option "WLFIUSDT"
+            - option "WOOUSDT"
+            - option "WUSDT"
+            - option "XAIUSDT"
+            - option "XAUTUSDT"
+            - option "XECUSDT"
+            - option "XLMUSDT"
+            - option "XNOUSDT"
+            - option "XPLUSDT"
+            - option "XRPUSDT"
+            - option "XTZUSDT"
+            - option "XUSDUSDT"
+            - option "XVGUSDT"
+            - option "XVSUSDT"
+            - option "YBUSDT"
+            - option "YFIUSDT"
+            - option "YGGUSDT"
+            - option "ZAMAUSDT"
+            - option "ZBTUSDT"
+            - option "ZECUSDT"
+            - option "ZENUSDT"
+            - option "ZILUSDT"
+            - option "ZKCUSDT"
+            - option "ZKPUSDT"
+            - option "ZKUSDT"
+            - option "ZROUSDT"
+            - option "ZRXUSDT"
+            - option "币安人生USDT"
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]: Confidence mínima
+            - 'slider "Confidence mínima Threshold atual: 70%" [ref=e58]': "70"
+            - generic [ref=e59]: "Threshold atual: 70%"
+          - generic [ref=e60]:
+            - generic [ref=e61]: Valor
+            - spinbutton [ref=e63]: "70"
+    - generic [ref=e64]:
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - generic [ref=e70]:
+                - img [ref=e72]
+                - text: HOLD
+              - generic [ref=e75]: 1000SATSUSDT
+            - paragraph [ref=e76]: Perfil moderate
+          - generic [ref=e78]: 31/03/2026, 12:00
+        - generic [ref=e80]:
+          - generic [ref=e81]:
+            - generic [ref=e82]: Confidence
+            - generic [ref=e83]: 72%
+          - generic [ref=e87]:
+            - generic [ref=e88]: 0%
+            - generic [ref=e89]: Limiar 70%
+            - generic [ref=e90]: 100%
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - generic [ref=e93]: Target
+            - generic [ref=e94]: "0.00001091"
+          - generic [ref=e95]:
+            - generic [ref=e96]: Stop loss
+            - generic [ref=e97]: "0.00001051"
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - generic [ref=e100]: RSI
+            - generic [ref=e101]: "50.6"
+          - generic [ref=e102]:
+            - generic [ref=e103]: MACD
+            - generic [ref=e104]: neutral
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - img [ref=e107]
+              - text: Bollinger
+            - generic [ref=e109]: 0.0000105 - 0.00001074
+      - generic [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e115]:
+                - img [ref=e117]
+                - text: HOLD
+              - generic [ref=e120]: ACHUSDT
+            - paragraph [ref=e121]: Perfil moderate
+          - generic [ref=e123]: 31/03/2026, 12:00
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - generic [ref=e127]: Confidence
+            - generic [ref=e128]: 72%
+          - generic [ref=e132]:
+            - generic [ref=e133]: 0%
+            - generic [ref=e134]: Limiar 70%
+            - generic [ref=e135]: 100%
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - generic [ref=e138]: Target
+            - generic [ref=e139]: "0.0064575"
+          - generic [ref=e140]:
+            - generic [ref=e141]: Stop loss
+            - generic [ref=e142]: "0.00622125"
+        - generic [ref=e143]:
+          - generic [ref=e144]:
+            - generic [ref=e145]: RSI
+            - generic [ref=e146]: "51.3"
+          - generic [ref=e147]:
+            - generic [ref=e148]: MACD
+            - generic [ref=e149]: neutral
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - img [ref=e152]
+              - text: Bollinger
+            - generic [ref=e154]: 0.0062308 - 0.0063562
+      - generic [ref=e156]:
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - img [ref=e162]
+                - text: HOLD
+              - generic [ref=e165]: ACMUSDT
+            - paragraph [ref=e166]: Perfil moderate
+          - generic [ref=e168]: 31/03/2026, 12:00
+        - generic [ref=e170]:
+          - generic [ref=e171]:
+            - generic [ref=e172]: Confidence
+            - generic [ref=e173]: 72%
+          - generic [ref=e177]:
+            - generic [ref=e178]: 0%
+            - generic [ref=e179]: Limiar 70%
+            - generic [ref=e180]: 100%
+        - generic [ref=e181]:
+          - generic [ref=e182]:
+            - generic [ref=e183]: Target
+            - generic [ref=e184]: "0.41615"
+          - generic [ref=e185]:
+            - generic [ref=e186]: Stop loss
+            - generic [ref=e187]: "0.400925"
+        - generic [ref=e188]:
+          - generic [ref=e189]:
+            - generic [ref=e190]: RSI
+            - generic [ref=e191]: "52.6"
+          - generic [ref=e192]:
+            - generic [ref=e193]: MACD
+            - generic [ref=e194]: neutral
+          - generic [ref=e195]:
+            - generic [ref=e196]:
+              - img [ref=e197]
+              - text: Bollinger
+            - generic [ref=e199]: 0.402332 - 0.407768
+      - generic [ref=e201]:
+        - generic [ref=e202]:
+          - generic [ref=e203]:
+            - generic [ref=e204]:
+              - generic [ref=e205]:
+                - img [ref=e207]
+                - text: HOLD
+              - generic [ref=e210]: ACXUSDT
+            - paragraph [ref=e211]: Perfil moderate
+          - generic [ref=e213]: 31/03/2026, 12:00
+        - generic [ref=e215]:
+          - generic [ref=e216]:
+            - generic [ref=e217]: Confidence
+            - generic [ref=e218]: 72%
+          - generic [ref=e222]:
+            - generic [ref=e223]: 0%
+            - generic [ref=e224]: Limiar 70%
+            - generic [ref=e225]: 100%
+        - generic [ref=e226]:
+          - generic [ref=e227]:
+            - generic [ref=e228]: Target
+            - generic [ref=e229]: "0.043357"
+          - generic [ref=e230]:
+            - generic [ref=e231]: Stop loss
+            - generic [ref=e232]: "0.041771"
+        - generic [ref=e233]:
+          - generic [ref=e234]:
+            - generic [ref=e235]: RSI
+            - generic [ref=e236]: "54.5"
+          - generic [ref=e237]:
+            - generic [ref=e238]: MACD
+            - generic [ref=e239]: neutral
+          - generic [ref=e240]:
+            - generic [ref=e241]:
+              - img [ref=e242]
+              - text: Bollinger
+            - generic [ref=e244]: 0.041811 - 0.042709
+      - generic [ref=e246]:
+        - generic [ref=e247]:
+          - generic [ref=e248]:
+            - generic [ref=e249]:
+              - generic [ref=e250]:
+                - img [ref=e252]
+                - text: HOLD
+              - generic [ref=e255]: ARDRUSDT
+            - paragraph [ref=e256]: Perfil moderate
+          - generic [ref=e258]: 31/03/2026, 12:00
+        - generic [ref=e260]:
+          - generic [ref=e261]:
+            - generic [ref=e262]: Confidence
+            - generic [ref=e263]: 72%
+          - generic [ref=e267]:
+            - generic [ref=e268]: 0%
+            - generic [ref=e269]: Limiar 70%
+            - generic [ref=e270]: 100%
+        - generic [ref=e271]:
+          - generic [ref=e272]:
+            - generic [ref=e273]: Target
+            - generic [ref=e274]: "0.043204"
+          - generic [ref=e275]:
+            - generic [ref=e276]: Stop loss
+            - generic [ref=e277]: "0.041623"
+        - generic [ref=e278]:
+          - generic [ref=e279]:
+            - generic [ref=e280]: RSI
+            - generic [ref=e281]: "46.5"
+          - generic [ref=e282]:
+            - generic [ref=e283]: MACD
+            - generic [ref=e284]: neutral
+          - generic [ref=e285]:
+            - generic [ref=e286]:
+              - img [ref=e287]
+              - text: Bollinger
+            - generic [ref=e289]: 0.041859 - 0.04263
+      - generic [ref=e291]:
+        - generic [ref=e292]:
+          - generic [ref=e293]:
+            - generic [ref=e294]:
+              - generic [ref=e295]:
+                - img [ref=e297]
+                - text: HOLD
+              - generic [ref=e300]: ARKMUSDT
+            - paragraph [ref=e301]: Perfil moderate
+          - generic [ref=e303]: 31/03/2026, 12:00
+        - generic [ref=e305]:
+          - generic [ref=e306]:
+            - generic [ref=e307]: Confidence
+            - generic [ref=e308]: 72%
+          - generic [ref=e312]:
+            - generic [ref=e313]: 0%
+            - generic [ref=e314]: Limiar 70%
+            - generic [ref=e315]: 100%
+        - generic [ref=e316]:
+          - generic [ref=e317]:
+            - generic [ref=e318]: Target
+            - generic [ref=e319]: "0.097375"
+          - generic [ref=e320]:
+            - generic [ref=e321]: Stop loss
+            - generic [ref=e322]: "0.093813"
+        - generic [ref=e323]:
+          - generic [ref=e324]:
+            - generic [ref=e325]: RSI
+            - generic [ref=e326]: "50.0"
+          - generic [ref=e327]:
+            - generic [ref=e328]: MACD
+            - generic [ref=e329]: neutral
+          - generic [ref=e330]:
+            - generic [ref=e331]:
+              - img [ref=e332]
+              - text: Bollinger
+            - generic [ref=e334]: 0.093844 - 0.096556
+    - button "Ver mais sinais" [ref=e336] [cursor=pointer]
+    - generic [ref=e338]:
+      - img [ref=e339]
+      - generic [ref=e341]: "Isenção de responsabilidade: este não é advice financeiro."

@@ -288,7 +288,11 @@ def _compute_rsi(closes: list[float], period: int = 14) -> float:
     return 100 - (100 / (1 + rs))
 
 
-def _compute_macd(closes: list[float]) -> tuple[float, float, str]:
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return max(lower, min(upper, value))
+
+
+def _compute_macd(closes: list[float]) -> tuple[float, float, float, str]:
     ema12 = _ema_series(closes, 12)
     ema26 = _ema_series(closes, 26)
     offset = len(ema12) - len(ema26)
@@ -297,8 +301,10 @@ def _compute_macd(closes: list[float]) -> tuple[float, float, str]:
     macd_line = macd_values[-1]
     signal_line = signal_series[-1]
     histogram = macd_line - signal_line
-    sentiment = "bullish" if histogram > 0.15 else "bearish" if histogram < -0.15 else "neutral"
-    return macd_line, signal_line, sentiment
+    scale = max(abs(signal_line), abs(macd_line), 1e-9)
+    normalized_histogram = histogram / scale
+    sentiment = "bullish" if normalized_histogram > 0.08 else "bearish" if normalized_histogram < -0.08 else "neutral"
+    return macd_line, signal_line, histogram, sentiment
 
 
 def _compute_bollinger_bands(closes: list[float], period: int = 20) -> BollingerBandsPayload:
@@ -307,6 +313,41 @@ def _compute_bollinger_bands(closes: list[float], period: int = 20) -> Bollinger
     deviation = pstdev(window) if len(window) > 1 else 0.0
     distance = deviation * 2
     return BollingerBandsPayload(upper=middle + distance, middle=middle, lower=middle - distance)
+
+
+def _round_price(value: float) -> float:
+    if value >= 1000:
+        return round(value, 2)
+    if value >= 1:
+        return round(value, 4)
+    if value >= 0.01:
+        return round(value, 6)
+    return round(value, 8)
+
+
+def _load_open_buy_positions(user_id: str | None) -> set[tuple[str, str]]:
+    if not user_id:
+        return set()
+
+    from app.database import SessionLocal
+    from app.models_signal_history import SignalHistory
+
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(SignalHistory.asset, SignalHistory.risk_profile)
+            .filter(
+                SignalHistory.user_id == user_id,
+                SignalHistory.archived == "no",
+                SignalHistory.type == "BUY",
+                SignalHistory.status == "ativo",
+            )
+            .distinct()
+            .all()
+        )
+        return {(str(asset), str(risk_profile)) for asset, risk_profile in rows}
+    finally:
+        db.close()
 
 
 def _build_signal(
@@ -322,51 +363,42 @@ def _build_signal(
     latest_time = candles[-1]["open_time"]
     settings = _PROFILE_SETTINGS[risk_profile]
     rsi = round(_compute_rsi(closes), 2)
-    _macd_line, _signal_line, macd_sentiment = _compute_macd(closes)
+    macd_line, signal_line, histogram, macd_sentiment = _compute_macd(closes)
     bands = _compute_bollinger_bands(closes)
 
     buy_score = 0.0
     sell_score = 0.0
 
-    if rsi <= settings["buy_rsi"]:
-        buy_score += 34
-    elif rsi <= settings["buy_rsi"] + 8:
-        buy_score += 18
+    rsi_buy_strength = _clamp((settings["buy_rsi"] + 12 - rsi) / 18, 0.0, 1.0)
+    rsi_sell_strength = _clamp((rsi - (settings["sell_rsi"] - 12)) / 18, 0.0, 1.0)
+    buy_score += rsi_buy_strength * 34
+    sell_score += rsi_sell_strength * 34
 
-    if rsi >= settings["sell_rsi"]:
-        sell_score += 34
-    elif rsi >= settings["sell_rsi"] - 8:
-        sell_score += 18
+    macd_scale = max(abs(signal_line), abs(macd_line), latest_close * 0.002, 1e-9)
+    macd_bias = _clamp(histogram / macd_scale, -1.0, 1.0)
+    buy_score += max(0.0, macd_bias) * 24
+    sell_score += max(0.0, -macd_bias) * 24
+    if abs(macd_bias) < 0.12:
+        neutrality_bonus = (0.12 - abs(macd_bias)) / 0.12 * 6
+        buy_score += neutrality_bonus
+        sell_score += neutrality_bonus
 
-    if macd_sentiment == "bullish":
-        buy_score += 24
-    elif macd_sentiment == "bearish":
-        sell_score += 24
-    else:
-        buy_score += 8
-        sell_score += 8
-
-    if latest_close <= bands.lower * 1.015:
-        buy_score += 28
-    elif latest_close <= bands.middle:
-        buy_score += 12
-
-    if latest_close >= bands.upper * 0.985:
-        sell_score += 28
-    elif latest_close >= bands.middle:
-        sell_score += 12
+    band_span = max(bands.upper - bands.lower, latest_close * 0.01, 1e-9)
+    band_position = _clamp((latest_close - bands.lower) / band_span, 0.0, 1.0)
+    buy_score += (1.0 - band_position) * 28
+    sell_score += band_position * 28
 
     price_mid_delta = abs(latest_close - bands.middle) / max(bands.middle, 1e-9)
     hold_confidence = min(88, round(48 + (1 - min(price_mid_delta * 8, 1)) * 25))
 
     if buy_score >= sell_score and buy_score >= 50:
         signal_type = SignalType.BUY
-        confidence = int(min(95, round(buy_score)))
+        confidence = int(round(_clamp(buy_score, 0.0, 95.0)))
         target_price = latest_close * (1 + settings["target_pct"])
         stop_loss = latest_close * (1 - settings["stop_pct"])
     elif sell_score > buy_score and sell_score >= 50:
         signal_type = SignalType.SELL
-        confidence = int(min(95, round(sell_score)))
+        confidence = int(round(_clamp(sell_score, 0.0, 95.0)))
         target_price = latest_close * (1 - settings["target_pct"])
         stop_loss = latest_close * (1 + settings["stop_pct"])
     else:
@@ -379,10 +411,11 @@ def _build_signal(
     if sentiment_score is not None:
         normalized_sentiment = max(0.0, min(100.0, float(sentiment_score)))
         technical_confidence = max(0.0, min(100.0, float(confidence)))
-        rsi_contribution = technical_confidence * 0.7 * 0.7
-        macd_contribution = technical_confidence * 0.7 * 0.3
-        sentiment_contribution = normalized_sentiment * 0.3
-        display_total = rsi_contribution + macd_contribution + sentiment_contribution
+        rsi_contribution = technical_confidence * 0.7
+        macd_contribution = technical_confidence * 0.3
+        # Sentiment should bias the technical signal, not wipe it out for mildly bearish days.
+        sentiment_contribution = (normalized_sentiment - 50.0) * 0.15
+        display_total = technical_confidence + sentiment_contribution
         confidence = int(round(max(0.0, min(100.0, display_total))))
         breakdown = ConfidenceBreakdown(
             rsi_contribution=rsi_contribution,
@@ -397,8 +430,8 @@ def _build_signal(
         asset=asset,
         type=signal_type,
         confidence=confidence,
-        target_price=round(target_price, 2),
-        stop_loss=round(stop_loss, 2),
+        target_price=_round_price(target_price),
+        stop_loss=_round_price(stop_loss),
         indicators=SignalIndicators(
             RSI=round(rsi, 2),
             MACD=macd_sentiment,
@@ -455,6 +488,20 @@ async def build_signal_feed(
 
     if signal_type is not None:
         signals = [signal for signal in signals if signal.type == signal_type]
+
+    open_positions = _load_open_buy_positions(user_id)
+    actionable_signals: list[Signal] = []
+    for signal in signals:
+        position_key = (signal.asset, signal.risk_profile.value)
+        if signal.type == SignalType.HOLD:
+            continue
+        if signal.type == SignalType.BUY and position_key in open_positions:
+            continue
+        if signal.type == SignalType.SELL and position_key not in open_positions:
+            continue
+        actionable_signals.append(signal)
+
+    signals = actionable_signals
     signals = [signal for signal in signals if signal.confidence >= threshold]
     signals.sort(key=lambda item: (item.created_at, item.confidence), reverse=True)
     total = len(signals)

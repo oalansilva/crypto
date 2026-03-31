@@ -1,40 +1,47 @@
 # file: backend/app/database.py
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from app.config import get_settings
 import os
-
-settings = get_settings()
-
-# Construct connection string
-# Format: postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres
-# We need to extract password from settings or env
-# Since settings currently has the service_role key, we need to adapt .env to include DB password
-# OR we can parse the connection string if provided.
-# Let's verify what we have in settings. Since we set up .env with service_role key,
-# we need to add SUPABASE_DB_URL to .env or config.
-
-# For now, let's default to SQLite for stable local development
-# This bypasses connection issues with remote Supabase
-# Single source of truth: all migrations and scripts should use this path (backend/backtest.db)
 from pathlib import Path
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+from app.config import get_settings
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "backtest.db"
-# Use absolute path for SQLite
-DB_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH}")
 
-# Force SQLite if DATABASE_URL not explicitly set
-if "DATABASE_URL" not in os.environ:
-    DB_URL = f"sqlite:///{DB_PATH}"
 
-if "postgres" in DB_URL or "postgresql" in DB_URL:
-    engine = create_engine(DB_URL)
-else:
-    # SQLite needs specific args for multithreading check
-    engine = create_engine(
-        DB_URL, connect_args={"check_same_thread": False}
+def resolve_db_url() -> str:
+    """Resolve the main app DB URL.
+
+    Priority:
+    1. DATABASE_URL / settings.database_url
+    2. WORKFLOW_DATABASE_URL / settings.workflow_database_url
+    3. local SQLite fallback
+    """
+
+    settings = get_settings()
+    explicit_url = getattr(settings, "database_url", None) or os.getenv("DATABASE_URL")
+    if explicit_url:
+        return explicit_url
+
+    workflow_url = getattr(settings, "workflow_database_url", None) or os.getenv(
+        "WORKFLOW_DATABASE_URL"
     )
+    if workflow_url:
+        return workflow_url
+
+    return f"sqlite:///{DB_PATH}"
+
+
+DB_URL = resolve_db_url()
+
+if DB_URL.startswith("sqlite:"):
+    engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DB_URL, pool_pre_ping=True)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -140,3 +147,39 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def sync_postgres_identity_sequences() -> None:
+    """Advance Postgres integer PK sequences after importing explicit IDs."""
+
+    if DB_URL.startswith("sqlite:"):
+        return
+
+    tables = (
+        "favorite_strategies",
+        "combo_templates",
+        "auto_backtest_runs",
+        "portfolio_snapshots",
+        "optimization_results",
+    )
+
+    with engine.begin() as conn:
+        for table_name in tables:
+            sequence_name = conn.execute(
+                text("SELECT pg_get_serial_sequence(:table_name, 'id')"),
+                {"table_name": table_name},
+            ).scalar()
+            if not sequence_name:
+                continue
+            conn.execute(
+                text(
+                    """
+                    SELECT setval(
+                        :sequence_name,
+                        COALESCE((SELECT MAX(id) FROM """ + table_name + """), 0) + 1,
+                        false
+                    )
+                    """
+                ),
+                {"sequence_name": sequence_name},
+            )

@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # Market data providers (optional)
     alphavantage_api_key: str | None = None
 
+    # Main application DB. If omitted, runtime can fall back to workflow DB.
+    database_url: str | None = None
+
     # Workflow DB (centralize-workflow-state-db)
     # NOTE: We declare these explicitly so values from backend/.env are available
     # through Settings even if they are not exported into os.environ.

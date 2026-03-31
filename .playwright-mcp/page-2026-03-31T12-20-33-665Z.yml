@@ -1,0 +1,166 @@
+- generic [ref=e43]:
+  - banner [ref=e44]:
+    - generic [ref=e45]:
+      - button "Abrir menu" [ref=e46]:
+        - img [ref=e47]
+      - generic [ref=e48]:
+        - generic [ref=e49]: Dashboard principal
+        - generic [ref=e50]: Navegação principal
+      - button "Abrir conta" [ref=e52]: AS
+  - main [ref=e55]:
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]: Cockpit diário
+          - heading "Seu snapshot diário de crypto" [level=1] [ref=e60]
+          - paragraph [ref=e61]: Como estou indo, o que precisa atenção e qual o próximo passo mais rápido.
+          - generic [ref=e62]:
+            - button "Rodar um backtest Escolha estratégia · timeframe" [ref=e63]:
+              - generic [ref=e64]:
+                - generic [ref=e65]:
+                  - generic [ref=e66]: Rodar um backtest
+                  - generic [ref=e67]: Escolha estratégia · timeframe
+                - img [ref=e68]
+            - button "Atualizar dados Explorar candles · Lab" [ref=e70]:
+              - generic [ref=e71]:
+                - generic [ref=e72]:
+                  - generic [ref=e73]: Atualizar dados
+                  - generic [ref=e74]: Explorar candles · Lab
+                - img [ref=e75]
+            - button "Abrir monitor Sinais · posições" [ref=e77]:
+              - generic [ref=e78]:
+                - generic [ref=e79]:
+                  - generic [ref=e80]: Abrir monitor
+                  - generic [ref=e81]: Sinais · posições
+                - img [ref=e82]
+        - complementary [ref=e84]:
+          - generic [ref=e85]:
+            - heading "Saúde do sistema" [level=2] [ref=e86]
+            - generic [ref=e87]: OK
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - term [ref=e90]: Último check
+              - definition [ref=e91]: 31 de mar., 12:20
+            - generic [ref=e92]:
+              - term [ref=e93]: API
+              - definition [ref=e94]: crypto-backtester-api
+            - generic [ref=e95]:
+              - term [ref=e96]: Carteira
+              - definition [ref=e97]: External balances
+          - generic [ref=e98]:
+            - button "OpenSpec" [ref=e99]:
+              - img [ref=e100]
+              - text: OpenSpec
+            - button "Lab" [ref=e103]:
+              - img [ref=e104]
+              - text: Lab
+      - generic [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e110]: Portfolio PnL (hoje)
+          - generic [ref=e111]: +0.41%
+          - generic [ref=e112]: "vs. BTC: N/A"
+        - generic [ref=e113]:
+          - generic [ref=e115]: Drawdown (30d)
+          - generic [ref=e116]: "-5.28%"
+          - generic [ref=e117]: "Pico: 25 de mar."
+        - generic [ref=e118]:
+          - generic [ref=e120]: Melhor estratégia (7d)
+          - generic [ref=e121]: multi_ma_crossoverV2
+          - generic [ref=e122]: SOL/USDT · 1d · ROI +37968.8%
+        - generic [ref=e123]:
+          - generic [ref=e125]: Data freshness
+          - generic [ref=e126]: agora
+          - generic [ref=e127]: Snapshot em 31 de mar., 12:20
+      - generic [ref=e128]:
+        - generic [ref=e129]:
+          - generic [ref=e130]:
+            - text: Portfolio allocation
+            - heading "Portfolio composition by asset" [level=2] [ref=e131]
+            - paragraph [ref=e132]: "Live split from `/portfolio/kpi`, optimized for quick daily review."
+          - generic [ref=e133]:
+            - generic [ref=e134]: Total portfolio
+            - generic [ref=e135]: $430.33
+        - generic [ref=e137]:
+          - generic [ref=e139]:
+            - application [ref=e142]
+            - generic:
+              - generic: Total USD
+              - generic: $430.33
+              - generic: 2 assets allocated
+          - generic [ref=e152]:
+            - generic [ref=e154]:
+              - generic [ref=e157]:
+                - generic [ref=e158]: USDT
+                - generic [ref=e159]: Tether
+              - generic [ref=e160]:
+                - generic [ref=e161]: 77.6%
+                - generic [ref=e162]: $333.90
+            - generic [ref=e166]:
+              - generic [ref=e169]:
+                - generic [ref=e170]: OTHER
+                - generic [ref=e171]: Other
+              - generic [ref=e172]:
+                - generic [ref=e173]: 22.4%
+                - generic [ref=e174]: $96.43
+        - generic [ref=e177]:
+          - generic [ref=e178]: Portfolio total
+          - generic [ref=e179]: $430.33
+      - generic [ref=e180]:
+        - generic [ref=e181]:
+          - generic [ref=e183]:
+            - generic [ref=e184]:
+              - heading "Mudanças ativas" [level=2] [ref=e185]
+              - generic [ref=e186]: kanban real
+            - link "Ver tudo" [ref=e187] [cursor=pointer]:
+              - /url: /kanban
+          - generic [ref=e192]:
+            - generic [ref=e193]:
+              - generic [ref=e194]:
+                - heading "Runs recentes" [level=2] [ref=e195]
+                - generic [ref=e196]: lab real
+              - link "Abrir Lab" [ref=e197] [cursor=pointer]:
+                - /url: /lab
+            - generic [ref=e198]: Nenhuma run recente encontrada.
+        - complementary [ref=e199]:
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - generic [ref=e202]:
+                - heading "Market watch" [level=2] [ref=e203]
+                - generic [ref=e204]: binance 24h
+              - link "Abrir monitor" [ref=e205] [cursor=pointer]:
+                - /url: /monitor
+            - generic [ref=e206]:
+              - generic [ref=e208]:
+                - generic [ref=e209]:
+                  - generic [ref=e210]: BTCUSDT
+                  - generic [ref=e211]: $66,733.95
+                - generic [ref=e212]: "-1.7%"
+              - generic [ref=e214]:
+                - generic [ref=e215]:
+                  - generic [ref=e216]: ETHUSDT
+                  - generic [ref=e217]: $2,044.86
+                - generic [ref=e218]: "-1.3%"
+              - generic [ref=e220]:
+                - generic [ref=e221]:
+                  - generic [ref=e222]: SOLUSDT
+                  - generic [ref=e223]: $80.69
+                - generic [ref=e224]: "-4.2%"
+              - generic [ref=e225]: Atualizado agora
+          - generic [ref=e226]:
+            - heading "Atalhos" [level=2] [ref=e227]
+            - generic [ref=e228]:
+              - link "Combo" [ref=e229] [cursor=pointer]:
+                - /url: /combo/select
+                - img [ref=e230]
+                - text: Combo
+              - link "Kanban" [ref=e234] [cursor=pointer]:
+                - /url: /kanban
+                - img [ref=e235]
+                - text: Kanban
+              - link "Carteira" [ref=e236] [cursor=pointer]:
+                - /url: /external/balances
+                - img [ref=e237]
+                - text: Carteira
+          - generic [ref=e239]:
+            - heading "Notas" [level=2] [ref=e240]
+            - paragraph [ref=e241]: Home usa dados reais para saúde, favoritos, carteira, Kanban, runs recentes e market watch. Só os KPIs marcados continuam ilustrativos.

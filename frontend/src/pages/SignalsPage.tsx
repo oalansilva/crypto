@@ -10,12 +10,25 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { apiUrl } from '@/lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
 import { useToast } from '@/components/ui/use-toast'
 import type { RiskProfile, SignalFilterType, SignalListResponse } from '@/types/signals'
 
 const STORAGE_KEY = 'signals.riskProfile'
 const DEFAULT_ASSETS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
 const INITIAL_LIMIT = 6
+
+function defaultConfidenceForRiskProfile(profile: RiskProfile): number {
+  switch (profile) {
+    case 'conservative':
+      return 75
+    case 'aggressive':
+      return 60
+    case 'moderate':
+    default:
+      return 70
+  }
+}
 
 function useDebouncedValue<T>(value: T, delay = 300) {
   const [debounced, setDebounced] = useState(value)
@@ -41,13 +54,17 @@ export default function SignalsPage() {
   const [riskProfile, setRiskProfile] = useState<RiskProfile>(() => readStoredRiskProfile())
   const [signalType, setSignalType] = useState<SignalFilterType>('ALL')
   const [asset, setAsset] = useState<string>('ALL')
-  const [confidenceMin, setConfidenceMin] = useState(70)
+  const [confidenceMin, setConfidenceMin] = useState<number>(() => defaultConfidenceForRiskProfile(readStoredRiskProfile()))
   const [limit, setLimit] = useState(INITIAL_LIMIT)
 
   const debouncedFilters = useDebouncedValue({ riskProfile, signalType, asset, confidenceMin, limit })
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, riskProfile)
+  }, [riskProfile])
+
+  useEffect(() => {
+    setConfidenceMin(defaultConfidenceForRiskProfile(riskProfile))
   }, [riskProfile])
 
   useEffect(() => {
@@ -68,7 +85,7 @@ export default function SignalsPage() {
         url.searchParams.set('asset', debouncedFilters.asset)
       }
 
-      const response = await fetch(url.toString())
+      const response = await authFetch(url.toString())
       if (!response.ok) {
         throw new Error(`Falha ao carregar sinais (${response.status})`)
       }
@@ -80,6 +97,8 @@ export default function SignalsPage() {
       }
     },
     placeholderData: (previousData) => previousData,
+    retry: 2,
+    refetchOnWindowFocus: false,
   })
 
   useEffect(() => {
@@ -110,7 +129,7 @@ export default function SignalsPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Card #53</p>
           <h1 className="mt-2 text-3xl font-bold text-[var(--text-primary)]">Sinais de Trading</h1>
           <p className="mt-2 max-w-3xl text-sm text-[var(--text-secondary)]">
-            Recomendações BUY, SELL e HOLD com confidence gauge, target price, stop loss e filtros por risco.
+            Recomendações acionáveis de BUY e SELL com confidence gauge, target price, stop loss e filtros por risco.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -134,7 +153,7 @@ export default function SignalsPage() {
         onClear={() => {
           setSignalType('ALL')
           setAsset('ALL')
-          setConfidenceMin(70)
+          setConfidenceMin(defaultConfidenceForRiskProfile(riskProfile))
         }}
       />
 
@@ -144,7 +163,7 @@ export default function SignalsPage() {
             <SignalCardSkeleton key={index} />
           ))}
         </div>
-      ) : query.error ? (
+      ) : query.error && !query.data ? (
         <Card className="border-red-400/25 bg-red-500/8">
           <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>

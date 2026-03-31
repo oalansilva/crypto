@@ -6,6 +6,7 @@ import { SignalStats } from '@/components/signals/SignalStats'
 import { SignalHistoryList, type FiltersState } from '@/components/signals/SignalHistoryList'
 import { Button } from '@/components/ui/Button'
 import { apiUrl } from '@/lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
 import { useToast } from '@/components/ui/use-toast'
 import type { SignalHistoryResponse, SignalStats as SignalStatsType } from '@/types/signals'
 
@@ -52,7 +53,7 @@ export default function SignalsHistoryPage() {
       if (debouncedFilters.data_fim) url.searchParams.set('data_fim', debouncedFilters.data_fim)
       if (debouncedFilters.confidence_min > 0) url.searchParams.set('confidence_min', String(debouncedFilters.confidence_min))
 
-      const response = await fetch(url.toString())
+      const response = await authFetch(url.toString())
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
       }
@@ -68,7 +69,7 @@ export default function SignalsHistoryPage() {
       if (debouncedFilters.data_inicio) url.searchParams.set('data_inicio', debouncedFilters.data_inicio)
       if (debouncedFilters.data_fim) url.searchParams.set('data_fim', debouncedFilters.data_fim)
 
-      const response = await fetch(url.toString())
+      const response = await authFetch(url.toString())
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
       }
