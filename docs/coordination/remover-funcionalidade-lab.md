@@ -8,6 +8,11 @@
 - QA: done
 - Homologation: approved
 
+
+## Closed
+
+- Homologated by Alan and archived.
+
 ## Decisions (draft)
 - Change criada para remover completamente a funcionalidade Lab do frontend e backend.
 - O escopo aprovado inclui remoção de rotas, navegação, serviços, logs/SSE e módulos exclusivos do Lab.
