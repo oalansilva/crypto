@@ -88,6 +88,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
     custom_ranges = payload.get("custom_ranges")
     initial_capital = payload.get("initial_capital", 100)
     direction = payload.get("direction", "long")
+    user_id = payload.get("user_id")
     if direction not in ("long", "short"):
         direction = "long"
 
@@ -124,6 +125,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
         db_check = SessionLocal()
         try:
             q = db_check.query(FavoriteStrategy).filter(
+                FavoriteStrategy.user_id == user_id,
                 FavoriteStrategy.strategy_name == template_name,
                 FavoriteStrategy.symbol == symbol,
                 FavoriteStrategy.timeframe == timeframe,
@@ -206,6 +208,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
         db = SessionLocal()
         try:
             fav = FavoriteStrategy(
+                user_id=user_id,
                 name=name,
                 symbol=symbol,
                 timeframe=timeframe,

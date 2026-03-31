@@ -31,6 +31,20 @@ function toneVariant(tone: string) {
 }
 
 export function IndicatorCards({ indicators }: { indicators: AIDashboardIndicator[] }) {
+  if (indicators.length === 0) {
+    return (
+      <Card className="page-card border-white/8 bg-[linear-gradient(180deg,rgba(16,28,42,0.98),rgba(12,22,34,0.94))]">
+        <CardContent className="p-6">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Indicadores</div>
+          <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Sem leitura técnica ainda</h2>
+          <p className="mt-3 text-sm text-[var(--text-secondary)]">
+            A dashboard só exibe cards quando esta conta já possui sinais com indicadores salvos no histórico.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {indicators.map((indicator) => {

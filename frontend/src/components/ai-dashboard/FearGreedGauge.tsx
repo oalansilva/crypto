@@ -78,7 +78,8 @@ export function FearGreedGauge({
         </div>
 
         <p className="mt-5 text-sm leading-6 text-[var(--text-secondary)]">
-          Leitura atual em <span className="font-semibold text-[var(--text-primary)]">22 — Extreme Fear</span>, sugerindo mercado defensivo e maior sensibilidade a volatilidade.
+          Leitura atual em <span className="font-semibold text-[var(--text-primary)]">{fearGreed.value} — {fearGreed.label}</span>, sugerindo um mercado
+          {fearGreed.value < 40 ? ' defensivo e mais sensível à volatilidade.' : fearGreed.value > 60 ? ' com apetite a risco acima da média.' : ' em equilíbrio, sem dominância clara entre medo e ganância.'}
         </p>
 
         {fallbackMessage ? (

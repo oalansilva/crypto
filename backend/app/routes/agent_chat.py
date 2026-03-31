@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.database import get_db
+from app.middleware.authMiddleware import get_current_user
 from sqlalchemy.orm import Session
 
 from app.models import FavoriteStrategy
@@ -138,11 +139,18 @@ async def _run_openclaw_agent(session_key: str, message: str, thinking: str, tim
 
 
 @router.post("/chat", response_model=AgentChatResponse)
-async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
+async def agent_chat(
+    req: AgentChatRequest,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     if not _enabled():
         raise HTTPException(status_code=403, detail="Agent chat disabled. Set AGENT_CHAT_ENABLED=1")
 
-    fav = db.query(FavoriteStrategy).filter(FavoriteStrategy.id == req.favorite_id).first()
+    fav = db.query(FavoriteStrategy).filter(
+        FavoriteStrategy.id == req.favorite_id,
+        FavoriteStrategy.user_id == current_user_id,
+    ).first()
     if not fav:
         raise HTTPException(status_code=404, detail="Favorite not found")
 

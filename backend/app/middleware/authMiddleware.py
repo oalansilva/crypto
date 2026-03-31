@@ -17,6 +17,11 @@ from app.models import User
 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
 JWT_ACCESS_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRE_MINUTES", "15"))
+ADMIN_EMAILS = {
+    email.strip().lower()
+    for email in os.getenv("ADMIN_EMAILS", "o.alan.silva@gmail.com").split(",")
+    if email.strip()
+}
 
 security = HTTPBearer(auto_error=False)
 
@@ -100,6 +105,24 @@ async def get_current_user(
     return user_id
 
 
+def is_admin_email(email: str | None) -> bool:
+    return str(email or "").strip().lower() in ADMIN_EMAILS
+
+
+async def get_current_admin(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> str:
+    user = db.query(User).filter(User.id == uuid.UUID(current_user_id)).first()
+    if not user or not is_admin_email(user.email):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user_id
+
+
 # Type alias para uso nas rotas
 CurrentUser = Annotated[Optional[str], Depends(get_current_user_optional)]
 AuthenticatedUser = Annotated[str, Depends(get_current_user)]
+AdminUser = Annotated[str, Depends(get_current_admin)]

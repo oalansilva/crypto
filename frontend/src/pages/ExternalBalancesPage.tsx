@@ -99,6 +99,11 @@ export default function ExternalBalancesPage() {
   const [balances, setBalances] = useState<BalanceRow[]>([])
   const [serverTotalUsd, setServerTotalUsd] = useState<number | null>(null)
   const [asOf, setAsOf] = useState<string | null>(null)
+  const [credentialsConfigured, setCredentialsConfigured] = useState<boolean | null>(null)
+  const [maskedApiKey, setMaskedApiKey] = useState<string | null>(null)
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [apiSecretInput, setApiSecretInput] = useState('')
+  const [savingCredentials, setSavingCredentials] = useState(false)
 
   const [q, setQ] = useState('')
   const [minUsd, setMinUsd] = useState<string>('0.02')
@@ -134,7 +139,20 @@ export default function ExternalBalancesPage() {
     }
   }
 
+  const loadCredentialStatus = async () => {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/user/binance-credentials`)
+      const payload = await res.json()
+      if (!res.ok) throw new Error(String(payload?.detail || 'Falha ao carregar status das credenciais'))
+      setCredentialsConfigured(Boolean(payload?.configured))
+      setMaskedApiKey(typeof payload?.api_key_masked === 'string' ? payload.api_key_masked : null)
+    } catch {
+      setCredentialsConfigured(null)
+    }
+  }
+
   useEffect(() => {
+    void loadCredentialStatus()
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -224,6 +242,53 @@ export default function ExternalBalancesPage() {
     void load({ minUsdOverride: '0.02' })
   }
 
+  const saveCredentials = async () => {
+    setSavingCredentials(true)
+    try {
+      const res = await authFetch(`${API_BASE_URL}/user/binance-credentials`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKeyInput.trim(), api_secret: apiSecretInput.trim() }),
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(String(payload?.detail || 'Falha ao salvar credenciais'))
+      setCredentialsConfigured(true)
+      setMaskedApiKey(typeof payload?.api_key_masked === 'string' ? payload.api_key_masked : null)
+      setApiSecretInput('')
+      toast({ title: 'Credenciais salvas', description: 'A carteira agora usa a API key da conta logada.' })
+      await load()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Falha ao salvar credenciais.'
+      setError(msg)
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    } finally {
+      setSavingCredentials(false)
+    }
+  }
+
+  const deleteCredentials = async () => {
+    setSavingCredentials(true)
+    try {
+      const res = await authFetch(`${API_BASE_URL}/user/binance-credentials`, { method: 'DELETE' })
+      if (!res.ok && res.status !== 404) {
+        const payload = await res.json().catch(() => null)
+        throw new Error(String(payload?.detail || 'Falha ao remover credenciais'))
+      }
+      setCredentialsConfigured(false)
+      setMaskedApiKey(null)
+      setBalances([])
+      setServerTotalUsd(null)
+      setAsOf(null)
+      toast({ title: 'Credenciais removidas', description: 'A carteira deste usuário foi desconectada da Binance.' })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Falha ao remover credenciais.'
+      setError(msg)
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    } finally {
+      setSavingCredentials(false)
+    }
+  }
+
   const metaLine = useMemo(() => {
     const bits: string[] = []
     bits.push(`min USD: ${Number.isFinite(Number(minUsd)) ? Number(minUsd).toFixed(2) : '—'}`)
@@ -286,6 +351,42 @@ export default function ExternalBalancesPage() {
         </section>
 
         <section className="mt-4">
+          <div className="mb-4 rounded-[14px] border border-zinc-200 bg-zinc-50 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <div className="text-sm font-bold text-zinc-900">Credencial Binance por usuário</div>
+                <div className="mt-1 text-sm text-zinc-600">
+                  A Home e a carteira usam a API key vinculada ao usuário logado. Sem isso, os dados não são carregados.
+                </div>
+                <div className="mt-2 text-xs text-zinc-500">
+                  Status: {credentialsConfigured ? `configurada (${maskedApiKey || 'oculta'})` : 'não configurada'}
+                </div>
+              </div>
+              {credentialsConfigured ? (
+                <Button variant="secondary" onClick={deleteCredentials} disabled={savingCredentials}>
+                  Remover credenciais
+                </Button>
+              ) : null}
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_auto]">
+              <input
+                className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 text-zinc-900 outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
+                placeholder="Binance API Key"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+              />
+              <input
+                className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 text-zinc-900 outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
+                placeholder="Binance API Secret"
+                value={apiSecretInput}
+                onChange={(e) => setApiSecretInput(e.target.value)}
+              />
+              <Button onClick={saveCredentials} disabled={savingCredentials || !apiKeyInput.trim() || !apiSecretInput.trim()}>
+                Salvar credenciais
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 items-end gap-3 lg:grid-cols-[1.25fr_0.75fr_0.9fr_0.9fr]">
             <label className="grid gap-1.5">
               <span className="text-xs text-zinc-500">Buscar</span>

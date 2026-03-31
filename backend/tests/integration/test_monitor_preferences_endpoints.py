@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
-import httpx
+import pytest
+from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, get_db
+from app.database import Base
 from app.routes import monitor_preferences
 
 
-def _build_test_app(tmp_path: Path) -> FastAPI:
+def _session_factory(tmp_path: Path):
     db_file = tmp_path / "monitor_prefs_test.db"
     engine = create_engine(
         f"sqlite:///{db_file}",
@@ -19,115 +19,137 @@ def _build_test_app(tmp_path: Path) -> FastAPI:
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
-
-    def _get_db_override():
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app = FastAPI()
-    app.include_router(monitor_preferences.router)
-    app.dependency_overrides[get_db] = _get_db_override
-    return app
+    return TestingSessionLocal
 
 
-async def test_monitor_preferences_defaults_to_empty_map(tmp_path: Path):
-    app = _build_test_app(tmp_path)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.get("/api/monitor/preferences")
-
-    assert response.status_code == 200, response.text
-    assert response.json() == {}
+def test_monitor_preferences_defaults_to_empty_map(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        response = monitor_preferences.list_monitor_preferences(current_user_id="user-a", db=db)
+    assert response == {}
 
 
-async def test_monitor_preferences_put_and_get_roundtrip(tmp_path: Path):
-    app = _build_test_app(tmp_path)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        put_response = await client.put(
-            "/api/monitor/preferences/BTC/USDT",
-            json={"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "4h"},
+def test_monitor_preferences_put_and_get_roundtrip(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        put_response = monitor_preferences.update_monitor_preferences(
+            payload=monitor_preferences.MonitorPreferenceUpdate(
+                in_portfolio=True,
+                card_mode="strategy",
+                price_timeframe="4h",
+            ),
+            symbol="BTC/USDT",
+            current_user_id="user-a",
+            db=db,
         )
-        get_response = await client.get("/api/monitor/preferences")
+        get_response = monitor_preferences.list_monitor_preferences(current_user_id="user-a", db=db)
 
-    assert put_response.status_code == 200, put_response.text
-    assert put_response.json() == {
+    assert put_response == {
         "in_portfolio": True,
         "card_mode": "strategy",
         "price_timeframe": "4h",
         "theme": "dark-green",
     }
-
-    assert get_response.status_code == 200, get_response.text
-    assert get_response.json() == {
+    assert get_response == {
         "BTC/USDT": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "4h", "theme": "dark-green"},
     }
 
 
-async def test_monitor_preferences_put_partial_update_keeps_defaults(tmp_path: Path):
-    app = _build_test_app(tmp_path)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        first = await client.put(
-            "/api/monitor/preferences/NVDA",
-            json={"in_portfolio": True},
+def test_monitor_preferences_put_partial_update_keeps_defaults(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        first = monitor_preferences.update_monitor_preferences(
+            payload=monitor_preferences.MonitorPreferenceUpdate(in_portfolio=True),
+            symbol="NVDA",
+            current_user_id="user-a",
+            db=db,
         )
-        second = await client.put(
-            "/api/monitor/preferences/NVDA",
-            json={"card_mode": "strategy"},
+        second = monitor_preferences.update_monitor_preferences(
+            payload=monitor_preferences.MonitorPreferenceUpdate(card_mode="strategy"),
+            symbol="NVDA",
+            current_user_id="user-a",
+            db=db,
         )
-        final = await client.get("/api/monitor/preferences")
+        final = monitor_preferences.list_monitor_preferences(current_user_id="user-a", db=db)
 
-    assert first.status_code == 200, first.text
-    assert first.json() == {"in_portfolio": True, "card_mode": "price", "price_timeframe": "1d", "theme": "dark-green"}
-
-    assert second.status_code == 200, second.text
-    assert second.json() == {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d", "theme": "dark-green"}
-
-    assert final.status_code == 200, final.text
-    assert final.json() == {
+    assert first == {"in_portfolio": True, "card_mode": "price", "price_timeframe": "1d", "theme": "dark-green"}
+    assert second == {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d", "theme": "dark-green"}
+    assert final == {
         "NVDA": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d", "theme": "dark-green"},
     }
 
 
-async def test_monitor_preferences_put_requires_at_least_one_field(tmp_path: Path):
-    app = _build_test_app(tmp_path)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.put("/api/monitor/preferences/NVDA", json={})
+def test_monitor_preferences_put_requires_at_least_one_field(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        with pytest.raises(HTTPException) as exc:
+            monitor_preferences.update_monitor_preferences(
+                payload=monitor_preferences.MonitorPreferenceUpdate(),
+                symbol="NVDA",
+                current_user_id="user-a",
+                db=db,
+            )
+    assert "At least one field must be provided" in str(exc.value.detail)
 
-    assert response.status_code == 400, response.text
-    assert "At least one field must be provided" in response.json()["detail"]
 
-
-async def test_monitor_preferences_price_timeframe_persists_for_crypto(tmp_path: Path):
-    app = _build_test_app(tmp_path)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        first = await client.put(
-            "/api/monitor/preferences/BTC/USDT",
-            json={"price_timeframe": "15m"},
+def test_monitor_preferences_price_timeframe_persists_for_crypto(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        first = monitor_preferences.update_monitor_preferences(
+            payload=monitor_preferences.MonitorPreferenceUpdate(price_timeframe="15m"),
+            symbol="BTC/USDT",
+            current_user_id="user-a",
+            db=db,
         )
-        second = await client.get("/api/monitor/preferences")
+        second = monitor_preferences.list_monitor_preferences(current_user_id="user-a", db=db)
 
-    assert first.status_code == 200, first.text
-    assert first.json() == {"in_portfolio": False, "card_mode": "price", "price_timeframe": "15m", "theme": "dark-green"}
-    assert second.status_code == 200, second.text
-    assert second.json()["BTC/USDT"]["price_timeframe"] == "15m"
-    assert second.json()["BTC/USDT"]["theme"] == "dark-green"
+    assert first == {"in_portfolio": False, "card_mode": "price", "price_timeframe": "15m", "theme": "dark-green"}
+    assert second["BTC/USDT"]["price_timeframe"] == "15m"
+    assert second["BTC/USDT"]["theme"] == "dark-green"
 
 
-async def test_monitor_preferences_rejects_intraday_timeframe_for_stock(tmp_path: Path):
-    app = _build_test_app(tmp_path)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.put(
-            "/api/monitor/preferences/NVDA",
-            json={"price_timeframe": "4h"},
+def test_monitor_preferences_rejects_intraday_timeframe_for_stock(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        with pytest.raises(HTTPException) as exc:
+            monitor_preferences.update_monitor_preferences(
+                payload=monitor_preferences.MonitorPreferenceUpdate(price_timeframe="4h"),
+                symbol="NVDA",
+                current_user_id="user-a",
+                db=db,
+            )
+    assert "Stocks currently support only timeframe='1d'" in str(exc.value.detail)
+
+
+def test_monitor_preferences_are_scoped_per_user(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        first = monitor_preferences.update_monitor_preferences(
+            payload=monitor_preferences.MonitorPreferenceUpdate(
+                in_portfolio=True,
+                card_mode="strategy",
+                price_timeframe="4h",
+            ),
+            symbol="BTC/USDT",
+            current_user_id="user-a",
+            db=db,
         )
+        second = monitor_preferences.list_monitor_preferences(current_user_id="user-b", db=db)
+        third = monitor_preferences.update_monitor_preferences(
+            payload=monitor_preferences.MonitorPreferenceUpdate(
+                in_portfolio=False,
+                card_mode="price",
+                price_timeframe="15m",
+            ),
+            symbol="BTC/USDT",
+            current_user_id="user-b",
+            db=db,
+        )
+        first_user = monitor_preferences.list_monitor_preferences(current_user_id="user-a", db=db)
 
-    assert response.status_code == 400, response.text
-    assert "Stocks currently support only timeframe='1d'" in response.json()["detail"]
+    assert first["card_mode"] == "strategy"
+    assert second == {}
+    assert third["price_timeframe"] == "15m"
+    assert first_user == {
+        "BTC/USDT": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "4h", "theme": "dark-green"},
+    }

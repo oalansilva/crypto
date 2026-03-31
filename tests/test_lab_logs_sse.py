@@ -15,6 +15,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.middleware.authMiddleware import get_current_user
 from app.routes import lab as lab_routes
 from app.routes.lab_logs_sse import get_log_path, stream_lab_logs
 
@@ -161,6 +162,7 @@ def test_get_run_includes_step_log_urls(tmp_path, monkeypatch):
         "phase": "execution",
         "created_at_ms": 1,
         "updated_at_ms": 1,
+        "input": {"user_id": "tester"},
     }
     (tmp_path / f"{run_id}.json").write_text(json.dumps(run_payload), encoding="utf-8")
     monkeypatch.setattr(lab_routes, "_run_path", lambda rid: tmp_path / f"{rid}.json")
@@ -170,6 +172,7 @@ def test_get_run_includes_step_log_urls(tmp_path, monkeypatch):
 
     app = FastAPI()
     app.include_router(lab_routes.router)
+    app.dependency_overrides[get_current_user] = lambda: "tester"
     client = TestClient(app)
 
     response = client.get(f"/api/lab/runs/{run_id}")
@@ -191,6 +194,7 @@ def test_get_run_step_log_endpoint_returns_content(tmp_path, monkeypatch):
         "phase": "done",
         "created_at_ms": 1,
         "updated_at_ms": 1,
+        "input": {"user_id": "tester"},
     }
     (tmp_path / f"{run_id}.json").write_text(json.dumps(run_payload), encoding="utf-8")
     monkeypatch.setattr(lab_routes, "_run_path", lambda rid: tmp_path / f"{rid}.json")

@@ -6,7 +6,7 @@ Endpoints for combo strategy templates, backtesting, and optimization.
 
 import logging
 import uuid
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import StreamingResponse
 from typing import Optional, List, Dict, Any
 import pandas as pd
@@ -40,6 +40,7 @@ from app.services.batch_backtest_service import (
     request_pause_batch,
     request_cancel_batch,
 )
+from app.middleware.authMiddleware import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
@@ -542,7 +543,11 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
 
 
 @router.post("/backtest/batch", response_model=ComboBatchBacktestResponse)
-async def start_batch_backtest(request: ComboBatchBacktestRequest, background_tasks: BackgroundTasks):
+async def start_batch_backtest(
+    request: ComboBatchBacktestRequest,
+    background_tasks: BackgroundTasks,
+    current_user_id: str = Depends(get_current_user),
+):
     """
     Start a batch backtest job for multiple symbols.
     Uses current config (template, ranges, timeframe, deep_backtest).
@@ -554,6 +559,7 @@ async def start_batch_backtest(request: ComboBatchBacktestRequest, background_ta
         validate_data_source_timeframe(request.data_source, request.timeframe)
         job_id = str(uuid.uuid4())
         payload = request.model_dump()
+        payload["user_id"] = current_user_id
         init_batch_job(job_id, len(request.symbols))
         background_tasks.add_task(run_batch_backtest, job_id, payload)
         logger.info("Batch backtest started job_id=%s symbols=%s", job_id, request.symbols)

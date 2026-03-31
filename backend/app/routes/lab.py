@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Union
 from urllib.parse import quote
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Depends
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -41,6 +41,7 @@ from app.routes.lab_logs_sse import (
     step_from_log_path,
     stream_lab_logs,
 )
+from app.middleware.authMiddleware import get_current_user
 
 router = APIRouter(prefix="/api/lab", tags=["lab"])
 logger = logging.getLogger(__name__)
@@ -1542,6 +1543,12 @@ def _load_run_json(run_id: str) -> Dict[str, Any]:
     return data
 
 
+def _assert_run_owner(data: Dict[str, Any], current_user_id: str) -> None:
+    run_user_id = str(((data.get("input") or {}).get("user_id")) or "").strip()
+    if not run_user_id or run_user_id != current_user_id:
+        raise HTTPException(status_code=404, detail="run not found")
+
+
 def _update_run_json(run_id: str, patch: Dict[str, Any]) -> None:
     p = _run_path(run_id)
     if not p.exists():
@@ -2061,6 +2068,7 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
 
         inp = run.get("input") or {}
         backtest = run.get("backtest") or {}
+        current_user_id = str(inp.get("user_id") or "").strip()
         base_template = str(inp.get("base_template") or backtest.get("template") or "")
         # If we have a candidate template, autosave should be based on it.
         candidate_template = outputs.get("candidate_template_name")
@@ -2105,6 +2113,7 @@ def _cp5_autosave_if_approved(run_id: str, run: Dict[str, Any], outputs: Dict[st
         db = SessionLocal()
         try:
             fav = FavoriteStrategy(
+                user_id=current_user_id or None,
                 name=fav_name,
                 symbol=symbol,
                 timeframe=timeframe,
@@ -4291,6 +4300,7 @@ def _run_lab_autonomous(run_id: str, req_dict: Dict[str, Any]) -> None:
 async def create_run(
     req: LabRunCreateRequest,
     background_tasks: BackgroundTasks,
+    current_user_id: str = Depends(get_current_user),
 ) -> Union[LabRunCreateResponse, LabRunNeedsUserInputResponse]:
     run_id = uuid.uuid4().hex
     now = _now_ms()
@@ -4320,6 +4330,7 @@ async def create_run(
 
     trace_url = _make_trace_url(trace_public_base, trace_thread_id) if (trace_public_base and trace_enabled) else None
     run_input = req.model_dump()
+    run_input["user_id"] = current_user_id
 
     initial_system_messages: List[Dict[str, Any]] = []
     objective_text = str(run_input.get("objective") or "")
@@ -4500,7 +4511,10 @@ async def create_run(
 
 
 @router.get("/runs/{run_id}", response_model=LabRunStatusResponse)
-async def get_run(run_id: str) -> LabRunStatusResponse:
+async def get_run(
+    run_id: str,
+    current_user_id: str = Depends(get_current_user),
+) -> LabRunStatusResponse:
     p = _run_path(run_id)
     if not p.exists():
         raise HTTPException(status_code=404, detail="run not found")
@@ -4508,6 +4522,7 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
     data = _load_run_json(run_id)
     if not data:
         raise HTTPException(status_code=500, detail="failed to read run")
+    _assert_run_owner(data, current_user_id)
 
     trace_events = _read_trace_tail(run_id, limit=200)
 
@@ -4557,7 +4572,10 @@ async def get_run(run_id: str) -> LabRunStatusResponse:
 
 
 @router.get("/runs", response_model=LabRunListResponse)
-async def list_runs(limit: int = Query(default=5, ge=1, le=20)) -> LabRunListResponse:
+async def list_runs(
+    limit: int = Query(default=5, ge=1, le=20),
+    current_user_id: str = Depends(get_current_user),
+) -> LabRunListResponse:
     items: List[LabRunListItem] = []
 
     for path in _runs_dir().glob("*.json"):
@@ -4571,6 +4589,8 @@ async def list_runs(limit: int = Query(default=5, ge=1, le=20)) -> LabRunListRes
 
         run_id = str(payload.get("run_id") or path.stem).strip()
         if not run_id:
+            continue
+        if str(((payload.get("input") or {}).get("user_id")) or "").strip() != current_user_id:
             continue
 
         trace = payload.get("trace") if isinstance(payload.get("trace"), dict) else {}

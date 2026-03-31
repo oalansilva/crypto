@@ -31,6 +31,11 @@ export function DailyNews({ news }: { news: AIDashboardNewsItem[] }) {
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {news.length === 0 ? (
+            <div className="page-card-muted px-4 py-4 text-sm text-[var(--text-secondary)] md:col-span-2 xl:col-span-5">
+              Nenhuma manchete disponível agora. A seção volta a preencher assim que a fonte externa responder.
+            </div>
+          ) : null}
           {news.slice(0, 5).map((item) => (
             <a
               key={item.id}
@@ -46,6 +51,7 @@ export function DailyNews({ news }: { news: AIDashboardNewsItem[] }) {
                   {item.related_asset ? <Badge variant="secondary">{item.related_asset}</Badge> : null}
                 </div>
                 <h3 className="mt-3 text-sm font-semibold leading-6 text-[var(--text-primary)] group-hover:text-white">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{item.summary}</p>
               </div>
 
               <div className="flex items-center justify-between gap-3 text-xs text-[var(--text-muted)]">

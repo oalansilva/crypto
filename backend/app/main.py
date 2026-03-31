@@ -30,6 +30,8 @@ from app.routes.portfolio import router as portfolio_router
 from app.routes.signals import router as signals_router
 from app.routes.ai_dashboard import router as ai_dashboard_router
 from app.routes.auth import router as auth_router
+from app.routes.user_credentials import router as user_credentials_router
+from app.routes.system_preferences import router as system_preferences_router
 from app.services.signal_monitor import signal_monitor
 
 # Configure logging to file
@@ -228,6 +230,8 @@ app.include_router(portfolio_router)
 app.include_router(signals_router)
 app.include_router(ai_dashboard_router)
 app.include_router(auth_router)
+app.include_router(user_credentials_router)
+app.include_router(system_preferences_router)
 
 @app.get("/")
 async def root():

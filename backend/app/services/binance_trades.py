@@ -58,6 +58,9 @@ def fetch_my_trades(
     *,
     limit: int = 1000,
     lookback_days: Optional[int] = None,
+    api_key: Optional[str] = None,
+    api_secret: Optional[str] = None,
+    base_url: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Fetch executed trades for a given symbol using Binance Spot myTrades.
 
@@ -70,9 +73,9 @@ def fetch_my_trades(
     - Binance returns trades in ascending order by time by default.
     """
 
-    api_key = _get_env("BINANCE_API_KEY")
-    api_secret = _get_env("BINANCE_API_SECRET")
-    base_url = _get_env("BINANCE_BASE_URL") or "https://api.binance.com"
+    api_key = (api_key or _get_env("BINANCE_API_KEY")).strip()
+    api_secret = (api_secret or _get_env("BINANCE_API_SECRET")).strip()
+    base_url = (base_url or _get_env("BINANCE_BASE_URL") or "https://api.binance.com").strip()
 
     if not api_key or not api_secret:
         return []
@@ -183,7 +186,14 @@ def compute_avg_buy_cost_usdt_for_symbol(symbol: str, trades: List[Dict[str, Any
     return price if price > 0 else None
 
 
-def compute_avg_buy_cost_usdt(asset: str, *, lookback_days: Optional[int] = None) -> Optional[float]:
+def compute_avg_buy_cost_usdt(
+    asset: str,
+    *,
+    lookback_days: Optional[int] = None,
+    api_key: Optional[str] = None,
+    api_secret: Optional[str] = None,
+    base_url: Optional[str] = None,
+) -> Optional[float]:
     """Compute latest buy trade reference price (USDT) for an asset using ASSETUSDT.
 
     lookback_days:
@@ -197,5 +207,11 @@ def compute_avg_buy_cost_usdt(asset: str, *, lookback_days: Optional[int] = None
         return 1.0
 
     symbol = f"{a}USDT"
-    trades = fetch_my_trades(symbol, lookback_days=lookback_days)
+    trades = fetch_my_trades(
+        symbol,
+        lookback_days=lookback_days,
+        api_key=api_key,
+        api_secret=api_secret,
+        base_url=base_url,
+    )
     return compute_avg_buy_cost_usdt_for_symbol(symbol, trades)

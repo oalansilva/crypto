@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Activity, ArrowRight, FileText, Kanban, Layers, Settings } from 'lucide-react'
 import { apiUrl } from '@/lib/apiBase'
 import PortfolioAllocation from '@/components/PortfolioAllocation'
+import { useAuth } from '@/stores/authStore'
 
 type HealthState = {
   status?: string
@@ -277,6 +278,7 @@ function KpiCard({
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const healthQuery = useQuery<HealthState>({
     queryKey: ['home', 'health'],
@@ -285,19 +287,19 @@ export default function HomePage() {
   })
 
   const favoritesQuery = useQuery<FavoriteStrategy[]>({
-    queryKey: ['home', 'favorites'],
+    queryKey: ['home', 'favorites', user?.id ?? 'anonymous'],
     queryFn: () => fetchJson<FavoriteStrategy[]>('/favorites/'),
     refetchOnWindowFocus: false,
   })
 
   const balancesQuery = useQuery<BalancesSnapshot>({
-    queryKey: ['home', 'balances'],
+    queryKey: ['home', 'balances', user?.id ?? 'anonymous'],
     queryFn: () => fetchJson<BalancesSnapshot>('/external/binance/spot/balances'),
     refetchOnWindowFocus: false,
   })
 
   const portfolioKpiQuery = useQuery<PortfolioKPI>({
-    queryKey: ['home', 'portfolio-kpi'],
+    queryKey: ['home', 'portfolio-kpi', user?.id ?? 'anonymous'],
     queryFn: () => fetchJson<PortfolioKPI>('/portfolio/kpi'),
     refetchOnWindowFocus: false,
   })
@@ -340,7 +342,7 @@ export default function HomePage() {
   })
 
   const runsQuery = useQuery<LabRunsResponse>({
-    queryKey: ['home', 'lab-runs'],
+    queryKey: ['home', 'lab-runs', user?.id ?? 'anonymous'],
     queryFn: () => fetchJson<LabRunsResponse>('/lab/runs?limit=5'),
     refetchOnWindowFocus: false,
   })

@@ -60,7 +60,14 @@ def _signed_get(
         return json.load(f)
 
 
-def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None, min_usd: Optional[float] = None) -> Dict[str, Any]:
+def fetch_spot_balances_snapshot(
+    *,
+    lookback_days: Optional[int] = None,
+    min_usd: Optional[float] = None,
+    api_key: Optional[str] = None,
+    api_secret: Optional[str] = None,
+    base_url: Optional[str] = None,
+) -> Dict[str, Any]:
     """Fetch Binance Spot balances using server-side env credentials.
 
     Env vars:
@@ -85,9 +92,9 @@ def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None, min_usd
     - Pricing is computed as USDT value (USDT≈USD) with fallbacks.
     """
 
-    api_key = _get_env("BINANCE_API_KEY")
-    api_secret = _get_env("BINANCE_API_SECRET")
-    base_url = _get_env("BINANCE_BASE_URL") or "https://api.binance.com"
+    api_key = (api_key or _get_env("BINANCE_API_KEY")).strip()
+    api_secret = (api_secret or _get_env("BINANCE_API_SECRET")).strip()
+    base_url = (base_url or _get_env("BINANCE_BASE_URL") or "https://api.binance.com").strip()
 
     if not api_key or not api_secret:
         raise BinanceConfigError("Missing Binance credentials. Set BINANCE_API_KEY and BINANCE_API_SECRET.")
@@ -162,7 +169,13 @@ def fetch_spot_balances_snapshot(*, lookback_days: Optional[int] = None, min_usd
             break
 
         asset = str(row.get("asset") or "").strip().upper()
-        avg_cost_usdt = compute_avg_buy_cost_usdt(asset, lookback_days=lookback_days)
+        avg_cost_usdt = compute_avg_buy_cost_usdt(
+            asset,
+            lookback_days=lookback_days,
+            api_key=api_key,
+            api_secret=api_secret,
+            base_url=base_url,
+        )
         row["avg_cost_usdt"] = avg_cost_usdt
 
         price_usdt = row.get("price_usdt")

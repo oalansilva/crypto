@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import Depends
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import logging
 
 from app.services.opportunity_service import OpportunityService
+from app.middleware.authMiddleware import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/opportunities", tags=["opportunities"])
@@ -39,7 +41,8 @@ from fastapi import Query
 
 @router.get("/", response_model=List[OpportunityResponse])
 async def get_opportunities(
-    tier: Optional[str] = Query(None, description="Filter by tier(s). E.g. '1', '1,2', 'none' for null tier, 'all' for no filter")
+    tier: Optional[str] = Query(None, description="Filter by tier(s). E.g. '1', '1,2', 'none' for null tier, 'all' for no filter"),
+    current_user_id: str = Depends(get_current_user),
 ):
     """
     Get current opportunities (proximity analysis) for favorite strategies.
@@ -51,7 +54,7 @@ async def get_opportunities(
     """
     try:
         service = OpportunityService()
-        return service.get_opportunities(tier_filter=tier)
+        return service.get_opportunities(user_id=current_user_id, tier_filter=tier)
     except Exception as e:
         logger.error(f"Error getting opportunities: {e}")
         raise HTTPException(status_code=500, detail=str(e))

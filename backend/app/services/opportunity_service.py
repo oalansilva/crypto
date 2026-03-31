@@ -135,8 +135,8 @@ class OpportunityService:
         self.combo_service = ComboService(db_path)
         self.analyzer = ProximityAnalyzer()
 
-    def get_favorites(self) -> List[Dict[str, Any]]:
-        """List all favorites from existing table."""
+    def get_favorites(self, user_id: str) -> List[Dict[str, Any]]:
+        """List all favorites for one user from existing table."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -145,7 +145,8 @@ class OpportunityService:
         cursor.execute("""
             SELECT id, name, symbol, timeframe, strategy_name, parameters, notes, tier
             FROM favorite_strategies
-        """)
+            WHERE user_id = ?
+        """, (user_id,))
         rows = cursor.fetchall()
         
         favorites = []
@@ -200,7 +201,7 @@ class OpportunityService:
         
         return [f for f in favorites if f.get('tier') in allowed_tiers]
 
-    def get_opportunities(self, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_opportunities(self, user_id: str, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Analyze favorites and return their current status (is_holding, distance_to_next_status).
         
@@ -212,7 +213,7 @@ class OpportunityService:
         - entry_logic (buy rule) and exit_logic (sell rule) come from template_data JSON field
         - Each favorite strategy uses its own template's rules from the database
         """
-        all_favorites = self.get_favorites()
+        all_favorites = self.get_favorites(user_id=user_id)
         
         # Filter by tier BEFORE processing (avoid loading unnecessary data)
         favorites = self._filter_by_tier(all_favorites, tier_filter)

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Activity,
@@ -16,6 +16,8 @@ import {
   User,
   Wallet,
   X,
+  Mail,
+  Fingerprint,
 } from 'lucide-react'
 import { useAuth } from '@/stores/authStore'
 
@@ -48,6 +50,10 @@ const accountNavItems: NavItemConfig[] = [
   { to: '/external/balances', label: 'Carteira', icon: Wallet },
 ]
 
+const adminNavItems: NavItemConfig[] = [
+  { to: '/system/preferences', label: 'Preferências', icon: Settings },
+]
+
 export function openMobileMenu() {
   window.dispatchEvent(new CustomEvent('nav:open-menu'))
 }
@@ -63,8 +69,20 @@ function resolvePageTitle(pathname: string) {
   if (pathname.startsWith('/lab')) return 'Laboratório'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
+  if (pathname.startsWith('/system/preferences')) return 'Preferências do sistema'
   if (pathname.startsWith('/openspec')) return 'OpenSpec'
   return 'Crypto Lab'
+}
+
+function getUserInitials(name?: string) {
+  if (!name) return 'U'
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+  return initials || 'U'
 }
 
 function BrandBlock({ compact = false }: { compact?: boolean }) {
@@ -146,6 +164,8 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement | null>(null)
   const { user, logout, isLoading } = useAuth()
 
   useEffect(() => {
@@ -170,8 +190,41 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
     }
   }, [collapsed, isMobile])
 
+  useEffect(() => {
+    setAccountMenuOpen(false)
+  }, [location.pathname, isMobile])
+
+  useEffect(() => {
+    if (!accountMenuOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [accountMenuOpen])
+
   const pathname = location.pathname
   const pageTitle = resolvePageTitle(pathname)
+  const userInitials = getUserInitials(user?.name)
+  const handleLogout = () => {
+    setAccountMenuOpen(false)
+    logout()
+    window.location.href = '/login'
+  }
 
   if (isMobile) {
     return (
@@ -193,9 +246,76 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                 <div className="truncate text-xs text-[var(--text-tertiary)]">Navegação principal</div>
               </div>
 
-              <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-200">
-                Live
-              </div>
+              {user ? (
+                <div className="relative" ref={accountMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setAccountMenuOpen((value) => !value)}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-emerald-300/20 bg-[linear-gradient(135deg,rgba(38,194,129,0.22),rgba(56,189,248,0.18))] text-sm font-semibold text-[var(--text-primary)] shadow-[0_12px_28px_rgba(6,18,28,0.24)]"
+                    aria-label="Abrir conta"
+                    aria-expanded={accountMenuOpen}
+                  >
+                    {userInitials}
+                  </button>
+
+                  {accountMenuOpen && (
+                    <div className="absolute right-0 top-[calc(100%+0.75rem)] z-[90] w-[min(88vw,320px)] overflow-hidden rounded-[24px] border border-[var(--border-default)] bg-[linear-gradient(180deg,rgba(10,21,33,0.98),rgba(8,17,27,0.98))] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+                      <div className="mb-3 flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400/12 text-base font-semibold text-emerald-100">
+                          {userInitials}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Account</div>
+                          <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{user.name}</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="page-card-muted flex items-start gap-2.5 px-3 py-2.5">
+                          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Email</div>
+                            <div className="truncate text-sm text-[var(--text-secondary)]">{user.email}</div>
+                          </div>
+                        </div>
+                        <div className="page-card-muted flex items-start gap-2.5 px-3 py-2.5">
+                          <Fingerprint className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">User ID</div>
+                            <div className="truncate text-sm text-[var(--text-secondary)]">{user.id}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountMenuOpen(false)
+                            setMobileMenuOpen(true)
+                          }}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-white"
+                        >
+                          <User className="h-4 w-4" />
+                          <span>Account</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/16 hover:text-red-200"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Sair</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-200">
+                  Live
+                </div>
+              )}
             </div>
           </header>
         )}
@@ -230,14 +350,29 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                 <NavSection title="Principal" items={mainNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
                 <NavSection title="Estratégias" items={strategyNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
                 <NavSection title="Conta" items={accountNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+                {user?.isAdmin ? <NavSection title="Admin" items={adminNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} /> : null}
+
+                {user && (
+                  <div className="page-card-muted px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400/12 text-sm font-semibold text-emerald-100">
+                        {userInitials}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Account</div>
+                        <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{user.name}</div>
+                        <div className="truncate text-xs text-[var(--text-tertiary)]">{user.email}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="border-t border-white/6 pt-4">
                   <button
                     type="button"
                     onClick={() => {
                       setMobileMenuOpen(false)
-                      logout()
-                      window.location.href = '/login'
+                      handleLogout()
                     }}
                     className="flex w-full items-center gap-2.5 rounded-[18px] border border-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--text-secondary)] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
                   >
@@ -280,6 +415,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
           <NavSection title="Principal" items={mainNavItems} collapsed={collapsed} pathname={pathname} />
           <NavSection title="Estratégias" items={strategyNavItems} collapsed={collapsed} pathname={pathname} />
           <NavSection title="Conta" items={accountNavItems} collapsed={collapsed} pathname={pathname} />
+          {user?.isAdmin ? <NavSection title="Admin" items={adminNavItems} collapsed={collapsed} pathname={pathname} /> : null}
         </nav>
 
         <div className="mt-3 border-t border-white/6 pt-3">
@@ -313,19 +449,78 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
             </div>
             {!isLoading && (
               user ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <span className="text-sm font-medium text-[var(--text-secondary)]">{user.name}</span>
+                <div className="relative" ref={accountMenuRef}>
                   <button
                     type="button"
-                    onClick={() => { logout(); window.location.href = '/login' }}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-red-400"
-                    aria-label="Sair"
+                    onClick={() => setAccountMenuOpen((value) => !value)}
+                    className="flex items-center gap-3 rounded-[22px] border border-emerald-300/16 bg-[linear-gradient(135deg,rgba(38,194,129,0.12),rgba(56,189,248,0.08))] px-2.5 py-2 text-left shadow-[0_16px_34px_rgba(4,12,20,0.22)] hover:border-emerald-300/26 hover:bg-[linear-gradient(135deg,rgba(38,194,129,0.18),rgba(56,189,248,0.12))]"
+                    aria-label="Abrir conta"
+                    aria-expanded={accountMenuOpen}
                   >
-                    <LogOut className="h-4 w-4" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400/12 text-sm font-semibold text-emerald-100">
+                      {userInitials}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Account</div>
+                      <div className="max-w-[10rem] truncate text-sm font-semibold text-[var(--text-primary)]">{user.name}</div>
+                    </div>
                   </button>
+
+                  {accountMenuOpen && (
+                    <div className="absolute right-0 top-[calc(100%+0.8rem)] z-50 w-[320px] overflow-hidden rounded-[26px] border border-[var(--border-default)] bg-[linear-gradient(180deg,rgba(10,21,33,0.98),rgba(8,17,27,0.98))] p-4 shadow-[0_28px_70px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-emerald-300/24 bg-emerald-400/12 text-base font-semibold text-emerald-100">
+                          {userInitials}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Account</div>
+                          <div className="truncate text-base font-semibold text-[var(--text-primary)]">{user.name}</div>
+                          <div className="truncate text-sm text-[var(--text-tertiary)]">Usuário autenticado no sistema</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        <div className="page-card-muted flex items-start gap-3 px-3 py-3">
+                          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Email</div>
+                            <div className="truncate text-sm text-[var(--text-secondary)]">{user.email}</div>
+                          </div>
+                        </div>
+                        <div className="page-card-muted flex items-start gap-3 px-3 py-3">
+                          <Fingerprint className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">User ID</div>
+                            <div className="truncate text-sm text-[var(--text-secondary)]">{user.id}</div>
+                          </div>
+                        </div>
+                        {user.isAdmin && (
+                          <div className="page-card-muted flex items-start gap-3 px-3 py-3">
+                            <Settings className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Perfil</div>
+                              <div className="truncate text-sm text-[var(--text-secondary)]">Administrador do sistema</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/8 pt-4">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-200">
+                          <User className="h-3.5 w-3.5" />
+                          <span>Account</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/16 hover:text-red-200"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Sair</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <NavLink

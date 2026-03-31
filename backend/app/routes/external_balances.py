@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
+from app.database import get_db
+from app.middleware.authMiddleware import get_current_user
 from app.services.binance_spot import BinanceConfigError, fetch_spot_balances_snapshot
+from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
 router = APIRouter(prefix="/api/external", tags=["external"])
 
@@ -13,6 +17,8 @@ router = APIRouter(prefix="/api/external", tags=["external"])
 def get_binance_spot_balances(
     lookback_days: Optional[int] = None,
     min_usd: Optional[float] = None,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """Return Binance Spot balances (read-only).
 
@@ -39,7 +45,17 @@ def get_binance_spot_balances(
             raise HTTPException(status_code=400, detail="min_usd must be between 0 and 1000000")
 
     try:
-        return fetch_spot_balances_snapshot(lookback_days=lookback_days, min_usd=min_usd)
+        cred = get_user_exchange_credential(db, current_user_id, BINANCE_PROVIDER)
+        if cred is None:
+            raise HTTPException(status_code=503, detail="Binance credentials not configured for this user")
+        return fetch_spot_balances_snapshot(
+            lookback_days=lookback_days,
+            min_usd=min_usd,
+            api_key=cred.api_key,
+            api_secret=cred.api_secret,
+        )
+    except HTTPException:
+        raise
     except BinanceConfigError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

@@ -31,6 +31,11 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
         </div>
 
         <div className="mt-5 space-y-3">
+          {signals.length === 0 ? (
+            <div className="page-card-muted px-4 py-4 text-sm text-[var(--text-secondary)]">
+              Nenhum sinal salvo para esta conta ainda.
+            </div>
+          ) : null}
           {signals.map((signal) => (
             <div key={signal.id} className="page-card-muted flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1.5">

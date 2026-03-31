@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Star
 import { CandlestickChart } from '../components/CandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { API_BASE_URL } from '../lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
 
 interface BacktestResult {
     template_name: string
@@ -52,7 +53,7 @@ export function ComboResultsPage() {
         console.log('📤 handleSaveFavorite chamado com:', data)
 
         try {
-            const response = await fetch(`${API_BASE_URL}/favorites`, {
+            const response = await authFetch(`${API_BASE_URL}/favorites`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

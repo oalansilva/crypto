@@ -8,6 +8,7 @@ export interface AuthUser {
   id: string
   email: string
   name: string
+  isAdmin: boolean
 }
 
 interface AuthState {
@@ -35,7 +36,15 @@ function loadFromStorage() {
     const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
     const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
     const userStr = localStorage.getItem(USER_KEY)
-    const user = userStr ? (JSON.parse(userStr) as AuthUser) : null
+    const parsedUser = userStr ? (JSON.parse(userStr) as Partial<AuthUser>) : null
+    const user = parsedUser
+      ? {
+          id: String(parsedUser.id || ''),
+          email: String(parsedUser.email || ''),
+          name: String(parsedUser.name || ''),
+          isAdmin: Boolean(parsedUser.isAdmin),
+        } satisfies AuthUser
+      : null
     return { accessToken, refreshToken, user }
   } catch {
     return { accessToken: null, refreshToken: null, user: null }
@@ -85,8 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       `${API_BASE}/auth/login`,
       { email, password }
     )
-    const { accessToken, refreshToken, id, email: uEmail, name } = res.data
-    const user: AuthUser = { id, email: uEmail, name }
+    const { accessToken, refreshToken, id, email: uEmail, name, isAdmin } = res.data
+    const user: AuthUser = { id, email: uEmail, name, isAdmin }
 
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)

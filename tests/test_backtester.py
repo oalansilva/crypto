@@ -103,7 +103,7 @@ def test_create_run_initializes_upstream_chat_when_missing_required_fields(tmp_p
     monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", _fake_turn)
 
     req = lab_routes.LabRunCreateRequest(objective="rodar lab")
-    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
+    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks(), "tester"))
 
     assert isinstance(resp, lab_routes.LabRunCreateResponse)
     assert resp.status == "needs_user_input"
@@ -132,7 +132,7 @@ def test_create_run_accepts_when_symbol_and_timeframe_are_present(tmp_path, monk
         timeframe="1h",
         objective="rodar com foco em robustez",
     )
-    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
+    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks(), "tester"))
 
     assert isinstance(resp, lab_routes.LabRunCreateResponse)
     assert resp.status in ("ready_for_execution", "ready_for_review")
@@ -167,7 +167,7 @@ def test_post_upstream_message_persists_history_and_updates_contract(tmp_path, m
 
     monkeypatch.setattr(lab_routes, "_try_trader_upstream_turn", _fake_turn)
     req = lab_routes.LabRunCreateRequest(objective="rodar lab")
-    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks()))
+    resp = asyncio.run(lab_routes.create_run(req, BackgroundTasks(), "tester"))
     assert resp.run_id == _FixedUUID.hex
 
     # User answers with required fields; trader confirms.
@@ -304,12 +304,12 @@ def test_get_run_returns_persisted_combo_optimization_payload(tmp_path, monkeypa
         },
         "upstream_contract": {"approved": True},
         "upstream": {"messages": [], "pending_question": ""},
-        "input": {"symbol": "BTC/USDT", "timeframe": "1h"},
+        "input": {"symbol": "BTC/USDT", "timeframe": "1h", "user_id": "tester"},
     }
     (tmp_path / f"{run_id}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     (tmp_path / f"{run_id}.jsonl").write_text("", encoding="utf-8")
 
-    resp = asyncio.run(lab_routes.get_run(run_id))
+    resp = asyncio.run(lab_routes.get_run(run_id, "tester"))
 
     assert resp.backtest["combo_optimization"]["status"] == "completed"
     assert resp.backtest["combo_optimization"]["best_parameters"]["stop_loss"] == 0.02

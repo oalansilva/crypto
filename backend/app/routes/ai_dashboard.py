@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
-from datetime import UTC, datetime, timedelta
+from collections import OrderedDict
+from datetime import UTC, datetime
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.database import get_db
+from app.middleware.authMiddleware import get_current_user
 from app.models_signal_history import SignalHistory
+from app.services import sentiment_service
+from app.services.news_localization_service import localize_news_items
 
 router = APIRouter(prefix="/api/ai", tags=["ai-dashboard"])
 
@@ -52,6 +57,7 @@ class IndicatorCardPayload(BaseModel):
 class DashboardNewsItem(BaseModel):
     id: str
     title: str
+    summary: str
     source: str
     url: str
     published_at: datetime
@@ -85,122 +91,12 @@ class AIDashboardResponse(BaseModel):
     section_errors: dict[str, str] = Field(default_factory=dict)
 
 
-def _dt_ago(minutes: int) -> datetime:
-    return datetime.now(UTC) - timedelta(minutes=minutes)
-
-
 def _relative_time(value: datetime) -> str:
     minutes = max(1, int((datetime.now(UTC) - value).total_seconds() // 60))
     if minutes < 60:
         return f"Há {minutes} min"
     hours = minutes // 60
     return f"Há {hours}h"
-
-
-def _default_insights() -> list[AIInsight]:
-    return [
-        AIInsight(
-            id="rsi-btc-oversold",
-            title="RSI em sobrevenda",
-            description="BTC/USDT com RSI em 28 sugere possível ponto de entrada se o momentum confirmar continuação.",
-            tone="bullish",
-            asset="BTC/USDT",
-            badge="RSI 28",
-        ),
-        AIInsight(
-            id="macd-btc-bullish",
-            title="MACD bullish",
-            description="MACD virou para alta em BTC/USDT e indica retomada de momentum comprador no curto prazo.",
-            tone="bullish",
-            asset="BTC/USDT",
-            badge="4H",
-        ),
-        AIInsight(
-            id="fear-greed-extreme-fear",
-            title="Mercado em medo extremo",
-            description="Fear & Greed em 22 aponta aversão a risco elevada e possível janela de acumulação gradual.",
-            tone="warning",
-            badge="22",
-        ),
-        AIInsight(
-            id="rsi-eth-overbought",
-            title="ETH em sobrecompra",
-            description="ETH/USDT com RSI em 78 pede cautela com novas posições BUY e atenção a exaustão de preço.",
-            tone="danger",
-            asset="ETH/USDT",
-            badge="RSI 78",
-        ),
-    ]
-
-
-def _default_indicators() -> list[IndicatorCardPayload]:
-    return [
-        IndicatorCardPayload(
-            id="rsi",
-            title="RSI",
-            subtitle="Momentum de compra e venda",
-            readings=[
-                IndicatorReading(asset="BTC/USDT", value="28", status="Oversold", tone="bullish"),
-                IndicatorReading(asset="ETH/USDT", value="78", status="Overbought", tone="danger"),
-            ],
-        ),
-        IndicatorCardPayload(
-            id="macd",
-            title="MACD",
-            subtitle="Direção do cruzamento",
-            readings=[
-                IndicatorReading(asset="BTC/USDT", value="Bullish", status="Bullish", tone="bullish"),
-                IndicatorReading(asset="ETH/USDT", value="Neutral", status="Neutral", tone="neutral"),
-            ],
-        ),
-        IndicatorCardPayload(
-            id="bollinger",
-            title="Bollinger Bands",
-            subtitle="Posição dentro das bandas",
-            readings=[
-                IndicatorReading(asset="BTC/USDT", value="Normal", status="Normal", tone="neutral"),
-                IndicatorReading(asset="ETH/USDT", value="Normal", status="Normal", tone="neutral"),
-            ],
-        ),
-    ]
-
-
-def _default_recent_signals() -> list[DashboardSignalItem]:
-    return [
-        DashboardSignalItem(id="buy-btc", asset="BTC/USDT", action="BUY", confidence=92, reason="RSI sobrevenda + MACD bullish"),
-        DashboardSignalItem(id="sell-eth", asset="ETH/USDT", action="SELL", confidence=78, reason="RSI sobrecompra"),
-        DashboardSignalItem(id="hold-sol", asset="SOL/USDT", action="HOLD", confidence=65, reason="Sem confirmação de breakout"),
-    ]
-
-
-def _default_stats() -> DashboardStatsPayload:
-    return DashboardStatsPayload(hit_rate=72, total_signals=150, avg_confidence=78)
-
-
-def _default_news() -> list[DashboardNewsItem]:
-    seeds = [
-        ("btc-etf", "Bitcoin ultrapassa US$ 95.000 com influxo de ETFs acima de US$ 1 bi", "bullish", 12, "BTC/USDT"),
-        ("eth-pectra", "Ethereum Foundation reforça atualização Pectra para escalar a rede", "bullish", 35, "ETH/USDT"),
-        ("sol-etf", "SEC adia decisão sobre ETF de Solana e mantém mercado em compasso de espera", "neutral", 60, "SOL/USDT"),
-        ("stablecoin-liquidity", "Volume de stablecoins em exchanges recua e pressiona liquidez do mercado", "bearish", 120, None),
-        ("ada-roadmap", "Cardano divulga roadmap 2026 com Hydra e sidechains customizadas", "neutral", 180, "ADA/USDT"),
-    ]
-    items: list[DashboardNewsItem] = []
-    for item_id, title, sentiment, minutes_ago, asset in seeds:
-        published_at = _dt_ago(minutes_ago)
-        items.append(
-            DashboardNewsItem(
-                id=item_id,
-                title=title,
-                source="CoinGecko",
-                url="https://www.coingecko.com/",
-                published_at=published_at,
-                relative_time=_relative_time(published_at),
-                sentiment=sentiment,
-                related_asset=asset,
-            )
-        )
-    return items
 
 
 async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
@@ -219,6 +115,7 @@ async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
         raise RuntimeError("CoinGecko returned no news")
 
     news_items: list[DashboardNewsItem] = []
+    raw_news_for_localization: list[dict[str, str | None]] = []
     for item in data[:5]:
         title = str(item.get("title") or "")
         news_url = str(item.get("url") or item.get("news_site", ""))
@@ -248,10 +145,21 @@ async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
                 related_asset = f"{pair}/USDT"
                 break
 
+        news_item_id = f"cg-news-{news_id}"
+        raw_news_for_localization.append(
+            {
+                "id": news_item_id,
+                "title": title[:120],
+                "source": news_site,
+                "sentiment": sentiment,
+                "related_asset": related_asset,
+            }
+        )
         news_items.append(
             DashboardNewsItem(
-                id=f"cg-news-{news_id}",
+                id=news_item_id,
                 title=title[:120],  # Limit title length
+                summary="Resumo indisponível no momento.",
                 source=news_site,
                 url=news_url,
                 published_at=published_at,
@@ -261,32 +169,335 @@ async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
             )
         )
 
+    localized_items = await localize_news_items(raw_news_for_localization)
+    localized_by_id = {
+        str(item.get("id") or ""): item
+        for item in localized_items
+        if isinstance(item, dict)
+    }
+    for item in news_items:
+        localized = localized_by_id.get(item.id) or {}
+        item.title = str(localized.get("title_pt") or item.title)
+        item.summary = str(localized.get("summary_pt") or item.summary)
+
     return news_items
 
 
-def _load_stats_from_history() -> DashboardStatsPayload | None:
-    db: Session = SessionLocal()
-    try:
-        rows = db.query(SignalHistory).filter(SignalHistory.archived == "no").all()
-        if not rows:
-            return None
+def _empty_stats() -> DashboardStatsPayload:
+    return DashboardStatsPayload(hit_rate=0, total_signals=0, avg_confidence=0)
 
-        total = len(rows)
-        avg_confidence = round(sum(row.confidence for row in rows) / total)
-        triggered = [row for row in rows if row.status == "disparado"]
-        winners = [row for row in triggered if row.pnl is not None and row.pnl > 0]
-        hit_rate = round((len(winners) / len(triggered)) * 100) if triggered else 0
 
-        return DashboardStatsPayload(
-            hit_rate=hit_rate,
-            total_signals=total,
-            avg_confidence=avg_confidence,
-        )
-    except Exception as exc:
-        logger.warning("Failed to load AI dashboard stats from signal history: %s", exc)
+def _normalize_asset(asset: str | None) -> str:
+    raw = str(asset or "").strip().upper()
+    if not raw:
+        return "ATIVO"
+    if "/" in raw:
+        return raw
+    for suffix in ("USDT", "USDC", "BTC", "ETH", "BRL"):
+        if raw.endswith(suffix) and len(raw) > len(suffix):
+            return f"{raw[:-len(suffix)]}/{suffix}"
+    return raw
+
+
+def _parse_indicators(row: SignalHistory) -> dict | None:
+    if not row.indicators:
         return None
-    finally:
-        db.close()
+    try:
+        parsed = json.loads(row.indicators)
+    except Exception:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _rsi_status(value: float) -> tuple[str, str]:
+    if value <= 30:
+        return "Oversold", "bullish"
+    if value >= 70:
+        return "Overbought", "danger"
+    return "Neutral", "neutral"
+
+
+def _macd_status(value: str) -> tuple[str, str]:
+    normalized = str(value or "").strip().lower()
+    if normalized == "bullish":
+        return "Bullish", "bullish"
+    if normalized == "bearish":
+        return "Bearish", "danger"
+    return "Neutral", "neutral"
+
+
+def _bollinger_status(price: float | None, bands: dict | None) -> tuple[str, str]:
+    if not isinstance(bands, dict):
+        return "Indisponível", "neutral"
+
+    try:
+        lower = float(bands.get("lower"))
+        upper = float(bands.get("upper"))
+        middle = float(bands.get("middle"))
+    except Exception:
+        return "Indisponível", "neutral"
+
+    base_price = price if price is not None else middle
+    if base_price <= lower:
+        return "Banda inferior", "bullish"
+    if base_price >= upper:
+        return "Banda superior", "danger"
+    return "Faixa média", "neutral"
+
+
+def _fear_greed_label(value: int) -> tuple[str, str]:
+    if value <= 20:
+        return "Extreme Fear", "warning"
+    if value <= 40:
+        return "Fear", "warning"
+    if value < 60:
+        return "Neutral", "neutral"
+    if value < 80:
+        return "Greed", "bullish"
+    return "Extreme Greed", "bullish"
+
+
+def _load_user_history(db: Session, current_user_id: str, limit: int = 50) -> list[SignalHistory]:
+    return (
+        db.query(SignalHistory)
+        .filter(
+            SignalHistory.archived == "no",
+            SignalHistory.user_id == current_user_id,
+        )
+        .order_by(SignalHistory.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def _load_stats_from_history(db: Session, current_user_id: str) -> DashboardStatsPayload:
+    rows = (
+        db.query(SignalHistory)
+        .filter(
+            SignalHistory.archived == "no",
+            SignalHistory.user_id == current_user_id,
+        )
+        .all()
+    )
+    if not rows:
+        return _empty_stats()
+
+    total = len(rows)
+    avg_confidence = round(sum(row.confidence for row in rows) / total)
+    closed = [row for row in rows if row.status == "disparado" and row.pnl is not None]
+    winners = [row for row in closed if (row.pnl or 0) > 0]
+    hit_rate = round((len(winners) / len(closed)) * 100) if closed else 0
+    return DashboardStatsPayload(
+        hit_rate=hit_rate,
+        total_signals=total,
+        avg_confidence=avg_confidence,
+    )
+
+
+def _build_signal_reason(row: SignalHistory, indicators: dict | None) -> str:
+    reasons: list[str] = []
+    if indicators:
+        rsi_value = indicators.get("RSI")
+        if isinstance(rsi_value, (int, float)):
+            status, _tone = _rsi_status(float(rsi_value))
+            if status == "Oversold":
+                reasons.append(f"RSI {float(rsi_value):.1f} em sobrevenda")
+            elif status == "Overbought":
+                reasons.append(f"RSI {float(rsi_value):.1f} em sobrecompra")
+            else:
+                reasons.append(f"RSI {float(rsi_value):.1f} neutro")
+
+        macd_value = indicators.get("MACD")
+        if macd_value is not None:
+            status, _tone = _macd_status(str(macd_value))
+            reasons.append(f"MACD {status.lower()}")
+
+        bollinger = indicators.get("BollingerBands")
+        price_reference = row.entry_price or row.trigger_price or row.target_price
+        bollinger_status, _tone = _bollinger_status(price_reference, bollinger if isinstance(bollinger, dict) else None)
+        if bollinger_status != "Indisponível":
+            reasons.append(f"Bollinger em {bollinger_status.lower()}")
+
+    if not reasons:
+        return f"{row.type} com {row.confidence}% de confiança"
+    return " + ".join(reasons[:3])
+
+
+def _load_recent_signals_from_history(rows: list[SignalHistory]) -> list[DashboardSignalItem]:
+    items: list[DashboardSignalItem] = []
+    for row in rows[:5]:
+        indicators = _parse_indicators(row)
+        items.append(
+            DashboardSignalItem(
+                id=row.id,
+                asset=_normalize_asset(row.asset),
+                action=row.type,
+                confidence=row.confidence,
+                reason=_build_signal_reason(row, indicators),
+            )
+        )
+    return items
+
+
+def _build_indicator_cards(rows: list[SignalHistory]) -> list[IndicatorCardPayload]:
+    latest_by_asset: OrderedDict[str, tuple[SignalHistory, dict]] = OrderedDict()
+    for row in rows:
+        asset = _normalize_asset(row.asset)
+        if asset in latest_by_asset:
+            continue
+        indicators = _parse_indicators(row)
+        if indicators:
+            latest_by_asset[asset] = (row, indicators)
+        if len(latest_by_asset) >= 3:
+            break
+
+    rsi_readings: list[IndicatorReading] = []
+    macd_readings: list[IndicatorReading] = []
+    bollinger_readings: list[IndicatorReading] = []
+
+    for asset, (row, indicators) in latest_by_asset.items():
+        rsi_value = indicators.get("RSI")
+        if isinstance(rsi_value, (int, float)):
+            status, tone = _rsi_status(float(rsi_value))
+            rsi_readings.append(
+                IndicatorReading(
+                    asset=asset,
+                    value=f"{float(rsi_value):.1f}",
+                    status=status,
+                    tone=tone,
+                )
+            )
+
+        macd_value = indicators.get("MACD")
+        if macd_value is not None:
+            status, tone = _macd_status(str(macd_value))
+            macd_readings.append(
+                IndicatorReading(
+                    asset=asset,
+                    value=status,
+                    status=status,
+                    tone=tone,
+                )
+            )
+
+        bollinger = indicators.get("BollingerBands")
+        if isinstance(bollinger, dict):
+            price_reference = row.entry_price or row.trigger_price or row.target_price
+            status, tone = _bollinger_status(price_reference, bollinger)
+            bollinger_readings.append(
+                IndicatorReading(
+                    asset=asset,
+                    value=status,
+                    status=status,
+                    tone=tone,
+                )
+            )
+
+    cards: list[IndicatorCardPayload] = []
+    if rsi_readings:
+        cards.append(
+            IndicatorCardPayload(
+                id="rsi",
+                title="RSI",
+                subtitle="Leitura mais recente por ativo monitorado",
+                readings=rsi_readings,
+            )
+        )
+    if macd_readings:
+        cards.append(
+            IndicatorCardPayload(
+                id="macd",
+                title="MACD",
+                subtitle="Direção do momentum nas últimas entradas",
+                readings=macd_readings,
+            )
+        )
+    if bollinger_readings:
+        cards.append(
+            IndicatorCardPayload(
+                id="bollinger",
+                title="Bollinger Bands",
+                subtitle="Posição do preço dentro do canal",
+                readings=bollinger_readings,
+            )
+        )
+    return cards
+
+
+def _build_dynamic_insights(
+    *,
+    stats: DashboardStatsPayload,
+    fear_greed: FearGreedPayload,
+    indicators: list[IndicatorCardPayload],
+    recent_signals: list[DashboardSignalItem],
+    news: list[DashboardNewsItem],
+) -> list[AIInsight]:
+    insights: list[AIInsight] = []
+
+    if stats.total_signals == 0:
+        return [
+            AIInsight(
+                id="empty-history",
+                title="Sem histórico suficiente",
+                description="A dashboard está online, mas esta conta ainda não tem sinais salvos para gerar leituras técnicas personalizadas.",
+                tone="neutral",
+                badge="0 sinais",
+            )
+        ]
+
+    if recent_signals:
+        top_signal = max(recent_signals, key=lambda item: item.confidence)
+        insights.append(
+            AIInsight(
+                id=f"signal-{top_signal.id}",
+                title=f"Sinal mais forte: {top_signal.action}",
+                description=f"{top_signal.asset} lidera a fila com {top_signal.confidence}% de confiança. Motivo: {top_signal.reason}.",
+                tone="bullish" if top_signal.action == "BUY" else "danger" if top_signal.action == "SELL" else "warning",
+                asset=top_signal.asset,
+                badge=f"{top_signal.confidence}%",
+            )
+        )
+
+    for card in indicators:
+        extreme = next((reading for reading in card.readings if reading.status in {"Oversold", "Overbought", "Bullish", "Bearish", "Banda inferior", "Banda superior"}), None)
+        if not extreme:
+            continue
+        insights.append(
+            AIInsight(
+                id=f"{card.id}-{extreme.asset.lower().replace('/', '-')}",
+                title=f"{card.title} em destaque",
+                description=f"{extreme.asset} aparece com leitura {extreme.status.lower()} em {card.title}, com valor atual {extreme.value}.",
+                tone=extreme.tone,
+                asset=extreme.asset,
+                badge=extreme.value,
+            )
+        )
+        break
+
+    insights.append(
+        AIInsight(
+            id="fear-greed-live",
+            title=f"Sentimento agregado: {fear_greed.label}",
+            description=f"O índice atual está em {fear_greed.value}, refletindo o pulso consolidado de fear & greed, notícias e sentimento social.",
+            tone=fear_greed.tone,
+            badge=str(fear_greed.value),
+        )
+    )
+
+    if news:
+        headline = news[0]
+        insights.append(
+            AIInsight(
+                id=f"news-{headline.id}",
+                title="Notícia mais recente",
+                description=f"{headline.title} Fonte: {headline.source}, publicada {headline.relative_time.lower()}.",
+                tone=headline.sentiment if headline.sentiment in {"bullish", "bearish"} else "neutral",
+                asset=headline.related_asset,
+                badge=headline.source,
+            )
+        )
+
+    return insights[:4]
 
 
 @router.get(
@@ -295,33 +506,59 @@ def _load_stats_from_history() -> DashboardStatsPayload | None:
     summary="AI dashboard snapshot",
     description="Aggregates AI insights, sentiment, indicator cards, recent signals, performance metrics and CoinGecko-powered news into one frontend payload.",
 )
-async def get_ai_dashboard() -> AIDashboardResponse:
+async def get_ai_dashboard(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AIDashboardResponse:
     section_errors: dict[str, str] = {}
-
-    news = _default_news()
-    stats = _default_stats()
-
+    news: list[DashboardNewsItem] = []
+    stats = _empty_stats()
+    fear_greed = FearGreedPayload(value=50, label="Neutral", tone="neutral")
+    history_rows = _load_user_history(db, current_user_id)
+    recent_signals = _load_recent_signals_from_history(history_rows)
+    indicators = _build_indicator_cards(history_rows)
     news_task = asyncio.create_task(_fetch_coingecko_news())
-    stats_task = asyncio.create_task(asyncio.to_thread(_load_stats_from_history))
+    sentiment_task = asyncio.create_task(sentiment_service.get_market_sentiment())
 
-    news_result, stats_result = await asyncio.gather(news_task, stats_task, return_exceptions=True)
+    news_result, sentiment_result = await asyncio.gather(news_task, sentiment_task, return_exceptions=True)
 
     if isinstance(news_result, Exception):
-        section_errors["news"] = "CoinGecko indisponível, exibindo fallback local."
+        section_errors["news"] = "CoinGecko indisponível no momento."
     else:
         news = news_result
 
-    if isinstance(stats_result, Exception):
-        section_errors["stats"] = "Não foi possível ler histórico de sinais, exibindo métricas padrão."
-    elif stats_result is not None:
-        stats = stats_result
+    try:
+        stats = _load_stats_from_history(db, current_user_id)
+    except Exception as exc:
+        logger.warning("Failed to load AI dashboard stats from signal history: %s", exc)
+        section_errors["stats"] = "Não foi possível consolidar o histórico de sinais."
+
+    if isinstance(sentiment_result, Exception):
+        logger.warning("Failed to load AI dashboard sentiment: %s", sentiment_result)
+        section_errors["fear_greed"] = "Não foi possível atualizar o radar de sentimento."
+    else:
+        fear_greed_value = int(sentiment_result.score)
+        fear_greed_label, fear_greed_tone = _fear_greed_label(fear_greed_value)
+        fear_greed = FearGreedPayload(
+            value=fear_greed_value,
+            label=fear_greed_label,
+            tone=fear_greed_tone,
+        )
+
+    insights = _build_dynamic_insights(
+        stats=stats,
+        fear_greed=fear_greed,
+        indicators=indicators,
+        recent_signals=recent_signals,
+        news=news,
+    )
 
     return AIDashboardResponse(
         generated_at=datetime.now(UTC),
-        insights=_default_insights(),
-        fear_greed=FearGreedPayload(value=22, label="Extreme Fear", tone="warning"),
-        indicators=_default_indicators(),
-        recent_signals=_default_recent_signals(),
+        insights=insights,
+        fear_greed=fear_greed,
+        indicators=indicators,
+        recent_signals=recent_signals,
         stats=stats,
         news=news,
         section_errors=section_errors,

@@ -11,6 +11,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app.models import User
+from app.middleware.authMiddleware import is_admin_email
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ class TokenResponse(BaseModel):
     userId: str
     email: str
     name: str
+    isAdmin: bool
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -80,6 +82,7 @@ class MeResponse(BaseModel):
     id: str
     email: str
     name: str
+    isAdmin: bool
 
 
 # --- Helpers ---
@@ -163,6 +166,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         userId=str(user.id),
         email=user.email,
         name=user.name,
+        isAdmin=is_admin_email(user.email),
     )
 
 
@@ -206,7 +210,7 @@ def me(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
-    return MeResponse(id=str(user.id), email=user.email, name=user.name)
+    return MeResponse(id=str(user.id), email=user.email, name=user.name, isAdmin=is_admin_email(user.email))
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -235,4 +239,5 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
         userId=str(user.id),
         email=user.email,
         name=user.name,
+        isAdmin=is_admin_email(user.email),
     )

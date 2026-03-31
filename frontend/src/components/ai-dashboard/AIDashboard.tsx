@@ -52,6 +52,7 @@ export type AIDashboardStats = {
 export type AIDashboardNewsItem = {
   id: string
   title: string
+  summary: string
   source: string
   url: string
   published_at: string

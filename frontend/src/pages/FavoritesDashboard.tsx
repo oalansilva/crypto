@@ -7,6 +7,7 @@ import { AgentChatModal } from '../components/AgentChatModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
+import { useAuth } from '@/stores/authStore';
 
 import * as XLSX from 'xlsx';
 
@@ -28,6 +29,7 @@ interface FavoriteStrategy {
 const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
@@ -51,7 +53,7 @@ const FavoritesDashboard: React.FC = () => {
 
     // Fetch favorites
     const { data: favorites, isLoading } = useQuery({
-        queryKey: ['favorites'],
+        queryKey: ['favorites', user?.id ?? 'anonymous'],
         queryFn: async () => {
             const res = await authFetch(`${API_BASE_URL}/favorites/`);
             if (!res.ok) throw new Error('Failed to fetch favorites');
@@ -71,7 +73,7 @@ const FavoritesDashboard: React.FC = () => {
             if (!res.ok) throw new Error('Failed to delete');
         },
         onSuccess: (_, id) => {
-            queryClient.invalidateQueries({ queryKey: ['favorites'] });
+            queryClient.invalidateQueries({ queryKey: ['favorites', user?.id ?? 'anonymous'] });
             setSelectedIds(prev => prev.filter(sid => sid !== id));
         }
     });
@@ -88,7 +90,7 @@ const FavoritesDashboard: React.FC = () => {
             return res.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['favorites'] });
+            queryClient.invalidateQueries({ queryKey: ['favorites', user?.id ?? 'anonymous'] });
         }
     });
 

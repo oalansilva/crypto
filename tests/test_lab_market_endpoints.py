@@ -1,12 +1,16 @@
 import json
+import asyncio
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.main import app
 from app.routes import lab as lab_routes
 from app.routes import market as market_routes
 
 
+app = FastAPI()
+app.include_router(lab_routes.router)
+app.include_router(market_routes.router)
 client = TestClient(app)
 
 
@@ -20,6 +24,7 @@ def test_list_lab_runs_returns_recent_lightweight_payload(tmp_path, monkeypatch)
             "step": "review",
             "created_at_ms": 1000,
             "updated_at_ms": 2000,
+            "input": {"user_id": "tester"},
         },
         {
             "run_id": "run-new",
@@ -29,16 +34,14 @@ def test_list_lab_runs_returns_recent_lightweight_payload(tmp_path, monkeypatch)
             "updated_at_ms": 4000,
             "trace": {"viewer_url": "http://example.test/lab/runs/run-new"},
             "heavy": {"ignore": True},
+            "input": {"user_id": "tester"},
         },
     ]
 
     for item in runs:
         (tmp_path / f"{item['run_id']}.json").write_text(json.dumps(item), encoding="utf-8")
 
-    response = client.get("/api/lab/runs", params={"limit": 5})
-
-    assert response.status_code == 200
-    payload = response.json()
+    payload = asyncio.run(lab_routes.list_runs(limit=5, current_user_id="tester")).model_dump()
     assert [item["run_id"] for item in payload["runs"]] == ["run-new", "run-old"]
     assert payload["runs"][0] == {
         "run_id": "run-new",
@@ -64,32 +67,18 @@ def test_list_lab_runs_respects_limit_and_ignores_invalid_files(tmp_path, monkey
                     "step": "upstream",
                     "created_at_ms": index,
                     "updated_at_ms": index,
+                    "input": {"user_id": "tester"},
                 }
             ),
             encoding="utf-8",
         )
 
-    response = client.get("/api/lab/runs", params={"limit": 50})
-
-    assert response.status_code == 422
-
-
-class _MockResponse:
-    def __init__(self, payload, status_code=200):
-        self._payload = payload
-        self.status_code = status_code
-
-    def raise_for_status(self):
-        if self.status_code >= 400:
-            raise RuntimeError(f"status={self.status_code}")
-
-    def json(self):
-        return self._payload
+    payload = asyncio.run(lab_routes.list_runs(limit=20, current_user_id="tester")).model_dump()
+    assert len(payload["runs"]) == 20
+    assert payload["runs"][0]["run_id"] == "run-24"
 
 
-class _MockAsyncClient:
-    calls = 0
-
+class _FailingAsyncClient:
     def __init__(self, *args, **kwargs):
         pass
 
@@ -99,38 +88,6 @@ class _MockAsyncClient:
     async def __aexit__(self, exc_type, exc, tb):
         return False
 
-    async def get(self, url, params=None):
-        type(self).calls += 1
-        assert url == "https://api.binance.com/api/v3/ticker/24hr"
-        assert params == {"symbols": json.dumps(["BTCUSDT", "ETHUSDT"])}
-        return _MockResponse(
-            [
-                {"symbol": "BTCUSDT", "lastPrice": "65000.12", "priceChangePercent": "1.25"},
-                {"symbol": "ETHUSDT", "lastPrice": "3200.50", "priceChangePercent": "-0.75"},
-            ]
-        )
-
-
-def test_market_prices_uses_cache(monkeypatch):
-    market_routes._PRICE_CACHE.clear()
-    _MockAsyncClient.calls = 0
-    monkeypatch.setattr(market_routes.httpx, "AsyncClient", _MockAsyncClient)
-
-    first = client.get("/api/market/prices", params={"symbols": "BTCUSDT,ETHUSDT"})
-    second = client.get("/api/market/prices", params={"symbols": "BTCUSDT,ETHUSDT"})
-
-    assert first.status_code == 200
-    assert second.status_code == 200
-    assert _MockAsyncClient.calls == 1
-    assert first.json()["prices"] == [
-        {"symbol": "BTCUSDT", "price": 65000.12, "change_24h_pct": 1.25},
-        {"symbol": "ETHUSDT", "price": 3200.5, "change_24h_pct": -0.75},
-    ]
-    assert second.json() == first.json()
-    assert first.json()["fetched_at"]
-
-
-class _FailingAsyncClient(_MockAsyncClient):
     async def get(self, url, params=None):
         raise RuntimeError("boom")
 

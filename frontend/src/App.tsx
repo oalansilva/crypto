@@ -23,7 +23,9 @@ import SignalsHistoryPage from './pages/SignalsHistoryPage'
 import AIDashboardPage from './pages/AIDashboardPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import SystemPreferencesPage from './pages/SystemPreferencesPage'
 import { Toaster } from "@/components/ui/toaster"
+import { ProtectedRoute } from './components/ProtectedRoute'
 
 function PrototypeRedirect({ to }: { to: string }) {
   useEffect(() => {
@@ -80,6 +82,7 @@ function App() {
           <Route path="/lab/runs/:runId" element={<LabRunPage />} />
           <Route path="/external/balances" element={<ExternalBalancesPage />} />
           <Route path="/kanban" element={<KanbanPage />} />
+          <Route path="/system/preferences" element={<ProtectedRoute requireAdmin><SystemPreferencesPage /></ProtectedRoute>} />
         </Route>
       </Routes>
       <Toaster />

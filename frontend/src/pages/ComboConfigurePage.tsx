@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search, Pause, Square } from 'lucide-react'
 import { API_BASE_URL, apiUrl } from '../lib/apiBase'
 import { BackendLogViewer } from '../components/BackendLogViewer'
+import { authFetch } from '@/lib/authFetch'
 
 interface TemplateMetadata {
     name: string
@@ -285,7 +286,7 @@ export function ComboConfigurePage() {
                 existsUrl.searchParams.set('timeframe', timeframe)
                 existsUrl.searchParams.set('period_type', period)
                 existsUrl.searchParams.set('direction', direction)
-                const existsRes = await fetch(existsUrl.toString())
+                const existsRes = await authFetch(existsUrl.toString())
                 if (existsRes.ok) {
                     const { exists } = await existsRes.json()
                     if (exists) {
@@ -317,7 +318,7 @@ export function ComboConfigurePage() {
                 const name = `${result.template_name} - ${result.symbol} ${result.timeframe} (${new Date().toLocaleTimeString()})`
                 const baseParams = result.best_parameters ?? result.parameters ?? {}
                 const parameters = { ...baseParams, direction, ...(isUsStocksMarket ? { data_source: 'stooq' } : {}) }
-                const favRes = await fetch(`${API_BASE_URL}/favorites/`, {
+                const favRes = await authFetch(`${API_BASE_URL}/favorites/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

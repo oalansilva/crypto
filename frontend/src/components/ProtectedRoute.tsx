@@ -3,13 +3,14 @@ import { useAuth } from '@/stores/authStore'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  requireAdmin?: boolean
 }
 
 /**
  * Protege rotas que requerem autenticação.
  * Redireciona para /login se o usuário não estiver autenticado.
  */
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth()
 
   // Enquanto valida token, mostra loading
@@ -24,6 +25,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Não autenticado → redireciona para login
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (requireAdmin && !user.isAdmin) {
+    return <Navigate to="/" replace />
   }
 
   return <>{children}</>

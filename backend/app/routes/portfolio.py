@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.middleware.authMiddleware import get_current_user
 from app.services.binance_spot import BinanceConfigError, fetch_spot_balances_snapshot
+from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
@@ -167,7 +168,14 @@ async def get_portfolio_kpi(
     }
     """
     try:
-        balances_data = fetch_spot_balances_snapshot(min_usd=0.01)
+        cred = get_user_exchange_credential(db, current_user_id, BINANCE_PROVIDER)
+        if cred is None:
+            raise HTTPException(status_code=503, detail="Binance credentials not configured for this user")
+        balances_data = fetch_spot_balances_snapshot(
+            min_usd=0.01,
+            api_key=cred.api_key,
+            api_secret=cred.api_secret,
+        )
     except BinanceConfigError:
         raise HTTPException(status_code=503, detail="Binance credentials not configured")
     except Exception:

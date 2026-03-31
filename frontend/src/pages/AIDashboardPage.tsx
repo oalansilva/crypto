@@ -6,17 +6,20 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { useToast } from '@/components/ui/use-toast'
 import { apiUrl } from '@/lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
+import { useAuth } from '@/stores/authStore'
 
-function useAIDashboard() {
+function useAIDashboard(userId?: string) {
   return useQuery({
-    queryKey: ['ai-dashboard'],
+    queryKey: ['ai-dashboard', userId],
     queryFn: async () => {
-      const response = await fetch(apiUrl('/ai/dashboard').toString())
+      const response = await authFetch(apiUrl('/ai/dashboard').toString())
       if (!response.ok) {
         throw new Error(`Falha ao carregar AI Dashboard (${response.status})`)
       }
       return (await response.json()) as AIDashboardResponse
     },
+    enabled: Boolean(userId),
     staleTime: 60_000,
     refetchInterval: 120_000,
   })
@@ -24,7 +27,8 @@ function useAIDashboard() {
 
 export default function AIDashboardPage() {
   const { toast } = useToast()
-  const query = useAIDashboard()
+  const { user } = useAuth()
+  const query = useAIDashboard(user?.id)
 
   useEffect(() => {
     if (!query.error) return

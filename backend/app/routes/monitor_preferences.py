@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.middleware.authMiddleware import get_current_user
 from app.models import MonitorPreference
 
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
@@ -52,8 +53,11 @@ def _normalize_price_timeframe(symbol: str, timeframe: Optional[str]) -> str:
 
 
 @router.get("/preferences", response_model=Dict[str, MonitorPreferencePayload])
-def list_monitor_preferences(db: Session = Depends(get_db)):
-    rows = db.query(MonitorPreference).all()
+def list_monitor_preferences(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    rows = db.query(MonitorPreference).filter(MonitorPreference.user_id == current_user_id).all()
     return {
         row.symbol: {
             "in_portfolio": bool(row.in_portfolio),
@@ -69,6 +73,7 @@ def list_monitor_preferences(db: Session = Depends(get_db)):
 def update_monitor_preferences(
     payload: MonitorPreferenceUpdate,
     symbol: str = Path(..., description="Symbol (e.g. BTC/USDT or NVDA)"),
+    current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if (
@@ -89,11 +94,14 @@ def update_monitor_preferences(
 
     existing = (
         db.query(MonitorPreference)
-        .filter(MonitorPreference.symbol == normalized_symbol)
+        .filter(
+            MonitorPreference.user_id == current_user_id,
+            MonitorPreference.symbol == normalized_symbol,
+        )
         .first()
     )
     if not existing:
-        existing = MonitorPreference(symbol=normalized_symbol)
+        existing = MonitorPreference(user_id=current_user_id, symbol=normalized_symbol)
         db.add(existing)
 
     if payload.in_portfolio is not None:

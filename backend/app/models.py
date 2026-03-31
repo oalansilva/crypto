@@ -115,6 +115,7 @@ class FavoriteStrategy(Base):
     __tablename__ = "favorite_strategies"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     name = Column(String, nullable=False)
     
     # Context
@@ -185,6 +186,7 @@ class ComboTemplate(Base):
 class MonitorPreference(Base):
     __tablename__ = "monitor_preferences"
 
+    user_id = Column(String, primary_key=True)
     symbol = Column(String, primary_key=True, index=True)
     in_portfolio = Column(Boolean, nullable=False, default=False)
     card_mode = Column(String, nullable=False, default="price")
@@ -202,3 +204,23 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class UserExchangeCredential(Base):
+    __tablename__ = "user_exchange_credentials"
+
+    user_id = Column(String, primary_key=True)
+    provider = Column(String, primary_key=True)
+    api_key = Column(String, nullable=False)
+    api_secret = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SystemPreference(Base):
+    __tablename__ = "system_preferences"
+
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by_user_id = Column(String, nullable=True)
