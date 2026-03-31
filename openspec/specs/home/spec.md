@@ -11,19 +11,12 @@ The system MUST present a Home page that helps users quickly access the main wor
 - **THEN** the system MUST render a Home page with clear entrypoints to the main workflows
 
 ### Requirement: Home shows a Quick Actions section
-The Home page MUST provide a “Quick Actions” (or equivalent) section with shortcuts to the following destinations:
-- Favorites Dashboard
-- Monitor
-- Combo Strategies
-- Strategy Lab
-- Arbitrage
-- External Balances
-- Kanban
-- OpenSpec
+The Home page MUST provide shortcuts only to workflows that remain supported by the product and MUST stop exposing Strategy Lab as a destination.
 
 #### Scenario: User uses a Home shortcut
 - **WHEN** the user clicks a shortcut card/button on Home
-- **THEN** the system MUST navigate to the corresponding destination page
+- **THEN** the system MUST navigate only to still-supported destinations
+- **AND** no shortcut to Strategy Lab is rendered
 
 ### Requirement: Home provides basic product orientation
 The Home page MUST include short, non-technical copy that explains what the app is for and suggests a simple starting path.
