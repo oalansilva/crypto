@@ -19,6 +19,8 @@ data/*.parquet
 # IDE
 .vscode/
 .idea/
+.cursor/
+.opencode/
 *.swp
 *.swo
 
