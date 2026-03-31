@@ -15,7 +15,7 @@ from app.database import get_db
 from app.middleware.authMiddleware import get_current_user
 from app.models_signal_history import SignalHistory
 from app.services import sentiment_service
-from app.services.news_localization_service import localize_news_items
+from app.services.news_localization_service import get_cached_localized_news, schedule_news_localization_refresh
 
 router = APIRouter(prefix="/api/ai", tags=["ai-dashboard"])
 
@@ -100,7 +100,7 @@ def _relative_time(value: datetime) -> str:
 
 
 async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
-    """Fetch real crypto news from CoinGecko News API (aggregates multiple sources)."""
+    """Fetch real crypto news from CoinGecko without blocking on MiniMax localization."""
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
             response = await client.get(f"{COINGECKO_NEWS_URL}?per_page=5&page=1")
@@ -169,17 +169,13 @@ async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
             )
         )
 
-    localized_items = await localize_news_items(raw_news_for_localization)
-    localized_by_id = {
-        str(item.get("id") or ""): item
-        for item in localized_items
-        if isinstance(item, dict)
-    }
+    localized_by_id, _is_fresh = get_cached_localized_news(raw_news_for_localization)
     for item in news_items:
         localized = localized_by_id.get(item.id) or {}
         item.title = str(localized.get("title_pt") or item.title)
         item.summary = str(localized.get("summary_pt") or item.summary)
 
+    schedule_news_localization_refresh(raw_news_for_localization)
     return news_items
 
 

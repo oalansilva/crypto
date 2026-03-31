@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models_signal_history import SAO_PAULO_TZ, SignalHistory, sao_paulo_now
 from app.schemas.signal import RiskProfile, Signal, SignalListResponse, SignalType
-from app.middleware.authMiddleware import get_current_user
+from app.middleware.authMiddleware import get_current_user, get_current_user_optional
 from app.services import binance_service, sentiment_service
 
 router = APIRouter(prefix="/api/signals", tags=["signals"])
@@ -153,6 +153,7 @@ async def get_sentiment():
     description="Returns BUY/SELL/HOLD signals generated from Binance OHLCV data and temporary heuristics until Card #55 ships the final ML ensemble.",
 )
 async def get_signals(
+    current_user_id: str | None = Depends(get_current_user_optional),
     type: SignalType | None = Query(default=None, description="Filter by BUY, SELL or HOLD"),
     confidence_min: int | None = Query(default=None, ge=0, le=100, description="Minimum confidence threshold"),
     asset: str | None = Query(default=None, description="Binance symbol, e.g. BTCUSDT"),
@@ -167,6 +168,7 @@ async def get_signals(
         risk_profile=risk_profile,
         limit=limit,
         sentiment_score=sentiment.score,
+        user_id=current_user_id,
     )
 
 
@@ -176,8 +178,8 @@ async def get_signals(
     summary="Latest high-confidence signals",
     description="Returns the latest five signals with confidence >= 70 across default assets and all supported risk profiles.",
 )
-async def get_latest_signals():
-    return await binance_service.get_latest_high_confidence_signals()
+async def get_latest_signals(current_user_id: str | None = Depends(get_current_user_optional)):
+    return await binance_service.get_latest_high_confidence_signals(user_id=current_user_id)
 
 
 # IMPORTANT: /history routes must come BEFORE /{signal_id} to avoid FastAPI matching "history" as a signal_id

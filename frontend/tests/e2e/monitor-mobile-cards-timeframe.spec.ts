@@ -1,5 +1,20 @@
 import { expect, test } from '@playwright/test'
 
+const AUTH_USER = {
+  id: 'test-user',
+  email: 'test@example.com',
+  name: 'Test User',
+  isAdmin: false,
+}
+
+async function mockAuthenticatedSession(page: any) {
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('auth_access_token', 'test-access-token')
+    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token')
+    window.localStorage.setItem('auth_user', JSON.stringify(user))
+  }, AUTH_USER)
+}
+
 const FAVORITES_PAYLOAD = [
   {
     id: 1,
@@ -36,6 +51,8 @@ const OPPORTUNITIES_PAYLOAD = [
 ]
 
 async function setupApiMocks(page: any) {
+  await mockAuthenticatedSession(page)
+
   await page.route('**/*', (route: any) => {
     const url = new URL(route.request().url())
     if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
@@ -43,6 +60,14 @@ async function setupApiMocks(page: any) {
     }
     return route.abort('blockedbyclient')
   })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
 
   await page.route('**/api/favorites/', (route: any) =>
     route.fulfill({
@@ -65,7 +90,8 @@ async function setupApiMocks(page: any) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        NVDA: { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+        __global__: { in_portfolio: false, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
+        NVDA: { in_portfolio: true, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
       }),
     })
   )
@@ -95,4 +121,186 @@ test('monitor mobile uses single cards view and stock timeframe buttons are cons
   await expect(page.getByTestId('timeframe-toggle-nvda-15m')).toBeDisabled()
   await expect(page.getByTestId('timeframe-toggle-nvda-1h')).toBeDisabled()
   await expect(page.getByTestId('timeframe-toggle-nvda-4h')).toBeDisabled()
+})
+
+test('monitor card keeps strategy timeframe visible when chart timeframe differs', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 2,
+          name: 'BTC Trend',
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          strategy_name: 'multi_ma_crossover',
+          parameters: {},
+          metrics: {},
+          created_at: '2025-01-01T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 2,
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          template_name: 'multi_ma_crossover',
+          name: 'BTC Trend',
+          notes: '',
+          tier: 1,
+          parameters: { ema_short: 18, sma_medium: 20, sma_long: 35 },
+          is_holding: false,
+          distance_to_next_status: 0.5,
+          next_status_label: 'entry',
+          status: 'WAIT',
+          message: 'Waiting for entry',
+          last_price: 67915.02,
+          timestamp: '2025-01-01T00:00:00Z',
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
+        'BTC/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1h', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.route('**/api/market/candles**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candles: [
+          { timestamp_utc: '2025-01-01T00:00:00Z', open: 100, high: 102, low: 99, close: 101, volume: 1000 },
+          { timestamp_utc: '2025-01-01T01:00:00Z', open: 101, high: 103, low: 100, close: 102, volume: 1100 },
+        ],
+      }),
+    })
+  )
+
+  await page.goto('/monitor')
+
+  const card = page.getByTestId('monitor-card-btc-usdt')
+  await expect(card).toBeVisible()
+  await expect(card.getByTitle('Strategy timeframe')).toHaveText('1d')
+  await expect(card.getByTitle('Price chart timeframe')).toHaveText('chart 1h')
+})
+
+test('monitor renders exited strategies separately from stopped out ones', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 3,
+          name: 'BTC Exit',
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          strategy_name: 'multi_ma_crossover',
+          parameters: {},
+          metrics: {},
+          created_at: '2025-01-01T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 3,
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          template_name: 'multi_ma_crossover',
+          name: 'BTC Exit',
+          notes: '',
+          tier: 1,
+          parameters: { ema_short: 18, sma_medium: 20, sma_long: 35 },
+          is_holding: false,
+          distance_to_next_status: 0.38,
+          next_status_label: 'entry',
+          status: 'EXITED',
+          message: 'Saida confirmada pela regra de exit. Aguardando reentrada.',
+          last_price: 67915.02,
+          timestamp: '2025-01-01T00:00:00Z',
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
+        'BTC/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.goto('/monitor')
+
+  await expect(page.getByText('Saiu Pela Regra')).toBeVisible()
+  await expect(page.getByText('Saiu no Stop')).toHaveCount(0)
+  await expect(page.getByText('EXITED')).toBeVisible()
 })

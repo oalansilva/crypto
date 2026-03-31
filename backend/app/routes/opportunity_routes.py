@@ -3,12 +3,17 @@ from fastapi import Depends
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import logging
+import threading
+import time
 
 from app.services.opportunity_service import OpportunityService
 from app.middleware.authMiddleware import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/opportunities", tags=["opportunities"])
+_CACHE_TTL_SECONDS = 30.0
+_CACHE_LOCK = threading.Lock()
+_OPPORTUNITIES_CACHE: dict[tuple[str, str | None], dict[str, Any]] = {}
 
 class OpportunityResponse(BaseModel):
     id: int
@@ -39,9 +44,33 @@ class OpportunityResponse(BaseModel):
 
 from fastapi import Query
 
+
+def _read_cached_opportunities(user_id: str, tier: str | None) -> list[dict[str, Any]] | None:
+    now = time.time()
+    key = (user_id, tier)
+    with _CACHE_LOCK:
+        cached = _OPPORTUNITIES_CACHE.get(key)
+        if not cached:
+            return None
+        if float(cached.get("expires_at") or 0) <= now:
+            _OPPORTUNITIES_CACHE.pop(key, None)
+            return None
+        return list(cached.get("payload") or [])
+
+
+def _write_cached_opportunities(user_id: str, tier: str | None, payload: list[dict[str, Any]]) -> None:
+    key = (user_id, tier)
+    with _CACHE_LOCK:
+        _OPPORTUNITIES_CACHE[key] = {
+            "payload": list(payload),
+            "expires_at": time.time() + _CACHE_TTL_SECONDS,
+        }
+
+
 @router.get("/", response_model=List[OpportunityResponse])
 async def get_opportunities(
     tier: Optional[str] = Query(None, description="Filter by tier(s). E.g. '1', '1,2', 'none' for null tier, 'all' for no filter"),
+    refresh: bool = Query(False, description="Bypass short-lived cache and recompute opportunities."),
     current_user_id: str = Depends(get_current_user),
 ):
     """
@@ -53,8 +82,14 @@ async def get_opportunities(
     Returns opportunities sorted by Signal Priority (SIGNAL > NEAR > NEUTRAL).
     """
     try:
+        if not refresh:
+            cached = _read_cached_opportunities(current_user_id, tier)
+            if cached is not None:
+                return cached
         service = OpportunityService()
-        return service.get_opportunities(user_id=current_user_id, tier_filter=tier)
+        payload = service.get_opportunities(user_id=current_user_id, tier_filter=tier)
+        _write_cached_opportunities(current_user_id, tier, payload)
+        return payload
     except Exception as e:
         logger.error(f"Error getting opportunities: {e}")
         raise HTTPException(status_code=500, detail=str(e))

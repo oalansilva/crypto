@@ -562,6 +562,7 @@ class ComboStrategy:
 
         # Initialize signal column
         df['signal'] = 0
+        df['signal_reason'] = ''
 
         # ---------------------------------------------------------------------
         # OPTIMIZATION: Vectorized Logic Evaluation
@@ -598,6 +599,7 @@ class ComboStrategy:
 
         # Output signal arrays
         signals = np.zeros(len(df), dtype=int)
+        signal_reasons = np.full(len(df), '', dtype=object)
 
         stop_loss_decimal = self.stop_loss
 
@@ -605,6 +607,7 @@ class ComboStrategy:
             # Apply confirmed signals from Previous Candle
             if pending_entry and not in_position:
                 signals[i] = 1
+                signal_reasons[i] = 'entry'
                 in_position = True
                 entry_price = float(open_arr[i])
                 pending_entry = False
@@ -612,6 +615,7 @@ class ComboStrategy:
 
             if pending_exit and in_position:
                 signals[i] = -1
+                signal_reasons[i] = 'exit_logic'
                 in_position = False
                 entry_price = None
                 pending_exit = False
@@ -624,6 +628,7 @@ class ComboStrategy:
 
                 if low_pnl <= -stop_loss_decimal:
                     signals[i] = -1
+                    signal_reasons[i] = 'stop_loss'
                     in_position = False
                     entry_price = None
                     pending_exit = False
@@ -646,6 +651,7 @@ class ComboStrategy:
 
         # Write back results
         df['signal'] = signals
+        df['signal_reason'] = signal_reasons
         return df
 
     def get_indicator_columns(self) -> List[str]:

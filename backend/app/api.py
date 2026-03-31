@@ -1,12 +1,14 @@
 # file: backend/app/api.py
 import json
 import os
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
-from typing import List
+from typing import Any, Dict, List, Tuple
 
 from app.schemas.backtest import PresetResponse
 from app.services.market_data_providers import (
@@ -34,6 +36,9 @@ _DEFAULT_HISTORY_DAYS = {
     "4h": 365,
     "1d": 400,
 }
+_CANDLES_CACHE_TTL_SECONDS = 120.0
+_CANDLES_CACHE_LOCK = threading.Lock()
+_CANDLES_CACHE: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
 
 
 @router.get("/health")
@@ -239,6 +244,28 @@ def _normalize_candles_frame(df, limit: int):
     return candles
 
 
+def _read_candles_cache(symbol: str, timeframe: str, limit: int) -> Dict[str, Any] | None:
+    now = time.time()
+    key = (symbol, timeframe, limit)
+    with _CANDLES_CACHE_LOCK:
+        cached = _CANDLES_CACHE.get(key)
+        if not cached:
+            return None
+        if float(cached.get("expires_at") or 0) <= now:
+            _CANDLES_CACHE.pop(key, None)
+            return None
+        return dict(cached.get("payload") or {})
+
+
+def _write_candles_cache(symbol: str, timeframe: str, limit: int, payload: Dict[str, Any]) -> None:
+    key = (symbol, timeframe, limit)
+    with _CANDLES_CACHE_LOCK:
+        _CANDLES_CACHE[key] = {
+            "payload": dict(payload),
+            "expires_at": time.time() + _CANDLES_CACHE_TTL_SECONDS,
+        }
+
+
 @router.get("/market/candles")
 async def get_market_candles(
     symbol: str = Query(..., description="Ticker or pair (e.g. NVDA or BTC/USDT)"),
@@ -252,6 +279,9 @@ async def get_market_candles(
     try:
         asset_type = _classify_asset(raw_symbol)
         tf = _validate_market_timeframe(asset_type, timeframe)
+        cached = _read_candles_cache(raw_symbol, tf, limit)
+        if cached is not None:
+            return cached
         since_str = _ui_default_since_str(tf, limit=limit)
 
         data_source = ""
@@ -283,7 +313,7 @@ async def get_market_candles(
             raise ValueError("Stocks currently support only timeframe='1d'.")
 
         candles = _normalize_candles_frame(df, limit=limit)
-        return {
+        payload = {
             "symbol": raw_symbol,
             "asset_type": asset_type,
             "timeframe": tf,
@@ -292,6 +322,8 @@ async def get_market_candles(
             "count": len(candles),
             "candles": candles,
         }
+        _write_candles_cache(raw_symbol, tf, limit, payload)
+        return payload
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except HTTPException:

@@ -419,6 +419,7 @@ async def build_signal_feed(
     risk_profile: RiskProfile = RiskProfile.moderate,
     limit: int = 20,
     sentiment_score: int | float | None = None,
+    user_id: str | None = None,
 ) -> SignalListResponse:
     assets = await _normalize_assets(asset)
     all_usdt_pairs = await _get_all_usdt_pairs()
@@ -444,9 +445,10 @@ async def build_signal_feed(
                 sentiment_score=sentiment_score,
             )
             signals.append(signal)
-            # Save to history (fire-and-forget in background thread)
-            from app.routes.signals import _save_signal_to_history
-            threading.Thread(target=_save_signal_to_history, args=(signal,), daemon=True).start()
+            if user_id:
+                # Persist only for authenticated user-scoped requests.
+                from app.routes.signals import _save_signal_to_history
+                threading.Thread(target=_save_signal_to_history, args=(signal, user_id), daemon=True).start()
         except Exception as exc:
             logger.warning("Failed to build signal for %s: %s", current_asset, exc)
             continue
@@ -485,11 +487,19 @@ async def get_signal_detail(signal_id: str) -> Signal:
     raise KeyError(signal_id)
 
 
-async def get_latest_high_confidence_signals() -> SignalListResponse:
+async def get_latest_high_confidence_signals(user_id: str | None = None) -> SignalListResponse:
     all_pairs = await _get_all_usdt_pairs()
     signal_limit = min(150, len(all_pairs))
     feeds = await asyncio.gather(
-        *(build_signal_feed(risk_profile=risk_profile, confidence_min=70, limit=signal_limit) for risk_profile in RiskProfile)
+        *(
+            build_signal_feed(
+                risk_profile=risk_profile,
+                confidence_min=70,
+                limit=signal_limit,
+                user_id=user_id,
+            )
+            for risk_profile in RiskProfile
+        )
     )
 
     signals: list[Signal] = []

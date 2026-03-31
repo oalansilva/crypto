@@ -6,6 +6,7 @@ from uuid import uuid4
 import httpx
 from fastapi import FastAPI, Request
 
+from app.middleware.authMiddleware import get_current_user_optional
 from app.routes.signals import router as signals_router
 from app.schemas.signal import BollingerBandsPayload, RiskProfile, Signal, SignalIndicators, SignalType
 from app.services import binance_service
@@ -48,6 +49,18 @@ async def _dummy_klines(asset: str, interval: str = "1h", limit: int = 120):
     return {"candles": [{"open_time": datetime.now(UTC), "close": 100.0}], "cached_at": datetime.now(UTC), "is_stale": False}
 
 
+async def _dummy_pairs(*_args, **_kwargs):
+    return ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+
+async def _dummy_single_pair(*_args, **_kwargs):
+    return ["BTCUSDT"]
+
+
+async def _dummy_two_pairs(*_args, **_kwargs):
+    return ["BTCUSDT", "ETHUSDT"]
+
+
 async def test_signals_list_filters_threshold_and_adds_disclaimer(monkeypatch):
     app = _build_test_app()
 
@@ -61,6 +74,7 @@ async def test_signals_list_filters_threshold_and_adds_disclaimer(monkeypatch):
 
     monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
     monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
+    monkeypatch.setattr(binance_service, "_get_all_usdt_pairs", _dummy_pairs)
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -94,6 +108,7 @@ async def test_signals_latest_returns_only_high_confidence(monkeypatch):
 
     monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
     monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
+    monkeypatch.setattr(binance_service, "_get_all_usdt_pairs", _dummy_pairs)
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -114,6 +129,7 @@ async def test_signals_detail_returns_cached_signal(monkeypatch):
 
     monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
     monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
+    monkeypatch.setattr(binance_service, "_get_all_usdt_pairs", _dummy_single_pair)
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -123,3 +139,46 @@ async def test_signals_detail_returns_cached_signal(monkeypatch):
 
     assert detail_response.status_code == 200, detail_response.text
     assert detail_response.json()["id"] == signal_id
+
+
+async def test_signals_list_only_persists_history_for_authenticated_user(monkeypatch):
+    app = _build_test_app()
+
+    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles, sentiment_score=None):
+        return _make_signal(asset, SignalType.BUY, 88, risk_profile)
+
+    persisted_calls: list[tuple[str, str | None]] = []
+
+    class _FakeThread:
+        def __init__(self, *, target, args=(), daemon=None):
+            self._target = target
+            self._args = args
+
+        def start(self):
+            signal = self._args[0]
+            user_id = self._args[1] if len(self._args) > 1 else None
+            persisted_calls.append((signal.id, user_id))
+
+    monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
+    monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
+    monkeypatch.setattr(binance_service.threading, "Thread", _FakeThread)
+    monkeypatch.setattr(binance_service, "_get_all_usdt_pairs", _dummy_two_pairs)
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/api/signals?confidence_min=0&asset=BTCUSDT")
+
+    assert response.status_code == 200, response.text
+    assert persisted_calls == []
+
+    app.dependency_overrides[get_current_user_optional] = lambda: "user-123"
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.get("/api/signals?confidence_min=0&asset=ETHUSDT")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200, response.text
+    assert len(persisted_calls) == 1
+    assert persisted_calls[0][1] == "user-123"

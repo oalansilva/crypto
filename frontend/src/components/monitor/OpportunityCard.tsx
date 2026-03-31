@@ -18,7 +18,7 @@ interface OpportunityCardProps {
 }
 
 const PRICE_TIMEFRAMES: MonitorPriceTimeframe[] = ['15m', '1h', '4h', '1d'];
-const CANDLE_LIMIT = '120';
+const CANDLE_LIMIT = '60';
 const candlesCache = new Map<string, MarketCandle[]>();
 const inflightBySymbol = new Map<string, AbortController>();
 
@@ -56,6 +56,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const {
         symbol,
         name,
+        timeframe,
         is_holding,
         distance_to_next_status,
         next_status_label,
@@ -73,13 +74,32 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const [candles, setCandles] = React.useState<MarketCandle[]>([]);
     const [candlesLoading, setCandlesLoading] = React.useState(false);
     const [candlesError, setCandlesError] = React.useState<string | null>(null);
+    const cardRef = React.useRef<HTMLDivElement | null>(null);
+    const [isNearViewport, setIsNearViewport] = React.useState(false);
+    const [showChart, setShowChart] = React.useState(false);
 
     React.useEffect(() => {
         setNotesValue(opportunity.notes || '');
     }, [opportunity.notes]);
 
     React.useEffect(() => {
-        if (!isPriceMode) {
+        const node = cardRef.current;
+        if (!node) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (!entries[0]?.isIntersecting) return;
+                setIsNearViewport(true);
+                observer.disconnect();
+            },
+            { root: null, rootMargin: '300px', threshold: 0.01 }
+        );
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+
+    React.useEffect(() => {
+        if (!isPriceMode || !isNearViewport || !showChart) {
             setCandlesError(null);
             setCandlesLoading(false);
             return;
@@ -143,7 +163,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             }
             controller.abort();
         };
-    }, [isPriceMode, symbol, effectiveTimeframe]);
+    }, [isNearViewport, isPriceMode, showChart, symbol, effectiveTimeframe]);
 
     const formattedPrice = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -165,8 +185,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
     const status = opportunity.status || (is_holding ? 'HOLD' : 'WAIT');
     const isStoppedOut = status === 'STOPPED_OUT';
+    const isExited = status === 'EXITED';
     const isMissedEntry = status === 'MISSED_ENTRY';
-    const isWait = !is_holding && !isStoppedOut && !isMissedEntry;
+    const isWait = !is_holding && !isStoppedOut && !isExited && !isMissedEntry;
     const tierStyles = getTierStyles(opportunity.tier);
 
     let statusBadge = 'WAIT';
@@ -187,6 +208,12 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         borderColor = 'border-l-red-600 border-l-4';
         cardBgColor = 'bg-red-50 dark:bg-red-900/40 border-red-400 dark:border-red-600';
         holdingIndicator = 'ring-2 ring-red-400 shadow-lg shadow-red-500/30';
+    } else if (isExited) {
+        statusBadge = 'EXITED';
+        badgeColor = "bg-sky-600 text-white border-sky-600 font-bold shadow-md";
+        borderColor = 'border-l-sky-600 border-l-4';
+        cardBgColor = 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700';
+        holdingIndicator = 'ring-2 ring-sky-400 shadow-lg shadow-sky-500/20';
     } else if (isMissedEntry) {
         statusBadge = 'MISSED';
         badgeColor = "bg-yellow-500 text-white border-yellow-500 font-bold shadow-md";
@@ -212,6 +239,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(22, 163, 74)' }
         : isStoppedOut
             ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(220, 38, 38)' }
+            : isExited
+                ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(2, 132, 199)' }
             : isMissedEntry
                 ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(234, 179, 8)' }
                 : isWait && tierStyles
@@ -222,6 +251,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
     return (
         <Card
+            ref={cardRef}
             className={`${borderColor} ${cardBgColor} ${holdingIndicator} hover:shadow-lg transition-all hover:scale-[1.02] relative`}
             style={cardStyle}
             data-testid={`monitor-card-${symbolTestKey}`}
@@ -231,6 +261,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <CardTitle className={`text-xl font-bold flex items-center gap-2 ${
                         is_holding ? 'text-green-700 dark:text-green-300' :
                         isStoppedOut ? 'text-red-700 dark:text-red-300' :
+                        isExited ? 'text-sky-700 dark:text-sky-300' :
                         isMissedEntry ? 'text-yellow-700 dark:text-yellow-300' :
                         'text-[var(--monitor-text)]'
                     }`}>
@@ -238,7 +269,20 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             <span className={`w-2 h-2 rounded-full ${tierStyles.dot} ring-1 ${tierStyles.ring} flex-shrink-0`} title={tierStyles.label} />
                         )}
                         <span className="truncate">{symbol}</span>
-                        <span className="text-sm font-normal text-[var(--monitor-muted)] bg-[var(--monitor-surface)] border border-[var(--monitor-border)] px-2 py-1 rounded">{effectiveTimeframe}</span>
+                        <span
+                            className="text-sm font-normal text-[var(--monitor-muted)] bg-[var(--monitor-surface)] border border-[var(--monitor-border)] px-2 py-1 rounded"
+                            title="Strategy timeframe"
+                        >
+                            {timeframe}
+                        </span>
+                        {isPriceMode && effectiveTimeframe !== timeframe ? (
+                            <span
+                                className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-2 py-1 rounded"
+                                title="Price chart timeframe"
+                            >
+                                chart {effectiveTimeframe}
+                            </span>
+                        ) : null}
                     </CardTitle>
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[220px] font-medium">
                         {name || opportunity.template_name}
@@ -311,10 +355,23 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             className="relative p-2 bg-gray-100 dark:bg-gray-800 rounded-md text-xs border border-gray-300 dark:border-gray-600 min-h-[80px]"
                             data-testid={`candles-chart-area-${symbolTestKey}`}
                         >
-                            {candlesError ? <span className="text-red-600 dark:text-red-300">{candlesError}</span> : null}
-                            {!candlesError && candles.length === 0 ? <span>No candle data.</span> : null}
-                            {!candlesError && candles.length > 0 ? <MiniCandlesChart candles={candles} /> : null}
-                            {candlesLoading ? (
+                            {!showChart ? (
+                                <div className="flex min-h-[64px] items-center justify-between gap-3">
+                                    <span className="text-slate-600 dark:text-slate-300">Gráfico sob demanda</span>
+                                    <button
+                                        type="button"
+                                        className="rounded-md border border-blue-500 bg-blue-600 px-2 py-1 text-xs font-medium text-white"
+                                        onClick={() => setShowChart(true)}
+                                        data-testid={`load-chart-${symbolTestKey}`}
+                                    >
+                                        Carregar gráfico
+                                    </button>
+                                </div>
+                            ) : null}
+                            {showChart && candlesError ? <span className="text-red-600 dark:text-red-300">{candlesError}</span> : null}
+                            {showChart && !candlesError && candles.length === 0 && !candlesLoading ? <span>No candle data.</span> : null}
+                            {showChart && !candlesError && candles.length > 0 ? <MiniCandlesChart candles={candles} /> : null}
+                            {showChart && candlesLoading ? (
                                 <div
                                     className="absolute top-2 right-2 inline-flex items-center gap-1 rounded bg-slate-900/75 px-2 py-1 text-[10px] font-medium text-white pointer-events-none"
                                     data-testid={`candles-loading-${symbolTestKey}`}

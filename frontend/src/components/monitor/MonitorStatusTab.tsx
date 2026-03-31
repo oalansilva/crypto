@@ -41,19 +41,11 @@ export const MonitorStatusTab: React.FC = () => {
 
     const fetchMonitorContext = async () => {
         try {
-            const [favoritesResponse, preferencesResponse] = await Promise.all([
-                authFetch(`${API_BASE_URL}/favorites/`),
-                authFetch(`${API_BASE_URL}/monitor/preferences`),
-            ]);
-
-            if (!favoritesResponse.ok) {
-                throw new Error(`Failed to load favorites (${favoritesResponse.status})`);
-            }
+            const preferencesResponse = await authFetch(`${API_BASE_URL}/monitor/preferences`);
             if (!preferencesResponse.ok) {
                 throw new Error(`Failed to load monitor preferences (${preferencesResponse.status})`);
             }
 
-            await favoritesResponse.json();
             const preferencesPayload = await preferencesResponse.json();
             if (typeof preferencesPayload === 'object' && preferencesPayload) {
                 const normalized: Record<string, MonitorPreference> = {};
@@ -84,7 +76,7 @@ export const MonitorStatusTab: React.FC = () => {
         }
     };
 
-    const fetchOpportunities = async (tier?: TierFilter) => {
+    const fetchOpportunities = async (tier?: TierFilter, options?: { refresh?: boolean }) => {
         setLoading(true);
         try {
             const tierParam = tier || tierFilter;
@@ -100,7 +92,8 @@ export const MonitorStatusTab: React.FC = () => {
             }
 
             const baseUrl = import.meta.env.VITE_API_URL || "/api";
-            const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}`;
+            const refreshParam = options?.refresh ? '&refresh=true' : '';
+            const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}${refreshParam}`;
             const response = await authFetch(url);
             if (!response.ok) throw new Error('Failed to fetch opportunities');
             const data = await response.json();
@@ -270,22 +263,24 @@ export const MonitorStatusTab: React.FC = () => {
 
     const holding = dedupedOpportunities.filter(o => o.is_holding);
     const stoppedOut = dedupedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT');
+    const exited = dedupedOpportunities.filter(o => !o.is_holding && o.status === 'EXITED');
     const missedEntry = dedupedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY');
-    const waiting = dedupedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'MISSED_ENTRY');
+    const waiting = dedupedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'EXITED' && o.status !== 'MISSED_ENTRY');
 
-    type SectionKey = 'holding' | 'stoppedOut' | 'missedEntry' | 'waiting';
+    type SectionKey = 'holding' | 'stoppedOut' | 'exited' | 'missedEntry' | 'waiting';
     const orderedCards = useMemo(() => {
         const withSection = (arr: Opportunity[], s: SectionKey) =>
             arr.map((opp) => ({ opp, section: s }));
         return [
             ...withSection(holding, 'holding'),
             ...withSection(stoppedOut, 'stoppedOut'),
+            ...withSection(exited, 'exited'),
             ...withSection(missedEntry, 'missedEntry'),
             ...withSection(waiting, 'waiting'),
         ];
-    }, [holding, stoppedOut, missedEntry, waiting]);
+    }, [holding, stoppedOut, exited, missedEntry, waiting]);
 
-    const { visibleItems, hasMore, sentinelRef } = useInfiniteScroll(orderedCards, 24, 24);
+    const { visibleItems, hasMore, sentinelRef } = useInfiniteScroll(orderedCards, 12, 12);
 
     const visibleGroups = useMemo(() => {
         const g: { section: SectionKey; cards: Opportunity[] }[] = [];
@@ -314,6 +309,14 @@ export const MonitorStatusTab: React.FC = () => {
             h2Class: 'text-red-600',
             badgeClass: 'bg-red-500/10 text-red-600',
             description: 'A média curta está acima da longa (condição de entrada satisfeita), mas a posição foi fechada no stop loss. Aguardando cruzamento para baixo ou nova entrada.',
+        },
+        exited: {
+            title: 'Saiu Pela Regra',
+            subtitle: 'Exit Logic',
+            dotClass: 'bg-sky-500',
+            h2Class: 'text-sky-600',
+            badgeClass: 'bg-sky-500/10 text-sky-600',
+            description: 'Estratégias que fecharam a posição pela regra de saída da estratégia, sem stop loss. A distância mostra o quanto falta para a próxima reentrada.',
         },
         missedEntry: {
             title: 'Entrada Perdida',
@@ -378,7 +381,7 @@ export const MonitorStatusTab: React.FC = () => {
                         <Button
                             variant="secondary"
                             onClick={() => {
-                                void Promise.all([fetchOpportunities(), fetchMonitorContext()]);
+                                void Promise.all([fetchOpportunities(undefined, { refresh: true }), fetchMonitorContext()]);
                             }}
                             disabled={loading}
                         >

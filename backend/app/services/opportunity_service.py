@@ -2,6 +2,9 @@ import sqlite3
 import pandas as pd
 import logging
 import json
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
@@ -17,6 +20,9 @@ from app.symbols_config import get_excluded_symbols, is_excluded_symbol
 from app.database import DB_PATH
 
 logger = logging.getLogger(__name__)
+_OHLCV_CACHE_TTL_SECONDS = 300.0
+_OHLCV_CACHE_LOCK = threading.Lock()
+_OHLCV_CACHE: dict[str, dict[str, Any]] = {}
 
 # Lista carregada de backend/config/excluded_symbols.json (compatibilidade com código que usa o nome)
 UNSUPPORTED_SYMBOLS = get_excluded_symbols()
@@ -25,6 +31,49 @@ UNSUPPORTED_SYMBOLS = get_excluded_symbols()
 def _is_unsupported_symbol(symbol: str) -> bool:
     """True se o símbolo estiver em config/excluded_symbols.json."""
     return is_excluded_symbol(symbol)
+
+
+def _history_days_for_timeframe(timeframe: str) -> int:
+    tf = str(timeframe or "1d").strip().lower()
+    if tf == "15m":
+        return 5
+    if tf == "1h":
+        return 20
+    if tf == "4h":
+        return 75
+    return 320
+
+
+def _history_limit_for_timeframe(timeframe: str) -> int:
+    tf = str(timeframe or "1d").strip().lower()
+    if tf == "15m":
+        return 320
+    if tf == "1h":
+        return 320
+    if tf == "4h":
+        return 320
+    return 320
+
+
+def _read_ohlcv_cache(cache_key: str) -> Optional[pd.DataFrame]:
+    now = time.time()
+    with _OHLCV_CACHE_LOCK:
+        cached = _OHLCV_CACHE.get(cache_key)
+        if not cached:
+            return None
+        if float(cached.get("expires_at") or 0) <= now:
+            _OHLCV_CACHE.pop(cache_key, None)
+            return None
+        df = cached.get("df")
+        return df.copy() if isinstance(df, pd.DataFrame) else None
+
+
+def _write_ohlcv_cache(cache_key: str, df: pd.DataFrame) -> None:
+    with _OHLCV_CACHE_LOCK:
+        _OHLCV_CACHE[cache_key] = {
+            "df": df.copy(),
+            "expires_at": time.time() + _OHLCV_CACHE_TTL_SECONDS,
+        }
 
 
 def _last_closed_candle_offset(timeframe: str, now: Optional[pd.Timestamp] = None) -> int:
@@ -121,6 +170,78 @@ def _apply_crypto_continuity_fix(df: pd.DataFrame, timeframe: str, *, tail_rows:
     return out
 
 
+def _index_position(index: pd.Index, value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        loc = index.get_loc(value)
+    except Exception:
+        return None
+    if isinstance(loc, slice):
+        return int(loc.start)
+    if isinstance(loc, (list, tuple)):
+        return int(loc[0]) if loc else None
+    if hasattr(loc, "__iter__") and not isinstance(loc, (str, bytes)):
+        loc_list = list(loc)
+        return int(loc_list[0]) if loc_list else None
+    return int(loc)
+
+
+def _signal_execution_price(
+    df: pd.DataFrame,
+    signal_idx: Any,
+    *,
+    direction: str,
+) -> float | None:
+    """
+    Return the executed price for a generated signal.
+
+    ComboStrategy emits signals on the candle where the order is executed,
+    using that candle's open. The monitor must use the same convention or
+    stop levels drift away from backtest/TradingView expectations.
+    """
+    if signal_idx is None or signal_idx not in df.index:
+        return None
+
+    row = df.loc[signal_idx]
+    price_columns = ("open", "close") if direction == "entry" else ("open", "close")
+    for column in price_columns:
+        value = row.get(column) if hasattr(row, "get") else None
+        if value is None or pd.isna(value):
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _resolve_position_state(
+    *,
+    short_above_long: bool,
+    last_buy_pos: int | None,
+    last_sell_pos: int | None,
+    last_sell_reason: str | None,
+    direction: str,
+    last_price: float | None,
+    stop_price: float | None,
+) -> tuple[bool, bool, bool]:
+    stop_breached_now = False
+    if stop_price is not None and last_price is not None:
+        if direction == "short":
+            stop_breached_now = last_price >= stop_price
+        else:
+            stop_breached_now = last_price <= stop_price
+
+    has_exit_after_entry = last_sell_pos is not None and (last_buy_pos is None or last_sell_pos > last_buy_pos)
+    exited_by_stop = has_exit_after_entry and str(last_sell_reason or '').lower() == 'stop_loss'
+    if stop_breached_now or exited_by_stop:
+        return False, True, stop_breached_now
+    if has_exit_after_entry:
+        return False, False, False
+    return bool(short_above_long), False, False
+
+
 class OpportunityService:
     """
     Service to manage Strategy Favorites and calculate Opportunities (Proximity to Signal).
@@ -135,18 +256,32 @@ class OpportunityService:
         self.combo_service = ComboService(db_path)
         self.analyzer = ProximityAnalyzer()
 
-    def get_favorites(self, user_id: str) -> List[Dict[str, Any]]:
-        """List all favorites for one user from existing table."""
+    def get_favorites(self, user_id: str, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List relevant favorites for one user from existing table."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
-        # Query existing favorite_strategies table (incl. tier)
-        cursor.execute("""
+
+        query = """
             SELECT id, name, symbol, timeframe, strategy_name, parameters, notes, tier
             FROM favorite_strategies
             WHERE user_id = ?
-        """, (user_id,))
+        """
+        params: list[Any] = [user_id]
+
+        normalized_tier_filter = str(tier_filter or "").strip().lower()
+        if not normalized_tier_filter or normalized_tier_filter == "all":
+            query += " AND tier IN (1, 2, 3)"
+        elif normalized_tier_filter == "none":
+            query += " AND tier IS NULL"
+        else:
+            allowed_tiers = [int(t.strip()) for t in normalized_tier_filter.split(",") if t.strip().isdigit()]
+            if allowed_tiers:
+                placeholders = ",".join("?" for _ in allowed_tiers)
+                query += f" AND tier IN ({placeholders})"
+                params.extend(allowed_tiers)
+
+        cursor.execute(query, params)
         rows = cursor.fetchall()
         
         favorites = []
@@ -213,20 +348,68 @@ class OpportunityService:
         - entry_logic (buy rule) and exit_logic (sell rule) come from template_data JSON field
         - Each favorite strategy uses its own template's rules from the database
         """
-        all_favorites = self.get_favorites(user_id=user_id)
-        
-        # Filter by tier BEFORE processing (avoid loading unnecessary data)
-        favorites = self._filter_by_tier(all_favorites, tier_filter)
+        favorites = self.get_favorites(user_id=user_id, tier_filter=tier_filter)
         
         opportunities = []
         
-        logger.info(f"Processing {len(favorites)} favorite strategies (filtered from {len(all_favorites)} total, tier_filter={tier_filter})")
+        logger.info(f"Processing {len(favorites)} favorite strategies (tier_filter={tier_filter})")
         
         # Cache for data to avoid refetching same symbol/timeframe
         data_cache = {}
+        fetch_errors: dict[str, str] = {}
         
         # Track skipped strategies for debugging
         skipped_strategies = []
+
+        unique_market_jobs: dict[str, dict[str, Any]] = {}
+        for fav in favorites:
+            symbol = fav['symbol']
+            tf = fav['timeframe']
+            params = fav.get('parameters') or {}
+            data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
+            if data_source == CCXT_SOURCE and _is_unsupported_symbol(symbol):
+                continue
+            cache_key = f"{data_source}:{symbol}_{tf}"
+            if cache_key in unique_market_jobs:
+                continue
+            unique_market_jobs[cache_key] = {
+                "data_source": data_source,
+                "symbol": symbol,
+                "timeframe": tf,
+            }
+
+        def _fetch_market_job(job: dict[str, Any]) -> tuple[str, pd.DataFrame]:
+            cache_key = f"{job['data_source']}:{job['symbol']}_{job['timeframe']}"
+            cached_df = _read_ohlcv_cache(cache_key)
+            if cached_df is not None:
+                return cache_key, cached_df
+
+            history_days = _history_days_for_timeframe(job["timeframe"])
+            history_limit = _history_limit_for_timeframe(job["timeframe"])
+            start_date = (datetime.now() - timedelta(days=history_days)).strftime("%Y-%m-%d")
+            provider = get_market_data_provider(job["data_source"])
+            df = provider.fetch_ohlcv(
+                symbol=job["symbol"],
+                timeframe=job["timeframe"],
+                since_str=start_date,
+                limit=history_limit,
+            )
+            _write_ohlcv_cache(cache_key, df)
+            return cache_key, df
+
+        if unique_market_jobs:
+            with ThreadPoolExecutor(max_workers=min(8, len(unique_market_jobs))) as executor:
+                future_map = {
+                    executor.submit(_fetch_market_job, job): cache_key
+                    for cache_key, job in unique_market_jobs.items()
+                }
+                for future in as_completed(future_map):
+                    cache_key = future_map[future]
+                    try:
+                        result_key, df = future.result()
+                        data_cache[result_key] = df
+                    except Exception as exc:
+                        fetch_errors[cache_key] = str(exc)
 
         for fav in favorites:
             try:
@@ -253,19 +436,8 @@ class OpportunityService:
                 # 1. Fetch Data (1D usually)
                 cache_key = f"{data_source}:{symbol}_{tf}"
                 if cache_key not in data_cache:
-                    # Calculate start date (e.g. 500 days ago to be safe for EMA 200)
-                    start_date = (datetime.now() - timedelta(days=500)).strftime("%Y-%m-%d")
-
-                    provider = get_market_data_provider(data_source)
-                    try:
-                        # Fetching enough data for indicators (e.g. 200 candles)
-                        df = provider.fetch_ohlcv(
-                            symbol=symbol,
-                            timeframe=tf,
-                            since_str=start_date,
-                            limit=None,
-                        )
-                    except Exception as fetch_exc:
+                    fetch_exc = fetch_errors.get(cache_key)
+                    if fetch_exc:
                         skipped_strategies.append({
                             'id': fav['id'],
                             'symbol': symbol,
@@ -273,8 +445,13 @@ class OpportunityService:
                             'reason': f'Error fetching data ({data_source}): {fetch_exc}',
                         })
                         continue
-
-                    data_cache[cache_key] = df
+                    skipped_strategies.append({
+                        'id': fav['id'],
+                        'symbol': symbol,
+                        'timeframe': tf,
+                        'reason': f'No cached market data available for {cache_key}',
+                    })
+                    continue
                 
                 df = data_cache[cache_key].copy()
                 
@@ -480,17 +657,9 @@ class OpportunityService:
                             logger.info(f"  - CROSS_UP medium: ({medium_val:.4f} - {short_val:.4f}) / {medium_val:.4f} * 100 = {dist_to_medium:.2f}%")
                             logger.info(f"  - Minimum distance (closest): {min_dist:.2f}%")
                 
-                # -------------------------------------------------------------------------
-                # NEW CONCEPT: HOLD status is determined ONLY by entry conditions being met
-                # If short > medium (entry conditions satisfied), we ARE in HOLD
-                # Stop loss is NOT used to determine HOLD status - it's just historical info
-                # -------------------------------------------------------------------------
-                
-                # Determine if holding based ONLY on entry conditions (short > long)
-                # Ignore stop loss history - if trend up is met NOW, we're in HOLD
-                is_holding = short_above_long
-                
-                
+                direction = str(params.get('direction', 'long') or 'long').lower()
+                last_price = float(df.iloc[-1]['close']) if not df.empty else None
+
                 # Compute entry distance override based on trend gate
                 # - If trend up is false (short <= long): use short -> long distance
                 # - If trend up is true (short > long): use short -> medium distance
@@ -526,19 +695,26 @@ class OpportunityService:
                             entry_distance_override = None
                 # Run backtest logic on closed candles for reference (but don't use for HOLD determination)
                 df_signals = strategy.generate_signals(df_closed)
-                
-                # Find the LAST confirmed signal (1=Buy, -1=Sell/Stop) - for reference only
-                last_sig_idx = df_signals[df_signals['signal'] != 0].last_valid_index()
-                last_signal_val = 0
-                if last_sig_idx is not None:
-                     last_signal_val = df_signals.loc[last_sig_idx, 'signal']
+
+                last_buy_idx = df_signals[df_signals['signal'] == 1].last_valid_index()
+                last_sell_idx = df_signals[df_signals['signal'] == -1].last_valid_index()
+                last_buy_pos = _index_position(df_closed.index, last_buy_idx)
+                last_sell_pos = _index_position(df_closed.index, last_sell_idx)
+                last_sell_reason = None
+                if (
+                    last_sell_idx is not None
+                    and last_sell_idx in df_signals.index
+                    and 'signal_reason' in df_signals.columns
+                ):
+                    raw_reason = df_signals.loc[last_sell_idx, 'signal_reason']
+                    if raw_reason is not None and not pd.isna(raw_reason):
+                        last_sell_reason = str(raw_reason)
 
                 # Compute stop-loss proximity (optional display on Monitor cards)
                 entry_price = None
                 stop_price = None
                 distance_to_stop_pct = None
                 try:
-                    direction = str(params.get('direction', 'long') or 'long').lower()
                     sl_raw = params.get('stop_loss', template_data.get('stop_loss', None))
                     sl = None
                     if sl_raw is not None:
@@ -549,10 +725,13 @@ class OpportunityService:
 
                     if sl is not None and sl > 0:
                         # Use last confirmed BUY signal as entry
-                        buy_idx = df_signals[df_signals['signal'] == 1].last_valid_index()
-                        if buy_idx is not None and buy_idx in df_closed.index:
-                            entry_price = float(df_closed.loc[buy_idx, 'close'])
-                        elif is_holding and not df_closed.empty:
+                        if last_buy_idx is not None and last_buy_idx in df_closed.index:
+                            entry_price = _signal_execution_price(
+                                df_closed,
+                                last_buy_idx,
+                                direction='entry',
+                            )
+                        elif short_above_long and not df_closed.empty:
                             # Fallback: infer entry from last bullish crossover on closed candles.
                             # This is useful when the signal generator doesn't emit explicit BUYs,
                             # but we still mark HOLD via trend condition.
@@ -577,7 +756,6 @@ class OpportunityService:
                             except Exception:
                                 pass
 
-                        last_price = float(df.iloc[-1]['close'])
                         if entry_price and last_price and last_price > 0:
                             if direction == 'short':
                                 stop_price = entry_price * (1.0 + sl)
@@ -597,10 +775,24 @@ class OpportunityService:
                     entry_price = None
                     stop_price = None
                     distance_to_stop_pct = None
+
+                is_holding, is_stopped_out, stop_breached_now = _resolve_position_state(
+                    short_above_long=short_above_long,
+                    last_buy_pos=last_buy_pos,
+                    last_sell_pos=last_sell_pos,
+                    last_sell_reason=last_sell_reason,
+                    direction=direction,
+                    last_price=last_price,
+                    stop_price=stop_price,
+                )
                 
                 # Debug for TRX
                 if symbol == 'TRX/USDT':
-                    logger.info(f"TRX/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > long, ignoring stop loss)")
+                    logger.info(
+                        f"TRX/USDT - short_above_medium={short_above_medium}, short_above_long={short_above_long}, "
+                        f"is_holding={is_holding}, is_stopped_out={is_stopped_out}, "
+                        f"last_buy_pos={last_buy_pos}, last_sell_pos={last_sell_pos}, stop_price={stop_price}, last_price={last_price}"
+                    )
                     if current_row is not None:
                         if 'short' in current_row and 'medium' in current_row:
                             logger.info(f"TRX/USDT - Current candle: short={current_row['short']:.4f}, medium={current_row['medium']:.4f}")
@@ -609,7 +801,11 @@ class OpportunityService:
                 
                 # Debug for ETH
                 if symbol == 'ETH/USDT':
-                    logger.info(f"ETH/USDT - short_above_medium={short_above_medium}, is_holding={is_holding} (based on short > long, ignoring stop loss)")
+                    logger.info(
+                        f"ETH/USDT - short_above_medium={short_above_medium}, short_above_long={short_above_long}, "
+                        f"is_holding={is_holding}, is_stopped_out={is_stopped_out}, "
+                        f"last_buy_pos={last_buy_pos}, last_sell_pos={last_sell_pos}, stop_price={stop_price}, last_price={last_price}"
+                    )
                     if current_row is not None:
                         if 'short' in current_row and 'medium' in current_row:
                             logger.info(f"ETH/USDT - short={current_row['short']:.4f}, medium={current_row['medium']:.4f}")
@@ -689,9 +885,24 @@ class OpportunityService:
                 
                 # Standardize Entry Status Names for frontend clarity
                 # BUT: If we're in HOLD, set status to HOLDING
-                if is_holding:
+                if is_stopped_out:
+                    analysis['status'] = 'STOPPED_OUT'
+                    analysis['badge'] = 'critical'
+                    if stop_breached_now:
+                        analysis['message'] = 'STOP: preco atingiu o stop loss. Aguardando reentrada.'
+                    else:
+                        analysis['message'] = 'STOP ja confirmado no historico. Aguardando nova entrada.'
+                    if entry_distance_override is not None:
+                        analysis['distance'] = round(entry_distance_override, 2)
+                elif is_holding:
                     analysis['status'] = 'HOLDING'
                     analysis['badge'] = 'info'
+                elif last_sell_pos is not None and (last_buy_pos is None or last_sell_pos > last_buy_pos):
+                    analysis['status'] = 'EXITED'
+                    analysis['badge'] = 'neutral'
+                    analysis['message'] = 'Saida confirmada pela regra de exit. Aguardando reentrada.'
+                    if entry_distance_override is not None:
+                        analysis['distance'] = round(entry_distance_override, 2)
                 elif analysis['status'] == 'SIGNAL':
                     analysis['status'] = 'BUY_SIGNAL'
                 else:
@@ -793,9 +1004,6 @@ class OpportunityService:
                              logger.info(f"{symbol} - In HOLD but no exit_logic defined")
                 
                 # is_holding was already determined above based on short_above_long
-                # With new concept, we don't use STOPPED_OUT or MISSED_ENTRY when short > long
-                # All cases where short > long are treated as HOLD
-                is_stopped_out = False  # Disabled with new concept
                 is_missed_entry = False  # Disabled with new concept
                 
                 # Calculate distance to next status
