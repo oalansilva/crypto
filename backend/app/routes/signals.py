@@ -160,14 +160,12 @@ async def get_signals(
     risk_profile: RiskProfile = Query(default=RiskProfile.moderate, description="Signal risk profile"),
     limit: int = Query(default=20, ge=1, le=50, description="Maximum number of signals to return"),
 ):
-    sentiment = await sentiment_service.get_market_sentiment()
     return await binance_service.build_signal_feed(
         signal_type=type,
         confidence_min=confidence_min,
         asset=asset,
         risk_profile=risk_profile,
         limit=limit,
-        sentiment_score=sentiment.score,
         user_id=current_user_id,
     )
 

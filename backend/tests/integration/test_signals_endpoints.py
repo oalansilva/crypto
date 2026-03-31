@@ -1,15 +1,28 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from uuid import uuid4
 
 import httpx
+import pytest
 from fastapi import FastAPI, Request
 
 from app.middleware.authMiddleware import get_current_user_optional
 from app.routes.signals import router as signals_router
 from app.schemas.signal import BollingerBandsPayload, RiskProfile, Signal, SignalIndicators, SignalType
-from app.services import binance_service
+from app.services import binance_service, sentiment_service
+
+
+@pytest.fixture(autouse=True)
+def _reset_signal_caches():
+    binance_service.clear_signal_feed_snapshot_cache()
+    binance_service.clear_signal_feed_snapshot_file()
+    binance_service._SIGNAL_LOOKUP.clear()
+    yield
+    binance_service.clear_signal_feed_snapshot_cache()
+    binance_service.clear_signal_feed_snapshot_file()
+    binance_service._SIGNAL_LOOKUP.clear()
 
 
 def _build_test_app() -> FastAPI:
@@ -64,7 +77,7 @@ async def _dummy_two_pairs(*_args, **_kwargs):
 async def test_signals_list_filters_threshold_and_adds_disclaimer(monkeypatch):
     app = _build_test_app()
 
-    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles):
+    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles, sentiment_score=None):
         mapping = {
             "BTCUSDT": _make_signal(asset, SignalType.BUY, 88, risk_profile),
             "ETHUSDT": _make_signal(asset, SignalType.HOLD, 69, risk_profile),
@@ -84,15 +97,15 @@ async def test_signals_list_filters_threshold_and_adds_disclaimer(monkeypatch):
     assert response.headers["X-Disclaimer"] == "Isenção de responsabilidade: este não é advice financeiro."
 
     payload = response.json()
-    assert payload["total"] == 2
-    assert sorted(item["asset"] for item in payload["signals"]) == ["BTCUSDT", "SOLUSDT"]
+    assert payload["total"] == 1
+    assert [item["asset"] for item in payload["signals"]] == ["BTCUSDT"]
     assert all(item["confidence"] >= 70 for item in payload["signals"])
 
 
 async def test_signals_latest_returns_only_high_confidence(monkeypatch):
     app = _build_test_app()
 
-    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles):
+    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles, sentiment_score=None):
         confidence_map = {
             ("BTCUSDT", RiskProfile.conservative): 82,
             ("ETHUSDT", RiskProfile.conservative): 71,
@@ -124,7 +137,7 @@ async def test_signals_latest_returns_only_high_confidence(monkeypatch):
 async def test_signals_detail_returns_cached_signal(monkeypatch):
     app = _build_test_app()
 
-    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles):
+    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles, sentiment_score=None):
         return _make_signal(asset, SignalType.BUY, 88, risk_profile)
 
     monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
@@ -182,3 +195,60 @@ async def test_signals_list_only_persists_history_for_authenticated_user(monkeyp
     assert response.status_code == 200, response.text
     assert len(persisted_calls) == 1
     assert persisted_calls[0][1] == "user-123"
+
+
+async def test_signals_list_uses_precomputed_snapshot_when_available(monkeypatch):
+    app = _build_test_app()
+    build_calls: list[str] = []
+
+    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles, sentiment_score=None):
+        build_calls.append(f"{risk_profile.value}:{asset}")
+        return _make_signal(asset, SignalType.BUY, 88, risk_profile)
+
+    async def _fake_sentiment():
+        return sentiment_service.SentimentResult(score=55, components={"news": 55, "reddit": 55, "fear_greed": 55}, signal="neutral")
+
+    monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
+    monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
+    monkeypatch.setattr(binance_service, "_get_all_usdt_pairs", _dummy_pairs)
+    monkeypatch.setattr(sentiment_service, "get_market_sentiment", _fake_sentiment)
+
+    await binance_service.refresh_signal_feed_snapshots()
+    initial_builds = list(build_calls)
+    assert initial_builds
+
+    async def _unexpected_klines(*args, **kwargs):
+        raise AssertionError("endpoint should use precomputed snapshot")
+
+    monkeypatch.setattr(binance_service, "get_klines", _unexpected_klines)
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/api/signals?confidence_min=70&risk_profile=moderate&limit=10")
+
+    assert response.status_code == 200, response.text
+    assert build_calls == initial_builds
+
+
+async def test_signal_snapshots_can_be_loaded_from_disk(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(binance_service, "SIGNAL_FEED_SNAPSHOT_FILE", tmp_path / "signals_snapshot.json")
+
+    def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles, sentiment_score=None):
+        return _make_signal(asset, SignalType.BUY, 88, risk_profile)
+
+    async def _fake_sentiment():
+        return sentiment_service.SentimentResult(score=55, components={"news": 55, "reddit": 55, "fear_greed": 55}, signal="neutral")
+
+    monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
+    monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
+    monkeypatch.setattr(binance_service, "_get_all_usdt_pairs", _dummy_pairs)
+    monkeypatch.setattr(sentiment_service, "get_market_sentiment", _fake_sentiment)
+
+    await binance_service.refresh_signal_feed_snapshots()
+    binance_service.clear_signal_feed_snapshot_cache()
+
+    assert binance_service.load_signal_feed_snapshots_from_disk() is True
+    snapshot = binance_service.get_signal_feed_snapshot(RiskProfile.moderate)
+    assert snapshot is not None
+    assert len(snapshot.signals) == 3
+    assert snapshot.available_assets == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Activity, ArrowRight, FileText, Kanban, Layers, Settings } from 'lucide-react'
+import { Activity, ArrowRight, FileText, Kanban, Layers } from 'lucide-react'
 import { apiUrl } from '@/lib/apiBase'
 import PortfolioAllocation from '@/components/PortfolioAllocation'
 import { useAuth } from '@/stores/authStore'
@@ -59,19 +59,6 @@ type ChangeDetailResponse = {
 type FocusChange = CoordinationChangeItem & {
   created_at?: string | null
   updated_at?: string | null
-}
-
-type LabRunSummary = {
-  run_id: string
-  status: string
-  step?: string | null
-  created_at_ms: number
-  updated_at_ms: number
-  viewer_url: string
-}
-
-type LabRunsResponse = {
-  runs: LabRunSummary[]
 }
 
 type PortfolioKPI = {
@@ -197,19 +184,6 @@ function toneForColumn(column: string) {
   if (normalized.includes('qa')) return 'ok'
   if (normalized.includes('dev') || normalized.includes('design') || normalized.includes('po')) return 'warn'
   return 'idle'
-}
-
-function toneForRunStatus(status: string) {
-  const normalized = String(status || '').toLowerCase()
-  if (['done', 'completed', 'success'].includes(normalized)) return 'ok'
-  if (['running', 'queued', 'pending', 'created'].includes(normalized)) return 'warn'
-  return 'idle'
-}
-
-function formatRunStep(step: string | null | undefined) {
-  const value = String(step || '').trim()
-  if (!value) return 'Etapa não informada'
-  return value.replaceAll('_', ' ')
 }
 
 function SnapshotBadge({ children }: { children: string }) {
@@ -341,12 +315,6 @@ export default function HomePage() {
     refetchOnWindowFocus: false,
   })
 
-  const runsQuery = useQuery<LabRunsResponse>({
-    queryKey: ['home', 'lab-runs', user?.id ?? 'anonymous'],
-    queryFn: () => fetchJson<LabRunsResponse>('/lab/runs?limit=5'),
-    refetchOnWindowFocus: false,
-  })
-
   const marketQuery = useQuery<MarketPricesResponse>({
     queryKey: ['home', 'market-prices'],
     queryFn: () => fetchJson<MarketPricesResponse>('/market/prices'),
@@ -359,7 +327,6 @@ export default function HomePage() {
   const bestFavoriteRoi = getReturnPct(bestFavorite?.metrics)
   const balancesFreshness = formatFreshness(balancesQuery.data?.as_of)
   const activeChanges = focusQuery.data || []
-  const recentRuns = runsQuery.data?.runs || []
   const marketPrices = marketQuery.data?.prices || []
   const marketFreshness = formatFreshness(marketQuery.data?.fetched_at || undefined)
   const healthStatus = healthQuery.data?.status === 'ok' ? 'ok' : healthQuery.isLoading ? 'loading' : 'error'
@@ -392,13 +359,13 @@ export default function HomePage() {
 
               <button
                 type="button"
-                onClick={() => navigate('/lab')}
+                onClick={() => navigate('/kanban')}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:-translate-y-0.5 hover:border-sky-300/20 hover:bg-white/[0.06]"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-[var(--text-primary)]">Atualizar dados</div>
-                    <div className="mt-1 text-xs text-[var(--text-tertiary)]">Explorar candles · Lab</div>
+                    <div className="text-sm font-semibold text-[var(--text-primary)]">Abrir Kanban</div>
+                    <div className="mt-1 text-xs text-[var(--text-tertiary)]">Cards ativos · prioridades</div>
                   </div>
                   <ArrowRight className="h-4 w-4 text-[var(--text-tertiary)]" />
                 </div>
@@ -459,14 +426,13 @@ export default function HomePage() {
                 <FileText className="mr-1.5 inline-block h-3.5 w-3.5" />
                 OpenSpec
               </button>
-              <button
-                type="button"
-                onClick={() => navigate('/lab')}
+              <Link
+                to="/kanban"
                 className="rounded-full border border-white/10 px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:border-emerald-300/18 hover:bg-white/[0.05] hover:text-white"
               >
-                <Settings className="mr-1.5 inline-block h-3.5 w-3.5" />
-                Lab
-              </button>
+                <Kanban className="mr-1.5 inline-block h-3.5 w-3.5" />
+                Kanban
+              </Link>
             </div>
           </aside>
         </section>
@@ -622,56 +588,6 @@ export default function HomePage() {
               ) : null}
             </div>
 
-            <div className="page-card p-6" data-testid="home-runs-section">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Runs recentes</h2>
-                  <SnapshotBadge>lab real</SnapshotBadge>
-                </div>
-                <Link to="/lab" className="text-[11px] font-semibold text-sky-300 hover:text-sky-200">
-                  Abrir Lab
-                </Link>
-              </div>
-
-              {runsQuery.isLoading ? <SectionSkeletonRows rows={4} /> : null}
-              {runsQuery.error ? (
-                <div className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-400/5 px-4 py-4 text-sm text-rose-200">
-                  não disponível · Falha ao carregar `/api/lab/runs`.
-                </div>
-              ) : null}
-              {!runsQuery.isLoading && !runsQuery.error && recentRuns.length === 0 ? (
-                <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-[var(--text-tertiary)]">
-                  Nenhuma run recente encontrada.
-                </div>
-              ) : null}
-
-              {!runsQuery.isLoading && !runsQuery.error && recentRuns.length > 0 ? (
-                <ul className="mt-5 space-y-3">
-                  {recentRuns.map((run) => (
-                    <li
-                      key={run.run_id}
-                      className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 hover:bg-white/[0.05]"
-                    >
-                      <SectionTag label={run.status || 'unknown'} tone={toneForRunStatus(run.status)} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm text-[var(--text-primary)]">{run.run_id}</div>
-                        <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
-                          {formatRunStep(run.step)} · {formatDt(new Date(run.created_at_ms || run.updated_at_ms || 0))}
-                        </div>
-                      </div>
-                      <a
-                        href={run.viewer_url}
-                        className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-white"
-                      >
-                        Ver trace
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-
-
           </div>
 
           <aside className="flex flex-col gap-4">
@@ -754,7 +670,7 @@ export default function HomePage() {
             <div className="page-card p-6">
               <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Notas</h2>
               <p className="mt-3 text-[12px] leading-6 text-[var(--text-tertiary)]">
-                Home usa dados reais para saúde, favoritos, carteira, Kanban, runs recentes e market watch. Só os KPIs marcados continuam ilustrativos.
+                Home usa dados reais para saúde, favoritos, carteira, Kanban e market watch. Só os KPIs marcados continuam ilustrativos.
               </p>
             </div>
           </aside>

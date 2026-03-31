@@ -1,11 +1,15 @@
-# Fluxo OS+Codex (OpenSpec Change Proposal → Codex CLI)
+# Fluxo OpenSpec + Codex CLI
 
 Este projeto usa o workflow oficial do OpenSpec via **changes**.
 
 Schema atual: `spec-driven` (proposal → specs → design → tasks)
 
 ## Atalho no chat
-Use: **OS+Codex: <sua feature>**
+Use pedidos diretos no chat, por exemplo:
+- `crie uma change openspec para <sua feature>`
+- `continue a change <change_id>`
+- `aplique a change <change_id>`
+- `archive a change <change_id>`
 
 ## Passo a passo (humano + agente)
 
@@ -32,15 +36,11 @@ openspec validate <change_id>
 - Implementar tasks do `tasks.md`.
 - Rodar testes.
 
-Com wrapper (change-driven):
-- o wrapper valida o change
-- busca as tasks via `openspec instructions apply --change <change_id> --json`
-- falha se não houver tasks
-- injeta no prompt do Codex o contexto completo do change: `proposal.md`, `design.md`, `specs/**/*.md`, `tasks.md` (com truncamento por arquivo)
-
 ```bash
-./scripts/openspec_codex_task.sh <change_id>
+openspec instructions apply --change <change_id> --json
 ```
+
+No Codex CLI deste repo, a aplicação pode ser feita por pedido em linguagem natural no chat, usando as skills locais de OpenSpec, ou manualmente a partir das tasks do change.
 
 ### 5) Verify
 ```bash
@@ -55,6 +55,6 @@ openspec archive <change_id>
 ```
 
 ## Notas
-- O wrapper OS+Codex aplica guardrails (working tree limpa, escopo de paths, testes).
-- Limite de arquivos alterados default: 3 (ajustável via `MAX_FILES_CHANGED`).
-- Limite de linhas alteradas está **desativado por padrão** (reative com `MAX_LINES_CHANGED=<n>`).
+- Este repo usa o workflow oficial de `changes`, mas sem wrapper dedicado para Codex.
+- Se quiser atualizar as instruções do OpenSpec no projeto, rode `openspec update`.
+- Os artefatos principais continuam sendo `proposal.md`, `specs/**/*.md`, `design.md` e `tasks.md`.

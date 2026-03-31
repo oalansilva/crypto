@@ -14,8 +14,6 @@ import { ComboOptimizePage } from './pages/ComboOptimizePage'
 import { ComboEditPage } from './pages/ComboEditPage'
 import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
-import LabPage from './pages/LabPage'
-import LabRunPage from './pages/LabRunPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
 import KanbanPage from './pages/KanbanPage'
 import SignalsPage from './pages/SignalsPage'
@@ -78,8 +76,6 @@ function App() {
           <Route path="/openspec" element={<OpenSpecListPage />} />
           {/* Catch-all to support nested specs like /openspec/backend/spec */}
           <Route path="/openspec/*" element={<OpenSpecDetailPage />} />
-          <Route path="/lab" element={<LabPage />} />
-          <Route path="/lab/runs/:runId" element={<LabRunPage />} />
           <Route path="/external/balances" element={<ExternalBalancesPage />} />
           <Route path="/kanban" element={<KanbanPage />} />
           <Route path="/system/preferences" element={<ProtectedRoute requireAdmin><SystemPreferencesPage /></ProtectedRoute>} />

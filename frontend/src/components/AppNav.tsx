@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Activity,
-  Beaker,
   Brain,
   Bookmark,
   ChevronLeft,
@@ -42,7 +41,6 @@ const mainNavItems: NavItemConfig[] = [
 ]
 
 const strategyNavItems: NavItemConfig[] = [
-  { to: '/lab', label: 'Lab', icon: Beaker },
   { to: '/combo/select', label: 'Combo', icon: Layers },
 ]
 
@@ -66,12 +64,11 @@ function resolvePageTitle(pathname: string) {
   if (pathname === '/signals') return 'Sinais de trading'
   if (pathname === '/signals/history') return 'Histórico de Sinais'
   if (pathname === '/kanban') return 'Kanban'
-  if (pathname.startsWith('/lab')) return 'Laboratório'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
   if (pathname.startsWith('/system/preferences')) return 'Preferências do sistema'
   if (pathname.startsWith('/openspec')) return 'OpenSpec'
-  return 'Crypto Lab'
+  return 'Crypto'
 }
 
 function getUserInitials(name?: string) {
@@ -93,7 +90,7 @@ function BrandBlock({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact && (
         <div className="min-w-0">
-          <span className="block truncate text-[13px] font-semibold text-[var(--text-primary)]">Crypto Lab</span>
+          <span className="block truncate text-[13px] font-semibold text-[var(--text-primary)]">Crypto</span>
           <span className="block truncate text-xs text-[var(--text-tertiary)]">Operação, estratégia e execução</span>
         </div>
       )}

@@ -36,7 +36,7 @@ export function AuthLayout() {
             <TrendingUp className="h-4.5 w-4.5 text-white" />
           </div>
           <div>
-            <span className="block text-[13px] font-semibold text-[var(--text-primary)]">Crypto Lab</span>
+            <span className="block text-[13px] font-semibold text-[var(--text-primary)]">Crypto</span>
             <span className="block text-xs text-[var(--text-tertiary)]">Autenticação</span>
           </div>
         </div>

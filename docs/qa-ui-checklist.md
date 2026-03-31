@@ -11,7 +11,6 @@ Run this checklist before sending any change to Homologation.
   - [ ] Favorites (/favorites)
   - [ ] Monitor (/monitor)
   - [ ] Kanban (/kanban)
-  - [ ] Lab (/lab)
   - [ ] Combo (/combo/select)
   - [ ] Carteira (/external/balances)
 - [ ] Verify NO duplicate headers/menus appear on ANY page

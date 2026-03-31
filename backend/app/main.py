@@ -19,7 +19,6 @@ from app.routes.opportunity_routes import router as opportunity_router
 from app.routes.logs import router as logs_router
 from app.routes.agent_chat import router as agent_chat_router
 from app.routes.openspec import router as openspec_router
-from app.routes.lab import router as lab_router
 from app.routes.monitor_preferences import router as monitor_preferences_router
 from app.routes.external_balances import router as external_balances_router
 from app.routes.coordination import router as coordination_router
@@ -33,6 +32,7 @@ from app.routes.auth import router as auth_router
 from app.routes.user_credentials import router as user_credentials_router
 from app.routes.system_preferences import router as system_preferences_router
 from app.services.signal_monitor import signal_monitor
+from app.services.binance_service import start_signal_feed_snapshot_worker, stop_signal_feed_snapshot_worker
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -109,10 +109,12 @@ async def lifespan(app: FastAPI):
         # Seed combo_templates if empty
         seed_combo_templates_if_empty()
         signal_monitor.start()
+        await start_signal_feed_snapshot_worker()
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 
     yield
+    await stop_signal_feed_snapshot_worker()
     signal_monitor.stop()
 
 settings = get_settings()
@@ -150,7 +152,6 @@ app.include_router(opportunity_router)
 app.include_router(logs_router)
 app.include_router(agent_chat_router)
 app.include_router(openspec_router)
-app.include_router(lab_router)
 app.include_router(monitor_preferences_router)
 app.include_router(external_balances_router)
 app.include_router(coordination_router)
