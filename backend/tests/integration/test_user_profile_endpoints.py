@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import httpx
 import pytest
+import sqlite3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import database as database_module
 from app.database import Base, get_db
 from app.main import app
 from app.routes import auth as auth_routes
@@ -188,3 +190,75 @@ async def test_put_password_rejects_incorrect_current_password():
         assert response.json()["detail"] == "Current password is incorrect"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_login_works_after_runtime_sqlite_adds_missing_last_login(tmp_path, monkeypatch):
+    db_file = tmp_path / "legacy_auth.db"
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE users (
+                id TEXT PRIMARY KEY,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                name TEXT NOT NULL,
+                created_at DATETIME
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO users (id, email, password_hash, name, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                "11111111-1111-1111-1111-111111111111",
+                "profile@example.com",
+                "test-hash::supersecret123",
+                "Profile Tester",
+                "2026-04-03T00:00:00",
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    engine = create_engine(
+        f"sqlite:///{db_file}",
+        connect_args={"check_same_thread": False},
+    )
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    monkeypatch.setattr(database_module, "DB_URL", f"sqlite:///{db_file}")
+    monkeypatch.setattr(database_module, "DB_PATH", db_file)
+
+    database_module.ensure_runtime_schema_migrations()
+    _install_fast_password_helpers()
+
+    with SessionLocal() as db:
+        response = auth_routes.login(
+            auth_routes.LoginRequest(
+                email="profile@example.com",
+                password="supersecret123",
+            ),
+            db=db,
+        )
+
+    assert response.email == "profile@example.com"
+    assert response.accessToken
+    assert response.refreshToken
+
+    with sqlite3.connect(db_file) as check_conn:
+        columns = {
+            row[1]
+            for row in check_conn.execute("PRAGMA table_info(users)").fetchall()
+        }
+        assert "last_login" in columns
+
+        stored_last_login = check_conn.execute(
+            "SELECT last_login FROM users WHERE email = ?",
+            ("profile@example.com",),
+        ).fetchone()
+        assert stored_last_login is not None
+        assert stored_last_login[0] is not None

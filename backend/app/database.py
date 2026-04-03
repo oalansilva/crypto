@@ -75,6 +75,15 @@ def ensure_sqlite_migrations() -> None:
 
         default_user_id = _resolve_default_user_id()
 
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        row = cur.fetchone()
+        if row:
+            cur.execute("PRAGMA table_info(users)")
+            cols = {r[1] for r in cur.fetchall()}
+            if "last_login" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN last_login DATETIME")
+                conn.commit()
+
         # favorite_strategies: add user_id if missing and backfill legacy rows to the default owner when known
         cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='favorite_strategies'")
         row = cur.fetchone()
