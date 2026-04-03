@@ -1,0 +1,18 @@
+{
+  "schema": "acpx.session-index.v1",
+  "files": [
+    "019d4b8b-9624-7901-9a84-e22dc9d49eaa.json"
+  ],
+  "entries": [
+    {
+      "file": "019d4b8b-9624-7901-9a84-e22dc9d49eaa.json",
+      "acpxRecordId": "019d4b8b-9624-7901-9a84-e22dc9d49eaa",
+      "acpSessionId": "019d4b8b-c186-7623-972e-a7a3200047b5",
+      "agentCommand": "npx @zed-industries/codex-acp@^0.10.0",
+      "cwd": "/root/.openclaw/workspace/crypto",
+      "name": "dev-story-TEST-ACP-DIRECT",
+      "closed": false,
+      "lastUsedAt": "2026-04-02T00:15:48.468Z"
+    }
+  ]
+}

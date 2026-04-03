@@ -1,0 +1,111 @@
+{
+  "schema": "acpx.session.v1",
+  "acpx_record_id": "019d4b8b-9624-7901-9a84-e22dc9d49eaa",
+  "acp_session_id": "019d4b8b-c186-7623-972e-a7a3200047b5",
+  "agent_command": "npx @zed-industries/codex-acp@^0.10.0",
+  "cwd": "/root/.openclaw/workspace/crypto",
+  "name": "dev-story-TEST-ACP-DIRECT",
+  "created_at": "2026-04-02T00:15:32.484Z",
+  "last_used_at": "2026-04-02T00:15:48.468Z",
+  "last_seq": 14,
+  "last_request_id": "3",
+  "event_log": {
+    "active_path": "/root/.openclaw/workspace/crypto/.codex-home/.acpx/sessions/019d4b8b-9624-7901-9a84-e22dc9d49eaa.stream.ndjson",
+    "segment_count": 5,
+    "max_segment_bytes": 67108864,
+    "max_segments": 5,
+    "last_write_at": "2026-04-02T00:15:48.468Z",
+    "last_write_error": null
+  },
+  "closed": false,
+  "pid": 3395908,
+  "agent_started_at": "2026-04-02T00:15:41.933Z",
+  "last_prompt_at": "2026-04-02T00:15:43.437Z",
+  "last_agent_exit_code": null,
+  "last_agent_exit_signal": null,
+  "last_agent_exit_at": "2026-04-02T00:20:48.506Z",
+  "last_agent_disconnect_reason": "connection_close",
+  "protocol_version": 1,
+  "agent_capabilities": {
+    "loadSession": true,
+    "promptCapabilities": {
+      "image": true,
+      "audio": false,
+      "embeddedContext": true
+    },
+    "mcpCapabilities": {
+      "http": true,
+      "sse": false
+    },
+    "sessionCapabilities": {
+      "list": {},
+      "close": {}
+    }
+  },
+  "title": null,
+  "messages": [
+    {
+      "User": {
+        "id": "04a67e95-2324-4cf0-803a-9923e6fa6a35",
+        "content": [
+          {
+            "Text": "Responda em uma linha: fluxo direto OK"
+          }
+        ]
+      }
+    },
+    {
+      "Agent": {
+        "content": [
+          {
+            "Text": "fluxo direto OK"
+          }
+        ],
+        "tool_results": {}
+      }
+    }
+  ],
+  "updated_at": "2026-04-02T00:15:48.462Z",
+  "cumulative_token_usage": {},
+  "request_token_usage": {},
+  "acpx": {
+    "current_model_id": "gpt-5.4/medium",
+    "available_models": [
+      "gpt-5.4/low",
+      "gpt-5.4/medium",
+      "gpt-5.4/high",
+      "gpt-5.4/xhigh",
+      "gpt-5.4-mini/low",
+      "gpt-5.4-mini/medium",
+      "gpt-5.4-mini/high",
+      "gpt-5.4-mini/xhigh",
+      "gpt-5.3-codex/low",
+      "gpt-5.3-codex/medium",
+      "gpt-5.3-codex/high",
+      "gpt-5.3-codex/xhigh",
+      "gpt-5.2-codex/low",
+      "gpt-5.2-codex/medium",
+      "gpt-5.2-codex/high",
+      "gpt-5.2-codex/xhigh",
+      "gpt-5.2/low",
+      "gpt-5.2/medium",
+      "gpt-5.2/high",
+      "gpt-5.2/xhigh",
+      "gpt-5.1-codex-max/low",
+      "gpt-5.1-codex-max/medium",
+      "gpt-5.1-codex-max/high",
+      "gpt-5.1-codex-max/xhigh",
+      "gpt-5.1-codex-mini/medium",
+      "gpt-5.1-codex-mini/high"
+    ],
+    "available_commands": [
+      "review",
+      "review-branch",
+      "review-commit",
+      "init",
+      "compact",
+      "undo",
+      "logout"
+    ]
+  }
+}

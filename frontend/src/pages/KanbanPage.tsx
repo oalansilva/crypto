@@ -331,6 +331,22 @@ export default function KanbanPage() {
   const [query, setQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
+  // Card number search: when user types "#54", find the card by card_number and open it directly.
+  useEffect(() => {
+    const q = query.trim()
+    const match = q.match(/^#(\d+)$/)
+    if (!match) return
+    const cardNum = parseInt(match[1], 10)
+    const found = items.find((it) => it.card_number === cardNum)
+    if (found) {
+      setSelected(found)
+      setQuery('')
+      setMobileSearchOpen(false)
+    } else if (q) {
+      toast({ title: 'Card não encontrado', description: `Nenhum card com número #${cardNum}`, variant: 'default' })
+    }
+  }, [query, items])
+
   // Mobile toolbar controls (match prototype intent).
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const [sortMode, setSortMode] = useState<SortMode>('column')
@@ -350,10 +366,18 @@ export default function KanbanPage() {
     }
 
     if (q) {
-      out = out.filter((it) => {
-        const hay = `${it.id} ${it.title || ''}`.toLowerCase()
-        return hay.includes(q)
-      })
+      // Support "#54" syntax to search by card_number directly
+      const cardNumMatch = q.match(/^#(\d+)$/)
+      if (cardNumMatch) {
+        const cardNum = parseInt(cardNumMatch[1], 10)
+        out = out.filter((it) => it.card_number === cardNum)
+      } else {
+        out = out.filter((it) => {
+          const cardNumStr = it.card_number != null ? `#${it.card_number}` : ''
+          const hay = `${it.id} ${it.title || ''} ${cardNumStr}`.toLowerCase()
+          return hay.includes(q)
+        })
+      }
     }
 
     const sourceIndex = new Map(items.map((item, index) => [item.id, index]))

@@ -17,20 +17,16 @@ def resolve_db_url() -> str:
 
     Priority:
     1. DATABASE_URL / settings.database_url
-    2. WORKFLOW_DATABASE_URL / settings.workflow_database_url
-    3. local SQLite fallback
+    2. local SQLite fallback
+
+    The workflow database is managed separately and must not be reused as the
+    main application runtime database.
     """
 
     settings = get_settings()
     explicit_url = getattr(settings, "database_url", None) or os.getenv("DATABASE_URL")
     if explicit_url:
         return explicit_url
-
-    workflow_url = getattr(settings, "workflow_database_url", None) or os.getenv(
-        "WORKFLOW_DATABASE_URL"
-    )
-    if workflow_url:
-        return workflow_url
 
     return f"sqlite:///{DB_PATH}"
 
@@ -148,6 +144,12 @@ def ensure_sqlite_migrations() -> None:
                 conn.commit()
     finally:
         conn.close()
+
+
+def ensure_runtime_schema_migrations() -> None:
+    """Backward-compatible runtime migration entrypoint used during app startup."""
+
+    ensure_sqlite_migrations()
 
 
 def get_db():

@@ -1,0 +1,9 @@
+{
+  "defaultAgent": "codex",
+  "defaultPermissions": "approve-all",
+  "agents": {
+    "openclaw": {
+      "command": "env OPENCLAW_HIDE_BANNER=1 OPENCLAW_SUPPRESS_NOTES=1 openclaw acp"
+    }
+  }
+}
