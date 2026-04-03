@@ -936,7 +936,15 @@ export default function KanbanPage() {
                 Pending entra antes de PO. Desktop arrasta entre colunas; mobile mantém swipe + long press.
               </p>
             </div>
-            <div className="mt-4 sm:mt-0">
+            <div className="mt-4 sm:mt-0 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(true)}
+                aria-label="Search cards"
+                className="h-10 shrink-0 rounded-xl bg-zinc-800 px-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700"
+              >
+                🔍 Buscar
+              </button>
               <Button onClick={() => setShowCreateCardModal(true)} className="w-full sm:w-auto">
                 + Novo Card
               </Button>
