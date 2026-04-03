@@ -155,6 +155,11 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     if not _verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    user.last_login = datetime.utcnow()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
     access_token = _generate_access_token(user)
     refresh_token = _generate_refresh_token(user)
 

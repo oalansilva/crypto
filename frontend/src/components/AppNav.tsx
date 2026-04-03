@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Activity,
   Brain,
@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   Home,
   Kanban,
+  KeyRound,
   Layers,
   LogOut,
   Menu,
@@ -46,6 +47,8 @@ const strategyNavItems: NavItemConfig[] = [
 
 const accountNavItems: NavItemConfig[] = [
   { to: '/external/balances', label: 'Carteira', icon: Wallet },
+  { to: '/profile', label: 'Meu Perfil', icon: User },
+  { to: '/change-password', label: 'Alterar Senha', icon: KeyRound },
 ]
 
 const adminNavItems: NavItemConfig[] = [
@@ -66,6 +69,8 @@ function resolvePageTitle(pathname: string) {
   if (pathname === '/kanban') return 'Kanban'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
+  if (pathname.startsWith('/profile')) return 'Meu Perfil'
+  if (pathname.startsWith('/change-password')) return 'Alterar senha'
   if (pathname.startsWith('/system/preferences')) return 'Preferências do sistema'
   if (pathname.startsWith('/openspec')) return 'OpenSpec'
   return 'Crypto'
@@ -158,6 +163,7 @@ function NavSection({
 
 export function AppNav({ hideOnMobile = false }: AppNavProps) {
   const location = useLocation()
+  const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -289,12 +295,12 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                           type="button"
                           onClick={() => {
                             setAccountMenuOpen(false)
-                            setMobileMenuOpen(true)
+                            navigate('/profile')
                           }}
                           className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-white"
                         >
                           <User className="h-4 w-4" />
-                          <span>Account</span>
+                          <span>Meu Perfil</span>
                         </button>
                         <button
                           type="button"
@@ -502,15 +508,33 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                         )}
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/8 pt-4">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-200">
-                          <User className="h-3.5 w-3.5" />
-                          <span>Account</span>
-                        </div>
+                      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/8 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountMenuOpen(false)
+                            navigate('/profile')
+                          }}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-white"
+                        >
+                          <User className="h-4 w-4" />
+                          <span>Perfil</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountMenuOpen(false)
+                            navigate('/change-password')
+                          }}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-white"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                          <span>Senha</span>
+                        </button>
                         <button
                           type="button"
                           onClick={handleLogout}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/16 hover:text-red-200"
+                          className="col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/16 hover:text-red-200"
                         >
                           <LogOut className="h-4 w-4" />
                           <span>Sair</span>

@@ -22,6 +22,8 @@ import AIDashboardPage from './pages/AIDashboardPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import SystemPreferencesPage from './pages/SystemPreferencesPage'
+import ProfilePage from './pages/ProfilePage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 import { Toaster } from "@/components/ui/toaster"
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -77,6 +79,8 @@ function App() {
           {/* Catch-all to support nested specs like /openspec/backend/spec */}
           <Route path="/openspec/*" element={<OpenSpecDetailPage />} />
           <Route path="/external/balances" element={<ExternalBalancesPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/kanban" element={<KanbanPage />} />
           <Route path="/system/preferences" element={<ProtectedRoute requireAdmin><SystemPreferencesPage /></ProtectedRoute>} />
         </Route>
