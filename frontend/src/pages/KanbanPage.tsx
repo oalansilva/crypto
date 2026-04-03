@@ -991,6 +991,15 @@ export default function KanbanPage() {
               {showBugs ? '🐛 Bugs On' : '🐛 Bugs Off'}
             </button>
 
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen(true)}
+              aria-label="Search cards"
+              className="h-10 shrink-0 rounded-xl border border-zinc-200 bg-zinc-950 px-3 text-sm font-medium text-zinc-200 transition-colors hover:border-cyan-400/40 hover:text-cyan-200"
+            >
+              🔍 Buscar
+            </button>
+
             <div className="h-10 shrink-0 rounded-xl border border-zinc-200 bg-zinc-950 px-3 grid place-items-center text-xs text-zinc-500">
               {filteredItems.length} items
             </div>
