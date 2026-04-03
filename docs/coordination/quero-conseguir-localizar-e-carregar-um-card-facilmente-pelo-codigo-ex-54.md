@@ -17,7 +17,13 @@
 
 ## Notes
 - Card criado pelo PO para melhorar UX do kanban
-- Aguardando DEV
+- DEV: implementado
+
+## Handoff DEV → QA
+- Branch: `feature/card63-search-by-card-number`
+- Funcionalidade: usuário digita #54 no campo de busca e o card é aberto diretamente
+- Se card não existe, exibe toast informativa
+- Build passou sem erros
 
 ## Next actions
 - [ ] DEV: implementar busca por código de card
