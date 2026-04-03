@@ -120,7 +120,12 @@ def parse_status(md: str) -> Dict[str, str]:
         v = (m.group(2) or "").strip()
         if not k or not v:
             continue
-        canonical_key = "Homologation" if k == "Alan homologation" else k
+        if k == "Alan approval":
+            canonical_key = "Approval"
+        elif k == "Alan homologation":
+            canonical_key = "Homologation"
+        else:
+            canonical_key = k
         out[canonical_key] = v
 
     if "Homologation" not in out and "Alan (Stakeholder)" in out:

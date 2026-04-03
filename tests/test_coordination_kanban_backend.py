@@ -88,6 +88,20 @@ def test_parse_status_normalizes_legacy_alan_homologation_label():
     assert "Alan homologation" not in status
 
 
+def test_parse_status_normalizes_legacy_alan_approval_label():
+    md = """# legacy-approval
+
+## Status
+- PO: done
+- Alan approval: approved
+"""
+
+    status = coordination_service.parse_status(md)
+
+    assert status["Approval"] == "approved"
+    assert "Alan approval" not in status
+
+
 def test_archived_by_closed_heading_overrides_gates():
     md = """# closed-change
 
@@ -143,7 +157,7 @@ def test_derive_column_gate_order_includes_design_between_po_and_approval():
 - Homologation: approved
 """
     status3 = coordination_service.parse_status(md3)
-    assert coordination_service.derive_column(status3, archived=False) == "Alan approval"
+    assert coordination_service.derive_column(status3, archived=False) == "Approval"
 
 
 
