@@ -3,7 +3,7 @@
 ## Status
 - PO: done
 - DESIGN: done
-- DEV: in_progress
+- DEV: done
 - QA: pending
 - Alan (Stakeholder): approved
 
