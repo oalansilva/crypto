@@ -332,22 +332,6 @@ export default function KanbanPage() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
 
-  // Card number search: when user types "#54", find the card by card_number and open it directly.
-  useEffect(() => {
-    const q = query.trim()
-    const match = q.match(/^#(\d+)$/)
-    if (!match) return
-    const cardNum = parseInt(match[1], 10)
-    const found = items.find((it) => it.card_number === cardNum)
-    if (found) {
-      setSelected(found)
-      setQuery('')
-      setMobileSearchOpen(false)
-    } else if (q) {
-      toast({ title: 'Card não encontrado', description: `Nenhum card com número #${cardNum}`, variant: 'default' })
-    }
-  }, [query, items])
-
   // Mobile toolbar controls (match prototype intent).
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const [sortMode, setSortMode] = useState<SortMode>('column')
@@ -903,6 +887,22 @@ export default function KanbanPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const q = query.trim()
+                    const match = q.match(/^#(\d+)$/)
+                    if (!match) return
+                    const cardNum = parseInt(match[1], 10)
+                    const found = items.find((it) => it.card_number === cardNum)
+                    if (found) {
+                      setSelected(found)
+                      setQuery('')
+                      setMobileSearchOpen(false)
+                    } else if (q) {
+                      toast({ title: 'Card não encontrado', description: `Nenhum card com número #${cardNum}`, variant: 'default' })
+                    }
+                  }
+                }}
                 placeholder="Localizar…"
                 autoFocus
               />

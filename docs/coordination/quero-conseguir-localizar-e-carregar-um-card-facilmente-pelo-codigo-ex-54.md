@@ -4,8 +4,9 @@
 - PO: done
 - DESIGN: done
 - DEV: done
-- QA: done ✅
+- QA: pending (retaque após fix desktop)
 - DEV fix: commit 626abc0 — botão 🔍 Buscar adicionado no toolbar mobile
+- DEV fix 2: commit `fix: adiciona modal de busca funcional no desktop` — modal desktop com desktopSearchOpen state
 - Alan (Stakeholder): approved
 
 ## Decisions (locked)
@@ -23,46 +24,21 @@
 - Branch: `feature/card63-search-by-card-number`
 - Funcionalidade: usuário digita #54 no campo de busca e o card é aberto diretamente
 - Se card não existe, exibe toast informativa
-- Build passou sem erros
 
-## Bug Encontrado - QA
+## Fix Desktop Modal (2026-04-03 12:53 UTC)
 
-### Bug: Campo de busca NÃO EXISTE na UI do Kanban
+**Bug:** O botão 🔍 Buscar no desktop setava `mobileSearchOpen(true)`, mas o search bar estava dentro de `sm:hidden` — não aparecia nada no desktop.
 
-**Severidade: CRÍTICO**
+**Correção:** Criado `desktopSearchOpen` state + modal desktop dedicado (`fixed inset-0 z-50`) com input centralizado. Enter ou clique em "Buscar" encontra o card e abre o drawer.
 
-**Descrição:**
-A funcionalidade de busca foi implementada no código (lógica de `#54` no useEffect e filteredItems), mas **NÃO HÁ nenhum elemento de UI para o usuário acessar essa funcionalidade**.
+- Commit: `fix: adiciona modal de busca funcional no desktop`
+- Build: passou
+- Backend/Frontend: healthy (restart 12:53 UTC)
 
-**Análise técnica:**
-1. O `useEffect` que detecta padrão `#54` e abre o card diretamente EXISTE (KanbanPage.tsx linhas 334-348)
-2. O `filteredItems` com suporte a `#54` EXISTE (linhas 369-377)
-3. O estado `mobileSearchOpen` que controla o input de busca mobile EXISTE (linha 332)
-4. O input de busca mobile existe no JSX (linhas 898-914), porém:
-   - **NÃO HÁ nenhum botão para definir `mobileSearchOpen = true`**
-   - O input mobile só aparece quando `mobileSearchOpen` é `true`, mas nunca é_triggered
-   - O toolbar mobile (linhas 950-1015) só tem: Filter, Sort, Bug toggle e Column tabs — SEM busca
-   - **No desktop (`hidden sm:block`), NÃO HÁ nenhum input de busca**
+## QA Pendente
 
-**Evidências:**
-- Playwright: 0 inputs encontrados na página `/kanban` (após login)
-- Console: 502/503 errors (backend instável)
-- Código: `setMobileSearchOpen(true)` nunca é chamado em nenhum lugar
+- [ ] QA: abrir http://72.60.150.140:5173/kanban, clicar 🔍 Buscar no desktop, digitar #63, verificar drawer
+- [ ] Salvar evidência em `/root/.openclaw/workspace/crypto/qa-evidence/`
+- [ ] Comentar caminhos das evidências neste arquivo
 
-**O que funciona:**
-- API `/api/workflow/kanban/changes` retorna cards com `card_number`
-- Card #54 (Portfolio Optimizer) existe no banco
-
-**O que NÃO funciona:**
-- O usuário não consegue ver nenhum campo de busca
-- Não há como disparar a funcionalidade de `#54`
-
-**Correção aplicada (DEV):**
-- Commit `626abc0`: adiciona botão 🔍 Buscar na toolbar mobile que define `mobileSearchOpen = true`
-- O botão fica entre os controles existentes (Filter, Sort, Bugs, **Buscar**, items count)
-- Build passou sem erros
-
-## Next actions
-- [x] QA: validar feature — **FALHOU com bug**
-- [x] DEV: adicionar UI de busca (botão/trigger para mobileSearchOpen) — **CORRIGIDO**
-- [x] QA: novo teste — clicar no botão 🔍 Buscar, digitar #54, verificar se card abre — **PASSOU**
+## Evidência QA
