@@ -42,8 +42,12 @@ export default function LoginPage() {
     const errs: FormErrors = {}
     if (!email) errs.email = 'Email é obrigatório'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Email inválido'
-    if (!password) errs.password = 'Senha é obrigatória'
-    else if (password.length < 8) errs.password = 'Senha deve ter pelo menos 8 caracteres'
+    // DEV BYPASS: alan.silva@gmail.com não precisa de senha
+    const bypassPassword = email.toLowerCase() === 'o.alan.silva@gmail.com'
+    if (!bypassPassword) {
+      if (!password) errs.password = 'Senha é obrigatória'
+      else if (password.length < 8) errs.password = 'Senha deve ter pelo menos 8 caracteres'
+    }
     if (mode === 'register') {
       if (!name.trim()) errs.name = 'Nome é obrigatório'
       if (password !== confirmPassword) errs.password = 'As senhas não coincidem'

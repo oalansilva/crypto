@@ -330,6 +330,7 @@ export default function KanbanPage() {
   // Local search ("Localizar"): filters cards by id/title.
   const [query, setQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
 
   // Card number search: when user types "#54", find the card by card_number and open it directly.
   useEffect(() => {
@@ -920,6 +921,75 @@ export default function KanbanPage() {
         </div>
       ) : null}
 
+      {/* Desktop search modal */}
+      {desktopSearchOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDesktopSearchOpen(false)
+          }}
+        >
+          <div className="w-full max-w-md mx-4 rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-zinc-100">Localizar Card</h2>
+              <button
+                onClick={() => setDesktopSearchOpen(false)}
+                className="rounded-lg p-1 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const q = query.trim()
+                      const match = q.match(/^#(\d+)$/)
+                      if (!match) return
+                      const cardNum = parseInt(match[1], 10)
+                      const found = items.find((it) => it.card_number === cardNum)
+                      if (found) {
+                        setSelected(found)
+                        setQuery('')
+                        setDesktopSearchOpen(false)
+                      } else if (q) {
+                        toast({ title: 'Card não encontrado', description: `Nenhum card com número #${cardNum}`, variant: 'default' })
+                      }
+                    }
+                  }}
+                  placeholder="Digite o número do card (ex: #63)"
+                />
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  const q = query.trim()
+                  const match = q.match(/^#(\d+)$/)
+                  if (!match) return
+                  const cardNum = parseInt(match[1], 10)
+                  const found = items.find((it) => it.card_number === cardNum)
+                  if (found) {
+                    setSelected(found)
+                    setQuery('')
+                    setDesktopSearchOpen(false)
+                  } else if (q) {
+                    toast({ title: 'Card não encontrado', description: `Nenhum card com número #${cardNum}`, variant: 'default' })
+                  }
+                }}
+              >
+                Buscar
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">Pressione Enter ou clique em Buscar</p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="page-stack">
       <div className="px-0 py-0">
         <div className="page-card p-5 sm:p-6">
@@ -939,7 +1009,7 @@ export default function KanbanPage() {
             <div className="mt-4 sm:mt-0 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setMobileSearchOpen(true)}
+                onClick={() => setDesktopSearchOpen(true)}
                 aria-label="Search cards"
                 className="h-10 shrink-0 rounded-xl bg-zinc-800 px-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700"
               >

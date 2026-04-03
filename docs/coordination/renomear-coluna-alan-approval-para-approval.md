@@ -6,7 +6,8 @@
 - DEV: done
 - QA: done
 - Alan (Stakeholder): approved
-- Homologation: pending
+- Homologation: approved ✅
+- Archived: ✅ (2026-04-03 12:16 UTC)
 
 ## Decisions (locked)
 - Meta: renomear coluna "Alan approval" para apenas "Approval"

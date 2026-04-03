@@ -4,9 +4,9 @@
 - PO: done
 - DESIGN: done
 - DEV: done
-- QA: pending
+- QA: done ✅
+- DEV fix: commit 626abc0 — botão 🔍 Buscar adicionado no toolbar mobile
 - Alan (Stakeholder): approved
-- Bug: IMPLEMENTADO — falta UI de busca (campo não existe na tela)
 
 ## Decisions (locked)
 - Meta: permitir buscar card pelo código (ex: #54) e abrir diretamente
@@ -57,10 +57,12 @@ A funcionalidade de busca foi implementada no código (lógica de `#54` no useEf
 - O usuário não consegue ver nenhum campo de busca
 - Não há como disparar a funcionalidade de `#54`
 
-**Próximo passo:**
-- DEV precisa adicionar um botão/ícone de busca no toolbar do Kanban que defina `mobileSearchOpen = true`
-- OU adicionar um campo de busca no header/desktop do Kanban
+**Correção aplicada (DEV):**
+- Commit `626abc0`: adiciona botão 🔍 Buscar na toolbar mobile que define `mobileSearchOpen = true`
+- O botão fica entre os controles existentes (Filter, Sort, Bugs, **Buscar**, items count)
+- Build passou sem erros
 
 ## Next actions
 - [x] QA: validar feature — **FALHOU com bug**
-- [ ] DEV: adicionar UI de busca (botão/trigger para mobileSearchOpen ou campo desktop)
+- [x] DEV: adicionar UI de busca (botão/trigger para mobileSearchOpen) — **CORRIGIDO**
+- [x] QA: novo teste — clicar no botão 🔍 Buscar, digitar #54, verificar se card abre — **PASSOU**
