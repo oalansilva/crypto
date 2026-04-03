@@ -708,27 +708,27 @@ def update_change(
             _validate_dev_branch(db, c, REPO_ROOT)
 
         # PO-to-DEV Block: PO must not act as DEV
-        # Valid flow: PO → DESIGN → Alan approval → DEV
-        # PO can only move to DESIGN (if UI) or Alan approval (backend-only)
+        # Valid flow: PO → DESIGN → Approval → DEV
+        # PO can only move to DESIGN (if UI) or Approval (backend-only)
         if new_status == "DEV" and current_column == "PO":
             raise HTTPException(
                 status_code=409,
                 detail={
                     "code": "po_cannot_act_as_dev",
-                    "message": "PO cannot move directly to DEV. PO only creates artifacts. Move to DESIGN (if UI) or Alan approval first.",
+                    "message": "PO cannot move directly to DEV. PO only creates artifacts. Move to DESIGN (if UI) or Approval first.",
                     "current_status": current_column,
                     "target_status": new_status,
                 },
             )
 
-        # DESIGN-to-DEV Block: Must go through Alan approval first
-        # Valid flow: PO → DESIGN → Alan approval → DEV
+        # DESIGN-to-DEV Block: Must go through Approval first
+        # Valid flow: PO → DESIGN → Approval → DEV
         if new_status == "DEV" and current_column == "DESIGN":
             raise HTTPException(
                 status_code=409,
                 detail={
                     "code": "design_cannot_skip_approval",
-                    "message": "Cannot move from DESIGN directly to DEV. Must go through Alan approval first.",
+                    "message": "Cannot move from DESIGN directly to DEV. Must go through Approval first.",
                     "current_status": current_column,
                     "target_status": new_status,
                 },
@@ -766,8 +766,8 @@ def update_change(
                     },
                 )
 
-        # Validation: Cannot move to Alan approval without OpenSpec artifacts
-        if new_status == "Alan approval":
+        # Validation: Cannot move to Approval without OpenSpec artifacts
+        if new_status == "Approval":
             change_slug = c.change_id
             openspec_dir = Path(REPO_ROOT) / "openspec" / "changes" / change_slug
 
@@ -781,7 +781,7 @@ def update_change(
                     status_code=409,
                     detail={
                         "code": "missing_openspec_artifacts",
-                        "message": f"Cannot move to Alan approval without required files: {', '.join(missing_files)}",
+                        "message": f"Cannot move to Approval without required files: {', '.join(missing_files)}",
                         "missing_files": missing_files,
                         "target": new_status,
                     },

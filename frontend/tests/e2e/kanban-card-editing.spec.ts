@@ -23,7 +23,7 @@ test('Kanban drawer edits title/description and cancels card without losing iden
             status: {
               PO: 'approved',
               DESIGN: 'approved',
-              'Alan approval': 'approved',
+              'Approval': 'approved',
               DEV: 'in progress',
               QA: 'pending',
               'Homologation': 'pending',

@@ -13,7 +13,7 @@ Provide a *minimal, safe* auto-reconciliation mechanism that:
 - infers **PO** and **DESIGN** completion from filesystem artifacts (OpenSpec + prototype)
 - advances the workflow DB forward (never backward) to the earliest column that
   is still actually pending
-- never auto-approves Alan gates (Alan approval / homologation)
+- never auto-approves Alan gates (Approval / homologation)
 
 This is intentionally best-effort and idempotent.
 """
@@ -34,7 +34,7 @@ KANBAN_FLOW_ORDER = [
     "Pending",
     "PO",
     "DESIGN",
-    "Alan approval",
+    "Approval",
     "DEV",
     "QA",
     "Homologation",
@@ -179,8 +179,8 @@ def reconcile_change_forward(db: Session, *, change: Change) -> bool:
         desired_col = "PO"
     elif not ok("DESIGN"):
         desired_col = "DESIGN"
-    elif not ok("Alan approval"):
-        desired_col = "Alan approval"
+    elif not ok("Approval"):
+        desired_col = "Approval"
     elif not ok("DEV"):
         desired_col = "DEV"
     elif not ok("QA"):

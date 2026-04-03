@@ -30,12 +30,12 @@ async def test_coordination_changes_lists_active_and_archived(monkeypatch, tmp_p
 
     _write(
         coord_dir / "a-change.md",
-        """# A Change\n\n## Status\n- PO: done\n- DEV: not started\n- QA: not started\n- Alan approval: approved\n- Homologation: not reviewed\n\n## Notes\n...\n""",
+        """# A Change\n\n## Status\n- PO: done\n- DEV: not started\n- QA: not started\n- Approval: approved\n- Homologation: not reviewed\n\n## Notes\n...\n""",
     )
 
     _write(
         coord_dir / "b-archived.md",
-        """# B Archived\n\n## Status\n- PO: done\n- DEV: done\n- QA: done\n- Alan approval: approved\n- Homologation: approved\n\n## Closed\n""",
+        """# B Archived\n\n## Status\n- PO: done\n- DEV: done\n- QA: done\n- Approval: approved\n- Homologation: approved\n\n## Closed\n""",
     )
 
     monkeypatch.setattr(coordination_service, "coordination_dir", lambda: coord_dir)
@@ -62,7 +62,7 @@ async def test_coordination_changes_normalize_legacy_homologation_status(monkeyp
 
     _write(
         coord_dir / "legacy-change.md",
-        """# Legacy Change\n\n## Status\n- PO: done\n- DEV: done\n- QA: done\n- Alan approval: approved\n- Alan homologation: approved\n\n## Notes\n...\n""",
+        """# Legacy Change\n\n## Status\n- PO: done\n- DEV: done\n- QA: done\n- Approval: approved\n- Alan homologation: approved\n\n## Notes\n...\n""",
     )
 
     monkeypatch.setattr(coordination_service, "coordination_dir", lambda: coord_dir)

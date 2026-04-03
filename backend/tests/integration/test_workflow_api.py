@@ -108,10 +108,10 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
 
     approval = client.post(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/approvals",
-        json={"scope": "change", "gate": "Alan approval", "state": "approved", "actor": "Alan", "note": "ok"},
+        json={"scope": "change", "gate": "Approval", "state": "approved", "actor": "Alan", "note": "ok"},
     )
     assert approval.status_code == 200
-    assert approval.json()["gate"] == "Alan approval"
+    assert approval.json()["gate"] == "Approval"
 
     handoff = client.post(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/handoffs",
@@ -124,7 +124,7 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
     assert approvals.status_code == 200
     approval_items = approvals.json()
     assert len(approval_items) >= 1
-    assert approval_items[-1]["gate"] == "Alan approval"
+    assert approval_items[-1]["gate"] == "Approval"
 
     handoffs = client.get(
         f"/api/workflow/projects/crypto/changes/centralize-workflow-state-db/handoffs?work_item_id={story_id}"

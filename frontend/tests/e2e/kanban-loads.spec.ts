@@ -19,7 +19,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
           path: `docs/coordination/${id}.md`,
           status: {
             PO: 'done',
-            'Alan approval': 'approved',
+            'Approval': 'approved',
             DEV: 'done',
             QA: 'in progress',
             'Homologation': 'not reviewed',

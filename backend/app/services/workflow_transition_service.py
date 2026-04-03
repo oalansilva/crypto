@@ -27,7 +27,7 @@ KANBAN_COLUMNS = [
     "Pending",
     "PO",
     "DESIGN",
-    "Alan approval",
+    "Approval",
     "DEV",
     "QA",
     "Homologation",
@@ -38,20 +38,20 @@ KANBAN_COLUMNS = [
 GATED_COLUMNS = {
     "PO",
     "DESIGN",
-    "Alan approval",
+    "Approval",
     "DEV",
     "QA",
     "Homologation",
     "Archived",
 }
 
-GATE_SEQUENCE = ["PO", "DESIGN", "Alan approval", "DEV", "QA", "Homologation"]
+GATE_SEQUENCE = ["PO", "DESIGN", "Approval", "DEV", "QA", "Homologation"]
 
 _ALLOWED_FORWARD_MOVES = {
     "Pending": {"PO", "Canceled"},
     "PO": {"DESIGN", "Canceled"},
-    "DESIGN": {"Alan approval", "Canceled"},
-    "Alan approval": {"DEV", "Canceled"},
+    "DESIGN": {"Approval", "Canceled"},
+    "Approval": {"DEV", "Canceled"},
     "DEV": {"QA", "Canceled"},
     "QA": {"Homologation", "Canceled"},
     "Homologation": {"Archived", "Canceled"},
@@ -89,7 +89,7 @@ def desired_gate_states_for_column(column: str) -> list[GateDecision]:
         approved_until = -1
     elif target == "DESIGN":
         approved_until = 0
-    elif target == "Alan approval":
+    elif target == "Approval":
         approved_until = 1
     elif target == "DEV":
         approved_until = 2

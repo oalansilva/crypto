@@ -108,7 +108,7 @@ def _extract_status_section_lines(md: str) -> List[str]:
 def parse_status(md: str) -> Dict[str, str]:
     """Parse the `## Status` bullet list into a normalized dict.
 
-    Returns keys in the original label form (e.g. "PO", "DEV", "Alan approval").
+    Returns keys in the original label form (e.g. "PO", "DEV", "Approval").
     """
 
     out: Dict[str, str] = {}
@@ -167,7 +167,7 @@ def is_archived(md: str, status: Dict[str, str]) -> bool:
     design = _design_field(status)
     dev = _get_gate(status, "DEV")
     qa = _get_gate(status, "QA")
-    alan_approval = _alan_field(status, "Alan approval")
+    alan_approval = _alan_field(status, "Approval")
     alan_homologation = _alan_field(status, "Homologation")
 
     return (
@@ -187,7 +187,7 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     1) archived -> Archived
     2) PO != done -> PO
     3) DESIGN not in {done, skipped} -> DESIGN
-    4) Alan approval != approved -> Alan approval
+    4) Approval != approved -> Approval
     5) DEV != done -> DEV
     6) QA != done -> QA
     7) Homologation != approved -> Homologation
@@ -201,7 +201,7 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     design = _design_field(status)
     dev = _get_gate(status, "DEV")
     qa = _get_gate(status, "QA")
-    alan_approval = _alan_field(status, "Alan approval")
+    alan_approval = _alan_field(status, "Approval")
     alan_homologation = _alan_field(status, "Homologation")
 
     if po != "done":
@@ -209,7 +209,7 @@ def derive_column(status: Dict[str, str], archived: bool) -> str:
     if design not in {"done", "skipped"}:
         return "DESIGN"
     if alan_approval != "approved":
-        return "Alan approval"
+        return "Approval"
     if dev != "done":
         return "DEV"
     if qa != "done":

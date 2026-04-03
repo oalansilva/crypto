@@ -10,7 +10,7 @@ test('desktop drop into non-empty column persists and mobile long-press opens mo
       status: {
         PO: 'pending',
         DESIGN: 'pending',
-        'Alan approval': 'pending',
+        'Approval': 'pending',
         DEV: 'pending',
         QA: 'pending',
         'Homologation': 'pending',
@@ -26,13 +26,13 @@ test('desktop drop into non-empty column persists and mobile long-press opens mo
       status: {
         PO: 'approved',
         DESIGN: 'approved',
-        'Alan approval': 'pending',
+        'Approval': 'pending',
         DEV: 'pending',
         QA: 'pending',
         'Homologation': 'pending',
       },
       archived: false,
-      column: 'Alan approval',
+      column: 'Approval',
     },
     {
       id: 'dev-existing-card',
@@ -42,7 +42,7 @@ test('desktop drop into non-empty column persists and mobile long-press opens mo
       status: {
         PO: 'approved',
         DESIGN: 'approved',
-        'Alan approval': 'approved',
+        'Approval': 'approved',
         DEV: 'pending',
         QA: 'pending',
         'Homologation': 'pending',

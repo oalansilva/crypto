@@ -105,7 +105,7 @@ const COLUMNS_ORDER = [
   'Pending',
   'PO',
   'DESIGN',
-  'Alan approval',
+  'Approval',
   'DEV',
   'QA',
   'Homologation',
@@ -1069,7 +1069,7 @@ export default function KanbanPage() {
                                 <div className="mt-3 pt-3 border-t border-zinc-200 space-y-1.5">
                                   <StatusLine label="PO" value={it.status?.['PO']} />
                                   <StatusLine label="DESIGN" value={it.status?.['DESIGN'] || 'skipped'} />
-                                  <StatusLine label="Alan approval" value={it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)']} />
+                                  <StatusLine label="Approval" value={it.status?.['Approval'] || it.status?.['Alan (Stakeholder)']} />
                                   <StatusLine label="DEV" value={it.status?.['DEV']} />
                                   <StatusLine label="QA" value={it.status?.['QA']} />
                                   <StatusLine label="Publish" value={it.status?.['Publish']} />
@@ -1187,7 +1187,7 @@ export default function KanbanPage() {
                           </div>
 
                           <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-zinc-400">
-                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Alan approval · {(it.status?.['Alan approval'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
+                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Approval · {(it.status?.['Approval'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
                             <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Ready for homologation · {(it.status?.['Homologation readiness'] || '—')}</div>
                           </div>
 
