@@ -29,6 +29,7 @@ type CoordinationChangeItem = {
   parent_story_id?: string | null
   parent_story_title?: string | null
   image_data?: CardImage[]
+  days_in_archived?: number | null
 }
 
 type CoordinationChangeListResponse = {
@@ -348,6 +349,12 @@ export default function KanbanPage() {
 
     if (filterMode !== 'all') {
       out = out.filter((it) => (filterMode === 'archived' ? it.archived : !it.archived))
+    }
+
+    // Filter out archived cards older than 7 days from the main board
+    // (they are still visible when filterMode === 'archived')
+    if (filterMode !== 'archived') {
+      out = out.filter((it) => !(it.archived && (it.days_in_archived ?? 0) > 7))
     }
 
     if (q) {

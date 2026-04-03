@@ -1153,6 +1153,8 @@ class KanbanChangeItem(BaseModel):
     parent_story_id: Optional[str] = None
     parent_story_title: Optional[str] = None
     image_data: List[dict] = Field(default_factory=list)
+    # Days since the card was moved to Archived (None if not archived)
+    days_in_archived: Optional[int] = None
 
 
 class KanbanChangeListResponse(BaseModel):
@@ -1492,6 +1494,10 @@ def kanban_list_changes(
         archived = col == "Archived" or c.change_id in openspec_archived_ids
         if archived:
             col = "Archived"
+        # Calculate days in Archived (for filtering old archived cards >7 days)
+        days_in_archived: Optional[int] = None
+        if archived:
+            days_in_archived = (datetime.utcnow() - c.updated_at.replace(tzinfo=None)).days
         # Check if this change has any bugs
         has_bugs = (
             db.query(WorkItem)
@@ -1515,6 +1521,7 @@ def kanban_list_changes(
                 parent_story_id=None,
                 parent_story_title=None,
                 image_data=_parse_json_field(c.image_data),
+                days_in_archived=days_in_archived,
             )
         )
 
