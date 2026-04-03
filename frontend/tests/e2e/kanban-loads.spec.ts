@@ -1,9 +1,33 @@
 import { expect, test } from '@playwright/test'
 
+const AUTH_USER = {
+  id: 'test-user',
+  email: 'test@example.com',
+  name: 'Test User',
+  isAdmin: false,
+}
+
+async function mockAuthenticatedSession(page: any) {
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('auth_access_token', 'test-access-token')
+    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token')
+    window.localStorage.setItem('auth_user', JSON.stringify(user))
+  }, AUTH_USER)
+
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  })
+}
+
 const mockedChangeId = 'kanban-visual-coordination'
 const secondMockedChangeId = 'mobile-kanban-ui-rethink'
 
 test('Kanban loads and shows a mocked change', async ({ page }) => {
+  await mockAuthenticatedSession(page)
   await page.setViewportSize({ width: 390, height: 844 })
   const orderedIds = [mockedChangeId, secondMockedChangeId]
   // Mock the backend API used by the Kanban page.
@@ -139,4 +163,75 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
   await expect(page.getByText('bug-1')).toBeVisible()
   await expect(page.getByText('Comments', { exact: true })).toBeVisible()
 
+})
+
+test('Kanban normalizes legacy gate labels in board and drawer', async ({ page }) => {
+  const mockedChangeId = 'legacy-approval-render'
+
+  await mockAuthenticatedSession(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+
+  await page.route('**/api/workflow/kanban/changes**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            id: mockedChangeId,
+            title: 'Legacy gate render',
+            card_number: 64,
+            path: `docs/coordination/${mockedChangeId}.md`,
+            status: {
+              PO: 'done',
+              DESIGN: 'done',
+              ' Alan approval ': 'approved',
+              DEV: 'in progress',
+              QA: 'pending',
+              ' Ready for homologation ': 'queued',
+              ' Alan homologation ': 'pending',
+            },
+            archived: false,
+            column: 'DEV',
+            position: 0,
+          },
+        ],
+      }),
+    })
+  })
+
+  await page.route('**/api/workflow/kanban/changes/*/tasks?project_slug=crypto', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        change_id: mockedChangeId,
+        path: `openspec/changes/${mockedChangeId}/tasks.md`,
+        sections: [],
+      }),
+    })
+  })
+
+  await page.route('**/api/workflow/kanban/changes/*/comments?project_slug=crypto', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ change_id: mockedChangeId, items: [] }),
+    })
+  })
+
+  await page.goto('/kanban')
+  await page.getByRole('tab', { name: /DEV 1/i }).click()
+  const card = page.getByRole('button', { name: `Open details for ${mockedChangeId}` })
+  await expect(card).toBeVisible()
+  await expect(card.getByText('Approval · approved')).toBeVisible()
+  await expect(card.getByText('Ready for homologation · queued')).toBeVisible()
+
+  await card.click()
+  const detailsSheet = page.getByRole('complementary')
+  await expect(detailsSheet.getByText('Stage atual: DEV')).toBeVisible()
+  await expect(detailsSheet.getByText('Status', { exact: true })).toBeVisible()
+  await expect(detailsSheet.getByText('Approval', { exact: true })).toBeVisible()
+  await expect(detailsSheet.getByText('Homologation', { exact: true })).toBeVisible()
+  await expect(detailsSheet.getByText('queued')).toBeVisible()
 })

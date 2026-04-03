@@ -113,6 +113,53 @@ const COLUMNS_ORDER = [
   'Canceled',
 ] as const
 
+const STATUS_KEY_ALIASES: Record<string, string[]> = {
+  PO: ['po'],
+  DESIGN: ['design'],
+  Approval: ['approval', 'alan approval'],
+  DEV: ['dev'],
+  QA: ['qa'],
+  Publish: ['publish'],
+  'Homologation readiness': ['homologation readiness', 'ready for homologation'],
+  Homologation: ['homologation', 'alan homologation'],
+}
+
+function normalizeStatusKey(key: string) {
+  return key
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function normalizeStatusMap(status: Record<string, string> | undefined) {
+  const normalized: Record<string, string> = {}
+  let stakeholderValue: string | undefined
+
+  for (const [rawKey, rawValue] of Object.entries(status || {})) {
+    const key = normalizeStatusKey(rawKey)
+    const value = String(rawValue || '').trim()
+    if (!key || !value) continue
+
+    if (key === 'alan stakeholder') {
+      stakeholderValue = value
+      continue
+    }
+
+    for (const [canonicalKey, aliases] of Object.entries(STATUS_KEY_ALIASES)) {
+      if (aliases.includes(key) && !normalized[canonicalKey]) {
+        normalized[canonicalKey] = value
+        break
+      }
+    }
+  }
+
+  if (!normalized['Approval'] && stakeholderValue) normalized['Approval'] = stakeholderValue
+  if (!normalized['Homologation'] && stakeholderValue) normalized['Homologation'] = stakeholderValue
+
+  return normalized
+}
+
 function StatusLine({ label, value }: { label: string; value?: string }) {
   if (!value) return null
   return (
@@ -997,7 +1044,9 @@ export default function KanbanPage() {
                           {colItems.length === 0 ? (
                             <div className="rounded-xl border border-dashed border-zinc-200 p-5 text-xs text-zinc-500">vazio</div>
                           ) : (
-                            colItems.map((it) => (
+                            colItems.map((it) => {
+                              const status = normalizeStatusMap(it.status)
+                              return (
                               <div
                                 key={it.id}
                                 draggable={!it.archived && !moveChange.isPending}
@@ -1067,14 +1116,14 @@ export default function KanbanPage() {
                                 )}
 
                                 <div className="mt-3 pt-3 border-t border-zinc-200 space-y-1.5">
-                                  <StatusLine label="PO" value={it.status?.['PO']} />
-                                  <StatusLine label="DESIGN" value={it.status?.['DESIGN'] || 'skipped'} />
-                                  <StatusLine label="Approval" value={it.status?.['Approval'] || it.status?.['Alan (Stakeholder)']} />
-                                  <StatusLine label="DEV" value={it.status?.['DEV']} />
-                                  <StatusLine label="QA" value={it.status?.['QA']} />
-                                  <StatusLine label="Publish" value={it.status?.['Publish']} />
-                                  <StatusLine label="Ready for homologation" value={it.status?.['Homologation readiness']} />
-                                  <StatusLine label="Homologation" value={it.status?.['Homologation']} />
+                                  <StatusLine label="PO" value={status['PO']} />
+                                  <StatusLine label="DESIGN" value={status['DESIGN'] || 'skipped'} />
+                                  <StatusLine label="Approval" value={status['Approval']} />
+                                  <StatusLine label="DEV" value={status['DEV']} />
+                                  <StatusLine label="QA" value={status['QA']} />
+                                  <StatusLine label="Publish" value={status['Publish']} />
+                                  <StatusLine label="Ready for homologation" value={status['Homologation readiness']} />
+                                  <StatusLine label="Homologation" value={status['Homologation']} />
                                 </div>
 
                                 {!it.archived ? (
@@ -1104,7 +1153,8 @@ export default function KanbanPage() {
                                   </div>
                                 ) : null}
                               </div>
-                            ))
+                              )
+                            })
                           )}
                         </div>
                       </section>
@@ -1142,7 +1192,9 @@ export default function KanbanPage() {
                 {(byColumn.get(activeMobileColumn)?.length || 0) === 0 ? (
                   <div className="rounded-xl border border-dashed border-zinc-200 p-5 text-sm text-zinc-500">Nenhum card nesta etapa.</div>
                 ) : (
-                  (byColumn.get(activeMobileColumn) || []).map((it) => (
+                  (byColumn.get(activeMobileColumn) || []).map((it) => {
+                    const status = normalizeStatusMap(it.status)
+                    return (
                     <button
                       type="button"
                       key={it.id}
@@ -1180,15 +1232,15 @@ export default function KanbanPage() {
 
                           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                             <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-cyan-100">{activeMobileColumn}</span>
-                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">PO {it.status?.['PO'] || '—'}</span>
-                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">DEV {it.status?.['DEV'] || '—'}</span>
-                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">QA {it.status?.['QA'] || '—'}</span>
-                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">Publish {it.status?.['Publish'] || '—'}</span>
+                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">PO {status['PO'] || '—'}</span>
+                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">DEV {status['DEV'] || '—'}</span>
+                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">QA {status['QA'] || '—'}</span>
+                            <span className="rounded-full border border-zinc-200 bg-zinc-950 px-2 py-1 text-zinc-500">Publish {status['Publish'] || '—'}</span>
                           </div>
 
                           <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-zinc-400">
-                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Approval · {(it.status?.['Approval'] || it.status?.['Alan (Stakeholder)'] || '—')}</div>
-                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Ready for homologation · {(it.status?.['Homologation readiness'] || '—')}</div>
+                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Approval · {(status['Approval'] || '—')}</div>
+                            <div className="rounded-xl border border-zinc-200 bg-zinc-800 px-3 py-2">Ready for homologation · {(status['Homologation readiness'] || '—')}</div>
                           </div>
 
                           <div className="mt-3 flex items-center gap-2">
@@ -1220,7 +1272,8 @@ export default function KanbanPage() {
                         </div>
                       </div>
                     </button>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </section>
@@ -1305,6 +1358,26 @@ export default function KanbanPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                {(() => {
+                  const status = normalizeStatusMap(selected.status)
+                  return (
+                    <section className="space-y-2">
+                      <div className="text-sm font-semibold text-zinc-900">Status</div>
+                      <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-3 space-y-2">
+                        <div className="text-sm text-zinc-300">Stage atual: {selected.column}</div>
+                        <StatusLine label="PO" value={status['PO']} />
+                        <StatusLine label="DESIGN" value={status['DESIGN'] || 'skipped'} />
+                        <StatusLine label="Approval" value={status['Approval']} />
+                        <StatusLine label="DEV" value={status['DEV']} />
+                        <StatusLine label="QA" value={status['QA']} />
+                        <StatusLine label="Publish" value={status['Publish']} />
+                        <StatusLine label="Ready for homologation" value={status['Homologation readiness']} />
+                        <StatusLine label="Homologation" value={status['Homologation']} />
+                      </div>
+                    </section>
+                  )
+                })()}
+
                 <section className="space-y-3">
                   <div className="text-sm font-semibold text-zinc-900">Card</div>
 
