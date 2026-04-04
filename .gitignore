@@ -80,6 +80,10 @@ backend/data/jobs/*.json
 backend/data/jobs/results.db
 backend/full_execution_log.txt.1
 .env
+backend/.env
 frontend/test-results/
 .playwright-mcp/
+.playwright-cli/
+qa-evidence/
+tmp_retrospective_prompt.md
 artifacts-signals-*.png
