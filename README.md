@@ -16,7 +16,7 @@ A full-stack web application for backtesting cryptocurrency trading strategies w
 ### Backend
 - **FastAPI**: Modern Python web framework
 - **SQLAlchemy**: SQL toolkit and ORM
-- **SQLite**: Lightweight database for development
+- **PostgreSQL**: Required for runtime databases
 - **AsyncIO**: Asynchronous background workers
 
 ### Frontend
@@ -41,7 +41,6 @@ crypto/
 │   │   ├── services/       # Business logic
 │   │   └── workers/        # Background jobs
 │   ├── requirements.txt
-│   └── backtest.db         # SQLite database
 │
 ├── frontend/               # React frontend
 │   ├── src/
@@ -78,12 +77,17 @@ crypto/
    pip install -r requirements.txt
    ```
 
-3. **Initialize database**:
+3. **Configure PostgreSQL envs**:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+
+4. **Initialize database**:
    ```bash
    python init_db.py
    ```
 
-4. **Start backend server**:
+5. **Start backend server**:
    ```bash
    python -m uvicorn app.main:app --host 127.0.0.1 --port 8003 --reload
    ```
@@ -114,7 +118,7 @@ From the repo root:
 ./start.sh
 ```
 
-`start.sh` checks `backend/.venv`, runs `backend/init_db.py`, starts backend and frontend with systemd services (`crypto-backend.service`, `crypto-frontend.service`) when available, falls back to `nohup` (`uvicorn`/`vite`) when services are not present, and runs a quick health check on `http://127.0.0.1:8000/api/health`.
+O projeto `crypto` é independente e sobe apenas o runtime dele.
 
 `stop.sh` stops those systemd services when available and falls back to stopping `uvicorn`/`vite` processes.
 
@@ -194,9 +198,22 @@ npm run build
 ### Backend (.env)
 
 ```env
-# Not needed for SQLite, but can be configured for Postgres
-# SUPABASE_DB_URL=postgresql://user:pass@host:5432/db
+DATABASE_URL=postgresql+psycopg2://crypto_app:password@127.0.0.1:5432/crypto_app
+WORKFLOW_DB_ENABLED=1
+WORKFLOW_DATABASE_URL=postgresql+psycopg2://workflow_registry:password@127.0.0.1:5432/workflow_registry
+CRYPTO_DATABASE_URL=postgresql+psycopg2://crypto_app:password@127.0.0.1:5432/crypto_app
+CRYPTO_WORKFLOW_DATABASE_URL=postgresql+psycopg2://workflow_crypto:password@127.0.0.1:5432/workflow_crypto
 ```
+
+### Legacy Migration
+
+```bash
+./backend/.venv/bin/python backend/scripts/migrate_projects_to_postgres.py
+```
+
+## Projeto Kanban
+
+O Kanban agora fica em [kanban/](/root/.openclaw/workspace/kanban) como projeto separado, com `backend/`, `frontend/`, `start.sh` e `stop.sh` próprios.
 
 ### Frontend (.env)
 
@@ -214,11 +231,9 @@ VITE_API_URL=http://localhost:8003/api
 python -m uvicorn app.main:app --port 8004
 ```
 
-**Database locked**:
+**Database config missing**:
 ```bash
-# Delete and recreate database
-rm backtest.db
-python init_db.py
+# Configure PostgreSQL URLs in backend/.env before starting the stack
 ```
 
 ### Frontend Issues

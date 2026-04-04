@@ -2,9 +2,9 @@
 
 Backend FastAPI para executar backtests de criptomoedas com persistência no Supabase.
 
-## Banco de dados (SQLite)
+## Banco de dados (PostgreSQL)
 
-O app usa **um único arquivo SQLite** como fonte de verdade: `backend/backtest.db` (definido em `app/database.py` como `DB_PATH`). Todas as migrations e o seed de templates usam esse mesmo caminho; não há mais uso de `backend/data/crypto_backtest.db`.
+O backend agora exige PostgreSQL para o banco principal e para o workflow registry. O projeto `crypto` e o projeto `kanban` também devem ter bancos de workflow próprios em PostgreSQL.
 
 ## 📋 Pré-requisitos
 
@@ -42,7 +42,19 @@ Edite `.env` e preencha:
 ```env
 SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key-aqui
+DATABASE_URL=postgresql+psycopg2://crypto_app:senha@127.0.0.1:5432/crypto_app
+WORKFLOW_DB_ENABLED=1
+WORKFLOW_DATABASE_URL=postgresql+psycopg2://workflow_registry:senha@127.0.0.1:5432/workflow_registry
+CRYPTO_DATABASE_URL=postgresql+psycopg2://crypto_app:senha@127.0.0.1:5432/crypto_app
+CRYPTO_WORKFLOW_DATABASE_URL=postgresql+psycopg2://workflow_crypto:senha@127.0.0.1:5432/workflow_crypto
 ```
+
+Para migrar dados legados de SQLite e do workflow compartilhado:
+```bash
+./.venv/bin/python backend/scripts/migrate_projects_to_postgres.py
+```
+
+O projeto Kanban foi separado para [kanban/](/root/.openclaw/workspace/kanban) e não sobe a partir deste backend.
 
 ⚠️ **IMPORTANTE**: Nunca commite o arquivo `.env` com suas credenciais!
 

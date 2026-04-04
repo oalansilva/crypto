@@ -1,27 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Load local environment variables (not committed)
-if [ -f ".env" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env
-  set +a
-fi
-
-
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
 BACKEND_SERVICE="crypto-backend.service"
 FRONTEND_SERVICE="crypto-frontend.service"
-BACKEND_LOG="/tmp/uvicorn-8003.log"
-FRONTEND_LOG="/tmp/vite-5173.log"
+BACKEND_PORT="${CRYPTO_BACKEND_PORT:-8003}"
+FRONTEND_PORT="${CRYPTO_FRONTEND_PORT:-5173}"
+BACKEND_LOG="/tmp/crypto-uvicorn-${BACKEND_PORT}.log"
+FRONTEND_LOG="/tmp/crypto-vite-${FRONTEND_PORT}.log"
 BACKEND_PID_FILE="/tmp/crypto-backend.pid"
 FRONTEND_PID_FILE="/tmp/crypto-frontend.pid"
-HEALTH_URL="http://127.0.0.1:8003/api/health"
-FRONTEND_URL="http://127.0.0.1:5173"
+HEALTH_URL="http://127.0.0.1:${BACKEND_PORT}/api/health"
+FRONTEND_URL="http://127.0.0.1:${FRONTEND_PORT}"
 VENV_PYTHON="$BACKEND_DIR/.venv/bin/python"
+
+for env_file in "$ROOT_DIR/backend/.env" "$ROOT_DIR/.env"; do
+  if [ -f "$env_file" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$env_file"
+    set +a
+  fi
+done
+
+require_env_var() {
+  local var_name="$1"
+  local value="${!var_name:-}"
+  if [[ -z "$value" ]]; then
+    echo "Missing required environment variable: $var_name"
+    exit 1
+  fi
+}
+
+require_postgres_url() {
+  local var_name="$1"
+  local value="${!var_name:-}"
+  require_env_var "$var_name"
+  if [[ "$value" != postgresql://* && "$value" != postgresql+psycopg2://* ]]; then
+    echo "Environment variable $var_name must point to PostgreSQL."
+    exit 1
+  fi
+}
 
 has_systemd_service() {
   local service_name="$1"
@@ -38,29 +59,6 @@ pid_file_is_alive() {
   pid="$(cat "$pid_file" 2>/dev/null || true)"
   [[ -n "$pid" ]] || return 1
   kill -0 "$pid" 2>/dev/null
-}
-
-find_backend_pid() {
-  pgrep -fo "uvicorn app.main:app.*--port 8003|$BACKEND_DIR/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8003" 2>/dev/null || true
-}
-
-find_frontend_pid() {
-  pgrep -fo "node .*vite.*--port 5173|vite.*--port 5173|npm run dev -- --host 0.0.0.0 --port 5173" 2>/dev/null || true
-}
-
-store_runtime_pid() {
-  local pid_file="$1"
-  local finder="$2"
-  local pid=""
-  for _ in $(seq 1 10); do
-    pid="$($finder)"
-    if [[ -n "$pid" ]]; then
-      echo "$pid" >"$pid_file"
-      return 0
-    fi
-    sleep 1
-  done
-  return 1
 }
 
 remove_stale_pid_file() {
@@ -83,125 +81,67 @@ wait_for_http_ok() {
   return 1
 }
 
-start_backend_with_nohup() {
-  remove_stale_pid_file "$BACKEND_PID_FILE"
-
-  if pid_file_is_alive "$BACKEND_PID_FILE" && wait_for_http_ok "$HEALTH_URL" 2 1; then
-    echo "Backend already healthy."
-    return
-  fi
-
-  if pgrep -f "uvicorn app.main:app.*--port 8003" >/dev/null 2>&1 && wait_for_http_ok "$HEALTH_URL" 2 1; then
-    echo "Backend already healthy."
-    return
-  fi
-
-  (
-    cd "$BACKEND_DIR"
-    if command -v setsid >/dev/null 2>&1; then
-      setsid "$VENV_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port 8003 >"$BACKEND_LOG" 2>&1 < /dev/null &
-    else
-      nohup "$VENV_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port 8003 >"$BACKEND_LOG" 2>&1 < /dev/null &
+store_runtime_pid() {
+  local pid_file="$1"
+  local pattern="$2"
+  local pid=""
+  for _ in $(seq 1 10); do
+    pid="$(pgrep -fo "$pattern" 2>/dev/null || true)"
+    if [[ -n "$pid" ]]; then
+      echo "$pid" >"$pid_file"
+      return 0
     fi
-  )
-  store_runtime_pid "$BACKEND_PID_FILE" find_backend_pid || true
-  echo "Backend started with nohup (log: $BACKEND_LOG)."
+    sleep 1
+  done
+  return 1
 }
 
-start_frontend_with_nohup() {
-  remove_stale_pid_file "$FRONTEND_PID_FILE"
-
-  if pid_file_is_alive "$FRONTEND_PID_FILE" && wait_for_http_ok "$FRONTEND_URL" 2 1; then
-    echo "Frontend already healthy."
-    return
-  fi
-
-  if pgrep -f "vite.*--port 5173" >/dev/null 2>&1 && wait_for_http_ok "$FRONTEND_URL" 2 1; then
-    echo "Frontend already healthy."
-    return
-  fi
-
-  (
-    cd "$FRONTEND_DIR"
-    if command -v setsid >/dev/null 2>&1; then
-      setsid /bin/bash -lc 'exec npm run dev -- --host 0.0.0.0 --port 5173' >"$FRONTEND_LOG" 2>&1 < /dev/null &
-    else
-      nohup /bin/bash -lc 'exec npm run dev -- --host 0.0.0.0 --port 5173' >"$FRONTEND_LOG" 2>&1 < /dev/null &
-    fi
-    echo "$!" >"$FRONTEND_PID_FILE"
-  )
-
-  if ! wait_for_http_ok "$FRONTEND_URL" 30 1; then
-    echo "Frontend failed to respond on $FRONTEND_URL. Check frontend logs at $FRONTEND_LOG."
-    return 1
-  fi
-
-  sleep 2
-  if ! wait_for_http_ok "$FRONTEND_URL" 3 1; then
-    echo "Frontend responded once but did not stay up. Check frontend logs at $FRONTEND_LOG."
-    return 1
-  fi
-
-  store_runtime_pid "$FRONTEND_PID_FILE" find_frontend_pid || true
-  echo "Frontend started with nohup (log: $FRONTEND_LOG)."
-}
-
-echo "Checking backend virtual environment..."
+echo "Checking crypto backend virtual environment..."
 if [[ ! -x "$VENV_PYTHON" ]]; then
   echo "Missing virtual environment python: $VENV_PYTHON"
-  echo "Create it first, e.g. from repo root:"
-  echo "  python3 -m venv backend/.venv"
   exit 1
 fi
 
-echo "Running database initialization..."
+require_postgres_url "DATABASE_URL"
+require_postgres_url "WORKFLOW_DATABASE_URL"
+
+echo "Running crypto database initialization..."
 (
   cd "$BACKEND_DIR"
   "$VENV_PYTHON" init_db.py
 )
 
+remove_stale_pid_file "$BACKEND_PID_FILE"
+remove_stale_pid_file "$FRONTEND_PID_FILE"
+
 if has_systemd_service "$BACKEND_SERVICE"; then
-  echo "Starting backend via systemd: $BACKEND_SERVICE"
-  if ! systemctl start "$BACKEND_SERVICE"; then
-    echo "systemd start failed for backend; falling back to nohup."
-    start_backend_with_nohup
-  fi
-else
-  start_backend_with_nohup
+  systemctl start "$BACKEND_SERVICE" || true
+fi
+
+if ! wait_for_http_ok "$HEALTH_URL" 2 1; then
+  (
+    cd "$BACKEND_DIR"
+    nohup "$VENV_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 < /dev/null &
+  )
+  store_runtime_pid "$BACKEND_PID_FILE" "uvicorn app.main:app.*--port ${BACKEND_PORT}" || true
 fi
 
 if has_systemd_service "$FRONTEND_SERVICE"; then
-  echo "Starting frontend via systemd: $FRONTEND_SERVICE"
-  if ! systemctl start "$FRONTEND_SERVICE"; then
-    echo "systemd start failed for frontend; falling back to nohup."
-    start_frontend_with_nohup
-  fi
-else
-  start_frontend_with_nohup
+  systemctl start "$FRONTEND_SERVICE" || true
 fi
 
-if command -v curl >/dev/null 2>&1; then
-  echo "Running backend health check: $HEALTH_URL"
-  if wait_for_http_ok "$HEALTH_URL" 30 1; then
-    echo "Backend health check passed."
-    echo "Running frontend health check: $FRONTEND_URL"
-    if wait_for_http_ok "$FRONTEND_URL" 30 1; then
-      echo "Frontend health check passed."
-      echo "Backend:  http://127.0.0.1:8003"
-      echo "Frontend: http://127.0.0.1:5173"
-      exit 0
-    fi
-    echo "Frontend health check failed. Check frontend logs at $FRONTEND_LOG."
-    exit 1
-  fi
-  if pid_file_is_alive "$BACKEND_PID_FILE" && grep -q "Uvicorn running on http://0.0.0.0:8003" "$BACKEND_LOG" 2>/dev/null; then
-    echo "Health check could not be confirmed from this environment, but backend process is alive and uvicorn reported successful startup."
-    echo "Backend:  http://127.0.0.1:8003"
-    echo "Frontend: http://127.0.0.1:5173"
-    exit 0
-  fi
-  echo "Health check failed. Check backend logs at $BACKEND_LOG."
-  exit 1
+if ! wait_for_http_ok "$FRONTEND_URL" 2 1; then
+  (
+    cd "$FRONTEND_DIR"
+    nohup env VITE_API_URL="/api" npm run dev -- --host 0.0.0.0 --port "$FRONTEND_PORT" >"$FRONTEND_LOG" 2>&1 < /dev/null &
+    echo "$!" >"$FRONTEND_PID_FILE"
+  )
+  store_runtime_pid "$FRONTEND_PID_FILE" "vite.*--port ${FRONTEND_PORT}" || true
 fi
 
-echo "curl not found; skipped health check."
+echo "Running crypto health checks..."
+wait_for_http_ok "$HEALTH_URL" 30 1
+wait_for_http_ok "$FRONTEND_URL" 30 1
+
+echo "crypto backend:  ${CRYPTO_BACKEND_URL:-http://127.0.0.1:${BACKEND_PORT}}"
+echo "crypto frontend: ${CRYPTO_FRONTEND_URL:-http://127.0.0.1:${FRONTEND_PORT}}"

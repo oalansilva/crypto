@@ -41,11 +41,27 @@ def test_projects_api_list_and_create():
     assert response.json() == []
 
     # Create first project
-    project1 = client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto Project"})
+    project1 = client.post(
+        "/api/workflow/projects",
+        json={
+            "slug": "crypto",
+            "name": "Crypto Project",
+            "root_directory": "/srv/projects/crypto",
+            "frontend_url": "https://crypto.example.com",
+            "backend_url": "https://api.crypto.example.com",
+            "workflow_database_url": "postgresql://wf-crypto",
+            "tech_stack": "FastAPI, React",
+        },
+    )
     assert project1.status_code == 200
     p1 = project1.json()
     assert p1["slug"] == "crypto"
     assert p1["name"] == "Crypto Project"
+    assert p1["root_directory"] == "/srv/projects/crypto"
+    assert p1["frontend_url"] == "https://crypto.example.com"
+    assert p1["backend_url"] == "https://api.crypto.example.com"
+    assert p1["workflow_database_url"] == "postgresql://wf-crypto"
+    assert p1["tech_stack"] == "FastAPI, React"
     assert "id" in p1
 
     # List projects again (should have one)
@@ -54,13 +70,26 @@ def test_projects_api_list_and_create():
     projects = response.json()
     assert len(projects) == 1
     assert projects[0]["slug"] == "crypto"
+    assert projects[0]["root_directory"] == "/srv/projects/crypto"
 
     # Create second project
-    project2 = client.post("/api/workflow/projects", json={"slug": "trading-bot", "name": "Trading Bot"})
+    project2 = client.post(
+        "/api/workflow/projects",
+        json={
+            "slug": "trading-bot",
+            "name": "Trading Bot",
+            "root_directory": "/srv/projects/trading-bot",
+            "frontend_url": "https://bot.example.com",
+            "backend_url": "https://api.bot.example.com",
+            "workflow_database_url": "postgresql://wf-bot",
+            "tech_stack": "Node.js, Next.js, PostgreSQL",
+        },
+    )
     assert project2.status_code == 200
     p2 = project2.json()
     assert p2["slug"] == "trading-bot"
     assert p2["name"] == "Trading Bot"
+    assert p2["workflow_database_url"] == "postgresql://wf-bot"
 
     # List projects (should have two)
     response = client.get("/api/workflow/projects")
@@ -75,6 +104,7 @@ def test_projects_api_list_and_create():
     project1_again = client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Different Name"})
     assert project1_again.status_code == 200
     assert project1_again.json()["id"] == p1["id"]
+    assert project1_again.json()["root_directory"] == "/srv/projects/crypto"
 
     client.app.dependency_overrides.clear()
 
@@ -124,6 +154,35 @@ def test_kanban_filter_by_project():
     default_change_ids = [item["id"] for item in default_items]
     # Default should be the first project (crypto)
     assert "change-crypto-1" in default_change_ids
+
+    client.app.dependency_overrides.clear()
+
+
+def test_projects_can_store_independent_runtime_metadata():
+    client = _build_client()
+
+    created = client.post(
+        "/api/workflow/projects",
+        json={
+            "slug": "erp",
+            "name": "ERP",
+            "root_directory": "/srv/projects/erp",
+            "frontend_url": "https://erp.example.com",
+            "backend_url": "https://api.erp.example.com",
+            "workflow_database_url": "postgresql://wf-erp",
+            "tech_stack": "Laravel, Vue, MariaDB",
+        },
+    )
+    assert created.status_code == 200
+
+    listed = client.get("/api/workflow/projects")
+    assert listed.status_code == 200
+    erp = next(project for project in listed.json() if project["slug"] == "erp")
+    assert erp["root_directory"] == "/srv/projects/erp"
+    assert erp["frontend_url"] == "https://erp.example.com"
+    assert erp["backend_url"] == "https://api.erp.example.com"
+    assert erp["workflow_database_url"] == "postgresql://wf-erp"
+    assert erp["tech_stack"] == "Laravel, Vue, MariaDB"
 
     client.app.dependency_overrides.clear()
 

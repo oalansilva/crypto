@@ -1,5 +1,6 @@
 # file: backend/app/database.py
 import os
+import sys
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
@@ -12,12 +13,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "backtest.db"
 
 
+def _allow_sqlite_for_tests() -> bool:
+    raw = os.getenv("ALLOW_SQLITE_FOR_TESTS", "").strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    return any("pytest" in arg for arg in sys.argv)
+
+
+def _is_postgres_url(url: str) -> bool:
+    normalized = (url or "").strip().lower()
+    return normalized.startswith("postgresql://") or normalized.startswith(
+        "postgresql+psycopg2://"
+    )
+
+
 def resolve_db_url() -> str:
     """Resolve the main app DB URL.
 
     Priority:
-    1. DATABASE_URL / settings.database_url
-    2. local SQLite fallback
+    1. DATABASE_URL / settings.database_url (Postgres only in runtime)
 
     The workflow database is managed separately and must not be reused as the
     main application runtime database.
@@ -26,9 +40,18 @@ def resolve_db_url() -> str:
     settings = get_settings()
     explicit_url = getattr(settings, "database_url", None) or os.getenv("DATABASE_URL")
     if explicit_url:
+        if not _is_postgres_url(explicit_url) and not _allow_sqlite_for_tests():
+            raise RuntimeError(
+                "DATABASE_URL must point to PostgreSQL. SQLite is no longer supported in runtime."
+            )
         return explicit_url
 
-    return f"sqlite:///{DB_PATH}"
+    if _allow_sqlite_for_tests():
+        return f"sqlite:///{DB_PATH}"
+
+    raise RuntimeError(
+        "DATABASE_URL is required and must point to PostgreSQL. SQLite fallback was removed."
+    )
 
 
 DB_URL = resolve_db_url()

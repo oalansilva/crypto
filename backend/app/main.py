@@ -1,5 +1,6 @@
 # file: backend/app/main.py
 # force reload 14
+import os
 import sys
 from pathlib import Path
 
@@ -32,6 +33,7 @@ from app.routes.auth import router as auth_router
 from app.routes.user_profile import router as user_profile_router
 from app.routes.user_credentials import router as user_credentials_router
 from app.routes.system_preferences import router as system_preferences_router
+from app.routes.retrospectives import router as retrospectives_router
 from app.services.signal_monitor import signal_monitor
 from app.services.binance_service import start_signal_feed_snapshot_worker, stop_signal_feed_snapshot_worker
 
@@ -85,20 +87,55 @@ async def lifespan(app: FastAPI):
 
         # Workflow DB (optional; enabled via WORKFLOW_DB_ENABLED=1)
         try:
-            from app.workflow_database import init_workflow_schema, get_workflow_db
+            from app.workflow_database import (
+                bootstrap_project_workflow_db,
+                init_workflow_schema,
+                get_workflow_db,
+            )
             from app.workflow_models import Project
 
             init_workflow_schema()
 
-            # Seed default project "crypto" if not exists
+            # Seed default projects for independent Kanban contexts.
             try:
                 db = next(get_workflow_db())
-                existing = db.query(Project).filter(Project.slug == "crypto").first()
-                if not existing:
-                    crypto_project = Project(slug="crypto", name="Crypto Project")
-                    db.add(crypto_project)
-                    db.commit()
-                    logger.info("Seeded default project 'crypto'")
+                default_projects = [
+                    {
+                        "slug": "crypto",
+                        "name": "Crypto Project",
+                        "root_directory": os.getenv("CRYPTO_ROOT_DIRECTORY", str(_project_root)),
+                        "database_url": os.getenv("CRYPTO_DATABASE_URL"),
+                        "frontend_url": os.getenv("CRYPTO_FRONTEND_URL", "http://localhost:5173"),
+                        "backend_url": os.getenv("CRYPTO_BACKEND_URL", "http://localhost:8003"),
+                        "workflow_database_url": os.getenv("CRYPTO_WORKFLOW_DATABASE_URL"),
+                        "tech_stack": "FastAPI, React, Vite, Playwright",
+                    },
+                ]
+
+                for project_data in default_projects:
+                    if not project_data["workflow_database_url"]:
+                        logger.warning(
+                            "Project '%s' skipped because workflow database URL is not configured",
+                            project_data["slug"],
+                        )
+                        continue
+
+                    existing = db.query(Project).filter(Project.slug == project_data["slug"]).first()
+                    if existing:
+                        existing.root_directory = project_data["root_directory"]
+                        existing.database_url = project_data["database_url"]
+                        existing.frontend_url = project_data["frontend_url"]
+                        existing.backend_url = project_data["backend_url"]
+                        existing.workflow_database_url = project_data["workflow_database_url"]
+                        existing.tech_stack = project_data["tech_stack"]
+                        continue
+
+                    db.add(Project(**project_data))
+                    logger.info("Seeded default project '%s'", project_data["slug"])
+
+                db.commit()
+                for project in db.query(Project).all():
+                    bootstrap_project_workflow_db(project)
                 db.close()
             except Exception as proj_err:
                 logger.warning(f"Project seed skipped/failed: {proj_err}")
@@ -166,6 +203,7 @@ app.include_router(auth_router)
 app.include_router(user_profile_router)
 app.include_router(user_credentials_router)
 app.include_router(system_preferences_router)
+app.include_router(retrospectives_router)
 
 @app.get("/")
 async def root():

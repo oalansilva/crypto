@@ -624,7 +624,7 @@ export default function KanbanPage() {
   // Mutation to toggle task checkbox via PATCH work-items
   const toggleTaskMutation = useMutation({
     mutationFn: async ({ workItemId, state }: { workItemId: string; state: 'done' | 'queued' }) => {
-      const res = await fetch(`${API_BASE_URL}/workflow/work-items/${encodeURIComponent(workItemId)}`, {
+      const res = await fetch(`${API_BASE_URL}/workflow/work-items/${encodeURIComponent(workItemId)}?project_slug=${encodeURIComponent(selectedProject)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state }),

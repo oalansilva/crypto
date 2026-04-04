@@ -75,6 +75,14 @@ class Project(WorkflowBase):
         String(64), nullable=False, unique=True
     )  # e.g. "crypto"
     name: Mapped[str] = mapped_column(String(128), nullable=False)
+    root_directory: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    database_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    frontend_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    backend_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    workflow_database_url: Mapped[str | None] = mapped_column(
+        String(1024), nullable=True
+    )
+    tech_stack: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False

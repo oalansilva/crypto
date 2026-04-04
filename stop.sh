@@ -3,6 +3,8 @@ set -euo pipefail
 
 BACKEND_SERVICE="crypto-backend.service"
 FRONTEND_SERVICE="crypto-frontend.service"
+BACKEND_PORT="${CRYPTO_BACKEND_PORT:-8003}"
+FRONTEND_PORT="${CRYPTO_FRONTEND_PORT:-5173}"
 BACKEND_PID_FILE="/tmp/crypto-backend.pid"
 FRONTEND_PID_FILE="/tmp/crypto-frontend.pid"
 
@@ -56,42 +58,20 @@ kill_by_pattern() {
   fi
 }
 
-stop_backend_fallback() {
-  echo "Stopping backend via process fallback..."
-  kill_pid_file "$BACKEND_PID_FILE"
-  kill_by_port 8003
-  kill_by_pattern "uvicorn app.main:app.*--port 8003"
-}
-
-stop_frontend_fallback() {
-  echo "Stopping frontend via process fallback..."
-  kill_pid_file "$FRONTEND_PID_FILE"
-  kill_by_port 5173
-  kill_by_pattern "vite.*--port 5173"
-  kill_by_pattern "npm run dev -- --host 127.0.0.1 --port 5173"
-  kill_by_pattern "npm run dev -- --host 0.0.0.0 --port 5173"
-}
-
-echo "Stopping services..."
+echo "Stopping crypto services..."
 
 if has_systemd_service "$BACKEND_SERVICE"; then
-  echo "Stopping systemd service: $BACKEND_SERVICE"
-  if ! systemctl stop "$BACKEND_SERVICE"; then
-    echo "systemd stop failed for backend; falling back to process stop."
-    stop_backend_fallback
-  fi
-else
-  stop_backend_fallback
+  systemctl stop "$BACKEND_SERVICE" || true
+fi
+if has_systemd_service "$FRONTEND_SERVICE"; then
+  systemctl stop "$FRONTEND_SERVICE" || true
 fi
 
-if has_systemd_service "$FRONTEND_SERVICE"; then
-  echo "Stopping systemd service: $FRONTEND_SERVICE"
-  if ! systemctl stop "$FRONTEND_SERVICE"; then
-    echo "systemd stop failed for frontend; falling back to process stop."
-    stop_frontend_fallback
-  fi
-else
-  stop_frontend_fallback
-fi
+kill_pid_file "$BACKEND_PID_FILE"
+kill_pid_file "$FRONTEND_PID_FILE"
+kill_by_port "$BACKEND_PORT"
+kill_by_port "$FRONTEND_PORT"
+kill_by_pattern "uvicorn app.main:app.*--port ${BACKEND_PORT}"
+kill_by_pattern "vite.*--port ${FRONTEND_PORT}"
 
 echo "Done."
