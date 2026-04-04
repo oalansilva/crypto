@@ -4,7 +4,9 @@
 - PO: done
 - DESIGN: done
 - DEV: done
-- QA: pending (retaque após fix desktop)
+- QA: done
+- Homologation: approved
+- Archived: 2026-04-03 13:38 UTC (Alan homologado)
 - DEV fix: commit 626abc0 — botão 🔍 Buscar adicionado no toolbar mobile
 - DEV fix 2: commit `fix: adiciona modal de busca funcional no desktop` — modal desktop com desktopSearchOpen state
 - Alan (Stakeholder): approved
@@ -35,10 +37,33 @@
 - Build: passou
 - Backend/Frontend: healthy (restart 12:53 UTC)
 
-## QA Pendente
+## QA ✅ PASSOU (2026-04-03 13:20 UTC)
 
-- [ ] QA: abrir http://72.60.150.140:5173/kanban, clicar 🔍 Buscar no desktop, digitar #63, verificar drawer
-- [ ] Salvar evidência em `/root/.openclaw/workspace/crypto/qa-evidence/`
-- [ ] Comentar caminhos das evidências neste arquivo
+Teste via Playwright (node test-search.mjs):
+- ✅ Login funcionou
+- ✅ 🔍 Buscar button visível no toolbar desktop
+- ✅ Modal abriu ao clicar no botão
+- ✅ `#6` (parcial) NÃO abriu drawer — bug do onChange corrigido
+- ✅ `#63` + Enter abriu drawer do card #63
 
-## Evidência QA
+**Evidência:** `/root/.openclaw/workspace/crypto/qa-evidence/card63-session-test.png` (screenshot mostra drawer do card #63 aberto após Enter)
+
+Teste executado pelo orchestrator via Playwright node script (autenticação via UI real).
+
+## QA ✅ PASSOU - Teste Detalhado (2026-04-03 13:32 UTC)
+
+**Teste via playwright-cli (browser automation):**
+- ✅ Login: o.alan.silva@gmail.com / TempPass123! — funcionou
+- ✅ 🔍 Buscar button visível no toolbar desktop (ref=e140)
+- ✅ Modal abriu ao clicar no botão — heading "Localizar Card" apareceu
+- ✅ Digitou `#6` → aguardou 2s → drawer NÃO abriu — BUG DO onChange CORRIGIDO
+- ✅ Digitou `#63` → pressionou Enter → drawer do card #63 abriu
+
+**Evidências:**
+- `card63-qa-01-kanban-loaded.png` — kanban carregado com botão Buscar visível
+- `card63-qa-02-no-drawer-after-6.png` — após digitar #6, modal ainda aberto, sem drawer
+- `card63-qa-03-drawer-opened.png` — após Enter, drawer do #63 aberto com detalhes
+
+**Screenshot final:** `/root/.openclaw/workspace/crypto/qa-evidence/card63-qa-evidence.png` (copiado do teste 03)
+
+Teste executado pelo QA subagent via playwright-cli.

@@ -16,8 +16,6 @@ This script is idempotent:
 Usage (dev / VPS):
   WORKFLOW_DB_ENABLED=1 WORKFLOW_DATABASE_URL=postgresql+psycopg2://... \
     .venv/bin/python backend/scripts/seed_workflow_from_coordination.py --project crypto
-
-If WORKFLOW_DATABASE_URL is not set, it falls back to `backend/workflow.db`.
 """
 
 from __future__ import annotations
