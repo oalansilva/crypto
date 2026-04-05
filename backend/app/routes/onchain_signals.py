@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime
 from typing import Any
@@ -154,8 +155,8 @@ async def get_onchain_signal(
     if chain.lower() not in TOP_CHAINS:
         chain = TOP_CHAINS[0]  # fallback to ethereum
 
-    result = compose_onchain_signal(token.upper(), chain.lower())
-    save_onchain_signal(token.upper(), chain.lower(), result)
+    result = await compose_onchain_signal(token.upper(), chain.lower())
+    await asyncio.to_thread(save_onchain_signal, token.upper(), chain.lower(), result)
 
     return OnchainSignalResponse(
         signal=result.signal,

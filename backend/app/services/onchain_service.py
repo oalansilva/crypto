@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import requests
+import httpx
 
 from app.database import SessionLocal
 from app.models_onchain import OnchainSignal, OnchainSignalHistory, sao_paulo_now
@@ -56,7 +56,7 @@ NORM_RANGES: dict[str, tuple[float, float]] = {
     "github_issues":     (0,     5000),   # 0 – 5000 open
 }
 
-HTTP_TIMEOUT = 10
+HTTP_TIMEOUT = 5
 
 # ---------------------------------------------------------------------------
 # In-memory cache (5-min TTL)
@@ -111,7 +111,7 @@ class SignalResult:
 # ---------------------------------------------------------------------------
 
 
-def _defillama_tvl(chain: str) -> tuple[float | None, float | None]:
+async def _defillama_tvl(chain: str) -> tuple[float | None, float | None]:
     """Return (tvl, active_addresses_estimate) for a chain from DeFiLlama."""
     cached = _cache_get(f"defillama_{chain}")
     if cached:
@@ -122,9 +122,10 @@ def _defillama_tvl(chain: str) -> tuple[float | None, float | None]:
 
     url = f"https://api.llama.fi/chains"
     try:
-        resp = requests.get(url, timeout=HTTP_TIMEOUT)
-        resp.raise_for_status()
-        chains_data = resp.json()
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            chains_data = resp.json()
         if isinstance(chains_data, list):
             for item in chains_data:
                 if isinstance(item, dict) and item.get("slug", "").lower() == dl_chain.lower():
@@ -141,7 +142,7 @@ def _defillama_tvl(chain: str) -> tuple[float | None, float | None]:
     return None, None
 
 
-def _defillama_exchange_flow(chain: str) -> float | None:
+async def _defillama_exchange_flow(chain: str) -> float | None:
     """Return exchange flow (inflow - outflow) for a chain. Positive = net inflow (sell pressure)."""
     # DeFiLlama public API doesn't expose real-time flow data.
     # For MVP: use 7-day change in TVL as proxy for net flow direction.
@@ -154,9 +155,10 @@ def _defillama_exchange_flow(chain: str) -> float | None:
 
     url = f"https://api.llama.fi/charts/{dl_chain}"
     try:
-        resp = requests.get(url, timeout=HTTP_TIMEOUT)
-        resp.raise_for_status()
-        data = resp.json()
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
         if isinstance(data, list) and len(data) >= 2:
             current_tvl = data[-1].get("tvl", 0)
             older_tvl = data[0].get("tvl", 0)
@@ -170,7 +172,7 @@ def _defillama_exchange_flow(chain: str) -> float | None:
     return None
 
 
-def _github_metrics(repo: str) -> dict[str, int | None]:
+async def _github_metrics(repo: str) -> dict[str, int | None]:
     """Return {stars, issues, prs, commits_30d} from GitHub public API."""
     cached = _cache_get(f"github_{repo}")
     if cached:
@@ -184,30 +186,30 @@ def _github_metrics(repo: str) -> dict[str, int | None]:
         "commits_30d": None,
     }
 
-    # Repo metadata
-    url = f"https://api.github.com/repos/{repo}"
-    try:
-        resp = requests.get(url, headers=headers, timeout=HTTP_TIMEOUT)
-        if resp.status_code == 200:
-            data = resp.json()
-            result["stars"] = data.get("stargazers_count")
-            result["issues"] = data.get("open_issues_count")
-    except Exception as e:
-        print(f"[onchain] GitHub metadata error for {repo}: {e}")
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        # Repo metadata
+        url = f"https://api.github.com/repos/{repo}"
+        try:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                result["stars"] = data.get("stargazers_count")
+                result["issues"] = data.get("open_issues_count")
+        except Exception as e:
+            print(f"[onchain] GitHub metadata error for {repo}: {e}")
 
-    # Commit activity (last 4 weeks)
-    commits_url = f"https://api.github.com/repos/{repo}/commits"
-    try:
-        resp = requests.get(
-            commits_url,
-            headers=headers,
-            params={"since": (datetime.now(timezone.utc).timestamp() - 30 * 86400)},
-            timeout=HTTP_TIMEOUT,
-        )
-        if resp.status_code == 200:
-            result["commits_30d"] = len(resp.json())
-    except Exception as e:
-        print(f"[onchain] GitHub commits error for {repo}: {e}")
+        # Commit activity (last 4 weeks)
+        commits_url = f"https://api.github.com/repos/{repo}/commits"
+        try:
+            resp = await client.get(
+                commits_url,
+                headers=headers,
+                params={"since": (datetime.now(timezone.utc).timestamp() - 30 * 86400)},
+            )
+            if resp.status_code == 200:
+                result["commits_30d"] = len(resp.json())
+        except Exception as e:
+            print(f"[onchain] GitHub commits error for {repo}: {e}")
 
     _cache_set(f"github_{repo}", result)
     return result
@@ -282,16 +284,16 @@ def _compose_signal(metrics: OnchainMetrics) -> SignalResult:
 # ---------------------------------------------------------------------------
 
 
-def fetch_onchain_metrics(token: str, chain: str) -> OnchainMetrics:
+async def fetch_onchain_metrics(token: str, chain: str) -> OnchainMetrics:
     """Fetch all onchain metrics for a given token+chain."""
     chain = chain.lower()
     meta = CHAIN_META.get(chain, {})
     github_repo = meta.get("github", "")
 
-    tvl, active_addresses = _defillama_tvl(chain)
-    exchange_flow = _defillama_exchange_flow(chain)
+    tvl, active_addresses = await _defillama_tvl(chain)
+    exchange_flow = await _defillama_exchange_flow(chain)
 
-    github = _github_metrics(github_repo) if github_repo else {}
+    github = await _github_metrics(github_repo) if github_repo else {}
 
     return OnchainMetrics(
         token=token.upper(),
@@ -306,9 +308,9 @@ def fetch_onchain_metrics(token: str, chain: str) -> OnchainMetrics:
     )
 
 
-def compose_onchain_signal(token: str, chain: str) -> SignalResult:
+async def compose_onchain_signal(token: str, chain: str) -> SignalResult:
     """Fetch metrics and compute signal for token+chain."""
-    metrics = fetch_onchain_metrics(token, chain)
+    metrics = await fetch_onchain_metrics(token, chain)
     return _compose_signal(metrics)
 
 
