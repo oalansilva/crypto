@@ -9,6 +9,7 @@ if sys.platform == 'win32':
 
 from app.database import Base, engine
 from app.models import BacktestRun, BacktestResult, FavoriteStrategy, AutoBacktestRun
+import app.models_onchain  # noqa: F401 — registers onchain signal models so create_all finds them
 
 print("Criando tabelas no banco de dados...")
 Base.metadata.create_all(bind=engine)
