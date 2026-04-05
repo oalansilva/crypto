@@ -34,6 +34,7 @@ from app.routes.user_profile import router as user_profile_router
 from app.routes.user_credentials import router as user_credentials_router
 from app.routes.system_preferences import router as system_preferences_router
 from app.routes.retrospectives import router as retrospectives_router
+from app.routes.onchain_signals import router as onchain_signals_router
 from app.services.signal_monitor import signal_monitor
 from app.services.binance_service import start_signal_feed_snapshot_worker, stop_signal_feed_snapshot_worker
 
@@ -204,6 +205,7 @@ app.include_router(user_profile_router)
 app.include_router(user_credentials_router)
 app.include_router(system_preferences_router)
 app.include_router(retrospectives_router)
+app.include_router(onchain_signals_router)
 
 @app.get("/")
 async def root():

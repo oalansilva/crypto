@@ -268,3 +268,6 @@ class OptimizationResult(Base):
         UniqueConstraint("job_id", "result_index", name="uq_optimization_results_job_idx"),
         Index("idx_optimization_results_job_created", "job_id", "created_at"),
     )
+
+# Import onchain models so Base.metadata.create_all() picks them up
+from app.models_onchain import OnchainSignal, OnchainSignalHistory  # noqa: F401, E402

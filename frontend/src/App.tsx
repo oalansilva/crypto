@@ -18,6 +18,8 @@ import ExternalBalancesPage from './pages/ExternalBalancesPage'
 import KanbanPage from './pages/KanbanPage'
 import SignalsPage from './pages/SignalsPage'
 import SignalsHistoryPage from './pages/SignalsHistoryPage'
+import OnchainSignalsPage from './pages/OnchainSignalsPage'
+import OnchainBacktestPage from './pages/OnchainBacktestPage'
 import AIDashboardPage from './pages/AIDashboardPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
@@ -67,6 +69,8 @@ function App() {
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/signals" element={<SignalsPage />} />
           <Route path="/signals/history" element={<SignalsHistoryPage />} />
+          <Route path="/signals/onchain" element={<OnchainSignalsPage />} />
+          <Route path="/signals/onchain/backtest" element={<OnchainBacktestPage />} />
           <Route path="/ai-dashboard" element={<AIDashboardPage />} />
           <Route path="/combo/select" element={<ComboSelectPage />} />
           {/* Backward-compat route (old link/bookmark) */}

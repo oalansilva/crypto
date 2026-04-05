@@ -38,6 +38,7 @@ const mainNavItems: NavItemConfig[] = [
   { to: '/ai-dashboard', label: 'AI Dashboard', icon: Brain },
   { to: '/signals', label: 'Sinais', icon: TrendingUp },
   { to: '/signals/history', label: 'Histórico', icon: TrendingUp },
+  { to: '/signals/onchain', label: 'Onchain', icon: TrendingUp },
   { to: '/kanban', label: 'Kanban', icon: Kanban },
 ]
 
@@ -66,6 +67,7 @@ function resolvePageTitle(pathname: string) {
   if (pathname === '/ai-dashboard') return 'AI Dashboard'
   if (pathname === '/signals') return 'Sinais de trading'
   if (pathname === '/signals/history') return 'Histórico de Sinais'
+  if (pathname.startsWith('/signals/onchain')) return 'Sinais Onchain'
   if (pathname === '/kanban') return 'Kanban'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
