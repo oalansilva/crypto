@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { useToast } from '@/components/ui/use-toast'
+import { apiUrl } from '@/lib/apiBase'
 import './OnchainSignalsPage.css'
 
-const API_BASE_URL = 'http://127.0.0.1:8003'
 const HISTORY_LIMIT = 18
 const MAX_LIVE_CARDS = 6
 const CHAIN_OPTIONS = [
@@ -55,17 +55,26 @@ type OnchainApiResponse = {
   signal: 'BUY' | 'SELL' | 'HOLD'
   confidence: number
   breakdown: Partial<OnchainSignal['breakdown']>
-  metrics: {
-    token: string
-    chain: string
-    tvl: number | null
-    active_addresses: number | null
-    exchange_flow: number | null
-    github_commits: number | null
-    github_stars: number | null
-    github_prs: number | null
-    github_issues: number | null
+  metrics?: {
+    token?: string
+    chain?: string
+    tvl?: number | string | null
+    active_addresses?: number | string | null
+    exchange_flow?: number | string | null
+    github_commits?: number | string | null
+    github_stars?: number | string | null
+    github_prs?: number | string | null
+    github_issues?: number | string | null
   }
+  token?: string
+  chain?: string
+  tvl?: number | string | null
+  active_addresses?: number | string | null
+  exchange_flow?: number | string | null
+  github_commits?: number | string | null
+  github_stars?: number | string | null
+  github_prs?: number | string | null
+  github_issues?: number | string | null
   timestamp: string
 }
 
@@ -82,14 +91,28 @@ function uniqueValues(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)))
 }
 
+function toNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+  if (typeof value === 'string') {
+    const normalized = value.replace(/,/g, '').trim()
+    if (!normalized) return null
+    const parsed = Number(normalized)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
 function normalizeBreakdown(breakdown: Partial<OnchainSignal['breakdown']>): OnchainSignal['breakdown'] {
   return {
-    tvl: breakdown.tvl ?? 0,
-    active_addresses: breakdown.active_addresses ?? 0,
-    exchange_flow: breakdown.exchange_flow ?? 0,
-    github_commits: breakdown.github_commits ?? 0,
-    github_stars: breakdown.github_stars ?? 0,
-    github_issues: breakdown.github_issues ?? 0,
+    tvl: toNumber(breakdown.tvl) ?? 0,
+    active_addresses: toNumber(breakdown.active_addresses) ?? 0,
+    exchange_flow: toNumber(breakdown.exchange_flow) ?? 0,
+    github_commits: toNumber(breakdown.github_commits) ?? 0,
+    github_stars: toNumber(breakdown.github_stars) ?? 0,
+    github_issues: toNumber(breakdown.github_issues) ?? 0,
   }
 }
 
@@ -101,36 +124,69 @@ function mapHistorySignal(item: OnchainHistoryItem): OnchainSignal {
     confidence: item.confidence,
     breakdown: normalizeBreakdown(item.breakdown),
     metrics: {
-      tvl: item.tvl,
-      active_addresses: item.active_addresses,
-      exchange_flow: item.exchange_flow,
-      github_commits: item.github_commits,
-      github_stars: item.github_stars,
-      github_prs: item.github_prs,
-      github_issues: item.github_issues,
+      tvl: toNumber(item.tvl),
+      active_addresses: toNumber(item.active_addresses),
+      exchange_flow: toNumber(item.exchange_flow),
+      github_commits: toNumber(item.github_commits),
+      github_stars: toNumber(item.github_stars),
+      github_prs: toNumber(item.github_prs),
+      github_issues: toNumber(item.github_issues),
     },
     timestamp: item.created_at,
   }
 }
 
 function mapLiveSignal(payload: OnchainApiResponse): OnchainSignal {
+  const metrics = payload.metrics ?? {}
+
   return {
-    token: payload.metrics.token,
-    chain: payload.metrics.chain,
+    token: metrics.token ?? payload.token ?? '',
+    chain: metrics.chain ?? payload.chain ?? '',
     signal: payload.signal,
     confidence: payload.confidence,
     breakdown: normalizeBreakdown(payload.breakdown),
     metrics: {
-      tvl: payload.metrics.tvl,
-      active_addresses: payload.metrics.active_addresses,
-      exchange_flow: payload.metrics.exchange_flow,
-      github_commits: payload.metrics.github_commits,
-      github_stars: payload.metrics.github_stars,
-      github_prs: payload.metrics.github_prs,
-      github_issues: payload.metrics.github_issues,
+      tvl: toNumber(metrics.tvl ?? payload.tvl),
+      active_addresses: toNumber(metrics.active_addresses ?? payload.active_addresses),
+      exchange_flow: toNumber(metrics.exchange_flow ?? payload.exchange_flow),
+      github_commits: toNumber(metrics.github_commits ?? payload.github_commits),
+      github_stars: toNumber(metrics.github_stars ?? payload.github_stars),
+      github_prs: toNumber(metrics.github_prs ?? payload.github_prs),
+      github_issues: toNumber(metrics.github_issues ?? payload.github_issues),
     },
     timestamp: payload.timestamp,
   }
+}
+
+function isBreakdownEmpty(breakdown: OnchainSignal['breakdown']) {
+  return Object.values(breakdown).every((value) => value === 0)
+}
+
+function mergeSignalMetrics(primary: OnchainSignal['metrics'], fallback: OnchainSignal['metrics']): OnchainSignal['metrics'] {
+  return {
+    tvl: primary.tvl ?? fallback.tvl,
+    active_addresses: primary.active_addresses ?? fallback.active_addresses,
+    exchange_flow: primary.exchange_flow ?? fallback.exchange_flow,
+    github_commits: primary.github_commits ?? fallback.github_commits,
+    github_stars: primary.github_stars ?? fallback.github_stars,
+    github_prs: primary.github_prs ?? fallback.github_prs,
+    github_issues: primary.github_issues ?? fallback.github_issues,
+  }
+}
+
+function hydrateHistorySignals(history: OnchainSignal[], live: OnchainSignal[]) {
+  const liveByPair = new Map(live.map((signal) => [pairKey(signal), signal]))
+
+  return history.map((signal) => {
+    const liveSignal = liveByPair.get(pairKey(signal))
+    if (!liveSignal) return signal
+
+    return {
+      ...signal,
+      breakdown: isBreakdownEmpty(signal.breakdown) ? liveSignal.breakdown : signal.breakdown,
+      metrics: mergeSignalMetrics(signal.metrics, liveSignal.metrics),
+    }
+  })
 }
 
 function resolvePairs(token: string, chain: string, historySignals: OnchainSignal[]): Pair[] {
@@ -159,7 +215,7 @@ function resolvePairs(token: string, chain: string, historySignals: OnchainSigna
 }
 
 async function fetchJson<T>(path: string, params: Record<string, string | number | undefined>) {
-  const url = new URL(path, API_BASE_URL)
+  const url = apiUrl(path)
 
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === '') return
@@ -253,8 +309,10 @@ export default function OnchainSignalsPage() {
 
         if (cancelled || requestId !== requestIdRef.current) return
 
-        setHistorySignals(mappedHistory)
-        setLiveSignals(liveResults.filter((item): item is OnchainSignal => item !== null))
+        const mappedLive = liveResults.filter((item): item is OnchainSignal => item !== null)
+
+        setHistorySignals(hydrateHistorySignals(mappedHistory, mappedLive))
+        setLiveSignals(mappedLive)
         hasLoadedRef.current = true
       } catch (error) {
         if (cancelled || requestId !== requestIdRef.current) return

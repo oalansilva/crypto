@@ -70,7 +70,7 @@ function formatTimestamp(value: string) {
 }
 
 function formatCompactNumber(value: number | null) {
-  if (value === null) return 'Sem dados'
+  if (value === null || !Number.isFinite(value)) return 'Sem dados'
   return new Intl.NumberFormat('pt-BR', {
     notation: 'compact',
     maximumFractionDigits: 1,
@@ -78,7 +78,7 @@ function formatCompactNumber(value: number | null) {
 }
 
 function formatFlow(value: number | null) {
-  if (value === null) return 'Sem dados'
+  if (value === null || !Number.isFinite(value)) return 'Sem dados'
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
