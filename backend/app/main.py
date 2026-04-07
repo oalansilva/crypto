@@ -147,8 +147,8 @@ async def lifespan(app: FastAPI):
 
         # Seed combo_templates if empty
         seed_combo_templates_if_empty()
-        signal_monitor.start()
-        await start_signal_feed_snapshot_worker()
+        # signal_monitor.start()  # DISABLED FOR DEBUG
+        # await start_signal_feed_snapshot_worker()  # DISABLED FOR DEBUG
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 
@@ -198,6 +198,9 @@ app.include_router(workflow_router)
 app.include_router(workflow_validation_router)
 app.include_router(market_router)
 app.include_router(portfolio_router)
+# NOTE: onchain_signals_router MUST be before signals_router to avoid
+# the /{signal_id} catch-all route in signals_router matching /api/signals/onchain
+app.include_router(onchain_signals_router)
 app.include_router(signals_router)
 app.include_router(ai_dashboard_router)
 app.include_router(auth_router)
@@ -205,7 +208,6 @@ app.include_router(user_profile_router)
 app.include_router(user_credentials_router)
 app.include_router(system_preferences_router)
 app.include_router(retrospectives_router)
-app.include_router(onchain_signals_router)
 
 @app.get("/")
 async def root():
