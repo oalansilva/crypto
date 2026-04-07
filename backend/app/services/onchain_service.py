@@ -88,7 +88,10 @@ EXCLUDED_SUFFIXES = ("UP", "DOWN", "BULL", "BEAR")
 TOKEN_CHAIN_HINTS: dict[str, str] = {
     "ETH": "ethereum",
     "AAVE": "ethereum",
+    "ADA": "cardano",
+    "AVAX": "avalanche",
     "CRV": "ethereum",
+    "DOT": "polkadot",
     "ENA": "ethereum",
     "ENS": "ethereum",
     "GRT": "ethereum",
@@ -117,6 +120,7 @@ TOKEN_CHAIN_HINTS: dict[str, str] = {
     "BRETT": "base",
     "MATIC": "matic",
     "POL": "matic",
+    "XRP": "ripple",
 }
 
 # ---------------------------------------------------------------------------
@@ -296,13 +300,13 @@ def _to_float(value: Any) -> float | None:
     return parsed
 
 
-def _resolve_chain_for_token(token: str) -> str:
+def _resolve_chain_for_token(token: str) -> str | None:
     normalized = token.upper().strip()
     if normalized in TOKEN_CHAIN_HINTS:
         return TOKEN_CHAIN_HINTS[normalized]
     if normalized.endswith("POL"):
         return "matic"
-    return "ethereum"
+    return None
 
 
 def _is_supported_spot_pair(symbol_meta: dict[str, Any]) -> bool:
@@ -354,11 +358,15 @@ async def _fetch_binance_ranked_pairs(limit: int = MAX_SNAPSHOT_PAIRS) -> list[R
         if quote_volume is None or quote_volume <= 0:
             continue
 
+        chain = _resolve_chain_for_token(token)
+        if not chain:
+            continue
+
         ranked_pairs.append(
             RankedPair(
                 symbol=symbol,
                 token=token,
-                chain=_resolve_chain_for_token(token),
+                chain=chain,
                 quote_volume=quote_volume,
                 trade_count=int(_to_float(ticker.get("count")) or 0),
                 last_price=_to_float(ticker.get("lastPrice")),

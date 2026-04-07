@@ -58,12 +58,20 @@ async def test_fetch_binance_ranked_pairs_filters_and_sorts(monkeypatch):
                     "symbols": [
                         {"symbol": "ETHUSDT", "baseAsset": "ETH", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
                         {"symbol": "SOLUSDT", "baseAsset": "SOL", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
+                        {"symbol": "XRPUSDT", "baseAsset": "XRP", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
+                        {"symbol": "ADAUSDT", "baseAsset": "ADA", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
+                        {"symbol": "DOTUSDT", "baseAsset": "DOT", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
                         {"symbol": "USDCUSDT", "baseAsset": "USDC", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
+                        {"symbol": "FOOUSDT", "baseAsset": "FOO", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
                     ]
                 },
                 "https://api.binance.com/api/v3/ticker/24hr": [
                     {"symbol": "SOLUSDT", "quoteVolume": "1200", "count": "50", "lastPrice": "150"},
+                    {"symbol": "XRPUSDT", "quoteVolume": "1800", "count": "65", "lastPrice": "0.6"},
+                    {"symbol": "ADAUSDT", "quoteVolume": "1700", "count": "55", "lastPrice": "0.45"},
+                    {"symbol": "DOTUSDT", "quoteVolume": "1600", "count": "45", "lastPrice": "8.1"},
                     {"symbol": "ETHUSDT", "quoteVolume": "2500", "count": "75", "lastPrice": "3200"},
+                    {"symbol": "FOOUSDT", "quoteVolume": "2400", "count": "70", "lastPrice": "1.2"},
                     {"symbol": "USDCUSDT", "quoteVolume": "999999", "count": "99", "lastPrice": "1"},
                 ],
             }
@@ -72,9 +80,18 @@ async def test_fetch_binance_ranked_pairs_filters_and_sorts(monkeypatch):
 
     pairs = await onchain_service._fetch_binance_ranked_pairs(limit=10)
 
-    assert [pair.symbol for pair in pairs] == ["ETHUSDT", "SOLUSDT"]
+    assert [pair.symbol for pair in pairs] == ["ETHUSDT", "XRPUSDT", "ADAUSDT", "DOTUSDT", "SOLUSDT"]
     assert pairs[0].chain == "ethereum"
-    assert pairs[1].chain == "solana"
+    assert pairs[1].chain == "ripple"
+    assert pairs[2].chain == "cardano"
+    assert pairs[3].chain == "polkadot"
+    assert pairs[4].chain == "solana"
+
+
+def test_resolve_chain_for_token_returns_none_for_unmapped_tokens():
+    assert onchain_service._resolve_chain_for_token("FOO") is None
+    assert onchain_service._resolve_chain_for_token("XRP") == "ripple"
+    assert onchain_service._resolve_chain_for_token("ADA") == "cardano"
 
 
 @pytest.mark.asyncio
