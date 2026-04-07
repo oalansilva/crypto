@@ -5,15 +5,17 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 from app.services.onchain_service import (
+    MAX_SNAPSHOT_PAIRS,
     TOP_CHAINS,
     OnchainSignalHistory,
+    build_onchain_snapshot,
     compose_onchain_signal,
     get_onchain_history,
     get_onchain_performance,
@@ -57,6 +59,23 @@ class OnchainSignalResponse(BaseModel):
     breakdown: dict[str, float]
     metrics: OnchainMetricsSchema
     timestamp: datetime
+
+
+class OnchainMarketSchema(BaseModel):
+    symbol: str
+    quote_volume: float
+    trade_count: int
+    last_price: float | None = None
+
+
+class OnchainSnapshotItem(OnchainSignalResponse):
+    market: OnchainMarketSchema
+
+
+class OnchainSnapshotResponse(BaseModel):
+    signals: list[OnchainSnapshotItem]
+    limit: int
+    total: int
 
 
 class OnchainHistoryItem(BaseModel):
@@ -152,10 +171,41 @@ async def get_onchain_signal(
     token: str = Query(..., description="Token symbol, e.g. ETH, SOL", min_length=1),
     chain: str = Query(..., description="Chain slug: ethereum, solana, arbitrum, base, matic"),
 ):
+    import sys; print(f"[HTTP START] token={token} chain={chain}", flush=True, file=sys.stderr)
     if chain.lower() not in TOP_CHAINS:
         chain = TOP_CHAINS[0]  # fallback to ethereum
+    import sys; print(f"[HTTP] calling compose_onchain_signal...", flush=True, file=sys.stderr)
 
-    result = await compose_onchain_signal(token.upper(), chain.lower())
+    try:
+        import sys; print(f"[HTTP] awaiting compose_onchain_signal...", flush=True, file=sys.stderr)
+        result = await asyncio.wait_for(
+            compose_onchain_signal(token.upper(), chain.lower()),
+            timeout=10.0,
+        )
+        import sys; print(f"[HTTP] got result {result.signal}", flush=True, file=sys.stderr)
+    except asyncio.TimeoutError:
+        import sys; print(f"[HTTP] TIMEOUT!", flush=True, file=sys.stderr)
+        # If external APIs timeout, return cached or stale data
+        # For now, return a HOLD with low confidence
+        return OnchainSignalResponse(
+            signal="HOLD",
+            confidence=0,
+            breakdown={},
+            metrics=OnchainMetricsSchema(
+                token=token.upper(),
+                chain=chain,
+                tvl=None,
+                active_addresses=None,
+                exchange_flow=None,
+                github_commits=None,
+                github_stars=None,
+                github_prs=None,
+                github_issues=None,
+                fetched_at=datetime.now(timezone.utc),
+            ),
+            timestamp=datetime.now(timezone.utc),
+        )
+
     await asyncio.to_thread(save_onchain_signal, token.upper(), chain.lower(), result)
 
     return OnchainSignalResponse(
@@ -175,6 +225,50 @@ async def get_onchain_signal(
             fetched_at=result.timestamp,
         ),
         timestamp=result.timestamp,
+    )
+
+
+@router.get(
+    "/snapshot",
+    response_model=OnchainSnapshotResponse,
+    summary="Ranked onchain snapshot for Binance Spot USDT pairs",
+)
+async def get_onchain_snapshot(
+    token: str | None = Query(default=None, description="Filter by token, e.g. ETH"),
+    chain: str | None = Query(default=None, description="Filter by chain slug"),
+    limit: int = Query(default=MAX_SNAPSHOT_PAIRS, ge=1, le=MAX_SNAPSHOT_PAIRS),
+):
+    snapshot = await build_onchain_snapshot(token=token, chain=chain, limit=limit)
+    return OnchainSnapshotResponse(
+        signals=[
+            OnchainSnapshotItem(
+                signal=result.signal,
+                confidence=result.confidence,
+                breakdown=result.breakdown,
+                metrics=OnchainMetricsSchema(
+                    token=result.metrics.token,
+                    chain=result.metrics.chain,
+                    tvl=result.metrics.tvl,
+                    active_addresses=result.metrics.active_addresses,
+                    exchange_flow=result.metrics.exchange_flow,
+                    github_commits=result.metrics.github_commits,
+                    github_stars=result.metrics.github_stars,
+                    github_prs=result.metrics.github_prs,
+                    github_issues=result.metrics.github_issues,
+                    fetched_at=result.timestamp,
+                ),
+                timestamp=result.timestamp,
+                market=OnchainMarketSchema(
+                    symbol=pair.symbol,
+                    quote_volume=pair.quote_volume,
+                    trade_count=pair.trade_count,
+                    last_price=pair.last_price,
+                ),
+            )
+            for pair, result in snapshot
+        ],
+        limit=limit,
+        total=len(snapshot),
     )
 
 

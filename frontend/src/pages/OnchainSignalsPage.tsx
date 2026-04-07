@@ -11,7 +11,7 @@ import { apiUrl } from '@/lib/apiBase'
 import './OnchainSignalsPage.css'
 
 const HISTORY_LIMIT = 18
-const MAX_LIVE_CARDS = 6
+const MAX_LIVE_CARDS = 60
 const CHAIN_OPTIONS = [
   { value: 'ALL', label: 'Todas as chains' },
   { value: 'ethereum', label: 'Ethereum' },
@@ -20,13 +20,6 @@ const CHAIN_OPTIONS = [
   { value: 'base', label: 'Base' },
   { value: 'matic', label: 'Matic' },
 ] as const
-const DEFAULT_PAIRS = [
-  { token: 'ETH', chain: 'ethereum' },
-  { token: 'SOL', chain: 'solana' },
-  { token: 'ARB', chain: 'arbitrum' },
-  { token: 'BASE', chain: 'base' },
-  { token: 'MATIC', chain: 'matic' },
-]
 
 type OnchainHistoryItem = {
   token: string
@@ -78,12 +71,13 @@ type OnchainApiResponse = {
   timestamp: string
 }
 
-type Pair = {
-  token: string
-  chain: string
+type OnchainSnapshotResponse = {
+  signals: OnchainApiResponse[]
+  limit: number
+  total: number
 }
 
-function pairKey(pair: Pair) {
+function pairKey(pair: { token: string; chain: string }) {
   return `${pair.token.toUpperCase()}::${pair.chain.toLowerCase()}`
 }
 
@@ -189,31 +183,6 @@ function hydrateHistorySignals(history: OnchainSignal[], live: OnchainSignal[]) 
   })
 }
 
-function resolvePairs(token: string, chain: string, historySignals: OnchainSignal[]): Pair[] {
-  if (token !== 'ALL' && chain !== 'ALL') {
-    return [{ token, chain }]
-  }
-
-  if (token !== 'ALL') {
-    const chains = chain === 'ALL' ? CHAIN_OPTIONS.slice(1).map((item) => item.value) : [chain]
-    return chains.map((chainValue) => ({ token, chain: chainValue }))
-  }
-
-  if (chain !== 'ALL') {
-    const tokens = uniqueValues([
-      ...historySignals.map((item) => item.token),
-      ...DEFAULT_PAIRS.filter((item) => item.chain === chain).map((item) => item.token),
-    ]).slice(0, MAX_LIVE_CARDS)
-    return tokens.map((tokenValue) => ({ token: tokenValue, chain }))
-  }
-
-  const historyPairs = Array.from(
-    new Map(historySignals.map((item) => [pairKey({ token: item.token, chain: item.chain }), { token: item.token, chain: item.chain }])).values(),
-  )
-
-  return (historyPairs.length > 0 ? historyPairs : DEFAULT_PAIRS).slice(0, MAX_LIVE_CARDS)
-}
-
 async function fetchJson<T>(path: string, params: Record<string, string | number | undefined>) {
   const url = apiUrl(path)
 
@@ -251,7 +220,6 @@ export default function OnchainSignalsPage() {
   const tokenOptions = useMemo(() => {
     const currentSelection = tokenFilter !== 'ALL' ? [tokenFilter] : []
     return uniqueValues([
-      ...DEFAULT_PAIRS.map((item) => item.token),
       ...historySignals.map((item) => item.token),
       ...liveSignals.map((item) => item.token),
       ...currentSelection,
@@ -284,32 +252,24 @@ export default function OnchainSignalsPage() {
       try {
         setErrorMessage(null)
 
-        const historyResponse = await fetchJson<OnchainHistoryResponse>('/api/signals/onchain/history', {
-          limit: HISTORY_LIMIT,
-          offset: 0,
-          token: tokenFilter !== 'ALL' ? tokenFilter : undefined,
-          chain: chainFilter !== 'ALL' ? chainFilter : undefined,
-        })
+        const [historyResponse, snapshotResponse] = await Promise.all([
+          fetchJson<OnchainHistoryResponse>('/api/signals/onchain/history', {
+            limit: HISTORY_LIMIT,
+            offset: 0,
+            token: tokenFilter !== 'ALL' ? tokenFilter : undefined,
+            chain: chainFilter !== 'ALL' ? chainFilter : undefined,
+          }),
+          fetchJson<OnchainSnapshotResponse>('/api/signals/onchain/snapshot', {
+            limit: MAX_LIVE_CARDS,
+            token: tokenFilter !== 'ALL' ? tokenFilter : undefined,
+            chain: chainFilter !== 'ALL' ? chainFilter : undefined,
+          }),
+        ])
 
         if (cancelled || requestId !== requestIdRef.current) return
 
         const mappedHistory = historyResponse.signals.map(mapHistorySignal)
-        const pairs = resolvePairs(tokenFilter, chainFilter, mappedHistory)
-
-        const liveResults = await Promise.all(
-          pairs.map(async (pair) => {
-            try {
-              const payload = await fetchJson<OnchainApiResponse>('/api/signals/onchain', pair)
-              return mapLiveSignal(payload)
-            } catch (error) {
-              return null
-            }
-          }),
-        )
-
-        if (cancelled || requestId !== requestIdRef.current) return
-
-        const mappedLive = liveResults.filter((item): item is OnchainSignal => item !== null)
+        const mappedLive = snapshotResponse.signals.map(mapLiveSignal)
 
         setHistorySignals(hydrateHistorySignals(mappedHistory, mappedLive))
         setLiveSignals(mappedLive)
@@ -345,7 +305,7 @@ export default function OnchainSignalsPage() {
           <span className="onchain-page__eyebrow">Onchain Signals</span>
           <h1 className="onchain-page__title">Sinais Onchain</h1>
           <p className="onchain-page__copy">
-            Leitura rapida de BUY, SELL e HOLD por chain, com confidence, drivers do score e historico recente para comparacao.
+            Snapshot de ate 60 pares Binance Spot + USDT, priorizados por liquidez, com TVL, GitHub e atividade on-chain no score.
           </p>
         </div>
 
@@ -447,12 +407,12 @@ export default function OnchainSignalsPage() {
         <section className="onchain-section">
           <header className="onchain-section__header">
             <h2 className="onchain-section__title">Snapshot atual</h2>
-            <p className="onchain-section__copy">Cards consultados em tempo real no endpoint onchain por combinacao de token e chain.</p>
+            <p className="onchain-section__copy">Cards ranqueados pelo endpoint snapshot on-chain com filtro de volume/liquidez do mercado spot.</p>
           </header>
 
           {isLoading ? (
             <div className="onchain-grid">
-              {Array.from({ length: 6 }).map((_, index) => (
+              {Array.from({ length: 12 }).map((_, index) => (
                 <OnchainSignalCardSkeleton key={`live-skeleton-${index}`} />
               ))}
             </div>

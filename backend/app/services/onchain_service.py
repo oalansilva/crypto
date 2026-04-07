@@ -5,6 +5,7 @@ Onchain signal service — fetches DeFiLlama + GitHub data, composes BUY/SELL/HO
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 import uuid
@@ -71,6 +72,52 @@ NORM_RANGES: dict[str, tuple[float, float]] = {
 }
 
 HTTP_TIMEOUT = 5
+BINANCE_EXCHANGE_INFO_URL = "https://api.binance.com/api/v3/exchangeInfo"
+BINANCE_24HR_TICKER_URL = "https://api.binance.com/api/v3/ticker/24hr"
+MAX_SNAPSHOT_PAIRS = 60
+EXCLUDED_BASE_ASSETS = {
+    "USDT",
+    "USDC",
+    "FDUSD",
+    "BUSD",
+    "TUSD",
+    "USDP",
+    "DAI",
+}
+EXCLUDED_SUFFIXES = ("UP", "DOWN", "BULL", "BEAR")
+TOKEN_CHAIN_HINTS: dict[str, str] = {
+    "ETH": "ethereum",
+    "AAVE": "ethereum",
+    "CRV": "ethereum",
+    "ENA": "ethereum",
+    "ENS": "ethereum",
+    "GRT": "ethereum",
+    "IMX": "ethereum",
+    "LDO": "ethereum",
+    "LINK": "ethereum",
+    "MKR": "ethereum",
+    "ONDO": "ethereum",
+    "PENDLE": "ethereum",
+    "PEPE": "ethereum",
+    "RENDER": "ethereum",
+    "SHIB": "ethereum",
+    "UNI": "ethereum",
+    "SOL": "solana",
+    "BONK": "solana",
+    "JTO": "solana",
+    "JUP": "solana",
+    "PYTH": "solana",
+    "RAY": "solana",
+    "WIF": "solana",
+    "ARB": "arbitrum",
+    "GMX": "arbitrum",
+    "MAGIC": "arbitrum",
+    "RDNT": "arbitrum",
+    "AERO": "base",
+    "BRETT": "base",
+    "MATIC": "matic",
+    "POL": "matic",
+}
 
 # ---------------------------------------------------------------------------
 # In-memory cache (5-min TTL)
@@ -118,6 +165,16 @@ class SignalResult:
     breakdown: dict[str, float]
     metrics: OnchainMetrics
     timestamp: datetime
+
+
+@dataclass(frozen=True)
+class RankedPair:
+    symbol: str
+    token: str
+    chain: str
+    quote_volume: float
+    trade_count: int
+    last_price: float | None
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +286,121 @@ async def _github_metrics(repo: str) -> dict[str, int | None]:
     return result
 
 
+def _to_float(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed != parsed:
+        return None
+    return parsed
+
+
+def _resolve_chain_for_token(token: str) -> str:
+    normalized = token.upper().strip()
+    if normalized in TOKEN_CHAIN_HINTS:
+        return TOKEN_CHAIN_HINTS[normalized]
+    if normalized.endswith("POL"):
+        return "matic"
+    return "ethereum"
+
+
+def _is_supported_spot_pair(symbol_meta: dict[str, Any]) -> bool:
+    base_asset = str(symbol_meta.get("baseAsset") or "").upper()
+    if not base_asset or base_asset in EXCLUDED_BASE_ASSETS:
+        return False
+    if any(base_asset.endswith(suffix) for suffix in EXCLUDED_SUFFIXES):
+        return False
+    return (
+        symbol_meta.get("status") == "TRADING"
+        and symbol_meta.get("quoteAsset") == "USDT"
+        and bool(symbol_meta.get("isSpotTradingAllowed"))
+    )
+
+
+async def _fetch_binance_ranked_pairs(limit: int = MAX_SNAPSHOT_PAIRS) -> list[RankedPair]:
+    cache_key = f"binance_ranked_pairs_{limit}"
+    cached = _cache_get(cache_key)
+    if cached:
+        return [RankedPair(**item) for item in cached.get("pairs", [])]
+
+    client = _get_onchain_client()
+    exchange_info_response, ticker_response = await asyncio.gather(
+        client.get(BINANCE_EXCHANGE_INFO_URL),
+        client.get(BINANCE_24HR_TICKER_URL),
+    )
+    exchange_info_response.raise_for_status()
+    ticker_response.raise_for_status()
+
+    exchange_info = exchange_info_response.json()
+    ticker_data = ticker_response.json()
+    valid_symbols = {
+        str(item.get("symbol") or "").upper(): item
+        for item in exchange_info.get("symbols", [])
+        if isinstance(item, dict) and _is_supported_spot_pair(item)
+    }
+
+    ranked_pairs: list[RankedPair] = []
+    for ticker in ticker_data:
+        if not isinstance(ticker, dict):
+            continue
+        symbol = str(ticker.get("symbol") or "").upper()
+        meta = valid_symbols.get(symbol)
+        if not meta:
+            continue
+
+        token = str(meta.get("baseAsset") or "").upper()
+        quote_volume = _to_float(ticker.get("quoteVolume"))
+        if quote_volume is None or quote_volume <= 0:
+            continue
+
+        ranked_pairs.append(
+            RankedPair(
+                symbol=symbol,
+                token=token,
+                chain=_resolve_chain_for_token(token),
+                quote_volume=quote_volume,
+                trade_count=int(_to_float(ticker.get("count")) or 0),
+                last_price=_to_float(ticker.get("lastPrice")),
+            )
+        )
+
+    ranked_pairs.sort(key=lambda item: (-item.quote_volume, -item.trade_count, item.symbol))
+    limited_pairs = ranked_pairs[: max(1, min(limit, MAX_SNAPSHOT_PAIRS))]
+    _cache_set(
+        cache_key,
+        {"pairs": [pair.__dict__ for pair in limited_pairs]},
+        ttl=300,
+    )
+    return limited_pairs
+
+
+async def _fetch_chain_metrics(chain: str) -> dict[str, Any]:
+    meta = CHAIN_META.get(chain.lower(), {})
+    github_repo = meta.get("github", "")
+
+    tvl_task = _defillama_tvl(chain)
+    flow_task = _defillama_exchange_flow(chain)
+    github_task = _github_metrics(github_repo) if github_repo else {}
+
+    tvl_result, exchange_flow, github = await asyncio.gather(
+        tvl_task,
+        flow_task,
+        github_task if github_repo else _immediate_result({}),
+    )
+    tvl, active_addresses = tvl_result
+    return {
+        "tvl": tvl,
+        "active_addresses": active_addresses,
+        "exchange_flow": exchange_flow,
+        "github": github,
+    }
+
+
+async def _immediate_result(value: Any) -> Any:
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Normalization helpers
 # ---------------------------------------------------------------------------
@@ -326,6 +498,47 @@ async def compose_onchain_signal(token: str, chain: str) -> SignalResult:
     """Fetch metrics and compute signal for token+chain."""
     metrics = await fetch_onchain_metrics(token, chain)
     return _compose_signal(metrics)
+
+
+async def build_onchain_snapshot(
+    *,
+    token: str | None = None,
+    chain: str | None = None,
+    limit: int = MAX_SNAPSHOT_PAIRS,
+) -> list[tuple[RankedPair, SignalResult]]:
+    ranked_pairs = await _fetch_binance_ranked_pairs(limit=limit)
+    filtered_pairs = ranked_pairs
+
+    if token:
+        token_upper = token.upper()
+        filtered_pairs = [pair for pair in filtered_pairs if pair.token == token_upper]
+    if chain:
+        chain_lower = chain.lower()
+        filtered_pairs = [pair for pair in filtered_pairs if pair.chain == chain_lower]
+
+    filtered_pairs = filtered_pairs[: max(1, min(limit, MAX_SNAPSHOT_PAIRS))]
+    chains = sorted({pair.chain for pair in filtered_pairs})
+    chain_metric_rows = await asyncio.gather(*(_fetch_chain_metrics(item) for item in chains))
+    chain_metrics = dict(zip(chains, chain_metric_rows, strict=False))
+
+    snapshot: list[tuple[RankedPair, SignalResult]] = []
+    for pair in filtered_pairs:
+        metrics_row = chain_metrics.get(pair.chain, {})
+        github = metrics_row.get("github", {})
+        metrics = OnchainMetrics(
+            token=pair.token,
+            chain=pair.chain,
+            tvl=metrics_row.get("tvl"),
+            active_addresses=metrics_row.get("active_addresses"),
+            exchange_flow=metrics_row.get("exchange_flow"),
+            github_commits=github.get("commits_30d"),
+            github_stars=github.get("stars"),
+            github_prs=github.get("prs"),
+            github_issues=github.get("issues"),
+        )
+        snapshot.append((pair, _compose_signal(metrics)))
+
+    return snapshot
 
 
 def save_onchain_signal(token: str, chain: str, result: SignalResult) -> OnchainSignal:
