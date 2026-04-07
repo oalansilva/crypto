@@ -14,9 +14,23 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
+from httpx import AsyncClient, Limits
 
 from app.database import SessionLocal
 from app.models_onchain import OnchainSignal, OnchainSignalHistory, sao_paulo_now
+
+# Shared async client with dedicated connection pool for onchain metrics
+# This avoids starvation when the signal_feed_snapshot_worker is busy with Binance calls
+_onchain_http_client: AsyncClient | None = None
+
+def _get_onchain_client() -> AsyncClient:
+    global _onchain_http_client
+    if _onchain_http_client is None:
+        _onchain_http_client = AsyncClient(
+            timeout=HTTP_TIMEOUT,
+            limits=Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return _onchain_http_client
 
 
 SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
@@ -122,13 +136,13 @@ async def _defillama_tvl(chain: str) -> tuple[float | None, float | None]:
 
     url = f"https://api.llama.fi/chains"
     try:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            chains_data = resp.json()
+        client = _get_onchain_client()
+        resp = await client.get(url)
+        resp.raise_for_status()
+        chains_data = resp.json()
         if isinstance(chains_data, list):
             for item in chains_data:
-                if isinstance(item, dict) and item.get("slug", "").lower() == dl_chain.lower():
+                if isinstance(item, dict) and item.get("name", "").lower() == dl_chain.lower():
                     tvl = item.get("tvl")
                     # DeFiLlama doesn't expose active addresses directly;
                     # use a proxy: TVL per chain as proxy for ecosystem size
@@ -155,10 +169,10 @@ async def _defillama_exchange_flow(chain: str) -> float | None:
 
     url = f"https://api.llama.fi/charts/{dl_chain}"
     try:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            data = resp.json()
+        client = _get_onchain_client()
+        resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.json()
         if isinstance(data, list) and len(data) >= 2:
             current_tvl = data[-1].get("tvl", 0)
             older_tvl = data[0].get("tvl", 0)
@@ -186,30 +200,30 @@ async def _github_metrics(repo: str) -> dict[str, int | None]:
         "commits_30d": None,
     }
 
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        # Repo metadata
-        url = f"https://api.github.com/repos/{repo}"
-        try:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                result["stars"] = data.get("stargazers_count")
-                result["issues"] = data.get("open_issues_count")
-        except Exception as e:
-            print(f"[onchain] GitHub metadata error for {repo}: {e}")
+    client = _get_onchain_client()
+    # Repo metadata
+    url = f"https://api.github.com/repos/{repo}"
+    try:
+        resp = await client.get(url, headers=headers)
+        if resp.status_code == 200:
+            data = resp.json()
+            result["stars"] = data.get("stargazers_count")
+            result["issues"] = data.get("open_issues_count")
+    except Exception as e:
+        print(f"[onchain] GitHub metadata error for {repo}: {e}")
 
-        # Commit activity (last 4 weeks)
-        commits_url = f"https://api.github.com/repos/{repo}/commits"
-        try:
-            resp = await client.get(
-                commits_url,
-                headers=headers,
-                params={"since": (datetime.now(timezone.utc).timestamp() - 30 * 86400)},
-            )
-            if resp.status_code == 200:
-                result["commits_30d"] = len(resp.json())
-        except Exception as e:
-            print(f"[onchain] GitHub commits error for {repo}: {e}")
+    # Commit activity (last 4 weeks)
+    commits_url = f"https://api.github.com/repos/{repo}/commits"
+    try:
+        resp = await client.get(
+            commits_url,
+            headers=headers,
+            params={"since": (datetime.now(timezone.utc).timestamp() - 30 * 86400)},
+        )
+        if resp.status_code == 200:
+            result["commits_30d"] = len(resp.json())
+    except Exception as e:
+        print(f"[onchain] GitHub commits error for {repo}: {e}")
 
     _cache_set(f"github_{repo}", result)
     return result
