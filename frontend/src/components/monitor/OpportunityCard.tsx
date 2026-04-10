@@ -12,9 +12,11 @@ interface OpportunityCardProps {
     opportunity: Opportunity;
     preference: MonitorPreference;
     isSavingPreference: boolean;
+    isOpeningChart: boolean;
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
     onChangePriceTimeframe: (symbol: string, nextTimeframe: MonitorPriceTimeframe) => void;
+    onOpenChart: (opportunity: Opportunity) => void;
 }
 
 const PRICE_TIMEFRAMES: MonitorPriceTimeframe[] = ['15m', '1h', '4h', '1d'];
@@ -49,9 +51,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     opportunity,
     preference,
     isSavingPreference,
+    isOpeningChart,
     onToggleInPortfolio,
     onToggleCardMode,
     onChangePriceTimeframe,
+    onOpenChart,
 }) => {
     const {
         symbol,
@@ -249,13 +253,42 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
     const symbolTestKey = symbolKey(symbol);
 
+    const shouldIgnoreCardClick = (target: EventTarget | null) => {
+        return target instanceof HTMLElement
+            && Boolean(target.closest('button, textarea, input, select, a, [data-prevent-card-click="true"]'));
+    };
+
     return (
         <Card
             ref={cardRef}
-            className={`${borderColor} ${cardBgColor} ${holdingIndicator} hover:shadow-lg transition-all hover:scale-[1.02] relative`}
+            className={`${borderColor} ${cardBgColor} ${holdingIndicator} hover:shadow-lg transition-all hover:scale-[1.02] relative cursor-pointer focus-within:ring-2 focus-within:ring-blue-400/60`}
             style={cardStyle}
             data-testid={`monitor-card-${symbolTestKey}`}
+            role="button"
+            tabIndex={0}
+            aria-haspopup="dialog"
+            aria-label={`Open chart for ${symbol}`}
+            onClick={(event) => {
+                if (shouldIgnoreCardClick(event.target)) {
+                    return;
+                }
+                onOpenChart(opportunity);
+            }}
+            onKeyDown={(event) => {
+                if (shouldIgnoreCardClick(event.target)) {
+                    return;
+                }
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onOpenChart(opportunity);
+                }
+            }}
         >
+            {isOpeningChart ? (
+                <div className="absolute right-3 top-3 z-10 rounded-md bg-slate-950/80 px-2 py-1 text-[11px] font-medium text-white">
+                    Opening chart...
+                </div>
+            ) : null}
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-2">
                 <div className="flex flex-col min-w-0">
                     <CardTitle className={`text-xl font-bold flex items-center gap-2 ${

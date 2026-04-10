@@ -50,6 +50,8 @@ Regra operacional de stage: uma etapa intermediária só conta como concluída q
 
 Contrato operacional curto por papel, handoff padrão e DoD por coluna: `docs/multiagent-operating-playbook.md`.
 
+Nota: o OpenSpec oficial define os artefatos do change, mas não define ownership por papel. Neste repositório, o `PO` gera os artefatos do change e o `DESIGN` complementa com protótipo visual e decisões de UX.
+
 ## Passo a passo
 
 ### 0) Pré-check
@@ -91,10 +93,11 @@ Gerar instruções e escrever os artefatos:
   - `openspec instructions proposal --change <change-name>` → `proposal.md`
 - Specs:
   - `openspec instructions specs --change <change-name>` → `specs/<capability>/spec.md`
-- Design:
-  - `openspec instructions design --change <change-name>` → `design.md`
 - Tasks:
   - `openspec instructions tasks --change <change-name>` → `tasks.md`
+
+- Design:
+  - `openspec instructions design --change <change-name>` → `design.md`
 
 ### 5) Validar a change
 
@@ -104,7 +107,7 @@ Gerar instruções e escrever os artefatos:
 
 - PO revisa os artefatos, garante que decisões e critérios de aceitação estão travados.
 - **PO move o card de PO → DESIGN no Kanban runtime** (`PATCH /api/workflow/projects/crypto/changes/<change_id>` com `{"status": "DESIGN"}`).
-- PO registra handoff comment no card: "📋 PO done. Artefatos prontos (proposal/specs/design/tasks). DESIGN responsavel por prototipar UI."
+- PO registra handoff comment no card: "📋 PO done. Artefatos prontos (proposal/specs/design/tasks). DESIGN responsável por prototipar UI."
 - **PO dispara o agente DESIGN** (via spawn ou mensagem interna).
 - Somente após DESIGN finalizar (protótipo + links publicados) o card vai para **Alan approval**.
 

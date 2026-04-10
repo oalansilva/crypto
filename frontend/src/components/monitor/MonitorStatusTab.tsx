@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe, MonitorTheme } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
+import { ChartModal } from '@/components/monitor/ChartModal';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { RefreshCw, ArrowUpDown, ChevronDown } from 'lucide-react';
@@ -8,6 +9,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '@/lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
+import type { MarketCandle } from './MiniCandlesChart';
+import { fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 
 type SortOption = 'distance' | 'tier_distance' | 'symbol';
 type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
@@ -26,6 +29,12 @@ const DEFAULT_THEME: MonitorTheme = 'dark-green';
 export const MonitorStatusTab: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
+    const [openingChartSymbol, setOpeningChartSymbol] = useState<string | null>(null);
+    const [activeChart, setActiveChart] = useState<{
+        opportunity: Opportunity;
+        initialCandles: MarketCandle[];
+        initialTimeframe: ChartTimeframe;
+    } | null>(null);
     const [sortBy, setSortBy] = useState<SortOption>('tier_distance');
     const [tierFilter, setTierFilter] = useState<TierFilter>('all');
     const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
@@ -175,6 +184,40 @@ export const MonitorStatusTab: React.FC = () => {
 
     const handleChangePriceTimeframe = (symbol: string, nextTimeframe: MonitorPriceTimeframe) => {
         void persistPreference(symbol, { price_timeframe: nextTimeframe });
+    };
+
+    const handleOpenChart = async (opportunity: Opportunity) => {
+        const initialTimeframe = toChartTimeframe(
+            getPreference(opportunity.symbol).price_timeframe || opportunity.timeframe,
+        );
+
+        setOpeningChartSymbol(opportunity.symbol);
+
+        try {
+            const rows = await fetchMarketCandles(opportunity.symbol, initialTimeframe);
+            if (rows.length === 0) {
+                toast({
+                    title: 'Chart unavailable',
+                    description: `No candle data available for ${opportunity.symbol} on ${initialTimeframe}.`,
+                    variant: 'destructive',
+                });
+                return;
+            }
+
+            setActiveChart({
+                opportunity,
+                initialCandles: rows,
+                initialTimeframe,
+            });
+        } catch (error) {
+            toast({
+                title: 'Chart unavailable',
+                description: error instanceof Error ? error.message : 'Failed to load chart data.',
+                variant: 'destructive',
+            });
+        } finally {
+            setOpeningChartSymbol((current) => current === opportunity.symbol ? null : current);
+        }
     };
 
     useEffect(() => {
@@ -523,9 +566,11 @@ export const MonitorStatusTab: React.FC = () => {
                                             opportunity={opp}
                                             preference={getPreference(opp.symbol)}
                                             isSavingPreference={Boolean(savingSymbols[opp.symbol])}
+                                            isOpeningChart={openingChartSymbol === opp.symbol}
                                             onToggleInPortfolio={handleToggleInPortfolio}
                                             onToggleCardMode={handleToggleCardMode}
                                             onChangePriceTimeframe={handleChangePriceTimeframe}
+                                            onOpenChart={handleOpenChart}
                                         />
                                     ))}
                                 </div>
@@ -539,6 +584,15 @@ export const MonitorStatusTab: React.FC = () => {
                     )}
                 </div>
             )}
+            {activeChart ? (
+                <ChartModal
+                    symbol={activeChart.opportunity.symbol}
+                    opportunity={activeChart.opportunity}
+                    initialCandles={activeChart.initialCandles}
+                    initialTimeframe={activeChart.initialTimeframe}
+                    onClose={() => setActiveChart(null)}
+                />
+            ) : null}
             </div>
         </div>
     );

@@ -8,6 +8,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Fluxo operacional atual:** Workflow DB/Postgres = fonte runtime; Kanban = interface principal; OpenSpec = artefatos/documentação.
 - **Legado proibido para operação ativa:** não usar `docs/coordination/*.md` como superfície operacional para tracking ativo, evidências de QA, handoffs ou progresso corrente; tratar esses arquivos como espelho/auditoria e usar workflow DB + Kanban comments/work items como superfície viva, com OpenSpec como camada de artefatos.
 - **Playbook operacional canônico (Phase 1):** seguir `docs/multiagent-operating-playbook.md` para responsabilidades por papel, contrato padrão de handoff, Definition of Done por coluna e regra de fechamento com runtime + handoff.
+- **Ownership dos artefatos OpenSpec neste repo:** o OpenSpec oficial define os artefatos, não os papéis; aqui o `PO` gera os artefatos do change (`proposal/specs/design/tasks/review-ptbr`) e o `DESIGN` gera o protótipo visual e decisões de UX.
 - **Criação de change:** use `scripts/create_change_and_seed.sh <change-name>` para garantir OpenSpec + coordination + workflow DB/Kanban no mesmo passo.
 - **QA UI/browser:** preferir **Microsoft Playwright CLI** (`playwright-cli`) em vez de MCP para automação de interface; usar como base a skill oficial local `skills/playwright-cli-official/`; salvar evidências por fluxo (screenshots e, quando útil, trace/video), registrar os caminhos/links no card/tracking e abrir work item do tipo `bug` quando houver problema real.
 - **Gates:** PO → DESIGN (quando UI) → Alan approval → DEV → QA → Homologation → archive.
@@ -80,6 +81,7 @@ Orquestra o time, coordena workflow, delegation, status reports, prazos.
 ### PO — Product Manager
 Define especificações, gerencia backlog, Requirements, escopo do produto.
 - Define taxonomia de work items (`change`, `story`, `bug`) e dependências
+- É dono dos artefatos OpenSpec da change: `proposal.md`, `specs/**`, `design.md`, `tasks.md` e `review-ptbr.md`
 - Só libera DEV depois de approval
 - **Quando não há change ativa (todas arquivadas), o PO deve puxar automaticamente o card de maior prioridade da coluna Pending para iniciar o planejamento no próximo turno.**
 
@@ -88,6 +90,7 @@ Define especificações, gerencia backlog, Requirements, escopo do produto.
 
 Foca em UX/prototipação e pesquisa de usuário.
 - Publica protótipos e decisões visuais no Kanban/artefatos
+- Complementa a planning package com protótipo visual e decisões de UX para DEV/QA
 - Desenha pesquisas de usuário e scripts de entrevista
 - Analisa feedback de usuários (tickets, reviews, pesquisas)
 - Identifica problemas de usabilidade

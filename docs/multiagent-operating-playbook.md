@@ -11,6 +11,8 @@ This playbook standardizes how the existing team operates without changing the c
 - persistent agents remain `main`, `PO`, `DESIGN`, `DEV`, and `QA`
 - `docs/coordination/*.md` remains mirror/audit support only
 
+OpenSpec defines change artifacts such as `proposal.md`, `specs/**`, `design.md`, and `tasks.md`, but it does not prescribe team role ownership for those files. Role ownership below is a local convention for this repo.
+
 ## Core rules
 
 1. A stage is complete only when **both** are true in the same turn:
@@ -34,7 +36,7 @@ This playbook standardizes how the existing team operates without changing the c
 
 ### `PO`
 - Owns scope, acceptance boundaries, typed work-item framing, and planning completeness.
-- Produces and reconciles `proposal.md`, `specs/**`, `design.md` when needed, `tasks.md`, and `review-ptbr.md`.
+- Produces and reconciles all change planning artifacts: `proposal.md`, `specs/**`, `design.md` when needed, `tasks.md`, and `review-ptbr.md`.
 - Publishes viewer/review links in the same turn that planning is handed off.
 - Must not release implementation without recorded Alan approval.
 

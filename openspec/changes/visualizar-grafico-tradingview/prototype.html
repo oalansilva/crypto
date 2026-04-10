@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype: Visualizar Gráfico TradingView</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+  }
+
+  /* Monitor Layout */
+  .monitor-container {
+    display: flex;
+    height: 100vh;
+  }
+
+  .monitor-sidebar {
+    width: 220px;
+    background: rgba(22, 27, 34, 0.95);
+    border-right: 1px solid rgba(48, 54, 61, 0.8);
+    padding: 16px;
+  }
+
+  .monitor-logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: #388bfd;
+    margin-bottom: 24px;
+  }
+
+  .monitor-nav-item {
+    padding: 10px 12px;
+    border-radius: 6px;
+    color: #8b949e;
+    font-size: 14px;
+    cursor: pointer;
+    margin-bottom: 4px;
+  }
+
+  .monitor-nav-item:hover {
+    background: rgba(56, 139, 253, 0.1);
+    color: #e6edf3;
+  }
+
+  .monitor-nav-item.active {
+    background: rgba(56, 139, 253, 0.2);
+    color: #388bfd;
+  }
+
+  .monitor-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .monitor-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.8);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .monitor-title {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .monitor-tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .monitor-tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #8b949e;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .monitor-tab:hover {
+    background: rgba(139, 148, 158, 0.1);
+  }
+
+  .monitor-tab.active {
+    background: rgba(56, 139, 253, 0.2);
+    color: #388bfd;
+  }
+
+  /* Strategy List */
+  .strategy-list {
+    flex: 1;
+    padding: 16px 24px;
+    overflow-y: auto;
+  }
+
+  .strategy-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    background: rgba(22, 27, 34, 0.6);
+    border: 1px solid rgba(48, 54, 61, 0.6);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .strategy-row:hover {
+    border-color: rgba(56, 139, 253, 0.5);
+    background: rgba(22, 27, 34, 0.9);
+  }
+
+  .strategy-symbol {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e6edf3;
+    width: 100px;
+  }
+
+  .strategy-timeframe {
+    font-size: 12px;
+    color: #8b949e;
+    background: rgba(48, 54, 61, 0.6);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+  }
+
+  .strategy-status {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-left: 16px;
+  }
+
+  .strategy-status.entry {
+    background: rgba(56, 139, 253, 0.2);
+    color: #388bfd;
+  }
+
+  .strategy-status.exit {
+    background: rgba(210, 153, 34, 0.2);
+    color: #d29922;
+  }
+
+  .strategy-entry {
+    font-size: 13px;
+    color: #8b949e;
+    margin-left: auto;
+  }
+
+  .strategy-entry span {
+    color: #e6edf3;
+    font-weight: 500;
+  }
+
+  .strategy-action {
+    margin-left: 16px;
+    color: #8b949e;
+    font-size: 18px;
+  }
+
+  /* Chart Modal */
+  .chart-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(1, 4, 9, 0.85);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chart-modal {
+    width: 95vw;
+    max-width: 1400px;
+    height: 85vh;
+    max-height: 800px;
+    background: #0d1117;
+    border: 1px solid rgba(48, 54, 61, 0.8);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+
+  .chart-modal-header {
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.8);
+    background: rgba(22, 27, 34, 0.8);
+  }
+
+  .chart-modal-symbol {
+    font-size: 18px;
+    font-weight: 700;
+    color: #e6edf3;
+  }
+
+  .chart-modal-timeframe {
+    font-size: 13px;
+    color: #8b949e;
+    margin-left: 8px;
+  }
+
+  .chart-modal-signal {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 16px;
+  }
+
+  .chart-modal-signal.entry {
+    background: rgba(56, 139, 253, 0.25);
+    color: #388bfd;
+  }
+
+  .chart-modal-signal.exit {
+    background: rgba(210, 153, 34, 0.25);
+    color: #d29922;
+  }
+
+  .chart-modal-price {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e6edf3;
+    margin-left: auto;
+  }
+
+  .chart-modal-close {
+    background: transparent;
+    border: none;
+    color: #8b949e;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px 12px;
+    margin-left: 16px;
+    border-radius: 6px;
+  }
+
+  .chart-modal-close:hover {
+    background: rgba(139, 148, 158, 0.15);
+    color: #e6edf3;
+  }
+
+  .chart-modal-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .chart-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(48, 54, 61, 0.8);
+  }
+
+  .chart-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.6);
+    gap: 8px;
+  }
+
+  .timeframe-btn {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid rgba(48, 54, 61, 0.6);
+    border-radius: 6px;
+    color: #8b949e;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .timeframe-btn:hover {
+    border-color: rgba(56, 139, 253, 0.5);
+    color: #e6edf3;
+  }
+
+  .timeframe-btn.active {
+    background: rgba(56, 139, 253, 0.2);
+    border-color: rgba(56, 139, 253, 0.6);
+    color: #388bfd;
+  }
+
+  .chart-container {
+    flex: 1;
+    position: relative;
+    background: #0d1117;
+  }
+
+  .chart-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Simulated Candlestick Chart */
+  .chart-candles {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    padding: 20px 40px 0 50px;
+    position: relative;
+  }
+
+  .candle {
+    flex: 1;
+    max-width: 12px;
+    margin: 0 1px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .candle-wick {
+    width: 1px;
+    background: #5c6370;
+  }
+
+  .candle-body {
+    width: 10px;
+    border-radius: 1px;
+  }
+
+  .candle.bullish .candle-body,
+  .candle.bullish .candle-wick {
+    background: #26a641;
+    border-color: #26a641;
+  }
+
+  .candle.bearish .candle-body,
+  .candle.bearish .candle-wick {
+    background: #f85149;
+    border-color: #f85149;
+  }
+
+  .chart-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 40px;
+    pointer-events: none;
+  }
+
+  .chart-line {
+    position: absolute;
+    left: 50px;
+    right: 40px;
+    height: 1px;
+    display: flex;
+    align-items: center;
+  }
+
+  .chart-line-label {
+    position: absolute;
+    left: 0;
+    transform: translateX(-100%);
+    padding-right: 8px;
+    font-size: 10px;
+    color: #8b949e;
+    white-space: nowrap;
+  }
+
+  .chart-line-value {
+    position: absolute;
+    right: 0;
+    padding-left: 8px;
+    font-size: 10px;
+    color: #8b949e;
+    background: #0d1117;
+  }
+
+  .entry-line {
+    border-top: 2px dashed #388bfd;
+    top: 35%;
+  }
+
+  .stop-line {
+    border-top: 2px dashed #f85149;
+    top: 72%;
+  }
+
+  .ema9-line {
+    border-top: 2px solid rgba(56, 139, 253, 0.7);
+    top: 42%;
+  }
+
+  .volume-bars {
+    height: 50px;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 40px 10px 50px;
+    gap: 2px;
+    background: rgba(13, 17, 23, 0.5);
+    border-top: 1px solid rgba(48, 54, 61, 0.4);
+  }
+
+  .volume-bar {
+    flex: 1;
+    max-width: 12px;
+    background: rgba(56, 139, 253, 0.3);
+    border-radius: 1px 1px 0 0;
+  }
+
+  .chart-indicators {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px;
+    border-top: 1px solid rgba(48, 54, 61, 0.6);
+  }
+
+  .indicator-toggle {
+    padding: 4px 12px;
+    background: rgba(48, 54, 61, 0.4);
+    border: 1px solid rgba(48, 54, 61, 0.6);
+    border-radius: 4px;
+    color: #8b949e;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .indicator-toggle.active {
+    background: rgba(56, 139, 253, 0.2);
+    border-color: rgba(56, 139, 253, 0.5);
+    color: #388bfd;
+  }
+
+  /* Sidebar */
+  .chart-sidebar {
+    width: 280px;
+    padding: 16px;
+    overflow-y: auto;
+    background: rgba(22, 27, 34, 0.6);
+  }
+
+  .sidebar-section {
+    margin-bottom: 20px;
+  }
+
+  .sidebar-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .sidebar-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+
+  .sidebar-value small {
+    font-size: 12px;
+    color: #8b949e;
+    font-weight: 400;
+  }
+
+  .distance-bar {
+    height: 6px;
+    background: rgba(48, 54, 61, 0.6);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .distance-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #388bfd, #26a641);
+    border-radius: 3px;
+    width: 92%;
+  }
+
+  .risk-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .risk-item {
+    background: rgba(48, 54, 61, 0.3);
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .risk-item-label {
+    font-size: 10px;
+    color: #8b949e;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .risk-item-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+
+  .risk-item-value.stop {
+    color: #f85149;
+  }
+
+  .params-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .param-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+  }
+
+  .param-label {
+    color: #8b949e;
+  }
+
+  .param-value {
+    color: #e6edf3;
+    font-weight: 500;
+  }
+
+  .indicators-list {
+    font-size: 13px;
+  }
+
+  .indicator-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+  }
+
+  .indicator-name {
+    color: #8b949e;
+  }
+
+  .indicator-value {
+    color: #e6edf3;
+    font-weight: 500;
+  }
+
+  .notes-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    background: rgba(22, 27, 34, 0.8);
+    border: 1px solid rgba(48, 54, 61, 0.5);
+    border-radius: 6px;
+    color: #e6edf3;
+    font-size: 13px;
+    resize: vertical;
+  }
+
+  .notes-textarea:focus {
+    outline: none;
+    border-color: rgba(56, 139, 253, 0.5);
+  }
+
+  /* Chart Legend */
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    padding: 8px 16px;
+    background: rgba(22, 27, 34, 0.6);
+    border-top: 1px solid rgba(48, 54, 61, 0.6);
+    font-size: 11px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #8b949e;
+  }
+
+  .legend-line {
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
+  .legend-line.entry { background: #388bfd; }
+  .legend-line.stop { background: #f85149; }
+  .legend-line.ema9 { background: rgba(56, 139, 253, 0.7); }
+  .legend-line.sma21 { background: #d29922; }
+  .legend-marker {
+    font-size: 10px;
+  }
+  .legend-marker.buy { color: #26a641; }
+  .legend-marker.sell { color: #f85149; }
+
+  /* View Switcher */
+  .view-switcher {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(22, 27, 34, 0.95);
+    border: 1px solid rgba(48, 54, 61, 0.8);
+    border-radius: 8px;
+    z-index: 1001;
+  }
+
+  .view-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid rgba(48, 54, 61, 0.6);
+    border-radius: 6px;
+    color: #8b949e;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .view-btn:hover {
+    border-color: rgba(56, 139, 253, 0.5);
+    color: #e6edf3;
+  }
+
+  .view-btn.active {
+    background: rgba(56, 139, 253, 0.2);
+    border-color: rgba(56, 139, 253, 0.6);
+    color: #388bfd;
+  }
+
+  /* Hidden */
+  .hidden {
+    display: none !important;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Monitor View -->
+  <div class="monitor-container">
+    <aside class="monitor-sidebar">
+      <div class="monitor-logo">CRYPTO</div>
+      <div class="monitor-nav-item">Dashboard</div>
+      <div class="monitor-nav-item active">Monitor</div>
+      <div class="monitor-nav-item">Favoritos</div>
+      <div class="monitor-nav-item">Configurações</div>
+    </aside>
+    
+    <main class="monitor-main">
+      <header class="monitor-header">
+        <span class="monitor-title">Monitor</span>
+        <div class="monitor-tabs">
+          <button class="monitor-tab">Status</button>
+          <button class="monitor-tab active">Dashboard</button>
+        </div>
+      </header>
+      
+      <div class="strategy-list">
+        <div class="strategy-row" onclick="openChartModal('BTCUSDT', '1h', 'entry', 67432.50, 67800, 66950)">
+          <span class="strategy-symbol">BTCUSDT</span>
+          <span class="strategy-timeframe">1h</span>
+          <span class="strategy-status entry">ENTRY</span>
+          <span class="strategy-entry">Entry: <span>$67,432.50</span></span>
+          <span class="strategy-action">→</span>
+        </div>
+        
+        <div class="strategy-row" onclick="openChartModal('ETHUSDT', '4h', 'exit', 3245.80, 3260, 3180)">
+          <span class="strategy-symbol">ETHUSDT</span>
+          <span class="strategy-timeframe">4h</span>
+          <span class="strategy-status exit">EXIT</span>
+          <span class="strategy-entry">Entry: <span>$3,245.80</span></span>
+          <span class="strategy-action">→</span>
+        </div>
+        
+        <div class="strategy-row" onclick="openChartModal('SOLUSDT', '1d', 'entry', 142.35, 143.50, 138.00)">
+          <span class="strategy-symbol">SOLUSDT</span>
+          <span class="strategy-timeframe">1d</span>
+          <span class="strategy-status entry">ENTRY</span>
+          <span class="strategy-entry">Entry: <span>$142.35</span></span>
+          <span class="strategy-action">→</span>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Chart Modal -->
+  <div id="chartModal" class="chart-modal-overlay hidden" onclick="closeChartModal(event)">
+    <div class="chart-modal" onclick="event.stopPropagation()">
+      <header class="chart-modal-header">
+        <span id="modalSymbol" class="chart-modal-symbol">BTCUSDT</span>
+        <span id="modalTimeframe" class="chart-modal-timeframe">1h</span>
+        <span id="modalSignal" class="chart-modal-signal entry">ENTRY</span>
+        <span id="modalPrice" class="chart-modal-price">$67,432.50</span>
+        <button class="chart-modal-close" onclick="closeChartModalDirect()">×</button>
+      </header>
+      
+      <div class="chart-modal-body">
+        <div class="chart-area">
+          <div class="chart-toolbar">
+            <button class="timeframe-btn">15m</button>
+            <button class="timeframe-btn active">1h</button>
+            <button class="timeframe-btn">4h</button>
+            <button class="timeframe-btn">1d</button>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-lines">
+              <div class="chart-line entry-line">
+                <span class="chart-line-label">ENTRY</span>
+                <span class="chart-line-value">$67,800</span>
+              </div>
+              <div class="chart-line stop-line">
+                <span class="chart-line-label">STOP</span>
+                <span class="chart-line-value">$66,950</span>
+              </div>
+              <div class="chart-line ema9-line"></div>
+            </div>
+            
+            <div class="chart-candles" id="candlesContainer">
+              <!-- Candles generated by JS -->
+            </div>
+          </div>
+          
+          <div class="volume-bars" id="volumeContainer">
+            <!-- Volume bars generated by JS -->
+          </div>
+          
+          <div class="chart-indicators">
+            <button class="indicator-toggle active">EMA9</button>
+            <button class="indicator-toggle active">SMA21</button>
+            <button class="indicator-toggle">RSI</button>
+            <button class="indicator-toggle">ATR</button>
+          </div>
+        </div>
+        
+        <aside class="chart-sidebar">
+          <div class="sidebar-section">
+            <div class="sidebar-label">Distance to Entry</div>
+            <div class="sidebar-value">-0.42% <small>near entry</small></div>
+            <div class="distance-bar">
+              <div class="distance-bar-fill"></div>
+            </div>
+          </div>
+          
+          <div class="sidebar-section">
+            <div class="sidebar-label">Risk / Stop</div>
+            <div class="risk-grid">
+              <div class="risk-item">
+                <div class="risk-item-label">Entry</div>
+                <div class="risk-item-value">$67,800</div>
+              </div>
+              <div class="risk-item">
+                <div class="risk-item-label">Stop</div>
+                <div class="risk-item-value stop">$66,950</div>
+              </div>
+            </div>
+            <div style="margin-top: 8px; font-size: 13px; color: #8b949e;">
+              Risk: <span style="color: #f85149;">-1.25%</span>
+            </div>
+          </div>
+          
+          <div class="sidebar-section">
+            <div class="sidebar-label">Parameters</div>
+            <div class="params-grid">
+              <div class="param-item">
+                <span class="param-label">ema_short</span>
+                <span class="param-value">9</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">ema_long</span>
+                <span class="param-value">21</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">stop_loss</span>
+                <span class="param-value">1.25%</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">timeframe</span>
+                <span class="param-value">1h</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="sidebar-section">
+            <div class="sidebar-label">Indicator Values</div>
+            <div class="indicators-list">
+              <div class="indicator-row">
+                <span class="indicator-name">EMA 9</span>
+                <span class="indicator-value">67,420</span>
+              </div>
+              <div class="indicator-row">
+                <span class="indicator-name">EMA 21</span>
+                <span class="indicator-value">66,890</span>
+              </div>
+              <div class="indicator-row">
+                <span class="indicator-name">RSI 14</span>
+                <span class="indicator-value">58.3</span>
+              </div>
+              <div class="indicator-row">
+                <span class="indicator-name">ATR 14</span>
+                <span class="indicator-value">245.20</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="sidebar-section">
+            <div class="sidebar-label">Notes</div>
+            <textarea class="notes-textarea" placeholder="Add notes for this strategy..."></textarea>
+          </div>
+        </aside>
+      </div>
+      
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-line entry"></div>
+          Entry
+        </div>
+        <div class="legend-item">
+          <div class="legend-line stop"></div>
+          Stop
+        </div>
+        <div class="legend-item">
+          <div class="legend-line ema9"></div>
+          EMA9
+        </div>
+        <div class="legend-item">
+          <div class="legend-line sma21" style="background: #d29922;"></div>
+          SMA21
+        </div>
+        <div class="legend-item">
+          <span class="legend-marker buy">▲</span> Buy
+        </div>
+        <div class="legend-item">
+          <span class="legend-marker sell">▼</span> Sell
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View Switcher -->
+<div class="view-switcher">
+  <button class="view-btn" onclick="showMonitorView()">☝️ Click Strategy → Chart</button>
+  <button class="view-btn active" onclick="showExpandedView()">📊 Expanded Chart Modal</button>
+</div>
+
+<script>
+  // Generate sample candles
+  function generateCandles(count = 60) {
+    const candles = [];
+    let basePrice = 67000;
+    for (let i = 0; i < count; i++) {
+      const volatility = 0.02;
+      const change = (Math.random() - 0.5) * volatility * basePrice;
+      const open = basePrice;
+      const close = basePrice + change;
+      const high = Math.max(open, close) + Math.random() * volatility * basePrice * 0.5;
+      const low = Math.min(open, close) - Math.random() * volatility * basePrice * 0.5;
+      const volume = Math.random() * 100 + 20;
+      candles.push({ open, high, low, close, volume });
+      basePrice = close;
+    }
+    return candles;
+  }
+
+  function renderCandles() {
+    const container = document.getElementById('candlesContainer');
+    const candles = generateCandles(60);
+    container.innerHTML = candles.map(c => {
+      const isBullish = c.close >= c.open;
+      const height = Math.abs(c.close - c.open) * 0.5;
+      const wickTop = Math.min(c.open, c.close) - (c.high - Math.max(c.open, c.close));
+      const wickBottom = Math.max(c.open, c.close) + (c.low - Math.min(c.open, c.close));
+      const wickHeight = (wickBottom - wickTop) * 0.5;
+      const bodyTop = isBullish ? (c.close - c.open) * 0.5 : 0;
+      
+      return `
+        <div class="candle ${isBullish ? 'bullish' : 'bearish'}">
+          <div class="candle-wick" style="height: ${wickHeight}px;"></div>
+          <div class="candle-body" style="height: ${height}px; margin-top: ${bodyTop}px;"></div>
+        </div>
+      `;
+    }).join('');
+
+    const volumeContainer = document.getElementById('volumeContainer');
+    volumeContainer.innerHTML = candles.map(c => {
+      const height = c.volume * 0.4;
+      return `<div class="volume-bar" style="height: ${height}px;"></div>`;
+    }).join('');
+  }
+
+  function openChartModal(symbol, timeframe, signal, price, entry, stop) {
+    document.getElementById('modalSymbol').textContent = symbol;
+    document.getElementById('modalTimeframe').textContent = timeframe;
+    document.getElementById('modalSignal').textContent = signal.toUpperCase();
+    document.getElementById('modalSignal').className = 'chart-modal-signal ' + signal;
+    document.getElementById('modalPrice').textContent = '$' + price.toLocaleString('en-US', {minimumFractionDigits: 2});
+    document.getElementById('chartModal').classList.remove('hidden');
+    renderCandles();
+  }
+
+  function closeChartModal(event) {
+    if (event.target.id === 'chartModal') {
+      document.getElementById('chartModal').classList.add('hidden');
+    }
+  }
+
+  function closeChartModalDirect() {
+    document.getElementById('chartModal').classList.add('hidden');
+  }
+
+  function showMonitorView() {
+    document.querySelector('.view-switcher .view-btn:first-child').classList.add('active');
+    document.querySelector('.view-switcher .view-btn:last-child').classList.remove('active');
+    document.getElementById('chartModal').classList.add('hidden');
+  }
+
+  function showExpandedView() {
+    document.querySelector('.view-switcher .view-btn:first-child').classList.remove('active');
+    document.querySelector('.view-switcher .view-btn:last-child').classList.add('active');
+    openChartModal('BTCUSDT', '1h', 'entry', 67432.50, 67800, 66950);
+  }
+
+  // ESC to close modal
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.getElementById('chartModal').classList.add('hidden');
+    }
+  });
+
+  // Initialize
+  renderCandles();
+</script>
+
+</body>
+</html>
