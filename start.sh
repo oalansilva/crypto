@@ -25,6 +25,12 @@ for env_file in "$ROOT_DIR/backend/.env" "$ROOT_DIR/.env"; do
   fi
 done
 
+# Accept project-scoped aliases when the generic runtime variables are absent.
+export DATABASE_URL="${DATABASE_URL:-${CRYPTO_DATABASE_URL:-}}"
+export WORKFLOW_DATABASE_URL="${WORKFLOW_DATABASE_URL:-${CRYPTO_WORKFLOW_DATABASE_URL:-}}"
+export CRYPTO_DATABASE_URL="${CRYPTO_DATABASE_URL:-${DATABASE_URL:-}}"
+export CRYPTO_WORKFLOW_DATABASE_URL="${CRYPTO_WORKFLOW_DATABASE_URL:-${WORKFLOW_DATABASE_URL:-}}"
+
 require_env_var() {
   local var_name="$1"
   local value="${!var_name:-}"
