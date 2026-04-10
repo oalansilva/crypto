@@ -8,12 +8,15 @@ import {
   Home,
   Kanban,
   Layers,
+  LogOut,
   Menu,
   Settings,
   TrendingUp,
+  User,
   Wallet,
   X,
 } from 'lucide-react'
+import { useAuth } from '@/stores/authStore'
 
 interface AppNavProps {
   hideOnMobile?: boolean
@@ -140,6 +143,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const { user, logout, isLoading } = useAuth()
 
   useEffect(() => {
     const syncViewport = () => setIsMobile(window.innerWidth < 1024)
@@ -223,6 +227,31 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                 <NavSection title="Principal" items={mainNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
                 <NavSection title="Estratégias" items={strategyNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
                 <NavSection title="Conta" items={accountNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+
+                {!isLoading && user && (
+                  <div className="border-t border-white/6 pt-4">
+                    <div className="mb-3 flex items-center gap-3 rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{user.name}</div>
+                        <div className="truncate text-xs text-[var(--text-tertiary)]">{user.email}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        logout()
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-[18px] border border-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--text-secondary)] hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span>Sair</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </aside>
           </>
@@ -289,6 +318,22 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
             <div className="rounded-full border border-sky-300/14 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold text-sky-100">
               Contraste otimizado
             </div>
+            {!isLoading && user && (
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
+                  <User className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-medium text-[var(--text-secondary)]">{user.name}</span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-red-400"
+                  aria-label="Sair"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <button
               type="button"
               className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-white"

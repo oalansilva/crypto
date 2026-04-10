@@ -28,6 +28,7 @@ from app.routes.workflow_validation import router as workflow_validation_router
 from app.routes.market import router as market_router
 from app.routes.portfolio import router as portfolio_router
 from app.routes.signals import router as signals_router
+from app.routes.auth import router as auth_router
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -221,6 +222,7 @@ app.include_router(workflow_validation_router)
 app.include_router(market_router)
 app.include_router(portfolio_router)
 app.include_router(signals_router)
+app.include_router(auth_router)
 
 @app.get("/")
 async def root():
