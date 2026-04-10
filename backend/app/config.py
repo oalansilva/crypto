@@ -1,4 +1,6 @@
 # file: backend/app/config.py
+import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -38,8 +40,12 @@ class Settings(BaseSettings):
     api_title: str = "Crypto Backtester API"
     api_version: str = "1.0.0"
 
-    # CORS - Allow all origins in development
-    cors_origins: list[str] = ["*"]
+    # CORS origins for browser access. Accepts JSON arrays or comma-separated values.
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://72.60.150.140:5173",
+    ]
 
     # Agent chat (LLM conversation about strategies)
     agent_chat_enabled: str = "0"
@@ -51,4 +57,18 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    raw_origins = os.getenv("CORS_ORIGINS") or os.getenv("CORS_ALLOW_ORIGINS")
+    if raw_origins:
+        parsed_origins: list[str] | None = None
+        try:
+            loaded = json.loads(raw_origins)
+            if isinstance(loaded, list):
+                parsed_origins = [str(origin).strip() for origin in loaded if str(origin).strip()]
+        except json.JSONDecodeError:
+            parsed_origins = None
+
+        settings.cors_origins = parsed_origins or [
+            origin.strip() for origin in raw_origins.split(",") if origin.strip()
+        ]
+    return settings

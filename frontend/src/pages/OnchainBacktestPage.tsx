@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { useToast } from '@/components/ui/use-toast'
+import { apiUrl } from '@/lib/apiBase'
 import './OnchainSignalsPage.css'
 import './OnchainBacktestPage.css'
 
-const API_BASE_URL = 'http://127.0.0.1:8003'
-const HISTORY_LIMIT = 500
+const HISTORY_LIMIT = 100
 const CHAIN_OPTIONS = [
   { value: 'ALL', label: 'Todas as chains' },
   { value: 'ethereum', label: 'Ethereum' },
@@ -101,7 +101,7 @@ function normalizeToken(token: string) {
 }
 
 async function fetchJson<T>(path: string) {
-  const response = await fetch(new URL(path, API_BASE_URL).toString(), {
+  const response = await fetch(apiUrl(path).toString(), {
     headers: { Accept: 'application/json' },
   })
 

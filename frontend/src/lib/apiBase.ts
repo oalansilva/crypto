@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8003/api";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 /**
  * Build an absolute URL for an API endpoint.
@@ -8,13 +8,26 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:80
 export function apiUrl(path: string): URL {
   const base = String(API_BASE_URL || '').trim()
   const p = String(path || '').trim()
-  const endpoint = p.startsWith('/') ? `${base}${p}` : `${base}/${p}`
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
+  const normalizedPath = p.startsWith('/') ? p : `/${p}`
+  const endpoint = normalizedPath === normalizedBase || normalizedPath.startsWith(`${normalizedBase}/`)
+    ? normalizedPath
+    : `${normalizedBase}${normalizedPath}`
 
   return endpoint.startsWith('http')
     ? new URL(endpoint)
     : new URL(endpoint, window.location.origin)
 }
 
-// WebSocket URL derivado automaticamente do API_BASE_URL
-// Converte http(s)://host:port/api para ws(s)://host:port/api
-export const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws");
+function toWebSocketBase(base: string): string {
+  if (base.startsWith('http://') || base.startsWith('https://')) {
+    return base.replace(/^http/, 'ws')
+  }
+
+  const origin = window.location.origin.replace(/^http/, 'ws')
+  const normalizedBase = base.startsWith('/') ? base : `/${base}`
+  return `${origin}${normalizedBase}`
+}
+
+// WebSocket URL derivado automaticamente do API_BASE_URL.
+export const WS_BASE_URL = toWebSocketBase(API_BASE_URL);

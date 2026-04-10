@@ -3,6 +3,7 @@
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 # Ensure project root (parent of backend) is on path so "src" package can be imported
 _project_root = Path(__file__).resolve().parents[2]
@@ -158,18 +159,50 @@ async def lifespan(app: FastAPI):
 
 settings = get_settings()
 
+
+def _normalize_origin(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    parsed = urlsplit(value.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _build_cors_origins() -> list[str]:
+    configured_origins = list(settings.cors_origins)
+    configured_origins.extend(
+        [
+            os.getenv("CRYPTO_FRONTEND_URL"),
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://72.60.150.140:5173",
+        ]
+    )
+
+    origins: list[str] = []
+    for candidate in configured_origins:
+        normalized = _normalize_origin(candidate)
+        if not normalized or normalized in origins:
+            continue
+        origins.append(normalized)
+    return origins
+
+
+cors_origins = _build_cors_origins()
+
 app = FastAPI(
     title=settings.api_title,
     version=settings.api_version,
     lifespan=lifespan
 )
 
-# CORS - Allow all origins in development
+# CORS must be explicit when credentials are enabled, otherwise browsers reject
+# cross-origin requests from the public frontend.
 app.add_middleware(
     CORSMiddleware,
-    # Dev/prod friendly: allow local dev + the current host origin.
-    # If you want to lock this down later, replace "*" with explicit origins.
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
