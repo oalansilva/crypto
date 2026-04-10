@@ -1,3 +1,0 @@
-display_name: Kanban Workflow
-short_description: Operate the standalone multi-project Kanban runtime safely.
-default_prompt: Use the standalone Kanban runtime to locate the correct project, resolve cards by number or change_id, read the canonical tasks.md from the target project's root_directory, and update workflow state without confusing kanban-system work with crypto-product work.
