@@ -24,25 +24,28 @@ interface ChartModalProps {
     onClose: () => void;
 }
 
-type IndicatorKey = 'sma9' | 'ema21' | 'rsi14';
+type IndicatorKey = 'emaShort' | 'smaMedium' | 'smaLong' | 'rsi';
 
 interface IndicatorState {
-    sma9: boolean;
-    ema21: boolean;
-    rsi14: boolean;
+    emaShort: boolean;
+    smaMedium: boolean;
+    smaLong: boolean;
+    rsi: boolean;
 }
 
 interface TooltipSnapshot {
     candle: MarketCandle;
-    sma9?: number;
-    ema21?: number;
-    rsi14?: number;
+    emaShort?: number;
+    smaMedium?: number;
+    smaLong?: number;
+    rsi?: number;
 }
 
 const DEFAULT_INDICATORS: IndicatorState = {
-    sma9: true,
-    ema21: true,
-    rsi14: true,
+    emaShort: true,
+    smaMedium: true,
+    smaLong: true,
+    rsi: true,
 };
 
 const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
@@ -89,6 +92,27 @@ function formatTimestamp(value?: string | null) {
         minute: '2-digit',
         timeZone: 'UTC',
     }).format(new Date(value));
+}
+
+function getNumericParameter(parameters: Record<string, unknown> | undefined, keys: string[], fallback: number) {
+    for (const key of keys) {
+        const raw = parameters?.[key];
+        const value = typeof raw === 'number' ? raw : Number(raw);
+        if (Number.isFinite(value) && value > 0) {
+            return value;
+        }
+    }
+    return fallback;
+}
+
+function getIndicatorValue(values: Record<string, number> | undefined, keys: string[], fallback?: number | null) {
+    for (const key of keys) {
+        const value = values?.[key];
+        if (value !== undefined && value !== null && !Number.isNaN(value)) {
+            return value;
+        }
+    }
+    return fallback ?? undefined;
 }
 
 function calculateSma(candles: MarketCandle[], period: number): LineData<Time>[] {
@@ -201,6 +225,18 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => [...candles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
         [candles],
     );
+    const indicatorPeriods = React.useMemo(() => ({
+        emaShort: getNumericParameter(opportunity.parameters, ['ema_short', 'emaShort', 'sma_short', 'smaShort'], 9),
+        smaMedium: getNumericParameter(opportunity.parameters, ['sma_medium', 'smaMedium', 'ema_medium', 'emaMedium'], 21),
+        smaLong: getNumericParameter(opportunity.parameters, ['sma_long', 'smaLong', 'ema_long', 'emaLong'], 50),
+        rsi: getNumericParameter(opportunity.parameters, ['rsi_length', 'rsiLength', 'rsi_period', 'rsiPeriod'], 14),
+    }), [opportunity.parameters]);
+    const indicatorLabels = React.useMemo(() => ({
+        emaShort: `EMA ${indicatorPeriods.emaShort}`,
+        smaMedium: `SMA ${indicatorPeriods.smaMedium}`,
+        smaLong: `SMA ${indicatorPeriods.smaLong}`,
+        rsi: `RSI ${indicatorPeriods.rsi}`,
+    }), [indicatorPeriods]);
 
     const candlestickData = React.useMemo(() => (
         sortedCandles.map((candle) => ({
@@ -220,26 +256,45 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         }))
     ), [sortedCandles]);
 
-    const sma9Data = React.useMemo(() => calculateSma(sortedCandles, 9), [sortedCandles]);
-    const ema21Data = React.useMemo(() => calculateEma(sortedCandles, 21), [sortedCandles]);
-    const rsi14Data = React.useMemo(() => calculateRsi(sortedCandles, 14), [sortedCandles]);
+    const emaShortData = React.useMemo(
+        () => calculateEma(sortedCandles, indicatorPeriods.emaShort),
+        [indicatorPeriods.emaShort, sortedCandles],
+    );
+    const smaMediumData = React.useMemo(
+        () => calculateSma(sortedCandles, indicatorPeriods.smaMedium),
+        [indicatorPeriods.smaMedium, sortedCandles],
+    );
+    const smaLongData = React.useMemo(
+        () => calculateSma(sortedCandles, indicatorPeriods.smaLong),
+        [indicatorPeriods.smaLong, sortedCandles],
+    );
+    const rsiData = React.useMemo(
+        () => calculateRsi(sortedCandles, indicatorPeriods.rsi),
+        [indicatorPeriods.rsi, sortedCandles],
+    );
 
     const tooltipData = React.useMemo(() => {
-        const smaMap = new Map<number, number>();
-        const emaMap = new Map<number, number>();
+        const emaShortMap = new Map<number, number>();
+        const smaMediumMap = new Map<number, number>();
+        const smaLongMap = new Map<number, number>();
         const rsiMap = new Map<number, number>();
 
-        sma9Data.forEach((point) => {
+        emaShortData.forEach((point) => {
             if (typeof point.time === 'number') {
-                smaMap.set(point.time, point.value);
+                emaShortMap.set(point.time, point.value);
             }
         });
-        ema21Data.forEach((point) => {
+        smaMediumData.forEach((point) => {
             if (typeof point.time === 'number') {
-                emaMap.set(point.time, point.value);
+                smaMediumMap.set(point.time, point.value);
             }
         });
-        rsi14Data.forEach((point) => {
+        smaLongData.forEach((point) => {
+            if (typeof point.time === 'number') {
+                smaLongMap.set(point.time, point.value);
+            }
+        });
+        rsiData.forEach((point) => {
             if (typeof point.time === 'number') {
                 rsiMap.set(point.time, point.value);
             }
@@ -252,14 +307,15 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     time,
                     {
                         candle,
-                        sma9: smaMap.get(time),
-                        ema21: emaMap.get(time),
-                        rsi14: rsiMap.get(time),
+                        emaShort: emaShortMap.get(time),
+                        smaMedium: smaMediumMap.get(time),
+                        smaLong: smaLongMap.get(time),
+                        rsi: rsiMap.get(time),
                     },
                 ];
             }),
         );
-    }, [ema21Data, rsi14Data, sma9Data, sortedCandles]);
+    }, [emaShortData, rsiData, smaLongData, smaMediumData, sortedCandles]);
 
     const latestCandle = sortedCandles[sortedCandles.length - 1] ?? null;
     const latestSnapshot = React.useMemo(
@@ -408,18 +464,26 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         });
         volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
 
-        const smaSeries = mainChart.addLineSeries({
+        const emaShortSeries = mainChart.addLineSeries({
             color: 'rgba(56, 139, 253, 0.72)',
             lineWidth: 2,
-            visible: visibleIndicators.sma9,
+            visible: visibleIndicators.emaShort,
             priceLineVisible: false,
             lastValueVisible: false,
         });
 
-        const emaSeries = mainChart.addLineSeries({
+        const smaMediumSeries = mainChart.addLineSeries({
             color: '#d29922',
             lineWidth: 2,
-            visible: visibleIndicators.ema21,
+            visible: visibleIndicators.smaMedium,
+            priceLineVisible: false,
+            lastValueVisible: false,
+        });
+
+        const smaLongSeries = mainChart.addLineSeries({
+            color: '#2ea043',
+            lineWidth: 2,
+            visible: visibleIndicators.smaLong,
             priceLineVisible: false,
             lastValueVisible: false,
         });
@@ -427,7 +491,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         const rsiSeries = rsiChart.addLineSeries({
             color: '#a371f7',
             lineWidth: 2,
-            visible: visibleIndicators.rsi14,
+            visible: visibleIndicators.rsi,
             priceLineVisible: false,
         });
 
@@ -457,13 +521,14 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             },
         ]);
         volumeSeries.setData(volumeData);
-        smaSeries.setData(sma9Data);
-        emaSeries.setData(ema21Data);
-        rsiSeries.setData(rsi14Data);
+        emaShortSeries.setData(emaShortData);
+        smaMediumSeries.setData(smaMediumData);
+        smaLongSeries.setData(smaLongData);
+        rsiSeries.setData(rsiData);
 
-        if (rsi14Data.length > 0) {
-            const firstRsiTime = rsi14Data[0].time;
-            const lastRsiTime = rsi14Data[rsi14Data.length - 1].time;
+        if (rsiData.length > 0) {
+            const firstRsiTime = rsiData[0].time;
+            const lastRsiTime = rsiData[rsiData.length - 1].time;
             rsiUpper.setData([
                 { time: firstRsiTime, value: 70 },
                 { time: lastRsiTime, value: 70 },
@@ -540,33 +605,57 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         };
     }, [
         candlestickData,
+        emaShortData,
         opportunity.entry_price,
         opportunity.next_status_label,
         opportunity.stop_price,
-        rsi14Data,
+        rsiData,
         signalLabel,
-        sma9Data,
+        smaLongData,
+        smaMediumData,
         tooltipData,
-        visibleIndicators.ema21,
-        visibleIndicators.rsi14,
-        visibleIndicators.sma9,
+        visibleIndicators.emaShort,
+        visibleIndicators.rsi,
+        visibleIndicators.smaLong,
+        visibleIndicators.smaMedium,
         volumeData,
     ]);
 
     const sidebarIndicators = [
         {
-            label: 'SMA 9',
-            value: latestSnapshot?.sma9 ?? opportunity.indicator_values?.sma_9 ?? opportunity.indicator_values?.sma9,
+            label: indicatorLabels.emaShort,
+            value: getIndicatorValue(
+                opportunity.indicator_values,
+                [`ema_${indicatorPeriods.emaShort}`, `ema${indicatorPeriods.emaShort}`, 'ema_short', 'emaShort'],
+                latestSnapshot?.emaShort,
+            ),
             color: 'bg-[#388bfd]',
         },
         {
-            label: 'EMA 21',
-            value: latestSnapshot?.ema21 ?? opportunity.indicator_values?.ema_21 ?? opportunity.indicator_values?.ema21,
+            label: indicatorLabels.smaMedium,
+            value: getIndicatorValue(
+                opportunity.indicator_values,
+                [`sma_${indicatorPeriods.smaMedium}`, `sma${indicatorPeriods.smaMedium}`, 'sma_medium', 'smaMedium'],
+                latestSnapshot?.smaMedium,
+            ),
             color: 'bg-[#d29922]',
         },
         {
-            label: 'RSI 14',
-            value: latestSnapshot?.rsi14 ?? opportunity.indicator_values?.rsi_14 ?? opportunity.indicator_values?.rsi14,
+            label: indicatorLabels.smaLong,
+            value: getIndicatorValue(
+                opportunity.indicator_values,
+                [`sma_${indicatorPeriods.smaLong}`, `sma${indicatorPeriods.smaLong}`, 'sma_long', 'smaLong'],
+                latestSnapshot?.smaLong,
+            ),
+            color: 'bg-[#2ea043]',
+        },
+        {
+            label: indicatorLabels.rsi,
+            value: getIndicatorValue(
+                opportunity.indicator_values,
+                [`rsi_${indicatorPeriods.rsi}`, `rsi${indicatorPeriods.rsi}`, 'rsi_14', 'rsi14'],
+                latestSnapshot?.rsi,
+            ),
             color: 'bg-[#a371f7]',
         },
     ];
@@ -650,9 +739,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2" role="group" aria-label="Chart indicators">
                                 {[
-                                    { key: 'sma9', label: 'SMA 9', color: 'border-[#388bfd]/60 text-[#58a6ff]' },
-                                    { key: 'ema21', label: 'EMA 21', color: 'border-[#d29922]/60 text-[#d29922]' },
-                                    { key: 'rsi14', label: 'RSI 14', color: 'border-[#a371f7]/60 text-[#c297ff]' },
+                                    { key: 'emaShort', label: indicatorLabels.emaShort, color: 'border-[#388bfd]/60 text-[#58a6ff]' },
+                                    { key: 'smaMedium', label: indicatorLabels.smaMedium, color: 'border-[#d29922]/60 text-[#d29922]' },
+                                    { key: 'smaLong', label: indicatorLabels.smaLong, color: 'border-[#2ea043]/60 text-[#3fb950]' },
+                                    { key: 'rsi', label: indicatorLabels.rsi, color: 'border-[#a371f7]/60 text-[#c297ff]' },
                                 ].map((indicator) => {
                                     const active = visibleIndicators[indicator.key as IndicatorKey];
                                     return (
@@ -809,9 +899,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             <div className="flex flex-wrap items-center gap-3 text-xs text-[#8b949e]">
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#388bfd]" /> Entry</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Stop</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#58a6ff]" /> SMA 9</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#d29922]" /> EMA 21</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#a371f7]" /> RSI 14</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#58a6ff]" /> {indicatorLabels.emaShort}</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#d29922]" /> {indicatorLabels.smaMedium}</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#2ea043]" /> {indicatorLabels.smaLong}</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#a371f7]" /> {indicatorLabels.rsi}</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#3fb950]" /> Buy</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Sell</span>
                             </div>
