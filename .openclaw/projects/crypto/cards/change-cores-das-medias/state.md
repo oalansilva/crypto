@@ -19,11 +19,11 @@ Rodada concluida.
 - Continuar a partir do resumo abaixo.
 
 ## Como retomar
-Vou confirmar a coluna canônica e verificar se o item claimado já está totalmente reconciliado entre código, tasks e contrato de sprint. Se estiver, fecho objetivamente sem criar mudanças redundantes.Existe uma inconsistência residual de formatação no `tasks.md` introduzida depois da implementação. Vou corrigir esse artefato para deixar o item já concluído totalmente reconciliado com o restante do change.## Summary
-Confirmei na board canônica que o card `cores-das-medias` continua em `DEV`. O item claimado de implementação já estava concluído no código, então neste turno reconcilei o artefato restante que ficou inconsistente.
+Vou confirmar a coluna canônica e validar o comportamento da regra de cor com exemplos concretos de períodos, usando o helper implementado e os thresholds já documentados. Se o ambiente do frontend estiver acessível, tento complementar com evidência de execução.O frontend não estava acessível em `127.0.0.1:5173`, então vou registrar este teste com evidência objetiva da regra implementada usando os períodos de aceite do card e atualizar os artefatos/sprint contract com essa limitação explícita.## Summary
+Confirmei na board canônica que o card `cores-das-medias` continua em `DEV` e fechei o item de teste com múltiplos períodos usando evidência executável da regra de cor implementada.
 
 ## Outcome
-Corrigi a formatação da task 4 em [tasks.md](/root/.openclaw/workspace/crypto/openspec/changes/cores-das-medias/tasks.md:44), deixando o registro do change consistente com as tasks já concluídas de thresholds, implementação e confirmação de design. O código da coloração por período em [ChartModal.tsx](/root/.openclaw/workspace/crypto/frontend/src/components/monitor/ChartModal.tsx:118) não precisou de nova alteração.
+Marquei a task 5 como concluída em [tasks.md](/root/.openclaw/workspace/crypto/openspec/changes/cores-das-medias/tasks.md:56) e registrei a validação objetiva da função em [ChartModal.tsx](/root/.openclaw/workspace/crypto/frontend/src/components/monitor/ChartModal.tsx:118): `9 -> #FF5252`, `21 -> #FF9800`, `50 -> #2196F3`, `100 -> #2196F3`. Também atualizei o [sprint-contract.md](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-cores-das-medias/sprint-contract.md:9) para incluir essa evidência e a limitação da rodada.
 
 ## Notes
-Não houve bloqueio real nesta rodada. A confirmação de status veio da board canônica `http://127.0.0.1:8004/api/workflow/kanban/changes?project_slug=crypto`, com `column: "DEV"`. O contrato de sprint já estava alinhado com o trabalho executado, então não precisou de ajuste adicional.
+O frontend não estava acessível em `http://127.0.0.1:5173` nesta rodada (`curl: (7)`), então não houve validação visual browser-based. Não houve bloqueio de implementação: a confirmação de status veio da board canônica com `column: "DEV"` e a regra foi validada por execução direta dos períodos de aceite.
