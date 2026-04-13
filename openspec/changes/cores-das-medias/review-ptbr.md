@@ -27,10 +27,13 @@ Estilização de UI: adicionar cores às médias móveis (SMA, EMA) baseadas no 
 2. **Média:** `>= 20` e `< 50`
 3. **Longa:** `>= 50`
 
-**Ainda pendente:**
+**Confirmação de design nesta rodada:**
 
-1. **Cores específicas:** confirmar hex codes finais com DESIGN
-2. **Card #87 já implementado?:** precisa existir para esta mudança fazer sentido
+1. **Cores específicas:** aprovadas no contexto do design system local do frontend
+   - curta = `#FF5252`
+   - média = `#FF9800`
+   - longa = `#2196F3`
+2. **Card #87 já implementado?:** o gráfico já existe e esta mudança atua sobre `ChartModal.tsx`
 
 ---
 

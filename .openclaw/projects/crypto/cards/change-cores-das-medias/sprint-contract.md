@@ -11,6 +11,7 @@ cores das medias
 - localizar o componente real que renderiza as medias moveis no monitor
 - definir e documentar os thresholds de periodo antes da implementacao da coloracao
 - implementar a coloracao por periodo no grafico e nas legendas relacionadas
+- confirmar que a paleta escolhida esta alinhada ao design system local do frontend
 
 ## Fora de escopo
 - alterar RSI ou outros indicadores nao relacionados a medias moveis
@@ -23,6 +24,7 @@ cores das medias
 - as tres medias do grafico principal sao renderizadas como line series separadas: `emaShort`, `smaMedium` e `smaLong`
 - os thresholds ficam definidos como: curta `< 20`, media `>= 20` e `< 50`, longa `>= 50`
 - a cor das medias segue `getMAColor(period)`: vermelho para curta, laranja para media, azul para longa
+- a paleta escolhida fica consistente com a semantica visual do app: danger/vermelho, warning/laranja, info/azul
 
 ## Sensores obrigatorios
 - inspecao estatica do componente e dos artefatos OpenSpec
@@ -33,9 +35,11 @@ cores das medias
 - task 1 marcada como concluida em `openspec/changes/cores-das-medias/tasks.md`
 - task 2 marcada como concluida em `openspec/changes/cores-das-medias/tasks.md`
 - task 3 marcada como concluida em `openspec/changes/cores-das-medias/tasks.md`
+- task 4 marcada como concluida em `openspec/changes/cores-das-medias/tasks.md`
 - confirmacao na board canonica de que o card `cores-das-medias` esta em `DEV`
 - `npm --prefix frontend run build` concluido com sucesso
 - `cd frontend && npx tsc --noEmit` concluido com sucesso
+- referencia ao design system local em `frontend/src/index.css`
 
 ## Riscos conhecidos
 - a API detalhada do change em `:8004/api/workflow/projects/crypto/changes/cores-das-medias` nao respondeu nesta rodada

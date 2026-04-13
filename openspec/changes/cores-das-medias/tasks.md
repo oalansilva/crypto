@@ -26,7 +26,7 @@
   
   **Critério de Aceite:** Thresholds definidos e documentados
 
-- [x] **3. Implementar coloração por período**
+- [x] 3. Implementar coloração por período**
   
   Aplicar lógica de cor baseada no período:
   ```typescript
@@ -41,9 +41,14 @@
   
   **Critério de Aceite:** Cada MA renderizada com cor correta baseada em seu período
 
-- [ ] **4. Confirmar cores com DESIGN**
+- [x] **4. Confirmar cores com DESIGN**
   
   Validar que os hex codes propostos estão no design system do projeto.
+
+  **Resultado:** confirmado contra o design system local do frontend. O projeto já define cores semânticas para warning/danger/info em `frontend/src/index.css` e o monitor já usa azul, laranja e vermelho como linguagem visual para estados e destaque. A escolha final ficou:
+  - curta = `#FF5252`
+  - média = `#FF9800`
+  - longa = `#2196F3`
   
   **Critério de Aceite:** DESIGN aprovou as cores selecionadas
 

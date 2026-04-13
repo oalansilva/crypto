@@ -47,7 +47,7 @@
 | Média | período `>= 20` e `< 50` | 🟠 Laranja | `#FF9800` |
 | Longa | período `>= 50` | 🔵 Azul | `#2196F3` |
 
-**Nota:** Cores subjectivas ao design system do projeto — confirmar com DESIGN.
+**Nota:** Confirmado no repositório contra o design system local e a linguagem visual já usada no monitor. A paleta escolhida mantém vermelho para alerta/destaque, laranja para warning/intermediário e azul para informação/indicador.
 
 ---
 
