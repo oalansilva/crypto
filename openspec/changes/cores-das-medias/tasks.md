@@ -26,7 +26,7 @@
   
   **Critério de Aceite:** Thresholds definidos e documentados
 
-- [ ] **3. Implementar coloração por período**
+- [x] **3. Implementar coloração por período**
   
   Aplicar lógica de cor baseada no período:
   ```typescript
@@ -36,6 +36,8 @@
     return '#2196F3'; // azul
   };
   ```
+
+  **Resultado:** helper `getMAColor()` implementado em `frontend/src/components/monitor/ChartModal.tsx` e aplicado nas line series de `emaShort`, `smaMedium` e `smaLong`, além da legenda e indicadores auxiliares do modal.
   
   **Critério de Aceite:** Cada MA renderizada com cor correta baseada em seu período
 
