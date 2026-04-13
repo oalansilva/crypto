@@ -52,7 +52,7 @@
   
   **Critério de Aceite:** DESIGN aprovou as cores selecionadas
 
-- [x] 5. Testar com múltiplos períodos de MA**
+- [x] **5. Testar com múltiplos períodos de MA**
   
   Verificar que SMA 9 (vermelho), EMA 21 (laranja), SMA 100 (azul) aparecem com cores distintas.
 
