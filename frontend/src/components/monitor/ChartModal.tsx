@@ -4,7 +4,6 @@ import {
     CrosshairMode,
     LineStyle,
     type IChartApi,
-    type ISeriesApi,
     type LineData,
     type LogicalRange,
     type Time,
@@ -47,6 +46,9 @@ const DEFAULT_INDICATORS: IndicatorState = {
     smaLong: true,
     rsi: true,
 };
+const MA_COLORS = ['#FF5252', '#FF9800', '#1565C0'] as const;
+type MAIndicatorKey = 'emaShort' | 'smaMedium' | 'smaLong';
+type MAColorByIndicator = Record<MAIndicatorKey, string>;
 
 const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -113,6 +115,31 @@ function getIndicatorValue(values: Record<string, number> | undefined, keys: str
         }
     }
     return fallback ?? undefined;
+}
+
+function getMAColorsByPeriod(indicatorPeriods: { emaShort: number; smaMedium: number; smaLong: number }): MAColorByIndicator {
+    const ordered = [
+        { key: 'emaShort' as const, period: indicatorPeriods.emaShort, order: 0 },
+        { key: 'smaMedium' as const, period: indicatorPeriods.smaMedium, order: 1 },
+        { key: 'smaLong' as const, period: indicatorPeriods.smaLong, order: 2 },
+    ].sort((a, b) => {
+        if (a.period === b.period) {
+            return a.order - b.order;
+        }
+        return a.period - b.period;
+    });
+
+    const map = {
+        emaShort: MA_COLORS[2],
+        smaMedium: MA_COLORS[2],
+        smaLong: MA_COLORS[2],
+    } as MAColorByIndicator;
+
+    ordered.forEach((item, index) => {
+        map[item.key] = MA_COLORS[index];
+    });
+
+    return map;
 }
 
 function calculateSma(candles: MarketCandle[], period: number): LineData<Time>[] {
@@ -231,6 +258,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         smaLong: getNumericParameter(opportunity.parameters, ['sma_long', 'smaLong', 'ema_long', 'emaLong'], 50),
         rsi: getNumericParameter(opportunity.parameters, ['rsi_length', 'rsiLength', 'rsi_period', 'rsiPeriod'], 14),
     }), [opportunity.parameters]);
+    const maColors = React.useMemo(() => getMAColorsByPeriod({
+        emaShort: indicatorPeriods.emaShort,
+        smaMedium: indicatorPeriods.smaMedium,
+        smaLong: indicatorPeriods.smaLong,
+    }), [indicatorPeriods.emaShort, indicatorPeriods.smaMedium, indicatorPeriods.smaLong]);
     const indicatorLabels = React.useMemo(() => ({
         emaShort: `EMA ${indicatorPeriods.emaShort}`,
         smaMedium: `SMA ${indicatorPeriods.smaMedium}`,
@@ -465,7 +497,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
 
         const emaShortSeries = mainChart.addLineSeries({
-            color: 'rgba(56, 139, 253, 0.72)',
+            color: maColors.emaShort,
             lineWidth: 2,
             visible: visibleIndicators.emaShort,
             priceLineVisible: false,
@@ -473,7 +505,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         });
 
         const smaMediumSeries = mainChart.addLineSeries({
-            color: '#d29922',
+            color: maColors.smaMedium,
             lineWidth: 2,
             visible: visibleIndicators.smaMedium,
             priceLineVisible: false,
@@ -481,7 +513,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         });
 
         const smaLongSeries = mainChart.addLineSeries({
-            color: '#2ea043',
+            color: maColors.smaLong,
             lineWidth: 2,
             visible: visibleIndicators.smaLong,
             priceLineVisible: false,
@@ -606,6 +638,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     }, [
         candlestickData,
         emaShortData,
+        indicatorPeriods.emaShort,
+        indicatorPeriods.smaLong,
+        indicatorPeriods.smaMedium,
+        maColors.emaShort,
+        maColors.smaLong,
+        maColors.smaMedium,
         opportunity.entry_price,
         opportunity.next_status_label,
         opportunity.stop_price,
@@ -629,7 +667,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 [`ema_${indicatorPeriods.emaShort}`, `ema${indicatorPeriods.emaShort}`, 'ema_short', 'emaShort'],
                 latestSnapshot?.emaShort,
             ),
-            color: 'bg-[#388bfd]',
+            color: maColors.emaShort,
         },
         {
             label: indicatorLabels.smaMedium,
@@ -638,7 +676,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 [`sma_${indicatorPeriods.smaMedium}`, `sma${indicatorPeriods.smaMedium}`, 'sma_medium', 'smaMedium'],
                 latestSnapshot?.smaMedium,
             ),
-            color: 'bg-[#d29922]',
+            color: maColors.smaMedium,
         },
         {
             label: indicatorLabels.smaLong,
@@ -647,7 +685,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 [`sma_${indicatorPeriods.smaLong}`, `sma${indicatorPeriods.smaLong}`, 'sma_long', 'smaLong'],
                 latestSnapshot?.smaLong,
             ),
-            color: 'bg-[#2ea043]',
+            color: maColors.smaLong,
         },
         {
             label: indicatorLabels.rsi,
@@ -656,9 +694,16 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 [`rsi_${indicatorPeriods.rsi}`, `rsi${indicatorPeriods.rsi}`, 'rsi_14', 'rsi14'],
                 latestSnapshot?.rsi,
             ),
-            color: 'bg-[#a371f7]',
+            color: '#a371f7',
         },
     ];
+
+    const indicatorToggleStyles: Record<IndicatorKey, string> = React.useMemo(() => ({
+        emaShort: maColors.emaShort,
+        smaMedium: maColors.smaMedium,
+        smaLong: maColors.smaLong,
+        rsi: '#c297ff',
+    }), [maColors.emaShort, maColors.smaMedium, maColors.smaLong]);
 
     return (
         <div
@@ -739,19 +784,23 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2" role="group" aria-label="Chart indicators">
                                 {[
-                                    { key: 'emaShort', label: indicatorLabels.emaShort, color: 'border-[#388bfd]/60 text-[#58a6ff]' },
-                                    { key: 'smaMedium', label: indicatorLabels.smaMedium, color: 'border-[#d29922]/60 text-[#d29922]' },
-                                    { key: 'smaLong', label: indicatorLabels.smaLong, color: 'border-[#2ea043]/60 text-[#3fb950]' },
-                                    { key: 'rsi', label: indicatorLabels.rsi, color: 'border-[#a371f7]/60 text-[#c297ff]' },
+                                    { key: 'emaShort', label: indicatorLabels.emaShort },
+                                    { key: 'smaMedium', label: indicatorLabels.smaMedium },
+                                    { key: 'smaLong', label: indicatorLabels.smaLong },
+                                    { key: 'rsi', label: indicatorLabels.rsi },
                                 ].map((indicator) => {
                                     const active = visibleIndicators[indicator.key as IndicatorKey];
                                     return (
                                         <button
                                             key={indicator.key}
                                             type="button"
+                                            style={active ? {
+                                                borderColor: indicatorToggleStyles[indicator.key as IndicatorKey],
+                                                color: indicatorToggleStyles[indicator.key as IndicatorKey],
+                                            } : undefined}
                                             className={`rounded-md border px-3 py-1.5 text-sm transition ${
                                                 active
-                                                    ? `${indicator.color} bg-white/5`
+                                                    ? 'bg-white/5'
                                                     : 'border-[#30363d] bg-[#161b22] text-[#8b949e]'
                                             }`}
                                             onClick={() => toggleIndicator(indicator.key as IndicatorKey)}
@@ -873,7 +922,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                                 {sidebarIndicators.map((item) => (
                                                     <div key={item.label} className="flex items-center justify-between gap-3">
                                                         <div className="flex items-center gap-2">
-                                                            <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+                                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                                                             <span className="text-[#8b949e]">{item.label}</span>
                                                         </div>
                                                         <span className="font-mono text-[#e6edf3]">{formatIndicator(item.value)}</span>
@@ -899,9 +948,9 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             <div className="flex flex-wrap items-center gap-3 text-xs text-[#8b949e]">
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#388bfd]" /> Entry</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Stop</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#58a6ff]" /> {indicatorLabels.emaShort}</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#d29922]" /> {indicatorLabels.smaMedium}</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#2ea043]" /> {indicatorLabels.smaLong}</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.emaShort }} /> {indicatorLabels.emaShort}</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaMedium }} /> {indicatorLabels.smaMedium}</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaLong }} /> {indicatorLabels.smaLong}</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#a371f7]" /> {indicatorLabels.rsi}</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#3fb950]" /> Buy</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Sell</span>
