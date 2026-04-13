@@ -12,7 +12,7 @@
   
   **Critério de Aceite:** Rota `/kanban` não existe mais no projeto crypto
 
-- [ ] **2. Remover item de navegação Kanban de AppNav.tsx**
+- [x] **2. Remover item de navegação Kanban de AppNav.tsx**
   
   Remover SIDEBAR_ITEMS entry: `{ label: 'Kanban', route: '#/kanban', ... }` ou similar.
   

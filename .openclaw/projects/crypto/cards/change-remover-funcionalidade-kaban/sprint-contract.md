@@ -10,16 +10,21 @@ crypto
 remover funcionalidade kaban
 
 ## Fora de escopo
-- Ainda nao definido.
+- Remover a aplicacao Kanban standalone.
+- Alterar paginas fora do fluxo de remocao de acesso ao Kanban no app crypto.
 
 ## Comportamentos esperados
-- Ainda nao definido.
+- A rota `/kanban` nao deve mais existir no app crypto.
+- A navegacao principal nao deve mais exibir o item `Kanban`.
+- O restante da navegacao do app crypto deve continuar funcional.
 
 ## Sensores obrigatorios
-- Ainda nao definido.
+- Build do frontend com `npm --prefix frontend run build`.
 
 ## Evidencias esperadas
-- Ainda nao definido.
+- Diff removendo a rota `/kanban` de `frontend/src/App.tsx`.
+- Diff removendo o item `Kanban` de `frontend/src/components/AppNav.tsx`.
+- Build do frontend concluido com sucesso.
 
 ## Riscos conhecidos
-- Ainda nao definido.
+- Ainda existem outras referencias a Kanban no frontend fora deste item claimado e elas precisam ser tratadas nos proximos work items.
