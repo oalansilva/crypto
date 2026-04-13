@@ -24,7 +24,7 @@
   
   **Critério de Aceite:** Nenhum import de Kanban no código do crypto
 
-- [ ] **4. Verificar Party Mode**
+- [x] **4. Verificar Party Mode**
   
   Confirmar que Party Mode ainda funciona no app Kanban standalone após remoção.
   

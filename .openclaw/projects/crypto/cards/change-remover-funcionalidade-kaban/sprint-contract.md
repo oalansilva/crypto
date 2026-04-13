@@ -25,6 +25,7 @@ remover funcionalidade kaban
 - Diff removendo a rota `/kanban` de `frontend/src/App.tsx`.
 - Diff removendo o item `Kanban` de `frontend/src/components/AppNav.tsx`.
 - `rg -n "KanbanPage" frontend/src` sem imports remanescentes, apenas a definicao em `frontend/src/pages/KanbanPage.tsx`.
+- App Kanban standalone acessivel em `http://127.0.0.1:5174` com `HTTP/1.1 200 OK` e `title>Kanban</title>`.
 - Build do frontend concluido com sucesso.
 
 ## Riscos conhecidos
