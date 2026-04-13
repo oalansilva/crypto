@@ -1,0 +1,88 @@
+# Tasks — Card #89
+
+## Mudança: Cores das Médias Móveis no Gráfico TradingView-like
+
+---
+
+## DEV Tasks
+
+- [x] **1. Localizar componente de renderização das médias móveis**
+  
+  Identificar onde SMA/EMA são renderizadas no gráfico do monitor.
+  
+  **Resultado:** localizado em `frontend/src/components/monitor/ChartModal.tsx`. Os períodos são resolvidos em `indicatorPeriods` e as séries são criadas com `mainChart.addLineSeries()` para `emaShort`, `smaMedium` e `smaLong`.
+  
+  **Critério de Aceite:** Localizado o código que renderiza as moving averages
+
+- [ ] **2. Definir thresholds de período**
+  
+  Confirmar valores: curtas < 20, média 20-50, longa > 50.
+  
+  **Critério de Aceite:** Thresholds definidos e documentados
+
+- [ ] **3. Implementar coloração por período**
+  
+  Aplicar lógica de cor baseada no período:
+  ```typescript
+  const getMAColor = (period: number): string => {
+    if (period < 20) return '#FF5252'; // vermelho
+    if (period < 50) return '#FF9800'; // laranja
+    return '#2196F3'; // azul
+  };
+  ```
+  
+  **Critério de Aceite:** Cada MA renderizada com cor correta baseada em seu período
+
+- [ ] **4. Confirmar cores com DESIGN**
+  
+  Validar que os hex codes propostos estão no design system do projeto.
+  
+  **Critério de Aceite:** DESIGN aprovou as cores selecionadas
+
+- [ ] **5. Testar com múltiplos períodos de MA**
+  
+  Verificar que SMA 9 (vermelho), EMA 21 (laranja), SMA 100 (azul) aparecem com cores distintas.
+  
+  **Critério de Aceite:** Cores aparecem corretamente no gráfico
+
+---
+
+## QA Tasks
+
+- [ ] **6. Validar coloração de SMA curta**
+  
+  SMA/período < 20 deve aparecer em vermelho.
+  
+  **Critério de Aceite:** SMA 9, 12, 15 aparecem em vermelho
+
+- [ ] **7. Validar coloração de SMA média**
+  
+  Período entre 20-50 deve aparecer em laranja.
+  
+  **Critério de Aceite:** SMA 21, 26, 30 aparecem em laranja
+
+- [ ] **8. Validar coloração de SMA longa**
+  
+  Período > 50 deve aparecer em azul.
+  
+  **Critério de Aceite:** SMA 50, 100, 200 aparecem em azul
+
+- [ ] **9. Validar que EMA também é colorida**
+  
+  EMA com diferentes períodos também recebe cores corretas.
+  
+  **Critério de Aceite:** EMA segue mesmo padrão de cores que SMA
+
+- [ ] **10. Verificar contraste e acessibilidade**
+  
+  Cores são distinguíveis para usuários sem deficiência visual de cores.
+  
+  **Critério de Aceite:** Cores passam em teste de contraste
+
+---
+
+## Notas
+
+- **Depende de card #87** — gráfico TradingView-like precisa existir primeiro
+- **Protótipo não necessário** — é estilização de feature existente
+- **Biblioteca:** `lightweight-charts` suporta `color` property em lineSeries
