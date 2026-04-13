@@ -4,8 +4,8 @@
   "sensors": {
     "build": {
       "command": "npm --prefix frontend run build",
-      "status": "pass",
-      "summary": "> frontend@0.0.0 build > tsc -b && vite build vite v7.3.1 building client environment for production... transforming... ✓ 2546 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.46 kB │ gzip: 0\n\n[truncated]"
+      "status": "pending",
+      "summary": "required by sensor policy"
     },
     "healthcheck": {
       "command": null,
@@ -29,10 +29,10 @@
     },
     "typecheck": {
       "command": "cd frontend && npx tsc --noEmit",
-      "status": "pass",
-      "summary": "exit code 0"
+      "status": "skip",
+      "summary": "not required by sensor policy"
     }
   },
-  "timestamp": "2026-04-13T12:33:09.435105+00:00",
+  "timestamp": "2026-04-13T12:33:09.452104+00:00",
   "work_type": "full-stack"
 }

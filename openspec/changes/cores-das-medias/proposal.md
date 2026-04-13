@@ -45,7 +45,7 @@
 |------|-----------|-----|-----|
 | Curta | período < 20 | 🔴 Vermelho | `#FF5252` |
 | Média | período `>= 20` e `< 50` | 🟠 Laranja | `#FF9800` |
-| Longa | período `>= 50` | 🔵 Azul | `#2196F3` |
+| Longa | período `>= 50` | 🔵 Azul escuro | `#1565C0` |
 
 **Nota:** Confirmado no repositório contra o design system local e a linguagem visual já usada no monitor. A paleta escolhida mantém vermelho para alerta/destaque, laranja para warning/intermediário e azul para informação/indicador.
 
@@ -63,7 +63,7 @@
 **Exemplo de API:**
 ```typescript
 chart.addLineSeries({
-  color: period < 20 ? '#FF5252' : period < 50 ? '#FF9800' : '#2196F3',
+  color: period < 20 ? '#FF5252' : period < 50 ? '#FF9800' : '#1565C0',
   lineWidth: 2
 });
 ```

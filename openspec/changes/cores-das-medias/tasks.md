@@ -33,7 +33,7 @@
   const getMAColor = (period: number): string => {
     if (period < 20) return '#FF5252'; // vermelho
     if (period < 50) return '#FF9800'; // laranja
-    return '#2196F3'; // azul
+    return '#1565C0'; // azul escuro
   };
   ```
 
@@ -48,7 +48,7 @@
   **Resultado:** confirmado contra o design system local do frontend. O projeto já define cores semânticas para warning/danger/info em `frontend/src/index.css` e o monitor já usa azul, laranja e vermelho como linguagem visual para estados e destaque. A escolha final ficou:
   - curta = `#FF5252`
   - média = `#FF9800`
-  - longa = `#2196F3`
+  - longa = `#1565C0`
   
   **Critério de Aceite:** DESIGN aprovou as cores selecionadas
 
@@ -59,8 +59,8 @@
   **Resultado:** validação executada contra a regra implementada em `getMAColor(period)` com amostras objetivas:
   - `9 -> #FF5252`
   - `21 -> #FF9800`
-  - `50 -> #2196F3`
-  - `100 -> #2196F3`
+  - `50 -> #1565C0`
+  - `100 -> #1565C0`
   
   **Observação:** o frontend não estava acessível em `127.0.0.1:5173` nesta rodada, então a evidência ficou restrita à validação executável da regra de cor e aos checks de build/typecheck já concluídos.
   
