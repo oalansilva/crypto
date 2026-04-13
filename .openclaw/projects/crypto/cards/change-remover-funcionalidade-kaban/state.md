@@ -4,18 +4,12 @@
 remover funcionalidade kaban
 
 ## Status
-Rodada concluida.
+Card em homologacao.
 
-## Arquivos principais
+## Evidencias consolidadas
 - Ainda nao extraidos automaticamente nesta sprint.
 
-## Riscos conhecidos
-- Ainda nao extraidos automaticamente nesta sprint.
-
-## Pendencias
-- Revisar resultado da rodada e preparar proxima etapa.
-
-## Próximos passos
+## Pendencias para archive
 - Continuar a partir do resumo abaixo.
 
 ## Como retomar

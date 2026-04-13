@@ -1,4 +1,4 @@
-# Contrato de sprint
+# Contrato de homologacao
 
 ## Projeto
 crypto
@@ -6,27 +6,18 @@ crypto
 ## Operational root
 /root/.openclaw/workspace/crypto
 
-## Escopo desta sprint
+## Escopo desta homologacao
 remover funcionalidade kaban
 
-## Fora de escopo
-- Remover a aplicacao Kanban standalone.
-- Alterar paginas fora do fluxo de remocao de acesso ao Kanban no app crypto.
-
-## Comportamentos esperados
-- A rota `/kanban` nao deve mais existir no app crypto.
-- A navegacao principal nao deve mais exibir o item `Kanban`.
-- O restante da navegacao do app crypto deve continuar funcional.
-
-## Sensores obrigatorios
-- Build do frontend com `npm --prefix frontend run build`.
-
-## Evidencias esperadas
+## Evidencias consolidadas
 - Diff removendo a rota `/kanban` de `frontend/src/App.tsx`.
 - Diff removendo o item `Kanban` de `frontend/src/components/AppNav.tsx`.
 - `rg -n "KanbanPage" frontend/src` sem imports remanescentes, apenas a definicao em `frontend/src/pages/KanbanPage.tsx`.
 - App Kanban standalone acessivel em `http://127.0.0.1:5174` com `HTTP/1.1 200 OK` e `title>Kanban</title>`.
 - Build do frontend concluido com sucesso.
+
+## Decisao esperada
+Aprovar para archive ou registrar blocker objetivo.
 
 ## Riscos conhecidos
 - Ainda existem outras referencias a Kanban no frontend fora deste item claimado e elas precisam ser tratadas nos proximos work items.

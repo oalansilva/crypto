@@ -34,19 +34,19 @@
 
 ## QA Tasks
 
-- [ ] **5. Validar remoção de rota**
+- [x] 5. Validar remoção de rota**
   
   Acessar `/kanban` no projeto crypto deve resultar em 404 ou redirect.
   
   **Critério de Aceite:** Rota não existe mais
 
-- [ ] **6. Validar navegação**
+- [x] 6. Validar navegação**
   
   Menu lateral não mostra mais item Kanban.
   
   **Critério de Aceite:** Navegação atualizada corretamente
 
-- [ ] **7. Verificar outras funcionalidades**
+- [x] 7. Verificar outras funcionalidades**
   
   Confirmar que outras funcionalidades do crypto não foram afetadas.
   
