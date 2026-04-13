@@ -1,0 +1,38 @@
+{
+  "project_slug": "crypto",
+  "schema_version": 1,
+  "sensors": {
+    "build": {
+      "command": "npm --prefix frontend run build",
+      "status": "pass",
+      "summary": "> frontend@0.0.0 build > tsc -b && vite build vite v7.3.1 building client environment for production... transforming... ✓ 2549 modules transformed. rendering chunks... computing gzip size... dist/index.html 0.46 kB │ gzip: 0\n\n[truncated]"
+    },
+    "healthcheck": {
+      "command": null,
+      "status": "skip",
+      "summary": "not required by sensor policy"
+    },
+    "lint": {
+      "command": null,
+      "status": "skip",
+      "summary": "not required by sensor policy"
+    },
+    "playwright": {
+      "command": null,
+      "status": "pending",
+      "summary": "required by sensor policy"
+    },
+    "test": {
+      "command": null,
+      "status": "pending",
+      "summary": "required by sensor policy"
+    },
+    "typecheck": {
+      "command": "cd frontend && npx tsc --noEmit",
+      "status": "pass",
+      "summary": "exit code 0"
+    }
+  },
+  "timestamp": "2026-04-13T02:44:11.020791+00:00",
+  "work_type": "full-stack"
+}
