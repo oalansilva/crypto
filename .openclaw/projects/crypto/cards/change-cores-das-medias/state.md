@@ -19,11 +19,11 @@ Rodada concluida.
 - Continuar a partir do resumo abaixo.
 
 ## Como retomar
-Vou confirmar novamente o status canônico do card e, em seguida, documentar os thresholds deste item nos artefatos do change e no contrato de sprint.A board canônica segue em `DEV`. Vou fechar este item documentando os thresholds de forma inequívoca, incluindo os limites inclusivos em `20` e `50`, para evitar ambiguidade na implementação seguinte.Os thresholds já estão documentados com limites precisos. Vou conferir os trechos atualizados para fechar com referências objetivas.## Summary
-Confirmei na board canônica que o card `cores-das-medias` segue em `DEV`. Neste turno, defini e documentei os thresholds de período para as médias móveis: curta `< 20`, média `>= 20` e `< 50`, longa `>= 50`.
+Vou confirmar a coluna canônica e verificar se há alguma divergência restante nos artefatos antes de encerrar este item duplicado de thresholds.Há uma inconsistência de formatação no `tasks.md` para a task 2 já concluída. Vou corrigir esse artefato para deixar o registro do item claimado consistente com as demais tasks.## Summary
+Confirmei na board canônica que o card `cores-das-medias` continua em `DEV`. O item claimado de thresholds já estava concluído e documentado, então neste turno fechei a única inconsistência restante no artefato.
 
 ## Outcome
-Marquei a task 2 como concluída em [tasks.md](/root/.openclaw/workspace/crypto/openspec/changes/cores-das-medias/tasks.md:17), com exemplos explícitos como `EMA 9 = vermelho`, `SMA 21 = laranja` e `SMA 50 = azul`. Também alinhei a proposta em [proposal.md](/root/.openclaw/workspace/crypto/openspec/changes/cores-das-medias/proposal.md:21) e atualizei o contrato de sprint em [sprint-contract.md](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-cores-das-medias/sprint-contract.md:9) para refletir os limites inclusivos corretos.
+Corrigi a formatação da task 2 em [tasks.md](/root/.openclaw/workspace/crypto/openspec/changes/cores-das-medias/tasks.md:17) para manter o registro consistente com as demais tasks. Os thresholds permanecem definidos como curta `< 20`, média `>= 20` e `< 50`, longa `>= 50`, e o contrato de sprint já estava alinhado com esse resultado.
 
 ## Notes
-O endpoint detalhado do change `http://127.0.0.1:8004/api/workflow/projects/crypto/changes/cores-das-medias` continuou indisponível nesta rodada (`curl: (7)`), então a confirmação de status veio da board canônica `http://127.0.0.1:8004/api/workflow/kanban/changes?project_slug=crypto`, que respondeu com `column: "DEV"`. Não avancei para a implementação da coloração porque o item claimado deste turno era apenas `Definir thresholds de período`.
+Não houve bloqueio real. A confirmação de status veio da board canônica `http://127.0.0.1:8004/api/workflow/kanban/changes?project_slug=crypto`, que respondeu com `column: "DEV"`. O endpoint detalhado do change não foi necessário para este fechamento incremental do mesmo item.
