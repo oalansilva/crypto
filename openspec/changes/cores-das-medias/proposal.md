@@ -20,8 +20,8 @@
 
 - Aplicar esquema de cores às médias móveis (SMA, EMA) exibidas no gráfico do monitor
 - **Curta (período < 20):** VERMELHO
-- **Média (período 20-50):** LARANJA
-- **Longa (período > 50):** AZUL
+- **Média (período >= 20 e < 50):** LARANJA
+- **Longa (período >= 50):** AZUL
 
 **Tipos de média afetados:**
 - SMA (Simple Moving Average)
@@ -44,8 +44,8 @@
 | Tipo | Threshold | Cor | Hex |
 |------|-----------|-----|-----|
 | Curta | período < 20 | 🔴 Vermelho | `#FF5252` |
-| Média | período 20-50 | 🟠 Laranja | `#FF9800` |
-| Longa | período > 50 | 🔵 Azul | `#2196F3` |
+| Média | período `>= 20` e `< 50` | 🟠 Laranja | `#FF9800` |
+| Longa | período `>= 50` | 🔵 Azul | `#2196F3` |
 
 **Nota:** Cores subjectivas ao design system do projeto — confirmar com DESIGN.
 
@@ -67,6 +67,8 @@ chart.addLineSeries({
   lineWidth: 2
 });
 ```
+
+**Decisão de thresholds:** o limite de `20` entra na faixa média e o limite de `50` entra na faixa longa, alinhando a documentação com o pseudocódigo acima.
 
 ---
 

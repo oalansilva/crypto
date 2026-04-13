@@ -14,9 +14,15 @@
   
   **Critério de Aceite:** Localizado o código que renderiza as moving averages
 
-- [ ] **2. Definir thresholds de período**
+- [x] **2. Definir thresholds de período**
   
-  Confirmar valores: curtas < 20, média 20-50, longa > 50.
+  Confirmar valores e limites inclusivos para evitar ambiguidade na implementação:
+  
+  - **Curta:** período `< 20`
+  - **Média:** período `>= 20` e `< 50`
+  - **Longa:** período `>= 50`
+  
+  **Exemplos validados:** EMA 9 = vermelho, SMA 21 = laranja, SMA 50 = azul, SMA 100 = azul.
   
   **Critério de Aceite:** Thresholds definidos e documentados
 

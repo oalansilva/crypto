@@ -9,7 +9,7 @@ crypto
 ## Escopo desta sprint
 cores das medias
 - localizar o componente real que renderiza as medias moveis no monitor
-- preparar o card para a proxima etapa de thresholds e coloracao
+- definir e documentar os thresholds de periodo antes da implementacao da coloracao
 
 ## Fora de escopo
 - alterar RSI ou outros indicadores nao relacionados a medias moveis
@@ -20,6 +20,7 @@ cores das medias
 - o grafico do monitor usa `frontend/src/components/monitor/ChartModal.tsx` como componente principal
 - os periodos das medias sao derivados de `opportunity.parameters` via `indicatorPeriods`
 - as tres medias do grafico principal sao renderizadas como line series separadas: `emaShort`, `smaMedium` e `smaLong`
+- os thresholds ficam definidos como: curta `< 20`, media `>= 20` e `< 50`, longa `>= 50`
 
 ## Sensores obrigatorios
 - inspecao estatica do componente e dos artefatos OpenSpec
@@ -28,6 +29,7 @@ cores das medias
 ## Evidencias esperadas
 - referencia de codigo em `frontend/src/components/monitor/ChartModal.tsx`
 - task 1 marcada como concluida em `openspec/changes/cores-das-medias/tasks.md`
+- task 2 marcada como concluida em `openspec/changes/cores-das-medias/tasks.md`
 - confirmacao na board canonica de que o card `cores-das-medias` esta em `DEV`
 
 ## Riscos conhecidos

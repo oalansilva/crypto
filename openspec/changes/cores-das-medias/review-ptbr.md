@@ -21,11 +21,16 @@ Estilização de UI: adicionar cores às médias móveis (SMA, EMA) baseadas no 
 
 ## Decisão Necessária
 
-**Sim** — precisamo confirmar:
+**Thresholds definidos nesta rodada:**
 
-1. **Thresholds corretos?** < 20 (curta), 20-50 (média), > 50 (longa)?
-2. **Cores específicas?** Confirmar hex codes exatos com DESIGN
-3. **Card #87 já implementado?** Precisa existir para esta mudança fazer sentido
+1. **Curta:** `< 20`
+2. **Média:** `>= 20` e `< 50`
+3. **Longa:** `>= 50`
+
+**Ainda pendente:**
+
+1. **Cores específicas:** confirmar hex codes finais com DESIGN
+2. **Card #87 já implementado?:** precisa existir para esta mudança fazer sentido
 
 ---
 
