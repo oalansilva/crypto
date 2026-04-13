@@ -24,6 +24,7 @@ remover funcionalidade kaban
 ## Evidencias esperadas
 - Diff removendo a rota `/kanban` de `frontend/src/App.tsx`.
 - Diff removendo o item `Kanban` de `frontend/src/components/AppNav.tsx`.
+- `rg -n "KanbanPage" frontend/src` sem imports remanescentes, apenas a definicao em `frontend/src/pages/KanbanPage.tsx`.
 - Build do frontend concluido com sucesso.
 
 ## Riscos conhecidos

@@ -18,7 +18,7 @@
   
   **Critério de Aceite:** Item de navegação Kanban não aparece mais no menu lateral
 
-- [ ] **3. Remover imports de KanbanPage**
+- [x] **3. Remover imports de KanbanPage**
   
   Remover qualquer import de `KanbanPage` ou componentes relacionados.
   
