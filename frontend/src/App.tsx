@@ -15,7 +15,6 @@ import { ComboEditPage } from './pages/ComboEditPage'
 import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
-import KanbanPage from './pages/KanbanPage'
 import SignalsPage from './pages/SignalsPage'
 import SignalsHistoryPage from './pages/SignalsHistoryPage'
 import OnchainSignalsPage from './pages/OnchainSignalsPage'
@@ -85,7 +84,6 @@ function App() {
           <Route path="/external/balances" element={<ExternalBalancesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
-          <Route path="/kanban" element={<KanbanPage />} />
           <Route path="/system/preferences" element={<ProtectedRoute requireAdmin><SystemPreferencesPage /></ProtectedRoute>} />
         </Route>
       </Routes>
