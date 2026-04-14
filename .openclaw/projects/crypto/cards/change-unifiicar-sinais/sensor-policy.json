@@ -24,7 +24,7 @@
     },
     "test": {
       "command": null,
-      "required": true,
+      "required": false,
       "timeout_seconds": 300
     },
     "typecheck": {

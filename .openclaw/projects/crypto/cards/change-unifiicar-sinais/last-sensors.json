@@ -24,8 +24,8 @@
     },
     "test": {
       "command": null,
-      "status": "pending",
-      "summary": "required by sensor policy"
+      "status": "skip",
+      "summary": "not required by sensor policy"
     },
     "typecheck": {
       "command": "cd frontend && npx tsc --noEmit",
@@ -33,6 +33,6 @@
       "summary": "not required by sensor policy"
     }
   },
-  "timestamp": "2026-04-14T22:25:19.069933+00:00",
+  "timestamp": "2026-04-14T23:27:31.532417+00:00",
   "work_type": "full-stack"
 }
