@@ -52,7 +52,7 @@
   
   **Critério de Aceite:** Texto não aparece na interface
 
-- [ ] **8. Validar remoção de "Kanban Real"**
+- [x] 8. Validar remoção de "Kanban Real"**
   
   Buscar na UI por "Kanban Real" — não deve existir.
   

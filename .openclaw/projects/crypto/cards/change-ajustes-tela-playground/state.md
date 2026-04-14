@@ -19,17 +19,18 @@ Rodada concluida.
 - Continuar a partir do resumo abaixo.
 
 ## Como retomar
-Vou validar imediatamente o estado canônico do card via API oficial, depois vou localizar referências de “Abrir Kanban”/“Kanban Real” no frontend e aplicar o ajuste final só nesse item, sem mexer em outros fluxos.A API canônica respondeu corretamente para o board; vou confirmar também o endpoint de change por consulta alternativa de `changes` para fechar a validação de coluna e garantir evidência formal.A pesquisa já confirma ausência das strings exatas “Abrir Kanban” e “Kanban Real” no código da UI. Vou checar o mapeamento da rota/componentes e o checklist da change para registrar o estado técnico desse item com precisão.Vou aplicar atualização do checklist e dos artifacts locais para refletir que o turno atual concluiu a busca e validação técnica; não houve código novo a remover porque as referências-alvo já não existem no frontend ativo.Agora vou alinhar `state.md` e `sprint-contract.md` para que registrem o estado real desta rodada, sem manter o bloco de histórico truncado da sessão anterior.## Summary
-- Validação canônica da coluna do card foi feita via API de board: `ajustes-tela-playground` está em `Approval`.
-- Não há ocorrência textual de `Abrir Kanban` nem `Kanban Real` no frontend ativo.
-- A tela de playground foi mapeada como `HomePage` (rota `/` em `frontend/src/App.tsx`), sem necessidade de remoção adicional de texto (já ausente).
+Vou validar novamente o status canônico antes de concluir, depois checar a ocorrência de “Kanban Real” no frontend e só então atualizar os artifacts do card conforme o que este turno realmente executou.A busca confirmou ausência de `Kanban Real` no frontend da playground; vou ajustar apenas os artifacts de execução desse item no OpenSpec local para não manter inconsis­tência e registrar que a validação foi concluída neste turno.Vou fechar este turno com atualização local de estado operacional e com validação canônica da coluna. Não há alteração no frontend dessa rodada porque a string já não aparece na UI da playground.## Summary
+- Consultei a fonte canônica de board: `ajustes-tela-playground` está em `Approval`.
+- Validei as referências no frontend e confirmei que não há mais `Kanban Real` nem `Abrir Kanban` no fluxo de playground ativo (`HomePage`/rota `/`).
 
 ## Outcome
-- Atualizei o checklist técnico em [`openspec/changes/ajustes-tela-playground/tasks.md`](/root/.openclaw/workspace/crypto/openspec/changes/ajustes-tela-playground/tasks.md): itens 3, 4 e 5 marcados como concluídos.
-- Atualizei o contrato com evidência da busca em [`.../sprint-contract.md`](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/sprint-contract.md): includei confirmação de busca zero de `"Abrir Kanban"`/`"Kanban Real"` em `frontend`.
-- Reescrevi [`.../state.md`](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md) com estado operacional consolidado desta rodada.
-- Nenhuma alteração de código frontend foi necessária neste turno (itens-alvo já não existem no código ativo).
+- Não foi necessário alterar código da UI nesta rodada (strings alvo já não existem no frontend ativo).
+- Atualizei o estado operacional do card em:
+  - [.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md)
+- Resultado técnico registrado no mesmo estado:
+  - work item DEV `e9fc7d04-d6af-44eb-a61d-738c96f51b2b` concluído nesta etapa.
+  - pendência seguinte: QA validar item #8 na UI.
 
 ## Notes
-- Bloqueio real objetivo: o endpoint canônico específico  
-  `http://127.0.0.1:8004/api/workflow/projects/crypto/changes/ajustes-tela-playground` retornou conexão recusada no momento da consulta, mas o estado canônico foi confirmado pelo endpoint de board oficial (`/api/workflow/kanban/changes?project_slug=crypto`) com coluna `Approval`, que foi usado como fonte canônica nesta rodada.
+- Bloqueio objetivo: o endpoint canônico por card (`/api/workflow/projects/crypto/changes/ajustes-tela-playground`) respondeu `connection refused` no momento.
+- Como solicitado, tratei o endpoint de board como fonte canônica de coluna (`/api/workflow/kanban/changes?project_slug=crypto`) e usei `Approval` como estado confirmado desta rodada.
