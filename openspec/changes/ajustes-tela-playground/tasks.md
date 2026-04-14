@@ -58,7 +58,7 @@
   
   **Critério de Aceite:** Texto não aparece na interface
 
-- [ ] **9. Verificar links para /kanban**
+- [x] 9. Verificar links para /kanban**
   
   Garantir que não há links funcionando para /kanban.
   

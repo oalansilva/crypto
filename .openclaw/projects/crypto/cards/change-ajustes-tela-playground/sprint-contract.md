@@ -33,6 +33,7 @@ Ajustes tela playground
 ## Resultado técnico desta rodada (DEV)
 - Fonte canônica consultada: card `ajustes-tela-playground` em `Approval`.
 - Componente da tela playground identificado: `frontend/src/pages/HomePage.tsx` (via `Route path="/"` em `frontend/src/App.tsx`).
-- A busca textual por `Abrir Kanban` e `Kanban Real` no código frontend ativo não encontrou ocorrências além dos artifacts de change.
-- Busca global em `frontend` para `Abrir Kanban` e `Kanban Real` retornou zero resultados (case-sensitive).
+- A busca textual exata por `Abrir Kanban` e `Kanban Real` no `frontend/src` retornou zero resultados (case-sensitive).
+- Há referências a `Kanban` em áreas funcionais do fluxo Kanban (`frontend/src/pages/KanbanPage.tsx`, `components/Layout.tsx`, `components/ProjectSelector.tsx`, `index.css`), alinhadas ao risco registrado e fora do escopo desta limpeza.
+- Item DEV `3d92c704-5b7c-4738-8e0f-de8c142ce2db` concluído: não há residências textuais dos alvos em outras telas de playground.
 - Tasks técnicas marcadas como concluídas no `tasks.md`: 3, 4 e 5.
