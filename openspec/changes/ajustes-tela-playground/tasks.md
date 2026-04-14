@@ -36,7 +36,7 @@
   
   **Critério de Aceite:** Nenhuma outra referência ao Kanban encontrada
 
-- [x] **6. Testar playground**
+- [x] 6. Testar playground**
   
   Garantir que tela playground funciona normalmente após remoção.
   

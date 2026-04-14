@@ -33,13 +33,15 @@ Ajustes tela playground
 
 ## Resultado técnico desta rodada (DEV)
 - Fonte canônica consultada: board endpoint em `Approval`.
-- Busca textual no `frontend/src` por `\bkanban\b`, `Kaban`, `Abrir Kanban`, `Kanban Real` retornou ocorrências concentradas em:
+- Identificação da superfície de playground: a rota de entrada está em `frontend/src/App.tsx` como `path="/"` para `<HomePage />`, com implementação em `frontend/src/pages/HomePage.tsx`.
+- Busca textual no `frontend/src` por `\bkanban\b`, `Kaban`, `Abrir Kanban`, `Kanban Real` não encontrou ocorrências de `Abrir Kanban` ou `Kanban Real`.
+- Há ocorrências de `Kanban` concentradas em:
   - frontend/src/pages/ComboSelectPage.tsx (ícone Lucide Kanban)
   - frontend/src/pages/KanbanPage.tsx (módulo Kanban operacional)
   - frontend/src/components/Layout.tsx (detecção de rota `/kanban`)
   - frontend/src/components/ProjectSelector.tsx (ícone FolderKanban)
   - frontend/src/index.css (estilos `.kanban-page`)
-- Não foram encontradas ocorrências literais de `Abrir Kanban` ou `Kanban Real` fora de artefatos históricos.
 - Work item DEV `63436f67-33db-4795-ba15-abf9e1e5aee7` concluído: inventário inicial completo de referências.
 - Work item DEV `0d3c5737-b5a4-4acb-b925-8b063f1b078f` concluído: build do frontend executado com sucesso como validação básica de playground.
+- Work item DEV `6dd015ac-587e-48f0-87a8-16b41675ad23` concluído: componentes da tela playground identificados (`HomePage` + rota `/`).
 - Tasks técnicas marcadas como concluídas no `tasks.md`: 1, 2, 3, 4, 5 e 6.
