@@ -34,3 +34,5 @@ Ajustes tela playground
 - Fonte canônica consultada: card `ajustes-tela-playground` em `Approval`.
 - Componente da tela playground identificado: `frontend/src/pages/HomePage.tsx` (via `Route path="/"` em `frontend/src/App.tsx`).
 - A busca textual por `Abrir Kanban` e `Kanban Real` no código frontend ativo não encontrou ocorrências além dos artifacts de change.
+- Busca global em `frontend` para `Abrir Kanban` e `Kanban Real` retornou zero resultados (case-sensitive).
+- Tasks técnicas marcadas como concluídas no `tasks.md`: 3, 4 e 5.

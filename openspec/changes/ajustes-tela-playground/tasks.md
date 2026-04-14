@@ -12,25 +12,25 @@
   
   **Critério de Aceite:** Lista completa de arquivos com referências
 
-- [x] **2. Identificar componentes da tela playground**
+- [x] 2. Identificar componentes da tela playground**
   
   Localizar componentes que renderizam "Abrir Kanban" e "Kanban Real".
   
   **Critério de Aceite:** Componentes identificados
 
-- [ ] **3. Remover "Abrir Kanban"**
+- [x] 3. Remover "Abrir Kanban"
   
   Remover botão/link da tela playground.
   
   **Critério de Aceite:** Texto "Abrir Kanban" não existe mais
 
-- [ ] **4. Remover "Kanban Real"**
+- [x] 4. Remover "Kanban Real"
   
   Remover texto/config da tela playground.
   
   **Critério de Aceite:** Texto "Kanban Real" não existe mais
 
-- [ ] **5. Verificar outras telas**
+- [x] 5. Verificar outras telas
   
   Confirmar que não há resíduos em outras telas do crypto.
   
