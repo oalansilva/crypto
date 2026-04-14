@@ -47,4 +47,5 @@ Ajustes tela playground
 - Work item DEV `e18f2483-f8f9-49a9-aef6-4b438f3ae505` concluído: texto `Abrir Kanban` não encontrado no frontend; item 3 de remoção confirmado.
 - Work item DEV `620198e6-96a0-4406-a8a8-e7c184bf3271` concluído: texto `Kanban Real` não encontrado no frontend; item 4 de remoção confirmado.
 - Work item DEV `2b79e71a-34d2-4602-97f1-5fc2743b67f7` concluído: busca de outras telas por `Abrir Kanban`, `Kanban Real` e `/kanban` concluiu sem ocorrências dos alvos residuais em telas playground; persistem usos de Kanban apenas no fluxo Kanban operacional (ex.: `frontend/src/pages/KanbanPage.tsx`).
+- Work item DEV `b8253559-4953-4e24-9da6-4a72d2c51abb` concluído: validação prática executada com sucesso via `npm --prefix frontend run build` (build terminou sem erros).
 - Tasks técnicas marcadas como concluídas no `tasks.md`: 1, 2, 3, 4, 5 e 6.

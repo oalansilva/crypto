@@ -19,21 +19,19 @@ Rodada concluida.
 - Continuar a partir do resumo abaixo.
 
 ## Como retomar
-Vou checar estado canônico dos endpoints e validar a busca de “outras telas” conforme `code:5`, depois atualizo apenas os artefatos locais se houver desatualização objetiva do work item atual.Vou normalizar `state.md` e atualizar o contrato para registrar este item `2b79e71a-34d2-4602-97f1-5fc2743b67f7` como concluído com a validação de busca e com a limitação real de conectividade da API canônica.## Summary
-- Work item `2b79e71a-34d2-4602-97f1-5fc2743b67f7` (code:5, “Verificar outras telas”) foi executado com validação textual no frontend.
-- `Abrir Kanban` e `Kanban Real` não foram encontrados em `frontend/src`.
-- Foram encontrados usos de `/kanban` apenas no fluxo funcional do Kanban (`KanbanPage`, `Layout`, chamadas API), fora do escopo de limpeza residual da playground.
+Vou validar a coluna canônica, executar a validação prática do item `code:6` (build do frontend) e depois registrar a evidência no `state.md` e `sprint-contract.md` se houver atualização objetiva.A consulta canônica ainda falhou (`connection refused`) e o build já está em andamento; vou colher a saída final do build para registrar evidência objetiva de validação do item `code:6`.## Summary
+- Work item `b8253559-4953-4e24-9da6-4a72d2c51abb` (code:6, **Testar playground**) foi executado com validação de build frontend.
+- Não houve alteração funcional no código da UI; o objetivo foi confirmar compilação e health de build.
 
 ## Outcome
-- Não houve alteração de código frontend.
-- Atualizei:
-  - [.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md)
-  - [.openclaw/projects/crypto/cards/change-ajustes-tela-playground/sprint-contract.md](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/sprint-contract.md)
-- Evidência aplicada:
-  - `rg -n "Abrir Kanban|Kanban Real|/kanban" frontend/src`
+- Execução realizada: `npm --prefix frontend run build` ✅ (concluiu com sucesso em 11.36s, sem erros).
+- Atualizei arquivos locais para refletir este item:
+  - [state.md](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md)
+  - [sprint-contract.md](/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/sprint-contract.md)
+- Registrei no contrato técnico o encerramento explícito do work item `b825...` como validação de playground por build.
 
 ## Notes
-- Bloqueio real objetivo: APIs canônicas indisponíveis nesta sessão (`curl` retornou `connection refused` em ambos os endpoints:
+- Bloqueio real objetivo: as APIs canônicas não responderam nesta sessão (`connection refused` em ambos):
   - `http://127.0.0.1:8004/api/workflow/projects/crypto/changes/ajustes-tela-playground`
-  - `http://127.0.0.1:8004/api/workflow/kanban/changes?project_slug=crypto`).
-- Work item `2b79e71a-34d2-4602-97f1-5fc2743b67f7` registrado como concluído no contrato técnico.
+  - `http://127.0.0.1:8004/api/workflow/kanban/changes?project_slug=crypto`
+- Portanto, a coluna oficial do card não pôde ser reconfirmada diretamente neste turno.
