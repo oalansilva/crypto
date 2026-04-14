@@ -32,7 +32,7 @@ Ajustes tela playground
 - A palavra `kanban` ainda aparece em componentes de operação (KanbanPage, Workflow API e layout) e não deve ser tratada como resíduo da playground para este work item.
 
 ## Resultado técnico desta rodada (DEV)
-- Fonte canônica consultada: board endpoint em `Approval`.
+- Fonte canônica não validável no momento: ambos endpoints canônicos (card e board) estão indisponíveis nesta rodada (`connection refused`).
 - Identificação da superfície de playground: a rota de entrada está em `frontend/src/App.tsx` como `path="/"` para `<HomePage />`, com implementação em `frontend/src/pages/HomePage.tsx`.
 - Busca textual no `frontend/src` por `\bkanban\b`, `Kaban`, `Abrir Kanban`, `Kanban Real` não encontrou ocorrências de `Abrir Kanban` ou `Kanban Real`.
 - Há ocorrências de `Kanban` concentradas em:
@@ -45,4 +45,5 @@ Ajustes tela playground
 - Work item DEV `0d3c5737-b5a4-4acb-b925-8b063f1b078f` concluído: build do frontend executado com sucesso como validação básica de playground.
 - Work item DEV `6dd015ac-587e-48f0-87a8-16b41675ad23` concluído: componentes da tela playground identificados (`HomePage` + rota `/`).
 - Work item DEV `e18f2483-f8f9-49a9-aef6-4b438f3ae505` concluído: texto `Abrir Kanban` não encontrado no frontend; item 3 de remoção confirmado.
+- Work item DEV `620198e6-96a0-4406-a8a8-e7c184bf3271` concluído: texto `Kanban Real` não encontrado no frontend; item 4 de remoção confirmado.
 - Tasks técnicas marcadas como concluídas no `tasks.md`: 1, 2, 3, 4, 5 e 6.
