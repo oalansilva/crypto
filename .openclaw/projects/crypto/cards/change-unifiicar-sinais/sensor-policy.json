@@ -18,7 +18,7 @@
       "timeout_seconds": 120
     },
     "playwright": {
-      "command": null,
+      "command": "./scripts/run-card-92-playwright.sh",
       "required": true,
       "timeout_seconds": 600
     },
