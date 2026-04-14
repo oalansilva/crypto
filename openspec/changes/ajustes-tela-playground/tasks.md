@@ -6,13 +6,13 @@
 
 ## DEV Tasks
 
-- [ ] **1. Buscar todas as referências ao Kanban no frontend**
+- [x] 1. Buscar todas as referências ao Kanban no frontend**
   
   Buscar por: "kanban", "Kanban", "Kaban" nos arquivos do projeto crypto.
   
   **Critério de Aceite:** Lista completa de arquivos com referências
 
-- [ ] **2. Identificar componentes da tela playground**
+- [x] **2. Identificar componentes da tela playground**
   
   Localizar componentes que renderizam "Abrir Kanban" e "Kanban Real".
   

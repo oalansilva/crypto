@@ -1,13 +1,13 @@
 {
   "agent_id": "codex",
   "card_key": "change-ajustes-tela-playground",
-  "last_reset_at": null,
-  "last_reset_reason": null,
+  "last_reset_at": "2026-04-14T11:25:09.499350+00:00",
+  "last_reset_reason": "historico grande",
   "last_run_id": "srv1403390-dev-c8dbe3899978",
-  "previous_session_key": null,
+  "previous_session_key": "agent:dev:project-crypto:change-ajustes-tela-playground",
   "project_slug": "crypto",
-  "reset_count": 0,
+  "reset_count": 1,
   "schema_version": 1,
-  "session_key": "agent:dev:project-crypto:change-ajustes-tela-playground",
+  "session_key": "agent:dev:project-crypto:change-ajustes-tela-playground:reset-1",
   "session_label": null
 }

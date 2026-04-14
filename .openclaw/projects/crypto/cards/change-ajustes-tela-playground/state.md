@@ -19,16 +19,21 @@ Rodada concluida.
 - Continuar a partir do resumo abaixo.
 
 ## Como retomar
-Vou validar o estado canônico do card na API antes de qualquer alteração, depois localizar e remover referências ao Kanban na interface do playground e finalizar com o handoff técnico no formato solicitado. Vou começar consultando os endpoints canônicos e os artefatos do change.Encontrei o estado canônico da board mostrando o card ainda em `Approval`, mas a chamada pontual do endpoint do change falhou por conexão; vou continuar com a confirmação disponível da board e localizar o componente da tela Playground pelo código para aplicar a remoção.Não localizei textos literais em `frontend/src` porque a referência pode estar em componentes compartilhados ou vindo de configuração. Vou inspecionar o roteamento e a home para localizar a estrutura real da tela do playground.Vou conferir `HomePage` (playground atual) porque é a tela principal do projeto e provável origem do bug de UI. Depois valido com busca no diretório de origem do frontend inteiro para confirmar que não restam textos/links.A busca por referências do contrato ainda está em andamento pelo escopo amplo. Vou aguardar ela finalizar ou interromper com um filtro mais direto para achar arquivos de contrato/sprints no repositório.A base operacional local desse card existe e o contrato/estado estão com placeholders, então vou atualizá-los com o que foi executado nesta rodada e manter a evidência de handoff na forma esperada. Vou checar também se há algum arquivo `tasks.md` interno da sessão do card.Agora vou incluir `backend/app` na checagem para confirmar se alguma resposta da API da home/rotas ainda entrega labels de “Kanban” ou “Kaban” para a UI.Não encontrei textos “Abrir Kanban / Kanban Real” na tela principal; vou registrar isso no contrato de sprint/estado do card e encerrar com handoff técnico (sem alterar a rota/frontend fora deste escopo).Vou fazer uma nova tentativa de consulta canônica com IP alternativo e, se indisponível, vou tratar isso como bloqueio objetivo e reportar no resumo. Não vou executar testes nem validação extra de runtime, apenas a confirmação operacional e atualização local do contrato.## Summary
-- Validei a fonte canônica da board antes de prosseguir: o card `ajustes-tela-playground` aparece em `Approval`.
-- Fiz a varredura de frontend para referências de “Abrir Kanban” / “Kanban Real” no fluxo de playground (`HomePage`, rotas e navegação principal) e não encontrei esses textos restantes.
+Vou primeiro validar o estado canônico do card/board pelos endpoints oficiais e, em seguida, localizar as referências de Kanban no código do playground para concluir este item de DEV sem pressupor estados locais.A coluna canônica já foi confirmada como `Approval`. Vou fazer uma varredura literal no frontend para fechar o item “identificar componentes”, registrando onde (ou se) aparecem as referências e só depois ajustar o contrato/estado local do card.A referência ainda não apareceu no `/`/HomePage por padrão, então vou confirmar no arquivo de contrato/estado local do card e ajustar se houver divergência factual com esta investigação.A evidência local ainda está no formato de resumo parcial do reset; vou consolidar este turno com uma identificação explícita: qual arquivo/componente representa o playground e onde a varredura de texto foi feita, para que o contrato e estado fiquem alinhados com o feito.Consolidei a trilha de investigação de componentes e não há ocorrência das strings alvo no código fonte. Vou fechar o item de identificação registrando componentes/rotas e, se estiver alinhado, marcar essa etapa no checklist técnico.Vou aplicar a atualização mínima do contrato de sprint, dos artifacts locais e do tasks list para registrar: 1) identificação concluída, 2) playground mapeado para `/`->`HomePage`, 3) ausência atual de “Abrir Kanban”/“Kanban Real” no código ativo da UI.Vou marcar o task técnico correspondente como concluído no checklist da change para registrar objetivamente que o componente da playground foi localizado nesta etapa.## Summary
+- Validei canonicamente o estado do card pelo workflow DB:
+  - `http://127.0.0.1:8004/api/workflow/projects/crypto/changes/ajustes-tela-playground` retornou `column:"Approval"`.
+  - `http://127.0.0.1:8004/api/workflow/kanban/changes?project_slug=crypto` também mostra `ajustes-tela-playground` em `Approval`.
+- Não há mais ocorrências de `Abrir Kanban` nem `Kanban Real` no código da UI ativa do frontend.
+- O componente da tela playground foi identificado como `HomePage` (rota `/`).
 
 ## Outcome
-- Não houve alteração de código em `frontend/src` nesta rodada (resíduo já não aparece mais na tela).
-- Atualizei o contrato de sprint desatualizado em:
-  - `/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/sprint-contract.md`
-- Atualizei o estado operacional do card em:
-  - `/root/.openclaw/workspace/crypto/.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md`
-- Entreguei o resultado do item `602f915a-fc88-4f3d-a884-b4a3c850c694` como investigação concluída sem resíduos visíveis na tela de
+- Identifiquei os componentes da tela playground para este work item:
+  - `frontend/src/App.tsx` (roteamento do playground: `path="/" -> HomePage`)
+  - `frontend/src/components/AppNav.tsx` (item de navegação “Playground”)
+  - `frontend/src/pages/HomePage.tsx` (componente principal da tela)
+- Atualizei artifacts locais:
+  - `[.openclaw/projects/crypto/cards/change-ajustes-tela-playground/sprint-contract.md](.../.openclaw/projects/crypto/cards/change-ajustes-tela-playground/sprint-contract.md)` (incluí resultado técnico da rodada)
+  - `[.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md](.../.openclaw/projects/crypto/cards/change-ajustes-tela-playground/state.md)` (registro operacional da rodada consolidado)
+  - `[openspec/changes/ajustes-tela-playground/tasks.md](openspec/changes/ajustes-tela-playground/tasks.md)` (check `2. Identificar componentes da tela playground` marcado c
 
 [truncated]

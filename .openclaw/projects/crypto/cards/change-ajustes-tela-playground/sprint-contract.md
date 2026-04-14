@@ -29,3 +29,8 @@ Ajustes tela playground
 
 ## Riscos conhecidos
 - A palavra `kanban` ainda aparece em componentes de operação (KanbanPage, workflow API) e não deve ser tratada como resíduo da playground para este work item.
+
+## Resultado técnico desta rodada (DEV)
+- Fonte canônica consultada: card `ajustes-tela-playground` em `Approval`.
+- Componente da tela playground identificado: `frontend/src/pages/HomePage.tsx` (via `Route path="/"` em `frontend/src/App.tsx`).
+- A busca textual por `Abrir Kanban` e `Kanban Real` no código frontend ativo não encontrou ocorrências além dos artifacts de change.
