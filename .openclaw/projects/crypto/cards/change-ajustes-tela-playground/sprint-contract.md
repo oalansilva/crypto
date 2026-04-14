@@ -44,4 +44,5 @@ Ajustes tela playground
 - Work item DEV `63436f67-33db-4795-ba15-abf9e1e5aee7` concluído: inventário inicial completo de referências.
 - Work item DEV `0d3c5737-b5a4-4acb-b925-8b063f1b078f` concluído: build do frontend executado com sucesso como validação básica de playground.
 - Work item DEV `6dd015ac-587e-48f0-87a8-16b41675ad23` concluído: componentes da tela playground identificados (`HomePage` + rota `/`).
+- Work item DEV `e18f2483-f8f9-49a9-aef6-4b438f3ae505` concluído: texto `Abrir Kanban` não encontrado no frontend; item 3 de remoção confirmado.
 - Tasks técnicas marcadas como concluídas no `tasks.md`: 1, 2, 3, 4, 5 e 6.

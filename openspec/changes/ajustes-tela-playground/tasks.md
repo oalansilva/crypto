@@ -64,7 +64,7 @@
   
   **Critério de Aceite:** Nenhum link para /kanban funciona
 
-- [ ] **10. Testar usabilidade do playground**
+- [x] 10. Testar usabilidade do playground**
   
   Playground continua funcional após limpeza.
   
