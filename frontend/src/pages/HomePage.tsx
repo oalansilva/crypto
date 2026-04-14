@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Activity, ArrowRight, FileText, Kanban, Layers } from 'lucide-react'
+import { Activity, ArrowRight, FileText, Layers } from 'lucide-react'
 import { apiUrl } from '@/lib/apiBase'
 import PortfolioAllocation from '@/components/PortfolioAllocation'
 import { useAuth } from '@/stores/authStore'
@@ -25,40 +25,6 @@ type BalancesSnapshot = {
   balances?: Array<Record<string, unknown>>
   total_usd?: number | null
   as_of?: string | null
-}
-
-type CoordinationChangeItem = {
-  id: string
-  title?: string | null
-  description?: string | null
-  card_number?: number | null
-  path: string
-  status: Record<string, string>
-  archived: boolean
-  column: string
-  position?: number
-  item_type?: 'change' | 'bug'
-}
-
-type CoordinationChangeListResponse = {
-  items: CoordinationChangeItem[]
-}
-
-type ChangeDetailResponse = {
-  id: string
-  project_id: string
-  change_id: string
-  title: string
-  description: string
-  status: string
-  card_number?: number | null
-  created_at: string
-  updated_at: string
-}
-
-type FocusChange = CoordinationChangeItem & {
-  created_at?: string | null
-  updated_at?: string | null
 }
 
 type PortfolioKPI = {
@@ -179,32 +145,10 @@ function getBestFavorite(favorites: FavoriteStrategy[]) {
     })[0]
 }
 
-function toneForColumn(column: string) {
-  const normalized = String(column || '').toLowerCase()
-  if (normalized.includes('qa')) return 'ok'
-  if (normalized.includes('dev') || normalized.includes('design') || normalized.includes('po')) return 'warn'
-  return 'idle'
-}
-
 function SnapshotBadge({ children }: { children: string }) {
   return (
     <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">
       {children}
-    </span>
-  )
-}
-
-function SectionTag({ label, tone = 'idle' }: { label: string; tone?: 'ok' | 'warn' | 'idle' }) {
-  return (
-    <span
-      className={cx(
-        'inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold tracking-[0.12em]',
-        tone === 'ok' && 'bg-emerald-400/12 text-emerald-300',
-        tone === 'warn' && 'bg-amber-400/12 text-amber-300',
-        tone === 'idle' && 'bg-white/10 text-[var(--text-secondary)]',
-      )}
-    >
-      {label}
     </span>
   )
 }
@@ -278,43 +222,6 @@ export default function HomePage() {
     refetchOnWindowFocus: false,
   })
 
-  const focusQuery = useQuery<FocusChange[]>({
-    queryKey: ['home', 'focus'],
-    queryFn: async () => {
-      const response = await fetchJson<CoordinationChangeListResponse>('/workflow/kanban/changes?project_slug=crypto')
-      const activeChanges = (response.items || [])
-        .filter((item) => item.item_type !== 'bug')
-        .filter((item) => !item.archived)
-        .filter((item) => !['Archived', 'Canceled'].includes(item.column))
-        .slice(-3)
-        .reverse()
-
-      const detailed = await Promise.all(
-        activeChanges.map(async (item) => {
-          try {
-            const detail = await fetchJson<ChangeDetailResponse>(
-              `/workflow/projects/crypto/changes/${encodeURIComponent(item.id)}`,
-            )
-            return {
-              ...item,
-              created_at: detail.created_at,
-              updated_at: detail.updated_at,
-            }
-          } catch {
-            return {
-              ...item,
-              created_at: null,
-              updated_at: null,
-            }
-          }
-        }),
-      )
-
-      return detailed
-    },
-    refetchOnWindowFocus: false,
-  })
-
   const marketQuery = useQuery<MarketPricesResponse>({
     queryKey: ['home', 'market-prices'],
     queryFn: () => fetchJson<MarketPricesResponse>('/market/prices'),
@@ -326,7 +233,6 @@ export default function HomePage() {
   const bestFavorite = useMemo(() => getBestFavorite(favoritesQuery.data || []), [favoritesQuery.data])
   const bestFavoriteRoi = getReturnPct(bestFavorite?.metrics)
   const balancesFreshness = formatFreshness(balancesQuery.data?.as_of)
-  const activeChanges = focusQuery.data || []
   const marketPrices = marketQuery.data?.prices || []
   const marketFreshness = formatFreshness(marketQuery.data?.fetched_at || undefined)
   const healthStatus = healthQuery.data?.status === 'ok' ? 'ok' : healthQuery.isLoading ? 'loading' : 'error'
@@ -352,20 +258,6 @@ export default function HomePage() {
                   <div>
                     <div className="text-sm font-semibold text-[var(--text-primary)]">Rodar um backtest</div>
                     <div className="mt-1 text-xs text-[var(--text-tertiary)]">Escolha estratégia · timeframe</div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-[var(--text-tertiary)]" />
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate('/kanban')}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:-translate-y-0.5 hover:border-sky-300/20 hover:bg-white/[0.06]"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-[var(--text-primary)]">Abrir Kanban</div>
-                    <div className="mt-1 text-xs text-[var(--text-tertiary)]">Cards ativos · prioridades</div>
                   </div>
                   <ArrowRight className="h-4 w-4 text-[var(--text-tertiary)]" />
                 </div>
@@ -426,13 +318,6 @@ export default function HomePage() {
                 <FileText className="mr-1.5 inline-block h-3.5 w-3.5" />
                 OpenSpec
               </button>
-              <Link
-                to="/kanban"
-                className="rounded-full border border-white/10 px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:border-emerald-300/18 hover:bg-white/[0.05] hover:text-white"
-              >
-                <Kanban className="mr-1.5 inline-block h-3.5 w-3.5" />
-                Kanban
-              </Link>
             </div>
           </aside>
         </section>
@@ -530,66 +415,7 @@ export default function HomePage() {
 
         <PortfolioAllocation />
 
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.45fr_0.95fr]">
-          <div className="flex flex-col gap-4">
-            <div className="page-card p-6" data-testid="home-focus-section">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Mudanças ativas</h2>
-                  <SnapshotBadge>kanban real</SnapshotBadge>
-                </div>
-                <Link to="/kanban" className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200">
-                  Ver tudo
-                </Link>
-              </div>
-
-              {focusQuery.isLoading ? <SectionSkeletonRows /> : null}
-              {focusQuery.error ? (
-                <div className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-400/5 px-4 py-4 text-sm text-rose-200">
-                  não disponível · Falha ao carregar mudanças ativas.
-                </div>
-              ) : null}
-              {!focusQuery.isLoading && !focusQuery.error && activeChanges.length === 0 ? (
-                <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-[var(--text-tertiary)]">
-                  Nenhuma mudança ativa no momento
-                </div>
-              ) : null}
-
-              {!focusQuery.isLoading && !focusQuery.error && activeChanges.length > 0 ? (
-                <ul className="mt-5 space-y-3">
-                  {activeChanges.map((item) => {
-                    const tone = toneForColumn(item.column)
-                    const statusLabel = item.column || item.status?.status || 'Ativa'
-                    const dateLabel = item.updated_at ? formatDt(item.updated_at) : 'Data indisponível'
-
-                    return (
-                      <li
-                        key={item.id}
-                        className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 hover:bg-white/[0.05]"
-                      >
-                        <SectionTag label={statusLabel} tone={tone} />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm text-[var(--text-primary)]">{item.title || item.id}</div>
-                          <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
-                            {item.card_number ? `Card #${item.card_number}` : item.id} · {dateLabel}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => navigate('/kanban')}
-                          className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-white"
-                        >
-                          Abrir
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              ) : null}
-            </div>
-
-          </div>
-
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-1">
           <aside className="flex flex-col gap-4">
             <div className="page-card p-6" data-testid="home-market-section">
               <div className="flex items-center justify-between gap-3">
@@ -652,7 +478,6 @@ export default function HomePage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 {[
                   { to: '/combo/select', label: 'Combo', icon: Layers },
-                  { to: '/kanban', label: 'Kanban', icon: Kanban },
                   { to: '/external/balances', label: 'Carteira', icon: Activity },
                 ].map(({ to, label, icon: Icon }) => (
                   <Link
@@ -670,7 +495,7 @@ export default function HomePage() {
             <div className="page-card p-6">
               <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Notas</h2>
               <p className="mt-3 text-[12px] leading-6 text-[var(--text-tertiary)]">
-                Home usa dados reais para saúde, favoritos, carteira, Kanban e market watch. Só os KPIs marcados continuam ilustrativos.
+                Home usa dados reais para saúde, favoritos, carteira e market watch. Só os KPIs marcados continuam ilustrativos.
               </p>
             </div>
           </aside>
