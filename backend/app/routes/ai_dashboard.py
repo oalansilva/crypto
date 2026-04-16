@@ -746,19 +746,11 @@ async def get_ai_dashboard(
     indicators = _build_indicator_cards(history_rows)
     news_task = asyncio.create_task(_fetch_coingecko_news())
     sentiment_task = asyncio.create_task(sentiment_service.get_market_sentiment())
-    signal_feed_task = asyncio.create_task(
-        binance_service.build_signal_feed(
-            limit=20,
-            risk_profile=RiskProfile.moderate,
-            user_id=current_user_id,
-        )
-    )
     onchain_snapshot_task = asyncio.create_task(build_onchain_snapshot(limit=20))
 
-    news_result, sentiment_result, signal_feed_result, onchain_snapshot_result = await asyncio.gather(
+    news_result, sentiment_result, onchain_snapshot_result = await asyncio.gather(
         news_task,
         sentiment_task,
-        signal_feed_task,
         onchain_snapshot_task,
         return_exceptions=True,
     )
@@ -774,31 +766,72 @@ async def get_ai_dashboard(
         logger.warning("Failed to load AI dashboard stats from signal history: %s", exc)
         section_errors["stats"] = "Não foi possível consolidar o histórico de sinais."
 
-    if isinstance(signal_feed_result, Exception):
-        logger.warning("Failed to load live signal feed for AI dashboard: %s", signal_feed_result)
-        section_errors["signals"] = "Não foi possível atualizar os sinais técnicos."
-        signal_feed = []
-    else:
-        signal_feed = list(signal_feed_result.signals)
-
     if isinstance(onchain_snapshot_result, Exception):
         logger.warning("Failed to load onchain snapshot for AI dashboard: %s", onchain_snapshot_result)
         section_errors["onchain"] = "Não foi possível atualizar os sinais on-chain."
         onchain_snapshot = []
+        onchain_assets: list[str] = []
     else:
         onchain_snapshot = list(onchain_snapshot_result)
+        onchain_assets = []
+        seen_onchain_assets: set[str] = set()
+        for pair, _ in onchain_snapshot:
+            symbol = getattr(pair, "symbol", None)
+            if not symbol:
+                continue
+            normalized_symbol = str(symbol).upper()
+            key = normalized_symbol.replace("/", "").replace("-", "")
+            if key in seen_onchain_assets:
+                continue
+            seen_onchain_assets.add(key)
+            onchain_assets.append(normalized_symbol)
 
     if isinstance(sentiment_result, Exception):
         logger.warning("Failed to load AI dashboard sentiment: %s", sentiment_result)
         section_errors["fear_greed"] = "Não foi possível atualizar o radar de sentimento."
+        sentiment_score = None
     else:
         fear_greed_value = int(sentiment_result.score)
+        sentiment_score = sentiment_result.score
         fear_greed_label, fear_greed_tone = _fear_greed_label(fear_greed_value)
         fear_greed = FearGreedPayload(
             value=fear_greed_value,
             label=fear_greed_label,
             tone=fear_greed_tone,
         )
+
+    if onchain_assets:
+        try:
+            signal_feed_result = await binance_service.build_signal_feed_for_assets(
+                assets=onchain_assets,
+                risk_profile=RiskProfile.moderate,
+                confidence_min=40,
+                limit=20,
+                sentiment_score=sentiment_score,
+                user_id=None,
+                include_neutral=True,
+            )
+            signal_feed = list(signal_feed_result.signals)
+        except Exception as exc:
+            logger.warning("Failed to load live signal feed for unified AI dashboard: %s", exc)
+            section_errors["signals"] = "Não foi possível atualizar os sinais técnicos."
+            signal_feed = []
+    else:
+        logger.warning("No onchain assets available; using fallback signal feed filtering.")
+        try:
+            fallback_feed_result = await binance_service.build_signal_feed(
+                limit=20,
+                risk_profile=RiskProfile.moderate,
+                user_id=None,
+                confidence_min=40,
+            )
+            signal_feed = list(fallback_feed_result.signals)
+            if not signal_feed:
+                section_errors["signals"] = "Não foi possível atualizar os sinais técnicos para ativos da visão unificada."
+        except Exception as exc:
+            logger.warning("Failed to load fallback live signal feed for AI dashboard: %s", exc)
+            section_errors["signals"] = "Não foi possível atualizar os sinais técnicos."
+            signal_feed = []
 
     recent_signals = _build_unified_signals(
         ai_rows=history_rows,

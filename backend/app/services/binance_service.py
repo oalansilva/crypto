@@ -901,6 +901,101 @@ async def build_signal_feed(
     )
 
 
+async def build_signal_feed_for_assets(
+    *,
+    assets: list[str],
+    risk_profile: RiskProfile = RiskProfile.moderate,
+    confidence_min: int | None = None,
+    limit: int = 20,
+    sentiment_score: int | float | None = None,
+    user_id: str | None = None,
+    include_neutral: bool = True,
+) -> SignalListResponse:
+    requested_limit = max(1, min(int(limit or 20), 50))
+    threshold = int(confidence_min if confidence_min is not None else _PROFILE_SETTINGS[risk_profile]["default_confidence_min"])
+
+    normalized_assets = []
+    seen_assets: set[str] = set()
+    for asset in assets:
+        try:
+            normalized = _normalize_asset(asset)
+        except Exception:
+            continue
+        if normalized in seen_assets:
+            continue
+        seen_assets.add(normalized)
+        normalized_assets.append(normalized)
+
+    if not normalized_assets:
+        return SignalListResponse(
+            signals=[],
+            total=0,
+            cached_at=None,
+            is_stale=False,
+            available_assets=[],
+        )
+
+    snapshots_by_asset, cached_at, is_stale = await _fetch_market_snapshots(normalized_assets)
+    signals = _build_signals_for_profile(
+        risk_profile=risk_profile,
+        snapshots_by_asset=snapshots_by_asset,
+        sentiment_score=sentiment_score,
+    )
+
+    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices([signal.asset for signal in signals])
+    if latest_prices:
+        cached_at = latest_prices_cached_at or cached_at
+        is_stale = is_stale or latest_prices_stale
+        signals = [
+            signal.model_copy(update={"current_price": latest_prices.get(signal.asset, signal.current_price)})
+            for signal in signals
+        ]
+
+    open_positions = _load_open_buy_positions(user_id) if user_id else set()
+    open_position_entries = _load_open_buy_position_entries(user_id) if user_id else {}
+    actionable_signals: list[Signal] = []
+    for signal in signals:
+        if not include_neutral and signal.type == SignalType.HOLD:
+            continue
+        if user_id and signal.type == SignalType.SELL:
+            position_key = (signal.asset, signal.risk_profile.value)
+            if position_key not in open_positions:
+                continue
+        if user_id:
+            tracked_entry = open_position_entries.get((signal.asset, signal.risk_profile.value))
+            if tracked_entry is not None:
+                current_price = signal.current_price or signal.entry_price
+                pnl_percent = None
+                if current_price is not None and tracked_entry > 0:
+                    pnl_percent = round(((current_price - tracked_entry) / tracked_entry) * 100, 4)
+                signal = signal.model_copy(
+                    update={
+                        "entry_price": tracked_entry,
+                        "current_price": current_price,
+                        "pnl_percent": pnl_percent,
+                        "is_open_position": True,
+                    }
+                )
+        actionable_signals.append(signal)
+
+    signals = [signal for signal in actionable_signals if signal.confidence >= threshold]
+    signals.sort(key=lambda item: (item.created_at, item.confidence), reverse=True)
+    total = len(signals)
+    signals = signals[:requested_limit]
+
+    if user_id:
+        for signal in signals:
+            _remember_signal(signal, cached_at, is_stale)
+
+    return SignalListResponse(
+        signals=signals,
+        total=total,
+        cached_at=cached_at,
+        is_stale=is_stale,
+        available_assets=normalized_assets,
+    )
+
+
 async def get_signal_detail(signal_id: str) -> Signal:
     remembered, _cached_at, _is_stale = _get_remembered_signal(signal_id)
     if remembered is not None:
