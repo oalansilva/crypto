@@ -1,0 +1,38 @@
+{
+  "project_slug": "crypto",
+  "schema_version": 1,
+  "sensors": {
+    "build": {
+      "command": "npm --prefix frontend run build",
+      "status": "pending",
+      "summary": "required by sensor policy"
+    },
+    "healthcheck": {
+      "command": null,
+      "status": "skip",
+      "summary": "not required by sensor policy"
+    },
+    "lint": {
+      "command": null,
+      "status": "skip",
+      "summary": "not required by sensor policy"
+    },
+    "playwright": {
+      "command": "./scripts/run-card-92-playwright.sh",
+      "status": "pending",
+      "summary": "required by sensor policy"
+    },
+    "test": {
+      "command": null,
+      "status": "skip",
+      "summary": "not required by sensor policy"
+    },
+    "typecheck": {
+      "command": "cd frontend && npx tsc --noEmit",
+      "status": "skip",
+      "summary": "not required by sensor policy"
+    }
+  },
+  "timestamp": "2026-04-15T04:59:27.422409+00:00",
+  "work_type": "full-stack"
+}
