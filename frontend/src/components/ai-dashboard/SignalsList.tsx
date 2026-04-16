@@ -22,6 +22,8 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
   }
 
+  const safeSignals = Array.isArray(signals) ? signals : []
+
   return (
     <Card className="page-card border-white/8 bg-[linear-gradient(180deg,rgba(16,28,42,0.98),rgba(12,22,34,0.94))]">
       <CardContent className="p-6">
@@ -36,19 +38,24 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
         </div>
 
         <div className="mt-5 space-y-3">
-          {signals.length === 0 ? (
+          {safeSignals.length === 0 ? (
             <div className="page-card-muted px-4 py-4 text-sm text-[var(--text-secondary)]">
               Nenhum sinal salvo para esta conta ainda.
             </div>
           ) : null}
-          {signals.map((signal) => (
+          {safeSignals.map((signal) => {
+            const sourceCount = Number.isFinite(signal.total_sources) ? signal.total_sources : 0
+            const strength = Number.isFinite(signal.strength) ? signal.strength : 0
+            const sources = Array.isArray(signal.sources) ? signal.sources : []
+
+            return (
             <details key={signal.id} className="page-card-muted group px-4 py-4">
               <summary className="flex cursor-pointer list-none flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-base font-semibold text-[var(--text-primary)]">{signal.asset}</div>
                     <Badge variant={actionVariant(signal.action)}>{signal.action}</Badge>
-                    <Badge variant="outline">{signal.direction}</Badge>
+                    <Badge variant="outline">{signal.direction || 'Neutro'}</Badge>
                     <Badge variant="outline">{signal.confidence}%</Badge>
                   </div>
                   <p className="text-sm text-[var(--text-secondary)]">{signal.reason}</p>
@@ -58,7 +65,7 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
                   <div className="flex items-center gap-2 sm:justify-end">
                     <span>Força</span>
                     <ArrowRight className="h-3.5 w-3.5" />
-                    <span className="font-semibold text-[var(--text-primary)]">{signal.strength}/{signal.total_sources}</span>
+                    <span className="font-semibold text-[var(--text-primary)]">{strength}/{sourceCount}</span>
                   </div>
                   <div className="flex items-center gap-2 sm:justify-end">
                     <span>Preço</span>
@@ -70,19 +77,19 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
 
               <div className="mt-4 space-y-3 border-t border-white/8 pt-4">
                 <div className="flex gap-1.5">
-                  {Array.from({ length: Math.max(signal.total_sources, 3) }).map((_, index) => (
+                  {Array.from({ length: Math.max(sourceCount, 3) }).map((_, index) => (
                     <div
                       key={`${signal.id}-strength-${index}`}
                       className={[
                         'h-2 flex-1 rounded-full',
-                        index < signal.strength ? 'bg-emerald-400' : 'bg-white/8',
+                        index < strength ? 'bg-emerald-400' : 'bg-white/8',
                       ].join(' ')}
                     />
                   ))}
                 </div>
 
                 <div className="grid gap-2">
-                  {signal.sources.map((source) => (
+                  {sources.map((source) => (
                     <div key={`${signal.id}-${source.source}`} className="rounded-2xl border border-white/8 bg-black/10 px-3 py-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="text-sm font-semibold text-[var(--text-primary)]">{source.source}</div>
@@ -96,7 +103,8 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
                 </div>
               </div>
             </details>
-          ))}
+            )
+          })}
         </div>
       </CardContent>
     </Card>
