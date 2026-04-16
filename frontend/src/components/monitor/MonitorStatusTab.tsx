@@ -11,6 +11,7 @@ import { API_BASE_URL } from '@/lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import type { MarketCandle } from './MiniCandlesChart';
 import { fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
+import { resolveOpportunitySignal } from './signalResolution';
 
 type SortOption = 'distance' | 'tier_distance' | 'symbol';
 type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
@@ -304,11 +305,23 @@ export const MonitorStatusTab: React.FC = () => {
         return out;
     }, [filteredOpportunities]);
 
-    const holding = dedupedOpportunities.filter(o => o.is_holding);
-    const stoppedOut = dedupedOpportunities.filter(o => !o.is_holding && o.status === 'STOPPED_OUT');
-    const exited = dedupedOpportunities.filter(o => !o.is_holding && o.status === 'EXITED');
-    const missedEntry = dedupedOpportunities.filter(o => !o.is_holding && o.status === 'MISSED_ENTRY');
-    const waiting = dedupedOpportunities.filter(o => !o.is_holding && o.status !== 'STOPPED_OUT' && o.status !== 'EXITED' && o.status !== 'MISSED_ENTRY');
+    const resolvedSections = useMemo(
+        () => dedupedOpportunities.map((opp) => {
+            const preference = preferences[opp.symbol] ?? DEFAULT_PREFERENCE;
+            const effectiveTimeframe: MonitorPriceTimeframe = opp.symbol.includes('/') ? preference.price_timeframe : '1d';
+            return {
+                opportunity: opp,
+                resolved: resolveOpportunitySignal(opp, { selectedTimeframe: effectiveTimeframe }),
+            };
+        }),
+        [dedupedOpportunities, preferences],
+    );
+
+    const holding = resolvedSections.filter(({ resolved }) => resolved.section === 'holding').map(({ opportunity }) => opportunity);
+    const stoppedOut = resolvedSections.filter(({ resolved }) => resolved.section === 'stoppedOut').map(({ opportunity }) => opportunity);
+    const exited = resolvedSections.filter(({ resolved }) => resolved.section === 'exited').map(({ opportunity }) => opportunity);
+    const missedEntry = resolvedSections.filter(({ resolved }) => resolved.section === 'missedEntry').map(({ opportunity }) => opportunity);
+    const waiting = resolvedSections.filter(({ resolved }) => resolved.section === 'waiting').map(({ opportunity }) => opportunity);
 
     type SectionKey = 'holding' | 'stoppedOut' | 'exited' | 'missedEntry' | 'waiting';
     const orderedCards = useMemo(() => {
@@ -546,7 +559,7 @@ export const MonitorStatusTab: React.FC = () => {
                 <div className="space-y-10">
                     {visibleGroups.map(({ section, cards }) => {
                         const cfg = SECTION_CONFIG[section];
-                        const total = { holding: holding.length, stoppedOut: stoppedOut.length, missedEntry: missedEntry.length, waiting: waiting.length }[section];
+                        const total = { holding: holding.length, stoppedOut: stoppedOut.length, exited: exited.length, missedEntry: missedEntry.length, waiting: waiting.length }[section];
                         return (
                             <section key={section} className="space-y-4">
                                 <h2 className={`text-xl font-semibold flex items-center gap-2 ${cfg.h2Class}`}>

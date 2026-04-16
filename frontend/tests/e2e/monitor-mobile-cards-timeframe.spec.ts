@@ -304,3 +304,249 @@ test('monitor renders exited strategies separately from stopped out ones', async
   await expect(page.getByText('Saiu no Stop')).toHaveCount(0)
   await expect(page.getByText('EXITED')).toBeVisible()
 })
+
+test('monitor keeps mismatched exit signals in WAIT state with explicit context', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 4,
+          name: 'BTC Trend',
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          strategy_name: 'multi_ma_crossover',
+          parameters: {},
+          metrics: {},
+          created_at: '2026-04-15T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 4,
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          template_name: 'multi_ma_crossover',
+          name: 'BTC Trend',
+          notes: '',
+          tier: 1,
+          parameters: { direction: 'long', ema_short: 18, sma_medium: 20, sma_long: 35, stop_loss: 0.042 },
+          indicator_values: {
+            short: 71346.57,
+            medium: 69796.7,
+            long: 70294.6,
+            open: 74131.55,
+            close: 74809.99,
+          },
+          indicator_values_candle_time: '2026-04-15T00:00:00+00:00',
+          is_holding: false,
+          distance_to_next_status: 2.22,
+          next_status_label: 'entry',
+          status: 'EXIT_SIGNAL',
+          message: '',
+          last_price: 74924,
+          timestamp: '2026-04-16T04:00:00Z',
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+        'BTC/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1h', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.route('**/api/market/candles**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candles: [
+          { timestamp_utc: '2026-04-16T01:00:00Z', open: 74850, high: 74910, low: 74790, close: 74880, volume: 82.413 },
+          { timestamp_utc: '2026-04-16T02:00:00Z', open: 74880, high: 74940, low: 74820, close: 74895, volume: 91.127 },
+          { timestamp_utc: '2026-04-16T03:00:00Z', open: 74895, high: 75005, low: 74865, close: 74905, volume: 104.252 },
+          { timestamp_utc: '2026-04-16T04:00:00Z', open: 74905, high: 75010, low: 74839, close: 74930.98, volume: 112.613 },
+        ],
+      }),
+    })
+  )
+
+  await page.goto('/monitor')
+
+  const card = page.getByTestId('monitor-card-btc-usdt')
+  await expect(card).toBeVisible()
+  await expect(card.getByText('WAIT', { exact: true })).toBeVisible()
+  await expect(card).toContainText('SINAL INCONCLUSIVO: estado não confirmado.')
+  await expect(card).toContainText('EXIT bloqueado: timeframe da estratégia não corresponde ao timeframe exibido.')
+  await expect(card.getByText('signal: WAIT')).toBeVisible()
+  await expect(card.getByText('strategy tf: 1d')).toBeVisible()
+  await expect(card.getByText('display tf: 1h')).toBeVisible()
+
+  await card.click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('WAIT')
+  await expect(dialog.getByText('Resolved state')).toBeVisible()
+  await expect(dialog).toContainText('1d')
+  await expect(dialog).toContainText('1h')
+  await expect(dialog).toContainText('SINAL INCONCLUSIVO: estado não confirmado.')
+  await expect(dialog).toContainText('EXIT bloqueado: candle de referência não corresponde ao último candle exibido.')
+})
+
+test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 5,
+          name: 'BTC Trend History',
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          strategy_name: 'multi_ma_crossover',
+          parameters: {},
+          metrics: {},
+          created_at: '2026-04-01T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 5,
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          template_name: 'multi_ma_crossover',
+          name: 'BTC Trend History',
+          notes: '',
+          tier: 1,
+          parameters: { direction: 'long', ema_short: 18, sma_medium: 20, sma_long: 35, stop_loss: 0.042 },
+          indicator_values: {
+            short: 71346.57,
+            medium: 69796.7,
+            long: 70294.6,
+            open: 74131.55,
+            close: 74809.99,
+          },
+          indicator_values_candle_time: '2026-04-15T00:00:00+00:00',
+          is_holding: true,
+          distance_to_next_status: 0.88,
+          next_status_label: 'exit',
+          status: 'HOLDING',
+          message: 'Em Hold. Distância para saída: 0.88%',
+          last_price: 74924,
+          timestamp: '2026-04-16T00:00:00Z',
+          signal_history: [
+            { timestamp: '2026-04-10T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 70210.15 },
+            { timestamp: '2026-04-13T00:00:00+00:00', signal: -1, type: 'exit', reason: 'exit_logic', price: 72150.42 },
+            { timestamp: '2026-04-15T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 73980.37 },
+          ],
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+        'BTC/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.route('**/api/market/candles**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candles: [
+          { timestamp_utc: '2026-04-09T00:00:00Z', open: 69500, high: 70400, low: 69000, close: 70100, volume: 82.413 },
+          { timestamp_utc: '2026-04-10T00:00:00Z', open: 70210.15, high: 71000, low: 70050, close: 70880, volume: 91.127 },
+          { timestamp_utc: '2026-04-11T00:00:00Z', open: 70880, high: 71510, low: 70520, close: 71210, volume: 94.321 },
+          { timestamp_utc: '2026-04-12T00:00:00Z', open: 71210, high: 72300, low: 71050, close: 72020, volume: 99.654 },
+          { timestamp_utc: '2026-04-13T00:00:00Z', open: 72150.42, high: 72440, low: 71500, close: 71720, volume: 103.552 },
+          { timestamp_utc: '2026-04-14T00:00:00Z', open: 71720, high: 74120, low: 71610, close: 73910, volume: 108.117 },
+          { timestamp_utc: '2026-04-15T00:00:00Z', open: 73980.37, high: 74980, low: 73800, close: 74809.99, volume: 112.613 },
+        ],
+      }),
+    })
+  )
+
+  await page.goto('/monitor')
+
+  const card = page.getByTestId('monitor-card-btc-usdt')
+  await expect(card).toBeVisible()
+  await card.click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Signal History')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-signal-history-item-0')).toContainText('ENTRY')
+  await expect(dialog.getByTestId('chart-modal-signal-history-item-1')).toContainText('EXIT')
+  await expect(dialog.getByText('Markers aligned with chart timeframe.')).toBeVisible()
+})

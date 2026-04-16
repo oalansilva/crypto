@@ -41,6 +41,17 @@ export type AIDashboardSignal = {
   action: string
   confidence: number
   reason: string
+  direction: string
+  strength: number
+  total_sources: number
+  price: number | null
+  sources: Array<{
+    source: string
+    action: string
+    confidence: number
+    reason?: string
+    price?: number | null
+  }>
 }
 
 export type AIDashboardStats = {

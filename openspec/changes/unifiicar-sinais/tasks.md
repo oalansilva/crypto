@@ -16,37 +16,37 @@
   - Contratos reais registrados em `design.md` na seção `3.1 Contratos Reais das Fontes`
   - Mapeamento inicial de normalização registrado em `design.md` na seção `3.2 Normalização Necessária para o Sinal Unificado`
 
-- [ ] **2. Definir lógica de consolidação**
+- [x] **2. Definir lógica de consolidação**
   
   Decidir como combinar três sinais em um (voting, weighted, etc).
   
   **Critério de Aceite:** Lógica documentada e approved por Alan
 
-- [ ] **3. Criar API de consolidação**
+- [x] **3. Criar API de consolidação**
   
   Endpoint que agrega sinais das três fontes em um sinal único.
   
   **Critério de Aceite:** API retorna um sinal consolidado por ativo
 
-- [ ] **4. Implementar display de sinal único**
+- [x] **4. Implementar display de sinal único**
   
   Mostrar um sinal por ativo na interface, não três.
   
   **Critério de Aceite:** BTC = 1 sinal, não 3 sinais separados
 
-- [ ] **5. Implementar indicador de direção/força**
+- [x] **5. Implementar indicador de direção/força**
   
   Sinal pode ser: Compra Forte, Compra, Neutro, Venda, Venda Forte.
   
   **Critério de Aceite:** Cada ativo tem indicador claro de direção
 
-- [ ] **6. Implementar breakdown por fonte (opcional)**
+- [x] **6. Implementar breakdown por fonte (opcional)**
   
   Opcional: hover/tap mostra quais fontes contribuíram.
   
   **Critério de Aceite:** Se implementado, funciona corretamente
 
-- [ ] **7. Tratar sinais conflitantes**
+- [x] **7. Tratar sinais conflitantes**
   
   O que fazer quando fontes discordam fortemente?
   

@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.models_signal_history import SignalHistory
 from app.routes import ai_dashboard
+from app.schemas.signal import RiskProfile, Signal, SignalIndicators, SignalListResponse, SignalType
 from app.services.sentiment_service import SentimentResult
 
 
@@ -86,8 +87,52 @@ def test_ai_dashboard_is_dynamic_and_user_scoped(tmp_path: Path, monkeypatch):
             signal="bullish",
         )
 
+    async def fake_signal_feed(*args, **kwargs):
+        return SignalListResponse(
+            signals=[
+                Signal(
+                    id="live-btc",
+                    asset="BTCUSDT",
+                    type=SignalType.BUY,
+                    confidence=88,
+                    target_price=99000,
+                    stop_loss=94000,
+                    indicators=SignalIndicators.model_validate(
+                        {
+                            "RSI": 33.0,
+                            "MACD": "bullish",
+                            "BollingerBands": {"upper": 99500, "middle": 96500, "lower": 93500},
+                        }
+                    ),
+                    created_at=now,
+                    risk_profile=RiskProfile.moderate,
+                    entry_price=97000,
+                    current_price=97250,
+                )
+            ],
+            total=1,
+            cached_at=now,
+            is_stale=False,
+            available_assets=["BTCUSDT"],
+        )
+
+    async def fake_onchain_snapshot(*args, **kwargs):
+        class Pair:
+            symbol = "BTCUSDT"
+            token = "BTC"
+            chain = "ethereum"
+            last_price = 97100.0
+
+        class Result:
+            signal = "BUY"
+            confidence = 72
+
+        return [(Pair(), Result())]
+
     monkeypatch.setattr(ai_dashboard, "_fetch_coingecko_news", fake_news)
     monkeypatch.setattr(ai_dashboard.sentiment_service, "get_market_sentiment", fake_sentiment)
+    monkeypatch.setattr(ai_dashboard.binance_service, "build_signal_feed", fake_signal_feed)
+    monkeypatch.setattr(ai_dashboard, "build_onchain_snapshot", fake_onchain_snapshot)
 
     with SessionLocal() as db:
         db.add_all(
@@ -138,6 +183,13 @@ def test_ai_dashboard_is_dynamic_and_user_scoped(tmp_path: Path, monkeypatch):
     assert payload.stats.total_signals == 2
     assert payload.stats.hit_rate == 50
     assert {item.asset for item in payload.recent_signals} == {"BTC/USDT", "ETH/USDT"}
+    btc_signal = next(item for item in payload.recent_signals if item.asset == "BTC/USDT")
+    assert btc_signal.action == "BUY"
+    assert btc_signal.direction == "Compra forte"
+    assert btc_signal.strength == 3
+    assert btc_signal.total_sources == 3
+    assert {source["source"] for source in btc_signal.sources} == {"AI Dashboard", "Signals", "On-chain"}
+    assert btc_signal.price == 97250
     assert all(reading.asset != "SOL/USDT" for card in payload.indicators for reading in card.readings)
     assert payload.fear_greed.value == 68
     assert payload.fear_greed.label == "Greed"
@@ -159,8 +211,16 @@ def test_ai_dashboard_returns_empty_dynamic_state_without_history(tmp_path: Path
             signal="neutral",
         )
 
+    async def empty_signal_feed(*args, **kwargs):
+        return SignalListResponse(signals=[], total=0, cached_at=None, is_stale=False, available_assets=[])
+
+    async def empty_onchain_snapshot(*args, **kwargs):
+        return []
+
     monkeypatch.setattr(ai_dashboard, "_fetch_coingecko_news", failing_news)
     monkeypatch.setattr(ai_dashboard.sentiment_service, "get_market_sentiment", neutral_sentiment)
+    monkeypatch.setattr(ai_dashboard.binance_service, "build_signal_feed", empty_signal_feed)
+    monkeypatch.setattr(ai_dashboard, "build_onchain_snapshot", empty_onchain_snapshot)
 
     with SessionLocal() as db:
         payload = asyncio.run(ai_dashboard.get_ai_dashboard(current_user_id="user-empty", db=db))

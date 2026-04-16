@@ -12,8 +12,9 @@ import {
 } from 'lightweight-charts';
 
 import type { MarketCandle } from './MiniCandlesChart';
-import type { Opportunity } from './types';
+import type { Opportunity, OpportunitySignalHistoryItem } from './types';
 import { CHART_TIMEFRAMES, fetchMarketCandles, type ChartTimeframe } from './chartData';
+import { resolveOpportunitySignal } from './signalResolution';
 
 interface ChartModalProps {
     symbol: string;
@@ -94,6 +95,38 @@ function formatTimestamp(value?: string | null) {
         minute: '2-digit',
         timeZone: 'UTC',
     }).format(new Date(value));
+}
+
+function formatSignalReason(value?: string | null) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) {
+        return '-';
+    }
+    if (normalized === 'entry') {
+        return 'Entry';
+    }
+    if (normalized === 'exit_logic') {
+        return 'Exit rule';
+    }
+    if (normalized === 'stop_loss') {
+        return 'Stop loss';
+    }
+    return normalized.replace(/_/g, ' ');
+}
+
+function getSignalHistoryLabel(item: OpportunitySignalHistoryItem) {
+    return item.type === 'entry' ? 'ENTRY' : 'EXIT';
+}
+
+function getSignalHistoryMarker(item: OpportunitySignalHistoryItem) {
+    const isEntry = item.type === 'entry';
+    const isStop = !isEntry && String(item.reason || '').trim().toLowerCase() === 'stop_loss';
+    return {
+        position: isEntry ? 'belowBar' : 'aboveBar',
+        shape: isEntry ? 'arrowUp' : 'arrowDown',
+        color: isEntry ? '#3fb950' : (isStop ? '#f85149' : '#0284c7'),
+        text: getSignalHistoryLabel(item),
+    } as const;
 }
 
 function getNumericParameter(parameters: Record<string, unknown> | undefined, keys: string[], fallback: number) {
@@ -356,7 +389,44 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     );
 
     const displaySnapshot = tooltip ?? latestSnapshot;
-    const signalLabel = opportunity.next_status_label === 'exit' ? 'EXIT' : 'ENTRY';
+    const resolvedSignal = React.useMemo(
+        () => resolveOpportunitySignal(opportunity, {
+            selectedTimeframe: timeframe,
+            latestCandleTime: latestCandle?.timestamp_utc ?? null,
+            requireCurrentCandleMatch: true,
+        }),
+        [latestCandle?.timestamp_utc, opportunity, timeframe],
+    );
+    const signalLabel = resolvedSignal.visual.markerLabel;
+    const canRenderSignalHistoryMarkers = React.useMemo(
+        () => String(opportunity.timeframe || '').trim().toLowerCase() === timeframe,
+        [opportunity.timeframe, timeframe],
+    );
+    const historicalSignalMarkers = React.useMemo(() => {
+        if (!canRenderSignalHistoryMarkers || sortedCandles.length === 0) {
+            return [];
+        }
+
+        const candleTimes = new Set(candlestickData.map((point) => point.time));
+        return (opportunity.signal_history || [])
+            .map((item) => {
+                const time = toUtcTimestamp(item.timestamp);
+                if (!candleTimes.has(time)) {
+                    return null;
+                }
+                return {
+                    time,
+                    ...getSignalHistoryMarker(item),
+                };
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null);
+    }, [canRenderSignalHistoryMarkers, candlestickData, opportunity.signal_history, sortedCandles.length]);
+    const signalHistory = React.useMemo(
+        () => [...(opportunity.signal_history || [])].sort(
+            (left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp),
+        ),
+        [opportunity.signal_history],
+    );
 
     const toggleIndicator = (key: IndicatorKey) => {
         setVisibleIndicators((current) => ({ ...current, [key]: !current[key] }));
@@ -543,15 +613,19 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         });
 
         candleSeries.setData(candlestickData);
-        candleSeries.setMarkers([
-            {
-                time: candlestickData[candlestickData.length - 1].time,
-                position: opportunity.next_status_label === 'exit' ? 'aboveBar' : 'belowBar',
-                color: opportunity.next_status_label === 'exit' ? '#f85149' : '#22c55e',
-                shape: opportunity.next_status_label === 'exit' ? 'arrowDown' : 'arrowUp',
-                text: signalLabel,
-            },
-        ]);
+        candleSeries.setMarkers(
+            historicalSignalMarkers.length > 0
+                ? historicalSignalMarkers
+                : [
+                    {
+                        time: candlestickData[candlestickData.length - 1].time,
+                        position: resolvedSignal.visual.markerPosition,
+                        color: resolvedSignal.visual.markerColor,
+                        shape: resolvedSignal.visual.markerShape,
+                        text: signalLabel,
+                    },
+                ],
+        );
         volumeSeries.setData(volumeData);
         emaShortSeries.setData(emaShortData);
         smaMediumSeries.setData(smaMediumData);
@@ -644,9 +718,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         maColors.emaShort,
         maColors.smaLong,
         maColors.smaMedium,
+        historicalSignalMarkers,
         opportunity.entry_price,
-        opportunity.next_status_label,
         opportunity.stop_price,
+        resolvedSignal.visual.markerColor,
+        resolvedSignal.visual.markerPosition,
+        resolvedSignal.visual.markerShape,
         rsiData,
         signalLabel,
         smaLongData,
@@ -733,13 +810,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                         {timeframe}
                     </span>
                     <span
-                        className={`rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${
-                            opportunity.next_status_label === 'exit'
-                                ? 'bg-[#d29922]/20 text-[#d29922]'
-                                : 'bg-[#238636]/20 text-[#3fb950]'
-                        }`}
+                        className={`rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${resolvedSignal.visual.badgeClass}`}
+                        data-testid="chart-modal-signal-badge"
                     >
-                        {signalLabel}
+                        {resolvedSignal.visual.badgeText}
                     </span>
                     <div className="ml-auto text-right">
                         <p className="text-xs uppercase tracking-wide text-[#8b949e]">Last price</p>
@@ -839,6 +913,36 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                 <div className="rounded-2xl border border-[#30363d] bg-[#11161d] p-4 text-sm text-[#c9d1d9]">
                                     <div className="space-y-5">
                                         <section>
+                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal Context</p>
+                                            <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="text-[#8b949e]">Resolved state</span>
+                                                    <span className="font-mono text-[#e6edf3]">{resolvedSignal.visual.badgeText}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="text-[#8b949e]">Strategy timeframe</span>
+                                                    <span className="font-mono text-[#e6edf3]">{resolvedSignal.strategyTimeframe ?? '-'}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="text-[#8b949e]">Displayed timeframe</span>
+                                                    <span className="font-mono text-[#e6edf3]">{resolvedSignal.displayTimeframe ?? '-'}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="text-[#8b949e]">Reference candle</span>
+                                                    <span className="font-mono text-[#e6edf3]">{formatTimestamp(resolvedSignal.referenceCandleTime)}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="text-[#8b949e]">Latest displayed candle</span>
+                                                    <span className="font-mono text-[#e6edf3]">{formatTimestamp(resolvedSignal.latestCandleTime)}</span>
+                                                </div>
+                                                <div className="rounded-lg border border-[#30363d] bg-[#11161d] px-3 py-2 text-xs text-[#c9d1d9]">
+                                                    {resolvedSignal.statusMessage}
+                                                    {resolvedSignal.freshnessReason ? ` ${resolvedSignal.freshnessReason}` : ''}
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section>
                                             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Crosshair</p>
                                             <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
                                                 <div>
@@ -873,7 +977,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                         <section>
                                             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Distance</p>
                                             <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {signalLabel.toLowerCase()}</p>
+                                                <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {resolvedSignal.visual.markerLabel.toLowerCase()}</p>
                                                 <p className={`font-mono text-lg font-semibold ${
                                                     (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'text-[#3fb950]' : 'text-[#e6edf3]'
                                                 }`}>
@@ -897,6 +1001,45 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                                     <span className="text-[#8b949e]">Risk</span>
                                                     <span className="font-mono text-[#f85149]">{formatPercent(opportunity.distance_to_stop_pct)}</span>
                                                 </div>
+                                            </div>
+                                        </section>
+
+                                        <section>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal History</p>
+                                                <span className="text-[11px] text-[#8b949e]">
+                                                    {canRenderSignalHistoryMarkers
+                                                        ? 'Markers aligned with chart timeframe.'
+                                                        : 'Markers hidden: chart timeframe differs from strategy timeframe.'}
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                {signalHistory.length > 0 ? (
+                                                    <div className="space-y-2" data-testid="chart-modal-signal-history">
+                                                        {signalHistory.map((item, index) => {
+                                                            const marker = getSignalHistoryMarker(item);
+                                                            return (
+                                                                <div
+                                                                    key={`${item.timestamp}-${item.type}-${index}`}
+                                                                    className="flex items-start justify-between gap-3 rounded-lg border border-[#30363d] bg-[#11161d] px-3 py-2"
+                                                                    data-testid={`chart-modal-signal-history-item-${index}`}
+                                                                >
+                                                                    <div className="space-y-1">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: marker.color }} />
+                                                                            <span className="font-mono text-sm text-[#e6edf3]">{getSignalHistoryLabel(item)}</span>
+                                                                            <span className="text-xs text-[#8b949e]">{formatSignalReason(item.reason)}</span>
+                                                                        </div>
+                                                                        <p className="text-xs text-[#8b949e]">{formatTimestamp(item.timestamp)}</p>
+                                                                    </div>
+                                                                    <span className="font-mono text-sm text-[#e6edf3]">{formatPrice(item.price)}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[#8b949e]">No confirmed entry/exit history available for this strategy.</p>
+                                                )}
                                             </div>
                                         </section>
 

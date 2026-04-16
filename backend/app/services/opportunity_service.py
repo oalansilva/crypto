@@ -216,6 +216,37 @@ def _signal_execution_price(
     return None
 
 
+def _build_signal_history(df: pd.DataFrame, df_signals: pd.DataFrame, *, limit: int = 24) -> list[dict[str, Any]]:
+    if df.empty or df_signals.empty or 'signal' not in df_signals.columns:
+        return []
+
+    signal_rows = df_signals[df_signals['signal'].isin([1, -1])]
+    if signal_rows.empty:
+        return []
+
+    history: list[dict[str, Any]] = []
+    for idx, row in signal_rows.tail(limit).iterrows():
+        try:
+            signal_value = int(row['signal'])
+        except (TypeError, ValueError):
+            continue
+
+        signal_type = 'entry' if signal_value == 1 else 'exit'
+        execution_price = _signal_execution_price(df, idx, direction=signal_type)
+        raw_reason = row.get('signal_reason') if hasattr(row, 'get') else None
+        reason = None if raw_reason is None or pd.isna(raw_reason) or str(raw_reason).strip() == '' else str(raw_reason)
+
+        history.append({
+            'timestamp': str(pd.Timestamp(idx).isoformat()),
+            'signal': signal_value,
+            'type': signal_type,
+            'reason': reason,
+            'price': round(float(execution_price), 8) if execution_price is not None else None,
+        })
+
+    return history
+
+
 def _resolve_position_state(
     *,
     short_above_long: bool,
@@ -710,6 +741,7 @@ class OpportunityService:
                 last_sell_idx = df_signals[df_signals['signal'] == -1].last_valid_index()
                 last_buy_pos = _index_position(df_closed.index, last_buy_idx)
                 last_sell_pos = _index_position(df_closed.index, last_sell_idx)
+                signal_history = _build_signal_history(df_closed, df_signals)
                 last_sell_reason = None
                 if (
                     last_sell_idx is not None
@@ -1092,6 +1124,7 @@ class OpportunityService:
                     'next_status_label': next_status_label,
                     'indicator_values': indicator_values if indicator_values else None,
                     'indicator_values_candle_time': indicator_values_candle_time,
+                    'signal_history': signal_history,
                     'entry_price': entry_price,
                     'stop_price': stop_price,
                     'distance_to_stop_pct': distance_to_stop_pct,

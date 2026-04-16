@@ -5,6 +5,7 @@ import { Target, Activity, Settings, Star, BarChart3 } from "lucide-react";
 import { API_BASE_URL, apiUrl } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { MiniCandlesChart, type MarketCandle } from './MiniCandlesChart';
+import { resolveOpportunitySignal } from './signalResolution';
 
 import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe } from './types';
 
@@ -193,61 +194,50 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const isMissedEntry = status === 'MISSED_ENTRY';
     const isWait = !is_holding && !isStoppedOut && !isExited && !isMissedEntry;
     const tierStyles = getTierStyles(opportunity.tier);
+    const resolvedSignal = React.useMemo(
+        () => resolveOpportunitySignal(opportunity, { selectedTimeframe: effectiveTimeframe }),
+        [effectiveTimeframe, opportunity],
+    );
 
-    let statusBadge = 'WAIT';
-    let badgeColor = "bg-slate-200 text-slate-600 border-slate-300";
-    let borderColor = 'border-l-slate-300 border-l-4';
-    let cardBgColor = 'bg-[var(--monitor-card)] border-[var(--monitor-border)]';
+    const badgeColor = resolvedSignal.visual.badgeClass;
+    let borderColor = resolvedSignal.visual.borderClass;
+    let cardBgColor = resolvedSignal.visual.cardBgClass;
     let holdingIndicator = '';
 
-    if (is_holding) {
-        statusBadge = 'HOLD';
-        badgeColor = "bg-green-600 text-white border-green-600 font-bold shadow-md";
-        borderColor = 'border-l-green-600 border-l-4';
-        cardBgColor = 'bg-green-50 dark:bg-green-900/40 border-green-400 dark:border-green-600';
+    if (resolvedSignal.section === 'holding') {
         holdingIndicator = 'ring-2 ring-green-400 shadow-lg shadow-green-500/30';
-    } else if (isStoppedOut) {
-        statusBadge = 'STOPPED OUT';
-        badgeColor = "bg-red-600 text-white border-red-600 font-bold shadow-md";
-        borderColor = 'border-l-red-600 border-l-4';
-        cardBgColor = 'bg-red-50 dark:bg-red-900/40 border-red-400 dark:border-red-600';
+    } else if (resolvedSignal.section === 'stoppedOut') {
         holdingIndicator = 'ring-2 ring-red-400 shadow-lg shadow-red-500/30';
-    } else if (isExited) {
-        statusBadge = 'EXITED';
-        badgeColor = "bg-sky-600 text-white border-sky-600 font-bold shadow-md";
-        borderColor = 'border-l-sky-600 border-l-4';
-        cardBgColor = 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700';
+    } else if (resolvedSignal.section === 'exited') {
         holdingIndicator = 'ring-2 ring-sky-400 shadow-lg shadow-sky-500/20';
-    } else if (isMissedEntry) {
-        statusBadge = 'MISSED';
-        badgeColor = "bg-yellow-500 text-white border-yellow-500 font-bold shadow-md";
-        borderColor = 'border-l-yellow-500 border-l-4';
-        cardBgColor = 'bg-yellow-50 dark:bg-yellow-900/40 border-yellow-400 dark:border-yellow-600';
+    } else if (resolvedSignal.section === 'missedEntry') {
         holdingIndicator = 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-500/30';
-    } else if (isWait && tierStyles) {
+    } else if (!resolvedSignal.isUncertain && isWait && tierStyles) {
         borderColor = 'border-l-4';
         cardBgColor = tierStyles.dot === 'bg-green-500' ? 'bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
                       tierStyles.dot === 'bg-amber-500' ? 'bg-amber-50/50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' :
                       'bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
     }
 
-    const statusMessage = opportunity.message || (
-        distance !== null && distance !== undefined
-            ? `${distance.toFixed(2)}% to ${next_status_label}`
-            : `Waiting for ${next_status_label} signal`
-    );
+    const statusMessage = resolvedSignal.isUncertain
+        ? `${resolvedSignal.statusMessage}${resolvedSignal.freshnessReason ? ` ${resolvedSignal.freshnessReason}` : ''}`
+        : (opportunity.message || (
+            distance !== null && distance !== undefined
+                ? `${distance.toFixed(2)}% to ${next_status_label}`
+                : `Waiting for ${next_status_label} signal`
+        ));
 
     // NOTE: Avoid hardcoded light backgrounds via inline styles.
     // They reduce contrast on mobile/dark mode. Background colors are handled via Tailwind classes.
-    const cardStyle = is_holding
+    const cardStyle = resolvedSignal.section === 'holding'
         ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(22, 163, 74)' }
-        : isStoppedOut
+        : resolvedSignal.section === 'stoppedOut'
             ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(220, 38, 38)' }
-            : isExited
+            : resolvedSignal.section === 'exited'
                 ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(2, 132, 199)' }
-            : isMissedEntry
+                : resolvedSignal.section === 'missedEntry'
                 ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(234, 179, 8)' }
-                : isWait && tierStyles
+                : !resolvedSignal.isUncertain && isWait && tierStyles
                     ? { borderLeftWidth: '4px', borderLeftColor: tierStyles.border }
                     : { borderLeftWidth: '4px', borderLeftColor: 'rgb(203, 213, 225)' };
 
@@ -292,11 +282,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-2">
                 <div className="flex flex-col min-w-0">
                     <CardTitle className={`text-xl font-bold flex items-center gap-2 ${
-                        is_holding ? 'text-green-700 dark:text-green-300' :
-                        isStoppedOut ? 'text-red-700 dark:text-red-300' :
-                        isExited ? 'text-sky-700 dark:text-sky-300' :
-                        isMissedEntry ? 'text-yellow-700 dark:text-yellow-300' :
-                        'text-[var(--monitor-text)]'
+                        resolvedSignal.visual.titleClass
                     }`}>
                         {tierStyles && (
                             <span className={`w-2 h-2 rounded-full ${tierStyles.dot} ring-1 ${tierStyles.ring} flex-shrink-0`} title={tierStyles.label} />
@@ -324,7 +310,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
                 <div className="flex flex-col items-end gap-2">
                     <Badge variant="outline" className={`${badgeColor} uppercase text-sm font-bold shadow-sm px-3 py-1`}>
-                        {statusBadge}
+                        {resolvedSignal.visual.badgeText}
                     </Badge>
                     <div className="flex items-center gap-1">
                         <button
@@ -471,6 +457,18 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                                 <Activity className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                                 <span className="font-medium text-gray-800 dark:text-gray-200 break-words">{statusMessage}</span>
                             </div>
+                        </div>
+
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-xs border border-slate-200 dark:border-slate-600">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-slate-700 dark:text-slate-200">
+                                <span>signal: {resolvedSignal.visual.badgeText}</span>
+                                <span>strategy tf: {resolvedSignal.strategyTimeframe ?? '-'}</span>
+                                <span>display tf: {resolvedSignal.displayTimeframe ?? '-'}</span>
+                                <span>candle ref: {resolvedSignal.referenceCandleTime ?? '-'}</span>
+                            </div>
+                            {resolvedSignal.freshnessReason ? (
+                                <p className="mt-2 text-amber-700 dark:text-amber-300">{resolvedSignal.freshnessReason}</p>
+                            ) : null}
                         </div>
 
                         {opportunity.parameters && Object.keys(opportunity.parameters).length > 0 && (

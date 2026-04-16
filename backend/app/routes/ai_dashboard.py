@@ -5,6 +5,7 @@ import json
 import logging
 from collections import OrderedDict
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends
@@ -14,8 +15,10 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.middleware.authMiddleware import get_current_user
 from app.models_signal_history import SignalHistory
-from app.services import sentiment_service
+from app.schemas.signal import RiskProfile, Signal
+from app.services import binance_service, sentiment_service
 from app.services.news_localization_service import get_cached_localized_news, schedule_news_localization_refresh
+from app.services.onchain_service import build_onchain_snapshot
 
 router = APIRouter(prefix="/api/ai", tags=["ai-dashboard"])
 
@@ -72,6 +75,11 @@ class DashboardSignalItem(BaseModel):
     action: str
     confidence: int = Field(ge=0, le=100)
     reason: str
+    direction: str = "Neutro"
+    strength: int = Field(default=0, ge=0, le=3)
+    total_sources: int = Field(default=0, ge=0, le=3)
+    price: float | None = None
+    sources: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class DashboardStatsPayload(BaseModel):
@@ -193,6 +201,10 @@ def _normalize_asset(asset: str | None) -> str:
         if raw.endswith(suffix) and len(raw) > len(suffix):
             return f"{raw[:-len(suffix)]}/{suffix}"
     return raw
+
+
+def _symbol_key(asset: str | None) -> str:
+    return str(asset or "").strip().upper().replace("/", "").replace("-", "")
 
 
 def _parse_indicators(row: SignalHistory) -> dict | None:
@@ -333,6 +345,188 @@ def _load_recent_signals_from_history(rows: list[SignalHistory]) -> list[Dashboa
             )
         )
     return items
+
+
+def _source_score(action: str | None) -> int:
+    normalized = str(action or "").strip().upper()
+    if normalized == "BUY":
+        return 1
+    if normalized == "SELL":
+        return -1
+    return 0
+
+
+def _direction_label(action: str, strength: int, opposing_sources: int) -> str:
+    normalized = str(action).upper()
+    if normalized == "BUY":
+        return "Compra forte" if strength >= 2 and opposing_sources == 0 else "Compra"
+    if normalized == "SELL":
+        return "Venda forte" if strength >= 2 and opposing_sources == 0 else "Venda"
+    return "Neutro"
+
+
+def _coerce_price(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def _build_unified_reason(
+    final_action: str,
+    supporting_sources: list[dict[str, Any]],
+    opposing_sources: list[dict[str, Any]],
+) -> str:
+    if not supporting_sources and not opposing_sources:
+        return "Nenhuma fonte disponível para consolidar."
+
+    support_names = ", ".join(source["source"] for source in supporting_sources) or "nenhuma"
+    oppose_names = ", ".join(source["source"] for source in opposing_sources)
+
+    if final_action == "HOLD":
+        if supporting_sources:
+            return f"Sinal neutro por ausência de maioria direcional. Fontes neutras: {support_names}."
+        if opposing_sources:
+            return f"Sinal neutro por conflito entre fontes: {oppose_names}."
+        return "Sinal neutro por falta de confirmação direcional."
+
+    verb = "compra" if final_action == "BUY" else "venda"
+    if opposing_sources:
+        return f"Consolidação em {verb}: apoio de {support_names}; conflito com {oppose_names}."
+    return f"Consolidação em {verb}: apoio de {support_names}."
+
+
+def _make_unified_signal(
+    *,
+    asset_key: str,
+    display_asset: str,
+    entries: list[dict[str, Any]],
+) -> DashboardSignalItem:
+    directional_entries = [entry for entry in entries if _source_score(entry.get("action")) != 0]
+    weighted_score = sum(_source_score(entry.get("action")) * (int(entry.get("confidence") or 0) / 100) for entry in entries)
+
+    if directional_entries and abs(weighted_score) >= 0.35:
+        final_action = "BUY" if weighted_score > 0 else "SELL"
+    else:
+        final_action = "HOLD"
+
+    supporting_sources = [entry for entry in entries if _source_score(entry.get("action")) == _source_score(final_action)]
+    opposing_sources = [entry for entry in entries if _source_score(entry.get("action")) == -_source_score(final_action) and _source_score(final_action) != 0]
+    neutral_sources = [entry for entry in entries if _source_score(entry.get("action")) == 0]
+
+    if final_action == "HOLD":
+        supporting_sources = neutral_sources
+
+    strength = len(supporting_sources)
+    confidence = round(sum(int(entry.get("confidence") or 0) for entry in supporting_sources) / len(supporting_sources)) if supporting_sources else 0
+    direction = _direction_label(final_action, strength, len(opposing_sources))
+    price = next((_coerce_price(entry.get("price")) for entry in entries if _coerce_price(entry.get("price")) is not None), None)
+    reason = _build_unified_reason(final_action, supporting_sources, opposing_sources if final_action != "HOLD" else directional_entries)
+
+    ordered_sources = sorted(entries, key=lambda entry: int(entry.get("confidence") or 0), reverse=True)
+    signal_id = f"unified-{asset_key.lower()}"
+    return DashboardSignalItem(
+        id=signal_id,
+        asset=display_asset,
+        action=final_action,
+        confidence=confidence,
+        reason=reason,
+        direction=direction,
+        strength=strength,
+        total_sources=len(entries),
+        price=price,
+        sources=ordered_sources,
+    )
+
+
+def _build_unified_signals(
+    *,
+    ai_rows: list[SignalHistory],
+    signal_feed: list[Signal],
+    onchain_snapshot: list[tuple[Any, Any]],
+) -> list[DashboardSignalItem]:
+    grouped: OrderedDict[str, dict[str, Any]] = OrderedDict()
+
+    def ensure_group(asset: str | None) -> dict[str, Any] | None:
+        key = _symbol_key(asset)
+        if not key:
+            return None
+        if key not in grouped:
+            grouped[key] = {
+                "asset": _normalize_asset(asset or key),
+                "entries": [],
+            }
+        return grouped[key]
+
+    seen_ai_assets: set[str] = set()
+    for row in ai_rows:
+        key = _symbol_key(row.asset)
+        if not key or key in seen_ai_assets:
+            continue
+        seen_ai_assets.add(key)
+        group = ensure_group(row.asset)
+        if not group:
+            continue
+        group["entries"].append(
+            {
+                "source": "AI Dashboard",
+                "action": str(row.type).upper(),
+                "confidence": int(row.confidence),
+                "reason": _build_signal_reason(row, _parse_indicators(row)),
+                "price": _coerce_price(row.entry_price or row.trigger_price or row.target_price),
+            }
+        )
+
+    seen_signal_assets: set[str] = set()
+    for signal in signal_feed:
+        key = _symbol_key(signal.asset)
+        if not key or key in seen_signal_assets:
+            continue
+        seen_signal_assets.add(key)
+        group = ensure_group(signal.asset)
+        if not group:
+            continue
+        breakdown_summary = None
+        if signal.breakdown:
+            breakdown_summary = f"RSI {signal.breakdown.rsi_contribution:.0f}% · MACD {signal.breakdown.macd_contribution:.0f}% · Sentimento {signal.breakdown.sentiment_contribution:.0f}%"
+        group["entries"].append(
+            {
+                "source": "Signals",
+                "action": signal.type.value,
+                "confidence": int(signal.confidence),
+                "reason": breakdown_summary or f"Sinal {signal.type.value} com perfil {signal.risk_profile.value}.",
+                "price": _coerce_price(signal.current_price or signal.entry_price),
+            }
+        )
+
+    seen_onchain_assets: set[str] = set()
+    for pair, result in onchain_snapshot:
+        key = _symbol_key(getattr(pair, "symbol", None))
+        if not key or key in seen_onchain_assets:
+            continue
+        seen_onchain_assets.add(key)
+        group = ensure_group(getattr(pair, "symbol", None))
+        if not group:
+            continue
+        group["entries"].append(
+            {
+                "source": "On-chain",
+                "action": str(result.signal).upper(),
+                "confidence": int(result.confidence),
+                "reason": f"{pair.token} em {pair.chain} com leitura on-chain consolidada.",
+                "price": _coerce_price(getattr(pair, "last_price", None)),
+            }
+        )
+
+    unified = [
+        _make_unified_signal(asset_key=asset_key, display_asset=str(data["asset"]), entries=list(data["entries"]))
+        for asset_key, data in grouped.items()
+        if data["entries"]
+    ]
+    unified.sort(key=lambda item: (item.strength, item.confidence), reverse=True)
+    return unified[:8]
 
 
 def _build_indicator_cards(rows: list[SignalHistory]) -> list[IndicatorCardPayload]:
@@ -511,12 +705,25 @@ async def get_ai_dashboard(
     stats = _empty_stats()
     fear_greed = FearGreedPayload(value=50, label="Neutral", tone="neutral")
     history_rows = _load_user_history(db, current_user_id)
-    recent_signals = _load_recent_signals_from_history(history_rows)
     indicators = _build_indicator_cards(history_rows)
     news_task = asyncio.create_task(_fetch_coingecko_news())
     sentiment_task = asyncio.create_task(sentiment_service.get_market_sentiment())
+    signal_feed_task = asyncio.create_task(
+        binance_service.build_signal_feed(
+            limit=20,
+            risk_profile=RiskProfile.moderate,
+            user_id=current_user_id,
+        )
+    )
+    onchain_snapshot_task = asyncio.create_task(build_onchain_snapshot(limit=20))
 
-    news_result, sentiment_result = await asyncio.gather(news_task, sentiment_task, return_exceptions=True)
+    news_result, sentiment_result, signal_feed_result, onchain_snapshot_result = await asyncio.gather(
+        news_task,
+        sentiment_task,
+        signal_feed_task,
+        onchain_snapshot_task,
+        return_exceptions=True,
+    )
 
     if isinstance(news_result, Exception):
         section_errors["news"] = "CoinGecko indisponível no momento."
@@ -529,6 +736,20 @@ async def get_ai_dashboard(
         logger.warning("Failed to load AI dashboard stats from signal history: %s", exc)
         section_errors["stats"] = "Não foi possível consolidar o histórico de sinais."
 
+    if isinstance(signal_feed_result, Exception):
+        logger.warning("Failed to load live signal feed for AI dashboard: %s", signal_feed_result)
+        section_errors["signals"] = "Não foi possível atualizar os sinais técnicos."
+        signal_feed = []
+    else:
+        signal_feed = list(signal_feed_result.signals)
+
+    if isinstance(onchain_snapshot_result, Exception):
+        logger.warning("Failed to load onchain snapshot for AI dashboard: %s", onchain_snapshot_result)
+        section_errors["onchain"] = "Não foi possível atualizar os sinais on-chain."
+        onchain_snapshot = []
+    else:
+        onchain_snapshot = list(onchain_snapshot_result)
+
     if isinstance(sentiment_result, Exception):
         logger.warning("Failed to load AI dashboard sentiment: %s", sentiment_result)
         section_errors["fear_greed"] = "Não foi possível atualizar o radar de sentimento."
@@ -540,6 +761,15 @@ async def get_ai_dashboard(
             label=fear_greed_label,
             tone=fear_greed_tone,
         )
+
+    recent_signals = _build_unified_signals(
+        ai_rows=history_rows,
+        signal_feed=signal_feed,
+        onchain_snapshot=onchain_snapshot,
+    )
+
+    if not recent_signals and history_rows:
+        recent_signals = _load_recent_signals_from_history(history_rows)
 
     insights = _build_dynamic_insights(
         stats=stats,

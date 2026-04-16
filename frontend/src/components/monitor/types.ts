@@ -1,3 +1,11 @@
+export interface OpportunitySignalHistoryItem {
+    timestamp: string;
+    signal: 1 | -1;
+    type: 'entry' | 'exit';
+    reason?: string | null;
+    price?: number | null;
+}
+
 export interface Opportunity {
     id: number;
     symbol: string;
@@ -22,6 +30,8 @@ export interface Opportunity {
     indicator_values?: Record<string, number>;
     /** Data/hora do candle usado (ISO) para conferir com TradingView */
     indicator_values_candle_time?: string | null;
+    /** Histórico recente de sinais confirmados da estratégia */
+    signal_history?: OpportunitySignalHistoryItem[];
 
     /** Optional risk info */
     entry_price?: number | null;
