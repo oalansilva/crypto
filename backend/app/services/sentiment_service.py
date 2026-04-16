@@ -85,9 +85,15 @@ def _analyze_reddit_sentiment() -> int:
     Returns score 0-100 (higher = more bullish).
     """
     import os
+
+    try:
+        from nltk.sentiment import SentimentIntensityAnalyzer
+    except Exception as exc:
+        logger.warning("NLTK unavailable for Reddit sentiment analysis: %s", exc)
+        return 50
+
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    from nltk.sentiment import SentimentIntensityAnalyzer
-    
+
     sia = SentimentIntensityAnalyzer()
     
     # Fetch from Reddit JSON API (public, no auth needed)

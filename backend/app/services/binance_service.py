@@ -620,11 +620,37 @@ async def _fetch_market_snapshots(assets: list[str]) -> tuple[dict[str, dict[str
         async with _KLINES_SEMAPHORE:
             return await get_klines(item)
 
-    raw_snapshots = await asyncio.gather(*(_get_klines_with_semaphore(item) for item in assets))
-    snapshots_by_asset = {asset: snapshot for asset, snapshot in zip(assets, raw_snapshots)}
-    cached_candidates = [item.get("cached_at") for item in raw_snapshots if item.get("cached_at")]
+    raw_snapshots = await asyncio.gather(
+        *(_get_klines_with_semaphore(item) for item in assets),
+        return_exceptions=True,
+    )
+    collected_snapshots: list[tuple[str, dict[str, Any] | None, Exception | None]] = []
+    for item, raw_snapshot in zip(assets, raw_snapshots):
+        if isinstance(raw_snapshot, Exception):
+            logger.warning("Failed to fetch klines for %s while building snapshot: %s", item, raw_snapshot)
+            collected_snapshots.append((item, None, raw_snapshot))
+            continue
+        collected_snapshots.append((item, raw_snapshot, None))
+
+    snapshots_by_asset = {
+        item: snapshot
+        for item, snapshot, error in collected_snapshots
+        if snapshot is not None
+    }
+    if not snapshots_by_asset:
+        raise RuntimeError("Unable to fetch klines for any requested asset")
+
+    cached_candidates = [
+        item_snapshot.get("cached_at")
+        for _, item_snapshot, _ in collected_snapshots
+        if item_snapshot is not None and item_snapshot.get("cached_at")
+    ]
     cached_at = max(cached_candidates) if cached_candidates else None
-    is_stale = any(bool(item.get("is_stale")) for item in raw_snapshots)
+    is_stale = any(
+        bool(item_snapshot.get("is_stale"))
+        for _, item_snapshot, _ in collected_snapshots
+        if item_snapshot is not None
+    )
     return snapshots_by_asset, cached_at, is_stale
 
 
@@ -791,7 +817,7 @@ async def build_signal_feed(
     cached_at: datetime | None
     is_stale: bool
 
-    snapshot = get_signal_feed_snapshot(risk_profile) if sentiment_score is None else None
+    snapshot = get_signal_feed_snapshot(risk_profile)
     if snapshot is None and asset is None and sentiment_score is None:
         snapshot = await get_or_refresh_signal_feed_snapshot(risk_profile)
 
