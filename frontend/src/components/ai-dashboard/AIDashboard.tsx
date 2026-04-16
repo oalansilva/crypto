@@ -49,6 +49,8 @@ export type AIDashboardSignal = {
     source: string
     action: string
     confidence: number
+    direction?: string
+    status?: string
     reason?: string
     price?: number | null
   }>

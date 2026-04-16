@@ -374,6 +374,15 @@ def _coerce_price(value: Any) -> float | None:
         return None
 
 
+def _source_direction(action: str | None) -> str:
+    normalized = str(action or "").strip().upper()
+    if normalized == "BUY":
+        return "Compra"
+    if normalized == "SELL":
+        return "Venda"
+    return "Neutro"
+
+
 def _build_unified_reason(
     final_action: str,
     supporting_sources: list[dict[str, Any]],
@@ -422,10 +431,39 @@ def _make_unified_signal(
     strength = len(supporting_sources)
     confidence = round(sum(int(entry.get("confidence") or 0) for entry in supporting_sources) / len(supporting_sources)) if supporting_sources else 0
     direction = _direction_label(final_action, strength, len(opposing_sources))
-    price = next((_coerce_price(entry.get("price")) for entry in entries if _coerce_price(entry.get("price")) is not None), None)
+    price = None
+    for preferred_source in ("Signals", "On-chain", "AI Dashboard"):
+        price = next(
+            (
+                _coerce_price(entry.get("price"))
+                for entry in entries
+                if entry.get("source") == preferred_source and _coerce_price(entry.get("price")) is not None
+            ),
+            None,
+        )
+        if price is not None:
+            break
     reason = _build_unified_reason(final_action, supporting_sources, opposing_sources if final_action != "HOLD" else directional_entries)
 
     ordered_sources = sorted(entries, key=lambda entry: int(entry.get("confidence") or 0), reverse=True)
+    enriched_sources: list[dict[str, Any]] = []
+    for entry in ordered_sources:
+        entry_score = _source_score(entry.get("action"))
+        if final_action == "HOLD":
+            status = "neutral" if entry_score == 0 else "conflicting"
+        elif entry_score == _source_score(final_action):
+            status = "supporting"
+        elif entry_score == 0:
+            status = "neutral"
+        else:
+            status = "conflicting"
+        enriched_sources.append(
+            {
+                **entry,
+                "direction": _source_direction(entry.get("action")),
+                "status": status,
+            }
+        )
     signal_id = f"unified-{asset_key.lower()}"
     return DashboardSignalItem(
         id=signal_id,
@@ -437,7 +475,7 @@ def _make_unified_signal(
         strength=strength,
         total_sources=len(entries),
         price=price,
-        sources=ordered_sources,
+        sources=enriched_sources,
     )
 
 

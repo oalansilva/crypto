@@ -52,7 +52,7 @@
   
   **Critério de Aceite:** Lógica de consolidação define resultado mesmo com conflito
 
-- [ ] **8. Testar performance**
+- [x] **8. Testar performance**
   
   Garantir que busca de 3 fontes não afeta performance.
   
@@ -62,31 +62,31 @@
 
 ## QA Tasks
 
-- [ ] **9. Validar que há um sinal por ativo**
+- [x] **9. Validar que há um sinal por ativo**
   
   BTC, ETH, etc — cada um tem exatamente 1 sinal consolidado.
   
   **Critério de Aceite:** Não há múltiplos sinais para o mesmo ativo
 
-- [ ] **10. Validar indicador de direção**
+- [x] **10. Validar indicador de direção**
   
   Sinais mostram direção correta (Compra/Venda/Neutro).
   
   **Critério de Aceite:** Direção corresponde à lógica de consolidação
 
-- [ ] **11. Validar breakdown (se implementado)**
+- [x] **11. Validar breakdown (se implementado)**
   
   Se mostrar contribuição por fonte, está correto.
   
   **Critério de Aceite:** Breakdown corresponde aos dados reais
 
-- [ ] **12. Testar sinais conflitantes**
+- [x] **12. Testar sinais conflitantes**
   
   Quando fontes discordam, consolidação ainda funciona.
   
   **Critério de Aceite:** Resultado é determinístico
 
-- [ ] **13. Testar mobile**
+- [x] **13. Testar mobile**
   
   View consolidada funciona em mobile.
   
@@ -110,3 +110,6 @@
 - **Dependência:** DESIGN cria protótipo antes de Alan approval
 - **ICE:** 224 (Impact: 8, Confidence: 7, Ease: 4)
 - **Scope change:** Não mostrar sinais separados por fonte — apenas sinal consolidado
+- Evidências de fechamento:
+  - Backend: `backend/tests/integration/test_ai_dashboard_dynamic.py` cobre consolidação por ativo, conflito determinístico e um limite simples de tempo para `_build_unified_signals`.
+  - Frontend/QA: `frontend/tests/e2e/card-92-unified-signal.spec.ts` cobre um sinal por ativo, força/direção, breakdown por fonte e viewport mobile.

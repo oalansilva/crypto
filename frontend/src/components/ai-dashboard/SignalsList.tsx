@@ -22,6 +22,18 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
   }
 
+  const signalTestId = (asset: string) => `ai-signal-card-${asset.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
+  const sourceStatusLabel = (status?: string) => {
+    switch ((status || '').toLowerCase()) {
+      case 'supporting':
+        return 'Confirma'
+      case 'conflicting':
+        return 'Conflita'
+      default:
+        return 'Neutro'
+    }
+  }
+
   const safeSignals = Array.isArray(signals) ? signals : []
 
   return (
@@ -49,7 +61,7 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
             const sources = Array.isArray(signal.sources) ? signal.sources : []
 
             return (
-            <details key={signal.id} className="page-card-muted group px-4 py-4">
+            <details key={signal.id} className="page-card-muted group px-4 py-4" data-testid={signalTestId(signal.asset)}>
               <summary className="flex cursor-pointer list-none flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -76,6 +88,7 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
               </summary>
 
               <div className="mt-4 space-y-3 border-t border-white/8 pt-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Fontes do sinal</div>
                 <div className="flex gap-1.5">
                   {Array.from({ length: Math.max(sourceCount, 3) }).map((_, index) => (
                     <div
@@ -90,11 +103,13 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
 
                 <div className="grid gap-2">
                   {sources.map((source) => (
-                    <div key={`${signal.id}-${source.source}`} className="rounded-2xl border border-white/8 bg-black/10 px-3 py-3">
+                    <div key={`${signal.id}-${source.source}`} className="rounded-2xl border border-white/8 bg-black/10 px-3 py-3" data-testid={`${signalTestId(signal.asset)}-source-${source.source.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`}>
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="text-sm font-semibold text-[var(--text-primary)]">{source.source}</div>
                         <Badge variant={actionVariant(source.action)}>{source.action}</Badge>
                         <Badge variant="outline">{source.confidence}%</Badge>
+                        <Badge variant="outline">{source.direction || 'Neutro'}</Badge>
+                        <Badge variant="outline">{sourceStatusLabel(source.status)}</Badge>
                         {source.price != null ? <Badge variant="outline">{formatPrice(source.price)}</Badge> : null}
                       </div>
                       {source.reason ? <p className="mt-2 text-sm text-[var(--text-secondary)]">{source.reason}</p> : null}

@@ -27,9 +27,9 @@ Um único sinal por ativo — o trader vê a decisão final consolidada, não as
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | `symbol` | string | Par de trading |
-| `action` | "COMPRA" \| "VENDA" \| "NEUTRO" | Ação final consolidada |
+| `action` | "BUY" \| "SELL" \| "HOLD" | Ação final consolidada no payload da API |
 | `direction` | string | Direção textual: "Alta forte", "Baixa", etc |
-| `sources` | array | Array de {source, direction, status} |
+| `sources` | array | Array de {source, action, confidence, direction, status, reason, price} |
 | `strength` | 0-3 | Quantas fontes confirmam |
 | `price` | number | Preço atual |
 
@@ -72,6 +72,7 @@ Observações:
 - O endpoint não expõe `price` no bloco `recent_signals`.
 - A lista vem embutida dentro do payload completo do dashboard.
 - O frontend atual usa apenas `recent_signals` para a seção de sinais.
+- Na implementação atual da consolidação, a contribuição "AI Dashboard" é derivada do histórico salvo em `signal_history` do usuário, reutilizado como fonte AI disponível no backend.
 
 ### Fonte 2 — On-chain (`GET /api/signals/onchain/snapshot` e `GET /api/signals/onchain/history`)
 

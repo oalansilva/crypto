@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -231,3 +232,104 @@ def test_ai_dashboard_returns_empty_dynamic_state_without_history(tmp_path: Path
     assert payload.news == []
     assert payload.insights[0].id == "empty-history"
     assert payload.section_errors["news"] == "CoinGecko indisponível no momento."
+
+
+def test_ai_dashboard_unified_signal_conflict_is_deterministic():
+    recent = ai_dashboard._build_unified_signals(
+        ai_rows=[],
+        signal_feed=[
+            Signal(
+                id="sig-btc",
+                asset="BTCUSDT",
+                type=SignalType.BUY,
+                confidence=82,
+                target_price=99000,
+                stop_loss=94000,
+                indicators=SignalIndicators.model_validate(
+                    {
+                        "RSI": 33.0,
+                        "MACD": "bullish",
+                        "BollingerBands": {"upper": 99500, "middle": 96500, "lower": 93500},
+                    }
+                ),
+                created_at=datetime.now(UTC),
+                risk_profile=RiskProfile.moderate,
+                current_price=97000,
+            )
+        ],
+        onchain_snapshot=[
+            (
+                type("Pair", (), {"symbol": "BTCUSDT", "token": "BTC", "chain": "ethereum", "last_price": 96900.0})(),
+                type("Result", (), {"signal": "SELL", "confidence": 78})(),
+            )
+        ],
+    )
+
+    assert len(recent) == 1
+    signal = recent[0]
+    assert signal.asset == "BTC/USDT"
+    assert signal.action == "HOLD"
+    assert signal.direction == "Neutro"
+    assert signal.strength == 0
+    assert signal.total_sources == 2
+    assert {source["status"] for source in signal.sources} == {"conflicting"}
+
+
+def test_ai_dashboard_unified_signal_builder_handles_many_assets_quickly():
+    ai_rows: list[SignalHistory] = []
+    signal_feed: list[Signal] = []
+    onchain_snapshot: list[tuple[object, object]] = []
+    now = datetime.now(UTC)
+
+    for index in range(200):
+        asset = f"ASSET{index}USDT"
+        ai_rows.append(
+            _make_signal(
+                signal_id=f"hist-{index}",
+                user_id="perf-user",
+                asset=asset,
+                signal_type="BUY" if index % 2 == 0 else "SELL",
+                confidence=70 + (index % 20),
+                created_at=now - timedelta(minutes=index),
+                rsi=29.0 if index % 2 == 0 else 72.0,
+                macd="bullish" if index % 2 == 0 else "bearish",
+                target_price=100 + index,
+            )
+        )
+        signal_feed.append(
+            Signal(
+                id=f"live-{index}",
+                asset=asset,
+                type=SignalType.BUY if index % 2 == 0 else SignalType.SELL,
+                confidence=65 + (index % 25),
+                target_price=120 + index,
+                stop_loss=90 + index,
+                indicators=SignalIndicators.model_validate(
+                    {
+                        "RSI": 30.0 if index % 2 == 0 else 70.0,
+                        "MACD": "bullish" if index % 2 == 0 else "bearish",
+                        "BollingerBands": {"upper": 125 + index, "middle": 110 + index, "lower": 95 + index},
+                    }
+                ),
+                created_at=now,
+                risk_profile=RiskProfile.moderate,
+                current_price=110 + index,
+            )
+        )
+        onchain_snapshot.append(
+            (
+                type("Pair", (), {"symbol": asset, "token": f"ASSET{index}", "chain": "ethereum", "last_price": 111 + index})(),
+                type("Result", (), {"signal": "BUY" if index % 2 == 0 else "SELL", "confidence": 60 + (index % 30)})(),
+            )
+        )
+
+    started = time.perf_counter()
+    recent = ai_dashboard._build_unified_signals(
+        ai_rows=ai_rows,
+        signal_feed=signal_feed,
+        onchain_snapshot=onchain_snapshot,
+    )
+    elapsed = time.perf_counter() - started
+
+    assert len(recent) == 8
+    assert elapsed < 0.25
