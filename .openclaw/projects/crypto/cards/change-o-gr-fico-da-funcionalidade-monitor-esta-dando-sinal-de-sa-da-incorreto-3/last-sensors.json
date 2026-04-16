@@ -1,0 +1,38 @@
+{
+  "project_slug": "crypto",
+  "schema_version": 1,
+  "sensors": {
+    "build": {
+      "command": "npm --prefix frontend run build",
+      "status": "pass",
+      "summary": "pass at 2026-04-16T15:33:02Z; vite build completed successfully with only the existing chunk-size warning."
+    },
+    "healthcheck": {
+      "command": null,
+      "status": "skip",
+      "summary": "not required by sensor policy"
+    },
+    "lint": {
+      "command": null,
+      "status": "skip",
+      "summary": "not required by sensor policy"
+    },
+    "playwright": {
+      "command": "cd frontend && PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:4175 npx playwright test tests/e2e/monitor-mobile-cards-timeframe.spec.ts -g \"monitor keeps mismatched exit signals in WAIT state with explicit context|monitor modal shows recent entry and exit history from the strategy payload\"",
+      "status": "pass",
+      "summary": "pass at 2026-04-16T15:26:14Z; sandbox launch failed with Chromium shutdown permission error, then both focused Playwright scenarios passed outside the sandbox in 13.4s against the Vite server on 127.0.0.1:4175. Report: frontend/playwright-report/index.html"
+    },
+    "test": {
+      "command": "./backend/.venv/bin/python -m pytest -q backend/tests/integration/test_opportunities_smoke.py -k signal_history",
+      "status": "pass",
+      "summary": "pass at 2026-04-16T15:33:02Z; backend smoke confirmed signal_history remains present in the opportunities route payload."
+    },
+    "typecheck": {
+      "command": "cd frontend && npx tsc --noEmit",
+      "status": "pass",
+      "summary": "pass at 2026-04-16T15:33:02Z; exit code 0"
+    }
+  },
+  "timestamp": "2026-04-16T18:21:00.122004+00:00",
+  "work_type": "full-stack"
+}

@@ -1,0 +1,13 @@
+{
+  "agent_id": "codex",
+  "card_key": "change-o-gr-fico-da-funcionalidade-monitor-esta-dando-sinal-de-sa-da-incorreto-3",
+  "last_reset_at": "2026-04-16T15:38:19.436502+00:00",
+  "last_reset_reason": "historico grande",
+  "last_run_id": "srv1403390-dev-949df30fa438",
+  "previous_session_key": "agent:dev:project-crypto:change-o-gr-fico-da-funcionalidade-monitor-esta-dando-sinal-de-sa-da-incorreto-3",
+  "project_slug": "crypto",
+  "reset_count": 18,
+  "schema_version": 1,
+  "session_key": "agent:dev:project-crypto:change-o-gr-fico-da-funcionalidade-monitor-esta-dando-sinal-de-sa-da-incorreto-3:reset-18",
+  "session_label": null
+}

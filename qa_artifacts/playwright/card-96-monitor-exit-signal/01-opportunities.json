@@ -1,0 +1,50 @@
+{
+  "count": 14,
+  "btc": {
+    "id": 9,
+    "symbol": "BTC/USDT",
+    "timeframe": "1d",
+    "template_name": "multi_ma_crossover",
+    "name": "multi_ma_crossover - BTC/USDT 1d (00:12:26)",
+    "notes": null,
+    "tier": 1,
+    "parameters": {
+      "direction": "long",
+      "ema_short": 18,
+      "sma_medium": 20,
+      "sma_long": 35,
+      "stop_loss": 0.042
+    },
+    "is_holding": true,
+    "distance_to_next_status": 2.22,
+    "next_status_label": "exit",
+    "indicator_values": {
+      "short": 71346.57,
+      "medium": 69796.7,
+      "long": 70294.6,
+      "open": 74131.55,
+      "close": 74809.99
+    },
+    "indicator_values_candle_time": "2026-04-15T00:00:00+00:00",
+    "entry_price": 72962.71,
+    "stop_price": 69898.27618,
+    "distance_to_stop_pct": 7,
+    "status": "HOLDING",
+    "badge": "info",
+    "message": "Em Hold. Distância para saída: 2.22%",
+    "last_price": 75163.11,
+    "timestamp": "2026-04-16 00:00:00+00:00",
+    "details": {
+      "status": "HOLDING",
+      "badge": "info",
+      "message": "Em Hold. Distância para saída: 2.22%",
+      "distance": 2.22,
+      "exit_details": {
+        "status": "NEUTRAL",
+        "badge": "neutral",
+        "message": "Waiting for setup",
+        "distance": 2.22
+      }
+    }
+  }
+}

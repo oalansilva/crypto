@@ -1,0 +1,26 @@
+BTC/USDT
+1d
+multi_ma_crossover - BTC/USDT 1d (00:12:26)
+WAIT
+Portfolio
+Strategy
+Price:
+$74,924.00
+Distance:
+2.22%
+SINAL INCONCLUSIVO: estado não confirmado. Sem candle válido/atual para esta resolução. EXIT bloqueado: timeframe da estratégia não corresponde ao timeframe exibido. Status desconhecido, tratado como estado de espera.
+signal: WAIT
+strategy tf: 1d
+display tf: 1h
+candle ref: -
+
+Sem candle válido/atual para esta resolução. EXIT bloqueado: timeframe da estratégia não corresponde ao timeframe exibido. Status desconhecido, tratado como estado de espera.
+
+PARAMETERS
+
+direction=long ema_short=18 sma_medium=20 sma_long=35 stop_loss=0.042
+
+NOTES
+Edit
+
+No notes.

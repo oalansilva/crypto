@@ -1,0 +1,34 @@
+BTC/USDT
+1d
+multi_ma_crossover - BTC/USDT 1d (00:12:26)
+WAIT
+Portfolio
+Strategy
+Price:
+$74,264.49
+Distance:
+2.22%
+Stop risk:
+5.88%
+entry: $72962.71000000
+stop: $69898.27618000
+SINAL INCONCLUSIVO: estado não confirmado. EXIT bloqueado: timeframe da estratégia não corresponde ao timeframe exibido.
+signal: WAIT
+strategy tf: 1d
+display tf: 1h
+candle ref: 2026-04-15T00:00:00+00:00
+
+EXIT bloqueado: timeframe da estratégia não corresponde ao timeframe exibido.
+
+PARAMETERS
+
+direction=long ema_short=18 sma_medium=20 sma_long=35 stop_loss=0.042
+
+INDICATOR VALUES
+
+short=71,346.57 · medium=69,796.70 · long=70,294.60 · open=74,131.55 · close=74,809.99
+
+NOTES
+Edit
+
+No notes.

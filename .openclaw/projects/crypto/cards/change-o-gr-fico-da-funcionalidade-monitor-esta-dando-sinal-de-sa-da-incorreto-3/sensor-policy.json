@@ -1,0 +1,37 @@
+{
+  "project_slug": "crypto",
+  "schema_version": 1,
+  "sensors": {
+    "build": {
+      "command": "npm --prefix frontend run build",
+      "required": true,
+      "timeout_seconds": 180
+    },
+    "healthcheck": {
+      "command": null,
+      "required": false,
+      "timeout_seconds": 60
+    },
+    "lint": {
+      "command": null,
+      "required": false,
+      "timeout_seconds": 120
+    },
+    "playwright": {
+      "command": "cd frontend && PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:<vite-port> npx playwright test tests/e2e/monitor-mobile-cards-timeframe.spec.ts -g \"monitor keeps mismatched exit signals in WAIT state with explicit context|monitor modal shows recent entry and exit history from the strategy payload\"",
+      "required": true,
+      "timeout_seconds": 600
+    },
+    "test": {
+      "command": "./backend/.venv/bin/python -m pytest -q backend/tests/integration/test_opportunities_smoke.py -k signal_history",
+      "required": true,
+      "timeout_seconds": 300
+    },
+    "typecheck": {
+      "command": "cd frontend && npx tsc --noEmit",
+      "required": false,
+      "timeout_seconds": 120
+    }
+  },
+  "work_type": "full-stack"
+}

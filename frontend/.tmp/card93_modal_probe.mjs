@@ -1,0 +1,22 @@
+import { chromium } from '@playwright/test';
+import fs from 'fs';
+const token = process.env.TOKEN;
+const outDir = '/root/.openclaw/workspace/crypto/qa_artifacts/playwright/card-93-falso-positivo-saida';
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({ viewport: { width: 1600, height: 1200 } });
+const page = await context.newPage();
+const responses=[];
+page.on('response', async resp=>{
+  if(resp.url().includes('/api/')) responses.push({url:resp.url(),status:resp.status()});
+});
+await page.addInitScript((tok)=>localStorage.setItem('auth_access_token', tok), token);
+await page.goto('http://127.0.0.1:5173/monitor', {waitUntil:'networkidle'});
+const btcCard = page.getByTestId('monitor-card-btc-usdt');
+await btcCard.click();
+await page.waitForTimeout(8000);
+await page.screenshot({path:`${outDir}/after-click.png`, fullPage:true});
+const bodyText = await page.locator('body').innerText();
+const modals = await page.locator('[role="dialog"]').count();
+fs.writeFileSync(`${outDir}/after-click.txt`, bodyText);
+fs.writeFileSync(`${outDir}/after-click-events.json`, JSON.stringify({url:page.url(),modals,responses}, null, 2));
+await browser.close();

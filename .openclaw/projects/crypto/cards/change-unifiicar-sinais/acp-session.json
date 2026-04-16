@@ -1,0 +1,13 @@
+{
+  "agent_id": "codex",
+  "card_key": "change-unifiicar-sinais",
+  "last_reset_at": "2026-04-15T19:28:18.660069+00:00",
+  "last_reset_reason": "historico grande",
+  "last_run_id": "srv1403390-dev-5831633add8e",
+  "previous_session_key": "agent:dev:project-crypto:change-unifiicar-sinais",
+  "project_slug": "crypto",
+  "reset_count": 20,
+  "schema_version": 1,
+  "session_key": "agent:dev:project-crypto:change-unifiicar-sinais:reset-20",
+  "session_label": null
+}

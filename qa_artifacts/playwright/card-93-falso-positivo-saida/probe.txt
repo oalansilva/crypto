@@ -1,0 +1,144 @@
+Crypto
+Operação, estratégia e execução
+PAINEL
+Monitor de sinais
+PRINCIPAL
+Playground
+Favoritos
+Monitor
+AI Dashboard
+Sinais
+Histórico
+Onchain
+ESTRATÉGIAS
+Combo
+CONTA
+Carteira
+Meu Perfil
+Alterar Senha
+ADMIN
+Preferências
+Recolher menu
+WORKSPACE
+Monitor de sinais
+Contraste otimizado
+AS
+ACCOUNT
+Alan Silva de Oliveira
+Opportunity Board
+
+Monitor your favorite strategies.
+
+Last updated: 2:53:58 AM
+
+Theme: black
+Refresh
+List:
+In Portfolio
+All
+Asset Type:
+Asset Type: All
+Asset Type: Crypto
+Asset Type: Stocks
+Tier:
+Tier: All
+Tier 1 – Core
+Tier 2 – Complementares
+Tier 3
+Tier 1 + Tier 2
+Sem tier
+Sort:
+Tier + Distância
+Distância (mais próximo)
+Símbolo
+Em Hold (3)
+Posições Ativas
+
+Estratégias com posição aberta. A distância mostra o quanto falta para o sinal de saída.
+
+BTC/USDT
+1d
+multi_ma_crossover - BTC/USDT 1d (00:12:26)
+HOLD
+Portfolio
+Strategy
+Price:
+$74,899.85
+Distance:
+2.22%
+Stop risk:
+6.68%
+entry: $72962.71000000
+stop: $69898.27618000
+Em Hold. Distância para saída: 2.22%
+PARAMETERS
+
+direction=long ema_short=18 sma_medium=20 sma_long=35 stop_loss=0.042
+
+INDICATOR VALUES
+
+short=71,346.57 · medium=69,796.70 · long=70,294.60 · open=74,131.55 · close=74,809.99
+
+NOTES
+Edit
+
+No notes.
+
+ETH/USDT
+1d
+multi_ma_crossover - ETH/USDT 1d (batch)
+HOLD
+Portfolio
+Strategy
+Price:
+$2,358.14
+Distance:
+2.41%
+Stop risk:
+12.60%
+entry: $2190.17000000
+stop: $2060.94997000
+Em Hold. Distância para saída: 2.41%
+PARAMETERS
+
+direction=long ema_short=20 sma_medium=23 sma_long=43 stop_loss=0.059
+
+INDICATOR VALUES
+
+short=2,200.29 · medium=2,148.59 · long=2,127.29 · open=2,322.44 · close=2,359.95
+
+NOTES
+Edit
+
+gerado em lote (965f2341)
+
+AVAX/USDT
+1d
+multi_ma_crossover - AVAX/USDT 1d (batch)
+HOLD
+Portfolio
+Strategy
+Price:
+$9.45
+Distance:
+1.80%
+Stop risk:
+8.29%
+entry: $9.39000000
+stop: $8.66697000
+Em Hold. Distância para saída: 1.80%
+PARAMETERS
+
+direction=long ema_short=6 sma_medium=14 sma_long=52 stop_loss=0.077
+
+INDICATOR VALUES
+
+short=9.36 · medium=9.19 · long=9.26 · open=9.30 · close=9.43
+
+NOTES
+Edit
+
+gerado em lote (7d0d89f5)
+
+Atualizado
+14 estratégias analisadas
