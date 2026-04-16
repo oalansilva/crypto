@@ -183,7 +183,7 @@ def test_ai_dashboard_is_dynamic_and_user_scoped(tmp_path: Path, monkeypatch):
 
     assert payload.stats.total_signals == 2
     assert payload.stats.hit_rate == 50
-    assert {item.asset for item in payload.recent_signals} == {"BTC/USDT", "ETH/USDT"}
+    assert {item.asset for item in payload.recent_signals} == {"BTC/USDT"}
     btc_signal = next(item for item in payload.recent_signals if item.asset == "BTC/USDT")
     assert btc_signal.action == "BUY"
     assert btc_signal.direction == "Compra forte"
@@ -232,6 +232,53 @@ def test_ai_dashboard_returns_empty_dynamic_state_without_history(tmp_path: Path
     assert payload.news == []
     assert payload.insights[0].id == "empty-history"
     assert payload.section_errors["news"] == "CoinGecko indisponível no momento."
+
+
+def test_ai_dashboard_hides_legacy_single_source_signals_when_no_unified_overlap(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    now = datetime.now(UTC)
+
+    async def fake_news():
+        return []
+
+    async def fake_sentiment():
+        return SentimentResult(
+            score=50,
+            components={"fear_greed": 50, "news": 50, "reddit": 50},
+            signal="neutral",
+        )
+
+    async def empty_signal_feed(*args, **kwargs):
+        return SignalListResponse(signals=[], total=0, cached_at=now, is_stale=False, available_assets=[])
+
+    async def empty_onchain_snapshot(*args, **kwargs):
+        return []
+
+    monkeypatch.setattr(ai_dashboard, "_fetch_coingecko_news", fake_news)
+    monkeypatch.setattr(ai_dashboard.sentiment_service, "get_market_sentiment", fake_sentiment)
+    monkeypatch.setattr(ai_dashboard.binance_service, "build_signal_feed", empty_signal_feed)
+    monkeypatch.setattr(ai_dashboard, "build_onchain_snapshot", empty_onchain_snapshot)
+
+    with SessionLocal() as db:
+        db.add(
+            _make_signal(
+                signal_id="legacy-ai-only",
+                user_id="user-a",
+                asset="USDPUSDT",
+                signal_type="BUY",
+                confidence=67,
+                created_at=now - timedelta(minutes=5),
+                rsi=33.3,
+                macd="bullish",
+                target_price=1.0,
+            )
+        )
+        db.commit()
+
+        payload = asyncio.run(ai_dashboard.get_ai_dashboard(current_user_id="user-a", db=db))
+
+    assert payload.recent_signals == []
+    assert "Nenhum sinal unificado disponível" in payload.section_errors["signals"]
 
 
 def test_ai_dashboard_unified_signal_conflict_is_deterministic():

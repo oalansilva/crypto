@@ -1,10 +1,5 @@
 import { Badge } from '@/components/ui/Badge'
-import { AIInsightsCard } from './AIInsightsCard'
-import { DailyNews } from './DailyNews'
-import { FearGreedGauge } from './FearGreedGauge'
-import { IndicatorCards } from './IndicatorCards'
 import { SignalsList } from './SignalsList'
-import { StatsCards } from './StatsCards'
 
 export type AIDashboardInsight = {
   id: string
@@ -134,23 +129,7 @@ export function AIDashboard({ data }: { data: AIDashboardResponse }) {
         </div>
       </section>
 
-      <StatsCards stats={data.stats} />
-
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-        <div className="grid gap-6 lg:grid-cols-2">
-          {data.insights.map((insight) => (
-            <AIInsightsCard key={insight.id} insight={insight} />
-          ))}
-        </div>
-        <FearGreedGauge fearGreed={data.fear_greed} sectionErrors={data.section_errors} />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <IndicatorCards indicators={data.indicators} />
-        <SignalsList signals={data.recent_signals} />
-      </section>
-
-      <DailyNews news={data.news} />
+      <SignalsList signals={data.recent_signals} sectionErrors={data.section_errors} />
     </div>
   )
 }

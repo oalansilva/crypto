@@ -9,6 +9,23 @@ import { apiUrl } from '@/lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { useAuth } from '@/stores/authStore'
 
+function normalizeAIDashboardPayload(payload: AIDashboardResponse): AIDashboardResponse {
+  const rawSignals = Array.isArray(payload.recent_signals) ? payload.recent_signals : []
+  const unifiedSignals = rawSignals.filter((signal) => Array.isArray(signal.sources) && signal.sources.length >= 2)
+  const droppedLegacySignals = rawSignals.length > 0 && unifiedSignals.length === 0
+
+  return {
+    ...payload,
+    recent_signals: unifiedSignals,
+    section_errors: {
+      ...(payload.section_errors || {}),
+      ...(droppedLegacySignals
+        ? { signals: 'A resposta atual não trouxe sinais realmente unificados. Itens legados de fonte única foram ocultados.' }
+        : {}),
+    },
+  }
+}
+
 function useAIDashboard(userId?: string) {
   return useQuery({
     queryKey: ['ai-dashboard', userId],
@@ -17,7 +34,7 @@ function useAIDashboard(userId?: string) {
       if (!response.ok) {
         throw new Error(`Falha ao carregar AI Dashboard (${response.status})`)
       }
-      return (await response.json()) as AIDashboardResponse
+      return normalizeAIDashboardPayload((await response.json()) as AIDashboardResponse)
     },
     enabled: Boolean(userId),
     staleTime: 60_000,

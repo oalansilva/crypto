@@ -16,7 +16,13 @@ function actionVariant(action: string) {
   }
 }
 
-export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
+export function SignalsList({
+  signals,
+  sectionErrors,
+}: {
+  signals: AIDashboardSignal[]
+  sectionErrors?: Record<string, string>
+}) {
   const formatPrice = (value: number | null | undefined) => {
     if (value == null || Number.isNaN(value)) return '—'
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
@@ -52,7 +58,7 @@ export function SignalsList({ signals }: { signals: AIDashboardSignal[] }) {
         <div className="mt-5 space-y-3">
           {safeSignals.length === 0 ? (
             <div className="page-card-muted px-4 py-4 text-sm text-[var(--text-secondary)]">
-              Nenhum sinal salvo para esta conta ainda.
+              {sectionErrors?.signals || 'Nenhum sinal unificado disponível agora.'}
             </div>
           ) : null}
           {safeSignals.map((signal) => {

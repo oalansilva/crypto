@@ -561,7 +561,7 @@ def _build_unified_signals(
     unified = [
         _make_unified_signal(asset_key=asset_key, display_asset=str(data["asset"]), entries=list(data["entries"]))
         for asset_key, data in grouped.items()
-        if data["entries"]
+        if len(data["entries"]) >= 2
     ]
     unified.sort(key=lambda item: (item.strength, item.confidence), reverse=True)
     return unified[:8]
@@ -806,8 +806,8 @@ async def get_ai_dashboard(
         onchain_snapshot=onchain_snapshot,
     )
 
-    if not recent_signals and history_rows:
-        recent_signals = _load_recent_signals_from_history(history_rows)
+    if not recent_signals:
+        section_errors["signals"] = section_errors.get("signals") or "Nenhum sinal unificado disponível com convergência suficiente entre as fontes."
 
     insights = _build_dynamic_insights(
         stats=stats,

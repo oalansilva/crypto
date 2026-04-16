@@ -115,3 +115,33 @@ test('card #92 keeps deterministic conflict handling and remains usable on mobil
   await expect(page.getByTestId('ai-signal-card-eth-usdt-source-on-chain')).toBeVisible()
   await expect(page.getByTestId('ai-signal-card-eth-usdt-source-signals')).toBeVisible()
 })
+
+test('ai-dashboard hides legacy non-unified signals instead of rendering fake 0/0 cards', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/api/ai/dashboard', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        generated_at: '2026-04-14T19:00:00.000Z',
+        insights: [],
+        fear_greed: { value: 64, label: 'Greed', tone: 'bullish' },
+        indicators: [],
+        recent_signals: [
+          { id: 'legacy-1', asset: 'USDP/USDT', action: 'BUY', confidence: 67, reason: 'RSI 33.3 neutro + MACD bullish + Bollinger em banda superior' },
+          { id: 'legacy-2', asset: 'HOME/USDT', action: 'BUY', confidence: 63, reason: 'RSI 30.6 neutro + MACD neutral + Bollinger em faixa média' },
+        ],
+        stats: { hit_rate: 62, total_signals: 2, avg_confidence: 72 },
+        news: [],
+        section_errors: {},
+      }),
+    })
+  })
+
+  await page.goto('/ai-dashboard')
+
+  await expect(page.getByText(/itens legados de fonte única foram ocultados/i)).toBeVisible()
+  await expect(page.getByText('USDP/USDT')).toHaveCount(0)
+  await expect(page.getByText('0/0')).toHaveCount(0)
+})
