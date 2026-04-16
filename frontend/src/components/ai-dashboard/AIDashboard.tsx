@@ -105,9 +105,9 @@ export function AIDashboard({ data }: { data: AIDashboardResponse }) {
               <span>AI Dashboard</span>
             </div>
             <div className="space-y-2">
-              <h1 className="section-title">Insights acionáveis para mercado, sinais e sentimento</h1>
+              <h1 className="section-title">Sinais unificados por ativo</h1>
               <p className="section-copy">
-                Consolidação em tempo real com indicadores técnicos, Fear &amp; Greed, sinais recentes e manchetes para suporte rápido à decisão.
+                Esta tela agora mostra apenas sinais realmente consolidados entre AI, Signals e On-chain. Quando não houver convergência suficiente, os itens legados de fonte única ficam ocultos.
               </p>
             </div>
           </div>

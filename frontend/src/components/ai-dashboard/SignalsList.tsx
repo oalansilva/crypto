@@ -59,6 +59,12 @@ export function SignalsList({
           {safeSignals.length === 0 ? (
             <div className="page-card-muted px-4 py-4 text-sm text-[var(--text-secondary)]">
               {sectionErrors?.signals || 'Nenhum sinal unificado disponível agora.'}
+              {sectionErrors?.onchain || sectionErrors?.stats ? (
+                <div className="mt-3 space-y-1 text-xs text-[var(--text-muted)]">
+                  {sectionErrors?.onchain ? <div>On-chain: {sectionErrors.onchain}</div> : null}
+                  {sectionErrors?.stats ? <div>Histórico AI: {sectionErrors.stats}</div> : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
           {safeSignals.map((signal) => {
