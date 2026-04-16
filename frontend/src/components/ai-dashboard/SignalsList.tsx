@@ -29,6 +29,8 @@ export function SignalsList({
   }
 
   const signalTestId = (asset: string) => `ai-signal-card-${asset.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
+  const criterionTestId = (asset: string, source: string, label: string) =>
+    `${signalTestId(asset)}-source-${source.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-criterion-${label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
   const sourceStatusLabel = (status?: string) => {
     switch ((status || '').toLowerCase()) {
       case 'supporting':
@@ -38,6 +40,11 @@ export function SignalsList({
       default:
         return 'Neutro'
     }
+  }
+  const formatCriterionScore = (value?: number | null) => {
+    if (value == null || Number.isNaN(value)) return '—'
+    const decimals = Number.isInteger(value) ? 0 : 1
+    return `${value.toFixed(decimals)}%`
   }
 
   const safeSignals = Array.isArray(signals) ? signals : []
@@ -125,6 +132,39 @@ export function SignalsList({
                         {source.price != null ? <Badge variant="outline">{formatPrice(source.price)}</Badge> : null}
                       </div>
                       {source.reason ? <p className="mt-2 text-sm text-[var(--text-secondary)]">{source.reason}</p> : null}
+                      {Array.isArray(source.criteria) && source.criteria.length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Critérios</div>
+                          <div className="space-y-2">
+                            {source.criteria.map((criterion) => {
+                              const rawScore = typeof criterion.score === 'number' && Number.isFinite(criterion.score) ? criterion.score : null
+                              const barWidth = rawScore == null ? 0 : Math.max(0, Math.min(100, Math.abs(rawScore)))
+                              const barClass = rawScore != null && rawScore < 0 ? 'bg-rose-400' : 'bg-sky-300'
+
+                              return (
+                                <div
+                                  key={`${signal.id}-${source.source}-${criterion.label}`}
+                                  className="rounded-xl border border-white/6 bg-white/[0.02] px-3 py-2"
+                                  data-testid={criterionTestId(signal.asset, source.source, criterion.label)}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="text-xs font-medium text-[var(--text-primary)]">{criterion.label}</div>
+                                    <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                                      {criterion.value ? <span>{criterion.value}</span> : null}
+                                      {rawScore != null ? <strong className="text-[var(--text-primary)]">{formatCriterionScore(rawScore)}</strong> : null}
+                                    </div>
+                                  </div>
+                                  {rawScore != null ? (
+                                    <div className="mt-2 h-1.5 rounded-full bg-white/8" aria-hidden="true">
+                                      <div className={`h-1.5 rounded-full ${barClass}`} style={{ width: `${barWidth}%` }} />
+                                    </div>
+                                  ) : null}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>

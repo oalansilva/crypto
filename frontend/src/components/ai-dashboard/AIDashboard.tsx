@@ -48,6 +48,11 @@ export type AIDashboardSignal = {
     status?: string
     reason?: string
     price?: number | null
+    criteria?: Array<{
+      label: string
+      score?: number | null
+      value?: string | null
+    }>
   }>
 }
 
@@ -107,7 +112,7 @@ export function AIDashboard({ data }: { data: AIDashboardResponse }) {
             <div className="space-y-2">
               <h1 className="section-title">Sinais unificados por ativo</h1>
               <p className="section-copy">
-                Esta tela agora mostra apenas sinais realmente consolidados entre AI, Signals e On-chain. Quando não houver convergência suficiente, os itens legados de fonte única ficam ocultos.
+                Esta tela exibe somente sinais consolidados entre AI, Signals e On-chain. Quando o cruzamento entre fontes não é suficiente, itens de fonte única são ocultados para manter apenas decisões confiáveis por ativo.
               </p>
             </div>
           </div>

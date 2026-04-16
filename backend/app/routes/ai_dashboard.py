@@ -69,6 +69,23 @@ class DashboardNewsItem(BaseModel):
     related_asset: str | None = None
 
 
+class DashboardSignalCriterion(BaseModel):
+    label: str
+    score: float | None = None
+    value: str | None = None
+
+
+class DashboardSignalSource(BaseModel):
+    source: str
+    action: str
+    confidence: int = Field(ge=0, le=100)
+    direction: str | None = None
+    status: str | None = None
+    reason: str | None = None
+    price: float | None = None
+    criteria: list[DashboardSignalCriterion] = Field(default_factory=list)
+
+
 class DashboardSignalItem(BaseModel):
     id: str
     asset: str
@@ -79,7 +96,7 @@ class DashboardSignalItem(BaseModel):
     strength: int = Field(default=0, ge=0, le=3)
     total_sources: int = Field(default=0, ge=0, le=3)
     price: float | None = None
-    sources: list[dict[str, Any]] = Field(default_factory=list)
+    sources: list[DashboardSignalSource] = Field(default_factory=list)
 
 
 class DashboardStatsPayload(BaseModel):
@@ -205,6 +222,27 @@ def _normalize_asset(asset: str | None) -> str:
 
 def _symbol_key(asset: str | None) -> str:
     return str(asset or "").strip().upper().replace("/", "").replace("-", "")
+
+
+def _collect_target_assets(ai_rows: list[SignalHistory], onchain_assets: list[str]) -> list[str]:
+    target_assets: list[str] = []
+    seen_assets: set[str] = set()
+
+    for asset in onchain_assets:
+        key = _symbol_key(asset)
+        if not key or key in seen_assets:
+            continue
+        seen_assets.add(key)
+        target_assets.append(key)
+
+    for row in ai_rows:
+        key = _symbol_key(row.asset)
+        if not key or key in seen_assets:
+            continue
+        seen_assets.add(key)
+        target_assets.append(key)
+
+    return target_assets
 
 
 def _parse_indicators(row: SignalHistory) -> dict | None:
@@ -374,6 +412,152 @@ def _coerce_price(value: Any) -> float | None:
         return None
 
 
+def _clamp_score(value: float) -> float:
+    return round(max(-100.0, min(100.0, float(value))), 1)
+
+
+def _compact_number(value: float | int | None, *, currency: bool = False) -> str | None:
+    if value is None:
+        return None
+
+    amount = float(value)
+    absolute = abs(amount)
+    suffix = ""
+    divisor = 1.0
+    if absolute >= 1_000_000_000:
+        suffix = "B"
+        divisor = 1_000_000_000
+    elif absolute >= 1_000_000:
+        suffix = "M"
+        divisor = 1_000_000
+    elif absolute >= 1_000:
+        suffix = "K"
+        divisor = 1_000
+
+    formatted = f"{amount / divisor:.1f}{suffix}" if suffix else f"{amount:.1f}"
+    if currency:
+        return f"${formatted}"
+    return formatted
+
+
+def _score_macd_status(value: str | None) -> float:
+    normalized = str(value or "").strip().lower()
+    if normalized == "bullish":
+        return 100.0
+    if normalized == "bearish":
+        return 0.0
+    return 50.0
+
+
+def _score_bollinger_status(value: str) -> float:
+    if value == "Banda inferior":
+        return 100.0
+    if value == "Banda superior":
+        return 0.0
+    return 50.0
+
+
+def _build_ai_source_criteria(row: SignalHistory, indicators: dict | None) -> list[DashboardSignalCriterion]:
+    if not indicators:
+        return []
+
+    criteria: list[DashboardSignalCriterion] = []
+    rsi_value = indicators.get("RSI")
+    if isinstance(rsi_value, (int, float)):
+        status, _tone = _rsi_status(float(rsi_value))
+        criteria.append(
+            DashboardSignalCriterion(
+                label="RSI",
+                score=_clamp_score(float(rsi_value)),
+                value=f"{float(rsi_value):.1f} · {status.lower()}",
+            )
+        )
+
+    macd_value = indicators.get("MACD")
+    if macd_value is not None:
+        status, _tone = _macd_status(str(macd_value))
+        criteria.append(
+            DashboardSignalCriterion(
+                label="MACD",
+                score=_score_macd_status(str(macd_value)),
+                value=status,
+            )
+        )
+
+    bollinger = indicators.get("BollingerBands")
+    if isinstance(bollinger, dict):
+        price_reference = row.entry_price or row.trigger_price or row.target_price
+        status, _tone = _bollinger_status(price_reference, bollinger)
+        if status != "Indisponível":
+            criteria.append(
+                DashboardSignalCriterion(
+                    label="Bollinger",
+                    score=_score_bollinger_status(status),
+                    value=status,
+                )
+            )
+
+    return criteria
+
+
+def _build_signals_source_criteria(signal: Signal) -> list[DashboardSignalCriterion]:
+    if signal.breakdown:
+        return [
+            DashboardSignalCriterion(label="RSI", score=_clamp_score(signal.breakdown.rsi_contribution), value="Contribuição"),
+            DashboardSignalCriterion(label="MACD", score=_clamp_score(signal.breakdown.macd_contribution), value="Contribuição"),
+            DashboardSignalCriterion(label="Sentimento", score=_clamp_score(signal.breakdown.sentiment_contribution), value="Ajuste"),
+        ]
+
+    return [
+        DashboardSignalCriterion(label="RSI", score=_clamp_score(signal.indicators.rsi), value=f"{signal.indicators.rsi:.1f}"),
+        DashboardSignalCriterion(label="MACD", score=_score_macd_status(signal.indicators.macd), value=signal.indicators.macd.capitalize()),
+    ]
+
+
+def _build_onchain_source_criteria(pair: Any, result: Any) -> list[DashboardSignalCriterion]:
+    breakdown = getattr(result, "breakdown", None)
+    metrics = getattr(result, "metrics", None)
+    if not isinstance(breakdown, dict) or not breakdown:
+        chain = str(getattr(pair, "chain", "") or "").strip()
+        return [
+            DashboardSignalCriterion(
+                label="On-chain",
+                score=_clamp_score(float(getattr(result, "confidence", 0) or 0.0)),
+                value=chain.capitalize() if chain else "Snapshot",
+            )
+        ]
+
+    metric_value_map = {
+        "tvl": _compact_number(getattr(metrics, "tvl", None), currency=True),
+        "active_addresses": _compact_number(getattr(metrics, "active_addresses", None)),
+        "exchange_flow": _compact_number(getattr(metrics, "exchange_flow", None), currency=True),
+        "github_commits": _compact_number(getattr(metrics, "github_commits", None)),
+        "github_stars": _compact_number(getattr(metrics, "github_stars", None)),
+        "github_issues": _compact_number(getattr(metrics, "github_issues", None)),
+    }
+    labels = {
+        "tvl": "TVL",
+        "active_addresses": "Endereços",
+        "exchange_flow": "Exchange flow",
+        "github_commits": "Commits",
+        "github_stars": "Stars",
+        "github_issues": "Issues",
+    }
+
+    criteria: list[DashboardSignalCriterion] = []
+    for key, label in labels.items():
+        if key not in breakdown:
+            continue
+        criteria.append(
+            DashboardSignalCriterion(
+                label=label,
+                score=_clamp_score(float(breakdown.get(key) or 0.0)),
+                value=metric_value_map.get(key),
+            )
+        )
+    return criteria
+
+
 def _source_direction(action: str | None) -> str:
     normalized = str(action or "").strip().upper()
     if normalized == "BUY":
@@ -507,13 +691,15 @@ def _build_unified_signals(
         group = ensure_group(row.asset)
         if not group:
             continue
+        indicators = _parse_indicators(row)
         group["entries"].append(
             {
                 "source": "AI Dashboard",
                 "action": str(row.type).upper(),
                 "confidence": int(row.confidence),
-                "reason": _build_signal_reason(row, _parse_indicators(row)),
+                "reason": _build_signal_reason(row, indicators),
                 "price": _coerce_price(row.entry_price or row.trigger_price or row.target_price),
+                "criteria": _build_ai_source_criteria(row, indicators),
             }
         )
 
@@ -536,6 +722,7 @@ def _build_unified_signals(
                 "confidence": int(signal.confidence),
                 "reason": breakdown_summary or f"Sinal {signal.type.value} com perfil {signal.risk_profile.value}.",
                 "price": _coerce_price(signal.current_price or signal.entry_price),
+                "criteria": _build_signals_source_criteria(signal),
             }
         )
 
@@ -555,6 +742,7 @@ def _build_unified_signals(
                 "confidence": int(result.confidence),
                 "reason": f"{pair.token} em {pair.chain} com leitura on-chain consolidada.",
                 "price": _coerce_price(getattr(pair, "last_price", None)),
+                "criteria": _build_onchain_source_criteria(pair, result),
             }
         )
 
@@ -800,10 +988,13 @@ async def get_ai_dashboard(
             tone=fear_greed_tone,
         )
 
-    if onchain_assets:
+    candidate_assets = _collect_target_assets(history_rows, onchain_assets)
+    signal_feed: list[Signal] = []
+
+    if candidate_assets:
         try:
             signal_feed_result = await binance_service.build_signal_feed_for_assets(
-                assets=onchain_assets,
+                assets=candidate_assets,
                 risk_profile=RiskProfile.moderate,
                 confidence_min=40,
                 limit=20,
@@ -813,21 +1004,18 @@ async def get_ai_dashboard(
             )
             signal_feed = list(signal_feed_result.signals)
         except Exception as exc:
-            logger.warning("Failed to load live signal feed for unified AI dashboard: %s", exc)
-            section_errors["signals"] = "Não foi possível atualizar os sinais técnicos."
-            signal_feed = []
-    else:
-        logger.warning("No onchain assets available; using fallback signal feed filtering.")
+            logger.warning("Failed to load targeted live signal feed for unified AI dashboard: %s", exc)
+
+    if not signal_feed:
         try:
             fallback_feed_result = await binance_service.build_signal_feed(
                 limit=20,
                 risk_profile=RiskProfile.moderate,
                 user_id=None,
                 confidence_min=40,
+                sentiment_score=sentiment_score,
             )
             signal_feed = list(fallback_feed_result.signals)
-            if not signal_feed:
-                section_errors["signals"] = "Não foi possível atualizar os sinais técnicos para ativos da visão unificada."
         except Exception as exc:
             logger.warning("Failed to load fallback live signal feed for AI dashboard: %s", exc)
             section_errors["signals"] = "Não foi possível atualizar os sinais técnicos."

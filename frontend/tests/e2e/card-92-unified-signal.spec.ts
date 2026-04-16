@@ -24,9 +24,45 @@ const DASHBOARD_PAYLOAD = {
       total_sources: 3,
       price: 97250,
       sources: [
-        { source: 'AI Dashboard', action: 'BUY', confidence: 91, direction: 'Compra', status: 'supporting', reason: 'RSI 28.4 em sobrevenda' },
-        { source: 'Signals', action: 'BUY', confidence: 88, direction: 'Compra', status: 'supporting', reason: 'RSI 40% · MACD 17% · Sentimento 22%' },
-        { source: 'On-chain', action: 'SELL', confidence: 67, direction: 'Venda', status: 'conflicting', reason: 'Fluxo on-chain defensivo.' },
+        {
+          source: 'AI Dashboard',
+          action: 'BUY',
+          confidence: 91,
+          direction: 'Compra',
+          status: 'supporting',
+          reason: 'RSI 28.4 em sobrevenda',
+          criteria: [
+            { label: 'RSI', score: 28.4, value: '28.4 · oversold' },
+            { label: 'MACD', score: 100, value: 'Bullish' },
+            { label: 'Bollinger', score: 100, value: 'Banda inferior' },
+          ],
+        },
+        {
+          source: 'Signals',
+          action: 'BUY',
+          confidence: 88,
+          direction: 'Compra',
+          status: 'supporting',
+          reason: 'RSI 40% · MACD 17% · Sentimento 22%',
+          criteria: [
+            { label: 'RSI', score: 40.2, value: 'Contribuição' },
+            { label: 'MACD', score: 17.2, value: 'Contribuição' },
+            { label: 'Sentimento', score: 22.2, value: 'Ajuste' },
+          ],
+        },
+        {
+          source: 'On-chain',
+          action: 'SELL',
+          confidence: 67,
+          direction: 'Venda',
+          status: 'conflicting',
+          reason: 'Fluxo on-chain defensivo.',
+          criteria: [
+            { label: 'TVL', score: 18.4, value: '$1.2M' },
+            { label: 'Endereços', score: 12.1, value: '84.2K' },
+            { label: 'Exchange flow', score: 9.8, value: '$540.0K' },
+          ],
+        },
       ],
     },
     {
@@ -40,9 +76,43 @@ const DASHBOARD_PAYLOAD = {
       total_sources: 3,
       price: 3520,
       sources: [
-        { source: 'AI Dashboard', action: 'SELL', confidence: 74, direction: 'Venda', status: 'conflicting', reason: 'Perda de momentum.' },
-        { source: 'Signals', action: 'HOLD', confidence: 55, direction: 'Neutro', status: 'neutral', reason: 'Sem gatilho técnico.' },
-        { source: 'On-chain', action: 'BUY', confidence: 72, direction: 'Compra', status: 'conflicting', reason: 'Recuperação on-chain.' },
+        {
+          source: 'AI Dashboard',
+          action: 'SELL',
+          confidence: 74,
+          direction: 'Venda',
+          status: 'conflicting',
+          reason: 'Perda de momentum.',
+          criteria: [
+            { label: 'RSI', score: 74.0, value: '74.0 · overbought' },
+            { label: 'MACD', score: 0, value: 'Bearish' },
+          ],
+        },
+        {
+          source: 'Signals',
+          action: 'HOLD',
+          confidence: 55,
+          direction: 'Neutro',
+          status: 'neutral',
+          reason: 'Sem gatilho técnico.',
+          criteria: [
+            { label: 'RSI', score: 51.0, value: 'Contribuição' },
+            { label: 'MACD', score: 21.0, value: 'Contribuição' },
+            { label: 'Sentimento', score: -3.5, value: 'Ajuste' },
+          ],
+        },
+        {
+          source: 'On-chain',
+          action: 'BUY',
+          confidence: 72,
+          direction: 'Compra',
+          status: 'conflicting',
+          reason: 'Recuperação on-chain.',
+          criteria: [
+            { label: 'TVL', score: 21.4, value: '$2.4M' },
+            { label: 'Endereços', score: 16.0, value: '95.0K' },
+          ],
+        },
       ],
     },
   ],
@@ -96,6 +166,8 @@ test('card #92 renders one consolidated signal per asset with source breakdown',
   await expect(page.getByTestId('ai-signal-card-btc-usdt-source-ai-dashboard')).toContainText('Confirma')
   await expect(page.getByTestId('ai-signal-card-btc-usdt-source-signals')).toContainText('Confirma')
   await expect(page.getByTestId('ai-signal-card-btc-usdt-source-on-chain')).toContainText('Conflita')
+  await expect(page.getByTestId('ai-signal-card-btc-usdt-source-signals-criterion-rsi')).toContainText('40.2%')
+  await expect(page.getByTestId('ai-signal-card-btc-usdt-source-on-chain-criterion-tvl')).toContainText('$1.2M')
 })
 
 test('card #92 keeps deterministic conflict handling and remains usable on mobile', async ({ page }) => {
@@ -114,6 +186,7 @@ test('card #92 keeps deterministic conflict handling and remains usable on mobil
   await expect(page.getByTestId('ai-signal-card-eth-usdt-source-ai-dashboard')).toBeVisible()
   await expect(page.getByTestId('ai-signal-card-eth-usdt-source-on-chain')).toBeVisible()
   await expect(page.getByTestId('ai-signal-card-eth-usdt-source-signals')).toBeVisible()
+  await expect(page.getByTestId('ai-signal-card-eth-usdt-source-signals-criterion-sentimento')).toContainText('-3.5%')
 })
 
 test('ai-dashboard hides legacy non-unified signals instead of rendering fake 0/0 cards', async ({ page }) => {

@@ -11,7 +11,17 @@ import { useAuth } from '@/stores/authStore'
 
 function normalizeAIDashboardPayload(payload: AIDashboardResponse): AIDashboardResponse {
   const rawSignals = Array.isArray(payload.recent_signals) ? payload.recent_signals : []
-  const unifiedSignals = rawSignals.filter((signal) => Array.isArray(signal.sources) && signal.sources.length >= 2)
+  const unifiedSignals = rawSignals.filter((signal) => {
+    if (Array.isArray(signal.sources) && signal.sources.length > 0) {
+      const sourceNames = signal.sources
+        .map((item) => (typeof item.source === 'string' ? item.source.trim().toLowerCase() : ''))
+        .filter(Boolean)
+      const uniqueSources = new Set(sourceNames)
+      return uniqueSources.size >= 2
+    }
+
+    return Number.isFinite(signal.total_sources) && signal.total_sources >= 2
+  })
   const droppedLegacySignals = rawSignals.length > 0 && unifiedSignals.length === 0
 
   return {
@@ -20,7 +30,7 @@ function normalizeAIDashboardPayload(payload: AIDashboardResponse): AIDashboardR
     section_errors: {
       ...(payload.section_errors || {}),
       ...(droppedLegacySignals
-        ? { signals: 'A resposta atual não trouxe sinais realmente unificados. Itens legados de fonte única foram ocultados.' }
+        ? { signals: 'Não houve alinhamento suficiente entre as fontes nesta carga. Itens legados de fonte única foram ocultados para manter a visão consolidada.' }
         : {}),
     },
   }
