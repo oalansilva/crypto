@@ -84,7 +84,7 @@ test('card #92 renders one consolidated signal per asset with source breakdown',
   await page.goto('/ai-dashboard')
 
   await expect(page.getByText('AI Dashboard').first()).toBeVisible()
-  await expect(page.getByText(/sinais unificados/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Sinais unificados por ativo/i })).toBeVisible()
   await expect(page.getByTestId('ai-signal-card-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('ai-signal-card-eth-usdt')).toBeVisible()
   await expect(page.getByTestId('ai-signal-card-btc-usdt')).toContainText('2/3')
