@@ -1,0 +1,13 @@
+[run]
+source =
+    backend/app
+omit =
+    backend/app/check_ichimoku.py
+    backend/app/check_ichimoku_v2.py
+    backend/app/check_ichimoku_values.py
+    backend/app/startup_seed.py
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False

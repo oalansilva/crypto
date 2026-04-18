@@ -11,6 +11,7 @@ concurrency:
 env:
   ARBITRAGE_MONITOR_ENABLED: "0"
   OPPORTUNITIES_SMOKE_MAX_SECONDS: "2.0"
+  MIN_BACKEND_TOTAL_COVERAGE: "45"
   MIN_BACKEND_DIFF_COVERAGE: "70"
 
 permissions:
@@ -171,6 +172,8 @@ jobs:
         run: |
           pytest -q backend/tests \
             --cov=backend/app \
+            --cov-config=.coveragerc \
+            --cov-fail-under="${MIN_BACKEND_TOTAL_COVERAGE}" \
             --cov-report=term \
             --cov-report=xml:coverage.xml
 
