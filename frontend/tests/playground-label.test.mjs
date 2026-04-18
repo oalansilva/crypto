@@ -6,10 +6,10 @@ import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const appPath = path.resolve(__dirname, '../src/App.tsx')
+const homePagePath = path.resolve(__dirname, '../src/pages/HomePage.tsx')
 
-test('Playground primary action label is exactly "New Backtest2"', async () => {
-  const source = await readFile(appPath, 'utf8')
-  assert.match(source, /<span className="gradient-text">New Backtest2<\/span>/)
-  assert.doesNotMatch(source, /<span className="gradient-text">New Backtest<\/span>/)
+test('Home dashboard keeps the primary backtest CTA wired to combo selection', async () => {
+  const source = await readFile(homePagePath, 'utf8')
+  assert.match(source, /navigate\('\/combo\/select'\)/)
+  assert.match(source, /Rodar um backtest/)
 })
