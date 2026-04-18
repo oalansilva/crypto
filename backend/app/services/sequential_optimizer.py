@@ -17,7 +17,7 @@ from pathlib import Path
 from app.schemas.indicator_params import (
     get_indicator_schema,
     calculate_total_stages,
-    TIMEFRAME_OPTIONS
+    TIMEFRAME_OPTIONS,
 )
 from app.services.backtest_service import BacktestService
 from src.data.incremental_loader import IncrementalLoader
@@ -26,86 +26,91 @@ from src.data.incremental_loader import IncrementalLoader
 class SequentialOptimizer:
     """
     Sequential parameter optimization service.
-    
+
     Optimizes one parameter at a time, using best results from previous stages.
     Includes checkpoint system for crash recovery.
     """
-    
+
     def __init__(self, checkpoint_dir: str = "backend/data/checkpoints"):
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.backtest_service = BacktestService()
-    
+
     def generate_stages(
-        self, 
-        strategy: str, 
-        symbol: str, 
+        self,
+        strategy: str,
+        symbol: str,
         fixed_timeframe: Optional[str] = None,
         custom_ranges: Optional[Dict[str, Any]] = None,
-        include_risk: bool = True
+        include_risk: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Generate optimization stages dynamically based on indicator schema.
-        
+
         Args:
             strategy: Strategy name (e.g., "macd", "rsi")
             symbol: Trading symbol (e.g., "BTC/USDT")
             fixed_timeframe: If set, skips timeframe optimization stage
             custom_ranges: Optional overrides for parameter ranges
             include_risk: If True, includes Risk Management parameters (stop_loss, stop_gain)
-            
+
         Returns:
             List of stage configurations
         """
         indicator_schema = get_indicator_schema(strategy)
         if not indicator_schema:
             raise ValueError(f"Unknown strategy: {strategy}")
-        
+
         stages = []
-        
+
         # Stage 1: Timeframe optimization (Only if NOT fixed)
         if not fixed_timeframe:
-            stages.append({
-                "stage_num": 1,
-                "stage_name": "Timeframe",
-                "parameter": "timeframe",
-                "values": TIMEFRAME_OPTIONS,
-                "locked_params": {},
-                "description": "Optimize trading timeframe"
-            })
+            stages.append(
+                {
+                    "stage_num": 1,
+                    "stage_name": "Timeframe",
+                    "parameter": "timeframe",
+                    "values": TIMEFRAME_OPTIONS,
+                    "locked_params": {},
+                    "description": "Optimize trading timeframe",
+                }
+            )
             stage_offset = 1
         else:
             stage_offset = 0
-        
+
         # Stages 2 to N+1: Indicator parameters
         stage_num = 1 + stage_offset
-        
+
         # Helper to process schema parameters
         def process_schema_params(schema_dict, source_name="Indicator"):
             nonlocal stage_num
             for param_name, param_schema in schema_dict.items():
                 # Check for custom range override
                 opt_range = param_schema.optimization_range
-                
+
                 if custom_ranges and len(custom_ranges) > 0:
                     # If custom ranges are provided, ONLY optimize those parameters
                     if param_name not in custom_ranges:
                         continue
-                    
+
                     custom = custom_ranges[param_name]
                     # Format: {min: x, max: y, step: z}
-                    if isinstance(custom, dict) and 'min' in custom:
+                    if isinstance(custom, dict) and "min" in custom:
                         # Create temporary range object or list of values
                         values = []
-                        current = float(custom['min'])
-                        end = float(custom['max'])
-                        step = float(custom.get('step', 1.0))
-                        
-                        if step <= 0: step = 1.0 # Prevent infinite loop
-                        
-                        while current <= end + (step * 0.1): # Float tolerance
+                        current = float(custom["min"])
+                        end = float(custom["max"])
+                        step = float(custom.get("step", 1.0))
+
+                        if step <= 0:
+                            step = 1.0  # Prevent infinite loop
+
+                        while current <= end + (step * 0.1):  # Float tolerance
                             # Inferred type check from default value
-                            if param_schema.default is not None and isinstance(param_schema.default, int):
+                            if param_schema.default is not None and isinstance(
+                                param_schema.default, int
+                            ):
                                 values.append(int(current))
                             else:
                                 values.append(round(current, 4))
@@ -113,7 +118,7 @@ class SequentialOptimizer:
                     else:
                         # Fallback or direct list
                         values = [custom] if not isinstance(custom, list) else custom
-                
+
                 elif opt_range:
                     # Use default schema range
                     values = []
@@ -122,26 +127,28 @@ class SequentialOptimizer:
                         values.append(current)
                         current += opt_range.step
                 else:
-                    continue # No optimization for this param
+                    continue  # No optimization for this param
 
                 # Ensure stop_loss=0 is always tested for comparison
-                if param_name == 'stop_loss':
+                if param_name == "stop_loss":
                     # Check if 0 is already in values
                     has_zero = any(v == 0 or v == 0.0 for v in values)
                     if not has_zero:
                         values.append(0.0)
                         values.sort()
-    
+
                 if values:
-                    stages.append({
-                        "stage_num": stage_num,
-                        "stage_name": param_name.replace("_", " ").title(),
-                        "parameter": param_name,
-                        "values": values,
-                        "locked_params": {},  # Will be filled during execution
-                        "description": param_schema.description,
-                        "market_standard": param_schema.market_standard
-                    })
+                    stages.append(
+                        {
+                            "stage_num": stage_num,
+                            "stage_name": param_name.replace("_", " ").title(),
+                            "parameter": param_name,
+                            "values": values,
+                            "locked_params": {},  # Will be filled during execution
+                            "description": param_schema.description,
+                            "market_standard": param_schema.market_standard,
+                        }
+                    )
                     stage_num += 1
 
         # Process Indicator Parameters
@@ -150,106 +157,107 @@ class SequentialOptimizer:
         # Process Risk Management Parameters (ONLY if include_risk=True)
         if include_risk:
             from app.schemas.indicator_params import RISK_MANAGEMENT_SCHEMA
+
             process_schema_params(RISK_MANAGEMENT_SCHEMA, "Risk")
-        
+
         return stages
-    
+
     def get_full_history_dates(self, symbol: str) -> Tuple[str, str]:
         """
         Auto-detect full available history for a symbol.
-        
+
         Args:
             symbol: Trading symbol
-            
+
         Returns:
             Tuple of (start_date, end_date) as ISO strings
         """
         # Fix: IncrementalLoader defaults to binance, doesn't take symbol in init
-        loader = IncrementalLoader() 
-        
+        loader = IncrementalLoader()
+
         # Load data ensuring full history (start from 2017)
         # timeframe="1d" is sufficient for determining range
         df = loader.fetch_data(symbol=symbol, timeframe="1d", since_str="2017-01-01")
-        
+
         if df.empty:
             raise ValueError(f"No data available for {symbol}")
-            
+
         # Ensure index is datetime if it's not already (fetch_data returns default index usually)
         # fetch_data returns 'timestamp_utc' column
-        if 'timestamp_utc' in df.columns:
-            start_date = df['timestamp_utc'].min().isoformat()
-            end_date = df['timestamp_utc'].max().isoformat()
+        if "timestamp_utc" in df.columns:
+            start_date = df["timestamp_utc"].min().isoformat()
+            end_date = df["timestamp_utc"].max().isoformat()
         else:
             # Fallback
             start_date = df.index.min().isoformat()
             end_date = df.index.max().isoformat()
-        
+
         logging.info(f"Full history period: {start_date} to {end_date} ({len(df)} candles)")
-        
+
         return start_date, end_date
-    
+
     def create_checkpoint(self, job_id: str, state: Dict[str, Any]) -> None:
         """
         Save checkpoint after each test completion.
-        
+
         Args:
             job_id: Unique job identifier
             state: Current optimization state
         """
         checkpoint_file = self.checkpoint_dir / f"{job_id}.json"
-        
+
         state["timestamp"] = datetime.utcnow().isoformat()
         state["status"] = "in_progress"
-        
+
         with open(checkpoint_file, "w") as f:
             json.dump(state, f, indent=2)
-    
+
     def load_checkpoint(self, job_id: str) -> Optional[Dict[str, Any]]:
         """
         Load checkpoint state for recovery.
-        
+
         Args:
             job_id: Unique job identifier
-            
+
         Returns:
             Checkpoint state if exists, None otherwise
         """
         checkpoint_file = self.checkpoint_dir / f"{job_id}.json"
-        
+
         if not checkpoint_file.exists():
             return None
-        
+
         with open(checkpoint_file, "r") as f:
             return json.load(f)
-    
+
     def delete_checkpoint(self, job_id: str) -> None:
         """
         Delete checkpoint after successful completion.
-        
+
         Args:
             job_id: Unique job identifier
         """
         checkpoint_file = self.checkpoint_dir / f"{job_id}.json"
         if checkpoint_file.exists():
             checkpoint_file.unlink()
-    
+
     def find_incomplete_jobs(self) -> List[Dict[str, Any]]:
         """
         Find all incomplete optimization jobs.
-        
+
         Returns:
             List of incomplete job states
         """
         incomplete = []
-        
+
         for checkpoint_file in self.checkpoint_dir.glob("*.json"):
             with open(checkpoint_file, "r") as f:
                 state = json.load(f)
                 if state.get("status") == "in_progress":
                     incomplete.append(state)
-        
+
         return incomplete
-    
+
     async def run_stage(
         self,
         job_id: str,
@@ -257,11 +265,11 @@ class SequentialOptimizer:
         symbol: str,
         strategy: str,
         locked_params: Dict[str, Any],
-        start_from_test: int = 0
+        start_from_test: int = 0,
     ) -> Dict[str, Any]:
         """
         Execute a single optimization stage.
-        
+
         Args:
             job_id: Unique job identifier
             stage_config: Stage configuration
@@ -269,30 +277,30 @@ class SequentialOptimizer:
             strategy: Strategy name
             locked_params: Parameters locked from previous stages
             start_from_test: Resume from this test index (for recovery)
-            
+
         Returns:
             Stage results with best value
         """
         stage_num = stage_config["stage_num"]
         parameter = stage_config["parameter"]
         values = stage_config["values"]
-        
+
         # Get full history dates
         start_date, end_date = self.get_full_history_dates(symbol)
-        
+
         results = []
         best_result = None
         best_value = None
-        
+
         # Resume from checkpoint if needed
         for i, value in enumerate(values):
             if i < start_from_test:
                 continue  # Skip already completed tests
-            
+
             # Build test parameters
             test_params = locked_params.copy()
             test_params[parameter] = value
-            
+
             # Run backtest with full history
             # Build config for BacktestService
             config = {
@@ -307,42 +315,48 @@ class SequentialOptimizer:
                 "cash": 10000,
                 # Fix: Pass risk parameters to BacktestService
                 "stop_pct": test_params.get("stop_loss"),
-                "take_pct": test_params.get("stop_gain")
+                "take_pct": test_params.get("stop_gain"),
             }
-            
-            logging.info(f"Running backtest: {symbol} {test_params.get('timeframe', '?')} from {start_date[:10]} to {end_date[:10]}")
+
+            logging.info(
+                f"Running backtest: {symbol} {test_params.get('timeframe', '?')} from {start_date[:10]} to {end_date[:10]}"
+            )
 
             # Run backtest (synchronous)
             backtest_result = self.backtest_service.run_backtest(config)
-            
+
             # Extract metrics (handle nested structure)
             # Structure: {'results': {'StrategyName': {'metrics': ...}}}
             try:
                 # Debug: Print the structure
                 print(f"DEBUG: backtest_result keys: {backtest_result.keys()}")
-                
+
                 results_dict = backtest_result.get("results", {})
-                print(f"DEBUG: results_dict keys: {results_dict.keys() if results_dict else 'None'}")
-                
+                print(
+                    f"DEBUG: results_dict keys: {results_dict.keys() if results_dict else 'None'}"
+                )
+
                 if results_dict:
                     # Take the first result (we only ran one strategy)
                     strat_result = list(results_dict.values())[0]
-                    
+
                     # Check if there's an error
-                    if 'error' in strat_result:
+                    if "error" in strat_result:
                         logging.error(f"Backtest failed: {strat_result['error']}")
-                        metrics = {"total_pnl": 0, "error": strat_result['error']}
+                        metrics = {"total_pnl": 0, "error": strat_result["error"]}
                     else:
                         metrics = strat_result.get("metrics", {})
                         trades_list = strat_result.get("trades", [])  # Extract trades
-                        
+
                         # DEBUG METRICS
-                        tr_pct = metrics.get('total_return_pct', 'N/A')
-                        fe = metrics.get('final_equity', 'N/A')
-                        tpnl = metrics.get('total_pnl', 'N/A')
-                        logging.info(f"DEBUG: Test {i+1} ({parameter}={value}) -> Return: {tr_pct}, Equity: {fe}, PnL: {tpnl}")
-                        
-                        if not metrics or 'total_pnl' not in metrics:
+                        tr_pct = metrics.get("total_return_pct", "N/A")
+                        fe = metrics.get("final_equity", "N/A")
+                        tpnl = metrics.get("total_pnl", "N/A")
+                        logging.info(
+                            f"DEBUG: Test {i+1} ({parameter}={value}) -> Return: {tr_pct}, Equity: {fe}, PnL: {tpnl}"
+                        )
+
+                        if not metrics or "total_pnl" not in metrics:
                             logging.warning(f"No valid metrics found, using default")
                             metrics = {"total_pnl": 0}
                 else:
@@ -351,6 +365,7 @@ class SequentialOptimizer:
             except Exception as e:
                 print(f"ERROR extracting metrics: {e}")
                 import traceback
+
                 traceback.print_exc()
                 metrics = {"total_pnl": 0}
                 trades_list = []  # No trades on error
@@ -358,20 +373,24 @@ class SequentialOptimizer:
             result = {
                 parameter: value,
                 "metrics": metrics,
-                "trades": trades_list if 'trades_list' in locals() else [],  # Include trades
+                "trades": trades_list if "trades_list" in locals() else [],  # Include trades
                 "test_num": i + 1,
-                "total_tests": len(values)
+                "total_tests": len(values),
             }
             results.append(result)
-            
+
             # Track best result
-            current_pnl = metrics.get("total_pnl", float('-inf'))
-            best_pnl = best_result["metrics"].get("total_pnl", float('-inf')) if best_result else float('-inf')
-            
+            current_pnl = metrics.get("total_pnl", float("-inf"))
+            best_pnl = (
+                best_result["metrics"].get("total_pnl", float("-inf"))
+                if best_result
+                else float("-inf")
+            )
+
             if best_result is None or current_pnl > best_pnl:
                 best_result = result
                 best_value = value
-            
+
             # Create checkpoint after each test
             checkpoint_state = {
                 "job_id": job_id,
@@ -384,51 +403,51 @@ class SequentialOptimizer:
                 "total_tests_in_stage": len(values),
                 "completed_tests": results,
                 "best_result": best_result,
-                "locked_params": locked_params
+                "locked_params": locked_params,
             }
             self.create_checkpoint(job_id, checkpoint_state)
-        
+
         return {
             "stage_num": stage_num,
             "stage_name": stage_config["stage_name"],
             "parameter": parameter,
             "results": results,
             "best_value": best_value,
-            "best_result": best_result
+            "best_result": best_result,
         }
-    
+
     async def resume_from_checkpoint(self, job_id: str) -> Dict[str, Any]:
         """
         Resume optimization from last checkpoint.
-        
+
         Args:
             job_id: Unique job identifier
-            
+
         Returns:
             Optimization results
         """
         checkpoint = self.load_checkpoint(job_id)
         if not checkpoint:
             raise ValueError(f"No checkpoint found for job {job_id}")
-        
+
         # Extract state
         symbol = checkpoint["symbol"]
         strategy = checkpoint["strategy"]
         current_stage = checkpoint["current_stage"]
         tests_completed = checkpoint["tests_completed"]
         locked_params = checkpoint["locked_params"]
-        
+
         # Generate stages
         stages = self.generate_stages(strategy, symbol)
-        
+
         # Resume from current stage
         stage_config = stages[current_stage - 1]
-        
+
         return await self.run_stage(
             job_id=job_id,
             stage_config=stage_config,
             symbol=symbol,
             strategy=strategy,
             locked_params=locked_params,
-            start_from_test=tests_completed
+            start_from_test=tests_completed,
         )

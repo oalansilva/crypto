@@ -4,10 +4,12 @@ from typing import Optional, Literal, Union, List
 from datetime import datetime
 from uuid import UUID
 
+
 class RangeParam(BaseModel):
     min: float
     max: float
     step: float
+
 
 class BacktestRunCreate(BaseModel):
     mode: Literal["run", "compare", "optimize"]
@@ -41,10 +43,12 @@ class BacktestRunCreate(BaseModel):
             return self
         raise ValueError("Unsupported data_source. Supported values: 'ccxt' (default) or 'stooq'.")
 
+
 class BacktestRunResponse(BaseModel):
     run_id: UUID
     status: Literal["PENDING", "RUNNING", "DONE", "FAILED"]
     message: str
+
 
 class BacktestStatusResponse(BaseModel):
     run_id: UUID
@@ -53,6 +57,7 @@ class BacktestStatusResponse(BaseModel):
     progress: float = 0.0  # NEW: Progress percentage (0-100)
     current_step: Optional[str] = None  # NEW: Description of current activity
     error_message: Optional[str] = None
+
 
 class BacktestRunListItem(BaseModel):
     id: UUID
@@ -65,6 +70,7 @@ class BacktestRunListItem(BaseModel):
     message: Optional[str] = None
     progress: float = 0.0
 
+
 class PresetResponse(BaseModel):
     id: str
     name: str
@@ -74,8 +80,10 @@ class PresetResponse(BaseModel):
 
 # ===== NEW: Enhanced Metrics Schemas =====
 
+
 class BenchmarkMetrics(BaseModel):
     """Métricas do benchmark (Buy & Hold)."""
+
     return_pct: float
     cagr: float
     final_value: float
@@ -83,6 +91,7 @@ class BenchmarkMetrics(BaseModel):
 
 class CriteriaResult(BaseModel):
     """Resultado da avaliação GO/NO-GO."""
+
     status: Literal["GO", "NO-GO"]
     reasons: List[str]
     warnings: List[str]
@@ -93,6 +102,7 @@ class EnhancedMetrics(BaseModel):
     Métricas avançadas de backtesting.
     Inclui métricas existentes + novas métricas calculadas.
     """
+
     # Existentes (mantidas para compatibilidade)
     total_return_pct: Optional[float] = None
     max_drawdown: Optional[float] = None
@@ -100,28 +110,28 @@ class EnhancedMetrics(BaseModel):
     profit_factor: Optional[float] = None
     win_rate: Optional[float] = None
     total_trades: Optional[int] = None
-    
+
     # Novos - Performance
     cagr: Optional[float] = None
     monthly_return_avg: Optional[float] = None
-    
+
     # Novos - Risco
     avg_drawdown: Optional[float] = None
     max_dd_duration_days: Optional[int] = None
     recovery_factor: Optional[float] = None
-    
+
     # Novos - Risk-Adjusted
     sortino_ratio: Optional[float] = None
     calmar_ratio: Optional[float] = None
-    
+
     # Novos - Trade Stats
     expectancy: Optional[float] = None
     max_consecutive_wins: Optional[int] = None
     max_consecutive_losses: Optional[int] = None
     trade_concentration_top_10_pct: Optional[float] = None
-    
+
     # Benchmark
     benchmark: Optional[BenchmarkMetrics] = None
-    
+
     # Critérios GO/NO-GO
     criteria_result: Optional[CriteriaResult] = None

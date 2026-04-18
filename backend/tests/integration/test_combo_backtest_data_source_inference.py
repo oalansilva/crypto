@@ -42,7 +42,11 @@ def _patch_backtest_dependencies(monkeypatch):
     }
     provider_calls = install_market_data_provider_mock(monkeypatch, [combo_routes], providers)
 
-    monkeypatch.setattr(combo_service.ComboService, "create_strategy", lambda self, template_name, parameters: _FakeStrategy())
+    monkeypatch.setattr(
+        combo_service.ComboService,
+        "create_strategy",
+        lambda self, template_name, parameters: _FakeStrategy(),
+    )
 
     monkeypatch.setattr(
         combo_optimizer,

@@ -30,7 +30,9 @@ def get_system_preference_value(db: Session, key: str) -> str | None:
     return value or None
 
 
-def set_system_preference_value(db: Session, *, key: str, value: str, updated_by_user_id: str) -> SystemPreference:
+def set_system_preference_value(
+    db: Session, *, key: str, value: str, updated_by_user_id: str
+) -> SystemPreference:
     pref = get_system_preference(db, key)
     if pref is None:
         pref = SystemPreference(key=key, value=value.strip(), updated_by_user_id=updated_by_user_id)
@@ -53,7 +55,9 @@ def set_optional_system_preference_value(
     if value is None:
         delete_system_preference_value(db, key=key)
         return None
-    return set_system_preference_value(db, key=key, value=str(value), updated_by_user_id=updated_by_user_id)
+    return set_system_preference_value(
+        db, key=key, value=str(value), updated_by_user_id=updated_by_user_id
+    )
 
 
 def delete_system_preference_value(db: Session, *, key: str) -> bool:

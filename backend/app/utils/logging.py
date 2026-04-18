@@ -1,6 +1,7 @@
 import os
 import sys
 
+
 def log_debug(message: str):
     """
     Helper to log to file and console simultaneously.
@@ -13,7 +14,7 @@ def log_debug(message: str):
         # root is ../../
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         log_path = os.path.join(base_dir, "full_execution_log.txt")
-        
+
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(f"{message}\n")
     except Exception as e:

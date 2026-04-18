@@ -9,6 +9,8 @@ Recommended GitHub settings for `main` and `develop`:
 5. Restrict direct pushes to protected branches.
 6. Optionally require status checks to pass before merging.
 7. If status checks are required, add:
+   - `backend-format`
+   - `frontend-lint`
    - `backend-tests`
    - `e2e-playwright`
 8. Require branches to be up to date before merging when required checks are enabled.

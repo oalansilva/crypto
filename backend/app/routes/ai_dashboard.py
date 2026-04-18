@@ -17,7 +17,10 @@ from app.middleware.authMiddleware import get_current_user
 from app.models_signal_history import SignalHistory
 from app.schemas.signal import RiskProfile, Signal
 from app.services import binance_service, sentiment_service
-from app.services.news_localization_service import get_cached_localized_news, schedule_news_localization_refresh
+from app.services.news_localization_service import (
+    get_cached_localized_news,
+    schedule_news_localization_refresh,
+)
 from app.services.onchain_service import build_onchain_snapshot
 
 router = APIRouter(prefix="/api/ai", tags=["ai-dashboard"])
@@ -156,9 +159,26 @@ async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
 
         # Simple keyword-based sentiment
         title_lower = title.lower()
-        if any(w in title_lower for w in ["surge", "soar", "bull", "rise", "gain", "up", "high", "record", "growth", "adoption"]):
+        if any(
+            w in title_lower
+            for w in [
+                "surge",
+                "soar",
+                "bull",
+                "rise",
+                "gain",
+                "up",
+                "high",
+                "record",
+                "growth",
+                "adoption",
+            ]
+        ):
             sentiment = "bullish"
-        elif any(w in title_lower for w in ["fall", "drop", "bear", "loss", "crash", "decline", "risk", "fear", "sell"]):
+        elif any(
+            w in title_lower
+            for w in ["fall", "drop", "bear", "loss", "crash", "decline", "risk", "fear", "sell"]
+        ):
             sentiment = "bearish"
         else:
             sentiment = "neutral"
@@ -360,7 +380,9 @@ def _build_signal_reason(row: SignalHistory, indicators: dict | None) -> str:
 
         bollinger = indicators.get("BollingerBands")
         price_reference = row.entry_price or row.trigger_price or row.target_price
-        bollinger_status, _tone = _bollinger_status(price_reference, bollinger if isinstance(bollinger, dict) else None)
+        bollinger_status, _tone = _bollinger_status(
+            price_reference, bollinger if isinstance(bollinger, dict) else None
+        )
         if bollinger_status != "Indisponível":
             reasons.append(f"Bollinger em {bollinger_status.lower()}")
 
@@ -457,7 +479,9 @@ def _score_bollinger_status(value: str) -> float:
     return 50.0
 
 
-def _build_ai_source_criteria(row: SignalHistory, indicators: dict | None) -> list[DashboardSignalCriterion]:
+def _build_ai_source_criteria(
+    row: SignalHistory, indicators: dict | None
+) -> list[DashboardSignalCriterion]:
     if not indicators:
         return []
 
@@ -503,14 +527,34 @@ def _build_ai_source_criteria(row: SignalHistory, indicators: dict | None) -> li
 def _build_signals_source_criteria(signal: Signal) -> list[DashboardSignalCriterion]:
     if signal.breakdown:
         return [
-            DashboardSignalCriterion(label="RSI", score=_clamp_score(signal.breakdown.rsi_contribution), value="Contribuição"),
-            DashboardSignalCriterion(label="MACD", score=_clamp_score(signal.breakdown.macd_contribution), value="Contribuição"),
-            DashboardSignalCriterion(label="Sentimento", score=_clamp_score(signal.breakdown.sentiment_contribution), value="Ajuste"),
+            DashboardSignalCriterion(
+                label="RSI",
+                score=_clamp_score(signal.breakdown.rsi_contribution),
+                value="Contribuição",
+            ),
+            DashboardSignalCriterion(
+                label="MACD",
+                score=_clamp_score(signal.breakdown.macd_contribution),
+                value="Contribuição",
+            ),
+            DashboardSignalCriterion(
+                label="Sentimento",
+                score=_clamp_score(signal.breakdown.sentiment_contribution),
+                value="Ajuste",
+            ),
         ]
 
     return [
-        DashboardSignalCriterion(label="RSI", score=_clamp_score(signal.indicators.rsi), value=f"{signal.indicators.rsi:.1f}"),
-        DashboardSignalCriterion(label="MACD", score=_score_macd_status(signal.indicators.macd), value=signal.indicators.macd.capitalize()),
+        DashboardSignalCriterion(
+            label="RSI",
+            score=_clamp_score(signal.indicators.rsi),
+            value=f"{signal.indicators.rsi:.1f}",
+        ),
+        DashboardSignalCriterion(
+            label="MACD",
+            score=_score_macd_status(signal.indicators.macd),
+            value=signal.indicators.macd.capitalize(),
+        ),
     ]
 
 
@@ -580,7 +624,9 @@ def _build_unified_reason(
 
     if final_action == "HOLD":
         if supporting_sources:
-            return f"Sinal neutro por ausência de maioria direcional. Fontes neutras: {support_names}."
+            return (
+                f"Sinal neutro por ausência de maioria direcional. Fontes neutras: {support_names}."
+            )
         if opposing_sources:
             return f"Sinal neutro por conflito entre fontes: {oppose_names}."
         return "Sinal neutro por falta de confirmação direcional."
@@ -598,22 +644,41 @@ def _make_unified_signal(
     entries: list[dict[str, Any]],
 ) -> DashboardSignalItem:
     directional_entries = [entry for entry in entries if _source_score(entry.get("action")) != 0]
-    weighted_score = sum(_source_score(entry.get("action")) * (int(entry.get("confidence") or 0) / 100) for entry in entries)
+    weighted_score = sum(
+        _source_score(entry.get("action")) * (int(entry.get("confidence") or 0) / 100)
+        for entry in entries
+    )
 
     if directional_entries and abs(weighted_score) >= 0.35:
         final_action = "BUY" if weighted_score > 0 else "SELL"
     else:
         final_action = "HOLD"
 
-    supporting_sources = [entry for entry in entries if _source_score(entry.get("action")) == _source_score(final_action)]
-    opposing_sources = [entry for entry in entries if _source_score(entry.get("action")) == -_source_score(final_action) and _source_score(final_action) != 0]
+    supporting_sources = [
+        entry
+        for entry in entries
+        if _source_score(entry.get("action")) == _source_score(final_action)
+    ]
+    opposing_sources = [
+        entry
+        for entry in entries
+        if _source_score(entry.get("action")) == -_source_score(final_action)
+        and _source_score(final_action) != 0
+    ]
     neutral_sources = [entry for entry in entries if _source_score(entry.get("action")) == 0]
 
     if final_action == "HOLD":
         supporting_sources = neutral_sources
 
     strength = len(supporting_sources)
-    confidence = round(sum(int(entry.get("confidence") or 0) for entry in supporting_sources) / len(supporting_sources)) if supporting_sources else 0
+    confidence = (
+        round(
+            sum(int(entry.get("confidence") or 0) for entry in supporting_sources)
+            / len(supporting_sources)
+        )
+        if supporting_sources
+        else 0
+    )
     direction = _direction_label(final_action, strength, len(opposing_sources))
     price = None
     for preferred_source in ("Signals", "On-chain", "AI Dashboard"):
@@ -621,15 +686,22 @@ def _make_unified_signal(
             (
                 _coerce_price(entry.get("price"))
                 for entry in entries
-                if entry.get("source") == preferred_source and _coerce_price(entry.get("price")) is not None
+                if entry.get("source") == preferred_source
+                and _coerce_price(entry.get("price")) is not None
             ),
             None,
         )
         if price is not None:
             break
-    reason = _build_unified_reason(final_action, supporting_sources, opposing_sources if final_action != "HOLD" else directional_entries)
+    reason = _build_unified_reason(
+        final_action,
+        supporting_sources,
+        opposing_sources if final_action != "HOLD" else directional_entries,
+    )
 
-    ordered_sources = sorted(entries, key=lambda entry: int(entry.get("confidence") or 0), reverse=True)
+    ordered_sources = sorted(
+        entries, key=lambda entry: int(entry.get("confidence") or 0), reverse=True
+    )
     enriched_sources: list[dict[str, Any]] = []
     for entry in ordered_sources:
         entry_score = _source_score(entry.get("action"))
@@ -720,7 +792,8 @@ def _build_unified_signals(
                 "source": "Signals",
                 "action": signal.type.value,
                 "confidence": int(signal.confidence),
-                "reason": breakdown_summary or f"Sinal {signal.type.value} com perfil {signal.risk_profile.value}.",
+                "reason": breakdown_summary
+                or f"Sinal {signal.type.value} com perfil {signal.risk_profile.value}.",
                 "price": _coerce_price(signal.current_price or signal.entry_price),
                 "criteria": _build_signals_source_criteria(signal),
             }
@@ -747,7 +820,9 @@ def _build_unified_signals(
         )
 
     unified = [
-        _make_unified_signal(asset_key=asset_key, display_asset=str(data["asset"]), entries=list(data["entries"]))
+        _make_unified_signal(
+            asset_key=asset_key, display_asset=str(data["asset"]), entries=list(data["entries"])
+        )
         for asset_key, data in grouped.items()
         if len(data["entries"]) >= 2
     ]
@@ -868,14 +943,33 @@ def _build_dynamic_insights(
                 id=f"signal-{top_signal.id}",
                 title=f"Sinal mais forte: {top_signal.action}",
                 description=f"{top_signal.asset} lidera a fila com {top_signal.confidence}% de confiança. Motivo: {top_signal.reason}.",
-                tone="bullish" if top_signal.action == "BUY" else "danger" if top_signal.action == "SELL" else "warning",
+                tone=(
+                    "bullish"
+                    if top_signal.action == "BUY"
+                    else "danger" if top_signal.action == "SELL" else "warning"
+                ),
                 asset=top_signal.asset,
                 badge=f"{top_signal.confidence}%",
             )
         )
 
     for card in indicators:
-        extreme = next((reading for reading in card.readings if reading.status in {"Oversold", "Overbought", "Bullish", "Bearish", "Banda inferior", "Banda superior"}), None)
+        extreme = next(
+            (
+                reading
+                for reading in card.readings
+                if reading.status
+                in {
+                    "Oversold",
+                    "Overbought",
+                    "Bullish",
+                    "Bearish",
+                    "Banda inferior",
+                    "Banda superior",
+                }
+            ),
+            None,
+        )
         if not extreme:
             continue
         insights.append(
@@ -907,7 +1001,11 @@ def _build_dynamic_insights(
                 id=f"news-{headline.id}",
                 title="Notícia mais recente",
                 description=f"{headline.title} Fonte: {headline.source}, publicada {headline.relative_time.lower()}.",
-                tone=headline.sentiment if headline.sentiment in {"bullish", "bearish"} else "neutral",
+                tone=(
+                    headline.sentiment
+                    if headline.sentiment in {"bullish", "bearish"}
+                    else "neutral"
+                ),
                 asset=headline.related_asset,
                 badge=headline.source,
             )
@@ -955,7 +1053,9 @@ async def get_ai_dashboard(
         section_errors["stats"] = "Não foi possível consolidar o histórico de sinais."
 
     if isinstance(onchain_snapshot_result, Exception):
-        logger.warning("Failed to load onchain snapshot for AI dashboard: %s", onchain_snapshot_result)
+        logger.warning(
+            "Failed to load onchain snapshot for AI dashboard: %s", onchain_snapshot_result
+        )
         section_errors["onchain"] = "Não foi possível atualizar os sinais on-chain."
         onchain_snapshot = []
         onchain_assets: list[str] = []
@@ -1004,7 +1104,9 @@ async def get_ai_dashboard(
             )
             signal_feed = list(signal_feed_result.signals)
         except Exception as exc:
-            logger.warning("Failed to load targeted live signal feed for unified AI dashboard: %s", exc)
+            logger.warning(
+                "Failed to load targeted live signal feed for unified AI dashboard: %s", exc
+            )
 
     if not signal_feed:
         try:
@@ -1028,7 +1130,10 @@ async def get_ai_dashboard(
     )
 
     if not recent_signals:
-        section_errors["signals"] = section_errors.get("signals") or "Nenhum sinal unificado disponível com convergência suficiente entre as fontes."
+        section_errors["signals"] = (
+            section_errors.get("signals")
+            or "Nenhum sinal unificado disponível com convergência suficiente entre as fontes."
+        )
 
     insights = _build_dynamic_insights(
         stats=stats,

@@ -101,15 +101,14 @@ def _build_fingerprint(news_items: list[dict[str, Any]]) -> tuple[tuple[str, str
     )
 
 
-def get_cached_localized_news(news_items: list[dict[str, Any]]) -> tuple[dict[str, dict[str, str]], bool]:
+def get_cached_localized_news(
+    news_items: list[dict[str, Any]],
+) -> tuple[dict[str, dict[str, str]], bool]:
     fingerprint = _build_fingerprint(news_items)
     now = time.time()
     same_fingerprint = bool(fingerprint and _LOCALIZATION_CACHE.get("fingerprint") == fingerprint)
     localized_by_id = (_LOCALIZATION_CACHE.get("localized_by_id") or {}) if same_fingerprint else {}
-    is_fresh = bool(
-        same_fingerprint
-        and float(_LOCALIZATION_CACHE.get("expires_at") or 0) > now
-    )
+    is_fresh = bool(same_fingerprint and float(_LOCALIZATION_CACHE.get("expires_at") or 0) > now)
     return dict(localized_by_id), is_fresh
 
 
@@ -171,7 +170,9 @@ async def localize_news_items(news_items: list[dict[str, Any]]) -> list[dict[str
             {
                 "id": str(item.get("id") or ""),
                 "title_pt": str(item.get("title") or ""),
-                "summary_pt": _fallback_summary(str(item.get("title") or ""), str(item.get("source") or "")),
+                "summary_pt": _fallback_summary(
+                    str(item.get("title") or ""), str(item.get("source") or "")
+                ),
             }
             for item in items
         ]

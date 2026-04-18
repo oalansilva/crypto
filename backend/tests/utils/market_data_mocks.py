@@ -50,7 +50,9 @@ class FixtureMarketDataProvider:
         return base
 
 
-def install_market_data_provider_mock(monkeypatch: Any, targets: list[Any], providers: dict[str, Any]) -> list[str]:
+def install_market_data_provider_mock(
+    monkeypatch: Any, targets: list[Any], providers: dict[str, Any]
+) -> list[str]:
     aliases = {
         "": "ccxt",
         "default": "ccxt",

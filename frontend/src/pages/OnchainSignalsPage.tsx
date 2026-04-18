@@ -285,9 +285,10 @@ export default function OnchainSignalsPage() {
           description: message,
         })
       } finally {
-        if (cancelled || requestId !== requestIdRef.current) return
-        setIsLoading(false)
-        setIsRefreshing(false)
+        if (!cancelled && requestId === requestIdRef.current) {
+          setIsLoading(false)
+          setIsRefreshing(false)
+        }
       }
     }
 

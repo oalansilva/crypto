@@ -34,7 +34,7 @@ async def test_defillama_tvl_matches_chain_by_name(monkeypatch):
         lambda: _FakeClient(
             {
                 "https://api.llama.fi/chains": [
-                {"name": "Ethereum", "slug": "wrong-slug", "tvl": 108_000_000_000},
+                    {"name": "Ethereum", "slug": "wrong-slug", "tvl": 108_000_000_000},
                 ]
             }
         ),
@@ -56,23 +56,80 @@ async def test_fetch_binance_ranked_pairs_filters_and_sorts(monkeypatch):
             {
                 "https://api.binance.com/api/v3/exchangeInfo": {
                     "symbols": [
-                        {"symbol": "ETHUSDT", "baseAsset": "ETH", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
-                        {"symbol": "SOLUSDT", "baseAsset": "SOL", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
-                        {"symbol": "XRPUSDT", "baseAsset": "XRP", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
-                        {"symbol": "ADAUSDT", "baseAsset": "ADA", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
-                        {"symbol": "DOTUSDT", "baseAsset": "DOT", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
-                        {"symbol": "USDCUSDT", "baseAsset": "USDC", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
-                        {"symbol": "FOOUSDT", "baseAsset": "FOO", "quoteAsset": "USDT", "status": "TRADING", "isSpotTradingAllowed": True},
+                        {
+                            "symbol": "ETHUSDT",
+                            "baseAsset": "ETH",
+                            "quoteAsset": "USDT",
+                            "status": "TRADING",
+                            "isSpotTradingAllowed": True,
+                        },
+                        {
+                            "symbol": "SOLUSDT",
+                            "baseAsset": "SOL",
+                            "quoteAsset": "USDT",
+                            "status": "TRADING",
+                            "isSpotTradingAllowed": True,
+                        },
+                        {
+                            "symbol": "XRPUSDT",
+                            "baseAsset": "XRP",
+                            "quoteAsset": "USDT",
+                            "status": "TRADING",
+                            "isSpotTradingAllowed": True,
+                        },
+                        {
+                            "symbol": "ADAUSDT",
+                            "baseAsset": "ADA",
+                            "quoteAsset": "USDT",
+                            "status": "TRADING",
+                            "isSpotTradingAllowed": True,
+                        },
+                        {
+                            "symbol": "DOTUSDT",
+                            "baseAsset": "DOT",
+                            "quoteAsset": "USDT",
+                            "status": "TRADING",
+                            "isSpotTradingAllowed": True,
+                        },
+                        {
+                            "symbol": "USDCUSDT",
+                            "baseAsset": "USDC",
+                            "quoteAsset": "USDT",
+                            "status": "TRADING",
+                            "isSpotTradingAllowed": True,
+                        },
+                        {
+                            "symbol": "FOOUSDT",
+                            "baseAsset": "FOO",
+                            "quoteAsset": "USDT",
+                            "status": "TRADING",
+                            "isSpotTradingAllowed": True,
+                        },
                     ]
                 },
                 "https://api.binance.com/api/v3/ticker/24hr": [
                     {"symbol": "SOLUSDT", "quoteVolume": "1200", "count": "50", "lastPrice": "150"},
                     {"symbol": "XRPUSDT", "quoteVolume": "1800", "count": "65", "lastPrice": "0.6"},
-                    {"symbol": "ADAUSDT", "quoteVolume": "1700", "count": "55", "lastPrice": "0.45"},
+                    {
+                        "symbol": "ADAUSDT",
+                        "quoteVolume": "1700",
+                        "count": "55",
+                        "lastPrice": "0.45",
+                    },
                     {"symbol": "DOTUSDT", "quoteVolume": "1600", "count": "45", "lastPrice": "8.1"},
-                    {"symbol": "ETHUSDT", "quoteVolume": "2500", "count": "75", "lastPrice": "3200"},
+                    {
+                        "symbol": "ETHUSDT",
+                        "quoteVolume": "2500",
+                        "count": "75",
+                        "lastPrice": "3200",
+                    },
                     {"symbol": "FOOUSDT", "quoteVolume": "2400", "count": "70", "lastPrice": "1.2"},
-                    {"symbol": "USDCUSDT", "quoteVolume": "999999", "count": "99", "lastPrice": "1"},
+                    {
+                        "symbol": "USDCUSDT",
+                        "quoteVolume": "999999",
+                        "count": "99",
+                        "lastPrice": "1",
+                    },
                 ],
             }
         ),
@@ -80,7 +137,13 @@ async def test_fetch_binance_ranked_pairs_filters_and_sorts(monkeypatch):
 
     pairs = await onchain_service._fetch_binance_ranked_pairs(limit=10)
 
-    assert [pair.symbol for pair in pairs] == ["ETHUSDT", "XRPUSDT", "ADAUSDT", "DOTUSDT", "SOLUSDT"]
+    assert [pair.symbol for pair in pairs] == [
+        "ETHUSDT",
+        "XRPUSDT",
+        "ADAUSDT",
+        "DOTUSDT",
+        "SOLUSDT",
+    ]
     assert pairs[0].chain == "ethereum"
     assert pairs[1].chain == "ripple"
     assert pairs[2].chain == "cardano"

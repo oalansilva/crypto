@@ -140,7 +140,9 @@ async def _fetch_latest_price_from_binance(asset: str) -> float:
             return float(payload["price"])
         except (httpx.HTTPError, ValueError, KeyError) as exc:
             if attempt >= MAX_RETRIES:
-                raise RuntimeError(f"Unable to fetch Binance ticker price for {asset}: {exc}") from exc
+                raise RuntimeError(
+                    f"Unable to fetch Binance ticker price for {asset}: {exc}"
+                ) from exc
             await asyncio.sleep(min(2 ** (attempt - 1), 4))
     raise RuntimeError(f"Unable to fetch Binance ticker price for {asset}")
 
@@ -178,7 +180,9 @@ async def _normalize_assets(asset: str | None) -> list[str]:
     return await _get_all_usdt_pairs()
 
 
-def _read_cache(cache_key: tuple[str, str, int], *, allow_stale: bool = False) -> dict[str, Any] | None:
+def _read_cache(
+    cache_key: tuple[str, str, int], *, allow_stale: bool = False
+) -> dict[str, Any] | None:
     now = time.time()
     with _CACHE_LOCK:
         cached = _KLINES_CACHE.get(cache_key)
@@ -201,7 +205,9 @@ def _read_cache(cache_key: tuple[str, str, int], *, allow_stale: bool = False) -
         return None
 
 
-def _write_cache(cache_key: tuple[str, str, int], candles: list[dict[str, Any]], cached_at: datetime) -> None:
+def _write_cache(
+    cache_key: tuple[str, str, int], candles: list[dict[str, Any]], cached_at: datetime
+) -> None:
     with _CACHE_LOCK:
         _KLINES_CACHE[cache_key] = {
             "candles": list(candles),
@@ -281,7 +287,9 @@ def _payload_to_snapshot(payload: dict[str, Any]) -> SignalFeedSnapshot:
         risk_profile=RiskProfile(str(payload["risk_profile"])),
         signals=[Signal.model_validate(item) for item in payload.get("signals") or []],
         available_assets=list(payload.get("available_assets") or []),
-        cached_at=datetime.fromisoformat(payload["cached_at"]) if payload.get("cached_at") else None,
+        cached_at=(
+            datetime.fromisoformat(payload["cached_at"]) if payload.get("cached_at") else None
+        ),
         is_stale=bool(payload.get("is_stale")),
         sentiment_score=payload.get("sentiment_score"),
         refreshed_at=datetime.fromisoformat(payload["refreshed_at"]),
@@ -292,10 +300,15 @@ def _persist_signal_feed_snapshots(snapshots: dict[RiskProfile, SignalFeedSnapsh
     try:
         SIGNAL_FEED_SNAPSHOT_FILE.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            "profiles": {risk_profile.value: _snapshot_to_payload(snapshot) for risk_profile, snapshot in snapshots.items()},
+            "profiles": {
+                risk_profile.value: _snapshot_to_payload(snapshot)
+                for risk_profile, snapshot in snapshots.items()
+            },
             "saved_at": _utc_now().isoformat(),
         }
-        SIGNAL_FEED_SNAPSHOT_FILE.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        SIGNAL_FEED_SNAPSHOT_FILE.write_text(
+            json.dumps(payload, separators=(",", ":")), encoding="utf-8"
+        )
     except Exception as exc:
         logger.warning("Failed to persist signal feed snapshots: %s", exc)
 
@@ -319,7 +332,9 @@ def load_signal_feed_snapshots_from_disk() -> bool:
 
     with _SNAPSHOT_CACHE_LOCK:
         _SIGNAL_FEED_SNAPSHOTS.clear()
-        _SIGNAL_FEED_SNAPSHOTS.update({key: _clone_snapshot(value) for key, value in loaded.items()})
+        _SIGNAL_FEED_SNAPSHOTS.update(
+            {key: _clone_snapshot(value) for key, value in loaded.items()}
+        )
     return True
 
 
@@ -370,7 +385,9 @@ async def _request_klines(asset: str, interval: str, limit: int) -> list[dict[st
     raise RuntimeError(f"Unable to fetch Binance klines for {asset}: {last_error}")
 
 
-async def get_klines(asset: str, interval: str = KLINES_INTERVAL, limit: int = KLINES_LIMIT) -> dict[str, Any]:
+async def get_klines(
+    asset: str, interval: str = KLINES_INTERVAL, limit: int = KLINES_LIMIT
+) -> dict[str, Any]:
     normalized_asset = _normalize_asset(asset)
     cache_key = (normalized_asset, interval, int(limit))
     cached = _read_cache(cache_key)
@@ -382,7 +399,9 @@ async def get_klines(asset: str, interval: str = KLINES_INTERVAL, limit: int = K
     except Exception as exc:
         stale = _read_cache(cache_key, allow_stale=True)
         if stale is not None:
-            logger.warning("Serving stale signal cache for %s after Binance failure: %s", normalized_asset, exc)
+            logger.warning(
+                "Serving stale signal cache for %s after Binance failure: %s", normalized_asset, exc
+            )
             return stale
         raise
 
@@ -436,7 +455,11 @@ def _compute_macd(closes: list[float]) -> tuple[float, float, float, str]:
     histogram = macd_line - signal_line
     scale = max(abs(signal_line), abs(macd_line), 1e-9)
     normalized_histogram = histogram / scale
-    sentiment = "bullish" if normalized_histogram > 0.08 else "bearish" if normalized_histogram < -0.08 else "neutral"
+    sentiment = (
+        "bullish"
+        if normalized_histogram > 0.08
+        else "bearish" if normalized_histogram < -0.08 else "neutral"
+    )
     return macd_line, signal_line, histogram, sentiment
 
 
@@ -593,7 +616,11 @@ def _build_signal(
             display_total=display_total,
         )
 
-    signal_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"signal:{asset}:{risk_profile.value}:{latest_time.isoformat()}"))
+    signal_id = str(
+        uuid.uuid5(
+            uuid.NAMESPACE_URL, f"signal:{asset}:{risk_profile.value}:{latest_time.isoformat()}"
+        )
+    )
     return Signal(
         id=signal_id,
         asset=asset,
@@ -615,7 +642,9 @@ def _build_signal(
     )
 
 
-async def _fetch_market_snapshots(assets: list[str]) -> tuple[dict[str, dict[str, Any]], datetime | None, bool]:
+async def _fetch_market_snapshots(
+    assets: list[str],
+) -> tuple[dict[str, dict[str, Any]], datetime | None, bool]:
     async def _get_klines_with_semaphore(item: str) -> dict[str, Any]:
         async with _KLINES_SEMAPHORE:
             return await get_klines(item)
@@ -627,15 +656,15 @@ async def _fetch_market_snapshots(assets: list[str]) -> tuple[dict[str, dict[str
     collected_snapshots: list[tuple[str, dict[str, Any] | None, Exception | None]] = []
     for item, raw_snapshot in zip(assets, raw_snapshots):
         if isinstance(raw_snapshot, Exception):
-            logger.warning("Failed to fetch klines for %s while building snapshot: %s", item, raw_snapshot)
+            logger.warning(
+                "Failed to fetch klines for %s while building snapshot: %s", item, raw_snapshot
+            )
             collected_snapshots.append((item, None, raw_snapshot))
             continue
         collected_snapshots.append((item, raw_snapshot, None))
 
     snapshots_by_asset = {
-        item: snapshot
-        for item, snapshot, error in collected_snapshots
-        if snapshot is not None
+        item: snapshot for item, snapshot, error in collected_snapshots if snapshot is not None
     }
     if not snapshots_by_asset:
         raise RuntimeError("Unable to fetch klines for any requested asset")
@@ -746,7 +775,9 @@ async def refresh_signal_feed_snapshots() -> dict[RiskProfile, SignalFeedSnapsho
     computed = await _compute_signal_feed_snapshots()
     with _SNAPSHOT_CACHE_LOCK:
         _SIGNAL_FEED_SNAPSHOTS.clear()
-        _SIGNAL_FEED_SNAPSHOTS.update({key: _clone_snapshot(value) for key, value in computed.items()})
+        _SIGNAL_FEED_SNAPSHOTS.update(
+            {key: _clone_snapshot(value) for key, value in computed.items()}
+        )
     _persist_signal_feed_snapshots(computed)
     return computed
 
@@ -811,7 +842,11 @@ async def build_signal_feed(
     user_id: str | None = None,
 ) -> SignalListResponse:
     requested_limit = max(1, min(int(limit or 20), 50))
-    threshold = int(confidence_min if confidence_min is not None else _PROFILE_SETTINGS[risk_profile]["default_confidence_min"])
+    threshold = int(
+        confidence_min
+        if confidence_min is not None
+        else _PROFILE_SETTINGS[risk_profile]["default_confidence_min"]
+    )
     signals: list[Signal]
     available_assets: list[str]
     cached_at: datetime | None
@@ -843,12 +878,16 @@ async def build_signal_feed(
     if signal_type is not None:
         signals = [signal for signal in signals if signal.type == signal_type]
 
-    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices([signal.asset for signal in signals])
+    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices(
+        [signal.asset for signal in signals]
+    )
     if latest_prices:
         cached_at = latest_prices_cached_at or cached_at
         is_stale = is_stale or latest_prices_stale
         signals = [
-            signal.model_copy(update={"current_price": latest_prices.get(signal.asset, signal.current_price)})
+            signal.model_copy(
+                update={"current_price": latest_prices.get(signal.asset, signal.current_price)}
+            )
             for signal in signals
         ]
 
@@ -887,7 +926,9 @@ async def build_signal_feed(
         from app.routes.signals import _save_signal_to_history
 
         for signal in signals:
-            threading.Thread(target=_save_signal_to_history, args=(signal, user_id), daemon=True).start()
+            threading.Thread(
+                target=_save_signal_to_history, args=(signal, user_id), daemon=True
+            ).start()
 
     for signal in signals:
         _remember_signal(signal, cached_at, is_stale)
@@ -912,7 +953,11 @@ async def build_signal_feed_for_assets(
     include_neutral: bool = True,
 ) -> SignalListResponse:
     requested_limit = max(1, min(int(limit or 20), 50))
-    threshold = int(confidence_min if confidence_min is not None else _PROFILE_SETTINGS[risk_profile]["default_confidence_min"])
+    threshold = int(
+        confidence_min
+        if confidence_min is not None
+        else _PROFILE_SETTINGS[risk_profile]["default_confidence_min"]
+    )
 
     normalized_assets = []
     seen_assets: set[str] = set()
@@ -942,12 +987,16 @@ async def build_signal_feed_for_assets(
         sentiment_score=sentiment_score,
     )
 
-    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices([signal.asset for signal in signals])
+    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices(
+        [signal.asset for signal in signals]
+    )
     if latest_prices:
         cached_at = latest_prices_cached_at or cached_at
         is_stale = is_stale or latest_prices_stale
         signals = [
-            signal.model_copy(update={"current_price": latest_prices.get(signal.asset, signal.current_price)})
+            signal.model_copy(
+                update={"current_price": latest_prices.get(signal.asset, signal.current_price)}
+            )
             for signal in signals
         ]
 
@@ -1012,7 +1061,9 @@ async def get_signal_detail(signal_id: str) -> Signal:
     all_pairs = await _get_all_usdt_pairs()
     signal_limit = min(100, len(all_pairs))
     for risk_profile in RiskProfile:
-        feed = await build_signal_feed(risk_profile=risk_profile, confidence_min=0, limit=signal_limit)
+        feed = await build_signal_feed(
+            risk_profile=risk_profile, confidence_min=0, limit=signal_limit
+        )
         for signal in feed.signals:
             if signal.id == signal_id:
                 return signal
@@ -1026,7 +1077,9 @@ async def get_latest_high_confidence_signals(user_id: str | None = None) -> Sign
     available_assets: list[str] = []
     latest_cached_at: datetime | None = None
 
-    snapshots = await asyncio.gather(*(get_or_refresh_signal_feed_snapshot(risk_profile) for risk_profile in RiskProfile))
+    snapshots = await asyncio.gather(
+        *(get_or_refresh_signal_feed_snapshot(risk_profile) for risk_profile in RiskProfile)
+    )
     for snapshot in snapshots:
         signals.extend(snapshot.signals)
         if snapshot.cached_at:
@@ -1037,12 +1090,16 @@ async def get_latest_high_confidence_signals(user_id: str | None = None) -> Sign
 
     signals = [signal for signal in signals if signal.confidence >= 70]
 
-    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices([signal.asset for signal in signals])
+    latest_prices, latest_prices_cached_at, latest_prices_stale = await get_latest_prices(
+        [signal.asset for signal in signals]
+    )
     if latest_prices:
         latest_cached_at = latest_prices_cached_at
         is_stale = is_stale or latest_prices_stale
         signals = [
-            signal.model_copy(update={"current_price": latest_prices.get(signal.asset, signal.current_price)})
+            signal.model_copy(
+                update={"current_price": latest_prices.get(signal.asset, signal.current_price)}
+            )
             for signal in signals
         ]
 
@@ -1085,7 +1142,9 @@ async def get_latest_high_confidence_signals(user_id: str | None = None) -> Sign
         from app.routes.signals import _save_signal_to_history
 
         for signal in signals:
-            threading.Thread(target=_save_signal_to_history, args=(signal, user_id), daemon=True).start()
+            threading.Thread(
+                target=_save_signal_to_history, args=(signal, user_id), daemon=True
+            ).start()
 
     return SignalListResponse(
         signals=signals,

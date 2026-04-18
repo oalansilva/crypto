@@ -2,6 +2,7 @@
 
 Revision ID: migrate_multi_tenant_data
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -29,7 +30,9 @@ def run_migration():
         DEFAULT_NAME = "Alan Silva"
 
         # Hash password
-        password_hash = bcrypt.hashpw(DEFAULT_PASSWORD.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
+        password_hash = bcrypt.hashpw(
+            DEFAULT_PASSWORD.encode("utf-8"), bcrypt.gensalt(rounds=12)
+        ).decode("utf-8")
 
         # Check if user already exists
         cur.execute("SELECT id FROM users WHERE email = ?", (DEFAULT_EMAIL.lower(),))

@@ -23,9 +23,7 @@ from app.services.pandas_ta_inspector import get_all_indicators_metadata
 router = APIRouter(prefix="/api")
 NASDAQ100_VERSION = "2026-02-23"
 NASDAQ100_CONFIG_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "config"
-    / f"nasdaq100_symbols.v{NASDAQ100_VERSION}.json"
+    Path(__file__).resolve().parents[1] / "config" / f"nasdaq100_symbols.v{NASDAQ100_VERSION}.json"
 )
 
 _MARKET_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
@@ -63,10 +61,7 @@ async def get_binance_symbols():
     raw = service.fetch_binance_symbols()
     symbols = [s for s in raw if not _is_unsupported_symbol(s)]
 
-    return {
-        "symbols": symbols,
-        "count": len(symbols)
-    }
+    return {"symbols": symbols, "count": len(symbols)}
 
 
 @router.get("/exchanges/binance/timeframes")
@@ -109,46 +104,52 @@ async def get_strategies_metadata():
     try:
         result = get_all_indicators_metadata()
 
-        if 'custom' not in result:
-            result['custom'] = []
+        if "custom" not in result:
+            result["custom"] = []
 
-        result['custom'].append({
-            "id": "cruzamentomedias",
-            "name": "CRUZAMENTOMEDIAS",
-            "category": "custom",
-            "description": "Moving Average Crossover Strategy (EMA + SMA)",
-            "params": [
-                {"name": "media_curta", "type": "int", "default": 6},
-                {"name": "media_longa", "type": "int", "default": 38},
-                {"name": "media_inter", "type": "int", "default": 21}
-            ]
-        })
-        result['custom'].append({
-            "id": "emarsivolume",
-            "name": "EMA 50/200 + RSI + Volume",
-            "category": "custom",
-            "description": "Trend following with EMA 200 filter, EMA 50 entries, RSI confirmation",
-            "params": [
-                {"name": "ema_fast", "type": "int", "default": 50},
-                {"name": "ema_slow", "type": "int", "default": 200},
-                {"name": "rsi_period", "type": "int", "default": 14},
-                {"name": "rsi_min", "type": "int", "default": 40},
-                {"name": "rsi_max", "type": "int", "default": 50}
-            ]
-        })
-        result['custom'].append({
-            "id": "fibonacciema",
-            "name": "Fibonacci (0.5 / 0.618) + EMA 200",
-            "category": "custom",
-            "description": "Fibonacci retracement with EMA 200 trend filter",
-            "params": [
-                {"name": "ema_period", "type": "int", "default": 200},
-                {"name": "swing_lookback", "type": "int", "default": 20},
-                {"name": "fib_level_1", "type": "float", "default": 0.5},
-                {"name": "fib_level_2", "type": "float", "default": 0.618},
-                {"name": "level_tolerance", "type": "float", "default": 0.005}
-            ]
-        })
+        result["custom"].append(
+            {
+                "id": "cruzamentomedias",
+                "name": "CRUZAMENTOMEDIAS",
+                "category": "custom",
+                "description": "Moving Average Crossover Strategy (EMA + SMA)",
+                "params": [
+                    {"name": "media_curta", "type": "int", "default": 6},
+                    {"name": "media_longa", "type": "int", "default": 38},
+                    {"name": "media_inter", "type": "int", "default": 21},
+                ],
+            }
+        )
+        result["custom"].append(
+            {
+                "id": "emarsivolume",
+                "name": "EMA 50/200 + RSI + Volume",
+                "category": "custom",
+                "description": "Trend following with EMA 200 filter, EMA 50 entries, RSI confirmation",
+                "params": [
+                    {"name": "ema_fast", "type": "int", "default": 50},
+                    {"name": "ema_slow", "type": "int", "default": 200},
+                    {"name": "rsi_period", "type": "int", "default": 14},
+                    {"name": "rsi_min", "type": "int", "default": 40},
+                    {"name": "rsi_max", "type": "int", "default": 50},
+                ],
+            }
+        )
+        result["custom"].append(
+            {
+                "id": "fibonacciema",
+                "name": "Fibonacci (0.5 / 0.618) + EMA 200",
+                "category": "custom",
+                "description": "Fibonacci retracement with EMA 200 trend filter",
+                "params": [
+                    {"name": "ema_period", "type": "int", "default": 200},
+                    {"name": "swing_lookback", "type": "int", "default": 20},
+                    {"name": "fib_level_1", "type": "float", "default": 0.5},
+                    {"name": "fib_level_2", "type": "float", "default": 0.618},
+                    {"name": "level_tolerance", "type": "float", "default": 0.005},
+                ],
+            }
+        )
 
         return result
     except Exception as e:
@@ -163,8 +164,7 @@ async def get_indicator_schema_endpoint(strategy_name: str):
     schema = get_dynamic_indicator_schema(strategy_name)
     if not schema:
         raise HTTPException(
-            status_code=404,
-            detail=f"Indicator '{strategy_name}' not found in pandas_ta library"
+            status_code=404, detail=f"Indicator '{strategy_name}' not found in pandas_ta library"
         )
     return schema
 
@@ -174,12 +174,14 @@ def _classify_asset(symbol: str) -> str:
 
 
 def _validate_market_timeframe(asset: str, timeframe: str) -> str:
-    tf = str(timeframe or '').strip().lower()
-    if asset == 'stock' and tf != '1d':
+    tf = str(timeframe or "").strip().lower()
+    if asset == "stock" and tf != "1d":
         raise ValueError("Stocks currently support only timeframe='1d'.")
     if tf not in _MARKET_TIMEFRAMES:
-        supported = ', '.join(sorted(_MARKET_TIMEFRAMES))
-        raise ValueError(f"Unsupported timeframe '{timeframe}' for {asset}. Supported: {supported}.")
+        supported = ", ".join(sorted(_MARKET_TIMEFRAMES))
+        raise ValueError(
+            f"Unsupported timeframe '{timeframe}' for {asset}. Supported: {supported}."
+        )
     return tf
 
 
@@ -308,7 +310,9 @@ async def get_market_candles(
                 df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
             except Exception:
                 data_source = "yahoo"
-                df = YahooMarketDataProvider().fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+                df = YahooMarketDataProvider().fetch_ohlcv(
+                    raw_symbol, tf, since_str=since_str, limit=limit
+                )
         else:
             raise ValueError("Stocks currently support only timeframe='1d'.")
 
@@ -329,4 +333,6 @@ async def get_market_candles(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed fetching candles for '{raw_symbol}': {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed fetching candles for '{raw_symbol}': {exc}"
+        )

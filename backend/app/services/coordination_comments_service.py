@@ -23,7 +23,6 @@ from uuid import uuid4
 
 from app.services.coordination_service import coordination_dir, project_root
 
-
 MAX_COMMENT_BODY_LEN = 2000
 
 

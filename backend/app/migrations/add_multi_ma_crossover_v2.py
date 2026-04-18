@@ -17,6 +17,7 @@ from pathlib import Path
 def _get_db_path():
     try:
         from app.database import DB_PATH
+
         return str(DB_PATH)
     except Exception:
         return str(Path(__file__).resolve().parent.parent.parent / "backtest.db")
@@ -28,7 +29,9 @@ def add_multi_ma_crossover_v2():
     cursor = conn.cursor()
 
     template_name = "multi_ma_crossoverV2"
-    cursor.execute("SELECT id, optimization_schema FROM combo_templates WHERE name = ?", (template_name,))
+    cursor.execute(
+        "SELECT id, optimization_schema FROM combo_templates WHERE name = ?", (template_name,)
+    )
     row = cursor.fetchone()
     if row:
         # Update existing template to nested optimization_schema (parameters + correlated_groups) so Edit page shows ranges
@@ -48,7 +51,9 @@ def add_multi_ma_crossover_v2():
                 (json.dumps(optimization_schema), template_name),
             )
             conn.commit()
-            print(f"[OK] Template '{template_name}' updated with nested optimization_schema (parameters + correlated_groups).")
+            print(
+                f"[OK] Template '{template_name}' updated with nested optimization_schema (parameters + correlated_groups)."
+            )
         conn.close()
         return
 
@@ -71,9 +76,7 @@ def add_multi_ma_crossover_v2():
             "sma_long": {"min": 28, "max": 50, "step": 1, "default": 35},
             "stop_loss": {"min": 0.02, "max": 0.08, "step": 0.005, "default": 0.042},
         },
-        "correlated_groups": [
-            ["ema_short", "sma_medium", "sma_long", "stop_loss"]
-        ],
+        "correlated_groups": [["ema_short", "sma_medium", "sma_long", "stop_loss"]],
     }
 
     description = (
@@ -81,15 +84,18 @@ def add_multi_ma_crossover_v2():
         "EMA curta + SMA inter + SMA longa. Entrada: (crossover short/long ou short/medium) e tendência alta (short > long). Saída: crossunder(short, long). Stop % configurável."
     )
 
-    cursor.execute("""
+    cursor.execute(
+        """
         INSERT INTO combo_templates (name, description, is_prebuilt, is_example, template_data, optimization_schema)
         VALUES (?, ?, 1, 0, ?, ?)
-    """, (
-        template_name,
-        description,
-        json.dumps(template_data),
-        json.dumps(optimization_schema),
-    ))
+    """,
+        (
+            template_name,
+            description,
+            json.dumps(template_data),
+            json.dumps(optimization_schema),
+        ),
+    )
 
     conn.commit()
     conn.close()

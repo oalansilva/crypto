@@ -99,7 +99,9 @@ def _build_prompt(fav: FavoriteStrategy, user_msg: str) -> str:
 from app.services.openclaw_gateway_client import run_agent_via_gateway
 
 
-async def _run_openclaw_agent(session_key: str, message: str, thinking: str, timeout_s: int = 180) -> Dict[str, Any]:
+async def _run_openclaw_agent(
+    session_key: str, message: str, thinking: str, timeout_s: int = 180
+) -> Dict[str, Any]:
     """Call OpenClaw via Gateway WS API and return a result shape similar to the CLI.
 
     We return a dict with a `payloads` list when possible, plus `meta.agentMeta` when present.
@@ -147,10 +149,14 @@ async def agent_chat(
     if not _enabled():
         raise HTTPException(status_code=403, detail="Agent chat disabled. Set AGENT_CHAT_ENABLED=1")
 
-    fav = db.query(FavoriteStrategy).filter(
-        FavoriteStrategy.id == req.favorite_id,
-        FavoriteStrategy.user_id == current_user_id,
-    ).first()
+    fav = (
+        db.query(FavoriteStrategy)
+        .filter(
+            FavoriteStrategy.id == req.favorite_id,
+            FavoriteStrategy.user_id == current_user_id,
+        )
+        .first()
+    )
     if not fav:
         raise HTTPException(status_code=404, detail="Favorite not found")
 
@@ -162,7 +168,9 @@ async def agent_chat(
     lock = _get_lock(session_key)
     async with lock:
         prompt = _build_prompt(fav, req.message)
-        result = await _run_openclaw_agent(session_key=session_key, message=prompt, thinking=req.thinking)
+        result = await _run_openclaw_agent(
+            session_key=session_key, message=prompt, thinking=req.thinking
+        )
 
     payloads = result.get("payloads") or []
 
@@ -214,7 +222,7 @@ async def agent_chat(
                 reply = v.strip()
                 break
 
-    agent_meta = (((result.get("meta") or {}).get("agentMeta")) or {})
+    agent_meta = ((result.get("meta") or {}).get("agentMeta")) or {}
     usage = agent_meta.get("usage")
 
     debug: Optional[Dict[str, Any]] = None

@@ -13,6 +13,7 @@ def _get_db_path(db_path):
         return db_path
     try:
         from app.database import DB_PATH
+
         return str(DB_PATH)
     except Exception:
         return str(Path(__file__).resolve().parents[2] / "backtest.db")

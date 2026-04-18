@@ -5,7 +5,6 @@ from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text
 
 from app.database import Base
 
-
 SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
 
 
@@ -23,9 +22,13 @@ class SignalHistory(Base):
     target_price = Column(Float, nullable=False)
     stop_loss = Column(Float, nullable=False)
     indicators = Column(Text, nullable=True)  # JSON string
-    created_at = Column(DateTime(timezone=True), nullable=False, index=True, default=lambda: sao_paulo_now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, index=True, default=lambda: sao_paulo_now()
+    )
     risk_profile = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="ativo", index=True)  # ativo, disparado, expirado, cancelado
+    status = Column(
+        String, nullable=False, default="ativo", index=True
+    )  # ativo, disparado, expirado, cancelado
 
     # PnL fields
     entry_price = Column(Float, nullable=True)

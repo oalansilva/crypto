@@ -14,6 +14,7 @@ def _get_db_path(db_path):
         return db_path
     try:
         from app.database import DB_PATH
+
         return str(DB_PATH)
     except Exception:
         return str(Path(__file__).resolve().parent.parent.parent / "backtest.db")
@@ -24,25 +25,25 @@ def add_optimization_schema_column(db_path: str = None):
     db_path = _get_db_path(db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # Check if column already exists
     cursor.execute("PRAGMA table_info(combo_templates)")
     columns = [row[1] for row in cursor.fetchall()]
-    
-    if 'optimization_schema' in columns:
+
+    if "optimization_schema" in columns:
         print("⚠️  Column 'optimization_schema' already exists, skipping...")
         conn.close()
         return
-    
+
     # Add column
     cursor.execute("""
         ALTER TABLE combo_templates 
         ADD COLUMN optimization_schema JSON
     """)
-    
+
     conn.commit()
     conn.close()
-    
+
     print("✅ Added 'optimization_schema' column to combo_templates table")
 
 

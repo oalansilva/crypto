@@ -26,7 +26,9 @@ def _seed_change(db):
     db.add(project)
     db.flush()
 
-    change = Change(project_id=project.id, change_id="centralize-workflow-state-db", title="Workflow DB")
+    change = Change(
+        project_id=project.id, change_id="centralize-workflow-state-db", title="Workflow DB"
+    )
     db.add(change)
     db.flush()
     return change
@@ -40,7 +42,9 @@ def _story(db, change, title: str, state: WorkItemState = WorkItemState.queued):
 
 
 def _bug(db, change, parent, title: str, state: WorkItemState = WorkItemState.queued):
-    item = WorkItem(change_pk=change.id, type=WorkItemType.bug, parent_id=parent.id, title=title, state=state)
+    item = WorkItem(
+        change_pk=change.id, type=WorkItemType.bug, parent_id=parent.id, title=title, state=state
+    )
     db.add(item)
     db.flush()
     return item

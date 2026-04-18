@@ -110,7 +110,9 @@ def assign_story_to_run(db: Session, *, work_item_id: str, run_id: str) -> Story
         if dep.depends_on.state != WorkItemState.done
     ]
     if blocked_deps:
-        raise WorkflowRuleViolation("Story cannot be assigned while dependency predecessors are still open")
+        raise WorkflowRuleViolation(
+            "Story cannot be assigned while dependency predecessors are still open"
+        )
 
     active_story_count = (
         db.query(WorkItem)
@@ -143,7 +145,11 @@ def assign_story_to_run(db: Session, *, work_item_id: str, run_id: str) -> Story
     if existing_active_lock and existing_active_lock.owner_run_id != run.id:
         raise WorkflowRuleViolation("Story already has an active lock owned by another run")
 
-    if work_item.owner_run_id and work_item.owner_run_id != run.id and work_item.state == WorkItemState.active:
+    if (
+        work_item.owner_run_id
+        and work_item.owner_run_id != run.id
+        and work_item.state == WorkItemState.active
+    ):
         raise WorkflowRuleViolation("Story already has another active owner")
 
     work_item.owner_run_id = run.id
@@ -164,13 +170,22 @@ def assign_story_to_run(db: Session, *, work_item_id: str, run_id: str) -> Story
     return StoryAssignmentResult(work_item=work_item, run=run, lock=lock)
 
 
-def release_story_assignment(db: Session, *, work_item_id: str, final_state: WorkItemState = WorkItemState.done) -> WorkItem:
+def release_story_assignment(
+    db: Session, *, work_item_id: str, final_state: WorkItemState = WorkItemState.done
+) -> WorkItem:
     work_item = _get_work_item(db, work_item_id)
 
     if work_item.type != WorkItemType.story:
         raise WorkflowRuleViolation("Only stories can be explicitly released in MVP")
 
-    open_child_bug = next((child for child in work_item.children if child.type == WorkItemType.bug and child.state != WorkItemState.done), None)
+    open_child_bug = next(
+        (
+            child
+            for child in work_item.children
+            if child.type == WorkItemType.bug and child.state != WorkItemState.done
+        ),
+        None,
+    )
     if final_state == WorkItemState.done and open_child_bug is not None:
         raise WorkflowRuleViolation("Story cannot be completed while child bugs remain open")
 

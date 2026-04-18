@@ -33,7 +33,10 @@ def test_audit_coordination_reports_missing_changes(monkeypatch):
     client = _build_client()
 
     # Seed DB with a project + 2 changes.
-    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert (
+        client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code
+        == 200
+    )
     assert (
         client.post(
             "/api/workflow/projects/crypto/changes",

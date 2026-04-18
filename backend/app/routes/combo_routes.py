@@ -25,7 +25,7 @@ from app.schemas.combo_params import (
     TemplateListResponse,
     ComboTemplateMetadata,
     UpdateTemplateRequest,
-    CloneTemplateRequest
+    CloneTemplateRequest,
 )
 from app.services.combo_service import ComboService
 from app.services.combo_optimizer import ComboOptimizer
@@ -50,71 +50,87 @@ router = APIRouter(prefix="/api/combos", tags=["combos"])
 async def export_trades_to_excel(request: Dict[str, Any]):
     """
     Export trades to Excel file.
-    
+
     Args:
         request: Dict with 'trades', 'symbol', 'template_name', 'timeframe'
-    
+
     Returns:
         Excel file as streaming response
     """
     try:
-        trades = request.get('trades', [])
-        symbol = request.get('symbol', 'UNKNOWN')
-        template_name = request.get('template_name', 'strategy')
-        timeframe = request.get('timeframe', '1d')
-        
+        trades = request.get("trades", [])
+        symbol = request.get("symbol", "UNKNOWN")
+        template_name = request.get("template_name", "strategy")
+        timeframe = request.get("timeframe", "1d")
+
         # Prepare data for Excel
         excel_data = []
         for trade in trades:
             # Calculate P&L in USD
-            pnl_usd = trade.get('pnl', None)
+            pnl_usd = trade.get("pnl", None)
             if pnl_usd is None:
                 # If P&L not provided, calculate from profit percentage and initial capital
-                profit_pct = trade.get('profit', 0) if trade.get('profit') is not None else 0
-                initial_capital = trade.get('initial_capital', 100) if trade.get('initial_capital') is not None else 100
+                profit_pct = trade.get("profit", 0) if trade.get("profit") is not None else 0
+                initial_capital = (
+                    trade.get("initial_capital", 100)
+                    if trade.get("initial_capital") is not None
+                    else 100
+                )
                 pnl_usd = initial_capital * profit_pct
-            
+
             # Calculate Return %
-            return_pct = (trade.get('profit', 0) * 100) if trade.get('profit') is not None else 0
-            
+            return_pct = (trade.get("profit", 0) * 100) if trade.get("profit") is not None else 0
+
             # Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
-            signal_type = trade.get('signal_type', '')
+            signal_type = trade.get("signal_type", "")
             if not signal_type:
                 # Se não tiver signal_type, tentar inferir do exit_reason
-                exit_reason = trade.get('exit_reason', '')
-                if 'stop' in str(exit_reason).lower():
-                    signal_type = 'Stop'
+                exit_reason = trade.get("exit_reason", "")
+                if "stop" in str(exit_reason).lower():
+                    signal_type = "Stop"
                 elif exit_reason:
-                    signal_type = 'Close entry(s) order...'
+                    signal_type = "Close entry(s) order..."
                 else:
                     # Se for entrada, usar entry_signal_type
-                    signal_type = trade.get('entry_signal_type', 'Comprar')
-            
-            excel_data.append({
-                'Entry Time': trade.get('entry_time', ''),
-                'Entry Price': trade.get('entry_price', 0),
-                'Exit Time': trade.get('exit_time', '') if trade.get('exit_time') else '',
-                'Exit Price': trade.get('exit_price', 0) if trade.get('exit_price') else '',
-                'Trade Type': trade.get('type', 'Long').upper() if trade.get('type') else 'LONG',
-                'Signal': signal_type,  # Tipo de sinal (Stop/Comprar/Close entry(s) order...)
-                'P&L (USD)': round(pnl_usd, 2),
-                'Return %': round(return_pct, 2),
-                'Initial Capital': trade.get('initial_capital', 100) if trade.get('initial_capital') is not None else 100,
-                'Final Capital': trade.get('final_capital', 0) if trade.get('final_capital') is not None else (100 + pnl_usd),
-            })
-        
+                    signal_type = trade.get("entry_signal_type", "Comprar")
+
+            excel_data.append(
+                {
+                    "Entry Time": trade.get("entry_time", ""),
+                    "Entry Price": trade.get("entry_price", 0),
+                    "Exit Time": trade.get("exit_time", "") if trade.get("exit_time") else "",
+                    "Exit Price": trade.get("exit_price", 0) if trade.get("exit_price") else "",
+                    "Trade Type": (
+                        trade.get("type", "Long").upper() if trade.get("type") else "LONG"
+                    ),
+                    "Signal": signal_type,  # Tipo de sinal (Stop/Comprar/Close entry(s) order...)
+                    "P&L (USD)": round(pnl_usd, 2),
+                    "Return %": round(return_pct, 2),
+                    "Initial Capital": (
+                        trade.get("initial_capital", 100)
+                        if trade.get("initial_capital") is not None
+                        else 100
+                    ),
+                    "Final Capital": (
+                        trade.get("final_capital", 0)
+                        if trade.get("final_capital") is not None
+                        else (100 + pnl_usd)
+                    ),
+                }
+            )
+
         # Create DataFrame
         df = pd.DataFrame(excel_data)
-        
+
         # Create Excel file in memory
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Trades')
-            
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Trades")
+
             # Get the workbook and worksheet
             workbook = writer.book
-            worksheet = writer.sheets['Trades']
-            
+            worksheet = writer.sheets["Trades"]
+
             # Auto-adjust column widths
             for column in worksheet.columns:
                 max_length = 0
@@ -127,18 +143,18 @@ async def export_trades_to_excel(request: Dict[str, Any]):
                         pass
                 adjusted_width = min(max_length + 2, 50)
                 worksheet.column_dimensions[column_letter].width = adjusted_width
-        
+
         output.seek(0)
-        
+
         # Generate filename
-        safe_symbol = symbol.replace('/', '_')
-        safe_template = template_name.replace(' ', '_')
+        safe_symbol = symbol.replace("/", "_")
+        safe_template = template_name.replace(" ", "_")
         filename = f"{safe_template}_{safe_symbol}_{timeframe}_trades.xlsx"
-        
+
         return StreamingResponse(
             io.BytesIO(output.read()),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     except Exception as e:
         logger.error(f"Error exporting trades to Excel: {str(e)}")
@@ -162,11 +178,11 @@ async def get_template_metadata(template_name: str):
     """Get metadata for a specific template."""
     service = ComboService()
     metadata = service.get_template_metadata(template_name)
-    
+
     if not metadata:
         logger.warning(f"Template not found: {template_name}")
         raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found")
-    
+
     return metadata
 
 
@@ -174,14 +190,14 @@ async def get_template_metadata(template_name: str):
 async def update_template(template_name: str, request: UpdateTemplateRequest):
     """
     Update a combo template's metadata and optimization schema.
-    
+
     Args:
         template_name: Name of the template to update
         request: Update request with optional description, optimization_schema, template_data
-    
+
     Returns:
         Updated template metadata
-    
+
     Raises:
         403: If template is read-only
         404: If template not found
@@ -189,26 +205,28 @@ async def update_template(template_name: str, request: UpdateTemplateRequest):
     """
     try:
         service = ComboService()
-        
+
         # Update template
         success = service.update_template(
             template_name=template_name,
             description=request.description,
             optimization_schema=request.optimization_schema,
-            template_data=request.template_data
+            template_data=request.template_data,
         )
-        
+
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update template")
-        
+
         # Return updated metadata
         updated_metadata = service.get_template_metadata(template_name)
         if not updated_metadata:
-            raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found after update")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Template '{template_name}' not found after update"
+            )
+
         logger.info(f"Template '{template_name}' updated successfully")
         return updated_metadata
-        
+
     except ValueError as e:
         error_msg = str(e)
         if "read-only" in error_msg.lower():
@@ -226,33 +244,32 @@ async def update_template(template_name: str, request: UpdateTemplateRequest):
 async def clone_template(template_name: str, request: CloneTemplateRequest):
     """
     Clone an existing template with a new name.
-    
+
     Args:
         template_name: Name of the template to clone
         request: Clone request with new_name
-    
+
     Returns:
         Metadata of the cloned template
-    
+
     Raises:
         404: If source template not found
         409: If new name already exists
     """
     try:
         service = ComboService()
-        
+
         # Clone template
         cloned_metadata = service.clone_template(
-            template_name=template_name,
-            new_name=request.new_name
+            template_name=template_name, new_name=request.new_name
         )
-        
+
         if not cloned_metadata:
             raise HTTPException(status_code=500, detail="Failed to clone template")
-        
+
         logger.info(f"Template '{template_name}' cloned as '{request.new_name}'")
         return cloned_metadata
-        
+
     except ValueError as e:
         error_msg = str(e)
         if "not found" in error_msg.lower():
@@ -270,25 +287,27 @@ async def clone_template(template_name: str, request: CloneTemplateRequest):
 async def delete_template(template_name: str):
     """
     Delete a custom combo template.
-    
+
     Args:
         template_name: Name of the template to delete
-    
+
     Returns:
         Success message
-    
+
     Raises:
         404: If template not found or not deletable
     """
     try:
         service = ComboService()
         success = service.delete_template_by_name(template_name)
-        
+
         if not success:
-            raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found or cannot be deleted")
-            
+            raise HTTPException(
+                status_code=404, detail=f"Template '{template_name}' not found or cannot be deleted"
+            )
+
         return {"message": f"Template '{template_name}' deleted successfully"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -300,15 +319,17 @@ async def delete_template(template_name: str):
 async def run_combo_backtest(request: ComboBacktestRequest):
     """
     Execute a combo strategy backtest.
-    
+
     Args:
         request: Backtest configuration
-    
+
     Returns:
         Backtest results with metrics, trades, and indicator data
     """
     try:
-        logger.info(f"Starting combo backtest for template: {request.template_name} on {request.symbol} {request.timeframe}")
+        logger.info(
+            f"Starting combo backtest for template: {request.template_name} on {request.symbol} {request.timeframe}"
+        )
 
         # data_source may be omitted by the UI (e.g. Favorites -> View Results).
         # Resolve in this order:
@@ -318,22 +339,23 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         from app.services.market_data_providers import resolve_data_source_for_symbol
 
         requested_source = request.data_source
-        if (requested_source is None or str(requested_source).strip() == "") and isinstance(request.parameters, dict):
+        if (requested_source is None or str(requested_source).strip() == "") and isinstance(
+            request.parameters, dict
+        ):
             requested_source = request.parameters.get("data_source")
 
         if requested_source is None or str(requested_source).strip() == "":
             requested_source = resolve_data_source_for_symbol(request.symbol, None)
 
         data_source = validate_data_source_timeframe(requested_source, request.timeframe)
-        
+
         # Create strategy instance
         service = ComboService()
         strategy = service.create_strategy(
-            template_name=request.template_name,
-            parameters=request.parameters
+            template_name=request.template_name, parameters=request.parameters
         )
         logger.info(f"Strategy instance created for {request.template_name}")
-        
+
         # Load market data via provider selection (default: ccxt)
         provider = get_market_data_provider(data_source)
         df = provider.fetch_ohlcv(
@@ -343,44 +365,50 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             until_str=request.end_date,
         )
         logger.info(f"Loaded {len(df)} candles for {request.symbol} {request.timeframe}")
-        
+
         if df.empty:
-            raise HTTPException(status_code=400, detail="No data available for the specified period")
-        
+            raise HTTPException(
+                status_code=400, detail="No data available for the specified period"
+            )
+
         # Generate signals
         df_with_signals = strategy.generate_signals(df)
         logger.info(f"Generated signals for {len(df_with_signals)} candles")
-        
+
         # Use unified trade extraction logic (same as optimizer)
         from app.services.combo_optimizer import extract_trades_from_signals
-        
+
         stop_loss_pct = request.stop_loss if request.stop_loss is not None else strategy.stop_loss
         direction = getattr(request, "direction", "long") or "long"
         if direction not in ("long", "short"):
             direction = "long"
         trades = extract_trades_from_signals(df_with_signals, stop_loss_pct, direction)
-        
+
         logger.info(f"Backtest complete: {len(trades)} trades extracted")
-        
+
         # All trades from extract_trades_from_signals are closed (have exit_time)
         trades_for_metrics = trades
-        
+
         # Calculate metrics using same logic as combo_optimizer (TradingView-style)
-        initial_capital = request.initial_capital if hasattr(request, 'initial_capital') and request.initial_capital is not None else 100
-        
+        initial_capital = (
+            request.initial_capital
+            if hasattr(request, "initial_capital") and request.initial_capital is not None
+            else 100
+        )
+
         total_trades = len(trades_for_metrics)
-        winning_trades = sum(1 for t in trades_for_metrics if t.get('profit', 0) > 0)
-        
+        winning_trades = sum(1 for t in trades_for_metrics if t.get("profit", 0) > 0)
+
         # Compounded Return (TradingView-style): baseado em equity final vs inicial
         # TradingView usa COMPOUNDING - cada trade reinveste o capital (equity cresce)
         # Calcular equity curve com compounding
         equity = float(initial_capital)
         for t in trades_for_metrics:
-            profit_pct = t.get('profit', 0) if t.get('profit') is not None else 0
-            equity *= (1.0 + profit_pct)
+            profit_pct = t.get("profit", 0) if t.get("profit") is not None else 0
+            equity *= 1.0 + profit_pct
         # Return: (equity_final / equity_inicial - 1) * 100
         total_return_pct = (equity / initial_capital - 1) * 100.0
-        
+
         # Max Drawdown from equity curve (TradingView-style com compounding)
         # Calcular drawdown baseado em equity curve (com reinvestimento)
         max_drawdown_pct = 0.0
@@ -389,31 +417,35 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             peak_equity = float(initial_capital)
             max_dd = 0.0
             for t in trades_for_metrics:
-                equity_dd *= (1.0 + t.get('profit', 0))
+                equity_dd *= 1.0 + t.get("profit", 0)
                 if equity_dd > peak_equity:
                     peak_equity = equity_dd
                 drawdown = (peak_equity - equity_dd) / peak_equity
                 max_dd = max(max_dd, drawdown)
             max_drawdown_pct = max_dd * 100.0  # Convert to percentage
-        
+
         # Profit Factor (TradingView-style): usando PnL absoluto em USD com compounding
         # Calcular PnL absoluto por trade baseado no capital ATUAL (que cresce com cada trade)
         equity_current = float(initial_capital)
         gross_profit_usd = 0.0
         gross_loss_usd = 0.0
-        
+
         for t in trades_for_metrics:
-            profit_pct = t.get('profit', 0) if t.get('profit') is not None else 0
+            profit_pct = t.get("profit", 0) if t.get("profit") is not None else 0
             trade_pnl_usd = equity_current * profit_pct
             if profit_pct > 0:
                 gross_profit_usd += trade_pnl_usd
             else:
                 gross_loss_usd += abs(trade_pnl_usd)
             # Atualizar equity para próximo trade (compounding)
-            equity_current *= (1.0 + profit_pct)
-        
-        profit_factor = gross_profit_usd / gross_loss_usd if gross_loss_usd > 0 else (999 if gross_profit_usd > 0 else 0)
-        
+            equity_current *= 1.0 + profit_pct
+
+        profit_factor = (
+            gross_profit_usd / gross_loss_usd
+            if gross_loss_usd > 0
+            else (999 if gross_profit_usd > 0 else 0)
+        )
+
         metrics = {
             "total_trades": total_trades,
             "win_rate": winning_trades / total_trades if total_trades > 0 else 0,
@@ -422,9 +454,9 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             "avg_profit": total_return_pct / total_trades if total_trades > 0 else 0,
             "max_drawdown": max_drawdown_pct / 100.0,  # Store as decimal
             "max_drawdown_pct": max_drawdown_pct,  # Also store as percentage
-            "profit_factor": profit_factor  # TradingView-style (USD-based)
+            "profit_factor": profit_factor,  # TradingView-style (USD-based)
         }
-        
+
         # Get indicator data for chart
         indicator_columns = strategy.get_indicator_columns()
         indicator_data = {}
@@ -433,7 +465,7 @@ async def run_combo_backtest(request: ComboBacktestRequest):
                 # Replace NaN with None for JSON compatibility
                 values = df_with_signals[col].tolist()
                 indicator_data[col] = [None if pd.isna(v) else float(v) for v in values]
-        
+
         # Extract Candle Data
         candles = []
         if not df_with_signals.empty:
@@ -444,21 +476,23 @@ async def run_combo_backtest(request: ComboBacktestRequest):
                     df_with_signals.index = pd.to_datetime(df_with_signals.index)
                 except:
                     pass
-            
+
             # Remove duplicate timestamps and sort by time
-            df_clean = df_with_signals[~df_with_signals.index.duplicated(keep='first')]
+            df_clean = df_with_signals[~df_with_signals.index.duplicated(keep="first")]
             df_clean = df_clean.sort_index()
 
             for idx, row in df_clean.iterrows():
-                candles.append({
-                    "timestamp_utc": idx.isoformat() if hasattr(idx, 'isoformat') else str(idx),
-                    "open": float(row['open']),
-                    "high": float(row['high']),
-                    "low": float(row['low']),
-                    "close": float(row['close']),
-                    "volume": float(row['volume'])
-                })
-        
+                candles.append(
+                    {
+                        "timestamp_utc": idx.isoformat() if hasattr(idx, "isoformat") else str(idx),
+                        "open": float(row["open"]),
+                        "high": float(row["high"]),
+                        "low": float(row["low"]),
+                        "close": float(row["close"]),
+                        "volume": float(row["volume"]),
+                    }
+                )
+
         response = ComboBacktestResponse(
             template_name=request.template_name,
             symbol=request.symbol,
@@ -477,8 +511,9 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         )
         logger.info("Response object created successfully")
         from fastapi.encoders import jsonable_encoder
+
         return jsonable_encoder(response)
-        
+
     except HTTPException:
         raise
     except ValueError as e:
@@ -486,6 +521,7 @@ async def run_combo_backtest(request: ComboBacktestRequest):
     except Exception as e:
         logger.error(f"Backtest error: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -494,20 +530,22 @@ async def run_combo_backtest(request: ComboBacktestRequest):
 async def optimize_combo_strategy(request: ComboOptimizationRequest):
     """
     Run parameter optimization for a combo strategy.
-    
+
     Args:
         request: Optimization configuration
-    
+
     Returns:
         Optimization results with best parameters and metrics
     """
     try:
-        logger.info(f"Starting optimization for template: {request.template_name} on {request.symbol} {request.timeframe}")
+        logger.info(
+            f"Starting optimization for template: {request.template_name} on {request.symbol} {request.timeframe}"
+        )
         data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
-        
+
         # Create optimizer
         optimizer = ComboOptimizer()
-        
+
         # Run optimization (template short_ema200_pullback is short-only: force direction)
         direction = getattr(request, "direction", "long") or "long"
         if request.template_name == "short_ema200_pullback":
@@ -530,14 +568,15 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
             deep_backtest=request.deep_backtest,
             direction=direction,
         )
-        
+
         logger.info(f"Optimization complete. Best score: {result.get('best_score', 'N/A')}")
-        
+
         return ComboOptimizationResponse(**result)
-        
+
     except Exception as e:
         logger.error(f"Optimization error: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 

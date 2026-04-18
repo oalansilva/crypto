@@ -9,7 +9,6 @@ from app.main import app
 from app.workflow_database import WorkflowBase, get_workflow_db
 
 
-
 def _build_client():
     engine = create_engine(
         "sqlite://",
@@ -52,7 +51,11 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
 
     updated = client.patch(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db",
-        json={"status": "DEV", "title": "Workflow DB APIs", "description": "APIs and Kanban compat"},
+        json={
+            "status": "DEV",
+            "title": "Workflow DB APIs",
+            "description": "APIs and Kanban compat",
+        },
     )
     assert updated.status_code == 200
     assert updated.json()["status"] == "DEV"
@@ -60,7 +63,11 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
 
     story = client.post(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/tasks",
-        json={"type": "story", "title": "Add workflow APIs", "description": "Expose DB-backed runtime state"},
+        json={
+            "type": "story",
+            "title": "Add workflow APIs",
+            "description": "Expose DB-backed runtime state",
+        },
     )
     assert story.status_code == 200
     story_id = story.json()["id"]
@@ -78,7 +85,9 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
     )
     assert invalid_story_parent.status_code == 400
 
-    task_list = client.get("/api/workflow/projects/crypto/changes/centralize-workflow-state-db/tasks")
+    task_list = client.get(
+        "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/tasks"
+    )
     assert task_list.status_code == 200
     assert [item["type"] for item in task_list.json()] == ["story", "bug"]
 
@@ -91,12 +100,19 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
 
     task_comment = client.post(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/comments",
-        json={"scope": "work_item", "work_item_id": story_id, "author": "DEV", "body": "Story em progresso"},
+        json={
+            "scope": "work_item",
+            "work_item_id": story_id,
+            "author": "DEV",
+            "body": "Story em progresso",
+        },
     )
     assert task_comment.status_code == 200
     assert task_comment.json()["work_item_id"] == story_id
 
-    comment_list = client.get("/api/workflow/projects/crypto/changes/centralize-workflow-state-db/comments")
+    comment_list = client.get(
+        "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/comments"
+    )
     assert comment_list.status_code == 200
     assert len(comment_list.json()) == 1
 
@@ -108,19 +124,33 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
 
     approval = client.post(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/approvals",
-        json={"scope": "change", "gate": "Approval", "state": "approved", "actor": "Alan", "note": "ok"},
+        json={
+            "scope": "change",
+            "gate": "Approval",
+            "state": "approved",
+            "actor": "Alan",
+            "note": "ok",
+        },
     )
     assert approval.status_code == 200
     assert approval.json()["gate"] == "Approval"
 
     handoff = client.post(
         "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/handoffs",
-        json={"scope": "work_item", "work_item_id": story_id, "from_role": "DEV", "to_role": "QA", "summary": "Backend API pronta para validar"},
+        json={
+            "scope": "work_item",
+            "work_item_id": story_id,
+            "from_role": "DEV",
+            "to_role": "QA",
+            "summary": "Backend API pronta para validar",
+        },
     )
     assert handoff.status_code == 200
     assert handoff.json()["to_role"] == "QA"
 
-    approvals = client.get("/api/workflow/projects/crypto/changes/centralize-workflow-state-db/approvals")
+    approvals = client.get(
+        "/api/workflow/projects/crypto/changes/centralize-workflow-state-db/approvals"
+    )
     assert approvals.status_code == 200
     approval_items = approvals.json()
     assert len(approval_items) >= 1

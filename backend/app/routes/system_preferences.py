@@ -62,15 +62,25 @@ class SystemPreferencesResponse(BaseModel):
 
 class SystemPreferencesPayload(BaseModel):
     minimax_api_key: str | None = Field(default=None, min_length=10, max_length=512)
-    signal_history_min_confidence: int = Field(default=DEFAULT_SIGNAL_HISTORY_MIN_CONFIDENCE, ge=0, le=100)
-    signal_history_min_reward_risk: float = Field(default=DEFAULT_SIGNAL_HISTORY_MIN_REWARD_RISK, ge=0.1, le=20)
-    signal_history_max_reward_risk: float = Field(default=DEFAULT_SIGNAL_HISTORY_MAX_REWARD_RISK, ge=0.1, le=20)
+    signal_history_min_confidence: int = Field(
+        default=DEFAULT_SIGNAL_HISTORY_MIN_CONFIDENCE, ge=0, le=100
+    )
+    signal_history_min_reward_risk: float = Field(
+        default=DEFAULT_SIGNAL_HISTORY_MIN_REWARD_RISK, ge=0.1, le=20
+    )
+    signal_history_max_reward_risk: float = Field(
+        default=DEFAULT_SIGNAL_HISTORY_MAX_REWARD_RISK, ge=0.1, le=20
+    )
     signal_history_min_rsi: float = Field(default=DEFAULT_SIGNAL_HISTORY_MIN_RSI, ge=0, le=100)
     signal_history_max_rsi: float = Field(default=DEFAULT_SIGNAL_HISTORY_MAX_RSI, ge=0, le=100)
-    signal_history_allow_neutral_macd: bool = Field(default=DEFAULT_SIGNAL_HISTORY_ALLOW_NEUTRAL_MACD)
+    signal_history_allow_neutral_macd: bool = Field(
+        default=DEFAULT_SIGNAL_HISTORY_ALLOW_NEUTRAL_MACD
+    )
     signal_history_allow_buy: bool = Field(default=DEFAULT_SIGNAL_HISTORY_ALLOW_BUY)
     signal_history_allow_sell: bool = Field(default=DEFAULT_SIGNAL_HISTORY_ALLOW_SELL)
-    signal_history_allow_conservative: bool = Field(default=DEFAULT_SIGNAL_HISTORY_ALLOW_CONSERVATIVE)
+    signal_history_allow_conservative: bool = Field(
+        default=DEFAULT_SIGNAL_HISTORY_ALLOW_CONSERVATIVE
+    )
     signal_history_allow_moderate: bool = Field(default=DEFAULT_SIGNAL_HISTORY_ALLOW_MODERATE)
     signal_history_allow_aggressive: bool = Field(default=DEFAULT_SIGNAL_HISTORY_ALLOW_AGGRESSIVE)
 

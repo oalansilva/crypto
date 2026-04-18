@@ -68,20 +68,14 @@ class AgentRunStatus(str, enum.Enum):
 class Project(WorkflowBase):
     __tablename__ = "wf_projects"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    slug: Mapped[str] = mapped_column(
-        String(64), nullable=False, unique=True
-    )  # e.g. "crypto"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    slug: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)  # e.g. "crypto"
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     root_directory: Mapped[str | None] = mapped_column(String(512), nullable=True)
     database_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     frontend_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     backend_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    workflow_database_url: Mapped[str | None] = mapped_column(
-        String(1024), nullable=True
-    )
+    workflow_database_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     tech_stack: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -94,9 +88,7 @@ class Project(WorkflowBase):
 class Change(WorkflowBase):
     __tablename__ = "wf_changes"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     project_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("wf_projects.id", ondelete="CASCADE"), nullable=False
@@ -107,9 +99,7 @@ class Change(WorkflowBase):
 
     title: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="in_progress"
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="in_progress")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     card_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Image attachments stored as JSON: [{"filename": "xxx.jpg", "data": "base64..."}]
@@ -123,14 +113,10 @@ class Change(WorkflowBase):
     )
 
     project = relationship("Project", back_populates="changes")
-    work_items = relationship(
-        "WorkItem", back_populates="change", cascade="all, delete-orphan"
-    )
+    work_items = relationship("WorkItem", back_populates="change", cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint(
-            "project_id", "change_id", name="uq_wf_changes_project_change"
-        ),
+        UniqueConstraint("project_id", "change_id", name="uq_wf_changes_project_change"),
         Index("ix_wf_changes_project", "project_id"),
     )
 
@@ -138,9 +124,7 @@ class Change(WorkflowBase):
 class WorkItem(WorkflowBase):
     __tablename__ = "wf_work_items"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     change_pk: Mapped[str] = mapped_column(
         String(36), ForeignKey("wf_changes.id", ondelete="CASCADE"), nullable=False
     )
@@ -223,9 +207,7 @@ class WorkItem(WorkflowBase):
 class WorkItemDependency(WorkflowBase):
     __tablename__ = "wf_work_item_deps"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     work_item_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("wf_work_items.id", ondelete="CASCADE"), nullable=False
@@ -238,12 +220,8 @@ class WorkItemDependency(WorkflowBase):
         DateTime(timezone=True), default=utcnow, nullable=False
     )
 
-    work_item = relationship(
-        "WorkItem", foreign_keys=[work_item_id], back_populates="dependencies"
-    )
-    depends_on = relationship(
-        "WorkItem", foreign_keys=[depends_on_id], back_populates="dependents"
-    )
+    work_item = relationship("WorkItem", foreign_keys=[work_item_id], back_populates="dependencies")
+    depends_on = relationship("WorkItem", foreign_keys=[depends_on_id], back_populates="dependents")
 
     __table_args__ = (
         UniqueConstraint("work_item_id", "depends_on_id", name="uq_wf_dep_pair"),
@@ -254,16 +232,12 @@ class WorkItemDependency(WorkflowBase):
 class AgentRun(WorkflowBase):
     __tablename__ = "wf_agent_runs"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     change_pk: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("wf_changes.id", ondelete="CASCADE"), nullable=True
     )
-    agent: Mapped[str] = mapped_column(
-        String(64), nullable=False
-    )  # e.g. "dev", "po", etc.
+    agent: Mapped[str] = mapped_column(String(64), nullable=False)  # e.g. "dev", "po", etc.
     label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     status: Mapped[AgentRunStatus] = mapped_column(
         Enum(AgentRunStatus, name="wf_agent_run_status"),
@@ -274,9 +248,7 @@ class AgentRun(WorkflowBase):
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )
-    ended_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     meta: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
@@ -294,9 +266,7 @@ class AgentRun(WorkflowBase):
 class WorkItemLock(WorkflowBase):
     __tablename__ = "wf_work_item_locks"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     work_item_id: Mapped[str] = mapped_column(
         String(36),
@@ -312,9 +282,7 @@ class WorkItemLock(WorkflowBase):
     acquired_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )
-    released_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     work_item = relationship("WorkItem", back_populates="lock")
     owner_run = relationship("AgentRun")
@@ -332,9 +300,7 @@ class WorkflowComment(WorkflowBase):
 
     # Legacy coordination comment ids are not always UUIDs (can be ~45 chars),
     # so we allow a wider PK.
-    id: Mapped[str] = mapped_column(
-        String(64), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     scope: Mapped[CommentScope] = mapped_column(
         Enum(CommentScope, name="wf_comment_scope"), nullable=False
@@ -380,9 +346,7 @@ class ApprovalState(str, enum.Enum):
 class WorkflowApproval(WorkflowBase):
     __tablename__ = "wf_approvals"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     scope: Mapped[ApprovalScope] = mapped_column(
         Enum(ApprovalScope, name="wf_approval_scope"), nullable=False
     )
@@ -424,9 +388,7 @@ class HandoffScope(str, enum.Enum):
 class WorkflowHandoff(WorkflowBase):
     __tablename__ = "wf_handoffs"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     scope: Mapped[HandoffScope] = mapped_column(
         Enum(HandoffScope, name="wf_handoff_scope"), nullable=False
     )

@@ -32,7 +32,7 @@ class ComboStrategy:
         exit_logic: str,
         stop_loss: float = 0.015,
         stop_gain: Optional[float] = None,
-        derived_features: Optional[List[Dict[str, Any]]] = None
+        derived_features: Optional[List[Dict[str, Any]]] = None,
     ):
         """
         Initialize combo strategy.
@@ -56,7 +56,7 @@ class ComboStrategy:
 
     def _validate_aliases(self):
         """Validate that all aliases are unique."""
-        aliases = [ind.get('alias') for ind in self.indicators if ind.get('alias')]
+        aliases = [ind.get("alias") for ind in self.indicators if ind.get("alias")]
         if len(aliases) != len(set(aliases)):
             duplicates = [a for a in aliases if aliases.count(a) > 1]
             raise ValueError(f"Duplicate aliases found: {set(duplicates)}")
@@ -66,7 +66,10 @@ class ComboStrategy:
             token = item.strip()
             if not token:
                 return None
-            m = re.match(r"^(?P<source>[A-Za-z_][A-Za-z0-9_]*)_(?P<suffix>prev|lag|shift|slope|mean|rolling_mean|pct_change)(?P<num>\d+)?$", token)
+            m = re.match(
+                r"^(?P<source>[A-Za-z_][A-Za-z0-9_]*)_(?P<suffix>prev|lag|shift|slope|mean|rolling_mean|pct_change)(?P<num>\d+)?$",
+                token,
+            )
             if not m:
                 return None
             source = m.group("source")
@@ -167,95 +170,95 @@ class ComboStrategy:
             DataFrame with calculated indicators
         """
         # Check cache
-        if 'calculated' in self._indicator_cache:
-            return self._indicator_cache['calculated'].copy()
+        if "calculated" in self._indicator_cache:
+            return self._indicator_cache["calculated"].copy()
 
         df = df.copy()
 
         for indicator in self.indicators:
-            ind_type = indicator['type'].lower()
-            params = indicator.get('params', {})
-            alias = indicator.get('alias')
+            ind_type = indicator["type"].lower()
+            params = indicator.get("params", {})
+            alias = indicator.get("alias")
 
             try:
-                if ind_type == 'ema':
-                    length = params.get('length', 9)
-                    col_name = alias if alias else f'EMA_{length}'
-                    df[col_name] = ta.ema(df['close'], length=length)
+                if ind_type == "ema":
+                    length = params.get("length", 9)
+                    col_name = alias if alias else f"EMA_{length}"
+                    df[col_name] = ta.ema(df["close"], length=length)
 
-                elif ind_type == 'sma':
-                    length = params.get('length', 20)
-                    col_name = alias if alias else f'SMA_{length}'
-                    df[col_name] = ta.sma(df['close'], length=length)
+                elif ind_type == "sma":
+                    length = params.get("length", 20)
+                    col_name = alias if alias else f"SMA_{length}"
+                    df[col_name] = ta.sma(df["close"], length=length)
 
-                elif ind_type == 'rsi':
-                    length = params.get('length', 14)
+                elif ind_type == "rsi":
+                    length = params.get("length", 14)
                     # Keep the traditional RSI_{length} column name for backward-compatible logic,
                     # but also support a stable alias (e.g. "rsi") when provided.
-                    col_name = f'RSI_{length}'
-                    rsi_series = ta.rsi(df['close'], length=length)
+                    col_name = f"RSI_{length}"
+                    rsi_series = ta.rsi(df["close"], length=length)
                     df[col_name] = rsi_series
                     if alias and alias != col_name:
                         df[alias] = rsi_series
 
-                elif ind_type == 'macd':
-                    fast = params.get('fast', 12)
-                    slow = params.get('slow', 26)
-                    signal = params.get('signal', 9)
-                    alias_prefix = alias if alias else 'MACD'
+                elif ind_type == "macd":
+                    fast = params.get("fast", 12)
+                    slow = params.get("slow", 26)
+                    signal = params.get("signal", 9)
+                    alias_prefix = alias if alias else "MACD"
 
-                    macd_result = ta.macd(df['close'], fast=fast, slow=slow, signal=signal)
-                    df[f'{alias_prefix}_macd'] = macd_result[f'MACD_{fast}_{slow}_{signal}']
-                    df[f'{alias_prefix}_signal'] = macd_result[f'MACDs_{fast}_{slow}_{signal}']
-                    df[f'{alias_prefix}_histogram'] = macd_result[f'MACDh_{fast}_{slow}_{signal}']
+                    macd_result = ta.macd(df["close"], fast=fast, slow=slow, signal=signal)
+                    df[f"{alias_prefix}_macd"] = macd_result[f"MACD_{fast}_{slow}_{signal}"]
+                    df[f"{alias_prefix}_signal"] = macd_result[f"MACDs_{fast}_{slow}_{signal}"]
+                    df[f"{alias_prefix}_histogram"] = macd_result[f"MACDh_{fast}_{slow}_{signal}"]
 
-                elif ind_type == 'bbands' or ind_type == 'bollinger':
-                    length = params.get('length', 20)
-                    std = params.get('std', 2)
-                    alias_prefix = alias if alias else 'BB'
+                elif ind_type == "bbands" or ind_type == "bollinger":
+                    length = params.get("length", 20)
+                    std = params.get("std", 2)
+                    alias_prefix = alias if alias else "BB"
 
-                    bbands_result = ta.bbands(df['close'], length=length, std=std)
+                    bbands_result = ta.bbands(df["close"], length=length, std=std)
                     # Handle potential column name variations (e.g. with .0 suffix)
                     cols = bbands_result.columns.tolist()
-                    lower_col = next(c for c in cols if c.startswith(f'BBL_{length}_{std}'))
-                    mid_col = next(c for c in cols if c.startswith(f'BBM_{length}_{std}'))
-                    upper_col = next(c for c in cols if c.startswith(f'BBU_{length}_{std}'))
+                    lower_col = next(c for c in cols if c.startswith(f"BBL_{length}_{std}"))
+                    mid_col = next(c for c in cols if c.startswith(f"BBM_{length}_{std}"))
+                    upper_col = next(c for c in cols if c.startswith(f"BBU_{length}_{std}"))
 
-                    df[f'{alias_prefix}_upper'] = bbands_result[upper_col]
-                    df[f'{alias_prefix}_middle'] = bbands_result[mid_col]
-                    df[f'{alias_prefix}_lower'] = bbands_result[lower_col]
+                    df[f"{alias_prefix}_upper"] = bbands_result[upper_col]
+                    df[f"{alias_prefix}_middle"] = bbands_result[mid_col]
+                    df[f"{alias_prefix}_lower"] = bbands_result[lower_col]
 
-                elif ind_type == 'atr':
-                    length = params.get('length', 14)
-                    col_name = f'ATR_{length}'
-                    atr_series = ta.atr(df['high'], df['low'], df['close'], length=length)
+                elif ind_type == "atr":
+                    length = params.get("length", 14)
+                    col_name = f"ATR_{length}"
+                    atr_series = ta.atr(df["high"], df["low"], df["close"], length=length)
                     df[col_name] = atr_series
                     # Support stable alias when provided (e.g. "atr")
                     if alias and alias != col_name:
                         df[alias] = atr_series
 
-                elif ind_type == 'adx':
-                    length = params.get('length', 14)
-                    col_name = f'ADX_{length}'
-                    adx_result = ta.adx(df['high'], df['low'], df['close'], length=length)
-                    adx_series = adx_result[f'ADX_{length}']
+                elif ind_type == "adx":
+                    length = params.get("length", 14)
+                    col_name = f"ADX_{length}"
+                    adx_result = ta.adx(df["high"], df["low"], df["close"], length=length)
+                    adx_series = adx_result[f"ADX_{length}"]
                     df[col_name] = adx_series
                     # Support stable alias when provided (e.g. "adx")
                     if alias and alias != col_name:
                         df[alias] = adx_series
 
-                elif ind_type == 'roc':
-                    length = params.get('length', 20)
-                    col_name = f'ROC_{length}'
-                    roc_series = ta.roc(df['close'], length=length)
+                elif ind_type == "roc":
+                    length = params.get("length", 20)
+                    col_name = f"ROC_{length}"
+                    roc_series = ta.roc(df["close"], length=length)
                     df[col_name] = roc_series
                     if alias and alias != col_name:
                         df[alias] = roc_series
 
-                elif ind_type == 'volume_sma':
-                    length = params.get('length', 20)
-                    col_name = alias if alias else f'VOL_SMA_{length}'
-                    df[col_name] = ta.sma(df['volume'], length=length)
+                elif ind_type == "volume_sma":
+                    length = params.get("length", 20)
+                    col_name = alias if alias else f"VOL_SMA_{length}"
+                    df[col_name] = ta.sma(df["volume"], length=length)
 
                 else:
                     # Generic pandas_ta indicator support
@@ -274,7 +277,10 @@ class ComboStrategy:
                     kwargs = dict(params or {})
                     if sig is not None:
                         for name in sig.parameters:
-                            if name in ("open", "high", "low", "close", "volume") and name not in kwargs:
+                            if (
+                                name in ("open", "high", "low", "close", "volume")
+                                and name not in kwargs
+                            ):
                                 if name in df.columns:
                                     kwargs[name] = df[name]
 
@@ -302,10 +308,9 @@ class ComboStrategy:
                     if alias and alias != col_name:
                         df[alias] = df[col_name]
 
-                
-                    length = params.get('length', 20)
-                    col_name = alias if alias else f'VOL_SMA_{length}'
-                    df[col_name] = ta.sma(df['volume'], length=length)
+                    length = params.get("length", 20)
+                    col_name = alias if alias else f"VOL_SMA_{length}"
+                    df[col_name] = ta.sma(df["volume"], length=length)
 
             except Exception as e:
                 raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
@@ -316,13 +321,13 @@ class ComboStrategy:
         # This handles cases where pandas-ta might return object types with None
         # IMPORTANT: Skip 'regime' column as it contains categorical strings
         for col in df.columns:
-            if col == 'regime':  # Preserve regime column
+            if col == "regime":  # Preserve regime column
                 continue
-            if df[col].dtype == 'object':
-                df[col] = pd.to_numeric(df[col], errors='coerce')
+            if df[col].dtype == "object":
+                df[col] = pd.to_numeric(df[col], errors="coerce")
 
         # Cache the result
-        self._indicator_cache['calculated'] = df.copy()
+        self._indicator_cache["calculated"] = df.copy()
 
         return df
 
@@ -350,7 +355,9 @@ class ComboStrategy:
             # Backward-compatible dotted indicator access:
             # Some templates use bb.upper / bb.middle / bb.lower. Internally we materialize as
             # bb_upper / bb_middle / bb_lower.
-            logic_expr = re.sub(r"\b([A-Za-z_][A-Za-z0-9_]*)\.(upper|middle|lower)\b", r"\1_\2", logic_expr)
+            logic_expr = re.sub(
+                r"\b([A-Za-z_][A-Za-z0-9_]*)\.(upper|middle|lower)\b", r"\1_\2", logic_expr
+            )
 
             # Create local context with vectorized helper functions
             local_context = HELPER_FUNCTIONS.copy()
@@ -364,6 +371,7 @@ class ComboStrategy:
                     return not bool(x)
                 except Exception:
                     return ~x
+
             local_context["NOT"] = NOT
 
             # Add all dataframe columns to context (Vectors/Series)
@@ -398,7 +406,9 @@ class ComboStrategy:
             try:
                 referenced_rsi = set(re.findall(r"\bRSI_\d+\b", logic_expr))
                 if referenced_rsi:
-                    rsi_inds = [i for i in self.indicators if str(i.get("type", "")).lower() == "rsi"]
+                    rsi_inds = [
+                        i for i in self.indicators if str(i.get("type", "")).lower() == "rsi"
+                    ]
                     if len(rsi_inds) == 1:
                         ind = rsi_inds[0]
                         ind_params = ind.get("params", {}) or {}
@@ -433,7 +443,9 @@ class ComboStrategy:
                     if not referenced:
                         return
 
-                    inds = [i for i in self.indicators if str(i.get("type", "")).lower() == ind_type]
+                    inds = [
+                        i for i in self.indicators if str(i.get("type", "")).lower() == ind_type
+                    ]
                     if not inds:
                         return
 
@@ -445,7 +457,11 @@ class ComboStrategy:
                         if alias and alias in df.columns:
                             return df[alias]
                         if length is not None:
-                            col = f"{prefix}_{int(length)}" if float(length).is_integer() else f"{prefix}_{length}"
+                            col = (
+                                f"{prefix}_{int(length)}"
+                                if float(length).is_integer()
+                                else f"{prefix}_{length}"
+                            )
                             if col in df.columns:
                                 return df[col]
                         return None
@@ -455,7 +471,11 @@ class ComboStrategy:
                         s = series_for_indicator(inds[0])
                         if s is None:
                             # fallback: if exactly one PREFIX_* column exists, use it
-                            cols = [c for c in df.columns if re.match(rf"^{re.escape(prefix)}_\d+$", str(c))]
+                            cols = [
+                                c
+                                for c in df.columns
+                                if re.match(rf"^{re.escape(prefix)}_\d+$", str(c))
+                            ]
                             if len(cols) == 1:
                                 s = df[cols[0]]
                         if s is None:
@@ -515,7 +535,11 @@ class ComboStrategy:
                 def visit_UnaryOp(self, node: ast.UnaryOp):
                     self.generic_visit(node)
                     if isinstance(node.op, ast.Not):
-                        call = ast.Call(func=ast.Name(id="NOT", ctx=ast.Load()), args=[node.operand], keywords=[])
+                        call = ast.Call(
+                            func=ast.Name(id="NOT", ctx=ast.Load()),
+                            args=[node.operand],
+                            keywords=[],
+                        )
                         return ast.copy_location(call, node)
                     return node
 
@@ -537,7 +561,6 @@ class ComboStrategy:
             # Fallback or strict error
             raise RuntimeError(f"Error evaluating vectorized logic '{logic}': {str(e)}")
 
-
     def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Generate buy/sell signals based on entry/exit logic AND stop loss.
@@ -554,15 +577,15 @@ class ComboStrategy:
         """
         # Use empty check
         if df.empty:
-            df['signal'] = 0
+            df["signal"] = 0
             return df
 
         # Calculate indicators
         df = self.calculate_indicators(df)
 
         # Initialize signal column
-        df['signal'] = 0
-        df['signal_reason'] = ''
+        df["signal"] = 0
+        df["signal_reason"] = ""
 
         # ---------------------------------------------------------------------
         # OPTIMIZATION: Vectorized Logic Evaluation
@@ -590,16 +613,16 @@ class ComboStrategy:
 
         # Pre-convert columns to Numpy arrays for max speed in the loop
         # (Pandas .iloc is slow inside loops)
-        close_arr = df['close'].values
-        open_arr = df['open'].values
-        low_arr = df['low'].values
+        close_arr = df["close"].values
+        open_arr = df["open"].values
+        low_arr = df["low"].values
 
         entry_bits = entry_mask.values
         exit_bits = exit_mask.values
 
         # Output signal arrays
         signals = np.zeros(len(df), dtype=int)
-        signal_reasons = np.full(len(df), '', dtype=object)
+        signal_reasons = np.full(len(df), "", dtype=object)
 
         stop_loss_decimal = self.stop_loss
 
@@ -607,7 +630,7 @@ class ComboStrategy:
             # Apply confirmed signals from Previous Candle
             if pending_entry and not in_position:
                 signals[i] = 1
-                signal_reasons[i] = 'entry'
+                signal_reasons[i] = "entry"
                 in_position = True
                 entry_price = float(open_arr[i])
                 pending_entry = False
@@ -615,7 +638,7 @@ class ComboStrategy:
 
             if pending_exit and in_position:
                 signals[i] = -1
-                signal_reasons[i] = 'exit_logic'
+                signal_reasons[i] = "exit_logic"
                 in_position = False
                 entry_price = None
                 pending_exit = False
@@ -628,7 +651,7 @@ class ComboStrategy:
 
                 if low_pnl <= -stop_loss_decimal:
                     signals[i] = -1
-                    signal_reasons[i] = 'stop_loss'
+                    signal_reasons[i] = "stop_loss"
                     in_position = False
                     entry_price = None
                     pending_exit = False
@@ -638,7 +661,7 @@ class ComboStrategy:
             # If logic is True at index i (Close of candle i),
             # we set pending flag for index i+1 (Open of candle i+1)
 
-            if i > 0: # Logic usually requires lookback (shift)
+            if i > 0:  # Logic usually requires lookback (shift)
                 # Entry Logic
                 if not in_position:
                     if entry_bits[i]:
@@ -650,8 +673,8 @@ class ComboStrategy:
                         pending_exit = True
 
         # Write back results
-        df['signal'] = signals
-        df['signal_reason'] = signal_reasons
+        df["signal"] = signals
+        df["signal_reason"] = signal_reasons
         return df
 
     def get_indicator_columns(self) -> List[str]:
@@ -664,44 +687,40 @@ class ComboStrategy:
         columns = []
 
         for indicator in self.indicators:
-            ind_type = indicator['type'].lower()
-            params = indicator.get('params', {})
-            alias = indicator.get('alias')
+            ind_type = indicator["type"].lower()
+            params = indicator.get("params", {})
+            alias = indicator.get("alias")
 
-            if ind_type in ['ema', 'sma']:
-                length = params.get('length', 9 if ind_type == 'ema' else 20)
-                columns.append(alias if alias else f'{ind_type.upper()}_{length}')
+            if ind_type in ["ema", "sma"]:
+                length = params.get("length", 9 if ind_type == "ema" else 20)
+                columns.append(alias if alias else f"{ind_type.upper()}_{length}")
 
-            elif ind_type == 'rsi':
-                length = params.get('length', 14)
-                columns.append(f'RSI_{length}')
+            elif ind_type == "rsi":
+                length = params.get("length", 14)
+                columns.append(f"RSI_{length}")
 
-            elif ind_type == 'macd':
-                alias_prefix = alias if alias else 'MACD'
-                columns.extend([
-                    f'{alias_prefix}_macd',
-                    f'{alias_prefix}_signal',
-                    f'{alias_prefix}_histogram'
-                ])
+            elif ind_type == "macd":
+                alias_prefix = alias if alias else "MACD"
+                columns.extend(
+                    [f"{alias_prefix}_macd", f"{alias_prefix}_signal", f"{alias_prefix}_histogram"]
+                )
 
-            elif ind_type in ['bbands', 'bollinger']:
-                alias_prefix = alias if alias else 'BB'
-                columns.extend([
-                    f'{alias_prefix}_upper',
-                    f'{alias_prefix}_middle',
-                    f'{alias_prefix}_lower'
-                ])
+            elif ind_type in ["bbands", "bollinger"]:
+                alias_prefix = alias if alias else "BB"
+                columns.extend(
+                    [f"{alias_prefix}_upper", f"{alias_prefix}_middle", f"{alias_prefix}_lower"]
+                )
 
-            elif ind_type == 'atr':
-                length = params.get('length', 14)
-                columns.append(f'ATR_{length}')
+            elif ind_type == "atr":
+                length = params.get("length", 14)
+                columns.append(f"ATR_{length}")
 
-            elif ind_type == 'adx':
-                length = params.get('length', 14)
-                columns.append(f'ADX_{length}')
+            elif ind_type == "adx":
+                length = params.get("length", 14)
+                columns.append(f"ADX_{length}")
 
-            elif ind_type == 'volume_sma':
-                length = params.get('length', 20)
-                columns.append(alias if alias else f'VOL_SMA_{length}')
+            elif ind_type == "volume_sma":
+                length = params.get("length", 20)
+                columns.append(alias if alias else f"VOL_SMA_{length}")
 
         return columns
