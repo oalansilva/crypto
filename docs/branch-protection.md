@@ -19,4 +19,4 @@ Notes:
 - `RUN_FRONTEND_BUILD` is currently `false` in CI because `npm run build` fails on a known TypeScript error in `frontend/src/pages/ArbitragePage.tsx`.
 - When frontend build is green, set `RUN_FRONTEND_BUILD` to `true` and include that check in required status checks.
 - `e2e-playwright` is path-scoped: it runs only when `frontend/**` changes.
-- `RUN_E2E_PLAYWRIGHT` is currently `false` because the Playwright suite has unrelated baseline failures; the check stays `skipped` until the suite is stabilized, then this flag should be flipped back to `true`.
+- `e2e-playwright` is additionally gated by the repository variable `RUN_E2E_PLAYWRIGHT`; leave it unset/`false` while the Playwright baseline is unstable, and flip it to `true` when the suite is stabilized.
