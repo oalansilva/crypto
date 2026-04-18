@@ -61,9 +61,7 @@ async def _fetch_news_sentiment() -> int:
     """Fetch trending coins from CoinGecko as a proxy for news sentiment."""
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
-            resp = await client.get(
-                "https://api.coingecko.com/api/v3/search/trending"
-            )
+            resp = await client.get("https://api.coingecko.com/api/v3/search/trending")
             resp.raise_for_status()
             data = resp.json()
             # Heuristic: trending coins imply positive market interest
@@ -79,7 +77,7 @@ async def _fetch_news_sentiment() -> int:
 
 def _analyze_reddit_sentiment() -> int:
     """Analyze Reddit sentiment using VADER on crypto subreddit post titles.
-    
+
     Fetches hot posts from r/Bitcoin and r/CryptoCurrency via Reddit JSON API
     (no auth required for public subreddits) and applies VADER sentiment.
     Returns score 0-100 (higher = more bullish).
@@ -95,14 +93,14 @@ def _analyze_reddit_sentiment() -> int:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     sia = SentimentIntensityAnalyzer()
-    
+
     # Fetch from Reddit JSON API (public, no auth needed)
     # Get post titles from crypto subreddits
     titles = []
     try:
         import json
         import urllib.request
-        
+
         subreddits = ["Bitcoin", "CryptoCurrency", "cryptocurrency"]
         for sub in subreddits:
             url = f"https://www.reddit.com/r/{sub}/hot.json?limit=5"
@@ -117,16 +115,16 @@ def _analyze_reddit_sentiment() -> int:
     except Exception as exc:
         logger.warning("Reddit fetch failed: %s", exc)
         return 50  # neutral fallback
-    
+
     if not titles:
         return 50
-    
+
     # Analyze each title with VADER
     compound_scores = []
     for title in titles:
         scores = sia.polarity_scores(title)
         compound_scores.append(scores["compound"])
-    
+
     # Average compound score (-1 to +1) -> convert to 0-100
     avg_compound = sum(compound_scores) / len(compound_scores)
     # Map: -1 -> 0, 0 -> 50, +1 -> 100

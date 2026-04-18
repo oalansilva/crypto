@@ -4,7 +4,12 @@ import os
 import sys
 from pathlib import Path
 
-os.environ.setdefault("ARBITRAGE_MONITOR_ENABLED", "0")
+os.environ["ARBITRAGE_MONITOR_ENABLED"] = "0"
+os.environ["WORKFLOW_DB_ENABLED"] = "1"
+os.environ["ALLOW_SQLITE_FOR_TESTS"] = "1"
+os.environ["WORKFLOW_ALLOW_SHARED_PROJECT_DB"] = "1"
+os.environ["DATABASE_URL"] = ""
+os.environ["WORKFLOW_DATABASE_URL"] = ""
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -13,3 +18,7 @@ if str(BACKEND_ROOT) not in sys.path:
 BACKEND_TESTS_ROOT = Path(__file__).resolve().parent
 if str(BACKEND_TESTS_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_TESTS_ROOT))
+
+from app.config import get_settings
+
+get_settings.cache_clear()

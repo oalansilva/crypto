@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
-import { Layout } from './components/Layout'
 import { ProtectedLayout } from './components/ProtectedLayout'
 import { AuthLayout } from './components/AuthLayout'
 import { AuthProvider } from './stores/authStore'

@@ -24,6 +24,7 @@ from app.models_onchain import OnchainSignal, OnchainSignalHistory, sao_paulo_no
 # This avoids starvation when the signal_feed_snapshot_worker is busy with Binance calls
 _onchain_http_client: AsyncClient | None = None
 
+
 def _get_onchain_client() -> AsyncClient:
     global _onchain_http_client
     if _onchain_http_client is None:
@@ -44,31 +45,31 @@ TOP_CHAINS = ["ethereum", "solana", "arbitrum", "base", "matic"]
 
 # Map chain slug → DeFiLlama chain identifier and GitHub repo
 CHAIN_META: dict[str, dict[str, str]] = {
-    "ethereum":  {"defillama": "ethereum",  "github": "ethereum/go-ethereum"},
-    "solana":    {"defillama": "solana",     "github": "solana-labs/solana"},
-    "arbitrum":  {"defillama": "arbitrum",   "github": "arbitrum/arbos"},
-    "base":      {"defillama": "base",       "github": "base-org/base"},
-    "matic":     {"defillama": "matic",      "github": "matic-network/libp2p"},
+    "ethereum": {"defillama": "ethereum", "github": "ethereum/go-ethereum"},
+    "solana": {"defillama": "solana", "github": "solana-labs/solana"},
+    "arbitrum": {"defillama": "arbitrum", "github": "arbitrum/arbos"},
+    "base": {"defillama": "base", "github": "base-org/base"},
+    "matic": {"defillama": "matic", "github": "matic-network/libp2p"},
 }
 
 # Scoring weights (must sum to 1.0)
 WEIGHTS = {
-    "tvl":              0.25,
+    "tvl": 0.25,
     "active_addresses": 0.20,
-    "exchange_flow":     0.20,
-    "github_commits":    0.15,
-    "github_stars":      0.10,
-    "github_issues":     0.10,
+    "exchange_flow": 0.20,
+    "github_commits": 0.15,
+    "github_stars": 0.10,
+    "github_issues": 0.10,
 }
 
 # Proxy min/max ranges for normalisation (updated dynamically as data arrives)
 NORM_RANGES: dict[str, tuple[float, float]] = {
-    "tvl":              (1e6,   1e10),   # $1M – $10B
-    "active_addresses": (100,   1e7),    # 100 – 10M
-    "exchange_flow":     (-1e9, 1e9),    # -$1B – $1B
-    "github_commits":    (0,     5000),   # 0 – 5000/month
-    "github_stars":      (0,     5e5),    # 0 – 500k
-    "github_issues":     (0,     5000),   # 0 – 5000 open
+    "tvl": (1e6, 1e10),  # $1M – $10B
+    "active_addresses": (100, 1e7),  # 100 – 10M
+    "exchange_flow": (-1e9, 1e9),  # -$1B – $1B
+    "github_commits": (0, 5000),  # 0 – 5000/month
+    "github_stars": (0, 5e5),  # 0 – 500k
+    "github_issues": (0, 5000),  # 0 – 5000 open
 }
 
 HTTP_TIMEOUT = 5
@@ -164,8 +165,8 @@ class OnchainMetrics:
 
 @dataclass
 class SignalResult:
-    signal: str          # BUY | SELL | HOLD
-    confidence: int      # 0-100
+    signal: str  # BUY | SELL | HOLD
+    confidence: int  # 0-100
     breakdown: dict[str, float]
     metrics: OnchainMetrics
     timestamp: datetime
@@ -433,12 +434,12 @@ def _compose_signal(metrics: OnchainMetrics) -> SignalResult:
     """Compute BUY/SELL/HOLD signal from onchain metrics."""
 
     raw = {
-        "tvl":              metrics.tvl or 0,
+        "tvl": metrics.tvl or 0,
         "active_addresses": metrics.active_addresses or 0,
-        "exchange_flow":    metrics.exchange_flow or 0,
-        "github_commits":   metrics.github_commits or 0,
-        "github_stars":     metrics.github_stars or 0,
-        "github_issues":    metrics.github_issues or 0,
+        "exchange_flow": metrics.exchange_flow or 0,
+        "github_commits": metrics.github_commits or 0,
+        "github_stars": metrics.github_stars or 0,
+        "github_issues": metrics.github_issues or 0,
     }
 
     # Normalise
@@ -558,10 +559,14 @@ def save_onchain_signal(token: str, chain: str, result: SignalResult) -> Onchain
         sig_id = f"{token.upper()}_{chain.lower()}_{int(time.time())}"
         now = sao_paulo_now()
 
-        existing = db.query(OnchainSignal).filter(
-            OnchainSignal.token == token.upper(),
-            OnchainSignal.chain == chain.lower(),
-        ).first()
+        existing = (
+            db.query(OnchainSignal)
+            .filter(
+                OnchainSignal.token == token.upper(),
+                OnchainSignal.chain == chain.lower(),
+            )
+            .first()
+        )
 
         if existing:
             existing.tvl = result.metrics.tvl
@@ -644,12 +649,7 @@ def get_onchain_history(
             q = q.filter(OnchainSignalHistory.signal_type == signal_type.upper())
 
         total = q.count()
-        rows = (
-            q.order_by(OnchainSignalHistory.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        rows = q.order_by(OnchainSignalHistory.created_at.desc()).offset(offset).limit(limit).all()
         return rows, total
     finally:
         db.close()
@@ -676,9 +676,7 @@ def get_onchain_performance() -> dict[str, Any]:
 
         disparados = [r for r in rows if r.status == "disparado"]
         winners = [
-            r
-            for r in disparados
-            if getattr(r, "outcome_24h", None) in ("win", "WIN", "buy", "BUY")
+            r for r in disparados if getattr(r, "outcome_24h", None) in ("win", "WIN", "buy", "BUY")
         ]
         win_rate = round(len(winners) / len(disparados) * 100, 2) if disparados else 0.0
 

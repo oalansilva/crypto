@@ -167,29 +167,15 @@ export function ComboResultsPage() {
         }
     }
 
-    if (!result) {
-        return (
-            <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
-                <div className="text-center">
-                    <p className="text-red-400">No results found</p>
-                    <button onClick={() => navigate('/combo/select')} className="mt-4 text-blue-400">
-                        ← Back to templates
-                    </button>
-                </div>
-            </div>
-        )
-    }
-
-    const direction = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase()
-    const isShort = direction === 'short'
+    const trades = result?.trades ?? []
 
     // Métricas derivadas dos MESMOS trades exibidos na tabela (fechados, ordenados)
     // Garante que Win Rate e Total Return batam com a List of trades / Cumulative P&L
     const closedTrades = useMemo(() => {
-        return [...(result.trades || [])]
+        return [...trades]
             .filter((t: any) => t.exit_time && t.exit_price)
             .sort((a: any, b: any) => new Date(a.entry_time).getTime() - new Date(b.entry_time).getTime())
-    }, [result.trades])
+    }, [trades])
 
     const derivedMetrics = useMemo(() => {
         if (closedTrades.length === 0) return null
@@ -209,6 +195,22 @@ export function ComboResultsPage() {
             avg_profit: totalReturnPct / 100 / closedTrades.length
         }
     }, [closedTrades])
+
+    if (!result) {
+        return (
+            <div className="app-page combo-page flex min-h-[50vh] items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-400">No results found</p>
+                    <button onClick={() => navigate('/combo/select')} className="mt-4 text-blue-400">
+                        ← Back to templates
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+    const direction = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase()
+    const isShort = direction === 'short'
 
     // Usar métricas derivadas quando há trades; senão fallback para backend
     const baseMetrics = result.metrics || (result as any).best_metrics || {

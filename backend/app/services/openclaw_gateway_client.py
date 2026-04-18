@@ -36,13 +36,15 @@ def _now_ms() -> int:
     return int(time.time() * 1000)
 
 
-async def run_agent_via_gateway(*,
-                               message: str,
-                               session_key: str,
-                               agent_id: str = "main",
-                               thinking: str = "low",
-                               timeout_s: int = 180,
-                               extra_system_prompt: Optional[str] = None) -> Dict[str, Any]:
+async def run_agent_via_gateway(
+    *,
+    message: str,
+    session_key: str,
+    agent_id: str = "main",
+    thinking: str = "low",
+    timeout_s: int = 180,
+    extra_system_prompt: Optional[str] = None,
+) -> Dict[str, Any]:
     """Run OpenClaw agent through the Gateway WS protocol.
 
     Returns the gateway payload from the final `agent` response:

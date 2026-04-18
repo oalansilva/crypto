@@ -78,7 +78,11 @@ async def _fetch_binance_prices(symbols: Tuple[str, ...]) -> Dict[str, Any]:
             }
         )
 
-    prices.sort(key=lambda item: symbols.index(item["symbol"]) if item["symbol"] in symbols else len(symbols))
+    prices.sort(
+        key=lambda item: (
+            symbols.index(item["symbol"]) if item["symbol"] in symbols else len(symbols)
+        )
+    )
     return {"prices": prices, "fetched_at": _utc_now_iso()}
 
 
@@ -105,7 +109,10 @@ def _write_cache(symbols: Tuple[str, ...], payload: Dict[str, Any]) -> None:
 
 @router.get("/prices")
 async def get_market_prices(
-    symbols: str = Query(",".join(_DEFAULT_SYMBOLS), description="Comma-separated Binance symbols, e.g. BTCUSDT,ETHUSDT"),
+    symbols: str = Query(
+        ",".join(_DEFAULT_SYMBOLS),
+        description="Comma-separated Binance symbols, e.g. BTCUSDT,ETHUSDT",
+    ),
 ) -> Dict[str, Any]:
     normalized_symbols = _normalize_symbols(symbols)
     cached = _read_cache(normalized_symbols)

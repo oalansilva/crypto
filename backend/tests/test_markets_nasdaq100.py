@@ -21,16 +21,16 @@ def _build_client() -> TestClient:
 def test_get_nasdaq100_universe():
     client = _build_client()
 
-    response = client.get('/api/markets/us/nasdaq100')
+    response = client.get("/api/markets/us/nasdaq100")
 
     assert response.status_code == 200
     payload = response.json()
 
-    assert payload['market'] == 'us-stocks'
-    assert payload['universe'] == 'nasdaq-100'
-    assert payload['version'] == '2026-02-23'
-    assert isinstance(payload['symbols'], list)
-    assert payload['count'] == len(payload['symbols']) == 100
-    assert 'AAPL' in payload['symbols']
-    assert 'MSFT' in payload['symbols']
-    assert all('/' not in symbol for symbol in payload['symbols'])
+    assert payload["market"] == "us-stocks"
+    assert payload["universe"] == "nasdaq-100"
+    assert payload["version"] == "2026-02-23"
+    assert isinstance(payload["symbols"], list)
+    assert payload["count"] == len(payload["symbols"]) == 100
+    assert "AAPL" in payload["symbols"]
+    assert "MSFT" in payload["symbols"]
+    assert all("/" not in symbol for symbol in payload["symbols"])

@@ -56,9 +56,30 @@ async def test_market_candles_crypto_returns_ordered_and_limited(monkeypatch):
 
     crypto_df = _build_df(
         [
-            {"timestamp_utc": "2025-01-01T02:00:00Z", "open": 101, "high": 103, "low": 100, "close": 102, "volume": 10},
-            {"timestamp_utc": "2025-01-01T00:00:00Z", "open": 99, "high": 101, "low": 98, "close": 100, "volume": 8},
-            {"timestamp_utc": "2025-01-01T01:00:00Z", "open": 100, "high": 102, "low": 99, "close": 101, "volume": 9},
+            {
+                "timestamp_utc": "2025-01-01T02:00:00Z",
+                "open": 101,
+                "high": 103,
+                "low": 100,
+                "close": 102,
+                "volume": 10,
+            },
+            {
+                "timestamp_utc": "2025-01-01T00:00:00Z",
+                "open": 99,
+                "high": 101,
+                "low": 98,
+                "close": 100,
+                "volume": 8,
+            },
+            {
+                "timestamp_utc": "2025-01-01T01:00:00Z",
+                "open": 100,
+                "high": 102,
+                "low": 99,
+                "close": 101,
+                "volume": 9,
+            },
         ]
     )
     fake_ccxt = _FakeProvider(source="ccxt", df=crypto_df)
@@ -87,8 +108,22 @@ async def test_market_candles_stock_intraday_rejected(monkeypatch):
 
     stock_df = _build_df(
         [
-            {"timestamp_utc": "2025-02-03T14:30:00Z", "open": 210, "high": 212, "low": 209, "close": 211, "volume": 1000},
-            {"timestamp_utc": "2025-02-03T14:45:00Z", "open": 211, "high": 213, "low": 210, "close": 212, "volume": 1200},
+            {
+                "timestamp_utc": "2025-02-03T14:30:00Z",
+                "open": 210,
+                "high": 212,
+                "low": 209,
+                "close": 211,
+                "volume": 1000,
+            },
+            {
+                "timestamp_utc": "2025-02-03T14:45:00Z",
+                "open": 211,
+                "high": 213,
+                "low": 210,
+                "close": 212,
+                "volume": 1200,
+            },
         ]
     )
 
@@ -121,13 +156,19 @@ async def test_market_candles_stock_intraday_rejected(monkeypatch):
     payload = response.json()
 
 
-
 async def test_market_candles_stock_daily_uses_stooq_first(monkeypatch):
     block_external_network(monkeypatch)
 
     stock_df = _build_df(
         [
-            {"timestamp_utc": "2025-02-01T00:00:00Z", "open": 200, "high": 205, "low": 198, "close": 203, "volume": 5000},
+            {
+                "timestamp_utc": "2025-02-01T00:00:00Z",
+                "open": 200,
+                "high": 205,
+                "low": 198,
+                "close": 203,
+                "volume": 5000,
+            },
         ]
     )
     fake_stooq = _FakeProvider(source="stooq", df=stock_df)
@@ -154,4 +195,7 @@ async def test_market_candles_invalid_timeframe_returns_400(monkeypatch):
 
     response = await _get("/api/market/candles?symbol=NVDA&timeframe=5m&limit=100")
     assert response.status_code == 400
-    assert ("Unsupported timeframe" in response.json()["detail"] or "Stocks currently support only timeframe='1d'" in response.json()["detail"])
+    assert (
+        "Unsupported timeframe" in response.json()["detail"]
+        or "Stocks currently support only timeframe='1d'" in response.json()["detail"]
+    )

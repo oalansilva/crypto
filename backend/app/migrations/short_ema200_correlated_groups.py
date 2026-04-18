@@ -14,6 +14,7 @@ def _get_db_path(db_path: str = None):
         return db_path
     try:
         from app.database import DB_PATH
+
         return str(DB_PATH)
     except Exception:
         return str(Path(__file__).resolve().parent.parent.parent / "backtest.db")
@@ -33,19 +34,22 @@ def apply_short_ema200_correlated_groups(db_path: str = None):
             "rsi_length": {"min": 10, "max": 18, "step": 1, "default": 14},
             "stop_loss": {"min": 0.03, "max": 0.10, "step": 0.01, "default": 0.06},
         },
-        "correlated_groups": [
-            ["ema_ema21", "ema_ema50", "ema_ema200", "rsi_length", "stop_loss"]
-        ],
+        "correlated_groups": [["ema_ema21", "ema_ema50", "ema_ema200", "rsi_length", "stop_loss"]],
     }
 
-    cursor.execute("""
+    cursor.execute(
+        """
         UPDATE combo_templates
         SET optimization_schema = ?
         WHERE name = 'short_ema200_pullback'
-    """, (json.dumps(optimization_schema),))
+    """,
+        (json.dumps(optimization_schema),),
+    )
 
     if cursor.rowcount > 0:
-        print("[OK] short_ema200_pullback: optimization_schema updated with correlated_groups (1 joint grid in R1)")
+        print(
+            "[OK] short_ema200_pullback: optimization_schema updated with correlated_groups (1 joint grid in R1)"
+        )
     else:
         print("[WARN] Template 'short_ema200_pullback' not found in database")
 

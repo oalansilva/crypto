@@ -99,7 +99,9 @@ def _last_closed_candle_offset(timeframe: str, now: Optional[pd.Timestamp] = Non
     return period
 
 
-def _get_df_last_closed(df: pd.DataFrame, timeframe: str, now: Optional[pd.Timestamp] = None) -> pd.DataFrame:
+def _get_df_last_closed(
+    df: pd.DataFrame, timeframe: str, now: Optional[pd.Timestamp] = None
+) -> pd.DataFrame:
     """
     Return a 1-row DataFrame with the last *closed* candle (same convention as TradingView/Binance).
     Candle with index T is closed when T + period <= now (e.g. 1d bar at 31 Jan 00:00 closes at 1 Feb 00:00).
@@ -123,7 +125,10 @@ def _get_df_last_closed(df: pd.DataFrame, timeframe: str, now: Optional[pd.Times
         return df.iloc[-2:-1].copy()
     return df.iloc[-1:].copy()
 
-def _apply_crypto_continuity_fix(df: pd.DataFrame, timeframe: str, *, tail_rows: int = 60, threshold_pct: float = 0.5) -> pd.DataFrame:
+
+def _apply_crypto_continuity_fix(
+    df: pd.DataFrame, timeframe: str, *, tail_rows: int = 60, threshold_pct: float = 0.5
+) -> pd.DataFrame:
     """
     Heuristic repair for crypto OHLC caches:
     On continuous markets (Binance spot/futures), typically:
@@ -216,33 +221,41 @@ def _signal_execution_price(
     return None
 
 
-def _build_signal_history(df: pd.DataFrame, df_signals: pd.DataFrame, *, limit: int = 24) -> list[dict[str, Any]]:
-    if df.empty or df_signals.empty or 'signal' not in df_signals.columns:
+def _build_signal_history(
+    df: pd.DataFrame, df_signals: pd.DataFrame, *, limit: int = 24
+) -> list[dict[str, Any]]:
+    if df.empty or df_signals.empty or "signal" not in df_signals.columns:
         return []
 
-    signal_rows = df_signals[df_signals['signal'].isin([1, -1])]
+    signal_rows = df_signals[df_signals["signal"].isin([1, -1])]
     if signal_rows.empty:
         return []
 
     history: list[dict[str, Any]] = []
     for idx, row in signal_rows.tail(limit).iterrows():
         try:
-            signal_value = int(row['signal'])
+            signal_value = int(row["signal"])
         except (TypeError, ValueError):
             continue
 
-        signal_type = 'entry' if signal_value == 1 else 'exit'
+        signal_type = "entry" if signal_value == 1 else "exit"
         execution_price = _signal_execution_price(df, idx, direction=signal_type)
-        raw_reason = row.get('signal_reason') if hasattr(row, 'get') else None
-        reason = None if raw_reason is None or pd.isna(raw_reason) or str(raw_reason).strip() == '' else str(raw_reason)
+        raw_reason = row.get("signal_reason") if hasattr(row, "get") else None
+        reason = (
+            None
+            if raw_reason is None or pd.isna(raw_reason) or str(raw_reason).strip() == ""
+            else str(raw_reason)
+        )
 
-        history.append({
-            'timestamp': str(pd.Timestamp(idx).isoformat()),
-            'signal': signal_value,
-            'type': signal_type,
-            'reason': reason,
-            'price': round(float(execution_price), 8) if execution_price is not None else None,
-        })
+        history.append(
+            {
+                "timestamp": str(pd.Timestamp(idx).isoformat()),
+                "signal": signal_value,
+                "type": signal_type,
+                "reason": reason,
+                "price": round(float(execution_price), 8) if execution_price is not None else None,
+            }
+        )
 
     return history
 
@@ -264,8 +277,10 @@ def _resolve_position_state(
         else:
             stop_breached_now = last_price <= stop_price
 
-    has_exit_after_entry = last_sell_pos is not None and (last_buy_pos is None or last_sell_pos > last_buy_pos)
-    exited_by_stop = has_exit_after_entry and str(last_sell_reason or '').lower() == 'stop_loss'
+    has_exit_after_entry = last_sell_pos is not None and (
+        last_buy_pos is None or last_sell_pos > last_buy_pos
+    )
+    exited_by_stop = has_exit_after_entry and str(last_sell_reason or "").lower() == "stop_loss"
     if stop_breached_now or exited_by_stop:
         return False, True, stop_breached_now
     if has_exit_after_entry:
@@ -296,7 +311,9 @@ class OpportunityService:
                 engine = create_engine(db_url, pool_pre_ping=True)
             self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    def get_favorites(self, user_id: str, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_favorites(
+        self, user_id: str, tier_filter: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """List relevant favorites for one user from existing table."""
         with self._session_factory() as db:
             query = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == user_id)
@@ -308,15 +325,13 @@ class OpportunityService:
                 query = query.filter(FavoriteStrategy.tier.is_(None))
             else:
                 allowed_tiers = [
-                    int(t.strip())
-                    for t in normalized_tier_filter.split(",")
-                    if t.strip().isdigit()
+                    int(t.strip()) for t in normalized_tier_filter.split(",") if t.strip().isdigit()
                 ]
                 if allowed_tiers:
                     query = query.filter(FavoriteStrategy.tier.in_(allowed_tiers))
 
             rows = query.all()
-        
+
         favorites = []
         for row in rows:
             r = {
@@ -330,83 +345,91 @@ class OpportunityService:
                 "tier": row.tier,
             }
             # Parse parameters JSON if string
-            if isinstance(r['parameters'], str):
+            if isinstance(r["parameters"], str):
                 try:
-                    r['parameters'] = json.loads(r['parameters'])
+                    r["parameters"] = json.loads(r["parameters"])
                 except Exception as e:
-                    logger.warning(f"Failed to parse parameters JSON for favorite {r.get('id')}: {e}")
-                    r['parameters'] = {}
+                    logger.warning(
+                        f"Failed to parse parameters JSON for favorite {r.get('id')}: {e}"
+                    )
+                    r["parameters"] = {}
             favorites.append(r)
-        
+
         logger.info(f"Loaded {len(favorites)} favorite strategies from database")
         for fav in favorites:
-            logger.debug(f"  - ID {fav['id']}: {fav['symbol']} {fav['timeframe']} - {fav['strategy_name']}")
+            logger.debug(
+                f"  - ID {fav['id']}: {fav['symbol']} {fav['timeframe']} - {fav['strategy_name']}"
+            )
 
         return favorites
 
-    def _filter_by_tier(self, favorites: List[Dict[str, Any]], tier_filter: Optional[str]) -> List[Dict[str, Any]]:
+    def _filter_by_tier(
+        self, favorites: List[Dict[str, Any]], tier_filter: Optional[str]
+    ) -> List[Dict[str, Any]]:
         """
         Filter favorites by tier before processing.
-        
+
         Args:
             favorites: List of all favorites
             tier_filter: '1', '2', '3', '1,2', 'none' (null tier), 'all'/None (no filter)
-        
+
         Returns:
             Filtered list of favorites
         """
-        if not tier_filter or tier_filter.lower() == 'all':
+        if not tier_filter or tier_filter.lower() == "all":
             # "All" = apenas Tier 1, 2 e 3 (excluir Sem tier)
-            return [f for f in favorites if f.get('tier') in (1, 2, 3)]
-        
+            return [f for f in favorites if f.get("tier") in (1, 2, 3)]
+
         tier_filter = tier_filter.lower().strip()
-        
+
         # Handle 'none' (null tier) - explícito quando usuário quer ver só Sem tier
-        if tier_filter == 'none':
-            return [f for f in favorites if f.get('tier') is None]
-        
+        if tier_filter == "none":
+            return [f for f in favorites if f.get("tier") is None]
+
         # Handle comma-separated tiers (e.g. '1,2')
         try:
-            allowed_tiers = {int(t.strip()) for t in tier_filter.split(',') if t.strip().isdigit()}
+            allowed_tiers = {int(t.strip()) for t in tier_filter.split(",") if t.strip().isdigit()}
         except ValueError:
             logger.warning(f"Invalid tier_filter '{tier_filter}', returning all favorites")
             return favorites
-        
+
         if not allowed_tiers:
             return favorites
-        
-        return [f for f in favorites if f.get('tier') in allowed_tiers]
 
-    def get_opportunities(self, user_id: str, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        return [f for f in favorites if f.get("tier") in allowed_tiers]
+
+    def get_opportunities(
+        self, user_id: str, tier_filter: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Analyze favorites and return their current status (is_holding, distance_to_next_status).
-        
+
         Args:
             tier_filter: Filter by tier(s). Examples: '1', '1,2', '3', 'none' (null tier), 'all'/None (no filter)
-        
+
         IMPORTANT: Buy/sell rules (entry_logic and exit_logic) are loaded dynamically from database:
         - Template metadata is fetched from combo_templates table
         - entry_logic (buy rule) and exit_logic (sell rule) come from template_data JSON field
         - Each favorite strategy uses its own template's rules from the database
         """
         favorites = self.get_favorites(user_id=user_id, tier_filter=tier_filter)
-        
+
         opportunities = []
-        
+
         logger.info(f"Processing {len(favorites)} favorite strategies (tier_filter={tier_filter})")
-        
+
         # Cache for data to avoid refetching same symbol/timeframe
         data_cache = {}
         fetch_errors: dict[str, str] = {}
-        
+
         # Track skipped strategies for debugging
         skipped_strategies = []
 
         unique_market_jobs: dict[str, dict[str, Any]] = {}
         for fav in favorites:
-            symbol = fav['symbol']
-            tf = fav['timeframe']
-            params = fav.get('parameters') or {}
+            symbol = fav["symbol"]
+            tf = fav["timeframe"]
+            params = fav.get("parameters") or {}
             data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
             if data_source == CCXT_SOURCE and _is_unsupported_symbol(symbol):
                 continue
@@ -454,24 +477,26 @@ class OpportunityService:
 
         for fav in favorites:
             try:
-                symbol = fav['symbol']
-                tf = fav['timeframe']
-                template_name = fav['strategy_name']
-                params = fav.get('parameters') or {}
+                symbol = fav["symbol"]
+                tf = fav["timeframe"]
+                template_name = fav["strategy_name"]
+                params = fav.get("parameters") or {}
                 data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
-                
+
                 logger.debug(
                     f"Processing strategy {fav['id']}: {symbol} {tf} - {template_name} (source={data_source})"
                 )
 
                 # 0. Skip known unsupported symbols (delisted / no data) before fetching
                 if data_source == CCXT_SOURCE and _is_unsupported_symbol(symbol):
-                    skipped_strategies.append({
-                        'id': fav['id'],
-                        'symbol': symbol,
-                        'timeframe': tf,
-                        'reason': 'Symbol delisted or not available on exchange (e.g. Binance leveraged tokens)',
-                    })
+                    skipped_strategies.append(
+                        {
+                            "id": fav["id"],
+                            "symbol": symbol,
+                            "timeframe": tf,
+                            "reason": "Symbol delisted or not available on exchange (e.g. Binance leveraged tokens)",
+                        }
+                    )
                     continue
 
                 # 1. Fetch Data (1D usually)
@@ -479,30 +504,36 @@ class OpportunityService:
                 if cache_key not in data_cache:
                     fetch_exc = fetch_errors.get(cache_key)
                     if fetch_exc:
-                        skipped_strategies.append({
-                            'id': fav['id'],
-                            'symbol': symbol,
-                            'timeframe': tf,
-                            'reason': f'Error fetching data ({data_source}): {fetch_exc}',
-                        })
+                        skipped_strategies.append(
+                            {
+                                "id": fav["id"],
+                                "symbol": symbol,
+                                "timeframe": tf,
+                                "reason": f"Error fetching data ({data_source}): {fetch_exc}",
+                            }
+                        )
                         continue
-                    skipped_strategies.append({
-                        'id': fav['id'],
-                        'symbol': symbol,
-                        'timeframe': tf,
-                        'reason': f'No cached market data available for {cache_key}',
-                    })
+                    skipped_strategies.append(
+                        {
+                            "id": fav["id"],
+                            "symbol": symbol,
+                            "timeframe": tf,
+                            "reason": f"No cached market data available for {cache_key}",
+                        }
+                    )
                     continue
-                
+
                 df = data_cache[cache_key].copy()
-                
+
                 if df.empty:
-                    skipped_strategies.append({
-                        'id': fav['id'],
-                        'symbol': symbol,
-                        'timeframe': tf,
-                        'reason': 'No data (symbol may be delisted, or cache/API issue)',
-                    })
+                    skipped_strategies.append(
+                        {
+                            "id": fav["id"],
+                            "symbol": symbol,
+                            "timeframe": tf,
+                            "reason": "No data (symbol may be delisted, or cache/API issue)",
+                        }
+                    )
                     continue
 
                 # Heuristic: fix corrupted tail candles (open[t] != close[t-1]) so MAs match TradingView/Binance.
@@ -514,46 +545,52 @@ class OpportunityService:
                 # This dynamically loads the buy/sell rules from combo_templates table
                 meta = self.combo_service.get_template_metadata(template_name)
                 if not meta:
-                    logger.warning(f"Strategy {fav['id']} ({symbol} {tf}): Template '{template_name}' not found")
-                    skipped_strategies.append({
-                        'id': fav['id'],
-                        'symbol': symbol,
-                        'timeframe': tf,
-                        'template_name': template_name,
-                        'reason': f"Template '{template_name}' not found"
-                    })
+                    logger.warning(
+                        f"Strategy {fav['id']} ({symbol} {tf}): Template '{template_name}' not found"
+                    )
+                    skipped_strategies.append(
+                        {
+                            "id": fav["id"],
+                            "symbol": symbol,
+                            "timeframe": tf,
+                            "template_name": template_name,
+                            "reason": f"Template '{template_name}' not found",
+                        }
+                    )
                     continue
-                
+
                 # Metadata is already flattened (contains indicators, entry_logic, exit_logic from DB)
                 template_data = meta
-                
+
                 # 3. Merge Saved Params into Template Data
                 # We need to inject params into indicators to make sure we use the favorited settings
-                indicators = template_data.get('indicators', [])
-                
+                indicators = template_data.get("indicators", [])
+
                 # Create a deep copy of indicators to modify
                 # Helper to update indicator params based on alias/name matching
                 final_indicators = []
                 for ind in indicators:
                     ind_new = ind.copy()
-                    ind_new['params'] = ind_new.get('params', {}).copy()
-                    
-                    alias = ind_new.get('alias', '')
-                    ind_type = ind_new.get('type', '').lower()
-                    
+                    ind_new["params"] = ind_new.get("params", {}).copy()
+
+                    alias = ind_new.get("alias", "")
+                    ind_type = ind_new.get("type", "").lower()
+
                     # Debug: Log indicator info for SOL
-                    if symbol == 'SOL/USDT':
-                        logger.info(f"SOL/USDT - Processing indicator: alias={alias}, type={ind_type}, current_params={ind_new['params']}")
-                    
+                    if symbol == "SOL/USDT":
+                        logger.info(
+                            f"SOL/USDT - Processing indicator: alias={alias}, type={ind_type}, current_params={ind_new['params']}"
+                        )
+
                     # Improved parameter mapping logic
                     # Supports formats: ema_short, sma_medium, sma_long, etc.
                     for pk, pv in params.items():
-                        if pk in {'stop_loss', 'direction', 'data_source'}:
+                        if pk in {"stop_loss", "direction", "data_source"}:
                             continue
-                            
+
                         pk_lower = pk.lower()
                         matched = False
-                        
+
                         # 1. Exact alias match (e.g., pk='short', alias='short')
                         if pk == alias:
                             matched = True
@@ -573,133 +610,176 @@ class OpportunityService:
                         # 4. Param key contained in alias (less common, but possible)
                         elif alias and pk_lower in alias.lower():
                             matched = True
-                        
+
                         if matched:
                             # Determine which parameter to update
                             # Most indicators use 'length' or 'period'
-                            old_value = ind_new['params'].get('length') or ind_new['params'].get('period')
-                            if 'length' in ind_new['params']:
-                                ind_new['params']['length'] = int(pv)
-                                if symbol == 'SOL/USDT':
-                                    logger.info(f"SOL/USDT - Updated {alias} ({ind_type}) length from {old_value} to {pv} using param {pk}")
-                            elif 'period' in ind_new['params']:
-                                ind_new['params']['period'] = int(pv)
-                                if symbol == 'SOL/USDT':
-                                    logger.info(f"SOL/USDT - Updated {alias} ({ind_type}) period from {old_value} to {pv} using param {pk}")
+                            old_value = ind_new["params"].get("length") or ind_new["params"].get(
+                                "period"
+                            )
+                            if "length" in ind_new["params"]:
+                                ind_new["params"]["length"] = int(pv)
+                                if symbol == "SOL/USDT":
+                                    logger.info(
+                                        f"SOL/USDT - Updated {alias} ({ind_type}) length from {old_value} to {pv} using param {pk}"
+                                    )
+                            elif "period" in ind_new["params"]:
+                                ind_new["params"]["period"] = int(pv)
+                                if symbol == "SOL/USDT":
+                                    logger.info(
+                                        f"SOL/USDT - Updated {alias} ({ind_type}) period from {old_value} to {pv} using param {pk}"
+                                    )
                             else:
                                 # Fallback: try to infer the main parameter
                                 # For most indicators, 'length' is the default
-                                ind_new['params']['length'] = int(pv)
-                                if symbol == 'SOL/USDT':
-                                    logger.info(f"SOL/USDT - Updated {alias} ({ind_type}) length (fallback) to {pv} using param {pk}")
-                                
+                                ind_new["params"]["length"] = int(pv)
+                                if symbol == "SOL/USDT":
+                                    logger.info(
+                                        f"SOL/USDT - Updated {alias} ({ind_type}) length (fallback) to {pv} using param {pk}"
+                                    )
+
                     final_indicators.append(ind_new)
-                
+
                 # Debug: Log final indicators for SOL
-                if symbol == 'SOL/USDT':
+                if symbol == "SOL/USDT":
                     logger.info(f"SOL/USDT - Final indicators config:")
                     for ind in final_indicators:
-                        logger.info(f"  - {ind.get('alias')} ({ind.get('type')}): {ind.get('params')}")
-                
+                        logger.info(
+                            f"  - {ind.get('alias')} ({ind.get('type')}): {ind.get('params')}"
+                        )
+
                 # 4. Instantiate Strategy with rules from database
                 # entry_logic and exit_logic come from combo_templates.template_data (JSON field)
-                sl_param = params.get('stop_loss', template_data.get('stop_loss', 0.0))
-                
+                sl_param = params.get("stop_loss", template_data.get("stop_loss", 0.0))
+
                 # Extract buy/sell rules dynamically from database template
-                entry_logic = template_data.get('entry_logic', '')  # Buy rule from DB
-                exit_logic = template_data.get('exit_logic', '')    # Sell rule from DB
-                
+                entry_logic = template_data.get("entry_logic", "")  # Buy rule from DB
+                exit_logic = template_data.get("exit_logic", "")  # Sell rule from DB
+
                 strategy = ComboStrategy(
                     indicators=final_indicators,
                     entry_logic=entry_logic,  # Dynamic buy rule from database
-                    exit_logic=exit_logic,    # Dynamic sell rule from database
+                    exit_logic=exit_logic,  # Dynamic sell rule from database
                     stop_loss=float(sl_param),
                 )
-                
+
                 df_with_inds = strategy.calculate_indicators(df)
-                
+
                 # Debug: Log indicator values for SOL if symbol matches
-                if symbol == 'SOL/USDT':
+                if symbol == "SOL/USDT":
                     last_row = df_with_inds.iloc[-1]
-                    logger.info(f"SOL/USDT - Last row (current candle) indicators: {[k for k in last_row.index if k not in ['open', 'high', 'low', 'close', 'volume', 'timestamp']]}")
+                    logger.info(
+                        f"SOL/USDT - Last row (current candle) indicators: {[k for k in last_row.index if k not in ['open', 'high', 'low', 'close', 'volume', 'timestamp']]}"
+                    )
                     # Log specific indicators if they exist
-                    for ind_name in ['ema_short', 'sma_medium', 'sma_long', 'short', 'medium', 'long']:
+                    for ind_name in [
+                        "ema_short",
+                        "sma_medium",
+                        "sma_long",
+                        "short",
+                        "medium",
+                        "long",
+                    ]:
                         if ind_name in last_row:
                             logger.info(f"SOL/USDT - {ind_name} (current): {last_row[ind_name]}")
                     logger.info(f"SOL/USDT - close (current): {last_row['close']}")
                     logger.info(f"SOL/USDT - entry_logic: {strategy.entry_logic}")
                     logger.info(f"SOL/USDT - params used: {params}")
-                
+
                 # 5. Analyze Entry Proximity using buy rule from database
                 # Use LAST CLOSED candle (same as TradingView/Binance: close 76.968,21 for 31/01)
                 df_current = df_with_inds.iloc[-1:].copy()  # Current candle for HOLD/signal checks
                 df_closed = df_with_inds.iloc[:-1].copy()  # Closed candles for signal detection
-                df_for_distance = _get_df_last_closed(df_with_inds, tf)  # Last closed by close time <= now
-                
+                df_for_distance = _get_df_last_closed(
+                    df_with_inds, tf
+                )  # Last closed by close time <= now
+
                 # Debug: Log current candle values for SOL
-                if symbol == 'SOL/USDT' and not df_current.empty:
+                if symbol == "SOL/USDT" and not df_current.empty:
                     current_row = df_current.iloc[-1]
                     logger.info(f"SOL/USDT - Current candle (for distance calc) indicators:")
-                    for ind_name in ['short', 'medium', 'long']:
+                    for ind_name in ["short", "medium", "long"]:
                         if ind_name in current_row:
                             logger.info(f"SOL/USDT - {ind_name} (current): {current_row[ind_name]}")
                     logger.info(f"SOL/USDT - close (current): {current_row['close']}")
-                
+
                 # Check if short is above medium (entry condition) BEFORE analyzing
                 # NEW CONCEPT: HOLD is determined by short > medium (not short > long)
                 current_row = df_current.iloc[-1] if not df_current.empty else None
                 short_above_medium = False
-                if current_row is not None and 'short' in current_row and 'medium' in current_row:
-                    short_val = current_row['short']
-                    medium_val = current_row['medium']
+                if current_row is not None and "short" in current_row and "medium" in current_row:
+                    short_val = current_row["short"]
+                    medium_val = current_row["medium"]
                     short_above_medium = short_val > medium_val
-                
+
                 # Also check short > long for reference
                 short_above_long = False
-                if current_row is not None and 'short' in current_row and 'long' in current_row:
-                    short_val = current_row['short']
-                    long_val = current_row['long']
+                if current_row is not None and "short" in current_row and "long" in current_row:
+                    short_val = current_row["short"]
+                    long_val = current_row["long"]
                     short_above_long = short_val > long_val
-                
+
                 # Analyze proximity using LAST CLOSED candle so distance % matches TradingView
                 analysis = self.analyzer.analyze(df_for_distance, strategy.entry_logic)
-                
+
                 # But verify signal on closed candles (stable signals only)
                 if not df_closed.empty:
                     signal_analysis = self.analyzer.analyze(df_closed, strategy.entry_logic)
-                    if signal_analysis.get('status') == 'SIGNAL':
+                    if signal_analysis.get("status") == "SIGNAL":
                         # Signal confirmed on closed candle, but use current distance
-                        analysis['status'] = 'SIGNAL'
-                        analysis['badge'] = 'success'
-                        analysis['message'] = 'Signal Active'
-                        analysis['distance'] = 0.0
-                
+                        analysis["status"] = "SIGNAL"
+                        analysis["badge"] = "success"
+                        analysis["message"] = "Signal Active"
+                        analysis["distance"] = 0.0
+
                 # Debug: Log analysis result for SOL
-                if symbol == 'SOL/USDT':
-                    logger.info(f"SOL/USDT - Analysis result: status={analysis.get('status')}, distance={analysis.get('distance')}, message={analysis.get('message')}")
+                if symbol == "SOL/USDT":
+                    logger.info(
+                        f"SOL/USDT - Analysis result: status={analysis.get('status')}, distance={analysis.get('distance')}, message={analysis.get('message')}"
+                    )
                     # Calculate manual distance for BOTH crossovers to verify
                     if not df_current.empty:
                         current_row = df_current.iloc[-1]
-                        if 'short' in current_row and 'long' in current_row and 'medium' in current_row:
-                            short_val = current_row['short']
-                            long_val = current_row['long']
-                            medium_val = current_row['medium']
-                            
+                        if (
+                            "short" in current_row
+                            and "long" in current_row
+                            and "medium" in current_row
+                        ):
+                            short_val = current_row["short"]
+                            long_val = current_row["long"]
+                            medium_val = current_row["medium"]
+
                             # Distance to cross UP long
-                            dist_to_long = (long_val - short_val) / abs(long_val) * 100 if short_val < long_val else 0
+                            dist_to_long = (
+                                (long_val - short_val) / abs(long_val) * 100
+                                if short_val < long_val
+                                else 0
+                            )
                             # Distance to cross UP medium
-                            dist_to_medium = (medium_val - short_val) / abs(medium_val) * 100 if short_val < medium_val else 0
-                            
+                            dist_to_medium = (
+                                (medium_val - short_val) / abs(medium_val) * 100
+                                if short_val < medium_val
+                                else 0
+                            )
+
                             # The minimum distance (closest crossover)
-                            min_dist = min(dist_to_long, dist_to_medium) if dist_to_long > 0 and dist_to_medium > 0 else (dist_to_long if dist_to_long > 0 else dist_to_medium)
-                            
+                            min_dist = (
+                                min(dist_to_long, dist_to_medium)
+                                if dist_to_long > 0 and dist_to_medium > 0
+                                else (dist_to_long if dist_to_long > 0 else dist_to_medium)
+                            )
+
                             logger.info(f"SOL/USDT - Manual distance calc:")
-                            logger.info(f"  - CROSS_UP long: ({long_val:.4f} - {short_val:.4f}) / {long_val:.4f} * 100 = {dist_to_long:.2f}%")
-                            logger.info(f"  - CROSS_UP medium: ({medium_val:.4f} - {short_val:.4f}) / {medium_val:.4f} * 100 = {dist_to_medium:.2f}%")
+                            logger.info(
+                                f"  - CROSS_UP long: ({long_val:.4f} - {short_val:.4f}) / {long_val:.4f} * 100 = {dist_to_long:.2f}%"
+                            )
+                            logger.info(
+                                f"  - CROSS_UP medium: ({medium_val:.4f} - {short_val:.4f}) / {medium_val:.4f} * 100 = {dist_to_medium:.2f}%"
+                            )
                             logger.info(f"  - Minimum distance (closest): {min_dist:.2f}%")
-                
-                direction = str(params.get('direction', 'long') or 'long').lower()
-                last_price = float(df.iloc[-1]['close']) if not df.empty else None
+
+                direction = str(params.get("direction", "long") or "long").lower()
+                last_price = float(df.iloc[-1]["close"]) if not df.empty else None
 
                 # Compute entry distance override based on trend gate
                 # - If trend up is false (short <= long): use short -> long distance
@@ -707,17 +787,19 @@ class OpportunityService:
                 entry_distance_override = None
                 if not df_for_distance.empty:
                     row_used = df_for_distance.iloc[-1]
-                    if all(k in row_used for k in ('short', 'medium', 'long')):
+                    if all(k in row_used for k in ("short", "medium", "long")):
                         try:
-                            short_val = float(row_used['short'])
-                            medium_val = float(row_used['medium'])
-                            long_val = float(row_used['long'])
+                            short_val = float(row_used["short"])
+                            medium_val = float(row_used["medium"])
+                            long_val = float(row_used["long"])
                             if short_above_long:
                                 # Trend up true -> distance to short crossing medium (red -> orange)
                                 if short_val < medium_val:
                                     denom = min(short_val, medium_val)
                                     if denom > 0:
-                                        entry_distance_override = (medium_val - short_val) / denom * 100
+                                        entry_distance_override = (
+                                            (medium_val - short_val) / denom * 100
+                                        )
                                     else:
                                         entry_distance_override = 0
                                 else:
@@ -727,7 +809,9 @@ class OpportunityService:
                                 if short_val < long_val:
                                     denom = min(short_val, long_val)
                                     if denom > 0:
-                                        entry_distance_override = (long_val - short_val) / denom * 100
+                                        entry_distance_override = (
+                                            (long_val - short_val) / denom * 100
+                                        )
                                     else:
                                         entry_distance_override = 0
                                 else:
@@ -737,8 +821,8 @@ class OpportunityService:
                 # Run backtest logic on closed candles for reference (but don't use for HOLD determination)
                 df_signals = strategy.generate_signals(df_closed)
 
-                last_buy_idx = df_signals[df_signals['signal'] == 1].last_valid_index()
-                last_sell_idx = df_signals[df_signals['signal'] == -1].last_valid_index()
+                last_buy_idx = df_signals[df_signals["signal"] == 1].last_valid_index()
+                last_sell_idx = df_signals[df_signals["signal"] == -1].last_valid_index()
                 last_buy_pos = _index_position(df_closed.index, last_buy_idx)
                 last_sell_pos = _index_position(df_closed.index, last_sell_idx)
                 signal_history = _build_signal_history(df_closed, df_signals)
@@ -746,9 +830,9 @@ class OpportunityService:
                 if (
                     last_sell_idx is not None
                     and last_sell_idx in df_signals.index
-                    and 'signal_reason' in df_signals.columns
+                    and "signal_reason" in df_signals.columns
                 ):
-                    raw_reason = df_signals.loc[last_sell_idx, 'signal_reason']
+                    raw_reason = df_signals.loc[last_sell_idx, "signal_reason"]
                     if raw_reason is not None and not pd.isna(raw_reason):
                         last_sell_reason = str(raw_reason)
 
@@ -757,7 +841,7 @@ class OpportunityService:
                 stop_price = None
                 distance_to_stop_pct = None
                 try:
-                    sl_raw = params.get('stop_loss', template_data.get('stop_loss', None))
+                    sl_raw = params.get("stop_loss", template_data.get("stop_loss", None))
                     sl = None
                     if sl_raw is not None:
                         sl = float(sl_raw)
@@ -771,16 +855,16 @@ class OpportunityService:
                             entry_price = _signal_execution_price(
                                 df_closed,
                                 last_buy_idx,
-                                direction='entry',
+                                direction="entry",
                             )
                         elif short_above_long and not df_closed.empty:
                             # Fallback: infer entry from last bullish crossover on closed candles.
                             # This is useful when the signal generator doesn't emit explicit BUYs,
                             # but we still mark HOLD via trend condition.
                             try:
-                                s = df_closed['short']
-                                m = df_closed['medium'] if 'medium' in df_closed.columns else None
-                                l = df_closed['long'] if 'long' in df_closed.columns else None
+                                s = df_closed["short"]
+                                m = df_closed["medium"] if "medium" in df_closed.columns else None
+                                l = df_closed["long"] if "long" in df_closed.columns else None
 
                                 inferred_idx = None
                                 if l is not None:
@@ -794,17 +878,21 @@ class OpportunityService:
                                         inferred_idx = cross_med[cross_med].index[-1]
 
                                 if inferred_idx is not None and inferred_idx in df_closed.index:
-                                    entry_price = float(df_closed.loc[inferred_idx, 'close'])
+                                    entry_price = float(df_closed.loc[inferred_idx, "close"])
                             except Exception:
                                 pass
 
                         if entry_price and last_price and last_price > 0:
-                            if direction == 'short':
+                            if direction == "short":
                                 stop_price = entry_price * (1.0 + sl)
-                                distance_to_stop_pct = (stop_price - last_price) / last_price * 100.0
+                                distance_to_stop_pct = (
+                                    (stop_price - last_price) / last_price * 100.0
+                                )
                             else:
                                 stop_price = entry_price * (1.0 - sl)
-                                distance_to_stop_pct = (last_price - stop_price) / last_price * 100.0
+                                distance_to_stop_pct = (
+                                    (last_price - stop_price) / last_price * 100.0
+                                )
 
                             if distance_to_stop_pct is not None:
                                 distance_to_stop_pct = round(float(distance_to_stop_pct), 2)
@@ -827,64 +915,76 @@ class OpportunityService:
                     last_price=last_price,
                     stop_price=stop_price,
                 )
-                
+
                 # Debug for TRX
-                if symbol == 'TRX/USDT':
+                if symbol == "TRX/USDT":
                     logger.info(
                         f"TRX/USDT - short_above_medium={short_above_medium}, short_above_long={short_above_long}, "
                         f"is_holding={is_holding}, is_stopped_out={is_stopped_out}, "
                         f"last_buy_pos={last_buy_pos}, last_sell_pos={last_sell_pos}, stop_price={stop_price}, last_price={last_price}"
                     )
                     if current_row is not None:
-                        if 'short' in current_row and 'medium' in current_row:
-                            logger.info(f"TRX/USDT - Current candle: short={current_row['short']:.4f}, medium={current_row['medium']:.4f}")
-                        if 'short' in current_row and 'long' in current_row:
-                            logger.info(f"TRX/USDT - short={current_row['short']:.4f}, long={current_row['long']:.4f}")
-                
+                        if "short" in current_row and "medium" in current_row:
+                            logger.info(
+                                f"TRX/USDT - Current candle: short={current_row['short']:.4f}, medium={current_row['medium']:.4f}"
+                            )
+                        if "short" in current_row and "long" in current_row:
+                            logger.info(
+                                f"TRX/USDT - short={current_row['short']:.4f}, long={current_row['long']:.4f}"
+                            )
+
                 # Debug for ETH
-                if symbol == 'ETH/USDT':
+                if symbol == "ETH/USDT":
                     logger.info(
                         f"ETH/USDT - short_above_medium={short_above_medium}, short_above_long={short_above_long}, "
                         f"is_holding={is_holding}, is_stopped_out={is_stopped_out}, "
                         f"last_buy_pos={last_buy_pos}, last_sell_pos={last_sell_pos}, stop_price={stop_price}, last_price={last_price}"
                     )
                     if current_row is not None:
-                        if 'short' in current_row and 'medium' in current_row:
-                            logger.info(f"ETH/USDT - short={current_row['short']:.4f}, medium={current_row['medium']:.4f}")
-                        if 'short' in current_row and 'long' in current_row:
-                            logger.info(f"ETH/USDT - short={current_row['short']:.4f}, long={current_row['long']:.4f}")
-                
+                        if "short" in current_row and "medium" in current_row:
+                            logger.info(
+                                f"ETH/USDT - short={current_row['short']:.4f}, medium={current_row['medium']:.4f}"
+                            )
+                        if "short" in current_row and "long" in current_row:
+                            logger.info(
+                                f"ETH/USDT - short={current_row['short']:.4f}, long={current_row['long']:.4f}"
+                            )
+
                 # -------------------------------------------------------------------------
                 # With new concept: is_holding is already determined by short_above_long
                 # No need for special cases - if short > long, we're in HOLD
                 # Stop loss history is ignored for HOLD determination
                 # -------------------------------------------------------------------------
-                
+
                 # Removed: Complex logic checking stop loss history
                 # Now: Simple - if short > long, we're in HOLD
-                
+
                 # (Old complex logic removed - not needed with new concept)
                 if False:  # This block is disabled with new concept
                     # Check if entry logic would be satisfied on current candle
                     # For entry_logic like: (crossover(short, long) | crossover(short, medium)) & (short > long)
                     # If short > long is True, we need to check if there was a recent crossover
-                    
+
                     # Check previous closed candle to see if short was below long
                     if not df_closed.empty and len(df_closed) > 0:
                         prev_closed_row = df_closed.iloc[-1]
-                        if 'short' in prev_closed_row and 'long' in prev_closed_row:
-                            prev_short = prev_closed_row['short']
-                            prev_long = prev_closed_row['long']
+                        if "short" in prev_closed_row and "long" in prev_closed_row:
+                            prev_short = prev_closed_row["short"]
+                            prev_long = prev_closed_row["long"]
                             prev_short_above_long = prev_short > prev_long
-                            
+
                             # If previous candle had short <= long, but current has short > long,
                             # it means we crossed over on current candle -> we're in HOLD
                             if not prev_short_above_long and short_above_long:
                                 # Crossover happened on current candle -> we're in HOLD
                                 is_holding = True
-                                if symbol == 'TRX/USDT':
-                                    logger.info(f"TRX/USDT - Crossover detected on current candle! prev: short={prev_short:.4f} <= long={prev_long:.4f}, current: short={current_row['short']:.4f} > long={current_row['long']:.4f}")
-                                    logger.info(f"TRX/USDT - Setting is_holding=True because entry happened on current candle")
+                                if symbol == "TRX/USDT":
+                                    logger.info(
+                                        f"TRX/USDT - Crossover detected on current candle! prev: short={prev_short:.4f} <= long={prev_long:.4f}, current: short={current_row['short']:.4f} > long={current_row['long']:.4f}"
+                                    )
+                                    logger.info(
+                                        f"TRX/USDT - Setting is_holding=True because entry happened on current candle"
+                                    )
                             elif prev_short_above_long and short_above_long:
                                 # Both previous and current have short > long
                                 # Check how many candles ago was the last stop
@@ -893,212 +993,235 @@ class OpportunityService:
                                         last_stop_pos = df_closed.index.get_loc(last_sig_idx)
                                         current_date_pos = len(df_closed) - 1
                                         candles_since_stop = current_date_pos - last_stop_pos
-                                        
+
                                         # If stop was recent (within last few candles) and we're still above,
                                         # we might have re-entered. Check if there was a crossover after stop
-                                        if candles_since_stop > 0 and candles_since_stop <= 10:  # Within last 10 candles
+                                        if (
+                                            candles_since_stop > 0 and candles_since_stop <= 10
+                                        ):  # Within last 10 candles
                                             # Check if short was below long right after stop, then crossed
                                             # Look for crossover after stop
-                                            after_stop_df = df_closed.iloc[last_stop_pos+1:]
+                                            after_stop_df = df_closed.iloc[last_stop_pos + 1 :]
                                             if len(after_stop_df) > 0:
                                                 # Check if there was a period where short was below long after stop
                                                 had_crossover = False
                                                 for idx, row in after_stop_df.iterrows():
-                                                    if 'short' in row and 'long' in row:
-                                                        if row['short'] <= row['long']:
+                                                    if "short" in row and "long" in row:
+                                                        if row["short"] <= row["long"]:
                                                             had_crossover = True  # Found a period where short was below
                                                             break
-                                                
+
                                                 # If we had short below after stop, but now we're above, we crossed -> HOLD
                                                 if had_crossover or candles_since_stop == 1:
                                                     is_holding = True
-                                                    if symbol == 'TRX/USDT':
-                                                        logger.info(f"TRX/USDT - short > long maintained since stop ({candles_since_stop} candles ago), assuming re-entry -> is_holding=True")
+                                                    if symbol == "TRX/USDT":
+                                                        logger.info(
+                                                            f"TRX/USDT - short > long maintained since stop ({candles_since_stop} candles ago), assuming re-entry -> is_holding=True"
+                                                        )
                                     except (KeyError, IndexError) as e:
-                                        if symbol == 'TRX/USDT':
-                                            logger.warning(f"TRX/USDT - Error checking candles since stop: {e}")
-                
+                                        if symbol == "TRX/USDT":
+                                            logger.warning(
+                                                f"TRX/USDT - Error checking candles since stop: {e}"
+                                            )
+
                 # -------------------------------------------------------------------------
                 # With new concept: if short > long, we're already in HOLD (is_holding = True)
                 # No need for STOPPED_OUT or MISSED_ENTRY statuses when short > long
                 # All cases where short > long are treated as HOLD
                 # -------------------------------------------------------------------------
-                
-                
+
                 # Standardize Entry Status Names for frontend clarity
                 # BUT: If we're in HOLD, set status to HOLDING
                 if is_stopped_out:
-                    analysis['status'] = 'STOPPED_OUT'
-                    analysis['badge'] = 'critical'
+                    analysis["status"] = "STOPPED_OUT"
+                    analysis["badge"] = "critical"
                     if stop_breached_now:
-                        analysis['message'] = 'STOP: preco atingiu o stop loss. Aguardando reentrada.'
+                        analysis["message"] = (
+                            "STOP: preco atingiu o stop loss. Aguardando reentrada."
+                        )
                     else:
-                        analysis['message'] = 'STOP ja confirmado no historico. Aguardando nova entrada.'
+                        analysis["message"] = (
+                            "STOP ja confirmado no historico. Aguardando nova entrada."
+                        )
                     if entry_distance_override is not None:
-                        analysis['distance'] = round(entry_distance_override, 2)
+                        analysis["distance"] = round(entry_distance_override, 2)
                 elif is_holding:
-                    analysis['status'] = 'HOLDING'
-                    analysis['badge'] = 'info'
-                elif last_sell_pos is not None and (last_buy_pos is None or last_sell_pos > last_buy_pos):
-                    analysis['status'] = 'EXITED'
-                    analysis['badge'] = 'neutral'
-                    analysis['message'] = 'Saida confirmada pela regra de exit. Aguardando reentrada.'
+                    analysis["status"] = "HOLDING"
+                    analysis["badge"] = "info"
+                elif last_sell_pos is not None and (
+                    last_buy_pos is None or last_sell_pos > last_buy_pos
+                ):
+                    analysis["status"] = "EXITED"
+                    analysis["badge"] = "neutral"
+                    analysis["message"] = (
+                        "Saida confirmada pela regra de exit. Aguardando reentrada."
+                    )
                     if entry_distance_override is not None:
-                        analysis['distance'] = round(entry_distance_override, 2)
-                elif analysis['status'] == 'SIGNAL':
-                    analysis['status'] = 'BUY_SIGNAL'
+                        analysis["distance"] = round(entry_distance_override, 2)
+                elif analysis["status"] == "SIGNAL":
+                    analysis["status"] = "BUY_SIGNAL"
                 else:
                     # Override entry distance and proximity when not holding
                     if entry_distance_override is not None:
                         threshold_pct = self.analyzer.threshold * 100
                         if entry_distance_override <= threshold_pct:
-                            analysis['status'] = 'BUY_NEAR'
-                            analysis['badge'] = 'warning'
+                            analysis["status"] = "BUY_NEAR"
+                            analysis["badge"] = "warning"
                             if short_above_long:
-                                analysis['message'] = 'Approaching short crossing medium'
+                                analysis["message"] = "Approaching short crossing medium"
                             else:
-                                analysis['message'] = 'Approaching short crossing long'
+                                analysis["message"] = "Approaching short crossing long"
                         else:
-                            analysis['status'] = 'NEUTRAL'
-                            analysis['badge'] = 'neutral'
-                            analysis['message'] = 'Waiting for setup'
-                        analysis['distance'] = round(entry_distance_override, 2)
-                    elif analysis['status'] == 'NEAR':
-                        analysis['status'] = 'BUY_NEAR'
+                            analysis["status"] = "NEUTRAL"
+                            analysis["badge"] = "neutral"
+                            analysis["message"] = "Waiting for setup"
+                        analysis["distance"] = round(entry_distance_override, 2)
+                    elif analysis["status"] == "NEAR":
+                        analysis["status"] = "BUY_NEAR"
                 # -------------------------------------------------------------------------
                 # NEW: Stateful Check (Stop Loss / Confirmed Signals)
                 # Proximity Analyzer is stateless (doesn't know if we hit -5% SL logic).
                 # We assume "HOLDING" if Proximity says so, BUT we must check if strategy killed it.
                 # -------------------------------------------------------------------------
-                
+
                 # Override Logic: REMOVED with new concept
                 # We no longer check stop loss history to determine HOLD status
                 # HOLD is determined ONLY by short > long (entry conditions met)
                 if False:  # Disabled - not needed with new concept
                     # If the Sell was on the very last closed candle, it's an EXIT SIGNAL (Actionable)
                     if last_sig_idx == df_closed.index[-1]:
-                         analysis['status'] = 'EXIT_SIGNAL'
-                         analysis['badge'] = 'critical'
-                         # Show Re-entry Distance (calculated by ProximityAnalyzer for Entry Logic)
-                         re_entry_dist = analysis.get('distance', 0.0)
-                         analysis['message'] = f'EXIT: Stop Loss Dist: {re_entry_dist}%'
-                         # Keep the distance to show proximity to re-entry
-                         pass
+                        analysis["status"] = "EXIT_SIGNAL"
+                        analysis["badge"] = "critical"
+                        # Show Re-entry Distance (calculated by ProximityAnalyzer for Entry Logic)
+                        re_entry_dist = analysis.get("distance", 0.0)
+                        analysis["message"] = f"EXIT: Stop Loss Dist: {re_entry_dist}%"
+                        # Keep the distance to show proximity to re-entry
+                        pass
                     else:
-                         # If Sell was older, we are effectively WAITING (Neutral), not Holding.
-                         # Unless Proximity sees a NEW Buy Signal right now.
-                         if analysis['status'] == 'HOLDING': 
-                             analysis['status'] = 'NEUTRAL'
-                             analysis['badge'] = 'neutral'
-                             re_entry_dist = analysis.get('distance', 0.0)
-                             analysis['message'] = f'Waiting (Re-entry Dist: {re_entry_dist}%)'
-                             # Preserve distance logic
-                             pass
+                        # If Sell was older, we are effectively WAITING (Neutral), not Holding.
+                        # Unless Proximity sees a NEW Buy Signal right now.
+                        if analysis["status"] == "HOLDING":
+                            analysis["status"] = "NEUTRAL"
+                            analysis["badge"] = "neutral"
+                            re_entry_dist = analysis.get("distance", 0.0)
+                            analysis["message"] = f"Waiting (Re-entry Dist: {re_entry_dist}%)"
+                            # Preserve distance logic
+                            pass
 
                 # 6. Secondary Analysis: Exit Proximity using sell rule from database
                 # Only check exit if we are technically Holding (is_holding == True)
                 # This is critical: when in HOLD, we need to show distance to EXIT, not to entry
                 if is_holding:
-                     if strategy.exit_logic:  # exit_logic comes from database (combo_templates.template_data)
-                         # Use df_closed here too for consistency
-                         # Analyze proximity to exit signal using exit_logic from database
-                         exit_analysis = self.analyzer.analyze(df_closed, strategy.exit_logic)
-                         
-                         # LOGIC CHANGE: If we are HOLDING, the relevant distance is ALWAYS the Exit Distance.
-                         # Even if it's NEUTRAL (not < 1%), we want to see "Distance to Sell", not "Distance to Buy" (which is history).
-                         
-                         # 1. Critical/Warning: Exit is NEAR or SIGNAL
-                         if exit_analysis['status'] in ['SIGNAL', 'NEAR']:
-                             analysis['status'] = 'EXIT_NEAR' if exit_analysis['status'] == 'NEAR' else 'EXIT_SIGNAL'
-                             analysis['badge'] = 'critical' if exit_analysis['status'] == 'SIGNAL' else 'warning'
-                             analysis['message'] = f"EXIT: {exit_analysis['message']}"
-                             analysis['distance'] = exit_analysis.get('distance')
-                             analysis['exit_details'] = exit_analysis
-                             if isinstance(analysis.get('details'), dict):
-                                analysis['details']['exit_analysis'] = exit_analysis
-                        
-                             # 2. Informational: Exit is NEUTRAL (Far away), but we are HOLDING
-                         else:
-                             # We're in HOLD, exit is not near, but we still want to show exit distance
-                             # Keep status as HOLDING, but update specific details to reflect Exit focus
-                             # Use the Exit distance
-                             exit_dist = exit_analysis.get('distance', 999)
-                             analysis['distance'] = exit_dist if exit_dist < 999 else None
-                             # Update message to be clear we are tracking exit
-                             if exit_dist < 999:
-                                 analysis['message'] = f"Em Hold. Distância para saída: {exit_dist:.2f}%"
-                             else:
-                                 analysis['message'] = "Em Hold. Aguardando sinal de saída."
-                             analysis['exit_details'] = exit_analysis 
-                             # Safety: Ensure details is not overwritten or accessed incorrectly if string
-                             if isinstance(analysis.get('details'), dict):
-                                 analysis['details']['exit_analysis'] = exit_analysis
-                             else:
-                                 # Convert string detail to dict if needed, or just ignore
-                                 pass
-                     else:
-                         # No exit_logic defined, but we're in HOLD
-                         # Set a default message
-                         analysis['status'] = 'HOLDING'
-                         analysis['badge'] = 'info'
-                         analysis['message'] = "Em Hold. Sem regra de saída definida."
-                         if symbol in ['ETH/USDT', 'TRX/USDT']:
-                             logger.info(f"{symbol} - In HOLD but no exit_logic defined")
-                
+                    if (
+                        strategy.exit_logic
+                    ):  # exit_logic comes from database (combo_templates.template_data)
+                        # Use df_closed here too for consistency
+                        # Analyze proximity to exit signal using exit_logic from database
+                        exit_analysis = self.analyzer.analyze(df_closed, strategy.exit_logic)
+
+                        # LOGIC CHANGE: If we are HOLDING, the relevant distance is ALWAYS the Exit Distance.
+                        # Even if it's NEUTRAL (not < 1%), we want to see "Distance to Sell", not "Distance to Buy" (which is history).
+
+                        # 1. Critical/Warning: Exit is NEAR or SIGNAL
+                        if exit_analysis["status"] in ["SIGNAL", "NEAR"]:
+                            analysis["status"] = (
+                                "EXIT_NEAR" if exit_analysis["status"] == "NEAR" else "EXIT_SIGNAL"
+                            )
+                            analysis["badge"] = (
+                                "critical" if exit_analysis["status"] == "SIGNAL" else "warning"
+                            )
+                            analysis["message"] = f"EXIT: {exit_analysis['message']}"
+                            analysis["distance"] = exit_analysis.get("distance")
+                            analysis["exit_details"] = exit_analysis
+                            if isinstance(analysis.get("details"), dict):
+                                analysis["details"]["exit_analysis"] = exit_analysis
+
+                            # 2. Informational: Exit is NEUTRAL (Far away), but we are HOLDING
+                        else:
+                            # We're in HOLD, exit is not near, but we still want to show exit distance
+                            # Keep status as HOLDING, but update specific details to reflect Exit focus
+                            # Use the Exit distance
+                            exit_dist = exit_analysis.get("distance", 999)
+                            analysis["distance"] = exit_dist if exit_dist < 999 else None
+                            # Update message to be clear we are tracking exit
+                            if exit_dist < 999:
+                                analysis["message"] = (
+                                    f"Em Hold. Distância para saída: {exit_dist:.2f}%"
+                                )
+                            else:
+                                analysis["message"] = "Em Hold. Aguardando sinal de saída."
+                            analysis["exit_details"] = exit_analysis
+                            # Safety: Ensure details is not overwritten or accessed incorrectly if string
+                            if isinstance(analysis.get("details"), dict):
+                                analysis["details"]["exit_analysis"] = exit_analysis
+                            else:
+                                # Convert string detail to dict if needed, or just ignore
+                                pass
+                    else:
+                        # No exit_logic defined, but we're in HOLD
+                        # Set a default message
+                        analysis["status"] = "HOLDING"
+                        analysis["badge"] = "info"
+                        analysis["message"] = "Em Hold. Sem regra de saída definida."
+                        if symbol in ["ETH/USDT", "TRX/USDT"]:
+                            logger.info(f"{symbol} - In HOLD but no exit_logic defined")
+
                 # is_holding was already determined above based on short_above_long
                 is_missed_entry = False  # Disabled with new concept
-                
+
                 # Calculate distance to next status
                 # If holding: distance to exit, else: distance to entry
                 if is_holding:
                     # Use exit analysis if available (from step 6)
-                    if 'exit_details' in analysis and analysis.get('exit_details'):
-                        exit_details = analysis['exit_details']
+                    if "exit_details" in analysis and analysis.get("exit_details"):
+                        exit_details = analysis["exit_details"]
                         if isinstance(exit_details, dict):
-                            distance_to_next = exit_details.get('distance', 999)
+                            distance_to_next = exit_details.get("distance", 999)
                         else:
-                            distance_to_next = analysis.get('distance', 999)
-                    elif 'distance' in analysis:
+                            distance_to_next = analysis.get("distance", 999)
+                    elif "distance" in analysis:
                         # Fallback: use distance from analysis (might be entry distance, but better than nothing)
-                        distance_to_next = analysis.get('distance', 999)
+                        distance_to_next = analysis.get("distance", 999)
                     else:
                         distance_to_next = 999
                     next_status_label = "exit"
                 elif is_stopped_out or is_missed_entry:
                     # For stopped out or missed entry, use the spread distance we calculated
-                    distance_to_next = analysis.get('distance', None)
+                    distance_to_next = analysis.get("distance", None)
                     if is_stopped_out:
                         next_status_label = "re-entry"
                     else:
                         next_status_label = "confirmation"
                 else:
                     # Distance to entry (from entry analysis)
-                    distance_to_next = analysis.get('distance', 999)
+                    distance_to_next = analysis.get("distance", 999)
                     next_status_label = "entry"
-                
+
                 # Ensure distance is always a number (not None) for sorting and display
                 final_distance = None
                 if distance_to_next is not None and distance_to_next < 999:
                     final_distance = round(distance_to_next, 2)
                 elif is_stopped_out or is_missed_entry:
                     # For stopped out/missed entry, use the spread distance we calculated
-                    final_distance = analysis.get('distance')
+                    final_distance = analysis.get("distance")
                     if final_distance is not None:
                         final_distance = round(final_distance, 2)
 
                 # Indicator values used for distance (last closed candle) — for display on card
                 indicator_values = {}
-                indicator_values_candle_time = None  # date/time of candle so user can match TradingView
+                indicator_values_candle_time = (
+                    None  # date/time of candle so user can match TradingView
+                )
                 if not df_for_distance.empty:
                     row_used = df_for_distance.iloc[-1]
-                    for key in ('short', 'medium', 'long', 'fast', 'slow', 'inter'):
+                    for key in ("short", "medium", "long", "fast", "slow", "inter"):
                         if key in row_used and pd.notna(row_used.get(key)):
                             try:
                                 indicator_values[key] = round(float(row_used[key]), 2)
                             except (TypeError, ValueError):
                                 pass
                     # Include open/close of that candle so user can compare with TradingView (O=76,968.22, C=...)
-                    for key in ('open', 'close'):
+                    for key in ("open", "close"):
                         if key in row_used and pd.notna(row_used.get(key)):
                             try:
                                 indicator_values[key] = round(float(row_used[key]), 2)
@@ -1106,62 +1229,79 @@ class OpportunityService:
                                 pass
                     try:
                         idx = df_for_distance.index[-1]
-                        indicator_values_candle_time = str(pd.Timestamp(idx).isoformat()) if idx is not None else None
+                        indicator_values_candle_time = (
+                            str(pd.Timestamp(idx).isoformat()) if idx is not None else None
+                        )
                     except Exception:
                         pass
 
-                opportunities.append({
-                    'id': fav['id'],
-                    'symbol': symbol,
-                    'timeframe': tf,
-                    'template_name': template_name,
-                    'name': fav['name'], # User custom name
-                    'notes': fav.get('notes'),
-                    'tier': fav.get('tier'),
-                    'parameters': fav.get('parameters') or {},
-                    'is_holding': is_holding,
-                    'distance_to_next_status': final_distance,
-                    'next_status_label': next_status_label,
-                    'indicator_values': indicator_values if indicator_values else None,
-                    'indicator_values_candle_time': indicator_values_candle_time,
-                    'signal_history': signal_history,
-                    'entry_price': entry_price,
-                    'stop_price': stop_price,
-                    'distance_to_stop_pct': distance_to_stop_pct,
-                    # Keep legacy fields for backward compatibility
-                    'status': analysis['status'],
-                    'badge': analysis['badge'],
-                    'message': analysis['message'],
-                    'details': analysis,
-                    'last_price': float(df.iloc[-1]['close']),
-                    'timestamp': str(df.index[-1])
-                })
-                
+                opportunities.append(
+                    {
+                        "id": fav["id"],
+                        "symbol": symbol,
+                        "timeframe": tf,
+                        "template_name": template_name,
+                        "name": fav["name"],  # User custom name
+                        "notes": fav.get("notes"),
+                        "tier": fav.get("tier"),
+                        "parameters": fav.get("parameters") or {},
+                        "is_holding": is_holding,
+                        "distance_to_next_status": final_distance,
+                        "next_status_label": next_status_label,
+                        "indicator_values": indicator_values if indicator_values else None,
+                        "indicator_values_candle_time": indicator_values_candle_time,
+                        "signal_history": signal_history,
+                        "entry_price": entry_price,
+                        "stop_price": stop_price,
+                        "distance_to_stop_pct": distance_to_stop_pct,
+                        # Keep legacy fields for backward compatibility
+                        "status": analysis["status"],
+                        "badge": analysis["badge"],
+                        "message": analysis["message"],
+                        "details": analysis,
+                        "last_price": float(df.iloc[-1]["close"]),
+                        "timestamp": str(df.index[-1]),
+                    }
+                )
+
             except Exception as e:
                 import traceback
-                logger.error(f"Error analyzing favorite {fav.get('id', 'unknown')} ({fav.get('symbol', 'unknown')} {fav.get('timeframe', 'unknown')}): {e}")
+
+                logger.error(
+                    f"Error analyzing favorite {fav.get('id', 'unknown')} ({fav.get('symbol', 'unknown')} {fav.get('timeframe', 'unknown')}): {e}"
+                )
                 logger.error(traceback.format_exc())
-                skipped_strategies.append({
-                    'id': fav.get('id', 'unknown'),
-                    'symbol': fav.get('symbol', 'unknown'),
-                    'timeframe': fav.get('timeframe', 'unknown'),
-                    'reason': f"Exception: {str(e)}"
-                })
+                skipped_strategies.append(
+                    {
+                        "id": fav.get("id", "unknown"),
+                        "symbol": fav.get("symbol", "unknown"),
+                        "timeframe": fav.get("timeframe", "unknown"),
+                        "reason": f"Exception: {str(e)}",
+                    }
+                )
                 continue
 
         # Sort by distance to next status (closest first)
         # Holding positions first, then by distance
-        opportunities.sort(key=lambda x: (
-            0 if x['is_holding'] else 1,  # Holding first
-            x['distance_to_next_status'] if x['distance_to_next_status'] is not None else 999
-        ))
-        
+        opportunities.sort(
+            key=lambda x: (
+                0 if x["is_holding"] else 1,  # Holding first
+                x["distance_to_next_status"] if x["distance_to_next_status"] is not None else 999,
+            )
+        )
+
         # Log summary
-        logger.info(f"Successfully processed {len(opportunities)} strategies out of {len(favorites)} favorites")
+        logger.info(
+            f"Successfully processed {len(opportunities)} strategies out of {len(favorites)} favorites"
+        )
         if skipped_strategies:
             symbols_str = ", ".join(s.get("symbol", "?") for s in skipped_strategies)
-            logger.warning(f"Skipped {len(skipped_strategies)} strategies (no data / delisted): {symbols_str}")
+            logger.warning(
+                f"Skipped {len(skipped_strategies)} strategies (no data / delisted): {symbols_str}"
+            )
             for skipped in skipped_strategies:
-                logger.debug(f"  ID {skipped['id']}: {skipped.get('symbol', '?')} {skipped.get('timeframe', '?')} — {skipped['reason']}")
-        
+                logger.debug(
+                    f"  ID {skipped['id']}: {skipped.get('symbol', '?')} {skipped.get('timeframe', '?')} — {skipped['reason']}"
+                )
+
         return opportunities

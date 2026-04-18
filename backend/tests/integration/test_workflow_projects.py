@@ -101,7 +101,9 @@ def test_projects_api_list_and_create():
     assert "trading-bot" in slugs
 
     # Idempotent: creating same slug returns existing
-    project1_again = client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Different Name"})
+    project1_again = client.post(
+        "/api/workflow/projects", json={"slug": "crypto", "name": "Different Name"}
+    )
     assert project1_again.status_code == 200
     assert project1_again.json()["id"] == p1["id"]
     assert project1_again.json()["root_directory"] == "/srv/projects/crypto"

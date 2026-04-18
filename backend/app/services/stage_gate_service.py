@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from app.workflow_models import Change, WorkItem
 
-
 STAGE_ORDER = [
     "Pending",
     "PO",
@@ -64,9 +63,7 @@ def get_stage_index(stage: str) -> int:
     return STAGE_ORDER.index(normalized)
 
 
-def validate_stage_transition(
-    current_stage: Optional[str], target_stage: str
-) -> StageGateResult:
+def validate_stage_transition(current_stage: Optional[str], target_stage: str) -> StageGateResult:
     """Validate if a transition from current_stage to target_stage is allowed.
 
     This function validates stage transitions based on the workflow rules:
@@ -208,9 +205,7 @@ def record_stage_start(
     """
     work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
     if not work_item:
-        raise HTTPException(
-            status_code=404, detail=f"Work item '{work_item_id}' not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Work item '{work_item_id}' not found")
 
     from datetime import datetime, timezone
 
@@ -239,9 +234,7 @@ def record_stage_completion(
     """
     work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
     if not work_item:
-        raise HTTPException(
-            status_code=404, detail=f"Work item '{work_item_id}' not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Work item '{work_item_id}' not found")
 
     from datetime import datetime, timezone
 

@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional
 def _default_db_path() -> str:
     try:
         from app.database import DB_PATH  # type: ignore
+
         return str(DB_PATH)
     except Exception:
         return str(Path(__file__).resolve().parents[2] / "backend" / "backtest.db")
@@ -93,7 +94,11 @@ def import_templates(db_path: str, json_path: str) -> Dict[str, int]:
                     is_example,
                     is_readonly,
                     json.dumps(template_data, ensure_ascii=False),
-                    json.dumps(optimization_schema, ensure_ascii=False) if optimization_schema is not None else None,
+                    (
+                        json.dumps(optimization_schema, ensure_ascii=False)
+                        if optimization_schema is not None
+                        else None
+                    ),
                     name,
                 ),
             )
@@ -115,7 +120,11 @@ def import_templates(db_path: str, json_path: str) -> Dict[str, int]:
                         is_example,
                         is_readonly,
                         json.dumps(template_data, ensure_ascii=False),
-                        json.dumps(optimization_schema, ensure_ascii=False) if optimization_schema is not None else None,
+                        (
+                            json.dumps(optimization_schema, ensure_ascii=False)
+                            if optimization_schema is not None
+                            else None
+                        ),
                         created_at,
                     ),
                 )
@@ -134,7 +143,11 @@ def import_templates(db_path: str, json_path: str) -> Dict[str, int]:
                         is_example,
                         is_readonly,
                         json.dumps(template_data, ensure_ascii=False),
-                        json.dumps(optimization_schema, ensure_ascii=False) if optimization_schema is not None else None,
+                        (
+                            json.dumps(optimization_schema, ensure_ascii=False)
+                            if optimization_schema is not None
+                            else None
+                        ),
                     ),
                 )
             inserted += 1
@@ -150,13 +163,20 @@ def main() -> None:
     p.add_argument("--db", default=_default_db_path(), help="Path to SQLite DB (backtest.db)")
     p.add_argument(
         "--json",
-        default=str(Path(__file__).resolve().parents[2] / "backend" / "config" / "combo_templates_export.json"),
+        default=str(
+            Path(__file__).resolve().parents[2]
+            / "backend"
+            / "config"
+            / "combo_templates_export.json"
+        ),
         help="Path to combo_templates_export.json",
     )
     args = p.parse_args()
 
     res = import_templates(args.db, args.json)
-    print(f"✅ Import concluído: inserted={res['inserted']} updated={res['updated']} total_in_file={res['total']}")
+    print(
+        f"✅ Import concluído: inserted={res['inserted']} updated={res['updated']} total_in_file={res['total']}"
+    )
 
 
 if __name__ == "__main__":

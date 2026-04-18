@@ -35,7 +35,10 @@ def _build_client():
 
 def test_kanban_create_change_starts_in_pending_with_description():
     client = _build_client()
-    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert (
+        client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code
+        == 200
+    )
 
     created = client.post(
         "/api/workflow/kanban/changes?project_slug=crypto",
@@ -63,10 +66,12 @@ def test_kanban_create_change_starts_in_pending_with_description():
     client.app.dependency_overrides.clear()
 
 
-
 def test_kanban_reorder_persists_within_same_column():
     client = _build_client()
-    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert (
+        client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code
+        == 200
+    )
 
     for title in ["First card", "Second card", "Third card"]:
         created = client.post(
@@ -76,7 +81,11 @@ def test_kanban_reorder_persists_within_same_column():
         assert created.status_code == 200
 
     board = client.get("/api/workflow/kanban/changes?project_slug=crypto")
-    assert [item["id"] for item in board.json()["items"]] == ["first-card", "second-card", "third-card"]
+    assert [item["id"] for item in board.json()["items"]] == [
+        "first-card",
+        "second-card",
+        "third-card",
+    ]
     assert [item["card_number"] for item in board.json()["items"]] == [1, 2, 3]
 
     moved_up = client.patch(
@@ -87,7 +96,11 @@ def test_kanban_reorder_persists_within_same_column():
     assert moved_up.json()["card_number"] == 2
 
     board_after_up = client.get("/api/workflow/kanban/changes?project_slug=crypto")
-    assert [item["id"] for item in board_after_up.json()["items"]] == ["second-card", "first-card", "third-card"]
+    assert [item["id"] for item in board_after_up.json()["items"]] == [
+        "second-card",
+        "first-card",
+        "third-card",
+    ]
     assert [item["card_number"] for item in board_after_up.json()["items"]] == [2, 1, 3]
 
     edited = client.patch(
@@ -105,7 +118,11 @@ def test_kanban_reorder_persists_within_same_column():
     assert moved_down.json()["card_number"] == 2
 
     board_after_down = client.get("/api/workflow/kanban/changes?project_slug=crypto")
-    assert [item["id"] for item in board_after_down.json()["items"]] == ["first-card", "second-card", "third-card"]
+    assert [item["id"] for item in board_after_down.json()["items"]] == [
+        "first-card",
+        "second-card",
+        "third-card",
+    ]
     assert [item["card_number"] for item in board_after_down.json()["items"]] == [1, 2, 3]
 
     client.app.dependency_overrides.clear()
@@ -113,16 +130,35 @@ def test_kanban_reorder_persists_within_same_column():
 
 def test_kanban_backfills_missing_card_numbers_for_legacy_rows():
     client = _build_client()
-    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert (
+        client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code
+        == 200
+    )
 
-    assert client.post(
-        "/api/workflow/projects/crypto/changes",
-        json={"change_id": "legacy-a", "title": "Legacy A", "description": "old row", "status": "Pending"},
-    ).status_code == 200
-    assert client.post(
-        "/api/workflow/projects/crypto/changes",
-        json={"change_id": "legacy-b", "title": "Legacy B", "description": "old row", "status": "Pending"},
-    ).status_code == 200
+    assert (
+        client.post(
+            "/api/workflow/projects/crypto/changes",
+            json={
+                "change_id": "legacy-a",
+                "title": "Legacy A",
+                "description": "old row",
+                "status": "Pending",
+            },
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/api/workflow/projects/crypto/changes",
+            json={
+                "change_id": "legacy-b",
+                "title": "Legacy B",
+                "description": "old row",
+                "status": "Pending",
+            },
+        ).status_code
+        == 200
+    )
 
     session = client.session_local()
     try:
@@ -133,7 +169,10 @@ def test_kanban_backfills_missing_card_numbers_for_legacy_rows():
 
     board = client.get("/api/workflow/kanban/changes?project_slug=crypto")
     assert board.status_code == 200
-    assert [(item["id"], item["card_number"]) for item in board.json()["items"]] == [("legacy-a", 1), ("legacy-b", 2)]
+    assert [(item["id"], item["card_number"]) for item in board.json()["items"]] == [
+        ("legacy-a", 1),
+        ("legacy-b", 2),
+    ]
 
     next_created = client.post(
         "/api/workflow/kanban/changes?project_slug=crypto",
@@ -147,7 +186,10 @@ def test_kanban_backfills_missing_card_numbers_for_legacy_rows():
 
 def test_kanban_reorder_recovers_legacy_zeroed_positions():
     client = _build_client()
-    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert (
+        client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code
+        == 200
+    )
 
     for title in ["Legacy A", "Legacy B", "Legacy C"]:
         created = client.post(
@@ -170,25 +212,38 @@ def test_kanban_reorder_recovers_legacy_zeroed_positions():
     assert moved_up.status_code == 200
 
     board_after_up = client.get("/api/workflow/kanban/changes?project_slug=crypto")
-    assert [item["id"] for item in board_after_up.json()["items"]] == ["legacy-b", "legacy-a", "legacy-c"]
+    assert [item["id"] for item in board_after_up.json()["items"]] == [
+        "legacy-b",
+        "legacy-a",
+        "legacy-c",
+    ]
 
     client.app.dependency_overrides.clear()
 
 
 def test_reorder_does_not_move_between_columns():
     client = _build_client()
-    assert client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code == 200
+    assert (
+        client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code
+        == 200
+    )
 
     for title in ["Pending A", "Pending B"]:
-        assert client.post(
-            "/api/workflow/kanban/changes?project_slug=crypto",
-            json={"title": title, "description": "Pending reorder scope"},
-        ).status_code == 200
+        assert (
+            client.post(
+                "/api/workflow/kanban/changes?project_slug=crypto",
+                json={"title": title, "description": "Pending reorder scope"},
+            ).status_code
+            == 200
+        )
 
-    assert client.patch(
-        "/api/workflow/projects/crypto/changes/pending-b",
-        json={"status": "PO"},
-    ).status_code == 200
+    assert (
+        client.patch(
+            "/api/workflow/projects/crypto/changes/pending-b",
+            json={"status": "PO"},
+        ).status_code
+        == 200
+    )
 
     reordered = client.patch(
         "/api/workflow/projects/crypto/changes/pending-a",
@@ -204,6 +259,3 @@ def test_reorder_does_not_move_between_columns():
     assert po_ids == ["pending-b"]
 
     client.app.dependency_overrides.clear()
-
-
-

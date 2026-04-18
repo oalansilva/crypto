@@ -7,7 +7,11 @@ import json
 from app.database import get_db
 from app.models import FavoriteStrategy
 from app.middleware.authMiddleware import get_current_user
-from app.schemas.favorite import FavoriteStrategyCreate, FavoriteStrategyResponse, FavoriteStrategyUpdate
+from app.schemas.favorite import (
+    FavoriteStrategyCreate,
+    FavoriteStrategyResponse,
+    FavoriteStrategyUpdate,
+)
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -44,7 +48,9 @@ def favorite_exists(
     symbol: str = Query(..., description="Symbol (e.g. ETH/USDT)"),
     timeframe: str = Query(..., description="Timeframe (e.g. 1d)"),
     period_type: Optional[str] = Query(None, description="'6m' | '2y' | 'all'"),
-    direction: Optional[str] = Query(None, description="'long' | 'short'; if omitted, any direction matches"),
+    direction: Optional[str] = Query(
+        None, description="'long' | 'short'; if omitted, any direction matches"
+    ),
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -69,8 +75,7 @@ def favorite_exists(
         if want not in ("long", "short"):
             want = "long"
         rows = [
-            r for r in rows
-            if ((r.parameters or {}).get("direction") or "long").lower() == want
+            r for r in rows if ((r.parameters or {}).get("direction") or "long").lower() == want
         ]
     return ExistsResponse(exists=len(rows) > 0)
 
@@ -83,6 +88,7 @@ def list_favorites(
     """List all favorited strategies"""
     rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
     return [_normalize_favorite_json_fields(row) for row in rows]
+
 
 @router.post("/", response_model=FavoriteStrategyResponse)
 def create_favorite(
@@ -100,10 +106,12 @@ def create_favorite(
     except Exception as e:
         import traceback
         import logging
+
         logger = logging.getLogger(__name__)
         logger.error(f"Error creating favorite: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
 
 @router.patch("/{favorite_id}", response_model=FavoriteStrategyResponse)
 def update_favorite(
@@ -113,13 +121,17 @@ def update_favorite(
     db: Session = Depends(get_db),
 ):
     """Update a favorite strategy (e.g., set tier)"""
-    favorite = db.query(FavoriteStrategy).filter(
-        FavoriteStrategy.id == favorite_id,
-        FavoriteStrategy.user_id == current_user_id,
-    ).first()
+    favorite = (
+        db.query(FavoriteStrategy)
+        .filter(
+            FavoriteStrategy.id == favorite_id,
+            FavoriteStrategy.user_id == current_user_id,
+        )
+        .first()
+    )
     if not favorite:
         raise HTTPException(status_code=404, detail="Favorite not found")
-    
+
     # Update only fields that were explicitly sent (exclude_unset so we can set tier to null)
     updates = update_data.model_dump(exclude_unset=True)
     if "tier" in updates:
@@ -131,10 +143,11 @@ def update_favorite(
         favorite.name = update_data.name
     if update_data.notes is not None:
         favorite.notes = update_data.notes
-    
+
     db.commit()
     db.refresh(favorite)
     return _normalize_favorite_json_fields(favorite)
+
 
 @router.delete("/{favorite_id}")
 def delete_favorite(
@@ -143,10 +156,14 @@ def delete_favorite(
     db: Session = Depends(get_db),
 ):
     """Delete a favorite strategy"""
-    favorite = db.query(FavoriteStrategy).filter(
-        FavoriteStrategy.id == favorite_id,
-        FavoriteStrategy.user_id == current_user_id,
-    ).first()
+    favorite = (
+        db.query(FavoriteStrategy)
+        .filter(
+            FavoriteStrategy.id == favorite_id,
+            FavoriteStrategy.user_id == current_user_id,
+        )
+        .first()
+    )
     if not favorite:
         raise HTTPException(status_code=404, detail="Favorite not found")
     db.delete(favorite)

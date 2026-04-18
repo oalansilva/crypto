@@ -62,7 +62,9 @@ def list_monitor_preferences(
         row.symbol: {
             "in_portfolio": bool(row.in_portfolio),
             "card_mode": row.card_mode if row.card_mode in {"price", "strategy"} else "price",
-            "price_timeframe": _normalize_price_timeframe(row.symbol, getattr(row, "price_timeframe", None)),
+            "price_timeframe": _normalize_price_timeframe(
+                row.symbol, getattr(row, "price_timeframe", None)
+            ),
             "theme": row.theme if getattr(row, "theme", None) in THEMES else "dark-green",
         }
         for row in rows
@@ -125,6 +127,8 @@ def update_monitor_preferences(
     return {
         "in_portfolio": bool(existing.in_portfolio),
         "card_mode": existing.card_mode if existing.card_mode in {"price", "strategy"} else "price",
-        "price_timeframe": _normalize_price_timeframe(normalized_symbol, getattr(existing, "price_timeframe", None)),
+        "price_timeframe": _normalize_price_timeframe(
+            normalized_symbol, getattr(existing, "price_timeframe", None)
+        ),
         "theme": existing.theme if getattr(existing, "theme", None) in THEMES else "dark-green",
     }

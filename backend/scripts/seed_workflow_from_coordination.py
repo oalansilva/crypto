@@ -74,8 +74,14 @@ def _ensure_project(db: Session, *, slug: str, name: str) -> Project:
     return p
 
 
-def _ensure_change(db: Session, *, project_id: str, change_id: str, title: str, column: str) -> Change:
-    c = db.query(Change).filter(Change.project_id == project_id, Change.change_id == change_id).first()
+def _ensure_change(
+    db: Session, *, project_id: str, change_id: str, title: str, column: str
+) -> Change:
+    c = (
+        db.query(Change)
+        .filter(Change.project_id == project_id, Change.change_id == change_id)
+        .first()
+    )
     if c:
         changed = False
         if title is not None and (c.title or "") != (title or ""):
@@ -88,7 +94,9 @@ def _ensure_change(db: Session, *, project_id: str, change_id: str, title: str, 
             db.flush()
         return c
 
-    c = Change(project_id=project_id, change_id=change_id, title=title or "", status=column or "DEV")
+    c = Change(
+        project_id=project_id, change_id=change_id, title=title or "", status=column or "DEV"
+    )
     db.add(c)
     db.flush()
     return c
@@ -282,13 +290,22 @@ def seed_active_changes(*, project_slug: str, project_name: str | None = None) -
             column = it.get("column") or "DEV"
             status = it.get("status") or {}
 
-            existed = db.query(Change).filter(Change.project_id == p.id, Change.change_id == change_id).first() is not None
+            existed = (
+                db.query(Change)
+                .filter(Change.project_id == p.id, Change.change_id == change_id)
+                .first()
+                is not None
+            )
             c = _ensure_change(db, project_id=p.id, change_id=change_id, title=title, column=column)
             if not existed:
                 out["inserted_changes"] += 1
 
-            out["inserted_gate_approvals"] += _seed_gate_approvals(db, change_pk=c.id, status=status)
-            out["inserted_work_items"] += _seed_work_items_from_coordination(db, change_pk=c.id, change_id=change_id)
+            out["inserted_gate_approvals"] += _seed_gate_approvals(
+                db, change_pk=c.id, status=status
+            )
+            out["inserted_work_items"] += _seed_work_items_from_coordination(
+                db, change_pk=c.id, change_id=change_id
+            )
             out["inserted_comments"] += _seed_comments(db, change_pk=c.id, change_id=change_id)
 
         db.commit()
@@ -298,7 +315,9 @@ def seed_active_changes(*, project_slug: str, project_name: str | None = None) -
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--project", default="crypto", help="Project slug to seed into (default: crypto)")
+    ap.add_argument(
+        "--project", default="crypto", help="Project slug to seed into (default: crypto)"
+    )
     ap.add_argument("--project-name", default=None, help="Optional human name for the project")
     args = ap.parse_args()
 

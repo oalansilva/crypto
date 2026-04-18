@@ -14,7 +14,7 @@ from app.strategies.combos import ComboStrategy
 
 class ComboService:
     """Service for managing combo strategies (database-driven)."""
-    
+
     def __init__(self, db_path: str = None):
         self.db_path = db_path
         if db_path is None:
@@ -36,11 +36,11 @@ class ComboService:
             except json.JSONDecodeError:
                 return value
         return value
-    
+
     def list_templates(self) -> Dict[str, List[Dict[str, Any]]]:
         """
         List all available combo templates from database.
-        
+
         Returns:
             Dict with prebuilt, examples, and custom templates
         """
@@ -63,38 +63,30 @@ class ComboService:
             else:
                 custom.append(item)
 
-        return {
-            "prebuilt": prebuilt,
-            "examples": examples,
-            "custom": custom
-        }
-    
+        return {"prebuilt": prebuilt, "examples": examples, "custom": custom}
+
     def get_template_metadata(self, template_name: str) -> Optional[Dict[str, Any]]:
         """
         Get metadata for a specific template from database.
-        
+
         Args:
             template_name: Name of the template
-        
+
         Returns:
             Template metadata or None if not found
         """
         with self._session_factory() as db:
-            row = (
-                db.query(ComboTemplate)
-                .filter(ComboTemplate.name == template_name)
-                .first()
-            )
+            row = db.query(ComboTemplate).filter(ComboTemplate.name == template_name).first()
 
         if row:
             template_data = self._decode_json_field(row.template_data) or {}
             optimization_schema = self._decode_json_field(row.optimization_schema)
-            
+
             # Normalize stop_loss to always be a dict for Pydantic validation
             stop_loss = template_data.get("stop_loss", 0.015)
             if not isinstance(stop_loss, dict):
                 template_data["stop_loss"] = {"default": stop_loss}
-            
+
             return {
                 "name": row.name,
                 "description": row.description or "",
@@ -102,23 +94,21 @@ class ComboService:
                 "is_prebuilt": bool(row.is_prebuilt),
                 "is_readonly": bool(row.is_readonly),
                 "optimization_schema": optimization_schema,
-                **template_data
+                **template_data,
             }
-        
+
         return None
-    
+
     def create_strategy(
-        self,
-        template_name: str,
-        parameters: Optional[Dict[str, Any]] = None
+        self, template_name: str, parameters: Optional[Dict[str, Any]] = None
     ) -> ComboStrategy:
         """
         Create a combo strategy instance from database configuration.
-        
+
         Args:
             template_name: Name of the template
             parameters: Optional parameter overrides
-        
+
         Returns:
             ComboStrategy instance
         """
@@ -126,53 +116,53 @@ class ComboService:
         metadata = self.get_template_metadata(template_name)
         if not metadata:
             raise ValueError(f"Template '{template_name}' not found")
-        
+
         # Extract template data
         indicators = metadata["indicators"]
         entry_logic = metadata["entry_logic"]
         exit_logic = metadata["exit_logic"]
         stop_loss = metadata.get("stop_loss", 0.015)
         derived_features = metadata.get("derived_features")
-        
+
         # Handle stop_loss if it's a dict with 'default' key
         if isinstance(stop_loss, dict):
             stop_loss = stop_loss.get("default", 0.015)
-        
+
         # Apply parameter overrides if provided
         if parameters:
             # Update indicator parameters
             for ind in indicators:
                 alias = ind.get("alias") or ind["type"]
                 ind_type = ind.get("type", "").lower()
-                
+
                 for key in list(ind["params"].keys()):
                     # 1. Standard "alias_key" format (e.g. "short_length")
                     param_name_std = f"{alias}_{key}"
-                    
+
                     # 2. Optimization "type_alias" format (e.g. "sma_short" implies length/period)
                     # This is how strategies like multi_ma_crossover are defined in seed
                     param_name_opt = f"{ind_type}_{alias}"
-                    
+
                     if param_name_std in parameters:
                         ind["params"][key] = parameters[param_name_std]
-                    
+
                     # Special handling for common main parameters (length, period) keys matching optimization schema keys
                     elif key in ["length", "period"] and param_name_opt in parameters:
-                         ind["params"][key] = parameters[param_name_opt]
-            
+                        ind["params"][key] = parameters[param_name_opt]
+
             # Override stop_loss if provided
             if "stop_loss" in parameters:
                 stop_loss = parameters["stop_loss"]
-        
+
         # Create and return strategy instance
         return ComboStrategy(
             indicators=indicators,
             entry_logic=entry_logic,
             exit_logic=exit_logic,
             stop_loss=stop_loss,
-            derived_features=derived_features
+            derived_features=derived_features,
         )
-    
+
     def save_template(
         self,
         name: str,
@@ -183,11 +173,11 @@ class ComboService:
         stop_loss: float = 0.015,
         is_example: bool = False,
         is_prebuilt: bool = False,
-        optimization_schema: Optional[Dict[str, Any]] = None
+        optimization_schema: Optional[Dict[str, Any]] = None,
     ) -> int:
         """
         Save a new combo template to database.
-        
+
         Args:
             name: Template name
             description: Template description
@@ -198,7 +188,7 @@ class ComboService:
             is_example: Whether this is an example template
             is_prebuilt: Whether this is a pre-built template
             optimization_schema: Optional optimization ranges
-        
+
         Returns:
             ID of the saved template
         """
@@ -207,9 +197,9 @@ class ComboService:
             "indicators": indicators,
             "entry_logic": entry_logic,
             "exit_logic": exit_logic,
-            "stop_loss": stop_loss
+            "stop_loss": stop_loss,
         }
-        
+
         with self._session_factory() as db:
             row = ComboTemplate(
                 name=name,
@@ -307,7 +297,9 @@ class ComboService:
             "stop_loss": stop_loss,
         }
 
-    def _build_template_data_from_strategy_draft(self, strategy_draft: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_template_data_from_strategy_draft(
+        self, strategy_draft: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Map strategy draft format into normalized template_data."""
         if not isinstance(strategy_draft, dict):
             raise ValueError("Invalid strategy draft: expected object.")
@@ -320,7 +312,9 @@ class ComboService:
         if stop_loss is None:
             risk_plan = strategy_draft.get("risk_plan")
             if isinstance(risk_plan, str):
-                match = re.search(r"stop[_\-\s]*loss[:\s]*(\d+(?:\.\d+)?)\s*%?", risk_plan, re.IGNORECASE)
+                match = re.search(
+                    r"stop[_\-\s]*loss[:\s]*(\d+(?:\.\d+)?)\s*%?", risk_plan, re.IGNORECASE
+                )
                 if match:
                     stop_loss = float(match.group(1))
 
@@ -380,17 +374,23 @@ class ComboService:
         indicators: List[Dict[str, Any]] = []
         for idx, ind in enumerate(raw_indicators):
             if not isinstance(ind, dict):
-                raise ValueError(f"Template creation failed: indicator at index {idx} must be an object")
+                raise ValueError(
+                    f"Template creation failed: indicator at index {idx} must be an object"
+                )
 
             ind_type = ind.get("type") or ind.get("name")
             if not ind_type:
-                raise ValueError(f"Template creation failed: indicator at index {idx} missing 'type'")
+                raise ValueError(
+                    f"Template creation failed: indicator at index {idx} missing 'type'"
+                )
 
             params = ind.get("params")
             if params is None:
                 params = {}
             if not isinstance(params, dict):
-                raise ValueError(f"Template creation failed: indicator params at index {idx} must be an object")
+                raise ValueError(
+                    f"Template creation failed: indicator params at index {idx} must be an object"
+                )
 
             alias = ind.get("alias") or ind_type
             indicators.append(
@@ -445,46 +445,42 @@ class ComboService:
 
         saved = self.get_template_metadata(template_name)
         if not saved:
-            raise RuntimeError(f"Template creation failed: unable to load saved template '{template_name}'")
+            raise RuntimeError(
+                f"Template creation failed: unable to load saved template '{template_name}'"
+            )
 
         saved["category"] = normalized_category
         saved["metadata"] = metadata_dict
         return saved
-    
+
     def update_template_schema(
-        self,
-        template_name: str,
-        optimization_schema: Dict[str, Any]
+        self, template_name: str, optimization_schema: Dict[str, Any]
     ) -> bool:
         """
         Update the optimization schema for a template.
-        
+
         Args:
             template_name: Name of the template
             optimization_schema: New optimization schema
-        
+
         Returns:
             True if update was successful
         """
         with self._session_factory() as db:
-            row = (
-                db.query(ComboTemplate)
-                .filter(ComboTemplate.name == template_name)
-                .first()
-            )
+            row = db.query(ComboTemplate).filter(ComboTemplate.name == template_name).first()
             if not row:
                 return False
             row.optimization_schema = optimization_schema
             db.commit()
             return True
-    
+
     def delete_template(self, template_id: int) -> bool:
         """
         Delete a custom template from database.
-        
+
         Args:
             template_id: ID of the template to delete
-        
+
         Returns:
             True if deletion was successful
         """
@@ -503,14 +499,14 @@ class ComboService:
             db.delete(row)
             db.commit()
             return True
-    
+
     def delete_template_by_name(self, template_name: str) -> bool:
         """
         Delete a custom template from database by name.
-        
+
         Args:
             template_name: Name of the template to delete
-        
+
         Returns:
             True if deletion was successful
         """
@@ -529,83 +525,73 @@ class ComboService:
             db.delete(row)
             db.commit()
             return True
-    
+
     def update_template(
         self,
         template_name: str,
         description: Optional[str] = None,
         optimization_schema: Optional[Dict[str, Any]] = None,
-        template_data: Optional[Dict[str, Any]] = None
+        template_data: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Update a combo template's metadata and optimization schema.
-        
+
         Args:
             template_name: Name of the template to update
             description: New description (optional)
             optimization_schema: New optimization schema (optional)
             template_data: Full template data for advanced editing (optional)
-        
+
         Returns:
             True if update was successful, False otherwise
-        
+
         Raises:
             ValueError: If template is read-only or doesn't exist
         """
         with self._session_factory() as db:
-            row = (
-                db.query(ComboTemplate)
-                .filter(ComboTemplate.name == template_name)
-                .first()
-            )
+            row = db.query(ComboTemplate).filter(ComboTemplate.name == template_name).first()
             if not row:
                 raise ValueError(f"Template '{template_name}' not found")
-            
+
             if row.is_readonly:
-                raise ValueError(f"Template '{template_name}' is read-only. Clone it to make changes.")
+                raise ValueError(
+                    f"Template '{template_name}' is read-only. Clone it to make changes."
+                )
 
             if description is not None:
                 row.description = description
-            
+
             if optimization_schema is not None:
                 self._validate_optimization_schema(optimization_schema)
                 row.optimization_schema = optimization_schema
-            
+
             if template_data is not None:
                 existing_data = self._decode_json_field(row.template_data) or {}
                 row.template_data = {**existing_data, **template_data}
 
             db.commit()
             return True
-    
+
     def clone_template(self, template_name: str, new_name: str) -> Optional[Dict[str, Any]]:
         """
         Clone an existing template with a new name.
-        
+
         Args:
             template_name: Name of the template to clone
             new_name: Name for the cloned template
-        
+
         Returns:
             Metadata of the cloned template, or None if failed
-        
+
         Raises:
             ValueError: If source template doesn't exist or new name already exists
         """
         with self._session_factory() as db:
-            source = (
-                db.query(ComboTemplate)
-                .filter(ComboTemplate.name == template_name)
-                .first()
-            )
+            source = db.query(ComboTemplate).filter(ComboTemplate.name == template_name).first()
             if not source:
                 raise ValueError(f"Source template '{template_name}' not found")
 
-            existing = (
-                db.query(ComboTemplate)
-                .filter(ComboTemplate.name == new_name)
-                .first()
-            )
+            existing = db.query(ComboTemplate).filter(ComboTemplate.name == new_name).first()
             if existing:
                 raise ValueError(f"Template '{new_name}' already exists")
 
@@ -622,42 +608,48 @@ class ComboService:
             db.commit()
 
         return self.get_template_metadata(new_name)
-    
+
     def _validate_optimization_schema(self, schema: Dict[str, Any]) -> None:
         """
         Validate optimization schema structure and values.
-        
+
         Args:
             schema: Optimization schema to validate
-        
+
         Raises:
             ValueError: If schema is invalid
         """
         # Handle both flat and nested schema formats
-        params = schema.get('parameters', schema)
-        
+        params = schema.get("parameters", schema)
+
         for param_name, config in params.items():
-            if param_name in ['parameters', 'correlated_groups']:
+            if param_name in ["parameters", "correlated_groups"]:
                 continue  # Skip metadata keys
-            
+
             if not isinstance(config, dict):
                 continue
-            
-            min_val = config.get('min')
-            max_val = config.get('max')
-            step_val = config.get('step')
-            
+
+            min_val = config.get("min")
+            max_val = config.get("max")
+            step_val = config.get("step")
+
             # Validate min < max
             if min_val is not None and max_val is not None:
                 if min_val >= max_val:
-                    raise ValueError(f"Parameter '{param_name}': min ({min_val}) must be less than max ({max_val})")
-            
+                    raise ValueError(
+                        f"Parameter '{param_name}': min ({min_val}) must be less than max ({max_val})"
+                    )
+
             # Validate step > 0
             if step_val is not None:
                 if step_val <= 0:
-                    raise ValueError(f"Parameter '{param_name}': step ({step_val}) must be greater than 0")
-                
+                    raise ValueError(
+                        f"Parameter '{param_name}': step ({step_val}) must be greater than 0"
+                    )
+
                 # Validate step <= (max - min)
                 if min_val is not None and max_val is not None:
                     if step_val > (max_val - min_val):
-                        raise ValueError(f"Parameter '{param_name}': step ({step_val}) must be <= (max - min) = {max_val - min_val}")
+                        raise ValueError(
+                            f"Parameter '{param_name}': step ({step_val}) must be <= (max - min) = {max_val - min_val}"
+                        )

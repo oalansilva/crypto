@@ -2,14 +2,15 @@
 from app.schemas.backtest import PresetResponse, BacktestRunCreate
 from datetime import datetime, timedelta
 
+
 def get_presets() -> list[PresetResponse]:
     """Return predefined backtest presets for Playground"""
-    
+
     # Calculate date ranges
     now = datetime.now()
     two_years_ago = (now - timedelta(days=730)).strftime("%Y-%m-%d %H:%M:%S")
     one_year_ago = (now - timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
-    
+
     presets = [
         PresetResponse(
             id="btc-swing-2y",
@@ -25,15 +26,15 @@ def get_presets() -> list[PresetResponse]:
                 params={
                     "sma_cross": {"fast": 20, "slow": 50},
                     "rsi_reversal": {"rsi_period": 14, "oversold": 30, "overbought": 70},
-                    "bb_meanrev": {"bb_period": 20, "bb_std": 2.0, "exit_mode": "mid"}
+                    "bb_meanrev": {"bb_period": 20, "bb_std": 2.0, "exit_mode": "mid"},
                 },
                 fee=0.001,
                 slippage=0.0005,
                 cash=10000,
                 stop_pct=0.03,
                 take_pct=0.06,
-                fill_mode="close"
-            )
+                fill_mode="close",
+            ),
         ),
         PresetResponse(
             id="eth-swing-2y",
@@ -49,8 +50,8 @@ def get_presets() -> list[PresetResponse]:
                 fee=0.001,
                 slippage=0.0005,
                 cash=10000,
-                fill_mode="close"
-            )
+                fill_mode="close",
+            ),
         ),
         PresetResponse(
             id="btc-trend-1y",
@@ -67,8 +68,8 @@ def get_presets() -> list[PresetResponse]:
                 fee=0.001,
                 slippage=0.0005,
                 cash=10000,
-                fill_mode="close"
-            )
+                fill_mode="close",
+            ),
         ),
         PresetResponse(
             id="link-trend-4h",
@@ -85,9 +86,9 @@ def get_presets() -> list[PresetResponse]:
                 fee=0.001,
                 slippage=0.0005,
                 cash=10000,
-                fill_mode="close"
-            )
-        )
+                fill_mode="close",
+            ),
+        ),
     ]
-    
+
     return presets
