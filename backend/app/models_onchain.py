@@ -18,7 +18,6 @@ from sqlalchemy import (
 
 from app.database import Base
 
-
 SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
 
 
@@ -36,7 +35,9 @@ class OnchainSignal(Base):
     chain = Column(String, nullable=False, index=True)
     tvl = Column(Float, nullable=True)
     active_addresses = Column(Float, nullable=True)
-    exchange_flow = Column(Float, nullable=True)  # positive = inflow to exchange (sell pressure), negative = outflow
+    exchange_flow = Column(
+        Float, nullable=True
+    )  # positive = inflow to exchange (sell pressure), negative = outflow
     github_commits = Column(Integer, nullable=True)
     github_stars = Column(Integer, nullable=True)
     github_prs = Column(Integer, nullable=True)
@@ -61,7 +62,9 @@ class OnchainSignalHistory(Base):
     signal_type = Column(String, nullable=False)  # BUY, SELL, HOLD
     confidence = Column(Integer, nullable=False)
     breakdown = Column(Text, nullable=True)  # JSON string with metric contributions
-    status = Column(String, nullable=False, default="ativo", index=True)  # ativo, disparado, expirado, cancelado
+    status = Column(
+        String, nullable=False, default="ativo", index=True
+    )  # ativo, disparado, expirado, cancelado
 
     # Raw metrics at signal time
     tvl = Column(Float, nullable=True)

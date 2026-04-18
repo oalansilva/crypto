@@ -37,7 +37,9 @@ def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
         favorites.create_favorite(_favorite_payload("A favorite"), current_user_id="user-a", db=db)
-        favorites.create_favorite(_favorite_payload("B favorite", symbol="ETH/USDT"), current_user_id="user-b", db=db)
+        favorites.create_favorite(
+            _favorite_payload("B favorite", symbol="ETH/USDT"), current_user_id="user-b", db=db
+        )
         listed_b = favorites.list_favorites(current_user_id="user-b", db=db)
         listed_a = favorites.list_favorites(current_user_id="user-a", db=db)
 
@@ -48,7 +50,9 @@ def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
 def test_favorites_exists_and_mutations_are_scoped_per_user(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
-        created = favorites.create_favorite(_favorite_payload("Scoped favorite"), current_user_id="user-a", db=db)
+        created = favorites.create_favorite(
+            _favorite_payload("Scoped favorite"), current_user_id="user-a", db=db
+        )
 
         exists_a = favorites.favorite_exists(
             strategy_name="multi_ma_crossover",

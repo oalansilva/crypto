@@ -196,8 +196,7 @@ def test_login_works_after_runtime_sqlite_adds_missing_last_login(tmp_path, monk
     db_file = tmp_path / "legacy_auth.db"
     conn = sqlite3.connect(db_file)
     try:
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE users (
                 id TEXT PRIMARY KEY,
                 email TEXT NOT NULL UNIQUE,
@@ -205,8 +204,7 @@ def test_login_works_after_runtime_sqlite_adds_missing_last_login(tmp_path, monk
                 name TEXT NOT NULL,
                 created_at DATETIME
             )
-            """
-        )
+            """)
         conn.execute(
             """
             INSERT INTO users (id, email, password_hash, name, created_at)
@@ -250,10 +248,7 @@ def test_login_works_after_runtime_sqlite_adds_missing_last_login(tmp_path, monk
     assert response.refreshToken
 
     with sqlite3.connect(db_file) as check_conn:
-        columns = {
-            row[1]
-            for row in check_conn.execute("PRAGMA table_info(users)").fetchall()
-        }
+        columns = {row[1] for row in check_conn.execute("PRAGMA table_info(users)").fetchall()}
         assert "last_login" in columns
 
         stored_last_login = check_conn.execute(

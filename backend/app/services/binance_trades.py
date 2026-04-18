@@ -142,7 +142,9 @@ def fetch_my_trades(
     return trades
 
 
-def compute_avg_buy_cost_usdt_for_symbol(symbol: str, trades: List[Dict[str, Any]]) -> Optional[float]:
+def compute_avg_buy_cost_usdt_for_symbol(
+    symbol: str, trades: List[Dict[str, Any]]
+) -> Optional[float]:
     """Return the latest buy trade price (USDT) for a symbol.
 
     Backward-compat note:

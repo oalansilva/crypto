@@ -97,7 +97,9 @@ def fetch_spot_balances_snapshot(
     base_url = (base_url or _get_env("BINANCE_BASE_URL") or "https://api.binance.com").strip()
 
     if not api_key or not api_secret:
-        raise BinanceConfigError("Missing Binance credentials. Set BINANCE_API_KEY and BINANCE_API_SECRET.")
+        raise BinanceConfigError(
+            "Missing Binance credentials. Set BINANCE_API_KEY and BINANCE_API_SECRET."
+        )
 
     timeout_s = _clamp_int(_get_int_env("BINANCE_HTTP_TIMEOUT_SECONDS", 10), 1, 60)
     max_trade_symbols = _clamp_int(_get_int_env("BINANCE_MAX_TRADE_SYMBOLS", 15), 0, 200)
@@ -105,7 +107,9 @@ def fetch_spot_balances_snapshot(
 
     ts = int(time.time() * 1000)
     as_of_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts / 1000.0))
-    payload = _signed_get(base_url, api_key, api_secret, "/api/v3/account", {"timestamp": ts}, timeout_s=timeout_s)
+    payload = _signed_get(
+        base_url, api_key, api_secret, "/api/v3/account", {"timestamp": ts}, timeout_s=timeout_s
+    )
 
     balances = payload.get("balances") or []
 
@@ -143,17 +147,19 @@ def fetch_spot_balances_snapshot(
 
         total_usd += float(value_usd)
 
-        out.append({
-            "asset": asset,
-            "free": free,
-            "locked": locked,
-            "total": total,
-            "price_usdt": price_usdt,
-            "value_usd": value_usd,
-            "avg_cost_usdt": None,
-            "pnl_usd": None,
-            "pnl_pct": None,
-        })
+        out.append(
+            {
+                "asset": asset,
+                "free": free,
+                "locked": locked,
+                "total": total,
+                "price_usdt": price_usdt,
+                "value_usd": value_usd,
+                "avg_cost_usdt": None,
+                "pnl_usd": None,
+                "pnl_pct": None,
+            }
+        )
 
     # Prefer spending limited trade-history calls on largest positions.
     out.sort(key=lambda x: -(float(x.get("value_usd") or 0.0)))

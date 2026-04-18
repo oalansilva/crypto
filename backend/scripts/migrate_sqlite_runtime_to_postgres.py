@@ -23,7 +23,6 @@ from app.models import (
 )
 from app.models_signal_history import SignalHistory
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SQLITE_PATH = PROJECT_ROOT / "backend" / "backtest.db"
 JSON_COLUMNS_BY_TABLE: dict[str, set[str]] = {
@@ -66,7 +65,9 @@ def _normalize_payload(table_name: str, payload: dict[str, Any]) -> dict[str, An
     return normalized
 
 
-def _copy_by_primary_key(session, table_name: str, model, rows: list[dict[str, Any]], key_fields: tuple[str, ...]) -> int:
+def _copy_by_primary_key(
+    session, table_name: str, model, rows: list[dict[str, Any]], key_fields: tuple[str, ...]
+) -> int:
     migrated = 0
     for payload in rows:
         payload = _normalize_payload(table_name, payload)
@@ -119,10 +120,19 @@ def main() -> None:
             conn = sqlite3.connect(str(optimization_db))
             conn.row_factory = sqlite3.Row
             try:
-                rows = [dict(row) for row in conn.execute("SELECT * FROM optimization_results").fetchall()]
+                rows = [
+                    dict(row)
+                    for row in conn.execute("SELECT * FROM optimization_results").fetchall()
+                ]
             finally:
                 conn.close()
-            count = _copy_by_primary_key(session, "optimization_results", OptimizationResult, rows, ("job_id", "result_index"))
+            count = _copy_by_primary_key(
+                session,
+                "optimization_results",
+                OptimizationResult,
+                rows,
+                ("job_id", "result_index"),
+            )
             migrated_counts.append(("optimization_results", count))
         else:
             migrated_counts.append(("optimization_results", 0))

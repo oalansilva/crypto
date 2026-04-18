@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.models import SystemPreference
@@ -19,7 +20,10 @@ SIGNAL_HISTORY_ALLOW_AGGRESSIVE_KEY = "signal_history_allow_aggressive"
 
 
 def get_system_preference(db: Session, key: str) -> SystemPreference | None:
-    return db.query(SystemPreference).filter(SystemPreference.key == key).first()
+    try:
+        return db.query(SystemPreference).filter(SystemPreference.key == key).first()
+    except (OperationalError, ProgrammingError):
+        return None
 
 
 def get_system_preference_value(db: Session, key: str) -> str | None:
@@ -30,7 +34,9 @@ def get_system_preference_value(db: Session, key: str) -> str | None:
     return value or None
 
 
-def set_system_preference_value(db: Session, *, key: str, value: str, updated_by_user_id: str) -> SystemPreference:
+def set_system_preference_value(
+    db: Session, *, key: str, value: str, updated_by_user_id: str
+) -> SystemPreference:
     pref = get_system_preference(db, key)
     if pref is None:
         pref = SystemPreference(key=key, value=value.strip(), updated_by_user_id=updated_by_user_id)
@@ -53,7 +59,9 @@ def set_optional_system_preference_value(
     if value is None:
         delete_system_preference_value(db, key=key)
         return None
-    return set_system_preference_value(db, key=key, value=str(value), updated_by_user_id=updated_by_user_id)
+    return set_system_preference_value(
+        db, key=key, value=str(value), updated_by_user_id=updated_by_user_id
+    )
 
 
 def delete_system_preference_value(db: Session, *, key: str) -> bool:

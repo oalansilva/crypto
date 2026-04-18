@@ -24,7 +24,6 @@ from app.workflow_models import (
     WorkflowHandoff,
 )
 
-
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -80,7 +79,8 @@ def collect_retrospective_data(db: Session, change: Change) -> Dict[str, Any]:
     open_bugs = [
         wi
         for wi in work_items
-        if wi.type == WorkItemType.bug and wi.state not in [WorkItemState.done, WorkItemState.canceled]
+        if wi.type == WorkItemType.bug
+        and wi.state not in [WorkItemState.done, WorkItemState.canceled]
     ]
 
     # Stage times derived from handoffs
@@ -125,9 +125,11 @@ def collect_retrospective_data(db: Session, change: Change) -> Dict[str, Any]:
             "work_item_id": wi.id,
             "title": wi.title,
             "started_at": wi.created_at.isoformat() if wi.created_at else None,
-            "resolved_at": (wi.stage_completed_at or wi.updated_at).isoformat()
-            if wi.state != WorkItemState.blocked
-            else None,
+            "resolved_at": (
+                (wi.stage_completed_at or wi.updated_at).isoformat()
+                if wi.state != WorkItemState.blocked
+                else None
+            ),
         }
         for wi in blockers
     ]
@@ -257,7 +259,11 @@ def _render_risk_table(data: Dict[str, Any], classification: str) -> str:
     bugs_status = "🔴" if open_bugs > 2 else "🟡" if open_bugs > 1 else "🟢"
 
     cycles_impl = "Excesso de revisões atrasa o fluxo" if total_cycles > 3 else "Dentro do limite"
-    blocker_impl = "Blocker crítico" if blocker_hours > 48 else "Blocker aceitável" if blocker_hours > 0 else "Sem blockers"
+    blocker_impl = (
+        "Blocker crítico"
+        if blocker_hours > 48
+        else "Blocker aceitável" if blocker_hours > 0 else "Sem blockers"
+    )
     bugs_impl = "Bugs em aberto comprometem qualidade" if open_bugs > 2 else "Bugs controlados"
 
     badge = classification_badge(classification)
@@ -291,7 +297,9 @@ def _render_blocker_events(data: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _generate_heuristic_insights(data: Dict[str, Any], prev_data: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+def _generate_heuristic_insights(
+    data: Dict[str, Any], prev_data: Optional[Dict[str, Any]] = None
+) -> Dict[str, str]:
     """Generate insights heuristically (without LLM) based on the data.
 
     Returns dict with: process_analysis, improvement_from_previous,
@@ -318,24 +326,22 @@ def _generate_heuristic_insights(data: Dict[str, Any], prev_data: Optional[Dict[
             stage_analysis.append(f"- **{stage}**: 1 ciclo, {duration_str}.")
 
     if stage_analysis:
-        insights["process_analysis"] = (
-            "Ciclos de revisão por stage:\n" + "\n".join(stage_analysis)
-        )
+        insights["process_analysis"] = "Ciclos de revisão por stage:\n" + "\n".join(stage_analysis)
     else:
         insights["process_analysis"] = "Fluxo sem ciclos extras de revisão detectados."
 
     total_cycles = sum(data.get("gate_cycles", {}).values())
     if total_cycles > 3:
-        insights["process_analysis"] += (
-            f"\n\n⚠️ Total de {total_cycles} ciclos de revisão — acima do limiar de 3."
-        )
+        insights[
+            "process_analysis"
+        ] += f"\n\n⚠️ Total de {total_cycles} ciclos de revisão — acima do limiar de 3."
 
     # Blockers
     blocker_count = len(data.get("blocker_events", []))
     if blocker_count > 0:
-        insights["process_analysis"] += (
-            f"\n\n⚠️ {blocker_count} evento(s) de blocker registrado(s)."
-        )
+        insights[
+            "process_analysis"
+        ] += f"\n\n⚠️ {blocker_count} evento(s) de blocker registrado(s)."
 
     # Comparison with previous
     if prev_data:

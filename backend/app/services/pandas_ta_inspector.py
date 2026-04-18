@@ -3,13 +3,14 @@ import inspect
 import typing
 import numpy as np
 
+
 def _simplify_type(annotation):
     """Simplifies complex type hints into string representations for JSON."""
     if annotation == inspect.Parameter.empty:
         return "any"
-    
+
     s = str(annotation)
-    
+
     # Handle Unions (e.g. Union[int, float])
     if "Union" in s:
         if "int" in s and "float" in s:
@@ -21,7 +22,7 @@ def _simplify_type(annotation):
         if "str" in s:
             return "string"
         return "any"
-    
+
     if "int" in s:
         return "int"
     if "float" in s:
@@ -30,8 +31,9 @@ def _simplify_type(annotation):
         return "string"
     if "bool" in s:
         return "bool"
-        
+
     return "any"
+
 
 def get_all_indicators_metadata():
     """
@@ -40,47 +42,60 @@ def get_all_indicators_metadata():
         Dict[category_name, List[indicator_metadata]]
     """
     metadata = {}
-    
+
     # Categories provided by pandas_ta
     # ta.Category is a dict: {'candle': [...], 'momentum': [...]}
-    if not hasattr(ta, 'Category'):
+    if not hasattr(ta, "Category"):
         return {}
 
     for category, indicators in ta.Category.items():
         metadata[category] = []
-        
+
         for name in indicators:
             if not hasattr(ta, name):
                 continue
-                
+
             func = getattr(ta, name)
             if not callable(func):
                 continue
-            
+
             try:
                 sig = inspect.signature(func)
                 doc = inspect.getdoc(func) or ""
-                summary = doc.split('\n')[0] if doc else ""
-                
+                summary = doc.split("\n")[0] if doc else ""
+
                 params = []
                 for param_name, param in sig.parameters.items():
                     # Skip data arguments usually handled by the framework
-                    if param_name in ['open', 'high', 'low', 'close', 'volume', 'time', 'kwargs', 'talib', 'offset', 'mamode', 'drift', 'scalar']:
-                        # Keep mamode/scalar/drift/offset if they are crucial? 
+                    if param_name in [
+                        "open",
+                        "high",
+                        "low",
+                        "close",
+                        "volume",
+                        "time",
+                        "kwargs",
+                        "talib",
+                        "offset",
+                        "mamode",
+                        "drift",
+                        "scalar",
+                    ]:
+                        # Keep mamode/scalar/drift/offset if they are crucial?
                         # Usually offset/mamode are advanced. Let's include them as advanced or skip for now to simplify.
                         # User requested "generic parameters". Maybe include 'length' and specific ones.
                         # It is safer to Exclude only the Series inputs.
                         pass
-                    
-                    if param_name in ['open', 'high', 'low', 'close', 'volume']: 
-                         continue
-                        
-                    if param_name in ['kwargs', 'talib']:
+
+                    if param_name in ["open", "high", "low", "close", "volume"]:
+                        continue
+
+                    if param_name in ["kwargs", "talib"]:
                         continue
 
                     # Simplify defaults
                     default = param.default
-                    
+
                     # Common defaults for technical analysis if not specified or None
                     STANDARD_DEFAULTS = {
                         "length": 14,
@@ -96,64 +111,64 @@ def get_all_indicators_metadata():
                         "lower": 30,
                         "upper": 70,
                         "limit": 60,
-                        "offset": 0
+                        "offset": 0,
                     }
 
                     if default == inspect.Parameter.empty or default is None:
                         default = STANDARD_DEFAULTS.get(param_name, None)
                     elif isinstance(default, (type(None), int, float, str, bool)):
-                         pass
+                        pass
                     else:
-                         default = str(default) # Fallback
+                        default = str(default)  # Fallback
 
                     p_type = _simplify_type(param.annotation)
-                    
-                    params.append({
-                        "name": param_name,
-                        "type": p_type,
-                        "default": default
-                    })
-                
-                metadata[category].append({
-                    "id": name,
-                    "name": name.upper(),
-                    "category": category,
-                    "description": summary,
-                    "params": params
-                })
+
+                    params.append({"name": param_name, "type": p_type, "default": default})
+
+                metadata[category].append(
+                    {
+                        "id": name,
+                        "name": name.upper(),
+                        "category": category,
+                        "description": summary,
+                        "params": params,
+                    }
+                )
             except Exception as e:
                 # Skip indicators that fail inspection
                 print(f"Failed to inspect {name}: {e}")
                 continue
-                
+
     # Merge with manual schemas
     from app.schemas.indicator_params import INDICATOR_SCHEMAS
-    
+
     for category in metadata:
         for indicator in metadata[category]:
-            name = indicator['id'].lower()
+            name = indicator["id"].lower()
             if name in INDICATOR_SCHEMAS:
                 # Override parameters with manual schema
                 schema = INDICATOR_SCHEMAS[name]
                 manual_params = []
                 for p_name, p_schema in schema.parameters.items():
                     # Infer type from default value if possible
-                    p_type = "string" 
+                    p_type = "string"
                     if isinstance(p_schema.default, int):
                         p_type = "int"
                     elif isinstance(p_schema.default, float):
                         p_type = "float"
                     elif isinstance(p_schema.default, bool):
                         p_type = "bool"
-                        
-                    manual_params.append({
-                        "name": p_name,
-                        "type": p_type,
-                        "default": p_schema.default,
-                        "description": p_schema.description
-                    })
-                
+
+                    manual_params.append(
+                        {
+                            "name": p_name,
+                            "type": p_type,
+                            "default": p_schema.default,
+                            "description": p_schema.description,
+                        }
+                    )
+
                 # Replace the introspected params
-                indicator['params'] = manual_params
+                indicator["params"] = manual_params
 
     return metadata

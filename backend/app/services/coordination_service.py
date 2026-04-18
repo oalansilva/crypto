@@ -16,7 +16,6 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
 _STATUS_LINE_RE = re.compile(r"^\s*-\s*([^:]+):\s*(.*?)\s*$")
 
 

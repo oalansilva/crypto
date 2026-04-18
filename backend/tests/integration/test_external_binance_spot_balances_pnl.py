@@ -14,7 +14,12 @@ def test_balances_snapshot_includes_avg_cost_and_pnl(monkeypatch):
     We mock network calls so no real Binance secrets/endpoints are used.
     """
 
-    _set_env(monkeypatch, BINANCE_API_KEY="test", BINANCE_API_SECRET="test", BINANCE_BASE_URL="https://example.invalid")
+    _set_env(
+        monkeypatch,
+        BINANCE_API_KEY="test",
+        BINANCE_API_SECRET="test",
+        BINANCE_BASE_URL="https://example.invalid",
+    )
 
     # Import modules fresh so env vars are picked up.
     binance_spot = importlib.import_module("app.services.binance_spot")
@@ -35,7 +40,15 @@ def test_balances_snapshot_includes_avg_cost_and_pnl(monkeypatch):
     def fake_compute_usdt_price(asset, symbol_prices):
         return 2.5
 
-    def fake_fetch_my_trades(symbol: str, *, limit: int = 1000, lookback_days=None):
+    def fake_fetch_my_trades(
+        symbol: str,
+        *,
+        limit: int = 1000,
+        lookback_days=None,
+        api_key=None,
+        api_secret=None,
+        base_url=None,
+    ):
         assert symbol == "ABCUSDT"
         assert limit
         return [

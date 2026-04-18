@@ -62,6 +62,7 @@ def _worker_get_15m_cache(symbol: str, since_str: str, until_str: str) -> Option
     _WORKER_15M_CACHE["df"] = df_15m
     return df_15m
 
+
 # -----------------------------------------------------------------------------
 # WORKER LOGGING (ProcessPoolExecutor workers run in separate processes)
 # -----------------------------------------------------------------------------
@@ -70,7 +71,9 @@ def _init_worker_logging():
     log_file = Path(__file__).resolve().parents[2] / "full_execution_log.txt"
     root = logging.getLogger()
     for h in root.handlers:
-        if isinstance(h, logging.FileHandler) and (getattr(h, "baseFilename", "") or "").endswith("full_execution_log.txt"):
+        if isinstance(h, logging.FileHandler) and (getattr(h, "baseFilename", "") or "").endswith(
+            "full_execution_log.txt"
+        ):
             return
     fh = logging.FileHandler(log_file, mode="a", encoding="utf-8")
     fh.setLevel(logging.INFO)
@@ -90,7 +93,7 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: st
     - Intra-candle Stop Loss - checked BEFORE signal processing (low for long, high for short)
     - Binance Fees (0.075% per op) - applied on both entry and exit
     - Exit at exact Stop Price if triggered
-    
+
     CRITICAL PRIORITY RULES:
     - STOP LOSS ALWAYS has priority over exit signals
     - Stop loss is checked FIRST on each candle before checking exit signals
@@ -100,57 +103,66 @@ def extract_trades_from_signals(df_with_signals, stop_loss: float, direction: st
     position = None
     is_short = (direction or "long").lower() == "short"
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
-    
+
     for idx, row in df_with_signals.iterrows():
         # PRIORIDADE 1: Check stop loss FIRST if we have an open position
         if position is not None and stop_loss_pct > 0:
-            entry_price = position['entry_price']
+            entry_price = position["entry_price"]
             if is_short:
                 exact_stop_price = entry_price * (1 + stop_loss_pct)  # short: stop above entry
-                current_high = float(row['high'])
+                current_high = float(row["high"])
                 hit_stop = current_high >= exact_stop_price
             else:
                 exact_stop_price = entry_price * (1 - stop_loss_pct)  # long: stop below entry
-                current_low = float(row['low'])
+                current_low = float(row["low"])
                 hit_stop = current_low <= exact_stop_price
-            
+
             if hit_stop:
-                position['exit_time'] = idx.isoformat()
-                position['exit_price'] = exact_stop_price
+                position["exit_time"] = idx.isoformat()
+                position["exit_price"] = exact_stop_price
                 if is_short:
                     # Short PnL: sold at entry*(1-fee), buy back at exit*(1+fee); profit when exit < entry
-                    position['profit'] = (entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)) / (entry_price * (1 - TRADING_FEE))
+                    position["profit"] = (
+                        entry_price * (1 - TRADING_FEE) - exact_stop_price * (1 + TRADING_FEE)
+                    ) / (entry_price * (1 - TRADING_FEE))
                 else:
-                    position['profit'] = ((exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
-                position['exit_reason'] = 'stop_loss'
-                position['signal_type'] = 'Stop'
+                    position["profit"] = (
+                        (exact_stop_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
+                    ) / (entry_price * (1 + TRADING_FEE))
+                position["exit_reason"] = "stop_loss"
+                position["signal_type"] = "Stop"
                 trades.append(position)
                 position = None
                 continue
 
         # PRIORIDADE 2: Check signals
-        if row['signal'] == 1 and position is None:
+        if row["signal"] == 1 and position is None:
             position = {
-                'entry_time': idx.isoformat(),
-                'entry_price': float(row['open']),
-                'type': 'short' if is_short else 'long',
-                'entry_signal_type': 'Vender' if is_short else 'Comprar'
+                "entry_time": idx.isoformat(),
+                "entry_price": float(row["open"]),
+                "type": "short" if is_short else "long",
+                "entry_signal_type": "Vender" if is_short else "Comprar",
             }
-        elif row['signal'] == -1 and position is not None:
-            exit_price = float(row['open'])
-            entry_price = position['entry_price']
-            position['exit_time'] = idx.isoformat()
-            position['exit_price'] = exit_price
+        elif row["signal"] == -1 and position is not None:
+            exit_price = float(row["open"])
+            entry_price = position["entry_price"]
+            position["exit_time"] = idx.isoformat()
+            position["exit_price"] = exit_price
             if is_short:
-                position['profit'] = (entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)) / (entry_price * (1 - TRADING_FEE))
+                position["profit"] = (
+                    entry_price * (1 - TRADING_FEE) - exit_price * (1 + TRADING_FEE)
+                ) / (entry_price * (1 - TRADING_FEE))
             else:
-                position['profit'] = ((exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))) / (entry_price * (1 + TRADING_FEE))
-            position['exit_reason'] = 'signal'
-            position['signal_type'] = 'Close entry(s) order...'
+                position["profit"] = (
+                    (exit_price * (1 - TRADING_FEE)) - (entry_price * (1 + TRADING_FEE))
+                ) / (entry_price * (1 + TRADING_FEE))
+            position["exit_reason"] = "signal"
+            position["signal_type"] = "Close entry(s) order..."
             trades.append(position)
             position = None
-            
+
     return trades
+
 
 def extract_trades_with_mode(
     df_with_signals,
@@ -160,11 +172,11 @@ def extract_trades_with_mode(
     since_str: str = None,
     until_str: str = None,
     df_15m_cache: Optional[pd.DataFrame] = None,
-    direction: str = "long"
+    direction: str = "long",
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
-    
+
     Args:
         df_with_signals: DataFrame with daily signals
         stop_loss: Stop loss percentage
@@ -173,21 +185,23 @@ def extract_trades_with_mode(
         since_str: Start date (required for deep backtest)
         until_str: End date (required for deep backtest)
         direction: "long" (default) or "short"
-        
+
     Returns:
         List of trades
     """
     df_exec = df_with_signals.copy()
-    
+
     if not deep_backtest:
         return extract_trades_from_signals(df_exec, stop_loss, direction)
-    
+
     logger = logging.getLogger(__name__)
-    
+
     if not symbol or not since_str:
-        logger.warning("Deep Backtesting requires symbol and date range. Falling back to fast mode.")
+        logger.warning(
+            "Deep Backtesting requires symbol and date range. Falling back to fast mode."
+        )
         return extract_trades_from_signals(df_exec, stop_loss, direction)
-    
+
     try:
         if df_15m_cache is not None:
             df_15m = df_15m_cache
@@ -196,14 +210,14 @@ def extract_trades_with_mode(
             loader = IncrementalLoader()
             df_15m = loader.fetch_intraday_data(
                 symbol=symbol,
-                timeframe='15m',
+                timeframe="15m",
                 since_str=since_str,
                 until_str=until_str,
-                read_only=True
+                read_only=True,
             )
-        
+
         if df_15m.empty:
-            if df_15m_cache is None: # Only warn if we tried to fetch it
+            if df_15m_cache is None:  # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
             return extract_trades_from_signals(df_exec, stop_loss, direction)
 
@@ -221,7 +235,7 @@ def extract_trades_with_mode(
             start_ok = True
             if intraday_start > daily_start:
                 try:
-                    start_ok = (intraday_start.date() == daily_start.date())
+                    start_ok = intraday_start.date() == daily_start.date()
                 except Exception:
                     start_ok = False
 
@@ -245,29 +259,37 @@ def extract_trades_with_mode(
         except Exception:
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
             return extract_trades_from_signals(df_exec, stop_loss, direction)
-        
+
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
-        
+
         trades = simulate_execution_with_15m(
-            df_daily_signals=df_exec,
-            df_15m=df_15m,
-            stop_loss=stop_loss,
-            direction=direction
+            df_daily_signals=df_exec, df_15m=df_15m, stop_loss=stop_loss, direction=direction
         )
         return trades
-        
+
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
         return extract_trades_from_signals(df_exec, stop_loss, direction)
 
+
 # -----------------------------------------------------------------------------
 # WORKER FUNCTION (Top-level for ProcessPoolExecutor)
 # -----------------------------------------------------------------------------
-def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_str, until_str, df_15m_cache=None, initial_capital=100):
+def _run_backtest_logic(
+    template_data,
+    params,
+    df,
+    deep_backtest,
+    symbol,
+    since_str,
+    until_str,
+    df_15m_cache=None,
+    initial_capital=100,
+):
     """
     Core backtest logic shared by single and batch workers.
-    
+
     Args:
         initial_capital: Capital inicial em USD para cálculo de métricas (padrão: $100)
                         Usado para calcular Return e Profit Factor no estilo TradingView
@@ -278,21 +300,22 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
         entry_logic = template_data["entry_logic"]
         exit_logic = template_data["exit_logic"]
         stop_loss = template_data.get("stop_loss", 0.015)
-        
+
         # Handle stop_loss if it's a dict with 'default' key
         if isinstance(stop_loss, dict):
             stop_loss = stop_loss.get("default", 0.015)
-            
+
         # Apply parameter overrides
         import copy
+
         indicators = copy.deepcopy(indicators)
-        
+
         if params:
             for param_key, param_value in params.items():
                 if param_key == "stop_loss":
                     stop_loss = param_value
                     continue
-                
+
                 if param_key == "timeframe":
                     continue
                 if param_key == "direction":
@@ -302,32 +325,35 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                 for indicator in indicators:
                     alias = indicator.get("alias", "")
                     type_ = indicator.get("type", "")
-                    
+
                     # 1. Try "alias_param" format (e.g., "short_length") - Generated by auto-schema
                     if alias and param_key.startswith(f"{alias}_"):
-                        target_field = param_key[len(alias)+1:]
-                        if "params" not in indicator: indicator["params"] = {}
+                        target_field = param_key[len(alias) + 1 :]
+                        if "params" not in indicator:
+                            indicator["params"] = {}
                         indicator["params"][target_field] = param_value
                         matched = True
                         break
-                    
+
                     # 2. Try "type_alias" format (e.g., "sma_short") - Used in multi_ma_crossover
                     # Default to 'length' or 'period' if not specified
                     if alias and type_ and param_key == f"{type_}_{alias}":
-                        if "params" not in indicator: indicator["params"] = {}
+                        if "params" not in indicator:
+                            indicator["params"] = {}
                         # Try to find which param to update: length, period, or default to length
                         if "length" in indicator["params"]:
                             indicator["params"]["length"] = param_value
                         elif "period" in indicator["params"]:
                             indicator["params"]["period"] = param_value
                         else:
-                            indicator["params"]["length"] = param_value # Fallback
+                            indicator["params"]["length"] = param_value  # Fallback
                         matched = True
                         break
 
                     # 3. Try exact alias match (e.g. "short")
                     if alias and param_key == alias:
-                        if "params" not in indicator: indicator["params"] = {}
+                        if "params" not in indicator:
+                            indicator["params"] = {}
                         if "length" in indicator["params"]:
                             indicator["params"]["length"] = param_value
                         elif "period" in indicator["params"]:
@@ -340,40 +366,40 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
                     # 4. Fallback for indicators without alias:
                     # allow "type_param" format (e.g. "rsi_length") used by legacy stage generation.
                     if (not alias) and type_ and param_key.startswith(f"{type_}_"):
-                        target_field = param_key[len(type_) + 1:]
-                        if "params" not in indicator: indicator["params"] = {}
+                        target_field = param_key[len(type_) + 1 :]
+                        if "params" not in indicator:
+                            indicator["params"] = {}
                         indicator["params"][target_field] = param_value
                         matched = True
                         break
 
         # Create strategy instance
         from app.strategies.combos import ComboStrategy
+
         strategy = ComboStrategy(
             indicators=indicators,
             entry_logic=entry_logic,
             exit_logic=exit_logic,
-            stop_loss=stop_loss
+            stop_loss=stop_loss,
         )
-        
+
         # Generate signals
         df_with_signals = strategy.generate_signals(df.copy())
 
-
-        
         # Direction: long (default) or short
         direction = (params or {}).get("direction", "long")
         if direction not in ("long", "short"):
             direction = "long"
         # Extract trades from signals WITH STOP LOSS using Deep or Fast mode
         trades = extract_trades_with_mode(
-            df_with_signals, 
+            df_with_signals,
             stop_loss,
             deep_backtest=deep_backtest,
             symbol=symbol,
             since_str=since_str,
             until_str=until_str,
             df_15m_cache=df_15m_cache,
-            direction=direction
+            direction=direction,
         )
 
         # Construct full effective parameters (médias, stop) para log de "profit fora do range"
@@ -412,49 +438,48 @@ def _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_
             except Exception:
                 return None
 
-        metrics['avg_atr'] = _safe_mean(df_with_signals[atr_col]) if atr_col else None
-        metrics['avg_adx'] = _safe_mean(df_with_signals[adx_col]) if adx_col else None
+        metrics["avg_atr"] = _safe_mean(df_with_signals[atr_col]) if atr_col else None
+        metrics["avg_adx"] = _safe_mean(df_with_signals[adx_col]) if adx_col else None
 
         return metrics, full_params
-        
+
     except Exception as e:
         # Return empty metrics on failure
         return {
-            'total_trades': 0,
-            'win_rate': 0,
-            'total_return': 0,
-            'avg_profit': 0,
-            'sharpe_ratio': 0,
-            'error': str(e)
+            "total_trades": 0,
+            "win_rate": 0,
+            "total_return": 0,
+            "avg_profit": 0,
+            "sharpe_ratio": 0,
+            "error": str(e),
         }, params
+
 
 def _worker_run_backtest(args):
     """Legacy worker for single execution (Sequential Mode)."""
-    template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str = args
+    template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str = (
+        args
+    )
     # Silence loggers
-    logging.getLogger('src.data.incremental_loader').setLevel(logging.WARNING)
-    logging.getLogger('app.services.deep_backtest').setLevel(logging.WARNING)
-    logging.getLogger('app.services.combo_optimizer').setLevel(logging.WARNING)
-    
-    metrics, full_params = _run_backtest_logic(template_data, params, df, deep_backtest, symbol, since_str, until_str)
+    logging.getLogger("src.data.incremental_loader").setLevel(logging.WARNING)
+    logging.getLogger("app.services.deep_backtest").setLevel(logging.WARNING)
+    logging.getLogger("app.services.combo_optimizer").setLevel(logging.WARNING)
 
-    if 'error' in metrics:
-        return {
-            'value': value,
-            'error': metrics['error'],
-            'success': False
-        }
+    metrics, full_params = _run_backtest_logic(
+        template_data, params, df, deep_backtest, symbol, since_str, until_str
+    )
+
+    if "error" in metrics:
+        return {"value": value, "error": metrics["error"], "success": False}
     else:
         return {
-            'value': value,
-            'params': params,  # Input overrides
-            'full_params': full_params, # Complete effective state
-            'metrics': metrics,
-            'trades_count': metrics['total_trades'],
-            'success': True
+            "value": value,
+            "params": params,  # Input overrides
+            "full_params": full_params,  # Complete effective state
+            "metrics": metrics,
+            "trades_count": metrics["total_trades"],
+            "success": True,
         }
-        
-
 
 
 def _worker_run_batch(batch_args):
@@ -466,22 +491,22 @@ def _worker_run_batch(batch_args):
         return []
 
     # Silence loggers
-    logging.getLogger('src.data.incremental_loader').setLevel(logging.WARNING)
-    logging.getLogger('app.services.deep_backtest').setLevel(logging.WARNING)
-    logging.getLogger('app.services.combo_optimizer').setLevel(logging.WARNING)
+    logging.getLogger("src.data.incremental_loader").setLevel(logging.WARNING)
+    logging.getLogger("app.services.deep_backtest").setLevel(logging.WARNING)
+    logging.getLogger("app.services.combo_optimizer").setLevel(logging.WARNING)
 
     results = []
-    
+
     # 1. Initialize Optimization Cache (Load 15m data once per WORKER process)
     df_15m_cache = None
     first_arg = batch_args[0]
-    # unpacking args structure: 
+    # unpacking args structure:
     # template_data, params, df, stage_param, value, deep_backtest, symbol, since_str, until_str
     deep_backtest = first_arg[5]
     symbol = first_arg[6]
     since_str = first_arg[7]
     until_str = first_arg[8]
-    
+
     if deep_backtest:
         try:
             df_15m_cache = _worker_get_15m_cache(symbol, since_str, until_str)
@@ -492,82 +517,80 @@ def _worker_run_batch(batch_args):
     # 2. Iterate through batch
     for args in batch_args:
         template_data, params, df, stage_param, value, deep_backtest, _, _, _ = args
-        
+
         metrics, full_params = _run_backtest_logic(
-            template_data, 
-            params, 
-            df, 
-            deep_backtest, 
-            symbol, 
-            since_str, 
+            template_data,
+            params,
+            df,
+            deep_backtest,
+            symbol,
+            since_str,
             until_str,
-            df_15m_cache # Pass the cached data
+            df_15m_cache,  # Pass the cached data
         )
-        
+
         # Wrap result to match single worker structure
-        if 'error' in metrics:
-            results.append({
-                'value': value,
-                'error': metrics['error'],
-                'success': False
-            })
+        if "error" in metrics:
+            results.append({"value": value, "error": metrics["error"], "success": False})
         else:
-            results.append({
-                'value': value,
-                'params': params,
-                'full_params': full_params,
-                'metrics': metrics,
-                'trades_count': metrics['total_trades'],
-                'success': True
-            })
-        
+            results.append(
+                {
+                    "value": value,
+                    "params": params,
+                    "full_params": full_params,
+                    "metrics": metrics,
+                    "trades_count": metrics["total_trades"],
+                    "success": True,
+                }
+            )
+
     return results
 
 
 class ComboOptimizer:
     """
     Optimizer for combo strategies.
-    
+
     Extends SequentialOptimizer logic to handle multiple indicators
     and their parameters in combo strategies.
     """
-    
+
     def __init__(self, checkpoint_dir: str = "backend/data/checkpoints"):
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.combo_service = ComboService()
         self.backtest_service = BacktestService()
         self.loader = IncrementalLoader()
-    
+
     def generate_stages(
         self,
         template_name: str,
         symbol: str,
         fixed_timeframe: Optional[str] = None,
-        custom_ranges: Optional[Dict[str, Any]] = None
+        custom_ranges: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Generate optimization stages for a combo strategy.
         Supports Grid Search for correlated parameters.
-        
+
         Args:
             template_name: Name of combo template
             symbol: Trading symbol
             fixed_timeframe: If set, skips timeframe optimization
             custom_ranges: Custom parameter ranges
-            
+
         Returns:
             List of stage configurations
         """
         # Get template metadata
         metadata = self.combo_service.get_template_metadata(template_name)
-        
+
         # Validate correlation metadata if present
         self._validate_correlation_metadata(metadata)
-        
+
         stages = []
         stage_num = 1
-        
+
         # Get optimization schema from database (if available)
         # optimization_schema may be explicitly NULL in DB (e.g. example templates)
         #
@@ -578,49 +601,51 @@ class ComboOptimizer:
         # - If schema is FLAT (no "parameters", no "correlated_groups"; top-level keys = param names with min/max/step):
         #   Fallback: parameters = schema, correlated_groups = []. PHASE 2 runs: one STAGE per param (sequential = sum).
         #   Example: short_ema200_pullback → 5 stages, 17+16+11+9+8 = 61 combinations in R1.
-        optimization_schema = metadata.get('optimization_schema') or {}
-        correlated_groups = optimization_schema.get('correlated_groups', [])
-        parameters = optimization_schema.get('parameters', {})
-        
+        optimization_schema = metadata.get("optimization_schema") or {}
+        correlated_groups = optimization_schema.get("correlated_groups", [])
+        parameters = optimization_schema.get("parameters", {})
+
         # Fallback for Flat Schema (historical data support)
-        if not parameters and optimization_schema and not optimization_schema.get('correlated_groups'):
+        if (
+            not parameters
+            and optimization_schema
+            and not optimization_schema.get("correlated_groups")
+        ):
             # Heuristic: If values are dicts with 'min'/'max', assume flat parameters
             first_key = next(iter(optimization_schema), None)
             if first_key:
                 first_val = optimization_schema[first_key]
-                if isinstance(first_val, dict) and ('min' in first_val or 'start' in first_val):
-                     parameters = optimization_schema
-        
+                if isinstance(first_val, dict) and ("min" in first_val or "start" in first_val):
+                    parameters = optimization_schema
+
         # Track which parameters have been added to stages
         processed_params = set()
-        
+
         # PHASE 1: Create Grid Search stages for correlated groups
         for group in correlated_groups:
             # Generate value lists for each parameter in the group
             value_lists = []
             param_names = []
-            
+
             for param_name in group:
                 if param_name not in parameters:
                     continue  # Skip if parameter not found (validation should have caught this)
-                
+
                 config = parameters[param_name]
-                
+
                 # Check for custom range override
                 if custom_ranges and param_name in custom_ranges:
                     custom = custom_ranges[param_name]
                     values = self._generate_range_values(
-                        custom.get('min', config.get('min')),
-                        custom.get('max', config.get('max')),
-                        custom.get('step', config.get('step'))
+                        custom.get("min", config.get("min")),
+                        custom.get("max", config.get("max")),
+                        custom.get("step", config.get("step")),
                     )
                 else:
                     values = self._generate_range_values(
-                        config.get('min'),
-                        config.get('max'),
-                        config.get('step')
+                        config.get("min"), config.get("max"), config.get("step")
                     )
-                
+
                 value_lists.append(values)
         # PHASE 1: Create Grid Search stages for correlated groups
         for group in correlated_groups:
@@ -628,44 +653,44 @@ class ComboOptimizer:
             value_lists = []
             param_names = []
             adaptive_meta = {}
-            
+
             for param_name in group:
                 if param_name not in parameters:
                     continue  # Skip if parameter not found (validation should have caught this)
-                
+
                 config = parameters[param_name]
-                
+
                 # Check for custom range override
                 if custom_ranges and param_name in custom_ranges:
                     custom = custom_ranges[param_name]
-                    p_min = custom.get('min', config.get('min'))
-                    p_max = custom.get('max', config.get('max'))
-                    target_step = custom.get('step', config.get('step'))
+                    p_min = custom.get("min", config.get("min"))
+                    p_max = custom.get("max", config.get("max"))
+                    target_step = custom.get("step", config.get("step"))
                 else:
-                    p_min = config.get('min')
-                    p_max = config.get('max')
-                    target_step = config.get('step')
+                    p_min = config.get("min")
+                    p_max = config.get("max")
+                    target_step = config.get("step")
 
                 # FORCE STOP LOSS STEP to 0.001 if user intent is strict 0.5% in Round 1
-                if param_name == 'stop_loss' and target_step == 0.002:
+                if param_name == "stop_loss" and target_step == 0.002:
                     target_step = 0.001
 
                 # Correlated group = joint grid (product of all params). Use coarse step in R1 to avoid millions of combinations.
                 coarse_step = self._calculate_coarse_step(p_min, p_max, target_step)
                 values = self._generate_range_values(p_min, p_max, coarse_step)
-                
+
                 value_lists.append(values)
                 param_names.append(param_name)
                 processed_params.add(param_name)
-                
+
                 # Store metadata for adaptive refinement
                 adaptive_meta[param_name] = {
-                    'target_step': target_step,
-                    'current_step': coarse_step,
-                    'min': p_min,
-                    'max': p_max
+                    "target_step": target_step,
+                    "current_step": coarse_step,
+                    "min": p_min,
+                    "max": p_max,
                 }
-            
+
             # Create Grid Search stage
             if param_names:
                 stage = {
@@ -676,96 +701,104 @@ class ComboOptimizer:
                     "locked_params": {},
                     "grid_mode": True,  # Flag for Grid Search
                     "description": f"Joint optimization of {', '.join(param_names)}",
-                    "adaptive_meta": adaptive_meta
+                    "adaptive_meta": adaptive_meta,
                 }
-                
+
                 # Calculate and log grid size
                 grid_size = self._calculate_grid_size(stage)
                 logging.info(f"Stage {stage_num}: Grid Search with {grid_size} combinations")
-                
+
                 stages.append(stage)
                 stage_num += 1
-        
+
         # PHASE 2: Create Sequential stages for independent parameters
         for param_name, config in parameters.items():
             # Skip if already processed in a correlated group
             if param_name in processed_params:
                 continue
-            
+
             # Check for custom range override
             if custom_ranges and param_name in custom_ranges:
                 custom = custom_ranges[param_name]
-                p_min = custom.get('min', config.get('min'))
-                p_max = custom.get('max', config.get('max'))
-                target_step = custom.get('step', config.get('step'))
+                p_min = custom.get("min", config.get("min"))
+                p_max = custom.get("max", config.get("max"))
+                target_step = custom.get("step", config.get("step"))
             else:
-                p_min = config.get('min')
-                p_max = config.get('max')
-                target_step = config.get('step')
-            
+                p_min = config.get("min")
+                p_max = config.get("max")
+                target_step = config.get("step")
+
             # Round 1: use full grid (schema step), same as long / non-adaptive grid
-            round1_step = target_step if target_step is not None else self._calculate_coarse_step(p_min, p_max, target_step)
+            round1_step = (
+                target_step
+                if target_step is not None
+                else self._calculate_coarse_step(p_min, p_max, target_step)
+            )
             values = self._generate_range_values(p_min, p_max, round1_step)
-            
+
             adaptive_meta = {
                 param_name: {
-                    'target_step': target_step,
-                    'current_step': round1_step,
-                    'min': p_min,
-                    'max': p_max
+                    "target_step": target_step,
+                    "current_step": round1_step,
+                    "min": p_min,
+                    "max": p_max,
                 }
             }
-            
-            stages.append({
-                "stage_num": stage_num,
-                "stage_name": f"Grid Search: {param_name}",
-                "parameter": [param_name],  # List for Grid
-                "values": [values],      # List of lists for Grid
-                "locked_params": {},
-                "grid_mode": True,       # Explicit Grid Mode
-                "description": f"Grid Search verification of {param_name}",
-                "adaptive_meta": adaptive_meta
-            })
+
+            stages.append(
+                {
+                    "stage_num": stage_num,
+                    "stage_name": f"Grid Search: {param_name}",
+                    "parameter": [param_name],  # List for Grid
+                    "values": [values],  # List of lists for Grid
+                    "locked_params": {},
+                    "grid_mode": True,  # Explicit Grid Mode
+                    "description": f"Grid Search verification of {param_name}",
+                    "adaptive_meta": adaptive_meta,
+                }
+            )
             stage_num += 1
-        
+
         # FALLBACK: If no optimization_schema, use legacy behavior
         if not parameters:
-            logging.warning(f"No optimization_schema found for {template_name} - using legacy stage generation")
-            
+            logging.warning(
+                f"No optimization_schema found for {template_name} - using legacy stage generation"
+            )
+
             # Legacy: Infer from indicators metadata
             # Legacy: Infer from indicators metadata
-            
+
             # Step 1: Collect indicator parameters for Grid Search
             grid_param_names = []
             grid_value_lists = []
-            
-            for indicator in metadata.get('indicators', []):
-                ind_type = indicator['type']
-                ind_alias = indicator.get('alias', ind_type)
-                ind_params = indicator.get('params', {})
-                
+
+            for indicator in metadata.get("indicators", []):
+                ind_type = indicator["type"]
+                ind_alias = indicator.get("alias", ind_type)
+                ind_params = indicator.get("params", {})
+
                 # Get optimization ranges from indicator config or use defaults
-                opt_range = indicator.get('optimization_range', {})
-                
+                opt_range = indicator.get("optimization_range", {})
+
                 for param_name, param_value in ind_params.items():
                     # Create full parameter name (e.g., "ema_fast_length")
                     full_param_name = f"{ind_alias}_{param_name}"
-                    
+
                     # Determine range values
                     if custom_ranges and full_param_name in custom_ranges:
                         custom = custom_ranges[full_param_name]
                         values = self._generate_range_values(
-                            custom.get('min', param_value),
-                            custom.get('max', param_value * 2),
-                            custom.get('step', 1)
+                            custom.get("min", param_value),
+                            custom.get("max", param_value * 2),
+                            custom.get("step", 1),
                         )
                     elif param_name in opt_range:
                         # Use optimization range from template
                         range_config = opt_range[param_name]
                         values = self._generate_range_values(
-                            range_config.get('min', param_value),
-                            range_config.get('max', param_value * 2),
-                            range_config.get('step', 1)
+                            range_config.get("min", param_value),
+                            range_config.get("max", param_value * 2),
+                            range_config.get("step", 1),
                         )
                     else:
                         # Default range: ±50% of default value
@@ -773,10 +806,10 @@ class ComboOptimizer:
                         max_val = int(param_value * 1.5)
                         step = max(1, int((max_val - min_val) / 10))
                         values = self._generate_range_values(min_val, max_val, step)
-                    
+
                     grid_param_names.append(full_param_name)
                     grid_value_lists.append(values)
-            
+
             # Create Grid Search Stage (Stage 1)
             if grid_param_names:
                 stage = {
@@ -786,48 +819,52 @@ class ComboOptimizer:
                     "values": grid_value_lists,
                     "locked_params": {},
                     "grid_mode": True,
-                    "description": f"Joint optimization of {', '.join(grid_param_names)}"
+                    "description": f"Joint optimization of {', '.join(grid_param_names)}",
                 }
-                
+
                 # Check grid size safety
                 grid_size = self._calculate_grid_size(stage)
                 logging.info(f"Implicit Grid Stage generated with {grid_size} combinations")
-                
+
                 stages.append(stage)
                 stage_num += 1
 
             # Step 2: Check for orphan parameters in custom_ranges (e.g. stop_loss)
             if custom_ranges:
-                existing_params = set(grid_param_names) # Use list of names from grid
-                for s in stages: # Also check other stages if any
-                     if isinstance(s['parameter'], list):
-                         existing_params.update(s['parameter'])
-                     else:
-                         existing_params.add(s['parameter'])
+                existing_params = set(grid_param_names)  # Use list of names from grid
+                for s in stages:  # Also check other stages if any
+                    if isinstance(s["parameter"], list):
+                        existing_params.update(s["parameter"])
+                    else:
+                        existing_params.add(s["parameter"])
 
                 for param, range_config in custom_ranges.items():
                     if param not in existing_params:
                         values = self._generate_range_values(
-                            range_config.get('min'),
-                            range_config.get('max'),
-                            range_config.get('step')
+                            range_config.get("min"),
+                            range_config.get("max"),
+                            range_config.get("step"),
                         )
                         # Force Grid Mode for orphans too (1D Grid), as requested
-                        stages.append({
-                            "stage_num": stage_num,
-                            "stage_name": f"Grid Search: {param}",
-                            "parameter": [param], # List for Grid
-                            "values": [values],   # List of lists for Grid
-                            "locked_params": {},
-                            "grid_mode": True,    # Explicit Grid Mode
-                            "description": f"Grid Search verification of {param}"
-                        })
+                        stages.append(
+                            {
+                                "stage_num": stage_num,
+                                "stage_name": f"Grid Search: {param}",
+                                "parameter": [param],  # List for Grid
+                                "values": [values],  # List of lists for Grid
+                                "locked_params": {},
+                                "grid_mode": True,  # Explicit Grid Mode
+                                "description": f"Grid Search verification of {param}",
+                            }
+                        )
                         stage_num += 1
-        
+
         logging.info(f"Generated {len(stages)} stages for {template_name}")
         return stages
-    
-    def _generate_values_from_range(self, min_val: float, max_val: float, step: float) -> List[float]:
+
+    def _generate_values_from_range(
+        self, min_val: float, max_val: float, step: float
+    ) -> List[float]:
         """Generate list of values from min to max with step."""
         values = []
         current = min_val
@@ -835,15 +872,15 @@ class ComboOptimizer:
             values.append(current)
             current += step
         return values
-    
+
     # -------------------------------------------------------------------------
     # GRID SEARCH HELPER METHODS (Phase 1)
     # -------------------------------------------------------------------------
-    
+
     def _validate_correlation_metadata(self, template_metadata: Dict[str, Any]) -> None:
         """
         Validate correlated_groups against available parameters.
-        
+
         Raises:
             ValueError: If validation fails
         """
@@ -851,12 +888,12 @@ class ComboOptimizer:
         optimization_schema = template_metadata.get("optimization_schema") or {}
         correlated_groups = optimization_schema.get("correlated_groups", [])
         parameters = optimization_schema.get("parameters", {})
-        
+
         if not correlated_groups:
             return  # No validation needed (backward compatible)
-        
+
         all_correlated_params = set()
-        
+
         for group in correlated_groups:
             for param in group:
                 # Check if parameter exists
@@ -865,14 +902,14 @@ class ComboOptimizer:
                         f"Invalid correlated_groups: parameter '{param}' not found in parameters. "
                         f"Available: {list(parameters.keys())}"
                     )
-                
+
                 # Check for duplicates
                 if param in all_correlated_params:
                     raise ValueError(
                         f"Invalid correlated_groups: parameter '{param}' appears in multiple groups"
                     )
                 all_correlated_params.add(param)
-    
+
     def _calculate_coarse_step(self, start: Any, end: Any, target_step: Any = None) -> Any:
         """
         Calculate a coarse step for Round 1 to cover the range efficiently.
@@ -880,24 +917,31 @@ class ComboOptimizer:
         """
         try:
             # Check if all inputs are effectively integers
-            is_int = (isinstance(start, int) or float(start).is_integer()) and \
-                     (isinstance(end, int) or float(end).is_integer()) and \
-                     (target_step is None or isinstance(target_step, int) or float(target_step).is_integer())
-            
+            is_int = (
+                (isinstance(start, int) or float(start).is_integer())
+                and (isinstance(end, int) or float(end).is_integer())
+                and (
+                    target_step is None
+                    or isinstance(target_step, int)
+                    or float(target_step).is_integer()
+                )
+            )
+
             val_range = float(end) - float(start)
-            
+
             if is_int:
                 val_range = int(val_range)
-                if val_range <= 5: return 1 
-                
+                if val_range <= 5:
+                    return 1
+
                 # Integer Logic: Strictly respect Target Step * 4 (Round 1) - USER REQUEST CHANGE 5->4
                 # If target_step provided (usually 1 for periods), use 4x.
                 if target_step:
-                     return int(target_step) * 4
-                
+                    return int(target_step) * 4
+
                 # Fallback if no target step: Just use 4 as default coarse step
                 return 4
-            
+
             # Float/Decimal logic
             # If target_step provided, jump 5x target (Generic Round 1 Logic)
             if target_step:
@@ -909,17 +953,20 @@ class ComboOptimizer:
                 # we rely on the caller fixing target_step OR we make a best effort here.
                 # Actually, best is to just trust target_step * 5.
                 # If target_step for stop_loss is 0.002, we get 0.01.
-                # To get 0.005, target must be 0.001. 
+                # To get 0.005, target must be 0.001.
                 # I will handle the 0.001 enforcement in generate_stages instead.
-                
+
                 return float(target_step) * 5.0
-            
+
             # No target step, guess based on range magnitude
-            if val_range < 0.1: return val_range / 4.0  # e.g. 0.08 -> 0.02
-            if val_range < 1.0: return 0.1
-            if val_range < 10.0: return 1.0
+            if val_range < 0.1:
+                return val_range / 4.0  # e.g. 0.08 -> 0.02
+            if val_range < 1.0:
+                return 0.1
+            if val_range < 10.0:
+                return 1.0
             return 5.0
-            
+
         except Exception:
             # Fallback to safe default
             return 1 if isinstance(start, int) else 0.1
@@ -929,110 +976,129 @@ class ComboOptimizer:
         Refine the search grid for the next round based on best results.
         Updates stage['values'] in-place.
         """
-        adaptive_meta = stage.get('adaptive_meta')
-        if not adaptive_meta: return
+        adaptive_meta = stage.get("adaptive_meta")
+        if not adaptive_meta:
+            return
 
         new_value_lists = []
-        param_names = stage['parameter'] # List for grid
-        
+        param_names = stage["parameter"]  # List for grid
+
         # Iterate over parameters in this stage
         for i, param_name in enumerate(param_names):
             meta = adaptive_meta.get(param_name)
             if not meta:
                 # Should not happen if structured correctly, but fallback
-                new_value_lists.append(stage['values'][i])
+                new_value_lists.append(stage["values"][i])
                 continue
-                
+
             best_val = best_params.get(param_name)
             if best_val is None:
                 # Fallback
-                new_value_lists.append(stage['values'][i])
+                new_value_lists.append(stage["values"][i])
                 continue
 
-            current_step = meta['current_step']
-            target_step = meta.get('target_step')
-            
+            current_step = meta["current_step"]
+            target_step = meta.get("target_step")
+
             # --- CALCULATE NEW STEP BASED ON ROUND ---
             if target_step:
                 tgt = float(target_step)
-                if round_num == 2: multiplier = 3.0
-                elif round_num == 3: multiplier = 2.0
-                elif round_num >= 4: multiplier = 1.0
-                else: multiplier = 5.0 
-                
+                if round_num == 2:
+                    multiplier = 3.0
+                elif round_num == 3:
+                    multiplier = 2.0
+                elif round_num >= 4:
+                    multiplier = 1.0
+                else:
+                    multiplier = 5.0
+
                 new_step = tgt * multiplier
             else:
-                 new_step = float(current_step) / 2.0
-            
+                new_step = float(current_step) / 2.0
+
             # Ensure Integer Constraint
-            is_int = (isinstance(best_val, int) or float(best_val).is_integer()) and \
-                     (target_step is None or isinstance(target_step, int) or float(target_step).is_integer())
-            
+            is_int = (isinstance(best_val, int) or float(best_val).is_integer()) and (
+                target_step is None
+                or isinstance(target_step, int)
+                or float(target_step).is_integer()
+            )
+
             if is_int:
                 new_step = max(1, int(new_step))
-            
+
             # Update meta for next round
-            meta['current_step'] = new_step
+            meta["current_step"] = new_step
 
             # --- CALCULATE NEW RANGE ---
             # Radius = Previous Step size (roughly).
             if target_step:
                 tgt = float(target_step)
-                
-                # Determine Previous Multiplier based on Type
-                round1_mult = 4.0 if is_int else 5.0 # Integers start at 4x now, Decimals keep 5x (0.5%)
 
-                if round_num == 2: prev_mult = round1_mult
-                elif round_num == 3: prev_mult = 3.0
-                elif round_num == 4: prev_mult = 2.0
-                else: prev_mult = round1_mult
-                
+                # Determine Previous Multiplier based on Type
+                round1_mult = (
+                    4.0 if is_int else 5.0
+                )  # Integers start at 4x now, Decimals keep 5x (0.5%)
+
+                if round_num == 2:
+                    prev_mult = round1_mult
+                elif round_num == 3:
+                    prev_mult = 3.0
+                elif round_num == 4:
+                    prev_mult = 2.0
+                else:
+                    prev_mult = round1_mult
+
                 radius_step = tgt * prev_mult
             else:
                 radius_step = current_step
-            
-            if is_int: radius_step = int(radius_step)
 
-            global_min = meta.get('min')
-            global_max = meta.get('max')
-            
+            if is_int:
+                radius_step = int(radius_step)
+
+            global_min = meta.get("min")
+            global_max = meta.get("max")
+
             range_min = best_val - radius_step
             range_max = best_val + radius_step
-            
-            if global_min is not None: range_min = max(range_min, global_min)
-            if global_max is not None: range_max = min(range_max, global_max)
-            
+
+            if global_min is not None:
+                range_min = max(range_min, global_min)
+            if global_max is not None:
+                range_max = min(range_max, global_max)
+
             new_vals = self._generate_range_values(range_min, range_max, new_step)
             new_vals = sorted(list(set(new_vals)))
             new_value_lists.append(new_vals)
-            
-            logging.info(f"    Refining {param_name}: Best={best_val}, Step={new_step} (Round {round_num}), Range [{range_min}, {range_max}]")
+
+            logging.info(
+                f"    Refining {param_name}: Best={best_val}, Step={new_step} (Round {round_num}), Range [{range_min}, {range_max}]"
+            )
 
         # Update stage values
-        stage['values'] = new_value_lists
+        stage["values"] = new_value_lists
 
     def _generate_range_values(self, start: Any, end: Any, step: Any) -> List[Any]:
         """
         Generate inclusive range supporting floats and integers.
-        
+
         Args:
             start: Start value
             end: End value (inclusive)
             step: Step size
-            
+
         Returns:
             List of values from start to end (inclusive)
-            
+
         Examples:
             _generate_range_values(10, 20, 5) -> [10, 15, 20]
             _generate_range_values(0.1, 0.3, 0.1) -> [0.1, 0.2, 0.3]
         """
         values = []
         current = start
-        
+
         # Use small epsilon for float comparison
         epsilon = step / 1000.0 if isinstance(step, float) else 0
-        
+
         while current <= end + epsilon:
             # Round floats to avoid precision issues (e.g., 0.30000000004)
             if isinstance(current, float):
@@ -1048,30 +1114,30 @@ class ComboOptimizer:
                 else:
                     decimal_places = 4
                 current = round(current, decimal_places)
-            
+
             values.append(current)
             current += step
-        
+
         return values
-    
+
     def _calculate_grid_size(self, stage: Dict[str, Any]) -> int:
         """
         Calculate total grid size for a stage.
-        
+
         Args:
             stage: Stage configuration
-            
+
         Returns:
             Total number of combinations
         """
-        if not stage.get('grid_mode'):
-            return len(stage.get('values', []))
-        
+        if not stage.get("grid_mode"):
+            return len(stage.get("values", []))
+
         # Calculate product of all value list sizes
         grid_size = 1
-        for value_list in stage['values']:
+        for value_list in stage["values"]:
             grid_size *= len(value_list)
-        
+
         # Validate against limit
         MAX_GRID_SIZE = 1000
         if grid_size > MAX_GRID_SIZE:
@@ -1080,47 +1146,49 @@ class ComboOptimizer:
                 f"Estimated time: ~{grid_size * 2 / 3600:.1f} hours. "
                 f"Consider increasing step size or reducing range."
             )
-        
+
         return grid_size
-    
-    def _is_correlated_group(self, template_metadata: Dict[str, Any], param_names: List[str]) -> bool:
+
+    def _is_correlated_group(
+        self, template_metadata: Dict[str, Any], param_names: List[str]
+    ) -> bool:
         """
         Check if given parameters form a correlated group.
-        
+
         Args:
             template_metadata: Template metadata
             param_names: List of parameter names to check
-            
+
         Returns:
             True if params are in a correlated group
         """
         # optimization_schema may be explicitly NULL in DB (e.g. example templates)
         optimization_schema = template_metadata.get("optimization_schema") or {}
         correlated_groups = optimization_schema.get("correlated_groups", [])
-        
+
         param_set = set(param_names)
         for group in correlated_groups:
             if set(group) == param_set:
                 return True
-        
+
         return False
 
-
-
-    def _select_top_candidates(self, candidates: List[Dict], top_k: int = 3, min_dist: float = 0.5) -> List[Dict]:
+    def _select_top_candidates(
+        self, candidates: List[Dict], top_k: int = 3, min_dist: float = 0.5
+    ) -> List[Dict]:
         """
         Select Top K DISTINCT candidates based on Euclidean distance of parameters.
         Prevents selecting neighbors in the same local maximum.
         """
         if not candidates:
             return []
-            
+
         # Sort by score descending
-        sorted_candidates = sorted(candidates, key=lambda x: x['score'], reverse=True)
-        
+        sorted_candidates = sorted(candidates, key=lambda x: x["score"], reverse=True)
+
         selected = []
-        selected.append(sorted_candidates[0]) # Always take the absolute best
-        
+        selected.append(sorted_candidates[0])  # Always take the absolute best
+
         # Helper to calculate normalized distance
         def calc_distance(p1, p2):
             dist = 0
@@ -1131,29 +1199,29 @@ class ComboOptimizer:
                 # Simple Euclidean distance
                 if isinstance(v1, (int, float)) and isinstance(v2, (int, float)):
                     dist += (v1 - v2) ** 2
-            return dist ** 0.5
-            
+            return dist**0.5
+
         # Greedy selection of next candidates that are "far enough"
         for cand in sorted_candidates[1:]:
             if len(selected) >= top_k:
                 break
-                
+
             # Check distance against all currently selected
             is_distinct = True
             for sel in selected:
-                dist = calc_distance(cand['params'], sel['params'])
-                
+                dist = calc_distance(cand["params"], sel["params"])
+
                 # STRICT FILTER: min_dist default 0.5.
                 # Integer params usually change by 1.0 or more.
                 # If dist < 0.5, it implies only Stop Loss changed (e.g. 0.01 change).
                 # We want structural diversity (Moving Averages must differ).
-                if dist < min_dist: 
+                if dist < min_dist:
                     is_distinct = False
                     break
-            
+
             if is_distinct:
                 selected.append(cand)
-                
+
         return selected
 
     def _execute_opt_stages(
@@ -1176,118 +1244,147 @@ class ComboOptimizer:
     ):
         """
         Execute all stages for a specific branch/candidate.
-        Returns: 
+        Returns:
              If return_top_n > 1 (Grid Mode): List of dicts [{'params':..., 'metrics':...}]
              If return_top_n = 1 (Sequential): (best_params, best_metrics)
         """
         best_params = initial_params.copy()
         best_metrics = None
-        
+
         import time  # Import at function level to avoid UnboundLocalError
-        
+
         # Enrich DF with Regime/Context Metrics (if not present) to enable Worker Logic
-        if df is not None and not df.empty and 'regime' not in df.columns:
+        if df is not None and not df.empty and "regime" not in df.columns:
             try:
                 import pandas_ta as ta
                 import numpy as np
+
                 df = df.copy()
-                
+
                 # Use SMA_50 for Regime (better coverage than SMA_200)
-                if 'SMA_50' not in df.columns:
+                if "SMA_50" not in df.columns:
                     df.ta.sma(length=50, append=True)
-                
+
                 # ATR/ADX for Avg Metrics
-                if not any(c.startswith('ATR') for c in df.columns):
+                if not any(c.startswith("ATR") for c in df.columns):
                     df.ta.atr(length=14, append=True)
-                if not any(c.startswith('ADX') for c in df.columns):
+                if not any(c.startswith("ADX") for c in df.columns):
                     df.ta.adx(length=14, append=True)
 
                 # Regime Classification with NaN handling
-                sma_col = 'SMA_50'
+                sma_col = "SMA_50"
                 if sma_col in df.columns:
-                    df['regime'] = 'Unknown'
-                    mask_bull = df['close'] > df[sma_col]
-                    mask_bear = df['close'] < df[sma_col]
-                    df.loc[mask_bull, 'regime'] = 'Bull'
-                    df.loc[mask_bear, 'regime'] = 'Bear'
+                    df["regime"] = "Unknown"
+                    mask_bull = df["close"] > df[sma_col]
+                    mask_bear = df["close"] < df[sma_col]
+                    df.loc[mask_bull, "regime"] = "Bull"
+                    df.loc[mask_bear, "regime"] = "Bear"
             except Exception as e:
                 logging.warning(f"Failed to enrich DF with regime metrics: {e}")
-        
+
         # -----------------------------------------------------------
         # NOTE: For Multi-Focus Grid (Round 1), we typically have ONE stage (the 4D Grid).
         # We need to collect ALL results from that stage and return top N.
         # For Refinement (Sequential params), we follow the standard greedy path.
         # -----------------------------------------------------------
-        
+
         collected_candidates = []
-        total_combinations_tested = 0  # Track total across all stages 
+        total_combinations_tested = 0  # Track total across all stages
 
         for stage in stages:
-            stage_param = stage['parameter']
-            stage_values = stage['values']
-            is_grid_mode = stage.get('grid_mode', False)
-            
+            stage_param = stage["parameter"]
+            stage_values = stage["values"]
+            is_grid_mode = stage.get("grid_mode", False)
+
             start_time = time.time()
             stage_best_value = None
-            stage_best_sharpe = float('-inf')
-            
+            stage_best_sharpe = float("-inf")
+
             worker_args = []
-            
+
             if is_grid_mode:
                 param_names = stage_param
                 value_lists = stage_values
                 for combo in itertools.product(*value_lists):
                     test_params = best_params.copy()
-                    
+
                     # --- HEURISTIC FILTER: Multi MA Logic ---
                     # Optimization: Skip combinations where Short >= Inter or Inter >= Long
                     # This dramatically reduces search space for "Cruzamento Medias" strategy.
-                    
+
                     # 1. Identify params by common aliases
                     p_short = None
                     p_inter = None
                     p_long = None
-                    
+
                     # Map loop values to temp dict for checking
                     # If param not in loop (grid), check best_params (fixed context)
                     current_combo = dict(zip(param_names, combo))
                     full_context = {**best_params, **current_combo}
-                    
+
                     for k, v in full_context.items():
                         k_lower = k.lower()
                         # Check aliases (suffix match to handle prefixes like 'ema_short')
-                        if k_lower.endswith('media_curta') or k_lower.endswith('ema_short') or k_lower.endswith('sma_short'):
-                             p_short = v
-                        elif k_lower.endswith('media_inter') or k_lower.endswith('sma_medium'):
-                             p_inter = v
-                        elif k_lower.endswith('media_longa') or k_lower.endswith('sma_long'):
-                             p_long = v
-                    
+                        if (
+                            k_lower.endswith("media_curta")
+                            or k_lower.endswith("ema_short")
+                            or k_lower.endswith("sma_short")
+                        ):
+                            p_short = v
+                        elif k_lower.endswith("media_inter") or k_lower.endswith("sma_medium"):
+                            p_inter = v
+                        elif k_lower.endswith("media_longa") or k_lower.endswith("sma_long"):
+                            p_long = v
+
                     # 2. Check Logical Constraint if all 3 are present
                     if p_short is not None and p_inter is not None and p_long is not None:
                         # Ensure values are comparable numbers
                         try:
                             if not (float(p_short) < float(p_inter) < float(p_long)):
-                                continue # SKIP INVALID COMBINATION
+                                continue  # SKIP INVALID COMBINATION
                         except (ValueError, TypeError):
-                            pass # customized params might be non-numeric, ignore filter
-                            
+                            pass  # customized params might be non-numeric, ignore filter
+
                     # ----------------------------------------
 
                     for pname, pval in zip(param_names, combo):
                         test_params[pname] = pval
                     combo_dict = dict(zip(param_names, combo))
-                    worker_args.append((template_metadata, test_params, df, param_names, combo_dict, deep_backtest, symbol, start_date, end_date))
+                    worker_args.append(
+                        (
+                            template_metadata,
+                            test_params,
+                            df,
+                            param_names,
+                            combo_dict,
+                            deep_backtest,
+                            symbol,
+                            start_date,
+                            end_date,
+                        )
+                    )
             else:
                 for value in stage_values:
                     test_params = best_params.copy()
-                    if stage_param != 'timeframe':
+                    if stage_param != "timeframe":
                         test_params[stage_param] = value
-                        worker_args.append((template_metadata, test_params, df, stage_param, value, deep_backtest, symbol, start_date, end_date))
-            
+                        worker_args.append(
+                            (
+                                template_metadata,
+                                test_params,
+                                df,
+                                stage_param,
+                                value,
+                                deep_backtest,
+                                symbol,
+                                start_date,
+                                end_date,
+                            )
+                        )
+
             if not worker_args:
                 continue
-            
+
             # Log combinations count for this stage
             combinations_count = len(worker_args)
             stage_name = f"Round {round_num} - Stage: {stage_param if not is_grid_mode else 'Grid(' + ','.join(stage_param) + ')'}"
@@ -1296,18 +1393,22 @@ class ComboOptimizer:
 
             results = []
             BATCH_SIZE = 200
-            worker_batches = [worker_args[i:i + BATCH_SIZE] for i in range(0, len(worker_args), BATCH_SIZE)]
-            
+            worker_batches = [
+                worker_args[i : i + BATCH_SIZE] for i in range(0, len(worker_args), BATCH_SIZE)
+            ]
+
             total_batches = len(worker_batches)
-            logging.info(f"📦 Dividido em {total_batches} batches de até {BATCH_SIZE} combinações cada")
+            logging.info(
+                f"📦 Dividido em {total_batches} batches de até {BATCH_SIZE} combinações cada"
+            )
             logging.info(f"⚙️  Usando {max_workers} workers em paralelo")
-            
+
             import concurrent.futures
-            
+
             start_time = time.time()
             completed_batches = 0
             processed_combinations = 0
-            
+
             local_executor: Optional[concurrent.futures.ProcessPoolExecutor] = None
             exec_to_use = executor
             if exec_to_use is None:
@@ -1319,7 +1420,10 @@ class ComboOptimizer:
 
             futures = {}
             try:
-                futures = {exec_to_use.submit(_worker_run_batch, batch): i for i, batch in enumerate(worker_batches)}
+                futures = {
+                    exec_to_use.submit(_worker_run_batch, batch): i
+                    for i, batch in enumerate(worker_batches)
+                }
                 for future in concurrent.futures.as_completed(futures):
                     batch_idx = futures[future]
                     try:
@@ -1367,73 +1471,76 @@ class ComboOptimizer:
             finally:
                 if local_executor is not None:
                     local_executor.shutdown(wait=True)
-            
+
             total_time = time.time() - start_time
             total_min = int(total_time / 60)
             total_sec = int(total_time % 60)
-            logging.info(f"🏁 Stage completo em {total_min}m{total_sec}s | Total processado: {processed_combinations:,} combinações")
-            
-            valid_results = [r for r in results if r['success']]
-            
+            logging.info(
+                f"🏁 Stage completo em {total_min}m{total_sec}s | Total processado: {processed_combinations:,} combinações"
+            )
+
+            valid_results = [r for r in results if r["success"]]
+
             if valid_results:
-                sharpes = [r['metrics']['sharpe_ratio'] for r in valid_results]
-                returns = [r['metrics']['total_return'] for r in valid_results]
+                sharpes = [r["metrics"]["sharpe_ratio"] for r in valid_results]
+                returns = [r["metrics"]["total_return"] for r in valid_results]
                 min_s, max_s = min(sharpes), max(sharpes)
                 min_r, max_r = min(returns), max(returns)
                 range_s = max_s - min_s
                 range_r = max_r - min_r
-                
+
                 # Score all results
                 scored_results = []
                 for res in valid_results:
-                    m = res['metrics']
-                    s = m['sharpe_ratio']
-                    r = m['total_return']
+                    m = res["metrics"]
+                    s = m["sharpe_ratio"]
+                    r = m["total_return"]
                     ns = (s - min_s) / range_s if range_s > 0 else 0
                     nr = (r - min_r) / range_r if range_r > 0 else 0
                     score = (0.7 * ns) + (0.3 * nr)
-                    
+
                     # Construct full params for this result
                     result_params = best_params.copy()
                     if is_grid_mode:
-                        result_params.update(res['value'])
+                        result_params.update(res["value"])
                     else:
-                        result_params[stage_param] = res['value']
-                        
-                    scored_results.append({
-                        'params': result_params,
-                        'metrics': m,
-                        'score': score
-                    })
+                        result_params[stage_param] = res["value"]
+
+                    scored_results.append({"params": result_params, "metrics": m, "score": score})
 
                 # Sort by score
-                scored_results.sort(key=lambda x: x['score'], reverse=True)
-                
+                scored_results.sort(key=lambda x: x["score"], reverse=True)
+
                 # If we are in Grid Mode and collecting candidates for branching
                 if is_grid_mode and return_top_n > 1:
-                    collected_candidates.extend(scored_results[:return_top_n*2]) # Keep a few more for distance filtering
-                
+                    collected_candidates.extend(
+                        scored_results[: return_top_n * 2]
+                    )  # Keep a few more for distance filtering
+
                 # Update best for standard greedy flow
                 top = scored_results[0]
-                stage_best_value = top['params'][stage_param] if not is_grid_mode else {k: top['params'][k] for k in stage_param}
-                best_metrics = top['metrics']
-                
+                stage_best_value = (
+                    top["params"][stage_param]
+                    if not is_grid_mode
+                    else {k: top["params"][k] for k in stage_param}
+                )
+                best_metrics = top["metrics"]
+
                 # Greedily update best_params for NEXT stage in this loop
-                best_params = top['params']
+                best_params = top["params"]
 
         # Log total combinations tested
         logging.info(f"📊 Total combinations tested in this execution: {total_combinations_tested}")
-        
+
         if return_top_n > 1:
             if collected_candidates:
                 # Sort all collected candidates (if multiple grid stages existed, unlikely for 4D)
-                collected_candidates.sort(key=lambda x: x['score'], reverse=True)
-                return collected_candidates[:return_top_n*2]
+                collected_candidates.sort(key=lambda x: x["score"], reverse=True)
+                return collected_candidates[: return_top_n * 2]
             # All batches failed: return one fallback candidate so caller always gets list of {params, metrics, score}
-            return [{'params': best_params, 'metrics': best_metrics or {}, 'score': float('-inf')}]
-            
-        return best_params, best_metrics
+            return [{"params": best_params, "metrics": best_metrics or {}, "score": float("-inf")}]
 
+        return best_params, best_metrics
 
     def run_optimization(
         self,
@@ -1467,12 +1574,12 @@ class ComboOptimizer:
             template_name=template_name,
             symbol=symbol,
             fixed_timeframe=fixed_timeframe,
-            custom_ranges=custom_ranges
+            custom_ranges=custom_ranges,
         )
-        
+
         # Get template metadata ONCE for workers
         template_metadata = self.combo_service.get_template_metadata(template_name)
-        
+
         # Ensure we have date ranges for Deep Backtesting
         # If not provided, use full period (2017-present for comprehensive testing)
         start_date_defaulted = False
@@ -1481,8 +1588,9 @@ class ComboOptimizer:
             start_date_defaulted = True
         if not end_date:
             from datetime import datetime
+
             end_date = datetime.now().strftime("%Y-%m-%d")
-        
+
         # Load data from selected provider (ccxt default; stooq for US stocks EOD)
         provider = get_market_data_provider(selected_data_source)
         df = provider.fetch_ohlcv(
@@ -1530,6 +1638,7 @@ class ComboOptimizer:
             # Self-healing: ensure 15m cache extends to end_date (handles stale cache or partial prefetch failure).
             try:
                 from datetime import datetime as _dt, timedelta
+
                 info = self.loader.check_intraday_availability(symbol, "15m")
                 end_dt = _dt.strptime(end_date, "%Y-%m-%d")
                 need_tail = False
@@ -1547,7 +1656,9 @@ class ComboOptimizer:
                     tail_since = (end_dt - timedelta(days=30)).strftime("%Y-%m-%d")
                     logging.info(
                         "15m cache lags behind end_date; updating tail for %s (%s to %s)",
-                        symbol, tail_since, end_date,
+                        symbol,
+                        tail_since,
+                        end_date,
                     )
                     self.loader.fetch_intraday_data(
                         symbol=symbol,
@@ -1568,20 +1679,20 @@ class ComboOptimizer:
                 selected_data_source,
             )
             deep_backtest = False
-        
+
         # Initialize best parameters (direction is fixed for the whole optimization)
         best_params = {"direction": direction}
         best_metrics = None
-        
+
         # Use ProcessPoolExecutor for parallel execution
         # Use max_workers = CPU count - 1 to leave one for the OS/Backend
         max_workers = max(1, (os.cpu_count() or 2) - 1)
-        
+
         # PHASE 2: Detect Grid Search and allow refinement
         # Grid Search finds the best region, then we refine it. Same logic for long and short (direction-agnostic).
-        has_grid_search = any(stage.get('grid_mode', False) for stage in stages)
-        has_adaptive = any(stage.get('adaptive_meta') for stage in stages)
-        
+        has_grid_search = any(stage.get("grid_mode", False) for stage in stages)
+        has_adaptive = any(stage.get("adaptive_meta") for stage in stages)
+
         # Default Sequential Mode vars
         max_rounds = 5
         round_num = 1
@@ -1589,19 +1700,25 @@ class ComboOptimizer:
 
         # Reuse a single executor across all stages/rounds in this optimization.
         # This drastically reduces process spawn overhead and enables per-worker caches (e.g. 15m data).
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers, initializer=_init_worker_logging) as executor:
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=max_workers, initializer=_init_worker_logging
+        ) as executor:
             if has_grid_search and has_adaptive:
                 # -------------------------------------------------------------
                 # 4D ADAPTIVE OPTIMIZATION (MULTI-BRANCH)
                 # -------------------------------------------------------------
                 max_rounds = 4
                 logging.info("=" * 60)
-                logging.info("Adaptive Grid Search detected - 4 rounds: full grid (R1) then refinement (R2-R4)")
+                logging.info(
+                    "Adaptive Grid Search detected - 4 rounds: full grid (R1) then refinement (R2-R4)"
+                )
                 logging.info("=" * 60)
 
                 # Candidates list (starts with single 'root' candidate which covers the whole space)
                 # Structure: {'params': dict, 'meta': dict, 'round': 1, 'score': float}
-                candidates = [{'params': best_params.copy(), 'meta': {}, 'round': 1, 'score': float('-inf')}]
+                candidates = [
+                    {"params": best_params.copy(), "meta": {}, "round": 1, "score": float("-inf")}
+                ]
 
                 final_best_candidates = []
 
@@ -1612,7 +1729,9 @@ class ComboOptimizer:
                     next_round_candidates = []
 
                     for idx, candidate in enumerate(candidates):
-                        logging.info(f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}")
+                        logging.info(
+                            f"Processing Branch {idx+1}/{len(candidates)} based on: {candidate['params']}"
+                        )
 
                         # 1. Setup stages for this candidate
                         if round_num == 1:
@@ -1620,11 +1739,14 @@ class ComboOptimizer:
                         else:
                             # Clone stages to avoid polluting other branches
                             import copy
+
                             current_stages = copy.deepcopy(stages)
                             # Refine based on THIS candidate's best params
                             for stage in current_stages:
-                                if stage.get('adaptive_meta'):
-                                    self._refine_stage_values(stage, candidate['params'], round_num=round_num)
+                                if stage.get("adaptive_meta"):
+                                    self._refine_stage_values(
+                                        stage, candidate["params"], round_num=round_num
+                                    )
 
                         # 2. Execute Optimization for this branch
                         # For Round 1 (Grid), we want multiple candidates to feed the logical branches.
@@ -1633,7 +1755,7 @@ class ComboOptimizer:
 
                         execution_result = self._execute_opt_stages(
                             current_stages,
-                            candidate['params'],
+                            candidate["params"],
                             round_num,
                             max_workers,
                             template_name,
@@ -1652,18 +1774,28 @@ class ComboOptimizer:
                         if round_num == 1:
                             # Reviewing multiple candidates from Grid (or single fallback when all batches failed)
                             branch_candidates = execution_result
-                            if isinstance(branch_candidates, (tuple, list)) and len(branch_candidates) == 2 and not isinstance(branch_candidates[0], dict):
-                                branch_candidates = [{'params': branch_candidates[0], 'metrics': branch_candidates[1] or {}, 'score': float('-inf')}]
+                            if (
+                                isinstance(branch_candidates, (tuple, list))
+                                and len(branch_candidates) == 2
+                                and not isinstance(branch_candidates[0], dict)
+                            ):
+                                branch_candidates = [
+                                    {
+                                        "params": branch_candidates[0],
+                                        "metrics": branch_candidates[1] or {},
+                                        "score": float("-inf"),
+                                    }
+                                ]
                             for cand in branch_candidates:
-                                params = cand.get('params') if isinstance(cand, dict) else None
+                                params = cand.get("params") if isinstance(cand, dict) else None
                                 if params is None:
                                     continue
                                 result_candidate = {
-                                    'params': params,
-                                    'meta': candidate['meta'],
-                                    'round': round_num + 1,
-                                    'score': cand.get('score', float('-inf')),
-                                    'metrics': cand.get('metrics') or {}
+                                    "params": params,
+                                    "meta": candidate["meta"],
+                                    "round": round_num + 1,
+                                    "score": cand.get("score", float("-inf")),
+                                    "metrics": cand.get("metrics") or {},
                                 }
                                 next_round_candidates.append(result_candidate)
                         else:
@@ -1671,14 +1803,18 @@ class ComboOptimizer:
                             branch_best_params, branch_best_metrics = execution_result
 
                             # 3. Score this branch result
-                            score = branch_best_metrics.get('sharpe_ratio', -999) if branch_best_metrics else -999
+                            score = (
+                                branch_best_metrics.get("sharpe_ratio", -999)
+                                if branch_best_metrics
+                                else -999
+                            )
 
                             result_candidate = {
-                                'params': branch_best_params,
-                                'meta': candidate['meta'],
-                                'round': round_num + 1,
-                                'score': score,
-                                'metrics': branch_best_metrics
+                                "params": branch_best_params,
+                                "meta": candidate["meta"],
+                                "round": round_num + 1,
+                                "score": score,
+                                "metrics": branch_best_metrics,
                             }
 
                             next_round_candidates.append(result_candidate)
@@ -1688,7 +1824,9 @@ class ComboOptimizer:
                         # Select Top 10 Distinct Candidates for next round - USER REQUEST CHANGE 3 -> 10
                         # If Round 1 produced 20 candidates, we pick top 10 distinct ones here.
                         candidates = self._select_top_candidates(next_round_candidates, top_k=10)
-                        logging.info(f"Selected {len(candidates)} candidates for Round {round_num + 1}")
+                        logging.info(
+                            f"Selected {len(candidates)} candidates for Round {round_num + 1}"
+                        )
                     else:
                         # Final round - collect all results
                         final_best_candidates = next_round_candidates
@@ -1696,14 +1834,16 @@ class ComboOptimizer:
                 # Find absolute best from final candidates
                 if final_best_candidates:
                     # Sort by score descending
-                    final_best_candidates.sort(key=lambda x: x['score'], reverse=True)
+                    final_best_candidates.sort(key=lambda x: x["score"], reverse=True)
                     best_candidate = final_best_candidates[0]
 
-                    best_params = best_candidate['params']
-                    best_metrics = best_candidate['metrics']
+                    best_params = best_candidate["params"]
+                    best_metrics = best_candidate["metrics"]
 
                     # Log details about the winner
-                    logging.info(f"Global Best Found from {len(final_best_candidates)} final branches")
+                    logging.info(
+                        f"Global Best Found from {len(final_best_candidates)} final branches"
+                    )
 
                 converged = True  # Mark as done so we skip legacy loop logic
 
@@ -1727,7 +1867,7 @@ class ComboOptimizer:
                     if round_num > 1:
                         logging.info(f"Refining search grid around best result: {best_params}")
                         for stage in stages:
-                            if stage.get('adaptive_meta'):
+                            if stage.get("adaptive_meta"):
                                 self._refine_stage_values(stage, best_params)
 
                     # Execute stages using shared helper (single branch)
@@ -1753,92 +1893,99 @@ class ComboOptimizer:
                     params_changed = True  # (Simplify logic: always refine if rounds left in legacy mode unless strictly identical)
 
                     if round_num < max_rounds:
-                        logging.info(f"--- ROUND {round_num} COMPLETE: Parameters changed. Refining... ---")
+                        logging.info(
+                            f"--- ROUND {round_num} COMPLETE: Parameters changed. Refining... ---"
+                        )
                         round_num += 1
                     else:
                         converged = True
 
-                
         if not converged:
-             logging.warning(f"Optimization stopped after max rounds ({max_rounds}) without full convergence.")
+            logging.warning(
+                f"Optimization stopped after max rounds ({max_rounds}) without full convergence."
+            )
 
         total_optimization_time = time.time() - optimization_start_time
         rounds_display = round_num if converged else round_num - 1
 
         # Run final backtest with best parameters to get complete data
         logging.info(f"Running final backtest with best parameters: {best_params}")
-        
+
         try:
             # Reload data with best timeframe
             df_final = provider.fetch_ohlcv(
-                symbol=symbol,
-                timeframe=timeframe,
-                since_str=start_date,
-                until_str=end_date
+                symbol=symbol, timeframe=timeframe, since_str=start_date, until_str=end_date
             )
-            
+
             # Enrich df_final with regime for heavy metrics calculation
-            if 'regime' not in df_final.columns:
+            if "regime" not in df_final.columns:
                 try:
                     import pandas_ta as ta
                     import numpy as np
-                    
-                    if 'SMA_200' not in df_final.columns:
+
+                    if "SMA_200" not in df_final.columns:
                         df_final.ta.sma(length=200, append=True)
-                    
-                    if not any(c.startswith('ATR') for c in df_final.columns):
+
+                    if not any(c.startswith("ATR") for c in df_final.columns):
                         df_final.ta.atr(length=14, append=True)
-                    if not any(c.startswith('ADX') for c in df_final.columns):
+                    if not any(c.startswith("ADX") for c in df_final.columns):
                         df_final.ta.adx(length=14, append=True)
-                    
+
                     # Use SMA_50 as fallback for better coverage (SMA_200 has too many NaN)
-                    if 'SMA_50' not in df_final.columns:
+                    if "SMA_50" not in df_final.columns:
                         df_final.ta.sma(length=50, append=True)
-                    
-                    sma_col = 'SMA_50' if 'SMA_50' in df_final.columns else 'SMA_200'
+
+                    sma_col = "SMA_50" if "SMA_50" in df_final.columns else "SMA_200"
                     if sma_col in df_final.columns:
                         # Create regime with proper NaN handling
-                        df_final['regime'] = 'Unknown'
-                        mask_bull = df_final['close'] > df_final[sma_col]
-                        mask_bear = df_final['close'] < df_final[sma_col]
-                        df_final.loc[mask_bull, 'regime'] = 'Bull'
-                        df_final.loc[mask_bear, 'regime'] = 'Bear'
-                        
+                        df_final["regime"] = "Unknown"
+                        mask_bull = df_final["close"] > df_final[sma_col]
+                        mask_bear = df_final["close"] < df_final[sma_col]
+                        df_final.loc[mask_bull, "regime"] = "Bull"
+                        df_final.loc[mask_bear, "regime"] = "Bear"
+
                         # Log regime distribution for debugging
-                        regime_counts = df_final['regime'].value_counts()
-                        logging.info(f"Regime distribution using {sma_col}: {regime_counts.to_dict()}")
+                        regime_counts = df_final["regime"].value_counts()
+                        logging.info(
+                            f"Regime distribution using {sma_col}: {regime_counts.to_dict()}"
+                        )
                 except Exception as e:
                     logging.warning(f"Failed to enrich final DF with regime: {e}")
-            
+
             # Create strategy with best parameters
             strategy = self.combo_service.create_strategy(
-                template_name=template_name,
-                parameters=best_params
+                template_name=template_name, parameters=best_params
             )
-            
+
             # Generate signals
             df_with_signals = strategy.generate_signals(df_final.copy())
-            
+
             # Extract trades (same direction as optimization)
-            stop_loss = best_params.get('stop_loss', 0.0)
-            direction = best_params.get('direction', 'long')
-            if direction not in ('long', 'short'):
-                direction = 'long'
+            stop_loss = best_params.get("stop_loss", 0.0)
+            direction = best_params.get("direction", "long")
+            if direction not in ("long", "short"):
+                direction = "long"
             trades = extract_trades_from_signals(df_with_signals, stop_loss, direction)
-            
+
             # Recompute core metrics from final backtest trades (same set as returned to frontend)
             # Fixes Total Return / Win Rate mismatch vs. "List of trades" / Cumulative P&L
-            core_from_final = _metrics_from_trades(trades, initial_capital=100, context_params=best_params)
+            core_from_final = _metrics_from_trades(
+                trades, initial_capital=100, context_params=best_params
+            )
             if best_metrics is not None:
                 best_metrics.update(core_from_final)
-            
+
             # Post-Process Heavy Metrics (Only for best result)
             try:
                 logging.info(f"Calculating heavy metrics for {len(trades)} trades")
-                logging.info(f"Regime column present in df_with_signals: {'regime' in df_with_signals.columns}")
-                if 'regime' in df_with_signals.columns:
-                    logging.info(f"Regime values in signals df: {df_with_signals['regime'].value_counts().to_dict()}")
-                
+                logging.info(
+                    f"Regime column present in df_with_signals: {'regime' in df_with_signals.columns}"
+                )
+                if "regime" in df_with_signals.columns:
+                    logging.info(
+                        f"Regime values in signals df: {df_with_signals['regime'].value_counts().to_dict()}"
+                    )
+
                 heavy = _calculate_heavy_metrics(df_with_signals, trades)
                 if best_metrics:
                     best_metrics.update(heavy)
@@ -1846,29 +1993,41 @@ class ComboOptimizer:
             except Exception as e:
                 logging.error(f"Failed to calculate heavy metrics: {e}")
                 import traceback
+
                 traceback.print_exc()
-            
+
             # Prepare candles data
             candles = []
-            
+
             # Prepare candles data
             candles = []
             for idx, row in df_final.iterrows():
-                candles.append({
-                    'timestamp_utc': str(idx),
-                    'open': float(row['open']),
-                    'high': float(row['high']),
-                    'low': float(row['low']),
-                    'close': float(row['close']),
-                    'volume': float(row['volume'])
-                })
-            
+                candles.append(
+                    {
+                        "timestamp_utc": str(idx),
+                        "open": float(row["open"]),
+                        "high": float(row["high"]),
+                        "low": float(row["low"]),
+                        "close": float(row["close"]),
+                        "volume": float(row["volume"]),
+                    }
+                )
+
             # Extract indicator data (only numeric columns)
             indicator_data = {}
             excluded_cols = {
-                'open', 'high', 'low', 'close', 'volume', 'signal', 'regime',
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "signal",
+                "regime",
                 # timestamps / indexes (never treat as numeric indicator series)
-                'timestamp', 'timestamp_utc', 'time', 'date',
+                "timestamp",
+                "timestamp_utc",
+                "time",
+                "date",
             }
 
             try:
@@ -1886,31 +2045,35 @@ class ComboOptimizer:
                         continue
 
                     # Ensure JSON-serializable numeric list
-                    indicator_data[col] = [float(x) if x is not None else 0.0 for x in series.fillna(0).tolist()]
+                    indicator_data[col] = [
+                        float(x) if x is not None else 0.0 for x in series.fillna(0).tolist()
+                    ]
                 except Exception:
                     # Skip any non-numeric or non-serializable columns
                     continue
-            
+
         except Exception as e:
             logging.error(f"Final backtest failed: {e}")
             trades = []
             candles = []
             indicator_data = {}
-        
+
         # COMPLETION SUMMARY (after final backtest so metrics match returned trades)
         logging.info("=" * 80)
         logging.info("🎯 OPTIMIZATION COMPLETE")
         logging.info("=" * 80)
         logging.info(f"Rounds completed: {rounds_display}/{max_rounds}")
-        logging.info(f"Total execution time: {total_optimization_time:.1f}s ({total_optimization_time/60:.1f} minutes)")
+        logging.info(
+            f"Total execution time: {total_optimization_time:.1f}s ({total_optimization_time/60:.1f} minutes)"
+        )
         logging.info(f"Convergence: {'Yes' if converged else 'No'}")
         logging.info(f"\nFinal Configuration:")
         for param, value in best_params.items():
             logging.info(f"  {param}: {value}")
         if best_metrics:
-            tr_pct = best_metrics.get('total_return_pct')
+            tr_pct = best_metrics.get("total_return_pct")
             if tr_pct is None:
-                tr_pct = (best_metrics.get('total_return') or 0) * 100.0
+                tr_pct = (best_metrics.get("total_return") or 0) * 100.0
             logging.info(f"\nFinal Metrics:")
             logging.info(f"  Sharpe Ratio: {best_metrics.get('sharpe_ratio', 0):.3f}")
             logging.info(f"  Total Return: {tr_pct:.2f}%")
@@ -1936,8 +2099,9 @@ class ComboOptimizer:
         }
 
 
-
-def _metrics_from_trades(trades: list, initial_capital: float = 100, context_params: Optional[Dict[str, Any]] = None) -> dict:
+def _metrics_from_trades(
+    trades: list, initial_capital: float = 100, context_params: Optional[Dict[str, Any]] = None
+) -> dict:
     """
     Single source of truth for all metrics derived from a trade list.
     Used by _run_backtest_logic (optimization scoring) and final backtest.
@@ -1948,40 +2112,36 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
 
     out = {
         # --- Core ---
-        'total_trades': 0,
-        'win_rate': 0.0,
-        'total_return': 0.0,          # decimal (e.g. 0.35 = +35%)
-        'total_return_pct': 0.0,      # percent (e.g. 35.0)
-        'avg_profit': 0.0,            # mean return per trade (decimal)
-
+        "total_trades": 0,
+        "win_rate": 0.0,
+        "total_return": 0.0,  # decimal (e.g. 0.35 = +35%)
+        "total_return_pct": 0.0,  # percent (e.g. 35.0)
+        "avg_profit": 0.0,  # mean return per trade (decimal)
         # --- Risk / ratios ---
-        'sharpe_ratio': 0.0,
-        'sortino_ratio': None,        # may be None when degenerate
-        'sortino_status': None,       # ok|degenerate|invalid
-        'downside_deviation': None,   # downside std (same units as returns)
-        'neg_return_count': 0,
-        'return_series_kind': 'per_trade',
-
+        "sharpe_ratio": 0.0,
+        "sortino_ratio": None,  # may be None when degenerate
+        "sortino_status": None,  # ok|degenerate|invalid
+        "downside_deviation": None,  # downside std (same units as returns)
+        "neg_return_count": 0,
+        "return_series_kind": "per_trade",
         # --- PnL / trade stats ---
-        'profit_factor': 0.0,
-        'max_loss': 0.0,
-        'max_consecutive_losses': 0,
-
+        "profit_factor": 0.0,
+        "max_loss": 0.0,
+        "max_consecutive_losses": 0,
         # Drawdown: keep both decimal + pct (avoid unit confusion)
-        'max_drawdown': 0.0,          # decimal (0..1)
-        'max_drawdown_pct': 0.0,      # percent (0..100)
-
+        "max_drawdown": 0.0,  # decimal (0..1)
+        "max_drawdown_pct": 0.0,  # percent (0..100)
         # Expectancy: provide multiple units explicitly
-        'expectancy': 0.0,            # decimal per trade (same unit as avg_profit)
-        'expectancy_pct': 0.0,        # percent per trade
-        'expectancy_usd_10k': 0.0,    # legacy-style (assumes $10k notional)
+        "expectancy": 0.0,  # decimal per trade (same unit as avg_profit)
+        "expectancy_pct": 0.0,  # percent per trade
+        "expectancy_usd_10k": 0.0,  # legacy-style (assumes $10k notional)
     }
     if not trades:
         return out
 
     # Ordenar por entry_time (mesma ordem do frontend / Cumulative P&L)
     def _ts(t):
-        et = t.get('entry_time')
+        et = t.get("entry_time")
         if et is None:
             return 0
         try:
@@ -1995,19 +2155,19 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
     # profit é decimal: 0.05 = 5%, 1.66 = 166%, 16.32 = 1632% — ganhos >100% são válidos (ex.: TradingView)
     returns = []
     for t in sorted_trades:
-        p = t.get('profit')
+        p = t.get("profit")
         if p is None:
             continue
         returns.append(float(p))
 
     n = len(returns)
     if n == 0:
-        out['total_trades'] = len(trades)
+        out["total_trades"] = len(trades)
         return out
 
     wins = sum(1 for r in returns if r > 0)
-    out['total_trades'] = n
-    out['win_rate'] = wins / n
+    out["total_trades"] = n
+    out["win_rate"] = wins / n
 
     # Compounding (equity curve)
     cap = float(initial_capital)
@@ -2018,37 +2178,37 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
 
     total_return_pct = (cap / initial_capital - 1) * 100.0
     total_return = total_return_pct / 100.0
-    out['total_return'] = float(total_return)
-    out['total_return_pct'] = float(total_return_pct)
+    out["total_return"] = float(total_return)
+    out["total_return_pct"] = float(total_return_pct)
 
     # avg_profit = mean return per trade (decimal)
-    out['avg_profit'] = float(np.mean(np.array(returns, dtype=float))) if n else 0.0
+    out["avg_profit"] = float(np.mean(np.array(returns, dtype=float))) if n else 0.0
 
     # Sharpe (per-trade return series; not annualized)
     arr = np.array(returns, dtype=float)
     std_dev = float(np.std(arr))
-    out['sharpe_ratio'] = float(np.mean(arr) / std_dev) if std_dev > 0 else 0.0
+    out["sharpe_ratio"] = float(np.mean(arr) / std_dev) if std_dev > 0 else 0.0
 
     # Sortino (downside deviation) with guardrails
     neg = arr[arr < 0]
-    out['neg_return_count'] = int(len(neg))
+    out["neg_return_count"] = int(len(neg))
 
     # Note: with very few negatives or near-zero downside deviation, Sortino is degenerate.
     # Returning a huge number is misleading; we return None + status instead.
     eps = 1e-9
     if len(neg) < 2:
-        out['sortino_ratio'] = None
-        out['downside_deviation'] = 0.0
-        out['sortino_status'] = 'degenerate'
+        out["sortino_ratio"] = None
+        out["downside_deviation"] = 0.0
+        out["sortino_status"] = "degenerate"
     else:
         down_std = float(np.std(neg))
-        out['downside_deviation'] = down_std
+        out["downside_deviation"] = down_std
         if down_std < eps:
-            out['sortino_ratio'] = None
-            out['sortino_status'] = 'degenerate'
+            out["sortino_ratio"] = None
+            out["sortino_status"] = "degenerate"
         else:
-            out['sortino_ratio'] = float(np.mean(arr) / down_std)
-            out['sortino_status'] = 'ok'
+            out["sortino_ratio"] = float(np.mean(arr) / down_std)
+            out["sortino_status"] = "ok"
 
     # Profit factor (USD com compounding)
     cap2 = float(initial_capital)
@@ -2061,18 +2221,19 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
         else:
             gross_loss_usd += abs(pnl)
         cap2 *= 1.0 + r
-    out['profit_factor'] = (
-        gross_profit_usd / gross_loss_usd if gross_loss_usd > 0
+    out["profit_factor"] = (
+        gross_profit_usd / gross_loss_usd
+        if gross_loss_usd > 0
         else (999.0 if gross_profit_usd > 0 else 0.0)
     )
 
-    out['max_loss'] = float(np.min(arr))
+    out["max_loss"] = float(np.min(arr))
 
     # Expectancy: keep units explicit
     mean_r = float(np.mean(arr))
-    out['expectancy'] = mean_r
-    out['expectancy_pct'] = mean_r * 100.0
-    out['expectancy_usd_10k'] = mean_r * 10000.0  # legacy: assumes $10k notional
+    out["expectancy"] = mean_r
+    out["expectancy_pct"] = mean_r * 100.0
+    out["expectancy_usd_10k"] = mean_r * 10000.0  # legacy: assumes $10k notional
 
     # Max consecutive losses
     streak = 0
@@ -2083,7 +2244,7 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
             max_streak = max(max_streak, streak)
         else:
             streak = 0
-    out['max_consecutive_losses'] = max_streak
+    out["max_consecutive_losses"] = max_streak
 
     # Max drawdown (equity curve em valor absoluto)
     peak = float(initial_capital)
@@ -2095,8 +2256,8 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
         max_dd = max(max_dd, float(dd))
 
     # IMPORTANT: store drawdown as decimal + pct (avoid mixing units elsewhere)
-    out['max_drawdown'] = float(max_dd)            # 0..1
-    out['max_drawdown_pct'] = float(max_dd) * 100.0
+    out["max_drawdown"] = float(max_dd)  # 0..1
+    out["max_drawdown_pct"] = float(max_dd) * 100.0
 
     return out
 
@@ -2104,40 +2265,49 @@ def _metrics_from_trades(trades: list, initial_capital: float = 100, context_par
 def _calculate_heavy_metrics(df, trades):
     metrics = {}
     try:
-        if 'regime' in df.columns and trades:
-            bull_wins = 0; bull_count = 0
-            bear_wins = 0; bear_count = 0
+        if "regime" in df.columns and trades:
+            bull_wins = 0
+            bull_count = 0
+            bear_wins = 0
+            bear_count = 0
             import pandas as pd
+
             for t in trades:
-                et = t.get('entry_time')
+                et = t.get("entry_time")
                 if et:
                     try:
-                        if isinstance(et, str): et = pd.to_datetime(et)
-                        
+                        if isinstance(et, str):
+                            et = pd.to_datetime(et)
+
                         # Normalize Timezone to match DataFrame index
                         # If Index is Aware but ET is Naive -> Localize to UTC (assumption)
                         if df.index.tz is not None and et.tz is None:
-                            et = et.tz_localize('UTC')
+                            et = et.tz_localize("UTC")
                         # If Index is Naive but ET is Aware -> Convert ET to Naive
                         elif df.index.tz is None and et.tz is not None:
                             et = et.tz_convert(None)
-                            
+
                         idx_match = df.index.asof(et)
                         if idx_match is not None:
                             # Verify if match is "close enough" (optional, but asof finds PREVIOUS)
                             # Logic assumes daily/intraday continuity.
-                            
-                            r_val = df.loc[idx_match]['regime']
-                            if isinstance(r_val, pd.Series): r_val = r_val.iloc[0]
-                            is_win = t.get('profit', 0) > 0
-                            if r_val == 'Bull':
+
+                            r_val = df.loc[idx_match]["regime"]
+                            if isinstance(r_val, pd.Series):
+                                r_val = r_val.iloc[0]
+                            is_win = t.get("profit", 0) > 0
+                            if r_val == "Bull":
                                 bull_count += 1
-                                if is_win: bull_wins += 1
-                            elif r_val == 'Bear':
+                                if is_win:
+                                    bull_wins += 1
+                            elif r_val == "Bear":
                                 bear_count += 1
-                                if is_win: bear_wins += 1
-                    except Exception: pass
-            metrics['win_rate_bull'] = (bull_wins / bull_count) if bull_count > 0 else 0
-            metrics['win_rate_bear'] = (bear_wins / bear_count) if bear_count > 0 else 0
-    except Exception as e: pass
+                                if is_win:
+                                    bear_wins += 1
+                    except Exception:
+                        pass
+            metrics["win_rate_bull"] = (bull_wins / bull_count) if bull_count > 0 else 0
+            metrics["win_rate_bear"] = (bear_wins / bear_count) if bear_count > 0 else 0
+    except Exception as e:
+        pass
     return metrics

@@ -43,7 +43,6 @@ from app.workflow_models import (
     WorkflowHandoff,
 )
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MAIN_SQLITE = PROJECT_ROOT / "backend" / "backtest.db"
 DEFAULT_WORKFLOW_SQLITE = PROJECT_ROOT / "workflow.db"
@@ -79,7 +78,9 @@ def _normalize_payload(table_name: str, payload: dict[str, Any]) -> dict[str, An
     return normalized
 
 
-def _copy_by_primary_key(session, table_name: str, model, rows: list[dict[str, Any]], key_fields: tuple[str, ...]) -> int:
+def _copy_by_primary_key(
+    session, table_name: str, model, rows: list[dict[str, Any]], key_fields: tuple[str, ...]
+) -> int:
     migrated = 0
     for payload in rows:
         payload = _normalize_payload(table_name, payload)
@@ -106,7 +107,9 @@ def _load_sqlite_rows(path: Path, table: str) -> list[dict[str, Any]]:
         conn.close()
 
 
-def migrate_main_sqlite_to_postgres(sqlite_path: Path, optimization_sqlite_path: Path | None) -> list[tuple[str, int]]:
+def migrate_main_sqlite_to_postgres(
+    sqlite_path: Path, optimization_sqlite_path: Path | None
+) -> list[tuple[str, int]]:
     database_url = os.getenv("CRYPTO_DATABASE_URL") or os.getenv("DATABASE_URL")
     if not database_url or not database_url.lower().startswith("postgresql"):
         raise SystemExit("CRYPTO_DATABASE_URL or DATABASE_URL must point to PostgreSQL")
@@ -179,7 +182,9 @@ def _resolve_target_project_urls(source_project: Project) -> tuple[str | None, s
     )
 
 
-def migrate_workflow_source_to_registry_and_projects(source_workflow_url: str) -> dict[str, dict[str, int]]:
+def migrate_workflow_source_to_registry_and_projects(
+    source_workflow_url: str,
+) -> dict[str, dict[str, int]]:
     registry_url = os.getenv("WORKFLOW_DATABASE_URL")
     if not registry_url or not registry_url.lower().startswith("postgresql"):
         raise SystemExit("WORKFLOW_DATABASE_URL must point to PostgreSQL")
@@ -205,7 +210,9 @@ def migrate_workflow_source_to_registry_and_projects(source_workflow_url: str) -
                     f"Project '{source_project.slug}' workflow database must point to PostgreSQL"
                 )
 
-            target_project = registry_db.query(Project).filter(Project.slug == source_project.slug).first()
+            target_project = (
+                registry_db.query(Project).filter(Project.slug == source_project.slug).first()
+            )
             if target_project is None:
                 target_project = Project(
                     id=source_project.id,
@@ -235,7 +242,9 @@ def migrate_workflow_source_to_registry_and_projects(source_workflow_url: str) -
             ProjectSession = get_workflow_sessionmaker_for_url(workflow_database_url)
             with ProjectSession() as project_db:
                 init_workflow_schema_for_url(workflow_database_url)
-                existing_project = project_db.query(Project).filter(Project.slug == target_project.slug).first()
+                existing_project = (
+                    project_db.query(Project).filter(Project.slug == target_project.slug).first()
+                )
                 if existing_project is None:
                     project_db.add(
                         Project(
@@ -253,11 +262,21 @@ def migrate_workflow_source_to_registry_and_projects(source_workflow_url: str) -
                     )
                     project_db.commit()
 
-                source_changes = source_db.query(Change).filter(Change.project_id == source_project.id).all()
+                source_changes = (
+                    source_db.query(Change).filter(Change.project_id == source_project.id).all()
+                )
                 change_ids = [row.id for row in source_changes]
 
-                source_agent_runs = source_db.query(AgentRun).filter(AgentRun.change_pk.in_(change_ids)).all() if change_ids else []
-                source_work_items = source_db.query(WorkItem).filter(WorkItem.change_pk.in_(change_ids)).all() if change_ids else []
+                source_agent_runs = (
+                    source_db.query(AgentRun).filter(AgentRun.change_pk.in_(change_ids)).all()
+                    if change_ids
+                    else []
+                )
+                source_work_items = (
+                    source_db.query(WorkItem).filter(WorkItem.change_pk.in_(change_ids)).all()
+                    if change_ids
+                    else []
+                )
                 work_item_ids = [row.id for row in source_work_items]
 
                 source_deps = (
@@ -272,7 +291,13 @@ def migrate_workflow_source_to_registry_and_projects(source_workflow_url: str) -
                     if work_item_ids
                     else []
                 )
-                source_locks = source_db.query(WorkItemLock).filter(WorkItemLock.work_item_id.in_(work_item_ids)).all() if work_item_ids else []
+                source_locks = (
+                    source_db.query(WorkItemLock)
+                    .filter(WorkItemLock.work_item_id.in_(work_item_ids))
+                    .all()
+                    if work_item_ids
+                    else []
+                )
                 source_comments = (
                     source_db.query(WorkflowComment)
                     .filter(

@@ -41,22 +41,30 @@ def test_external_balances_uses_current_user_credentials(tmp_path: Path, monkeyp
         "min_usd": None,
     }
 
-    def _fake_fetch_spot_balances_snapshot(*, lookback_days=None, min_usd=None, api_key=None, api_secret=None, base_url=None):
+    def _fake_fetch_spot_balances_snapshot(
+        *, lookback_days=None, min_usd=None, api_key=None, api_secret=None, base_url=None
+    ):
         captured["api_key"] = api_key
         captured["api_secret"] = api_secret
         captured["min_usd"] = min_usd
         return {"balances": [], "total_usd": 0.0, "as_of": "2026-03-31T00:00:00Z"}
 
-    monkeypatch.setattr(external_balances, "fetch_spot_balances_snapshot", _fake_fetch_spot_balances_snapshot)
+    monkeypatch.setattr(
+        external_balances, "fetch_spot_balances_snapshot", _fake_fetch_spot_balances_snapshot
+    )
 
     with SessionLocal() as db:
         user_credentials.put_binance_credentials(
-            user_credentials.BinanceCredentialPayload(api_key="user-a-key", api_secret="user-a-secret-123"),
+            user_credentials.BinanceCredentialPayload(
+                api_key="user-a-key", api_secret="user-a-secret-123"
+            ),
             current_user_id="user-a",
             db=db,
         )
         user_credentials.put_binance_credentials(
-            user_credentials.BinanceCredentialPayload(api_key="user-b-key", api_secret="user-b-secret-123"),
+            user_credentials.BinanceCredentialPayload(
+                api_key="user-b-key", api_secret="user-b-secret-123"
+            ),
             current_user_id="user-b",
             db=db,
         )

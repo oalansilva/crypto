@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.models import UserExchangeCredential
 
-
 BINANCE_PROVIDER = "binance"
 
 
-def get_user_exchange_credential(db: Session, user_id: str, provider: str) -> Optional[UserExchangeCredential]:
+def get_user_exchange_credential(
+    db: Session, user_id: str, provider: str
+) -> Optional[UserExchangeCredential]:
     return (
         db.query(UserExchangeCredential)
         .filter(

@@ -113,7 +113,9 @@ def desired_gate_states_for_column(column: str) -> list[GateDecision]:
     return out
 
 
-def validate_kanban_transition(*, current_column: str | None, target_column: str | None) -> tuple[str, str]:
+def validate_kanban_transition(
+    *, current_column: str | None, target_column: str | None
+) -> tuple[str, str]:
     current = _normalize_status(current_column)
     target = _normalize_status(target_column)
 
@@ -138,7 +140,9 @@ def validate_kanban_transition(*, current_column: str | None, target_column: str
     is_backward = target_idx < current_idx
     is_allowed_forward = target in _ALLOWED_FORWARD_MOVES.get(current, set())
     if not is_backward and not is_allowed_forward:
-        allowed_targets = sorted(set(_ALLOWED_FORWARD_MOVES.get(current, set())) | set(KANBAN_COLUMNS[:current_idx]))
+        allowed_targets = sorted(
+            set(_ALLOWED_FORWARD_MOVES.get(current, set())) | set(KANBAN_COLUMNS[:current_idx])
+        )
         raise HTTPException(
             status_code=409,
             detail={
@@ -160,13 +164,17 @@ def sync_change_gates_for_column(
     target_column: str,
     actor: str = "kanban",
 ) -> bool:
-    _current, target = validate_kanban_transition(current_column=change.status, target_column=target_column)
+    _current, target = validate_kanban_transition(
+        current_column=change.status, target_column=target_column
+    )
     mutated = False
 
     latest: dict[str, ApprovalState] = {}
     approvals = (
         db.query(WorkflowApproval)
-        .filter(WorkflowApproval.scope == ApprovalScope.change, WorkflowApproval.change_pk == change.id)
+        .filter(
+            WorkflowApproval.scope == ApprovalScope.change, WorkflowApproval.change_pk == change.id
+        )
         .order_by(WorkflowApproval.created_at.asc())
         .all()
     )
@@ -207,28 +215,28 @@ def validate_transition_hooks(
     target_column: str,
 ) -> None:
     """Run validation hooks before allowing a transition.
-    
+
     This function checks all relevant validations before a change
     can move to the target column.
-    
+
     Args:
         db: Database session
         change: The change being transitioned
         target_column: The target Kanban column
-        
+
     Raises:
         HTTPException: If any validation fails
     """
     target = _normalize_status(target_column)
-    
+
     # Validate DEV -> QA transition
     if target == "QA":
         _validate_dev_to_qa(db, change)
-    
-    # Validate QA -> Homologation transition  
+
+    # Validate QA -> Homologation transition
     if target == "Homologation":
         _validate_qa_to_homologation(db, change)
-    
+
     # Validate Homologation -> Archived transition
     if target == "Archived":
         _validate_homologation_to_archived(db, change)
@@ -236,22 +244,22 @@ def validate_transition_hooks(
 
 def _validate_dev_to_qa(db: Session, change: Change) -> None:
     """Validate DEV -> QA transition.
-    
+
     Requires:
     - Approval gate files exist (proposal.md, review-ptbr.md, tasks.md)
-    
+
     Args:
         db: Database session
         change: The change being transitioned
-        
+
     Raises:
         HTTPException: If validation fails
     """
     # Import here to avoid circular imports
     from app.services.workflow_validation_service import validate_approval_gate
-    
+
     gate_status = validate_approval_gate(change.change_id)
-    
+
     if not gate_status.is_valid:
         raise HTTPException(
             status_code=409,
@@ -267,23 +275,27 @@ def _validate_dev_to_qa(db: Session, change: Change) -> None:
 
 def _validate_qa_to_homologation(db: Session, change: Change) -> None:
     """Validate QA -> Homologation transition.
-    
+
     Requires:
     - All work items (stories/bugs) are done or canceled
-    
+
     Args:
         db: Database session
         change: The change being transitioned
-        
+
     Raises:
         HTTPException: If validation fails
     """
     # Check that all work items are done or canceled
-    open_items = db.query(WorkItem).filter(
-        WorkItem.change_pk == change.id,
-        WorkItem.state.notin_([WorkItemState.done, WorkItemState.canceled]),
-    ).count()
-    
+    open_items = (
+        db.query(WorkItem)
+        .filter(
+            WorkItem.change_pk == change.id,
+            WorkItem.state.notin_([WorkItemState.done, WorkItemState.canceled]),
+        )
+        .count()
+    )
+
     if open_items > 0:
         raise HTTPException(
             status_code=409,
@@ -299,9 +311,9 @@ def _validate_qa_to_homologation(db: Session, change: Change) -> None:
 
 def _validate_homologation_to_archived(db: Session, change: Change) -> None:
     """Validate Homologation -> Archived transition.
-    
+
     No additional requirements - this is the final state.
-    
+
     Args:
         db: Database session
         change: The change being transitioned
@@ -316,12 +328,12 @@ def validate_work_item_transition(
     target_state: WorkItemState,
 ) -> None:
     """Validate work item state transition.
-    
+
     Args:
         db: Database session
         work_item: The work item being transitioned
         target_state: The target state
-        
+
     Raises:
         HTTPException: If validation fails
     """
@@ -332,22 +344,22 @@ def validate_work_item_transition(
 
 def _validate_story_done(db: Session, story: WorkItem) -> None:
     """Validate that a story can be marked as done.
-    
+
     Requires:
     - All child bugs are done or canceled
-    
+
     Args:
         db: Database session
         story: The story being marked done
-        
+
     Raises:
         HTTPException: If validation fails
     """
     # Import here to avoid circular imports
     from app.services.workflow_validation_service import validate_story_closure
-    
+
     closure_status = validate_story_closure(db, story.id)
-    
+
     if not closure_status.is_valid:
         raise HTTPException(
             status_code=409,

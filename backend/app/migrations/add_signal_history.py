@@ -2,6 +2,7 @@
 
 Revision ID: add_signal_history
 """
+
 from __future__ import annotations
 
 import sqlite3

@@ -7,7 +7,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
-
 # Load backend/.env and repo-root .env into os.environ for runtime code that uses
 # os.getenv directly (e.g. Binance wallet integration). Keep override=False so
 # already-exported env vars still win.
@@ -54,6 +53,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = False
         extra = "allow"
+
 
 @lru_cache()
 def get_settings() -> Settings:

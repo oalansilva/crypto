@@ -37,7 +37,10 @@ from app.routes.system_preferences import router as system_preferences_router
 from app.routes.retrospectives import router as retrospectives_router
 from app.routes.onchain_signals import router as onchain_signals_router
 from app.services.signal_monitor import signal_monitor
-from app.services.binance_service import start_signal_feed_snapshot_worker, stop_signal_feed_snapshot_worker
+from app.services.binance_service import (
+    start_signal_feed_snapshot_worker,
+    stop_signal_feed_snapshot_worker,
+)
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -47,9 +50,9 @@ root_logger = logging.getLogger()
 root_logger.setLevel(logging.INFO)
 
 # Create file handler
-file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
 file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 
 # Add handler if not already present
 if not any(isinstance(h, logging.FileHandler) for h in root_logger.handlers):
@@ -62,8 +65,10 @@ logger.info("=" * 80)
 
 from contextlib import asynccontextmanager
 from app.database import Base, engine, sync_postgres_identity_sequences
+
 # Import models to register them with Base
 import app.models
+
 
 def seed_combo_templates_if_empty():
     """Seed combo_templates from JSON export if the table is empty."""
@@ -76,6 +81,7 @@ def seed_combo_templates_if_empty():
     except Exception as e:
         logger.error(f"Error seeding combo_templates: {e}")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize DB
@@ -85,6 +91,7 @@ async def lifespan(app: FastAPI):
         sync_postgres_identity_sequences()
         # Apply lightweight forward-only schema migrations for existing tables
         from app.database import ensure_runtime_schema_migrations
+
         ensure_runtime_schema_migrations()
 
         # Workflow DB (optional; enabled via WORKFLOW_DB_ENABLED=1)
@@ -122,7 +129,9 @@ async def lifespan(app: FastAPI):
                         )
                         continue
 
-                    existing = db.query(Project).filter(Project.slug == project_data["slug"]).first()
+                    existing = (
+                        db.query(Project).filter(Project.slug == project_data["slug"]).first()
+                    )
                     if existing:
                         existing.root_directory = project_data["root_directory"]
                         existing.database_url = project_data["database_url"]
@@ -156,6 +165,7 @@ async def lifespan(app: FastAPI):
     yield
     await stop_signal_feed_snapshot_worker()
     signal_monitor.stop()
+
 
 settings = get_settings()
 
@@ -192,11 +202,7 @@ def _build_cors_origins() -> list[str]:
 
 cors_origins = _build_cors_origins()
 
-app = FastAPI(
-    title=settings.api_title,
-    version=settings.api_version,
-    lifespan=lifespan
-)
+app = FastAPI(title=settings.api_title, version=settings.api_version, lifespan=lifespan)
 
 # CORS must be explicit when credentials are enabled, otherwise browsers reject
 # cross-origin requests from the public frontend.
@@ -213,8 +219,11 @@ app.add_middleware(
 async def add_signals_disclaimer_header(request: Request, call_next):
     response = await call_next(request)
     if request.url.path.startswith("/api/signals"):
-        response.headers["X-Disclaimer"] = "Isenção de responsabilidade: este não é advice financeiro."
+        response.headers["X-Disclaimer"] = (
+            "Isenção de responsabilidade: este não é advice financeiro."
+        )
     return response
+
 
 # Include API routes
 app.include_router(router)
@@ -242,15 +251,14 @@ app.include_router(user_credentials_router)
 app.include_router(system_preferences_router)
 app.include_router(retrospectives_router)
 
+
 @app.get("/")
 async def root():
-    return {
-        "service": "Crypto Backtester API",
-        "version": settings.api_version,
-        "docs": "/docs"
-    }
+    return {"service": "Crypto Backtester API", "version": settings.api_version, "docs": "/docs"}
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
     # Forced reload for src updates

@@ -29,7 +29,6 @@ from sqlalchemy.orm import Session
 from app.services.coordination_service import project_root
 from app.workflow_models import ApprovalScope, ApprovalState, Change, WorkflowApproval
 
-
 KANBAN_FLOW_ORDER = [
     "Pending",
     "PO",
@@ -98,7 +97,9 @@ def _latest_gate_states(db: Session, change_pk: str) -> Dict[str, ApprovalState]
     out: Dict[str, ApprovalState] = {}
     items = (
         db.query(WorkflowApproval)
-        .filter(WorkflowApproval.scope == ApprovalScope.change, WorkflowApproval.change_pk == change_pk)
+        .filter(
+            WorkflowApproval.scope == ApprovalScope.change, WorkflowApproval.change_pk == change_pk
+        )
         .order_by(WorkflowApproval.created_at.asc())
         .all()
     )

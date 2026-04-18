@@ -28,7 +28,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import get_settings
 
-
 WorkflowBase = declarative_base()
 _workflow_engines: Dict[str, object] = {}
 _workflow_sessionmakers: Dict[str, sessionmaker] = {}
@@ -59,9 +58,7 @@ def _default_sqlite_url() -> str:
 
 def _is_postgres_url(url: str) -> bool:
     normalized = (url or "").strip().lower()
-    return normalized.startswith("postgresql://") or normalized.startswith(
-        "postgresql+psycopg2://"
-    )
+    return normalized.startswith("postgresql://") or normalized.startswith("postgresql+psycopg2://")
 
 
 def get_workflow_db_url() -> str | None:
@@ -69,9 +66,7 @@ def get_workflow_db_url() -> str | None:
         return None
 
     settings = get_settings()
-    url = getattr(settings, "workflow_database_url", None) or os.getenv(
-        "WORKFLOW_DATABASE_URL"
-    )
+    url = getattr(settings, "workflow_database_url", None) or os.getenv("WORKFLOW_DATABASE_URL")
     if url:
         if not _is_postgres_url(url) and not _allow_sqlite_for_tests():
             raise RuntimeError(
@@ -162,63 +157,43 @@ def init_workflow_schema_for_url(url: str) -> None:
         try:
             is_sqlite = str(workflow_engine.url).startswith("sqlite:")
             if is_sqlite:
-                cols = {
-                    row[1]
-                    for row in conn.execute(text("PRAGMA table_info(wf_changes)"))
-                }
+                cols = {row[1] for row in conn.execute(text("PRAGMA table_info(wf_changes)"))}
             else:
-                rows = conn.execute(
-                    text(
-                        """
+                rows = conn.execute(text("""
                         SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = current_schema()
                           AND table_name = 'wf_changes'
-                        """
-                    )
-                )
+                        """))
                 cols = {str(row[0]) for row in rows}
             if "description" not in cols:
                 conn.execute(
-                    text(
-                        "ALTER TABLE wf_changes ADD COLUMN description TEXT NOT NULL DEFAULT ''"
-                    )
+                    text("ALTER TABLE wf_changes ADD COLUMN description TEXT NOT NULL DEFAULT ''")
                 )
             if "sort_order" not in cols:
                 conn.execute(
-                    text(
-                        "ALTER TABLE wf_changes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"
-                    )
+                    text("ALTER TABLE wf_changes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
                 )
             if "card_number" not in cols:
-                conn.execute(
-                    text("ALTER TABLE wf_changes ADD COLUMN card_number INTEGER")
-                )
+                conn.execute(text("ALTER TABLE wf_changes ADD COLUMN card_number INTEGER"))
             if "image_data" not in cols:
                 conn.execute(
-                    text(
-                        "ALTER TABLE wf_changes ADD COLUMN image_data TEXT NOT NULL DEFAULT '[]'"
-                    )
+                    text("ALTER TABLE wf_changes ADD COLUMN image_data TEXT NOT NULL DEFAULT '[]'")
                 )
 
             project_cols = None
             try:
                 if is_sqlite:
                     project_cols = {
-                        row[1]
-                        for row in conn.execute(text("PRAGMA table_info(wf_projects)"))
+                        row[1] for row in conn.execute(text("PRAGMA table_info(wf_projects)"))
                     }
                 else:
-                    rows = conn.execute(
-                        text(
-                            """
+                    rows = conn.execute(text("""
                             SELECT column_name
                             FROM information_schema.columns
                             WHERE table_schema = current_schema()
                               AND table_name = 'wf_projects'
-                            """
-                        )
-                    )
+                            """))
                     project_cols = {str(row[0]) for row in rows}
             except Exception:
                 pass
@@ -226,27 +201,19 @@ def init_workflow_schema_for_url(url: str) -> None:
             if project_cols is not None:
                 if "root_directory" not in project_cols:
                     conn.execute(
-                        text(
-                            "ALTER TABLE wf_projects ADD COLUMN root_directory VARCHAR(512)"
-                        )
+                        text("ALTER TABLE wf_projects ADD COLUMN root_directory VARCHAR(512)")
                     )
                 if "database_url" not in project_cols:
                     conn.execute(
-                        text(
-                            "ALTER TABLE wf_projects ADD COLUMN database_url VARCHAR(1024)"
-                        )
+                        text("ALTER TABLE wf_projects ADD COLUMN database_url VARCHAR(1024)")
                     )
                 if "frontend_url" not in project_cols:
                     conn.execute(
-                        text(
-                            "ALTER TABLE wf_projects ADD COLUMN frontend_url VARCHAR(512)"
-                        )
+                        text("ALTER TABLE wf_projects ADD COLUMN frontend_url VARCHAR(512)")
                     )
                 if "backend_url" not in project_cols:
                     conn.execute(
-                        text(
-                            "ALTER TABLE wf_projects ADD COLUMN backend_url VARCHAR(512)"
-                        )
+                        text("ALTER TABLE wf_projects ADD COLUMN backend_url VARCHAR(512)")
                     )
                 if "workflow_database_url" not in project_cols:
                     conn.execute(
@@ -255,33 +222,22 @@ def init_workflow_schema_for_url(url: str) -> None:
                         )
                     )
                 if "tech_stack" not in project_cols:
-                    conn.execute(
-                        text(
-                            "ALTER TABLE wf_projects ADD COLUMN tech_stack VARCHAR(512)"
-                        )
-                    )
+                    conn.execute(text("ALTER TABLE wf_projects ADD COLUMN tech_stack VARCHAR(512)"))
 
             # Lightweight forward-only migration for work_items table
             work_items_cols = None
             try:
                 if is_sqlite:
                     work_items_cols = {
-                        row[1]
-                        for row in conn.execute(
-                            text("PRAGMA table_info(wf_work_items)")
-                        )
+                        row[1] for row in conn.execute(text("PRAGMA table_info(wf_work_items)"))
                     }
                 else:
-                    rows = conn.execute(
-                        text(
-                            """
+                    rows = conn.execute(text("""
                             SELECT column_name
                             FROM information_schema.columns
                             WHERE table_schema = current_schema()
                               AND table_name = 'wf_work_items'
-                            """
-                        )
-                    )
+                            """))
                     work_items_cols = {str(row[0]) for row in rows}
             except Exception:
                 pass
@@ -301,9 +257,7 @@ def init_workflow_schema_for_url(url: str) -> None:
                     )
                 if "last_agent_acted" not in work_items_cols:
                     conn.execute(
-                        text(
-                            "ALTER TABLE wf_work_items ADD COLUMN last_agent_acted VARCHAR(64)"
-                        )
+                        text("ALTER TABLE wf_work_items ADD COLUMN last_agent_acted VARCHAR(64)")
                     )
         except Exception:
             # Best-effort lightweight compatibility shim.
@@ -319,14 +273,21 @@ def init_workflow_schema() -> None:
 
 def get_project_workflow_db_url(project) -> str:
     url = getattr(project, "workflow_database_url", None)
+    registry_url = get_workflow_db_url()
     if url:
+        # Tests often store placeholder Postgres URLs as metadata while still using the
+        # shared SQLite workflow DB for in-process isolation.
+        if (
+            _allow_sqlite_for_tests()
+            and registry_url
+            and registry_url.startswith("sqlite:")
+            and not str(url).startswith("sqlite:")
+        ):
+            return registry_url
         if not _is_postgres_url(url) and not _allow_sqlite_for_tests():
-            raise RuntimeError(
-                f"Project '{project.slug}' must use a PostgreSQL workflow database."
-            )
+            raise RuntimeError(f"Project '{project.slug}' must use a PostgreSQL workflow database.")
         return url
 
-    registry_url = get_workflow_db_url()
     if registry_url and (
         registry_url.startswith("sqlite:")
         or os.getenv("WORKFLOW_ALLOW_SHARED_PROJECT_DB", "").strip().lower()
@@ -334,9 +295,7 @@ def get_project_workflow_db_url(project) -> str:
     ):
         return registry_url
 
-    raise RuntimeError(
-        f"Project '{project.slug}' has no workflow_database_url configured."
-    )
+    raise RuntimeError(f"Project '{project.slug}' has no workflow_database_url configured.")
 
 
 def get_project_workflow_sessionmaker(project):
@@ -375,7 +334,16 @@ def sync_project_to_workflow_db(project, db_session) -> None:
     db_session.flush()
 
 
-def bootstrap_project_workflow_db(project) -> None:
+def bootstrap_project_workflow_db(project, registry_db=None) -> None:
+    if registry_db is not None:
+        bind = registry_db.get_bind()
+        bind_url = str(getattr(bind, "url", "") or "")
+        if _allow_sqlite_for_tests() and bind_url.startswith("sqlite:"):
+            WorkflowBase.metadata.create_all(bind=bind)
+            sync_project_to_workflow_db(project, registry_db)
+            registry_db.commit()
+            return
+
     url = get_project_workflow_db_url(project)
     init_workflow_schema_for_url(url)
     SessionLocal = get_project_workflow_sessionmaker(project)

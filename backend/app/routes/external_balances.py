@@ -47,7 +47,9 @@ def get_binance_spot_balances(
     try:
         cred = get_user_exchange_credential(db, current_user_id, BINANCE_PROVIDER)
         if cred is None:
-            raise HTTPException(status_code=503, detail="Binance credentials not configured for this user")
+            raise HTTPException(
+                status_code=503, detail="Binance credentials not configured for this user"
+            )
         return fetch_spot_balances_snapshot(
             lookback_days=lookback_days,
             min_usd=min_usd,
@@ -60,4 +62,6 @@ def get_binance_spot_balances(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         # Avoid leaking sensitive details; return a generic message.
-        raise HTTPException(status_code=502, detail=f"Failed to fetch Binance balances: {e.__class__.__name__}")
+        raise HTTPException(
+            status_code=502, detail=f"Failed to fetch Binance balances: {e.__class__.__name__}"
+        )

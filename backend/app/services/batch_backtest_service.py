@@ -95,7 +95,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
     total = len(symbols)
     job = _get_or_init_job(job_id, total)
     started = time.time()
-    batch_note = f'gerado em lote ({job_id[:8]})'
+    batch_note = f"gerado em lote ({job_id[:8]})"
 
     optimizer = ComboOptimizer()
 
@@ -107,7 +107,9 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
             job["skipped"] = job.get("skipped", 0) + 1
             job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
             if job["processed"] > 0 and job["processed"] < total:
-                job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (total - job["processed"])
+                job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
+                    total - job["processed"]
+                )
             continue
         if job.get("cancel_requested"):
             job["status"] = "cancelled"
@@ -147,15 +149,20 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                 if want not in ("long", "short"):
                     want = "long"
                 rows = [
-                    r for r in rows
+                    r
+                    for r in rows
                     if ((r.parameters or {}).get("direction") or "long").lower() == want
                 ]
             if rows:
-                logger.info("Batch: skip %s (already in favorites, same period and direction)", symbol)
+                logger.info(
+                    "Batch: skip %s (already in favorites, same period and direction)", symbol
+                )
                 job["skipped"] = job.get("skipped", 0) + 1
                 job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
                 if job["processed"] > 0 and job["processed"] < total:
-                    job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (total - job["processed"])
+                    job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
+                        total - job["processed"]
+                    )
                 continue
         finally:
             db_check.close()
@@ -191,7 +198,9 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
             job["errors"].append({"symbol": symbol, "error": str(e)})
             job["processed"] = job["succeeded"] + job["failed"] + job.get("skipped", 0)
             if job["processed"] > 0 and job["processed"] < total:
-                job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (total - job["processed"])
+                job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
+                    total - job["processed"]
+                )
             continue
 
         best_params = result.get("best_parameters") or result.get("parameters") or {}
@@ -235,12 +244,19 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
 
         job["processed"] = job["succeeded"] + job["failed"] + job.get("skipped", 0)
         if job["processed"] > 0 and job["processed"] < total:
-            job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (total - job["processed"])
+            job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
+                total - job["processed"]
+            )
 
     job["processed"] = total
     job["elapsed_sec"] = time.time() - started
     job["status"] = "completed"
     job["estimated_remaining_sec"] = None
     job["current_symbol"] = None
-    logger.info("Batch %s completed: %d succeeded, %d failed, %d skipped", job_id[:8],
-                job.get("succeeded", 0), job.get("failed", 0), job.get("skipped", 0))
+    logger.info(
+        "Batch %s completed: %d succeeded, %d failed, %d skipped",
+        job_id[:8],
+        job.get("succeeded", 0),
+        job.get("failed", 0),
+        job.get("skipped", 0),
+    )
