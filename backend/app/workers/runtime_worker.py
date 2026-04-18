@@ -8,7 +8,12 @@ from collections.abc import Iterable
 
 from sqlalchemy import text
 
-from app.database import Base, engine, ensure_runtime_schema_migrations, sync_postgres_identity_sequences
+from app.database import (
+    Base,
+    engine,
+    ensure_runtime_schema_migrations,
+    sync_postgres_identity_sequences,
+)
 from app.services.binance_service import (
     start_signal_feed_snapshot_worker,
     stop_signal_feed_snapshot_worker,
