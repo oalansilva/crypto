@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from app.services.change_tasks_service import get_change_tasks_checklist
 from app.services.coordination_comments_service import add_comment, list_comments
 from app.services.coordination_service import list_coordination_changes
-from app.workflow_database import WorkflowSessionLocal
+from app.workflow_database import get_registry_workflow_sessionmaker
 from app.workflow_models import Change, Project
 
 router = APIRouter(prefix="/api/coordination", tags=["coordination"])
@@ -117,12 +117,13 @@ async def post_comment(
     # reads wf_comments) always renders evidence even if a client posts to the
     # legacy coordination endpoint.
     try:
-        if WorkflowSessionLocal is not None:
+        workflow_session_local = get_registry_workflow_sessionmaker()
+        if workflow_session_local is not None:
             from app.services.workflow_coordination_bridge import (
                 dual_write_coordination_comment_to_workflow_db,
             )
 
-            with WorkflowSessionLocal() as db:
+            with workflow_session_local() as db:
                 project = db.query(Project).order_by(Project.created_at.asc()).first()
                 if project is not None:
                     change = (
