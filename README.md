@@ -110,6 +110,28 @@ crypto/
 
    Frontend will be available at: http://localhost:5173
 
+### Docker Setup
+
+For an isolated local stack with PostgreSQL, backend, frontend, and background worker:
+
+```bash
+cp .env.docker.example .env.docker.local
+make docker-up
+```
+
+Services:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:8003
+- Backend docs: http://localhost:8003/docs
+- PostgreSQL: `localhost:5432`
+
+Notes:
+- `docker-compose.yml` is configured for development with bind mounts and hot reload.
+- The worker container runs the current background routines (`signal_monitor` and signal feed snapshot refresh).
+- Multi-stage Dockerfiles are available for backend, frontend, and worker images.
+- The `Makefile` uses `.env.docker.local` to avoid conflicting with the repo's existing `.env`.
+- If ports `5432`, `8003`, or `5173` are already in use, override `POSTGRES_PORT`, `BACKEND_PORT`, and `FRONTEND_PORT` in `.env.docker.local`.
+
 ### Start/Stop Scripts (Ubuntu)
 
 From the repo root:

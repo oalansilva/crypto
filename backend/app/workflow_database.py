@@ -133,6 +133,13 @@ if workflow_engine is not None:
     WorkflowSessionLocal = get_workflow_sessionmaker_for_url(str(workflow_engine.url))
 
 
+def get_registry_workflow_sessionmaker():
+    url = get_workflow_db_url()
+    if not url:
+        return None
+    return get_workflow_sessionmaker_for_url(url)
+
+
 def init_workflow_schema_for_url(url: str) -> None:
     """Create workflow tables (idempotent)."""
     workflow_engine = get_workflow_engine_for_url(url)
@@ -358,12 +365,13 @@ def bootstrap_project_workflow_db(project, registry_db=None) -> None:
 def get_workflow_db():
     """FastAPI dependency. Raises if workflow DB is disabled."""
 
-    if WorkflowSessionLocal is None:
+    session_local = get_registry_workflow_sessionmaker()
+    if session_local is None:
         raise RuntimeError(
             "Workflow DB is disabled. Set WORKFLOW_DB_ENABLED=1 and configure WORKFLOW_DATABASE_URL."
         )
 
-    db = WorkflowSessionLocal()
+    db = session_local()
     try:
         yield db
     finally:
