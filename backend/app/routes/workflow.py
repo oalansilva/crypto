@@ -402,7 +402,7 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_workflow_db
         if changed:
             db.commit()
             db.refresh(existing)
-            bootstrap_project_workflow_db(existing)
+            bootstrap_project_workflow_db(existing, registry_db=db)
         return _project_out(existing)
 
     p = Project(
@@ -418,7 +418,7 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_workflow_db
     db.add(p)
     db.commit()
     db.refresh(p)
-    bootstrap_project_workflow_db(p)
+    bootstrap_project_workflow_db(p, registry_db=db)
     return _project_out(p)
 
 
@@ -553,6 +553,14 @@ def _get_project_by_slug(db: Session, slug: str) -> Project:
 @contextmanager
 def _project_db_session(registry_db: Session, slug: str):
     registry_project = _get_project_by_slug(registry_db, slug)
+    registry_bind = registry_db.get_bind()
+    registry_bind_url = str(getattr(registry_bind, "url", "") or "")
+    if registry_bind_url.startswith("sqlite:") and os.getenv(
+        "ALLOW_SQLITE_FOR_TESTS", ""
+    ).strip().lower() in {"1", "true", "yes", "on"}:
+        yield registry_project, registry_db
+        return
+
     SessionLocal = get_project_workflow_sessionmaker(registry_project)
     db = SessionLocal()
     try:
@@ -773,177 +781,179 @@ def update_change(
             _reorder_change_within_column(project_db, c, payload.reorder)
         if payload.status is not None:
             new_status = _normalize_column(payload.status)
+            if new_status != current_column:
+                from app.services.stage_gate_service import validate_stage_transition
 
-            from app.services.stage_gate_service import validate_stage_transition
-
-            gate_result = validate_stage_transition(current_column, new_status)
-            if not gate_result.allowed:
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "code": "stage_skip_blocked",
-                        "message": gate_result.message
-                        or f"Cannot skip stages. Current: {current_column}, Target: {new_status}",
-                        "current_stage": gate_result.current_stage,
-                        "target_stage": gate_result.target_stage,
-                        "skipped_stage": gate_result.skipped_stage,
-                    },
-                )
-
-            if new_status == "DEV":
-                _validate_dev_branch(project_db, c, REPO_ROOT)
-
-            if new_status == "DEV" and current_column == "PO":
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "code": "po_cannot_act_as_dev",
-                        "message": "PO cannot move directly to DEV. PO only creates artifacts. Move to DESIGN (if UI) or Approval first.",
-                        "current_status": current_column,
-                        "target_status": new_status,
-                    },
-                )
-
-            if new_status == "DEV" and current_column == "DESIGN":
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "code": "design_cannot_skip_approval",
-                        "message": "Cannot move from DESIGN directly to DEV. Must go through Approval first.",
-                        "current_status": current_column,
-                        "target_status": new_status,
-                    },
-                )
-
-            if new_status in {"Homologation", "Archived"}:
-                approvals = (
-                    project_db.query(WorkflowApproval)
-                    .filter(
-                        WorkflowApproval.change_pk == c.id,
-                        WorkflowApproval.scope == ApprovalScope.change,
-                    )
-                    .all()
-                )
-                gate_status = {a.gate: a.state.value for a in approvals}
-
-                dev_approved = gate_status.get("DEV") == "approved"
-                qa_approved = gate_status.get("QA") == "approved"
-
-                if not dev_approved:
+                gate_result = validate_stage_transition(current_column, new_status)
+                if not gate_result.allowed:
                     raise HTTPException(
-                        status_code=409,
+                        status_code=400,
                         detail={
-                            "code": "dev_not_approved",
-                            "message": f"Cannot move to {new_status} without DEV approval",
-                        },
-                    )
-                if not qa_approved:
-                    raise HTTPException(
-                        status_code=409,
-                        detail={
-                            "code": "qa_not_approved",
-                            "message": f"Cannot move to {new_status} without QA approval",
+                            "code": "stage_skip_blocked",
+                            "message": gate_result.message
+                            or f"Cannot skip stages. Current: {current_column}, Target: {new_status}",
+                            "current_stage": gate_result.current_stage,
+                            "target_stage": gate_result.target_stage,
+                            "skipped_stage": gate_result.skipped_stage,
                         },
                     )
 
-            if new_status == "Approval":
-                change_slug = c.change_id
-                openspec_dir = Path(REPO_ROOT) / "openspec" / "changes" / change_slug
-                required_files = ["proposal.md", "review-ptbr.md", "tasks.md"]
-                missing_files = [f for f in required_files if not (openspec_dir / f).exists()]
-                if missing_files:
+                if new_status == "DEV":
+                    _validate_dev_branch(project_db, c, REPO_ROOT)
+
+                if new_status == "DEV" and current_column == "PO":
                     raise HTTPException(
                         status_code=409,
                         detail={
-                            "code": "missing_openspec_artifacts",
-                            "message": f"Cannot move to Approval without required files: {', '.join(missing_files)}",
-                            "missing_files": missing_files,
-                            "target": new_status,
+                            "code": "po_cannot_act_as_dev",
+                            "message": "PO cannot move directly to DEV. PO only creates artifacts. Move to DESIGN (if UI) or Approval first.",
+                            "current_status": current_column,
+                            "target_status": new_status,
                         },
                     )
 
-            if new_status == "Archived" and current_column != "Archived":
-                open_bugs = (
-                    project_db.query(WorkItem)
-                    .filter(
-                        WorkItem.change_pk == c.id,
-                        WorkItem.type == WorkItemType.bug,
-                        WorkItem.state.not_in([WorkItemState.done, WorkItemState.canceled]),
-                    )
-                    .all()
-                )
-                if open_bugs:
-                    bug_titles = [b.title for b in open_bugs[:5]]
+                if new_status == "DEV" and current_column == "DESIGN":
                     raise HTTPException(
                         status_code=409,
                         detail={
-                            "code": "open_bugs_block_archive",
-                            "message": f"Cannot archive change with {len(open_bugs)} open bug(s). Close or cancel bugs first.",
-                            "open_bugs": bug_titles,
-                            "target": new_status,
+                            "code": "design_cannot_skip_approval",
+                            "message": "Cannot move from DESIGN directly to DEV. Must go through Approval first.",
+                            "current_status": current_column,
+                            "target_status": new_status,
                         },
                     )
 
-                if payload.cancel_archive:
-                    c.status = "Archived"
-                    c.sort_order = _next_sort_order(
-                        project_db, c.project_id, "Archived", exclude_change_pk=c.id
-                    )
-                    project_db.commit()
-                    if background_tasks:
-                        background_tasks.add_task(
-                            generate_retrospective_for_change, project_slug, change_id
+                if new_status in {"Homologation", "Archived"}:
+                    approvals = (
+                        project_db.query(WorkflowApproval)
+                        .filter(
+                            WorkflowApproval.change_pk == c.id,
+                            WorkflowApproval.scope == ApprovalScope.change,
                         )
-                else:
-                    try:
-                        archive_env = os.environ.copy()
-                        if registry_project.workflow_database_url:
-                            archive_env["WORKFLOW_DATABASE_URL"] = (
-                                registry_project.workflow_database_url
-                            )
-                        subprocess.run(
-                            ["./scripts/archive_change_safe.sh", change_id],
-                            cwd=REPO_ROOT,
-                            env=archive_env,
-                            capture_output=True,
-                            text=True,
-                            check=True,
+                        .all()
+                    )
+                    gate_status = {a.gate: a.state.value for a in approvals}
+
+                    dev_approved = gate_status.get("DEV") == "approved"
+                    qa_approved = gate_status.get("QA") == "approved"
+
+                    if not dev_approved:
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "dev_not_approved",
+                                "message": f"Cannot move to {new_status} without DEV approval",
+                            },
                         )
+                    if not qa_approved:
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "qa_not_approved",
+                                "message": f"Cannot move to {new_status} without QA approval",
+                            },
+                        )
+
+                if new_status == "Approval":
+                    change_slug = c.change_id
+                    openspec_dir = Path(REPO_ROOT) / "openspec" / "changes" / change_slug
+                    required_files = ["proposal.md", "review-ptbr.md", "tasks.md"]
+                    missing_files = [f for f in required_files if not (openspec_dir / f).exists()]
+                    if missing_files:
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "missing_openspec_artifacts",
+                                "message": f"Cannot move to Approval without required files: {', '.join(missing_files)}",
+                                "missing_files": missing_files,
+                                "target": new_status,
+                            },
+                        )
+
+                if new_status == "Archived" and current_column != "Archived":
+                    open_bugs = (
+                        project_db.query(WorkItem)
+                        .filter(
+                            WorkItem.change_pk == c.id,
+                            WorkItem.type == WorkItemType.bug,
+                            WorkItem.state.not_in([WorkItemState.done, WorkItemState.canceled]),
+                        )
+                        .all()
+                    )
+                    if open_bugs:
+                        bug_titles = [b.title for b in open_bugs[:5]]
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "open_bugs_block_archive",
+                                "message": f"Cannot archive change with {len(open_bugs)} open bug(s). Close or cancel bugs first.",
+                                "open_bugs": bug_titles,
+                                "target": new_status,
+                            },
+                        )
+
+                    if payload.cancel_archive:
+                        c.status = "Archived"
+                        c.sort_order = _next_sort_order(
+                            project_db, c.project_id, "Archived", exclude_change_pk=c.id
+                        )
+                        project_db.commit()
                         if background_tasks:
                             background_tasks.add_task(
                                 generate_retrospective_for_change, project_slug, change_id
                             )
-                    except subprocess.CalledProcessError as exc:
-                        stderr = (exc.stderr or "").strip()
-                        stdout = (exc.stdout or "").strip()
-                        message = stderr or stdout or "archive flow failed"
-                        raise HTTPException(
-                            status_code=409,
-                            detail={
-                                "code": "archive_flow_failed",
-                                "message": message,
-                                "target": new_status,
-                            },
-                        ) from exc
-            else:
-                if new_status in ENFORCED_STATUSES:
-                    try:
-                        require_upstream_published(REPO_ROOT, target_statuses=[new_status])
-                    except UpstreamGuardError as exc:
-                        raise HTTPException(
-                            status_code=409,
-                            detail={
-                                "code": "upstream_guard_blocked",
-                                "message": str(exc),
-                                "target": new_status,
-                            },
-                        ) from exc
-                sync_change_gates_for_column(project_db, change=c, target_column=new_status)
-                if new_status != current_column:
+                    else:
+                        try:
+                            archive_env = os.environ.copy()
+                            if registry_project.workflow_database_url:
+                                archive_env["WORKFLOW_DATABASE_URL"] = (
+                                    registry_project.workflow_database_url
+                                )
+                            subprocess.run(
+                                ["./scripts/archive_change_safe.sh", change_id],
+                                cwd=REPO_ROOT,
+                                env=archive_env,
+                                capture_output=True,
+                                text=True,
+                                check=True,
+                            )
+                            if background_tasks:
+                                background_tasks.add_task(
+                                    generate_retrospective_for_change, project_slug, change_id
+                                )
+                        except subprocess.CalledProcessError as exc:
+                            stderr = (exc.stderr or "").strip()
+                            stdout = (exc.stdout or "").strip()
+                            message = stderr or stdout or "archive flow failed"
+                            raise HTTPException(
+                                status_code=409,
+                                detail={
+                                    "code": "archive_flow_failed",
+                                    "message": message,
+                                    "target": new_status,
+                                },
+                            ) from exc
+                else:
+                    if new_status in ENFORCED_STATUSES:
+                        try:
+                            require_upstream_published(REPO_ROOT, target_statuses=[new_status])
+                        except UpstreamGuardError as exc:
+                            raise HTTPException(
+                                status_code=409,
+                                detail={
+                                    "code": "upstream_guard_blocked",
+                                    "message": str(exc),
+                                    "target": new_status,
+                                },
+                            ) from exc
+                    sync_change_gates_for_column(project_db, change=c, target_column=new_status)
                     _normalize_column_sort_orders(project_db, c.project_id, current_column)
                     c.sort_order = _next_sort_order(
                         project_db, c.project_id, new_status, exclude_change_pk=c.id
                     )
+                    project_db.commit()
+            elif (c.status or "").strip() != new_status:
+                c.status = new_status
                 project_db.commit()
         if payload.status is None or new_status == "Archived":
             project_db.commit()

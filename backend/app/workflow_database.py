@@ -273,12 +273,21 @@ def init_workflow_schema() -> None:
 
 def get_project_workflow_db_url(project) -> str:
     url = getattr(project, "workflow_database_url", None)
+    registry_url = get_workflow_db_url()
     if url:
+        # Tests often store placeholder Postgres URLs as metadata while still using the
+        # shared SQLite workflow DB for in-process isolation.
+        if (
+            _allow_sqlite_for_tests()
+            and registry_url
+            and registry_url.startswith("sqlite:")
+            and not str(url).startswith("sqlite:")
+        ):
+            return registry_url
         if not _is_postgres_url(url) and not _allow_sqlite_for_tests():
             raise RuntimeError(f"Project '{project.slug}' must use a PostgreSQL workflow database.")
         return url
 
-    registry_url = get_workflow_db_url()
     if registry_url and (
         registry_url.startswith("sqlite:")
         or os.getenv("WORKFLOW_ALLOW_SHARED_PROJECT_DB", "").strip().lower()
@@ -325,7 +334,16 @@ def sync_project_to_workflow_db(project, db_session) -> None:
     db_session.flush()
 
 
-def bootstrap_project_workflow_db(project) -> None:
+def bootstrap_project_workflow_db(project, registry_db=None) -> None:
+    if registry_db is not None:
+        bind = registry_db.get_bind()
+        bind_url = str(getattr(bind, "url", "") or "")
+        if _allow_sqlite_for_tests() and bind_url.startswith("sqlite:"):
+            WorkflowBase.metadata.create_all(bind=bind)
+            sync_project_to_workflow_db(project, registry_db)
+            registry_db.commit()
+            return
+
     url = get_project_workflow_db_url(project)
     init_workflow_schema_for_url(url)
     SessionLocal = get_project_workflow_sessionmaker(project)

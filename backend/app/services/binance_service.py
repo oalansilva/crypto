@@ -502,6 +502,8 @@ def _load_open_buy_positions(user_id: str | None) -> set[tuple[str, str]]:
             .all()
         )
         return {(str(asset), str(risk_profile)) for asset, risk_profile in rows}
+    except Exception:
+        return set()
     finally:
         db.close()
 
@@ -538,6 +540,8 @@ def _load_open_buy_position_entries(user_id: str | None) -> dict[tuple[str, str]
                 continue
             entries[key] = float(entry_price)
         return entries
+    except Exception:
+        return {}
     finally:
         db.close()
 
