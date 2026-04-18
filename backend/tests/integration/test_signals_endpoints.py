@@ -410,6 +410,21 @@ def _session_factory(tmp_path: Path):
     return testing_session_local
 
 
+def test_history_quality_gate_uses_defaults_when_system_preferences_table_is_missing(
+    tmp_path: Path,
+):
+    db_file = tmp_path / "signals_defaults_only.db"
+    engine = create_engine(
+        f"sqlite:///{db_file}",
+        connect_args={"check_same_thread": False},
+    )
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    signal = _make_signal("BTCUSDT", SignalType.BUY, 88, RiskProfile.moderate)
+
+    with testing_session_local() as db:
+        assert signals_routes._passes_history_quality_gate(signal, db) is True
+
+
 async def test_open_positions_returns_entry_current_price_and_pnl(monkeypatch, tmp_path: Path):
     app = _build_test_app()
     session_local = _session_factory(tmp_path)

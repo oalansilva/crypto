@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.models import SystemPreference
@@ -19,7 +20,10 @@ SIGNAL_HISTORY_ALLOW_AGGRESSIVE_KEY = "signal_history_allow_aggressive"
 
 
 def get_system_preference(db: Session, key: str) -> SystemPreference | None:
-    return db.query(SystemPreference).filter(SystemPreference.key == key).first()
+    try:
+        return db.query(SystemPreference).filter(SystemPreference.key == key).first()
+    except (OperationalError, ProgrammingError):
+        return None
 
 
 def get_system_preference_value(db: Session, key: str) -> str | None:
