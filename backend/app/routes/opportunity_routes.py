@@ -15,6 +15,7 @@ _CACHE_TTL_SECONDS = 30.0
 _CACHE_LOCK = threading.Lock()
 _OPPORTUNITIES_CACHE: dict[tuple[str, str | None], dict[str, Any]] = {}
 
+
 class OpportunityResponse(BaseModel):
     id: int
     symbol: str
@@ -23,12 +24,18 @@ class OpportunityResponse(BaseModel):
     name: str  # user custom name
     notes: Optional[str] = None
     tier: Optional[int] = None  # 1=Core, 2=Complementares, 3=Outros
-    parameters: Optional[Dict[str, Any]] = None  # Parâmetros da estratégia (ema_short, sma_long, stop_loss, etc.)
+    parameters: Optional[Dict[str, Any]] = (
+        None  # Parâmetros da estratégia (ema_short, sma_long, stop_loss, etc.)
+    )
     is_holding: bool
     distance_to_next_status: float | None
     next_status_label: str  # "entry" or "exit"
-    indicator_values: Optional[Dict[str, float]] = None  # Valores usados no cálculo da distância (short, medium, long, etc.)
-    indicator_values_candle_time: Optional[str] = None  # ISO datetime do candle usado (para conferir com TradingView)
+    indicator_values: Optional[Dict[str, float]] = (
+        None  # Valores usados no cálculo da distância (short, medium, long, etc.)
+    )
+    indicator_values_candle_time: Optional[str] = (
+        None  # ISO datetime do candle usado (para conferir com TradingView)
+    )
     signal_history: Optional[List[Dict[str, Any]]] = None
 
     # Risk / stop-loss (optional)
@@ -42,6 +49,7 @@ class OpportunityResponse(BaseModel):
     last_price: float
     timestamp: str
     details: dict
+
 
 from fastapi import Query
 
@@ -59,7 +67,9 @@ def _read_cached_opportunities(user_id: str, tier: str | None) -> list[dict[str,
         return list(cached.get("payload") or [])
 
 
-def _write_cached_opportunities(user_id: str, tier: str | None, payload: list[dict[str, Any]]) -> None:
+def _write_cached_opportunities(
+    user_id: str, tier: str | None, payload: list[dict[str, Any]]
+) -> None:
     key = (user_id, tier)
     with _CACHE_LOCK:
         _OPPORTUNITIES_CACHE[key] = {
@@ -70,16 +80,21 @@ def _write_cached_opportunities(user_id: str, tier: str | None, payload: list[di
 
 @router.get("/", response_model=List[OpportunityResponse])
 async def get_opportunities(
-    tier: Optional[str] = Query(None, description="Filter by tier(s). E.g. '1', '1,2', 'none' for null tier, 'all' for no filter"),
-    refresh: bool = Query(False, description="Bypass short-lived cache and recompute opportunities."),
+    tier: Optional[str] = Query(
+        None,
+        description="Filter by tier(s). E.g. '1', '1,2', 'none' for null tier, 'all' for no filter",
+    ),
+    refresh: bool = Query(
+        False, description="Bypass short-lived cache and recompute opportunities."
+    ),
     current_user_id: str = Depends(get_current_user),
 ):
     """
     Get current opportunities (proximity analysis) for favorite strategies.
-    
+
     Query params:
     - tier: Filter by tier(s). Examples: '1', '1,2', '3', 'none' (null tier), 'all' (no filter)
-    
+
     Returns opportunities sorted by Signal Priority (SIGNAL > NEAR > NEUTRAL).
     """
     try:

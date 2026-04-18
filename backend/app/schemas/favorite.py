@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from datetime import datetime
 
+
 class FavoriteStrategyBase(BaseModel):
     name: str
     symbol: str
@@ -15,15 +16,18 @@ class FavoriteStrategyBase(BaseModel):
     end_date: Optional[str] = None
     period_type: Optional[str] = None  # '6m' | '2y' | 'all'; chave para skip
 
+
 class FavoriteStrategyCreate(FavoriteStrategyBase):
     pass
+
 
 class FavoriteStrategyResponse(FavoriteStrategyBase):
     id: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class FavoriteStrategyUpdate(BaseModel):
     tier: Optional[int] = None  # 1, 2, 3 ou None

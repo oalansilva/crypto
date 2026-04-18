@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { FolderKanban, ChevronDown } from 'lucide-react'
+import { FolderKanban } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/apiBase'
 import { Dropdown } from '@/components/ui/DropdownMenu'
 

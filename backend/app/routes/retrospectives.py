@@ -245,10 +245,7 @@ def get_retrospective(
     # Remove the header line (already displayed as title)
     body_html = re.sub(r"<h1>.*?</h1>", "", body_html, count=1)
 
-    html_content = (
-        f'<div class="meta">{meta_html}</div>'
-        + body_html
-    )
+    html_content = f'<div class="meta">{meta_html}</div>' + body_html
 
     html = _HTML_TEMPLATE.format(title=title, content=html_content)
 

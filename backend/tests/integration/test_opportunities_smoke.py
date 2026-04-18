@@ -31,46 +31,48 @@ async def test_opportunities_tier_all_smoke_performance(monkeypatch):
 
 
 async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
-    sample_payload = [{
-        "id": 5,
-        "symbol": "BTC/USDT",
-        "timeframe": "1d",
-        "template_name": "multi_ma_crossover",
-        "name": "BTC Trend History",
-        "notes": None,
-        "tier": 1,
-        "parameters": {},
-        "is_holding": True,
-        "distance_to_next_status": 0.88,
-        "next_status_label": "exit",
-        "indicator_values": {"short": 71346.57},
-        "indicator_values_candle_time": "2026-04-15T00:00:00+00:00",
-        "signal_history": [
-            {
-                "timestamp": "2026-04-10T00:00:00+00:00",
-                "signal": 1,
-                "type": "entry",
-                "reason": "entry",
-                "price": 70210.15,
-            },
-            {
-                "timestamp": "2026-04-13T00:00:00+00:00",
-                "signal": -1,
-                "type": "exit",
-                "reason": "exit_logic",
-                "price": 72150.42,
-            },
-        ],
-        "entry_price": 73980.37,
-        "stop_price": 70873.19,
-        "distance_to_stop_pct": 5.07,
-        "status": "HOLDING",
-        "badge": "info",
-        "message": "Em Hold. Distância para saída: 0.88%",
-        "last_price": 74924.0,
-        "timestamp": "2026-04-16T00:00:00Z",
-        "details": {},
-    }]
+    sample_payload = [
+        {
+            "id": 5,
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "template_name": "multi_ma_crossover",
+            "name": "BTC Trend History",
+            "notes": None,
+            "tier": 1,
+            "parameters": {},
+            "is_holding": True,
+            "distance_to_next_status": 0.88,
+            "next_status_label": "exit",
+            "indicator_values": {"short": 71346.57},
+            "indicator_values_candle_time": "2026-04-15T00:00:00+00:00",
+            "signal_history": [
+                {
+                    "timestamp": "2026-04-10T00:00:00+00:00",
+                    "signal": 1,
+                    "type": "entry",
+                    "reason": "entry",
+                    "price": 70210.15,
+                },
+                {
+                    "timestamp": "2026-04-13T00:00:00+00:00",
+                    "signal": -1,
+                    "type": "exit",
+                    "reason": "exit_logic",
+                    "price": 72150.42,
+                },
+            ],
+            "entry_price": 73980.37,
+            "stop_price": 70873.19,
+            "distance_to_stop_pct": 5.07,
+            "status": "HOLDING",
+            "badge": "info",
+            "message": "Em Hold. Distância para saída: 0.88%",
+            "last_price": 74924.0,
+            "timestamp": "2026-04-16T00:00:00Z",
+            "details": {},
+        }
+    ]
 
     class _FakeOpportunityService:
         def get_opportunities(self, user_id, tier_filter=None):

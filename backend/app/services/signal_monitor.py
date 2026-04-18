@@ -1,4 +1,5 @@
 """Background price monitor that closes BUY signals when target/stop is hit."""
+
 import asyncio
 import logging
 import threading
@@ -55,10 +56,12 @@ def _check_and_update_signals() -> None:
 
         async def _fetch_all_prices():
             semaphore = asyncio.Semaphore(_MAX_CONCURRENT_PRICEFETCH)
+
             async def _sem_fetch(asset: str) -> tuple[str, float | None]:
                 async with semaphore:
                     price = await _fetch_price(asset)
                     return asset, price
+
             results = await asyncio.gather(*[_sem_fetch(a) for a in assets])
             return dict(results)
 
@@ -95,7 +98,10 @@ def _check_and_update_signals() -> None:
                 updated_count += 1
                 logger.info(
                     "[signal_monitor] Signal %s triggered: entry=%.4f exit=%.4f pnl=%.4f%%",
-                    signal.asset, signal.entry_price, exit_price, pnl_pct,
+                    signal.asset,
+                    signal.entry_price,
+                    exit_price,
+                    pnl_pct,
                 )
 
         if updated_count > 0:
@@ -113,6 +119,7 @@ def _check_and_update_signals() -> None:
 
 class SignalMonitor:
     """Background service that monitors BUY signals and closes them when target/stop is hit."""
+
     _instance = None
     _lock = threading.Lock()
 

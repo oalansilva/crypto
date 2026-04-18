@@ -2,6 +2,7 @@
 
 Extrai user_id do JWT e adiciona ao contexto da requisição.
 """
+
 from __future__ import annotations
 
 from typing import Annotated, Optional

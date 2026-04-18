@@ -58,7 +58,6 @@ from app.workflow_models import (
     WorkflowHandoff,
 )
 
-
 router = APIRouter(prefix="/api/workflow", tags=["workflow"])
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -112,9 +111,7 @@ def _parse_tasks_code(text: str) -> Optional[str]:
     return None
 
 
-def sync_tasks_to_workflow_db(
-    db: Session, change_pk: str, change_id: str
-) -> List[WorkItem]:
+def sync_tasks_to_workflow_db(db: Session, change_pk: str, change_id: str) -> List[WorkItem]:
     """Sync tasks.md to wf_work_items table.
 
     Creates Story work items for each section, and Task work items for each checklist item.
@@ -288,18 +285,12 @@ def audit_coordination(
     p = _get_project_by_slug(db, project_slug)
 
     coord = list_coordination_changes()
-    active_ids = sorted(
-        [it["id"] for it in coord if not bool(it.get("archived")) and it.get("id")]
-    )
+    active_ids = sorted([it["id"] for it in coord if not bool(it.get("archived")) and it.get("id")])
 
-    db_ids = sorted(
-        [c.change_id for c in db.query(Change).filter(Change.project_id == p.id).all()]
-    )
+    db_ids = sorted([c.change_id for c in db.query(Change).filter(Change.project_id == p.id).all()])
 
     missing_in_db = sorted([cid for cid in active_ids if cid not in set(db_ids)])
-    missing_in_coordination = sorted(
-        [cid for cid in db_ids if cid not in set(active_ids)]
-    )
+    missing_in_coordination = sorted([cid for cid in db_ids if cid not in set(active_ids)])
 
     return CoordinationAuditResponse(
         project_slug=project_slug,
@@ -358,9 +349,7 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_workflow_db
     slug = payload.slug.strip()
     name = payload.name.strip()
     workflow_database_url = (
-        payload.workflow_database_url.strip()
-        if payload.workflow_database_url
-        else None
+        payload.workflow_database_url.strip() if payload.workflow_database_url else None
     )
     database_url = payload.database_url.strip() if payload.database_url else None
     registry_workflow_url = get_workflow_db_url()
@@ -391,10 +380,18 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_workflow_db
         changed = False
         field_updates = {
             "name": name,
-            "root_directory": payload.root_directory.strip() if payload.root_directory else existing.root_directory,
+            "root_directory": (
+                payload.root_directory.strip()
+                if payload.root_directory
+                else existing.root_directory
+            ),
             "database_url": database_url or existing.database_url,
-            "frontend_url": payload.frontend_url.strip() if payload.frontend_url else existing.frontend_url,
-            "backend_url": payload.backend_url.strip() if payload.backend_url else existing.backend_url,
+            "frontend_url": (
+                payload.frontend_url.strip() if payload.frontend_url else existing.frontend_url
+            ),
+            "backend_url": (
+                payload.backend_url.strip() if payload.backend_url else existing.backend_url
+            ),
             "workflow_database_url": workflow_database_url or existing.workflow_database_url,
             "tech_stack": payload.tech_stack.strip() if payload.tech_stack else existing.tech_stack,
         }
@@ -566,9 +563,7 @@ def _project_db_session(registry_db: Session, slug: str):
         db.close()
 
 
-def _get_change_by_slug_and_id(
-    db: Session, project_slug: str, change_id: str
-) -> Change:
+def _get_change_by_slug_and_id(db: Session, project_slug: str, change_id: str) -> Change:
     project = _get_project_by_slug(db, project_slug)
     change = (
         db.query(Change)
@@ -597,34 +592,24 @@ def _get_work_item(db: Session, change_pk: str, work_item_id: str) -> WorkItem:
         .first()
     )
     if not item:
-        raise HTTPException(
-            status_code=404, detail=f"Unknown work item '{work_item_id}'"
-        )
+        raise HTTPException(status_code=404, detail=f"Unknown work item '{work_item_id}'")
     return item
 
 
-def _next_card_number(
-    db: Session, project_id: str, exclude_change_pk: Optional[str] = None
-) -> int:
+def _next_card_number(db: Session, project_id: str, exclude_change_pk: Optional[str] = None) -> int:
     query = db.query(Change).filter(
         Change.project_id == project_id, Change.card_number.is_not(None)
     )
     if exclude_change_pk:
         query = query.filter(Change.id != exclude_change_pk)
     latest = query.order_by(Change.card_number.desc()).first()
-    return (
-        int(latest.card_number or 0) + 1
-        if latest and latest.card_number is not None
-        else 1
-    )
+    return int(latest.card_number or 0) + 1 if latest and latest.card_number is not None else 1
 
 
 def _ensure_change_card_number(db: Session, change: Change) -> int:
     if change.card_number is not None:
         return int(change.card_number)
-    change.card_number = _next_card_number(
-        db, change.project_id, exclude_change_pk=change.id
-    )
+    change.card_number = _next_card_number(db, change.project_id, exclude_change_pk=change.id)
     db.flush()
     return int(change.card_number)
 
@@ -663,9 +648,7 @@ def _validate_parent(
 
     parent = _get_work_item(db, change_pk, parent_id)
     if child_type == WorkItemType.story:
-        raise HTTPException(
-            status_code=400, detail="Stories cannot have parents in MVP"
-        )
+        raise HTTPException(status_code=400, detail="Stories cannot have parents in MVP")
     if child_type == WorkItemType.bug and parent.type != WorkItemType.story:
         raise HTTPException(status_code=400, detail="Bug parent must be a story in MVP")
     return parent.id
@@ -726,9 +709,7 @@ def list_changes(project_slug: str, db: Session = Depends(get_workflow_db)):
 
 
 @router.post("/projects/{project_slug}/changes", response_model=ChangeOut)
-def create_change(
-    project_slug: str, payload: ChangeCreate, db: Session = Depends(get_workflow_db)
-):
+def create_change(project_slug: str, payload: ChangeCreate, db: Session = Depends(get_workflow_db)):
     with _project_db_session(db, project_slug) as (_project, project_db):
         p = _get_project_by_slug(project_db, project_slug)
         change_id = payload.change_id.strip()
@@ -760,9 +741,7 @@ def create_change(
 
 
 @router.get("/projects/{project_slug}/changes/{change_id}", response_model=ChangeOut)
-def get_change(
-    project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)
-):
+def get_change(project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)):
     with _project_db_session(db, project_slug) as (_project, project_db):
         c = _get_change_by_slug_and_id(project_db, project_slug, change_id)
         _ensure_change_card_number(project_db, c)
@@ -871,9 +850,7 @@ def update_change(
                 change_slug = c.change_id
                 openspec_dir = Path(REPO_ROOT) / "openspec" / "changes" / change_slug
                 required_files = ["proposal.md", "review-ptbr.md", "tasks.md"]
-                missing_files = [
-                    f for f in required_files if not (openspec_dir / f).exists()
-                ]
+                missing_files = [f for f in required_files if not (openspec_dir / f).exists()]
                 if missing_files:
                     raise HTTPException(
                         status_code=409,
@@ -921,7 +898,9 @@ def update_change(
                     try:
                         archive_env = os.environ.copy()
                         if registry_project.workflow_database_url:
-                            archive_env["WORKFLOW_DATABASE_URL"] = registry_project.workflow_database_url
+                            archive_env["WORKFLOW_DATABASE_URL"] = (
+                                registry_project.workflow_database_url
+                            )
                         subprocess.run(
                             ["./scripts/archive_change_safe.sh", change_id],
                             cwd=REPO_ROOT,
@@ -976,9 +955,7 @@ def update_change(
     "/projects/{project_slug}/changes/{change_id}/tasks",
     response_model=List[WorkItemOut],
 )
-def list_tasks(
-    project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)
-):
+def list_tasks(project_slug: str, change_id: str, db: Session = Depends(get_workflow_db)):
     with _project_db_session(db, project_slug) as (_project, project_db):
         change = _get_change_by_slug_and_id(project_db, project_slug, change_id)
         items = (
@@ -990,9 +967,7 @@ def list_tasks(
         return [WorkItemOut.model_validate(item, from_attributes=True) for item in items]
 
 
-@router.post(
-    "/projects/{project_slug}/changes/{change_id}/tasks", response_model=WorkItemOut
-)
+@router.post("/projects/{project_slug}/changes/{change_id}/tasks", response_model=WorkItemOut)
 def create_task(
     project_slug: str,
     change_id: str,
@@ -1034,9 +1009,7 @@ def update_task(
     with _project_db_session(db, target_slug) as (_project, project_db):
         item = project_db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
         if not item:
-            raise HTTPException(
-                status_code=404, detail=f"Unknown work item '{work_item_id}'"
-            )
+            raise HTTPException(status_code=404, detail=f"Unknown work item '{work_item_id}'")
 
         old_state = item.state
         new_state = payload.state if payload.state is not None else old_state
@@ -1103,9 +1076,7 @@ def list_comments(
         return [_comment_out(item) for item in items]
 
 
-@router.post(
-    "/projects/{project_slug}/changes/{change_id}/comments", response_model=CommentOut
-)
+@router.post("/projects/{project_slug}/changes/{change_id}/comments", response_model=CommentOut)
 def create_comment(
     project_slug: str,
     change_id: str,
@@ -1160,9 +1131,7 @@ def list_approvals(
         return [_approval_out(item) for item in items]
 
 
-@router.post(
-    "/projects/{project_slug}/changes/{change_id}/approvals", response_model=ApprovalOut
-)
+@router.post("/projects/{project_slug}/changes/{change_id}/approvals", response_model=ApprovalOut)
 def create_approval(
     project_slug: str,
     change_id: str,
@@ -1219,9 +1188,7 @@ def list_handoffs(
         return [_handoff_out(item) for item in items]
 
 
-@router.post(
-    "/projects/{project_slug}/changes/{change_id}/handoffs", response_model=HandoffOut
-)
+@router.post("/projects/{project_slug}/changes/{change_id}/handoffs", response_model=HandoffOut)
 def create_handoff(
     project_slug: str,
     change_id: str,
@@ -1370,17 +1337,13 @@ def _latest_change_gate_status(db: Session, change_pk: str) -> Dict[str, str]:
 
 def _publish_state_for_change(change: Change) -> str:
     try:
-        result = require_upstream_published(
-            REPO_ROOT, target_statuses=["Homologation"]
-        )
+        result = require_upstream_published(REPO_ROOT, target_statuses=["Homologation"])
         return "ready" if result.ok else "blocked"
     except UpstreamGuardError:
         return "blocked"
 
 
-def _homologation_readiness(
-    change: Change, gate_status: Dict[str, str], column: str
-) -> str:
+def _homologation_readiness(change: Change, gate_status: Dict[str, str], column: str) -> str:
     qa_functional = gate_status.get("QA") or "pending"
     publish_state = _publish_state_for_change(change)
 
@@ -1473,9 +1436,7 @@ def _validate_dev_branch(db: Session, change: Change, repo_root: Path) -> None:
 def _next_sort_order(
     db: Session, project_id: str, column: str, exclude_change_pk: Optional[str] = None
 ) -> int:
-    query = db.query(Change).filter(
-        Change.project_id == project_id, Change.status == column
-    )
+    query = db.query(Change).filter(Change.project_id == project_id, Change.status == column)
     if exclude_change_pk:
         query = query.filter(Change.id != exclude_change_pk)
     peers = query.order_by(Change.sort_order.desc(), Change.created_at.desc()).all()
@@ -1486,9 +1447,7 @@ def _normalize_column_sort_orders(db: Session, project_id: str, column: str) -> 
     peers = (
         db.query(Change)
         .filter(Change.project_id == project_id, Change.status == column)
-        .order_by(
-            Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc()
-        )
+        .order_by(Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc())
         .all()
     )
     for idx, peer in enumerate(peers):
@@ -1507,9 +1466,7 @@ def _reorder_change_within_column(
     peers = (
         db.query(Change)
         .filter(Change.project_id == change.project_id, Change.status == column)
-        .order_by(
-            Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc()
-        )
+        .order_by(Change.sort_order.asc(), Change.created_at.asc(), Change.change_id.asc())
         .all()
     )
     idx = next((i for i, peer in enumerate(peers) if peer.id == change.id), None)
@@ -1638,9 +1595,7 @@ def kanban_list_changes(
                 )
             )
 
-        active_change_ids = [
-            c.id for c in items if c.change_id not in openspec_archived_ids
-        ]
+        active_change_ids = [c.id for c in items if c.change_id not in openspec_archived_ids]
         bugs = (
             project_db.query(WorkItem)
             .filter(WorkItem.type == WorkItemType.bug)
@@ -1742,9 +1697,7 @@ def _kanban_task_item(
     )
 
 
-@router.get(
-    "/kanban/changes/{change_id}/tasks", response_model=KanbanTasksChecklistResponse
-)
+@router.get("/kanban/changes/{change_id}/tasks", response_model=KanbanTasksChecklistResponse)
 def kanban_change_tasks(
     change_id: str,
     project_slug: Optional[str] = Query(default=None),
@@ -1801,9 +1754,7 @@ def kanban_change_tasks(
         )
 
 
-@router.get(
-    "/kanban/changes/{change_id}/comments", response_model=KanbanCommentsListResponse
-)
+@router.get("/kanban/changes/{change_id}/comments", response_model=KanbanCommentsListResponse)
 def kanban_list_comments(
     change_id: str,
     project_slug: Optional[str] = Query(default=None),
@@ -1847,9 +1798,7 @@ def kanban_list_comments(
         return KanbanCommentsListResponse(change_id=change_id, items=out)
 
 
-@router.post(
-    "/kanban/changes/{change_id}/comments", response_model=KanbanCommentCreateResponse
-)
+@router.post("/kanban/changes/{change_id}/comments", response_model=KanbanCommentCreateResponse)
 def kanban_post_comment(
     change_id: str,
     payload: KanbanCommentCreateRequest,

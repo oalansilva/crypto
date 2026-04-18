@@ -2,6 +2,7 @@
 
 Revision ID: add_user_id_columns
 """
+
 from __future__ import annotations
 
 import sqlite3

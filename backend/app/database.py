@@ -8,7 +8,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import get_settings
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "backtest.db"
 
@@ -22,9 +21,7 @@ def _allow_sqlite_for_tests() -> bool:
 
 def _is_postgres_url(url: str) -> bool:
     normalized = (url or "").strip().lower()
-    return normalized.startswith("postgresql://") or normalized.startswith(
-        "postgresql+psycopg2://"
-    )
+    return normalized.startswith("postgresql://") or normalized.startswith("postgresql+psycopg2://")
 
 
 def resolve_db_url() -> str:
@@ -104,7 +101,9 @@ def ensure_sqlite_migrations() -> None:
                 conn.commit()
 
         # favorite_strategies: add user_id if missing and backfill legacy rows to the default owner when known
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='favorite_strategies'")
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='favorite_strategies'"
+        )
         row = cur.fetchone()
         if row:
             cur.execute("PRAGMA table_info(favorite_strategies)")
@@ -120,25 +119,30 @@ def ensure_sqlite_migrations() -> None:
                     conn.commit()
 
         # monitor_preferences: add price_timeframe if missing
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='monitor_preferences'")
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='monitor_preferences'"
+        )
         row = cur.fetchone()
         if row:
             cur.execute("PRAGMA table_info(monitor_preferences)")
             cols = {r[1] for r in cur.fetchall()}  # r[1] = name
             if "price_timeframe" not in cols:
-                cur.execute("ALTER TABLE monitor_preferences ADD COLUMN price_timeframe TEXT DEFAULT '1d'")
+                cur.execute(
+                    "ALTER TABLE monitor_preferences ADD COLUMN price_timeframe TEXT DEFAULT '1d'"
+                )
                 conn.commit()
 
             # monitor_preferences: add theme if missing
             if "theme" not in cols:
-                cur.execute("ALTER TABLE monitor_preferences ADD COLUMN theme TEXT NOT NULL DEFAULT 'dark-green'")
+                cur.execute(
+                    "ALTER TABLE monitor_preferences ADD COLUMN theme TEXT NOT NULL DEFAULT 'dark-green'"
+                )
                 conn.commit()
 
             # monitor_preferences started as single-tenant with PK(symbol). Rebuild with PK(user_id, symbol).
             if "user_id" not in cols:
                 cur.execute("ALTER TABLE monitor_preferences RENAME TO monitor_preferences_legacy")
-                cur.execute(
-                    """
+                cur.execute("""
                     CREATE TABLE monitor_preferences (
                         user_id TEXT NOT NULL,
                         symbol TEXT NOT NULL,
@@ -149,8 +153,7 @@ def ensure_sqlite_migrations() -> None:
                         updated_at DATETIME,
                         PRIMARY KEY (user_id, symbol)
                     )
-                    """
-                )
+                    """)
                 if default_user_id:
                     cur.execute(
                         """
@@ -210,7 +213,9 @@ def sync_postgres_identity_sequences() -> None:
                     """
                     SELECT setval(
                         :sequence_name,
-                        COALESCE((SELECT MAX(id) FROM """ + table_name + """), 0) + 1,
+                        COALESCE((SELECT MAX(id) FROM """
+                    + table_name
+                    + """), 0) + 1,
                         false
                     )
                     """

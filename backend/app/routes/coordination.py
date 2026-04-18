@@ -18,7 +18,6 @@ from app.services.coordination_service import list_coordination_changes
 from app.workflow_database import WorkflowSessionLocal
 from app.workflow_models import Change, Project
 
-
 router = APIRouter(prefix="/api/coordination", tags=["coordination"])
 
 

@@ -15,7 +15,13 @@ from app.middleware.authMiddleware import get_current_user_optional
 from app.models_signal_history import SignalHistory
 from app.routes.signals import router as signals_router
 from app.database import SessionLocal
-from app.schemas.signal import BollingerBandsPayload, RiskProfile, Signal, SignalIndicators, SignalType
+from app.schemas.signal import (
+    BollingerBandsPayload,
+    RiskProfile,
+    Signal,
+    SignalIndicators,
+    SignalType,
+)
 from app.routes import signals as signals_routes
 from app.services import binance_service, sentiment_service
 
@@ -43,14 +49,22 @@ def _build_test_app() -> FastAPI:
     async def add_signals_disclaimer_header(request: Request, call_next):
         response = await call_next(request)
         if request.url.path.startswith("/api/signals"):
-            response.headers["X-Disclaimer"] = "Isenção de responsabilidade: este não é advice financeiro."
+            response.headers["X-Disclaimer"] = (
+                "Isenção de responsabilidade: este não é advice financeiro."
+            )
         return response
 
     app.include_router(signals_router)
     return app
 
 
-def _make_signal(asset: str, signal_type: SignalType, confidence: int, risk_profile: RiskProfile, hours_ago: int = 0) -> Signal:
+def _make_signal(
+    asset: str,
+    signal_type: SignalType,
+    confidence: int,
+    risk_profile: RiskProfile,
+    hours_ago: int = 0,
+) -> Signal:
     created_at = datetime.now(UTC) - timedelta(hours=hours_ago)
     return Signal(
         id=str(uuid4()),
@@ -71,7 +85,11 @@ def _make_signal(asset: str, signal_type: SignalType, confidence: int, risk_prof
 
 
 async def _dummy_klines(asset: str, interval: str = "1h", limit: int = 120):
-    return {"candles": [{"open_time": datetime.now(UTC), "close": 100.0}], "cached_at": datetime.now(UTC), "is_stale": False}
+    return {
+        "candles": [{"open_time": datetime.now(UTC), "close": 100.0}],
+        "cached_at": datetime.now(UTC),
+        "is_stale": False,
+    }
 
 
 async def _dummy_pairs(*_args, **_kwargs):
@@ -106,7 +124,10 @@ async def test_signals_list_filters_threshold_and_adds_disclaimer(monkeypatch):
         response = await client.get("/api/signals?confidence_min=70&risk_profile=moderate&limit=10")
 
     assert response.status_code == 200, response.text
-    assert response.headers["X-Disclaimer"] == "Isenção de responsabilidade: este não é advice financeiro."
+    assert (
+        response.headers["X-Disclaimer"]
+        == "Isenção de responsabilidade: este não é advice financeiro."
+    )
 
     payload = response.json()
     assert payload["total"] == 1
@@ -129,7 +150,9 @@ async def test_signals_latest_returns_only_high_confidence(monkeypatch):
             ("ETHUSDT", RiskProfile.aggressive): 73,
             ("SOLUSDT", RiskProfile.aggressive): 55,
         }
-        return _make_signal(asset, SignalType.BUY, confidence_map[(asset, risk_profile)], risk_profile)
+        return _make_signal(
+            asset, SignalType.BUY, confidence_map[(asset, risk_profile)], risk_profile
+        )
 
     monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
     monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
@@ -322,7 +345,9 @@ async def test_signals_list_uses_precomputed_snapshot_when_available(monkeypatch
         return _make_signal(asset, SignalType.BUY, 88, risk_profile)
 
     async def _fake_sentiment():
-        return sentiment_service.SentimentResult(score=55, components={"news": 55, "reddit": 55, "fear_greed": 55}, signal="neutral")
+        return sentiment_service.SentimentResult(
+            score=55, components={"news": 55, "reddit": 55, "fear_greed": 55}, signal="neutral"
+        )
 
     monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
     monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
@@ -347,13 +372,17 @@ async def test_signals_list_uses_precomputed_snapshot_when_available(monkeypatch
 
 
 async def test_signal_snapshots_can_be_loaded_from_disk(monkeypatch, tmp_path: Path):
-    monkeypatch.setattr(binance_service, "SIGNAL_FEED_SNAPSHOT_FILE", tmp_path / "signals_snapshot.json")
+    monkeypatch.setattr(
+        binance_service, "SIGNAL_FEED_SNAPSHOT_FILE", tmp_path / "signals_snapshot.json"
+    )
 
     def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles, sentiment_score=None):
         return _make_signal(asset, SignalType.BUY, 88, risk_profile)
 
     async def _fake_sentiment():
-        return sentiment_service.SentimentResult(score=55, components={"news": 55, "reddit": 55, "fear_greed": 55}, signal="neutral")
+        return sentiment_service.SentimentResult(
+            score=55, components={"news": 55, "reddit": 55, "fear_greed": 55}, signal="neutral"
+        )
 
     monkeypatch.setattr(binance_service, "get_klines", _dummy_klines)
     monkeypatch.setattr(binance_service, "_build_signal", _fake_build_signal)
@@ -441,16 +470,16 @@ async def test_signal_history_filters_best_signals_by_pnl_and_sort(monkeypatch, 
 
     with session_local() as db:
         db.add_all(
-                [
-                    SignalHistory(
-                        id="hist-1",
+            [
+                SignalHistory(
+                    id="hist-1",
                     user_id="user-123",
                     asset="BTCUSDT",
                     type="BUY",
                     confidence=91,
                     target_price=120.0,
                     stop_loss=95.0,
-                        indicators='{"RSI": 32.0, "MACD": "neutral", "BollingerBands": {"upper": 120.0, "middle": 100.0, "lower": 90.0}}',
+                    indicators='{"RSI": 32.0, "MACD": "neutral", "BollingerBands": {"upper": 120.0, "middle": 100.0, "lower": 90.0}}',
                     created_at=now,
                     risk_profile="aggressive",
                     status="disparado",
@@ -459,15 +488,15 @@ async def test_signal_history_filters_best_signals_by_pnl_and_sort(monkeypatch, 
                     pnl=15.0,
                     archived="no",
                 ),
-                    SignalHistory(
-                        id="hist-2",
+                SignalHistory(
+                    id="hist-2",
                     user_id="user-123",
                     asset="ETHUSDT",
                     type="BUY",
                     confidence=82,
                     target_price=120.0,
                     stop_loss=95.0,
-                        indicators='{"RSI": 33.0, "MACD": "neutral", "BollingerBands": {"upper": 120.0, "middle": 100.0, "lower": 90.0}}',
+                    indicators='{"RSI": 33.0, "MACD": "neutral", "BollingerBands": {"upper": 120.0, "middle": 100.0, "lower": 90.0}}',
                     created_at=now,
                     risk_profile="aggressive",
                     status="disparado",
@@ -476,15 +505,15 @@ async def test_signal_history_filters_best_signals_by_pnl_and_sort(monkeypatch, 
                     pnl=8.0,
                     archived="no",
                 ),
-                    SignalHistory(
-                        id="hist-3",
+                SignalHistory(
+                    id="hist-3",
                     user_id="user-123",
                     asset="SOLUSDT",
                     type="BUY",
                     confidence=88,
                     target_price=120.0,
                     stop_loss=95.0,
-                        indicators='{"RSI": 36.0, "MACD": "neutral", "BollingerBands": {"upper": 120.0, "middle": 100.0, "lower": 90.0}}',
+                    indicators='{"RSI": 36.0, "MACD": "neutral", "BollingerBands": {"upper": 120.0, "middle": 100.0, "lower": 90.0}}',
                     created_at=now,
                     risk_profile="moderate",
                     status="disparado",

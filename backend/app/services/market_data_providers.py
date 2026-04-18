@@ -108,7 +108,9 @@ class StooqEodProvider:
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     ):
         project_root = Path(__file__).resolve().parents[3]
-        self.cache_dir = Path(cache_dir) if cache_dir else (project_root / "data" / "storage" / "stooq")
+        self.cache_dir = (
+            Path(cache_dir) if cache_dir else (project_root / "data" / "storage" / "stooq")
+        )
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.ttl_seconds = max(60, int(ttl_seconds))
         self.max_retries = max(1, int(max_retries))
@@ -133,9 +135,7 @@ class StooqEodProvider:
 
         base = base.replace(".", "-").replace("_", "-")
         if not base or not base.replace("-", "").isalnum():
-            raise ValueError(
-                f"Invalid US ticker '{symbol}'. Allowed examples: AAPL, SPY, BRK.B."
-            )
+            raise ValueError(f"Invalid US ticker '{symbol}'. Allowed examples: AAPL, SPY, BRK.B.")
         return f"{base}.us"
 
     @staticmethod
@@ -205,14 +205,17 @@ class StooqEodProvider:
             if "time" in out.columns:
                 out["timestamp_utc"] = pd.to_datetime(out["time"], utc=True, errors="coerce")
             elif "timestamp" in out.columns:
-                out["timestamp_utc"] = pd.to_datetime(out["timestamp"], unit="ms", utc=True, errors="coerce")
+                out["timestamp_utc"] = pd.to_datetime(
+                    out["timestamp"], unit="ms", utc=True, errors="coerce"
+                )
 
         if "time" not in out.columns and "timestamp_utc" in out.columns:
             out["time"] = pd.to_datetime(out["timestamp_utc"], utc=True, errors="coerce")
 
         if "timestamp" not in out.columns and "timestamp_utc" in out.columns:
             out["timestamp"] = (
-                pd.to_datetime(out["timestamp_utc"], utc=True, errors="coerce").astype("int64") // 1_000_000
+                pd.to_datetime(out["timestamp_utc"], utc=True, errors="coerce").astype("int64")
+                // 1_000_000
             )
 
         if "timestamp_utc" in out.columns:
@@ -282,7 +285,9 @@ class StooqEodProvider:
                 if not body:
                     raise ValueError("empty response body")
                 if "no data" in body.lower():
-                    raise ValueError(f"No EOD data returned by Stooq for symbol '{provider_symbol}'.")
+                    raise ValueError(
+                        f"No EOD data returned by Stooq for symbol '{provider_symbol}'."
+                    )
                 return body
             except Exception as exc:
                 last_error = exc
@@ -349,13 +354,17 @@ class StooqEodProvider:
 
         cached_df = self._load_cache(parquet_path)
         if cached_df is not None and self._is_cache_fresh(meta_path):
-            return self._slice_dataframe(cached_df, since_str=since_str, until_str=until_str, limit=limit)
+            return self._slice_dataframe(
+                cached_df, since_str=since_str, until_str=until_str, limit=limit
+            )
 
         try:
             csv_text = self._download_csv(provider_symbol)
             fresh_df = self._parse_stooq_csv(csv_text, provider_symbol=provider_symbol)
             self._save_cache(fresh_df, parquet_path, meta_path, provider_symbol, tf)
-            return self._slice_dataframe(fresh_df, since_str=since_str, until_str=until_str, limit=limit)
+            return self._slice_dataframe(
+                fresh_df, since_str=since_str, until_str=until_str, limit=limit
+            )
         except Exception as exc:
             if cached_df is not None:
                 logger.warning(
@@ -364,7 +373,9 @@ class StooqEodProvider:
                     len(cached_df),
                     exc,
                 )
-                return self._slice_dataframe(cached_df, since_str=since_str, until_str=until_str, limit=limit)
+                return self._slice_dataframe(
+                    cached_df, since_str=since_str, until_str=until_str, limit=limit
+                )
             if isinstance(exc, ValueError):
                 raise
             raise ValueError(f"Failed fetching Stooq EOD data for '{symbol}': {exc}") from exc
@@ -378,10 +389,10 @@ class YahooMarketDataProvider:
 
     _VALID_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
     _DEFAULT_RANGE_BY_TF = {
-        "15m": "1mo",   # ~30d
-        "1h": "6mo",    # ~180d
-        "4h": "1y",     # ~365d (aggregated from 1h)
-        "1d": "10y",    # years
+        "15m": "1mo",  # ~30d
+        "1h": "6mo",  # ~180d
+        "4h": "1y",  # ~365d (aggregated from 1h)
+        "1d": "10y",  # years
     }
     _INTERVAL_BY_TF = {
         "15m": "15m",
@@ -439,7 +450,11 @@ class YahooMarketDataProvider:
     def _parse_payload(payload: dict, symbol: str) -> pd.DataFrame:
         chart = (payload or {}).get("chart") or {}
         if chart.get("error"):
-            message = chart["error"].get("description") or chart["error"].get("code") or "unknown yahoo error"
+            message = (
+                chart["error"].get("description")
+                or chart["error"].get("code")
+                or "unknown yahoo error"
+            )
             raise ValueError(f"Yahoo request failed for '{symbol}': {message}")
 
         result = chart.get("result") or []
@@ -657,10 +672,14 @@ class AlphaVantageMarketDataProvider:
                 )
             df = pd.DataFrame(rows).sort_values("timestamp_utc")
             df["time"] = df["timestamp_utc"]
-            df["timestamp"] = (df["timestamp_utc"].astype("int64") // 1_000_000)
-            df = df[["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]]
+            df["timestamp"] = df["timestamp_utc"].astype("int64") // 1_000_000
+            df = df[
+                ["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]
+            ]
             df = df.set_index("timestamp_utc", drop=False)
-            return StooqEodProvider._slice_dataframe(df, since_str=since_str, until_str=until_str, limit=limit)
+            return StooqEodProvider._slice_dataframe(
+                df, since_str=since_str, until_str=until_str, limit=limit
+            )
 
         # intraday
         url = "https://www.alphavantage.co/query"
@@ -701,7 +720,7 @@ class AlphaVantageMarketDataProvider:
 
         df = pd.DataFrame(rows).sort_values("timestamp_utc")
         df["time"] = df["timestamp_utc"]
-        df["timestamp"] = (df["timestamp_utc"].astype("int64") // 1_000_000)
+        df["timestamp"] = df["timestamp_utc"].astype("int64") // 1_000_000
         df = df[["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]]
         df = df.set_index("timestamp_utc", drop=False)
 
@@ -709,14 +728,22 @@ class AlphaVantageMarketDataProvider:
             # Aggregate 60m candles into 4h.
             agg = (
                 df.resample("4h", on="timestamp_utc")
-                .agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"})
+                .agg(
+                    {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+                )
                 .dropna(subset=["open", "high", "low", "close"])
                 .reset_index()
             )
             agg["time"] = pd.to_datetime(agg["timestamp_utc"], utc=True)
-            agg["timestamp"] = (pd.to_datetime(agg["timestamp_utc"], utc=True).astype("int64") // 1_000_000)
-            agg = agg[["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]]
+            agg["timestamp"] = (
+                pd.to_datetime(agg["timestamp_utc"], utc=True).astype("int64") // 1_000_000
+            )
+            agg = agg[
+                ["timestamp", "timestamp_utc", "time", "open", "high", "low", "close", "volume"]
+            ]
             agg = agg.set_index("timestamp_utc", drop=False).sort_index()
             df = agg
 
-        return StooqEodProvider._slice_dataframe(df, since_str=since_str, until_str=until_str, limit=limit)
+        return StooqEodProvider._slice_dataframe(
+            df, since_str=since_str, until_str=until_str, limit=limit
+        )

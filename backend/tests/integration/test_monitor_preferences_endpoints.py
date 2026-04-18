@@ -51,7 +51,12 @@ def test_monitor_preferences_put_and_get_roundtrip(tmp_path: Path):
         "theme": "dark-green",
     }
     assert get_response == {
-        "BTC/USDT": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "4h", "theme": "dark-green"},
+        "BTC/USDT": {
+            "in_portfolio": True,
+            "card_mode": "strategy",
+            "price_timeframe": "4h",
+            "theme": "dark-green",
+        },
     }
 
 
@@ -72,10 +77,25 @@ def test_monitor_preferences_put_partial_update_keeps_defaults(tmp_path: Path):
         )
         final = monitor_preferences.list_monitor_preferences(current_user_id="user-a", db=db)
 
-    assert first == {"in_portfolio": True, "card_mode": "price", "price_timeframe": "1d", "theme": "dark-green"}
-    assert second == {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d", "theme": "dark-green"}
+    assert first == {
+        "in_portfolio": True,
+        "card_mode": "price",
+        "price_timeframe": "1d",
+        "theme": "dark-green",
+    }
+    assert second == {
+        "in_portfolio": True,
+        "card_mode": "strategy",
+        "price_timeframe": "1d",
+        "theme": "dark-green",
+    }
     assert final == {
-        "NVDA": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "1d", "theme": "dark-green"},
+        "NVDA": {
+            "in_portfolio": True,
+            "card_mode": "strategy",
+            "price_timeframe": "1d",
+            "theme": "dark-green",
+        },
     }
 
 
@@ -103,7 +123,12 @@ def test_monitor_preferences_price_timeframe_persists_for_crypto(tmp_path: Path)
         )
         second = monitor_preferences.list_monitor_preferences(current_user_id="user-a", db=db)
 
-    assert first == {"in_portfolio": False, "card_mode": "price", "price_timeframe": "15m", "theme": "dark-green"}
+    assert first == {
+        "in_portfolio": False,
+        "card_mode": "price",
+        "price_timeframe": "15m",
+        "theme": "dark-green",
+    }
     assert second["BTC/USDT"]["price_timeframe"] == "15m"
     assert second["BTC/USDT"]["theme"] == "dark-green"
 
@@ -151,5 +176,10 @@ def test_monitor_preferences_are_scoped_per_user(tmp_path: Path):
     assert second == {}
     assert third["price_timeframe"] == "15m"
     assert first_user == {
-        "BTC/USDT": {"in_portfolio": True, "card_mode": "strategy", "price_timeframe": "4h", "theme": "dark-green"},
+        "BTC/USDT": {
+            "in_portfolio": True,
+            "card_mode": "strategy",
+            "price_timeframe": "4h",
+            "theme": "dark-green",
+        },
     }

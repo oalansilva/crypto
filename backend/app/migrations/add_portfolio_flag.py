@@ -15,6 +15,7 @@ def _get_db_path(db_path):
         return db_path
     try:
         from app.database import DB_PATH
+
         return str(DB_PATH)
     except Exception:
         return str(Path(__file__).resolve().parent.parent.parent / "backtest.db")
@@ -25,25 +26,25 @@ def add_portfolio_flag_column(db_path: str = None):
     db_path = _get_db_path(db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # Check if column already exists
     cursor.execute("PRAGMA table_info(favorite_strategies)")
     columns = [row[1] for row in cursor.fetchall()]
-    
-    if 'is_portfolio' in columns:
+
+    if "is_portfolio" in columns:
         print("WARNING: Column 'is_portfolio' already exists, skipping...")
         conn.close()
         return
-    
+
     # Add column with default value False
     cursor.execute("""
         ALTER TABLE favorite_strategies 
         ADD COLUMN is_portfolio BOOLEAN DEFAULT 0 NOT NULL
     """)
-    
+
     conn.commit()
     conn.close()
-    
+
     print("SUCCESS: Added 'is_portfolio' column to favorite_strategies table")
 
 

@@ -21,8 +21,10 @@ def _get_latest_snapshot(db: Session, user_id: str | None = None) -> Optional[Di
     """Get the most recent portfolio snapshot for a user."""
     if user_id:
         result = db.execute(
-            text("SELECT * FROM portfolio_snapshots WHERE user_id = :user_id ORDER BY recorded_at DESC LIMIT 1"),
-            {"user_id": user_id}
+            text(
+                "SELECT * FROM portfolio_snapshots WHERE user_id = :user_id ORDER BY recorded_at DESC LIMIT 1"
+            ),
+            {"user_id": user_id},
         )
     else:
         result = db.execute(
@@ -171,7 +173,9 @@ async def get_portfolio_kpi(
     try:
         cred = get_user_exchange_credential(db, current_user_id, BINANCE_PROVIDER)
         if cred is None:
-            raise HTTPException(status_code=503, detail="Binance credentials not configured for this user")
+            raise HTTPException(
+                status_code=503, detail="Binance credentials not configured for this user"
+            )
         balances_data = fetch_spot_balances_snapshot(
             min_usd=0.01,
             api_key=cred.api_key,
@@ -207,6 +211,7 @@ async def get_portfolio_kpi(
     btc_change_24h_pct = None
     try:
         import httpx
+
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
                 "https://api.binance.com/api/v3/ticker/24hr",

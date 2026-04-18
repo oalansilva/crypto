@@ -15,12 +15,13 @@ from app.models import Base, OptimizationResult
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
 class JobManager:
     _instance = None
     _lock = threading.Lock()
-    
+
     # Path to store job files
-    DATA_DIR = Path(__file__).parent.parent.parent / 'data' / 'jobs'
+    DATA_DIR = Path(__file__).parent.parent.parent / "data" / "jobs"
 
     def __new__(cls):
         if cls._instance is None:
@@ -33,7 +34,7 @@ class JobManager:
     def __init__(self):
         if self._initialized:
             return
-            
+
         self._initialized = True
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.db_path = self.DATA_DIR / "results.db"
@@ -51,21 +52,17 @@ class JobManager:
     def create_job(self, config: Dict) -> str:
         """Create a new job and return its ID"""
         job_id = str(uuid.uuid4())
-        
+
         job_state = {
             "job_id": job_id,
             "status": "RUNNING",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
             "config": config,
-            "progress": {
-                "current_iteration": 0,
-                "total_iterations": 0,
-                "strategy_index": 0
-            },
-            "results": []
+            "progress": {"current_iteration": 0, "total_iterations": 0, "strategy_index": 0},
+            "results": [],
         }
-        
+
         self.save_state(job_id, job_state)
         self.active_jobs[job_id] = job_state
         return job_id
@@ -74,12 +71,12 @@ class JobManager:
         """Persist job state to disk"""
         state["updated_at"] = datetime.now().isoformat()
         file_path = self.DATA_DIR / f"job_{job_id}.json"
-        
+
         try:
             # Atomic write pattern could be used, but simple write for now
             # Use lock to prevent race conditions between API threads and background workers
             with self._lock:
-                with open(file_path, 'w') as f:
+                with open(file_path, "w") as f:
                     json.dump(state, f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to save job state for {job_id}: {e}")
@@ -87,13 +84,13 @@ class JobManager:
     def load_state(self, job_id: str) -> Optional[Dict]:
         """Load job state from disk"""
         file_path = self.DATA_DIR / f"job_{job_id}.json"
-        
+
         if not file_path.exists():
             return None
-            
+
         try:
             with self._lock:
-                with open(file_path, 'r') as f:
+                with open(file_path, "r") as f:
                     return json.load(f)
         except Exception as e:
             logger.error(f"Failed to load job state for {job_id}: {e}")
@@ -104,12 +101,12 @@ class JobManager:
         jobs = []
         for file_path in self.DATA_DIR.glob("job_*.json"):
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path, "r") as f:
                     job = json.load(f)
                     # Strip results for lighter listing
-                    if 'results' in job:
-                        job['result_count'] = len(job['results'])
-                        del job['results']
+                    if "results" in job:
+                        job["result_count"] = len(job["results"])
+                        del job["results"]
                     jobs.append(job)
             except json.JSONDecodeError as e:
                 logger.error(f"Skipping corrupted job file {file_path}: {e}")
@@ -117,20 +114,20 @@ class JobManager:
             except Exception as e:
                 logger.error(f"Error reading job file {file_path}: {e}")
                 continue
-                
+
         # Sort by updated_at desc
-        jobs.sort(key=lambda x: x.get('updated_at', ''), reverse=True)
+        jobs.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
         return jobs
 
     def signal_pause(self, job_id: str):
         """Signal a job to pause"""
         logger.info(f"Signaling pause for job {job_id}")
         self.pause_signals[job_id] = True
-        
+
         # Update state on disk to indicate intent (optional, mainly status update)
         state = self.load_state(job_id)
         if state:
-            state['status'] = 'PAUSING'
+            state["status"] = "PAUSING"
             self.save_state(job_id, state)
 
     def should_pause(self, job_id: str) -> bool:
@@ -139,24 +136,24 @@ class JobManager:
 
     def mark_paused(self, job_id: str, state: Dict):
         """Mark job as fully paused and save final state"""
-        state['status'] = 'PAUSED'
+        state["status"] = "PAUSED"
         self.save_state(job_id, state)
         # Clear signal
         if job_id in self.pause_signals:
             del self.pause_signals[job_id]
-            
+
     def mark_completed(self, job_id: str, final_results: Any):
         """Mark job as completed"""
         state = self.load_state(job_id) or {}
-        state['status'] = 'COMPLETED'
-        state['final_results'] = final_results # Optionally store full final report
+        state["status"] = "COMPLETED"
+        state["final_results"] = final_results  # Optionally store full final report
         self.save_state(job_id, state)
 
     def get_active_job(self) -> Optional[Dict]:
         """Find the most recently updated RUNNING or PAUSED job"""
         jobs = self.list_jobs()
         for job in jobs:
-            if job.get('status') in ['RUNNING', 'PAUSED', 'PAUSING']:
+            if job.get("status") in ["RUNNING", "PAUSED", "PAUSING"]:
                 return job
         return None
 
@@ -164,7 +161,7 @@ class JobManager:
         """Initialize optimization results table in the main app database."""
         Base.metadata.create_all(bind=self.engine, tables=[OptimizationResult.__table__])
         logger.info("Optimization results table initialized on %s", self.engine.url)
-    
+
     def save_result(self, job_id: str, result: Dict, index: int):
         """Save a single optimization result to the main database."""
         try:
@@ -185,11 +182,11 @@ class JobManager:
                 db.commit()
         except Exception as e:
             logger.error(f"Failed to save result {index} for job {job_id}: {e}")
-    
+
     def get_results(self, job_id: str, page: int = 1, limit: int = 50) -> Dict:
         """Get paginated optimization results from the main database."""
         offset = (page - 1) * limit
-        
+
         try:
             with self._session_factory() as db:
                 rows = (
@@ -201,9 +198,7 @@ class JobManager:
                     .all()
                 )
                 total = (
-                    db.query(OptimizationResult)
-                    .filter(OptimizationResult.job_id == job_id)
-                    .count()
+                    db.query(OptimizationResult).filter(OptimizationResult.job_id == job_id).count()
                 )
 
             results = [
@@ -215,49 +210,45 @@ class JobManager:
             ]
 
             return {
-                'results': results,
-                'pagination': {
-                    'page': page,
-                    'limit': limit,
-                    'total': total,
-                    'pages': (total + limit - 1) // limit if total > 0 else 0
-                }
+                "results": results,
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": total,
+                    "pages": (total + limit - 1) // limit if total > 0 else 0,
+                },
             }
         except Exception as e:
             logger.error(f"Failed to get results for job {job_id}: {e}")
             # Fallback to reading from old JSON format
             return self._get_results_from_json(job_id, page, limit)
-    
+
     def _get_results_from_json(self, job_id: str, page: int, limit: int) -> Dict:
         """Fallback: Read results from old JSON format for backward compatibility"""
         state = self.load_state(job_id)
-        if state and 'results' in state:
-            all_results = state['results']
+        if state and "results" in state:
+            all_results = state["results"]
             start = (page - 1) * limit
             end = start + limit
             total = len(all_results)
-            
-            return {
-                'results': all_results[start:end],
-                'pagination': {
-                    'page': page,
-                    'limit': limit,
-                    'total': total,
-                    'pages': (total + limit - 1) // limit if total > 0 else 0
-                }
-            }
-        
-        return {
-            'results': [],
-            'pagination': {'page': page, 'limit': limit, 'total': 0, 'pages': 0}
-        }
 
+            return {
+                "results": all_results[start:end],
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": total,
+                    "pages": (total + limit - 1) // limit if total > 0 else 0,
+                },
+            }
+
+        return {"results": [], "pagination": {"page": page, "limit": limit, "total": 0, "pages": 0}}
 
     def save_results_batch(self, job_id: str, results: List[Dict], start_index: int):
         """Save multiple optimization results in a single transaction for better performance"""
         if not results:
             return
-        
+
         try:
             with self._session_factory() as db:
                 indexes = [start_index + i for i in range(len(results))]

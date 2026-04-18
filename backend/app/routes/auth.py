@@ -190,14 +190,11 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
         # Simulate sending email - log the "email"
         reset_link = f"http://localhost:5173/reset-password?token=simulated-token-{uuid.uuid4()}"
         logger.info(
-            f"[AUTH] Password reset email SIMULATED for {user.email}. "
-            f"Reset link: {reset_link}"
+            f"[AUTH] Password reset email SIMULATED for {user.email}. " f"Reset link: {reset_link}"
         )
 
     # Always return 200 to prevent email enumeration
-    return ForgotPasswordResponse(
-        message="If the email exists, a reset link was sent"
-    )
+    return ForgotPasswordResponse(message="If the email exists, a reset link was sent")
 
 
 @router.get("/me", response_model=MeResponse)
@@ -222,7 +219,9 @@ def me(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
-    return MeResponse(id=str(user.id), email=user.email, name=user.name, isAdmin=is_admin_email(user.email))
+    return MeResponse(
+        id=str(user.id), email=user.email, name=user.name, isAdmin=is_admin_email(user.email)
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)

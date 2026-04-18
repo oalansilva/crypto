@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-
 DEFAULT_EPHEMERAL_PATTERNS = [
     "frontend/playwright-report/**",
     "frontend/test-results/**",
@@ -54,11 +53,17 @@ class UpstreamGuardResult:
     def blocking_reasons(self) -> list[str]:
         reasons: list[str] = []
         if self.relevant_tracked_changes:
-            reasons.append(f"relevant tracked changes: {', '.join(self.relevant_tracked_changes[:10])}")
+            reasons.append(
+                f"relevant tracked changes: {', '.join(self.relevant_tracked_changes[:10])}"
+            )
         if self.relevant_untracked_changes:
-            reasons.append(f"relevant untracked changes: {', '.join(self.relevant_untracked_changes[:10])}")
+            reasons.append(
+                f"relevant untracked changes: {', '.join(self.relevant_untracked_changes[:10])}"
+            )
         if self.unpushed_commits:
-            reasons.append(f"unpushed commits against {self.upstream_ref or 'upstream'}: {len(self.unpushed_commits)}")
+            reasons.append(
+                f"unpushed commits against {self.upstream_ref or 'upstream'}: {len(self.unpushed_commits)}"
+            )
         return reasons
 
 
@@ -71,7 +76,9 @@ def _git(repo_root: Path, *args: str, check: bool = True) -> str:
         check=False,
     )
     if check and proc.returncode != 0:
-        raise UpstreamGuardError(proc.stderr.strip() or proc.stdout.strip() or f"git {' '.join(args)} failed")
+        raise UpstreamGuardError(
+            proc.stderr.strip() or proc.stdout.strip() or f"git {' '.join(args)} failed"
+        )
     return proc.stdout
 
 
@@ -144,7 +151,12 @@ def evaluate_upstream_guard(
         elif path not in relevant_untracked:
             relevant_untracked.append(path)
 
-    upstream_ref = _git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}", check=False).strip() or None
+    upstream_ref = (
+        _git(
+            root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}", check=False
+        ).strip()
+        or None
+    )
     unpushed_commits: list[str] = []
     if upstream_ref:
         out = _git(root, "log", "--oneline", f"{upstream_ref}..HEAD", check=False).splitlines()
@@ -166,12 +178,16 @@ def evaluate_upstream_guard(
     )
 
 
-def require_upstream_published(repo_root: str | Path, *, target_statuses: Iterable[str] | None = None) -> UpstreamGuardResult:
+def require_upstream_published(
+    repo_root: str | Path, *, target_statuses: Iterable[str] | None = None
+) -> UpstreamGuardResult:
     result = evaluate_upstream_guard(repo_root, target_statuses=target_statuses)
     if result.ok:
         return result
 
-    targets = ", ".join(result.target_statuses) if result.target_statuses else "workflow progression"
+    targets = (
+        ", ".join(result.target_statuses) if result.target_statuses else "workflow progression"
+    )
     reasons = "; ".join(result.blocking_reasons) or "unknown upstream guard failure"
     raise UpstreamGuardError(
         f"Upstream guard blocked {targets}. Publish relevant changes to GitHub first ({reasons})."

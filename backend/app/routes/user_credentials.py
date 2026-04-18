@@ -71,7 +71,9 @@ def delete_binance_credentials(
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    deleted = delete_user_exchange_credential(db, user_id=current_user_id, provider=BINANCE_PROVIDER)
+    deleted = delete_user_exchange_credential(
+        db, user_id=current_user_id, provider=BINANCE_PROVIDER
+    )
     if not deleted:
         raise HTTPException(status_code=404, detail="Binance credentials not found")
     return {"message": "Binance credentials deleted"}

@@ -31,7 +31,6 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-
 PROTECTED_TEMPLATES = {"multi_ma_crossover", "multi_ma_crossoverV2"}
 
 
@@ -40,6 +39,7 @@ def _get_db_path(db_path: Optional[str] = None) -> str:
         return db_path
     try:
         from app.database import DB_PATH
+
         return str(DB_PATH)
     except Exception:
         return str(Path(__file__).resolve().parent.parent.parent / "backtest.db")
@@ -125,8 +125,14 @@ def _auto_groups(params: Dict[str, Any]) -> List[List[str]]:
 
     # Families
     macd = take(lambda k: k.lower().startswith("macd_"))
-    bb = take(lambda k: k.lower().startswith("bb_") or k.lower().startswith("bollinger_") or "bband" in k.lower())
-    ma = take(lambda k: bool(re.match(r"^(ema|sma|wma|hma|rma|ma)_", k.lower())) or "media" in k.lower())
+    bb = take(
+        lambda k: k.lower().startswith("bb_")
+        or k.lower().startswith("bollinger_")
+        or "bband" in k.lower()
+    )
+    ma = take(
+        lambda k: bool(re.match(r"^(ema|sma|wma|hma|rma|ma)_", k.lower())) or "media" in k.lower()
+    )
     rsi = take(lambda k: k.lower().startswith("rsi_"))
     atr = take(lambda k: k.lower().startswith("atr_"))
 
@@ -204,7 +210,9 @@ def _build_new_schema(schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     return {"parameters": params, "correlated_groups": groups}
 
 
-def _derive_parameters_from_template_data(template_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _derive_parameters_from_template_data(
+    template_data: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
     """
     Build a parameters dict from legacy template_data structures, used mainly by example templates
     that store ranges inside indicators (optimization_range) instead of optimization_schema.
@@ -263,7 +271,11 @@ def _derive_parameters_from_template_data(template_data: Optional[Dict[str, Any]
                     p_name = f"{ind_type}_{alias}"
                 else:
                     p_name = f"{ind_type}_{main_key}"
-                cfg = {k: opt_range.get(k) for k in ("min", "max", "step") if opt_range.get(k) is not None}
+                cfg = {
+                    k: opt_range.get(k)
+                    for k in ("min", "max", "step")
+                    if opt_range.get(k) is not None
+                }
                 if isinstance(params, dict) and params.get(main_key) is not None:
                     cfg["default"] = params.get(main_key)
                 if cfg:
@@ -330,7 +342,11 @@ def ensure_correlated_groups_all_templates(db_path: Optional[str] = None) -> Tup
         new_schema = _build_new_schema(old_schema)
 
         # Idempotency check: avoid rewriting when already normalized and equal.
-        if isinstance(old_schema, dict) and old_schema.get("parameters") == new_schema.get("parameters") and old_schema.get("correlated_groups") == new_schema.get("correlated_groups"):
+        if (
+            isinstance(old_schema, dict)
+            and old_schema.get("parameters") == new_schema.get("parameters")
+            and old_schema.get("correlated_groups") == new_schema.get("correlated_groups")
+        ):
             skipped += 1
             continue
 
@@ -347,11 +363,12 @@ def ensure_correlated_groups_all_templates(db_path: Optional[str] = None) -> Tup
 
 
 def run_migration():
-    print("Running migration: ensure correlated_groups on all templates (excluding protected ones)...")
+    print(
+        "Running migration: ensure correlated_groups on all templates (excluding protected ones)..."
+    )
     updated, skipped = ensure_correlated_groups_all_templates()
     print(f"Done. Updated={updated}, Skipped={skipped}")
 
 
 if __name__ == "__main__":
     run_migration()
-

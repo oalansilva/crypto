@@ -13,6 +13,7 @@ def _get_db_path(db_path):
         return db_path
     try:
         from app.database import DB_PATH
+
         return str(DB_PATH)
     except Exception:
         return str(Path(__file__).resolve().parents[2] / "backtest.db")
@@ -36,18 +37,25 @@ def migrate(db_path: str = None):
         if pt is not None:
             continue
         if start_date is None and end_date is None:
-            cursor.execute("UPDATE favorite_strategies SET period_type = ? WHERE id = ?", ("all", fid))
+            cursor.execute(
+                "UPDATE favorite_strategies SET period_type = ? WHERE id = ?", ("all", fid)
+            )
             continue
         if start_date and end_date:
             try:
                 from datetime import datetime
+
                 a = datetime.strptime(start_date[:10], "%Y-%m-%d")
                 b = datetime.strptime(end_date[:10], "%Y-%m-%d")
                 days = (b - a).days
                 if 150 <= days <= 220:
-                    cursor.execute("UPDATE favorite_strategies SET period_type = ? WHERE id = ?", ("6m", fid))
+                    cursor.execute(
+                        "UPDATE favorite_strategies SET period_type = ? WHERE id = ?", ("6m", fid)
+                    )
                 elif 600 <= days <= 800:
-                    cursor.execute("UPDATE favorite_strategies SET period_type = ? WHERE id = ?", ("2y", fid))
+                    cursor.execute(
+                        "UPDATE favorite_strategies SET period_type = ? WHERE id = ?", ("2y", fid)
+                    )
             except Exception:
                 pass
     conn.commit()

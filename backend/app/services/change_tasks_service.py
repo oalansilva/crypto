@@ -21,11 +21,8 @@ from fastapi import HTTPException
 
 from app.services.coordination_service import project_root
 
-
 _H2_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$")
-_BULLET_RE = re.compile(
-    r"^(?P<indent>\s*)-\s+(?:(?P<box>\[(?P<mark>[ xX])\])\s+)?(?P<text>.*)$"
-)
+_BULLET_RE = re.compile(r"^(?P<indent>\s*)-\s+(?:(?P<box>\[(?P<mark>[ xX])\])\s+)?(?P<text>.*)$")
 _TASK_CODE_RE = re.compile(r"^(?P<code>\d+(?:\.\d+)+)\s+(?P<title>.+)$")
 
 
@@ -178,7 +175,9 @@ def get_change_tasks_checklist(change_id: str) -> Dict[str, Any]:
     try:
         md = _read_text(p)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"failed to read tasks.md for change '{change_id}': {e}")
+        raise HTTPException(
+            status_code=500, detail=f"failed to read tasks.md for change '{change_id}': {e}"
+        )
 
     sections = parse_tasks_markdown(md)
     return {

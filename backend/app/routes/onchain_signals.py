@@ -22,7 +22,6 @@ from app.services.onchain_service import (
     save_onchain_signal,
 )
 
-
 router = APIRouter(prefix="/api/signals/onchain", tags=["onchain-signals"])
 
 
@@ -171,20 +170,30 @@ async def get_onchain_signal(
     token: str = Query(..., description="Token symbol, e.g. ETH, SOL", min_length=1),
     chain: str = Query(..., description="Chain slug: ethereum, solana, arbitrum, base, matic"),
 ):
-    import sys; print(f"[HTTP START] token={token} chain={chain}", flush=True, file=sys.stderr)
+    import sys
+
+    print(f"[HTTP START] token={token} chain={chain}", flush=True, file=sys.stderr)
     if chain.lower() not in TOP_CHAINS:
         chain = TOP_CHAINS[0]  # fallback to ethereum
-    import sys; print(f"[HTTP] calling compose_onchain_signal...", flush=True, file=sys.stderr)
+    import sys
+
+    print(f"[HTTP] calling compose_onchain_signal...", flush=True, file=sys.stderr)
 
     try:
-        import sys; print(f"[HTTP] awaiting compose_onchain_signal...", flush=True, file=sys.stderr)
+        import sys
+
+        print(f"[HTTP] awaiting compose_onchain_signal...", flush=True, file=sys.stderr)
         result = await asyncio.wait_for(
             compose_onchain_signal(token.upper(), chain.lower()),
             timeout=10.0,
         )
-        import sys; print(f"[HTTP] got result {result.signal}", flush=True, file=sys.stderr)
+        import sys
+
+        print(f"[HTTP] got result {result.signal}", flush=True, file=sys.stderr)
     except asyncio.TimeoutError:
-        import sys; print(f"[HTTP] TIMEOUT!", flush=True, file=sys.stderr)
+        import sys
+
+        print(f"[HTTP] TIMEOUT!", flush=True, file=sys.stderr)
         # If external APIs timeout, return cached or stale data
         # For now, return a HOLD with low confidence
         return OnchainSignalResponse(
@@ -280,7 +289,9 @@ async def get_onchain_snapshot(
 async def list_onchain_history(
     token: str | None = Query(default=None, description="Filter by token, e.g. ETH"),
     chain: str | None = Query(default=None, description="Filter by chain slug"),
-    signal_type: str | None = Query(default=None, description="Filter by signal type: BUY, SELL, HOLD"),
+    signal_type: str | None = Query(
+        default=None, description="Filter by signal type: BUY, SELL, HOLD"
+    ),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):

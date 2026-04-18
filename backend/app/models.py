@@ -10,12 +10,14 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+
 # from sqlalchemy.dialects.postgresql import UUID, JSONB  <-- Remove Postgres types
 from app.database import Base
 from sqlalchemy import TypeDecorator
 import uuid
 import json
 from datetime import datetime
+
 
 # Compatibility types for SQLite
 class JSONType(TypeDecorator):
@@ -25,11 +27,12 @@ class JSONType(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        
+
         # simple helper to handle NaN/Inf and Numpy types
         def safe_serialize(obj):
             import math
             import numpy as np
+
             if isinstance(obj, (np.integer, np.int64, np.int32)):
                 return int(obj)
             if isinstance(obj, (np.floating, np.float64, np.float32)):
@@ -67,6 +70,7 @@ class JSONType(TypeDecorator):
             # Fallback for weird cases or if it's a plain string
             return value
 
+
 class UUIDType(TypeDecorator):
     impl = String
     cache_ok = True
@@ -81,36 +85,39 @@ class UUIDType(TypeDecorator):
             return None
         return uuid.UUID(value)
 
-# Use conditional types based on DB engine? No, keep it simple for now. 
+
+# Use conditional types based on DB engine? No, keep it simple for now.
 # We'll use these custom types which work on both (String/Text are universal).
 # Ideally we'd check dialect but for MVP SQLite local is fine.
+
 
 class BacktestRun(Base):
     __tablename__ = "backtest_runs"
 
     id = Column(UUIDType, primary_key=True, default=uuid.uuid4)
-    created_at = Column(DateTime, default=None) # handled by app or server_default
+    created_at = Column(DateTime, default=None)  # handled by app or server_default
     status = Column(Text, nullable=False)
     mode = Column(Text, nullable=False)
-    
+
     exchange = Column(Text, nullable=False)
     symbol = Column(Text, nullable=False)
     timeframe = Column(Text, nullable=False)
-    since = Column(String, nullable=True) # Store ISO string in simple DBs
+    since = Column(String, nullable=True)  # Store ISO string in simple DBs
     until = Column(String)
     full_period = Column(Boolean, default=False)
-    
+
     strategies = Column(JSONType, nullable=False)
     params = Column(JSONType)
-    
+
     fee = Column(Float, default=0.001)
     slippage = Column(Float, default=0.0005)
     cash = Column(Float, default=10000)
     stop_pct = Column(JSONType)
     take_pct = Column(JSONType)
-    fill_mode = Column(Text, default='close')
-    
+    fill_mode = Column(Text, default="close")
+
     error_message = Column(Text)
+
 
 class BacktestResult(Base):
     __tablename__ = "backtest_results"
@@ -127,51 +134,55 @@ class FavoriteStrategy(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=True)
     name = Column(String, nullable=False)
-    
+
     # Context
     symbol = Column(String, nullable=False)
     timeframe = Column(String, nullable=False)
     strategy_name = Column(String, nullable=False)
-    
+
     # Configuration
     parameters = Column(JSONType, nullable=False)
-    
+
     # Cached Metrics
     metrics = Column(JSONType, nullable=True)
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
     notes = Column(String, nullable=True)
-    
+
     # Tier system - para categorizar estratégias (1=Core obrigatório, 2=Bons complementares, 3=Outros)
     tier = Column(Integer, nullable=True)
 
     # Período do backtest (6m / 2y / todo). Chave de unicidade junto com strategy_name, symbol, timeframe.
     start_date = Column(String, nullable=True)
     end_date = Column(String, nullable=True)
-    period_type = Column(String, nullable=True)  # '6m' | '2y' | 'all'; usado no skip (evita drift de datas)
+    period_type = Column(
+        String, nullable=True
+    )  # '6m' | '2y' | 'all'; usado no skip (evita drift de datas)
 
 
 class AutoBacktestRun(Base):
     """Model for Auto Backtest execution history"""
+
     __tablename__ = "auto_backtest_runs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     run_id = Column(String, unique=True, index=True, nullable=False)
     symbol = Column(String, nullable=False)
     strategy = Column(String, nullable=False)
-    status = Column(String, default='PENDING', nullable=False)
-    
+    status = Column(String, default="PENDING", nullable=False)
+
     # Stage results stored as JSON
     stage_1_result = Column(JSONType, nullable=True)
     stage_2_result = Column(JSONType, nullable=True)
     stage_3_result = Column(JSONType, nullable=True)
-    
+
     favorite_id = Column(Integer, nullable=True)
     error_message = Column(String, nullable=True)
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+
 
 class ComboTemplate(Base):
     __tablename__ = "combo_templates"
@@ -179,16 +190,16 @@ class ComboTemplate(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
-    
+
     # Flags
     is_prebuilt = Column(Boolean, default=False)
     is_example = Column(Boolean, default=False)
     is_readonly = Column(Boolean, default=False)
-    
+
     # Data (JSON)
     template_data = Column(JSONType, nullable=False)
     optimization_schema = Column(JSONType, nullable=True)
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -268,6 +279,7 @@ class OptimizationResult(Base):
         UniqueConstraint("job_id", "result_index", name="uq_optimization_results_job_idx"),
         Index("idx_optimization_results_job_created", "job_id", "created_at"),
     )
+
 
 # Import onchain models so Base.metadata.create_all() picks them up
 from app.models_onchain import OnchainSignal, OnchainSignalHistory  # noqa: F401, E402

@@ -2,6 +2,7 @@
 Carrega a lista de símbolos excluídos a partir do arquivo de configuração.
 Usado por: opportunity_service, api (binance symbols), batch_backtest_service.
 """
+
 import json
 import logging
 from pathlib import Path
@@ -14,12 +15,17 @@ _CONFIG_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = _CONFIG_DIR / "config" / "excluded_symbols.json"
 
 # Fallback se o arquivo não existir (lista mínima conhecida)
-_DEFAULT_SYMBOLS = frozenset({
-    "1INCHDOWN/USDT", "1INCHUP/USDT",
-    "AAVEDOWN/USDT", "AAVEUP/USDT",
-    "ADADOWN/USDT", "ADAUP/USDT",
-    "AION/USDT",
-})
+_DEFAULT_SYMBOLS = frozenset(
+    {
+        "1INCHDOWN/USDT",
+        "1INCHUP/USDT",
+        "AAVEDOWN/USDT",
+        "AAVEUP/USDT",
+        "ADADOWN/USDT",
+        "ADAUP/USDT",
+        "AION/USDT",
+    }
+)
 
 
 def _load_excluded_symbols() -> FrozenSet[str]:

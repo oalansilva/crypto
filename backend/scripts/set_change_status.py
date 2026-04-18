@@ -122,7 +122,11 @@ def main() -> int:
             print(f"ERROR: project not found: {args.project}")
             return 2
 
-        c = db.query(Change).filter(Change.project_id == p.id, Change.change_id == args.change).first()
+        c = (
+            db.query(Change)
+            .filter(Change.project_id == p.id, Change.change_id == args.change)
+            .first()
+        )
         if not c:
             print(f"ERROR: change not found in workflow DB: {args.project}/{args.change}")
             return 2

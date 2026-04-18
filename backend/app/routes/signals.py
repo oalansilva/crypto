@@ -131,9 +131,15 @@ QUALITY_GATE_ALLOW_AGGRESSIVE = True
 
 def _get_history_quality_gate_settings(db: Session) -> HistoryQualityGateSettings:
     return HistoryQualityGateSettings(
-        min_confidence=get_system_preference_int(db, SIGNAL_HISTORY_MIN_CONFIDENCE_KEY, QUALITY_GATE_MIN_CONFIDENCE),
-        min_reward_risk=get_system_preference_float(db, SIGNAL_HISTORY_MIN_REWARD_RISK_KEY, QUALITY_GATE_MIN_REWARD_RISK),
-        max_reward_risk=get_system_preference_float(db, SIGNAL_HISTORY_MAX_REWARD_RISK_KEY, QUALITY_GATE_MAX_REWARD_RISK),
+        min_confidence=get_system_preference_int(
+            db, SIGNAL_HISTORY_MIN_CONFIDENCE_KEY, QUALITY_GATE_MIN_CONFIDENCE
+        ),
+        min_reward_risk=get_system_preference_float(
+            db, SIGNAL_HISTORY_MIN_REWARD_RISK_KEY, QUALITY_GATE_MIN_REWARD_RISK
+        ),
+        max_reward_risk=get_system_preference_float(
+            db, SIGNAL_HISTORY_MAX_REWARD_RISK_KEY, QUALITY_GATE_MAX_REWARD_RISK
+        ),
         min_rsi=get_system_preference_float(db, SIGNAL_HISTORY_MIN_RSI_KEY, QUALITY_GATE_MIN_RSI),
         max_rsi=get_system_preference_float(db, SIGNAL_HISTORY_MAX_RSI_KEY, QUALITY_GATE_MAX_RSI),
         allow_neutral_macd=get_system_preference_bool(
@@ -141,14 +147,20 @@ def _get_history_quality_gate_settings(db: Session) -> HistoryQualityGateSetting
             SIGNAL_HISTORY_ALLOW_NEUTRAL_MACD_KEY,
             QUALITY_GATE_ALLOW_NEUTRAL_MACD,
         ),
-        allow_buy=get_system_preference_bool(db, SIGNAL_HISTORY_ALLOW_BUY_KEY, QUALITY_GATE_ALLOW_BUY),
-        allow_sell=get_system_preference_bool(db, SIGNAL_HISTORY_ALLOW_SELL_KEY, QUALITY_GATE_ALLOW_SELL),
+        allow_buy=get_system_preference_bool(
+            db, SIGNAL_HISTORY_ALLOW_BUY_KEY, QUALITY_GATE_ALLOW_BUY
+        ),
+        allow_sell=get_system_preference_bool(
+            db, SIGNAL_HISTORY_ALLOW_SELL_KEY, QUALITY_GATE_ALLOW_SELL
+        ),
         allow_conservative=get_system_preference_bool(
             db,
             SIGNAL_HISTORY_ALLOW_CONSERVATIVE_KEY,
             QUALITY_GATE_ALLOW_CONSERVATIVE,
         ),
-        allow_moderate=get_system_preference_bool(db, SIGNAL_HISTORY_ALLOW_MODERATE_KEY, QUALITY_GATE_ALLOW_MODERATE),
+        allow_moderate=get_system_preference_bool(
+            db, SIGNAL_HISTORY_ALLOW_MODERATE_KEY, QUALITY_GATE_ALLOW_MODERATE
+        ),
         allow_aggressive=get_system_preference_bool(
             db,
             SIGNAL_HISTORY_ALLOW_AGGRESSIVE_KEY,
@@ -229,7 +241,11 @@ def _signal_passes_quality_gate(signal: Signal, settings: HistoryQualityGateSett
     if rsi < settings.min_rsi or rsi > settings.max_rsi:
         return False
     reward_risk = _calculate_reward_risk(signal)
-    if reward_risk is None or reward_risk < settings.min_reward_risk or reward_risk > settings.max_reward_risk:
+    if (
+        reward_risk is None
+        or reward_risk < settings.min_reward_risk
+        or reward_risk > settings.max_reward_risk
+    ):
         return False
     return True
 
@@ -261,7 +277,9 @@ def _history_row_to_signal(row: SignalHistory) -> Signal | None:
         return None
 
 
-def _history_row_passes_quality_gate(row: SignalHistory, settings: HistoryQualityGateSettings) -> bool:
+def _history_row_passes_quality_gate(
+    row: SignalHistory, settings: HistoryQualityGateSettings
+) -> bool:
     signal = _history_row_to_signal(row)
     if signal is None:
         return False
@@ -345,9 +363,13 @@ async def get_sentiment():
 async def get_signals(
     current_user_id: str | None = Depends(get_current_user_optional),
     type: SignalType | None = Query(default=None, description="Filter by BUY or SELL"),
-    confidence_min: int | None = Query(default=None, ge=0, le=100, description="Minimum confidence threshold"),
+    confidence_min: int | None = Query(
+        default=None, ge=0, le=100, description="Minimum confidence threshold"
+    ),
     asset: str | None = Query(default=None, description="Binance symbol, e.g. BTCUSDT"),
-    risk_profile: RiskProfile = Query(default=RiskProfile.moderate, description="Signal risk profile"),
+    risk_profile: RiskProfile = Query(
+        default=RiskProfile.moderate, description="Signal risk profile"
+    ),
     limit: int = Query(default=20, ge=1, le=50, description="Maximum number of signals to return"),
 ):
     return await binance_service.build_signal_feed(
@@ -440,15 +462,23 @@ async def get_signal_history(
     current_user_id: str = Depends(get_current_user),
     asset: str | None = Query(default=None, description="Filter by asset, e.g. BTCUSDT"),
     type: str | None = Query(default=None, description="Filter by BUY or SELL"),
-    status: str | None = Query(default=None, description="Filter by status: open/closed or raw values"),
-    risk_profile: str | None = Query(default=None, description="Filter by risk profile: conservative, moderate, aggressive"),
+    status: str | None = Query(
+        default=None, description="Filter by status: open/closed or raw values"
+    ),
+    risk_profile: str | None = Query(
+        default=None, description="Filter by risk profile: conservative, moderate, aggressive"
+    ),
     data_inicio: str | None = Query(default=None, description="Start date ISO, e.g. 2026-01-01"),
     data_fim: str | None = Query(default=None, description="End date ISO, e.g. 2026-03-28"),
     confidence_min: int | None = Query(default=None, ge=0, le=100),
-    pnl_filter: str | None = Query(default=None, description="Filter by pnl quality: positive, negative, realized"),
+    pnl_filter: str | None = Query(
+        default=None, description="Filter by pnl quality: positive, negative, realized"
+    ),
     sort_by: str = Query(default="created_at", description="Sort by created_at, confidence, pnl"),
     sort_order: str = Query(default="desc", description="Sort direction: asc or desc"),
-    apply_quality_gate: bool = Query(default=True, description="Apply current history gate to legacy records"),
+    apply_quality_gate: bool = Query(
+        default=True, description="Apply current history gate to legacy records"
+    ),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
@@ -498,12 +528,18 @@ async def get_signal_history(
         if sort_by == "confidence":
             rows.sort(key=lambda row: (row.confidence, row.created_at), reverse=reverse)
         elif sort_by == "pnl":
-            rows.sort(key=lambda row: ((row.pnl if row.pnl is not None else float("-inf")), row.created_at), reverse=reverse)
+            rows.sort(
+                key=lambda row: (
+                    (row.pnl if row.pnl is not None else float("-inf")),
+                    row.created_at,
+                ),
+                reverse=reverse,
+            )
         else:
             rows.sort(key=lambda row: row.created_at, reverse=reverse)
 
         total = len(rows)
-        rows = rows[offset:offset + limit]
+        rows = rows[offset : offset + limit]
 
         signals = [_build_history_item(row) for row in rows]
         return SignalHistoryResponse(signals=signals, total=total, limit=limit, offset=offset)
@@ -587,7 +623,9 @@ async def get_signal_stats(
     data_fim: str | None = Query(default=None),
     confidence_min: int | None = Query(default=None, ge=0, le=100),
     pnl_filter: str | None = Query(default=None),
-    apply_quality_gate: bool = Query(default=True, description="Apply current history gate to legacy records"),
+    apply_quality_gate: bool = Query(
+        default=True, description="Apply current history gate to legacy records"
+    ),
 ):
     db: Session = SessionLocal()
     try:
