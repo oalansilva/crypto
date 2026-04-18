@@ -18,3 +18,4 @@ Recommended GitHub settings for `main` and `develop`:
 Notes:
 - `RUN_FRONTEND_BUILD` is currently `false` in CI because `npm run build` fails on a known TypeScript error in `frontend/src/pages/ArbitragePage.tsx`.
 - When frontend build is green, set `RUN_FRONTEND_BUILD` to `true` and include that check in required status checks.
+- `e2e-playwright` is path-scoped: it runs only when `frontend/**` or the CI workflow itself changes, and stays `skipped` for repo/backend-only PRs.
