@@ -183,7 +183,17 @@ npm run dev
 npm --prefix frontend run test:e2e
 ```
 
-Branch protection checklist for `main`:
+### Lint / Format
+
+```bash
+./backend/.venv/bin/python -m black backend
+npm --prefix frontend run lint
+```
+
+Contribution guide:
+`CONTRIBUTING.md`
+
+Branch protection checklist:
 `docs/branch-protection.md`
 
 ### Building for Production
