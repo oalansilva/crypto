@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+(
+  /(
+      \.git
+    | \.venv
+    | venv
+    | frontend
+    | node_modules
+    | dist
+    | openspec
+    | qa_artifacts
+    | qa-evidence
+    | tmp
+    | data
+  )/
+)
+'''

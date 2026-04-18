@@ -1,14 +1,17 @@
-# Branch protection (main)
+# Branch protection (`main` and `develop`)
 
-Recommended GitHub settings for `main`:
+Recommended GitHub settings for `main` and `develop`:
 
 1. Require a pull request before merging.
-2. Require status checks to pass before merging.
-3. Add required checks:
+2. Require at least 1 approval before merging.
+3. Require conversation resolution before merging.
+4. Dismiss stale approvals when new commits are pushed.
+5. Restrict direct pushes to protected branches.
+6. Optionally require status checks to pass before merging.
+7. If status checks are required, add:
    - `backend-tests`
    - `e2e-playwright`
-4. Require branches to be up to date before merging.
-5. Restrict direct pushes to `main`.
+8. Require branches to be up to date before merging when required checks are enabled.
 
 Notes:
 - `RUN_FRONTEND_BUILD` is currently `false` in CI because `npm run build` fails on a known TypeScript error in `frontend/src/pages/ArbitragePage.tsx`.
