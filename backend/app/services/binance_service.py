@@ -795,15 +795,17 @@ async def get_or_refresh_signal_feed_snapshot(risk_profile: RiskProfile) -> Sign
 
 
 async def _signal_feed_refresh_loop() -> None:
-    assert _SIGNAL_FEED_STOP_EVENT is not None
-    while not _SIGNAL_FEED_STOP_EVENT.is_set():
+    stop_event = _SIGNAL_FEED_STOP_EVENT
+    assert stop_event is not None
+
+    while not stop_event.is_set():
         try:
             await refresh_signal_feed_snapshots()
         except Exception as exc:
             logger.warning("Signal feed refresh loop failed: %s", exc)
         try:
             await asyncio.wait_for(
-                _SIGNAL_FEED_STOP_EVENT.wait(),
+                stop_event.wait(),
                 timeout=SIGNAL_FEED_REFRESH_INTERVAL_SECONDS,
             )
         except TimeoutError:
@@ -826,13 +828,14 @@ async def stop_signal_feed_snapshot_worker() -> None:
 
     stop_event = _SIGNAL_FEED_STOP_EVENT
     task = _SIGNAL_FEED_REFRESH_TASK
-    _SIGNAL_FEED_STOP_EVENT = None
-    _SIGNAL_FEED_REFRESH_TASK = None
 
     if stop_event is not None:
         stop_event.set()
     if task is not None:
         await task
+
+    _SIGNAL_FEED_STOP_EVENT = None
+    _SIGNAL_FEED_REFRESH_TASK = None
 
 
 async def build_signal_feed(

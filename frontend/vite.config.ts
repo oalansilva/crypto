@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
 function servePublicPrototypeIndex(): Plugin {
@@ -39,20 +39,25 @@ function servePublicPrototypeIndex(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), servePublicPrototypeIndex()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  server: {
-    host: '0.0.0.0',
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8003',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, __dirname, '')
+  const proxyTarget = env.VITE_DEV_PROXY_TARGET || 'http://localhost:8003'
+
+  return {
+    plugins: [react(), servePublicPrototypeIndex()],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
     },
-  },
+    server: {
+      host: '0.0.0.0',
+      proxy: {
+        '/api': {
+          target: proxyTarget,
+          changeOrigin: true,
+        },
+      },
+    },
+  }
 })
