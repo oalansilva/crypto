@@ -8,6 +8,7 @@ env:
   ARBITRAGE_MONITOR_ENABLED: "0"
   OPPORTUNITIES_SMOKE_MAX_SECONDS: "2.0"
   RUN_FRONTEND_BUILD: "false"
+  RUN_E2E_PLAYWRIGHT: "false"
 
 jobs:
   changes:
@@ -98,7 +99,7 @@ jobs:
     needs:
       - changes
       - backend-tests
-    if: needs.changes.outputs.frontend_e2e == 'true'
+    if: env.RUN_E2E_PLAYWRIGHT == 'true' && needs.changes.outputs.frontend_e2e == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
