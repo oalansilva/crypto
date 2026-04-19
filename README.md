@@ -201,7 +201,8 @@ npm run dev
 ### CI / E2E
 
 ```bash
-./backend/.venv/bin/python -m pytest -q backend/tests/integration
+npm --prefix frontend run test:playground-label
+./backend/.venv/bin/python -m pytest -q backend/tests
 npm --prefix frontend run test:e2e
 ```
 
@@ -212,11 +213,32 @@ npm --prefix frontend run test:e2e
 npm --prefix frontend run lint
 ```
 
+### Coverage Gate
+
+```bash
+./backend/.venv/bin/python -m pytest -q backend/tests \
+  --cov=backend/app \
+  --cov-config=.coveragerc \
+  --cov-fail-under=70 \
+  --cov-report=term \
+  --cov-report=xml:coverage.xml
+```
+
+PRs now enforce two backend coverage gates:
+
+- `>= 70%` total backend line coverage for the repository baseline.
+- `>= 70%` differential coverage on changed lines under `backend/app/**`.
+
+The baseline now starts at `70%` while legacy/backtest-heavy modules remain excluded in `.coveragerc`.
+
 Contribution guide:
 `CONTRIBUTING.md`
 
 Branch protection checklist:
 `docs/branch-protection.md`
+
+Staging deploy setup:
+`docs/staging-deploy.md`
 
 ### Building for Production
 

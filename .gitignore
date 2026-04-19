@@ -89,3 +89,6 @@ frontend/test-results/
 qa-evidence/
 tmp_retrospective_prompt.md
 artifacts-signals-*.png
+.coverage
+coverage.xml
+htmlcov/
