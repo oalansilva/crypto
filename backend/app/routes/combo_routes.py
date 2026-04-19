@@ -6,7 +6,7 @@ Endpoints for combo strategy templates, backtesting, and optimization.
 
 import logging
 import uuid
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from typing import Optional, List, Dict, Any
 import pandas as pd
@@ -34,12 +34,12 @@ from app.services.market_data_providers import (
     validate_data_source_timeframe,
 )
 from app.services.batch_backtest_service import (
-    run_batch_backtest,
     get_batch_progress,
     init_batch_job,
     request_pause_batch,
     request_cancel_batch,
 )
+from app.services.batch_backtest_queue import enqueue_batch_backtest
 from app.middleware.authMiddleware import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -584,7 +584,6 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
 @router.post("/backtest/batch", response_model=ComboBatchBacktestResponse)
 async def start_batch_backtest(
     request: ComboBatchBacktestRequest,
-    background_tasks: BackgroundTasks,
     current_user_id: str = Depends(get_current_user),
 ):
     """
@@ -600,9 +599,15 @@ async def start_batch_backtest(
         payload = request.model_dump()
         payload["user_id"] = current_user_id
         init_batch_job(job_id, len(request.symbols))
-        background_tasks.add_task(run_batch_backtest, job_id, payload)
+        try:
+            enqueue_batch_backtest(job_id, payload)
+        except Exception as e:
+            logger.exception("Batch backtest enqueue failed: %s", e)
+            raise HTTPException(status_code=503, detail="Batch queue is unavailable") from e
         logger.info("Batch backtest started job_id=%s symbols=%s", job_id, request.symbols)
         return ComboBatchBacktestResponse(job_id=job_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Batch backtest start failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))

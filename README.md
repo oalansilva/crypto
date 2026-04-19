@@ -17,7 +17,8 @@ A full-stack web application for backtesting cryptocurrency trading strategies w
 - **FastAPI**: Modern Python web framework
 - **SQLAlchemy**: SQL toolkit and ORM
 - **PostgreSQL**: Required for runtime databases
-- **AsyncIO**: Asynchronous background workers
+- **Redis + Celery**: Durable async jobs and queue-based processing
+- **AsyncIO**: Continuous background workers
 
 ### Frontend
 - **React 18**: UI library
@@ -113,7 +114,7 @@ crypto/
 
 ### Docker Setup
 
-For an isolated local stack with PostgreSQL, backend, frontend, and background worker:
+For an isolated local stack with PostgreSQL, Redis, backend, frontend, background runtime worker, and Celery queue worker:
 
 ```bash
 cp .env.docker.example .env.docker.local
@@ -125,22 +126,28 @@ Services:
 - Backend: http://localhost:8003
 - Backend docs: http://localhost:8003/docs
 - PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
 
 Notes:
 - `docker-compose.yml` is configured for development with bind mounts and hot reload.
 - The backend container runs `alembic upgrade head` before starting FastAPI.
 - The worker container runs the current background routines (`signal_monitor` and signal feed snapshot refresh).
+- The `celery-worker` container handles discrete queued jobs such as combo batch backtests.
+- Redis backs Celery broker/result state and shared batch progress storage.
 - A lightweight `postgres-backup` service writes daily logical dumps into `./backups/postgres`.
 - Multi-stage Dockerfiles are available for backend, frontend, and worker images.
 - The `Makefile` uses `.env.docker.local` to avoid conflicting with the repo's existing `.env`.
-- If ports `5432`, `8003`, or `5173` are already in use, override `POSTGRES_PORT`, `BACKEND_PORT`, and `FRONTEND_PORT` in `.env.docker.local`.
+- If ports `5432`, `6379`, `8003`, or `5173` are already in use, override `POSTGRES_PORT`, `REDIS_PORT`, `BACKEND_PORT`, and `FRONTEND_PORT` in `.env.docker.local`.
 
 Useful commands:
 
 ```bash
 make db-migrate
 make db-backup
+make celery-logs
 ```
+
+Queue and retry behavior is documented in [docs/async-processing.md](/root/.openclaw/workspace/crypto/docs/async-processing.md:1).
 
 ### Start/Stop Scripts (Ubuntu)
 
