@@ -84,7 +84,8 @@ crypto/
 
 4. **Initialize database**:
    ```bash
-   python init_db.py
+   cd backend
+   alembic upgrade head
    ```
 
 5. **Start backend server**:
@@ -127,10 +128,19 @@ Services:
 
 Notes:
 - `docker-compose.yml` is configured for development with bind mounts and hot reload.
+- The backend container runs `alembic upgrade head` before starting FastAPI.
 - The worker container runs the current background routines (`signal_monitor` and signal feed snapshot refresh).
+- A lightweight `postgres-backup` service writes daily logical dumps into `./backups/postgres`.
 - Multi-stage Dockerfiles are available for backend, frontend, and worker images.
 - The `Makefile` uses `.env.docker.local` to avoid conflicting with the repo's existing `.env`.
 - If ports `5432`, `8003`, or `5173` are already in use, override `POSTGRES_PORT`, `BACKEND_PORT`, and `FRONTEND_PORT` in `.env.docker.local`.
+
+Useful commands:
+
+```bash
+make db-migrate
+make db-backup
+```
 
 ### Start/Stop Scripts (Ubuntu)
 
