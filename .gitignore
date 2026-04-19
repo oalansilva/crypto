@@ -92,3 +92,4 @@ artifacts-signals-*.png
 .coverage
 coverage.xml
 htmlcov/
+backups/
