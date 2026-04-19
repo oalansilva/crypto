@@ -9,6 +9,8 @@ httpx>=0.24,<0.26
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.9
 pandas-ta>=0.3.14b0
+celery[redis]>=5.4.0
+redis>=5.2.0
 
 # Lab v2
 langgraph>=0.2.0

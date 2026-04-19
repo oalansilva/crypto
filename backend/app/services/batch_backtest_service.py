@@ -6,76 +6,98 @@ as a new favorite with notes "gerado em lote" and tier=3. Never overwrites
 existing favorites.
 """
 
+from __future__ import annotations
+
 import logging
 import time
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any
 
+from app.database import SessionLocal
+from app.models import FavoriteStrategy
+from app.services.batch_backtest_store import get_batch_backtest_store
 from app.services.combo_optimizer import ComboOptimizer
 from app.services.market_data_providers import resolve_data_source_for_symbol
 from app.services.opportunity_service import _is_unsupported_symbol
-from app.database import SessionLocal
-from app.models import FavoriteStrategy
 
 logger = logging.getLogger(__name__)
 
-# In-memory progress store keyed by job_id
-_batch_jobs: Dict[str, Dict[str, Any]] = {}
+
+def _persist_progress(job: dict[str, Any]) -> dict[str, Any]:
+    return get_batch_backtest_store().save_job(job)
 
 
-def _get_or_init_job(job_id: str, total: int) -> Dict[str, Any]:
-    if job_id not in _batch_jobs:
-        _batch_jobs[job_id] = {
-            "job_id": job_id,
-            "status": "running",
-            "processed": 0,
-            "total": total,
-            "succeeded": 0,
-            "failed": 0,
-            "skipped": 0,
-            "errors": [],
-            "started_at": datetime.utcnow().isoformat(),
-            "elapsed_sec": 0.0,
-            "estimated_remaining_sec": None,
-            "current_symbol": None,
-            "cancel_requested": False,
-            "pause_requested": False,
-        }
-    return _batch_jobs[job_id]
+def _load_job(job_id: str) -> dict[str, Any] | None:
+    return get_batch_backtest_store().get_job(job_id)
 
 
-def get_batch_progress(job_id: str) -> Optional[Dict[str, Any]]:
+def get_batch_progress(job_id: str) -> dict[str, Any] | None:
     """Return current progress for a batch job, or None if not found."""
-    return _batch_jobs.get(job_id)
+    return _load_job(job_id)
 
 
 def init_batch_job(job_id: str, total: int) -> None:
-    """Create job entry before background task runs so GET /batch/{id} returns immediately."""
-    _get_or_init_job(job_id, total)
+    """Create job entry before task dispatch so GET /batch/{id} returns immediately."""
+    get_batch_backtest_store().init_job(job_id, total)
 
 
 def request_pause_batch(job_id: str) -> bool:
     """Signal the batch job to pause after the current symbol. Returns True if job exists."""
-    job = _batch_jobs.get(job_id)
-    if not job or job["status"] != "running":
+    store = get_batch_backtest_store()
+    job = store.get_job(job_id)
+    if not job or job["status"] not in {"queued", "running", "retrying"}:
         return False
+    if job["status"] == "queued":
+        job["status"] = "paused"
     job["pause_requested"] = True
+    _persist_progress(job)
     return True
 
 
 def request_cancel_batch(job_id: str) -> bool:
     """Signal the batch job to cancel after the current symbol. Returns True if job exists."""
-    job = _batch_jobs.get(job_id)
-    if not job or job["status"] != "running":
+    store = get_batch_backtest_store()
+    job = store.get_job(job_id)
+    if not job or job["status"] not in {"queued", "running", "retrying"}:
         return False
+    if job["status"] == "queued":
+        job["status"] = "cancelled"
+        job["estimated_remaining_sec"] = None
+        job["current_symbol"] = None
     job["cancel_requested"] = True
+    _persist_progress(job)
     return True
 
 
-def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
+def _should_stop(job_id: str, job: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    latest = _load_job(job_id)
+    if latest is None:
+        return False, job
+    job["cancel_requested"] = latest.get("cancel_requested", False)
+    job["pause_requested"] = latest.get("pause_requested", False)
+    job["retry_count"] = latest.get("retry_count", job.get("retry_count", 0))
+    job["task_id"] = latest.get("task_id", job.get("task_id"))
+    if job.get("cancel_requested"):
+        job["status"] = "cancelled"
+        job["estimated_remaining_sec"] = None
+        job["current_symbol"] = None
+        _persist_progress(job)
+        logger.info("Batch %s cancelled by user", job_id[:8])
+        return True, job
+    if job.get("pause_requested"):
+        job["status"] = "paused"
+        job["estimated_remaining_sec"] = None
+        job["current_symbol"] = None
+        _persist_progress(job)
+        logger.info("Batch %s paused by user", job_id[:8])
+        return True, job
+    return False, job
+
+
+def run_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
     """
     Run optimization for each symbol, save best result as new favorite.
-    Updates _batch_jobs[job_id] with progress. Never overwrites favorites.
+    Updates the shared store with progress. Never overwrites favorites.
     """
     template_name = payload["template_name"]
     symbols = payload["symbols"]
@@ -86,43 +108,46 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
     period_type = payload.get("period_type")  # '6m' | '2y' | 'all'
     deep_backtest = payload.get("deep_backtest", True)
     custom_ranges = payload.get("custom_ranges")
-    initial_capital = payload.get("initial_capital", 100)
     direction = payload.get("direction", "long")
     user_id = payload.get("user_id")
     if direction not in ("long", "short"):
         direction = "long"
 
     total = len(symbols)
-    job = _get_or_init_job(job_id, total)
+    job = _load_job(job_id) or get_batch_backtest_store().init_job(job_id, total)
+    job["status"] = "running"
+    job["started_at"] = job.get("started_at") or datetime.utcnow().isoformat()
+    job["total"] = total
+    job["last_error"] = None
+    _persist_progress(job)
+
+    should_stop, job = _should_stop(job_id, job)
+    if should_stop:
+        return
+
     started = time.time()
     batch_note = f"gerado em lote ({job_id[:8]})"
-
     optimizer = ComboOptimizer()
 
-    for i, symbol in enumerate(symbols):
+    for symbol in symbols:
         job["elapsed_sec"] = time.time() - started
         job["current_symbol"] = symbol
+        _persist_progress(job)
+
+        should_stop, job = _should_stop(job_id, job)
+        if should_stop:
+            return
+
         if _is_unsupported_symbol(symbol):
             logger.info("Batch: skip %s (unsupported / excluded)", symbol)
             job["skipped"] = job.get("skipped", 0) + 1
             job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
-            if job["processed"] > 0 and job["processed"] < total:
+            if 0 < job["processed"] < total:
                 job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
                     total - job["processed"]
                 )
+            _persist_progress(job)
             continue
-        if job.get("cancel_requested"):
-            job["status"] = "cancelled"
-            job["estimated_remaining_sec"] = None
-            job["current_symbol"] = None
-            logger.info("Batch %s cancelled by user", job_id[:8])
-            return
-        if job.get("pause_requested"):
-            job["status"] = "paused"
-            job["estimated_remaining_sec"] = None
-            job["current_symbol"] = None
-            logger.info("Batch %s paused by user", job_id[:8])
-            return
 
         db_check = SessionLocal()
         try:
@@ -149,9 +174,9 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                 if want not in ("long", "short"):
                     want = "long"
                 rows = [
-                    r
-                    for r in rows
-                    if ((r.parameters or {}).get("direction") or "long").lower() == want
+                    row
+                    for row in rows
+                    if ((row.parameters or {}).get("direction") or "long").lower() == want
                 ]
             if rows:
                 logger.info(
@@ -159,16 +184,15 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                 )
                 job["skipped"] = job.get("skipped", 0) + 1
                 job["processed"] = job["succeeded"] + job["failed"] + job["skipped"]
-                if job["processed"] > 0 and job["processed"] < total:
+                if 0 < job["processed"] < total:
                     job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
                         total - job["processed"]
                     )
+                _persist_progress(job)
                 continue
         finally:
             db_check.close()
 
-        # data_source can be omitted in the batch request.
-        # In that case, infer per-symbol: US tickers (no "/") -> stooq, crypto pairs -> ccxt.
         effective_data_source = data_source
         if not effective_data_source:
             effective_data_source = resolve_data_source_for_symbol(symbol, None)
@@ -190,24 +214,25 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
             job["status"] = "cancelled"
             job["estimated_remaining_sec"] = None
             job["current_symbol"] = None
+            _persist_progress(job)
             logger.info("Batch %s cancelled (CTRL+C)", job_id[:8])
             return
-        except Exception as e:
-            logger.exception("Batch backtest failed for %s: %s", symbol, e)
+        except Exception as exc:
+            logger.exception("Batch backtest failed for %s: %s", symbol, exc)
             job["failed"] = job.get("failed", 0) + 1
-            job["errors"].append({"symbol": symbol, "error": str(e)})
+            job["errors"].append({"symbol": symbol, "error": str(exc)})
             job["processed"] = job["succeeded"] + job["failed"] + job.get("skipped", 0)
-            if job["processed"] > 0 and job["processed"] < total:
+            if 0 < job["processed"] < total:
                 job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
                     total - job["processed"]
                 )
+            _persist_progress(job)
             continue
 
         best_params = result.get("best_parameters") or result.get("parameters") or {}
         best_metrics = result.get("best_metrics") or {}
         params_with_direction = dict(best_params)
         params_with_direction["direction"] = direction
-        # Always persist the actual data source used (inferred or explicit)
         if effective_data_source:
             params_with_direction["data_source"] = effective_data_source
 
@@ -216,7 +241,7 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
 
         db = SessionLocal()
         try:
-            fav = FavoriteStrategy(
+            favorite = FavoriteStrategy(
                 user_id=user_id,
                 name=name,
                 symbol=symbol,
@@ -230,29 +255,31 @@ def run_batch_backtest(job_id: str, payload: Dict[str, Any]) -> None:
                 end_date=end_date,
                 period_type=period_type,
             )
-            db.add(fav)
+            db.add(favorite)
             db.commit()
-            db.refresh(fav)
+            db.refresh(favorite)
             job["succeeded"] = job.get("succeeded", 0) + 1
-            logger.info("Batch: saved favorite for %s (id=%s)", symbol, fav.id)
-        except Exception as e:
-            logger.exception("Batch: failed to save favorite for %s: %s", symbol, e)
+            logger.info("Batch: saved favorite for %s (id=%s)", symbol, favorite.id)
+        except Exception as exc:
+            logger.exception("Batch: failed to save favorite for %s: %s", symbol, exc)
             job["failed"] = job.get("failed", 0) + 1
-            job["errors"].append({"symbol": symbol, "error": f"save favorite: {e}"})
+            job["errors"].append({"symbol": symbol, "error": f"save favorite: {exc}"})
         finally:
             db.close()
 
         job["processed"] = job["succeeded"] + job["failed"] + job.get("skipped", 0)
-        if job["processed"] > 0 and job["processed"] < total:
+        if 0 < job["processed"] < total:
             job["estimated_remaining_sec"] = (job["elapsed_sec"] / job["processed"]) * (
                 total - job["processed"]
             )
+        _persist_progress(job)
 
     job["processed"] = total
     job["elapsed_sec"] = time.time() - started
     job["status"] = "completed"
     job["estimated_remaining_sec"] = None
     job["current_symbol"] = None
+    _persist_progress(job)
     logger.info(
         "Batch %s completed: %d succeeded, %d failed, %d skipped",
         job_id[:8],
