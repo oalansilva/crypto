@@ -49,6 +49,18 @@ class Settings(BaseSettings):
     # Agent chat (LLM conversation about strategies)
     agent_chat_enabled: str = "0"
 
+    # Async processing
+    redis_url: str = "redis://redis:6379/0"
+    celery_broker_url: str = "redis://redis:6379/1"
+    celery_result_backend: str = "redis://redis:6379/2"
+    celery_task_always_eager: str = "0"
+    celery_worker_concurrency: int = 1
+    celery_worker_prefetch_multiplier: int = 1
+    celery_batch_max_retries: int = 3
+    celery_retry_backoff_max: int = 300
+    async_job_ttl_seconds: int = 604800
+    async_dead_letter_max_items: int = 200
+
     class Config:
         env_file = ".env"
         case_sensitive = False

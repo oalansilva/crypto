@@ -64,6 +64,7 @@ alembic upgrade head
 ```
 
 O fluxo de backup diário em Docker e exemplos de restore estão em [docs/postgresql-operations.md](/root/.openclaw/workspace/crypto/docs/postgresql-operations.md:1).
+O fluxo de jobs assíncronos com Redis + Celery está em [docs/async-processing.md](/root/.openclaw/workspace/crypto/docs/async-processing.md:1).
 
 ⚠️ **IMPORTANTE**: Nunca commite o arquivo `.env` com suas credenciais!
 
@@ -92,6 +93,18 @@ python app/main.py
 Servidor rodando em: http://localhost:8000
 
 Documentação interativa: http://localhost:8000/docs
+
+### 7. Rodar o worker Celery
+
+```bash
+celery -A app.celery_app:celery_app worker --loglevel=INFO --concurrency=1 --prefetch-multiplier=1 -Q batch_backtest
+```
+
+O worker contínuo do runtime segue separado:
+
+```bash
+python -m app.workers.runtime_worker
+```
 
 ## Strategy Lab — Tracing/Studio (dev)
 

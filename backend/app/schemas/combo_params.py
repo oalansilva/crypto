@@ -208,7 +208,11 @@ class ComboBatchProgressResponse(BaseModel):
     """Progress and result of a batch backtest job."""
 
     job_id: str
-    status: str = Field(..., description="running | completed | failed")
+    task_id: Optional[str] = Field(None, description="Celery task id handling this batch job")
+    status: str = Field(
+        ...,
+        description="queued | running | retrying | paused | cancelled | completed | failed",
+    )
     processed: int = 0
     total: int = 0
     succeeded: int = 0
@@ -219,6 +223,9 @@ class ComboBatchProgressResponse(BaseModel):
     elapsed_sec: float = 0.0
     estimated_remaining_sec: Optional[float] = None
     current_symbol: Optional[str] = Field(None, description="Symbol currently being optimized")
+    retry_count: int = 0
+    last_error: Optional[str] = None
+    dead_lettered: bool = False
 
 
 class TemplateListResponse(BaseModel):
