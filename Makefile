@@ -1,7 +1,7 @@
 DOCKER_ENV_FILE ?= .env.docker.local
 COMPOSE = docker compose --env-file $(DOCKER_ENV_FILE)
 
-.PHONY: docker-env docker-build docker-up docker-down docker-logs docker-ps
+.PHONY: docker-env docker-build docker-up docker-down docker-logs docker-ps db-migrate db-backup
 
 docker-env:
 	@if [ -f "$(DOCKER_ENV_FILE)" ]; then \
@@ -26,3 +26,8 @@ docker-logs: docker-env
 docker-ps: docker-env
 	$(COMPOSE) ps
 
+db-migrate: docker-env
+	$(COMPOSE) run --rm backend alembic upgrade head
+
+db-backup: docker-env
+	$(COMPOSE) run --rm postgres-backup --once

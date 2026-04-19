@@ -56,6 +56,15 @@ Para migrar dados legados de SQLite e do workflow compartilhado:
 
 O projeto Kanban foi separado para [kanban/](/root/.openclaw/workspace/kanban) e não sobe a partir deste backend.
 
+Para bancos novos e mudanças incrementais de schema, o caminho suportado agora é via Alembic:
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+O fluxo de backup diário em Docker e exemplos de restore estão em [docs/postgresql-operations.md](/root/.openclaw/workspace/crypto/docs/postgresql-operations.md:1).
+
 ⚠️ **IMPORTANTE**: Nunca commite o arquivo `.env` com suas credenciais!
 
 ### 4. Instalar Dependências
@@ -64,7 +73,13 @@ O projeto Kanban foi separado para [kanban/](/root/.openclaw/workspace/kanban) e
 pip install -r requirements.txt
 ```
 
-### 5. Rodar o Servidor
+### 5. Aplicar Migrations Versionadas
+
+```bash
+alembic upgrade head
+```
+
+### 6. Rodar o Servidor
 
 ```bash
 # Modo desenvolvimento (auto-reload)
