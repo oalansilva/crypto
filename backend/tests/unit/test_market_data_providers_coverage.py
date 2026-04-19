@@ -83,7 +83,9 @@ def test_ccxt_provider_fetch_delegates_to_loader():
             return pd.DataFrame({"timestamp": [1]})
 
     provider = CcxtMarketDataProvider(loader=_FakeLoader())
-    out = provider.fetch_ohlcv("BTC/USDT", "1h", since_str="2026-01-01", until_str="2026-01-02", limit=2)
+    out = provider.fetch_ohlcv(
+        "BTC/USDT", "1h", since_str="2026-01-01", until_str="2026-01-02", limit=2
+    )
     assert list(calls[0]) == [
         "symbol",
         "timeframe",
@@ -122,10 +124,7 @@ def test_stooq_provider_helpers_and_parser(tmp_path):
     assert parsed.tzinfo is not None
     assert provider._parse_datetime_utc("nonsense") is None
 
-    csv_payload = (
-        "Date,Open,High,Low,Close,Volume\n"
-        "2026-04-18,100,110,90,105,1000\n"
-    )
+    csv_payload = "Date,Open,High,Low,Close,Volume\n" "2026-04-18,100,110,90,105,1000\n"
     parsed = provider._parse_stooq_csv(csv_payload, provider_symbol="aapl.us")
     assert list(parsed.columns) == [
         "timestamp",
@@ -147,8 +146,22 @@ def test_stooq_provider_helpers_and_parser(tmp_path):
     raw = provider._slice_dataframe(
         _frame(
             [
-                {"timestamp_utc": "2026-04-15", "open": 1, "high": 2, "low": 1, "close": 1.5, "volume": 10},
-                {"timestamp_utc": "2026-04-16", "open": 1, "high": 3, "low": 1, "close": 2.0, "volume": 10},
+                {
+                    "timestamp_utc": "2026-04-15",
+                    "open": 1,
+                    "high": 2,
+                    "low": 1,
+                    "close": 1.5,
+                    "volume": 10,
+                },
+                {
+                    "timestamp_utc": "2026-04-16",
+                    "open": 1,
+                    "high": 3,
+                    "low": 1,
+                    "close": 2.0,
+                    "volume": 10,
+                },
             ]
         ),
         since_str="2026-04-15T00:00:00Z",
@@ -159,7 +172,15 @@ def test_stooq_provider_helpers_and_parser(tmp_path):
     assert raw.index[0].strftime("%Y-%m-%d") == "2026-04-15"
 
     standardized = provider._standardize_columns(
-        pd.DataFrame({"time": ["2026-04-18", "2026-04-19"], "open": [1, 2], "high": [2, 3], "low": [0.5, 1], "close": [1.5, 2.5]})
+        pd.DataFrame(
+            {
+                "time": ["2026-04-18", "2026-04-19"],
+                "open": [1, 2],
+                "high": [2, 3],
+                "low": [0.5, 1],
+                "close": [1.5, 2.5],
+            }
+        )
     )
     assert standardized["volume"].iloc[0] == 0.0
     assert standardized["timestamp"].dtype.kind in ("i", "u")
@@ -170,11 +191,10 @@ def test_stooq_provider_helpers_and_parser(tmp_path):
 
 
 def test_stooq_provider_download_fetch_with_cache_and_fallback(tmp_path, monkeypatch):
-    provider = StooqEodProvider(cache_dir=tmp_path, ttl_seconds=60, max_retries=1, retry_backoff_seconds=0.0)
-    csv_payload = (
-        "Date,Open,High,Low,Close,Volume\n"
-        "2026-04-18,100,110,90,105,1000\n"
+    provider = StooqEodProvider(
+        cache_dir=tmp_path, ttl_seconds=60, max_retries=1, retry_backoff_seconds=0.0
     )
+    csv_payload = "Date,Open,High,Low,Close,Volume\n" "2026-04-18,100,110,90,105,1000\n"
 
     def success_get(*_args, **_kwargs):
         return _FakeResponse(csv_payload)

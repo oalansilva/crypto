@@ -106,11 +106,7 @@ def test_get_full_history_dates_uses_timestamp_column(monkeypatch):
     class Loader:
         def fetch_data(self, *args, **kwargs):
             return pd.DataFrame(
-                {
-                    "timestamp_utc": pd.to_datetime(
-                        ["2026-04-01T10:00:00Z", "2026-04-02T10:00:00Z"]
-                    )
-                }
+                {"timestamp_utc": pd.to_datetime(["2026-04-01T10:00:00Z", "2026-04-02T10:00:00Z"])}
             )
 
     monkeypatch.setattr(sequential_optimizer, "IncrementalLoader", Loader)

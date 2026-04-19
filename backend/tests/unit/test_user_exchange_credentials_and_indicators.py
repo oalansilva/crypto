@@ -58,9 +58,15 @@ def test_user_exchange_credentials_flow(app_db_session):
     assert updated.api_key == "k2"
     assert updated.api_secret == "s2"
 
-    assert delete_user_exchange_credential(app_db_session, user_id="u1", provider=BINANCE_PROVIDER) is True
+    assert (
+        delete_user_exchange_credential(app_db_session, user_id="u1", provider=BINANCE_PROVIDER)
+        is True
+    )
     assert get_user_exchange_credential(app_db_session, "u1", BINANCE_PROVIDER) is None
-    assert delete_user_exchange_credential(app_db_session, user_id="u1", provider=BINANCE_PROVIDER) is False
+    assert (
+        delete_user_exchange_credential(app_db_session, user_id="u1", provider=BINANCE_PROVIDER)
+        is False
+    )
 
 
 def test_indicator_schema_models_and_pandas_ta_inspector_metadata(monkeypatch):

@@ -112,7 +112,9 @@ def test_validation_handoff_and_sync_comparison(monkeypatch, workflow_session, t
     assert set(invalid.missing_fields) == {"status", "evidence", "next_step"}
 
     change = _seed_change(workflow_session, change_id="sync-change")
-    story = WorkItem(change_pk=change.id, type=WorkItemType.story, title="One", state=WorkItemState.active)
+    story = WorkItem(
+        change_pk=change.id, type=WorkItemType.story, title="One", state=WorkItemState.active
+    )
     db_item = WorkItem(
         change_pk=change.id,
         type=WorkItemType.bug,

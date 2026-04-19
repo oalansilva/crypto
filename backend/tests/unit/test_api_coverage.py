@@ -139,22 +139,30 @@ def test_api_market_candles_crypto_and_stock_paths(monkeypatch):
 
     client = TestClient(_build_api_app())
 
-    first = client.get("/api/market/candles", params={"symbol": "BTC/USDT", "timeframe": "15m", "limit": 2})
+    first = client.get(
+        "/api/market/candles", params={"symbol": "BTC/USDT", "timeframe": "15m", "limit": 2}
+    )
     assert first.status_code == 200
     assert first.json()["data_source"] == api.CCXT_SOURCE
     assert first.json()["count"] == 2
     assert len(crypto_provider.calls) == 1
 
-    cached = client.get("/api/market/candles", params={"symbol": "BTC/USDT", "timeframe": "15m", "limit": 2})
+    cached = client.get(
+        "/api/market/candles", params={"symbol": "BTC/USDT", "timeframe": "15m", "limit": 2}
+    )
     assert cached.status_code == 200
     assert len(crypto_provider.calls) == 1
 
-    stock = client.get("/api/market/candles", params={"symbol": "AAPL", "timeframe": "1d", "limit": 1})
+    stock = client.get(
+        "/api/market/candles", params={"symbol": "AAPL", "timeframe": "1d", "limit": 1}
+    )
     assert stock.status_code == 200
     assert stock.json()["data_source"] == api.STOOQ_SOURCE
     assert stock.json()["asset_type"] == "stock"
 
-    bad_timeframe = client.get("/api/market/candles", params={"symbol": "AAPL", "timeframe": "1h", "limit": 1})
+    bad_timeframe = client.get(
+        "/api/market/candles", params={"symbol": "AAPL", "timeframe": "1h", "limit": 1}
+    )
     assert bad_timeframe.status_code == 400
 
     empty = client.get("/api/market/candles", params={"symbol": "", "timeframe": "1d", "limit": 1})
@@ -166,7 +174,9 @@ def test_api_market_candles_without_timestamp_column_raises_via_api(monkeypatch)
     monkeypatch.setattr(api, "get_market_data_provider", lambda *_: provider)
 
     client = TestClient(_build_api_app())
-    response = client.get("/api/market/candles", params={"symbol": "BTC/USDT", "timeframe": "1d", "limit": 1})
+    response = client.get(
+        "/api/market/candles", params={"symbol": "BTC/USDT", "timeframe": "1d", "limit": 1}
+    )
     assert response.status_code == 400
 
 
