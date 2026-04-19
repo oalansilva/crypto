@@ -38,6 +38,15 @@ RETRO_DIR.mkdir(parents=True, exist_ok=True)
 # ---------------------------------------------------------------------------
 
 
+def _as_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Normalize DB datetimes so SQLite and Postgres behave the same in arithmetic."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def collect_retrospective_data(db: Session, change: Change) -> Dict[str, Any]:
     """Collect all metrics needed for a retrospective from the workflow DB.
 
@@ -89,14 +98,14 @@ def collect_retrospective_data(db: Session, change: Change) -> Dict[str, Any]:
     for stage in stage_order:
         stage_handoffs = [h for h in handoffs if h.to_role == stage]
         if stage_handoffs:
-            first = stage_handoffs[0].created_at
+            first = _as_utc(stage_handoffs[0].created_at)
             # End is either the next stage start or now
             next_stage_idx = stage_order.index(stage) + 1
             next_start = None
             for next_stage in stage_order[next_stage_idx:]:
                 next_handoffs = [h for h in handoffs if h.to_role == next_stage]
                 if next_handoffs:
-                    next_start = next_handoffs[0].created_at
+                    next_start = _as_utc(next_handoffs[0].created_at)
                     break
             end = next_start or datetime.now(timezone.utc)
             duration = end - first
@@ -115,8 +124,8 @@ def collect_retrospective_data(db: Session, change: Change) -> Dict[str, Any]:
             }
 
     # Total time from first activity to now (or last completed stage)
-    started_at = change.created_at
-    homologated_at = change.updated_at
+    started_at = _as_utc(change.created_at)
+    homologated_at = _as_utc(change.updated_at)
     total_seconds = (homologated_at - started_at).total_seconds()
 
     # Count blocker events (work items that entered blocked state)
@@ -155,9 +164,9 @@ def collect_retrospective_data(db: Session, change: Change) -> Dict[str, Any]:
             (
                 datetime.now(timezone.utc)
                 - (
-                    wi.created_at
+                    _as_utc(wi.created_at)
                     if wi.state == WorkItemState.blocked
-                    else wi.stage_completed_at or wi.created_at
+                    else _as_utc(wi.stage_completed_at) or _as_utc(wi.created_at)
                 )
             ).total_seconds()
             for wi in blockers
@@ -556,17 +565,19 @@ def generate_llm_insights(
 
 def _build_llm_prompt(data: Dict[str, Any], prev_data: Optional[Dict[str, Any]]) -> str:
     """Build the LLM prompt for insight generation."""
+    stage_times = data.get("stage_times", {})
     prev_block = ""
     if prev_data:
+        prev_stage_times = prev_data.get("stage_times", {})
         prev_block = f"""
 Retrospectiva Anterior:
 - Tempo total: {format_duration(prev_data.get('total_seconds', 0))}
 - Classification: {prev_data.get('classification', 'N/A')}
 - Stage times: {{
-  PO: {format_duration(prev_data.get('stage_times', {{}}).get('PO', {{}}).get('duration_seconds', 0))} ({prev_data.get('stage_times', {{}}).get('PO', {{}}).get('cycles', 0)} ciclos)
-  DESIGN: {format_duration(prev_data.get('stage_times', {{}}).get('DESIGN', {{}}).get('duration_seconds', 0))} ({prev_data.get('stage_times', {{}}).get('DESIGN', {{}}).get('cycles', 0)} ciclos)
-  DEV: {format_duration(prev_data.get('stage_times', {{}}).get('DEV', {{}}).get('duration_seconds', 0))} ({prev_data.get('stage_times', {{}}).get('DEV', {{}}).get('cycles', 0)} ciclos)
-  QA: {format_duration(prev_data.get('stage_times', {{}}).get('QA', {{}}).get('duration_seconds', 0))} ({prev_data.get('stage_times', {{}}).get('QA', {{}}).get('cycles', 0)} ciclos)
+  PO: {format_duration(prev_stage_times.get('PO', {}).get('duration_seconds', 0))} ({prev_stage_times.get('PO', {}).get('cycles', 0)} ciclos)
+  DESIGN: {format_duration(prev_stage_times.get('DESIGN', {}).get('duration_seconds', 0))} ({prev_stage_times.get('DESIGN', {}).get('cycles', 0)} ciclos)
+  DEV: {format_duration(prev_stage_times.get('DEV', {}).get('duration_seconds', 0))} ({prev_stage_times.get('DEV', {}).get('cycles', 0)} ciclos)
+  QA: {format_duration(prev_stage_times.get('QA', {}).get('duration_seconds', 0))} ({prev_stage_times.get('QA', {}).get('cycles', 0)} ciclos)
 }}
 - Gate cycles: {prev_data.get('gate_cycles', {})}
 - Open bugs: {len(prev_data.get('open_bugs', []))}
@@ -590,10 +601,10 @@ Input - Dados da Feature Atual:
 - Título: {data['title']}
 - Tempo total: {format_duration(data.get('total_seconds', 0))}
 - Stage times: {{
-  PO: {format_duration(data.get('stage_times', {{}}).get('PO', {{}}).get('duration_seconds', 0))} ({data.get('stage_times', {{}}).get('PO', {{}}).get('cycles', 0)} ciclos)
-  DESIGN: {format_duration(data.get('stage_times', {{}}).get('DESIGN', {{}}).get('duration_seconds', 0))} ({data.get('stage_times', {{}}).get('DESIGN', {{}}).get('cycles', 0)} ciclos)
-  DEV: {format_duration(data.get('stage_times', {{}}).get('DEV', {{}}).get('duration_seconds', 0))} ({data.get('stage_times', {{}}).get('DEV', {{}}).get('cycles', 0)} ciclos)
-  QA: {format_duration(data.get('stage_times', {{}}).get('QA', {{}}).get('duration_seconds', 0))} ({data.get('stage_times', {{}}).get('QA', {{}}).get('cycles', 0)} ciclos)
+  PO: {format_duration(stage_times.get('PO', {}).get('duration_seconds', 0))} ({stage_times.get('PO', {}).get('cycles', 0)} ciclos)
+  DESIGN: {format_duration(stage_times.get('DESIGN', {}).get('duration_seconds', 0))} ({stage_times.get('DESIGN', {}).get('cycles', 0)} ciclos)
+  DEV: {format_duration(stage_times.get('DEV', {}).get('duration_seconds', 0))} ({stage_times.get('DEV', {}).get('cycles', 0)} ciclos)
+  QA: {format_duration(stage_times.get('QA', {}).get('duration_seconds', 0))} ({stage_times.get('QA', {}).get('cycles', 0)} ciclos)
 }}
 - Gate cycles: {data.get('gate_cycles', {})}
 - Total ciclos de revisão: {sum(data.get('gate_cycles', {}).values())}

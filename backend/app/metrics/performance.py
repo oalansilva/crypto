@@ -67,7 +67,7 @@ def calculate_monthly_return(equity_curve: pd.Series) -> float:
         raise ValueError("Equity curve deve ter pelo menos 2 pontos")
 
     # Resample para mensal e calcular retornos
-    monthly_equity = equity_curve.resample("M").last()
+    monthly_equity = equity_curve.resample("ME").last()
 
     if len(monthly_equity) < 2:
         # Se menos de 2 meses, calcular retorno total e anualizar

@@ -63,16 +63,18 @@ def _save_snapshot(
     user_id: str | None = None,
 ) -> int:
     """Save a portfolio snapshot and return its id."""
+    recorded_at = datetime.now().isoformat()
     result = db.execute(
         text("""
             INSERT INTO portfolio_snapshots
-            (total_usd, btc_value, usdt_value, eth_value, other_usd,
+            (recorded_at, total_usd, btc_value, usdt_value, eth_value, other_usd,
              pnl_today_pct, drawdown_30d_pct, drawdown_peak_date, btc_change_24h_pct, user_id)
-            VALUES (:total_usd, :btc_value, :usdt_value, :eth_value, :other_usd,
+            VALUES (:recorded_at, :total_usd, :btc_value, :usdt_value, :eth_value, :other_usd,
                     :pnl_today_pct, :drawdown_30d_pct, :drawdown_peak_date, :btc_change_24h_pct, :user_id)
             RETURNING id
         """),
         {
+            "recorded_at": recorded_at,
             "total_usd": total_usd,
             "btc_value": btc_value,
             "usdt_value": usdt_value,
@@ -85,8 +87,9 @@ def _save_snapshot(
             "user_id": user_id,
         },
     )
+    snapshot_id = int(result.scalar_one())
     db.commit()
-    return int(result.scalar_one())
+    return snapshot_id
 
 
 def _get_30d_snapshots(db: Session, user_id: str | None = None) -> List[Dict[str, Any]]:
@@ -181,6 +184,8 @@ async def get_portfolio_kpi(
             api_key=cred.api_key,
             api_secret=cred.api_secret,
         )
+    except HTTPException:
+        raise
     except BinanceConfigError:
         raise HTTPException(status_code=503, detail="Binance credentials not configured")
     except Exception:
