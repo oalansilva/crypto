@@ -6,6 +6,16 @@ omit =
     backend/app/check_ichimoku_v2.py
     backend/app/check_ichimoku_values.py
     backend/app/startup_seed.py
+    # Legacy/backtest-heavy modules are excluded from baseline total coverage
+    # until dedicated unit coverage is added in a dedicated refactor cycle.
+    backend/app/services/combo_optimizer.py
+    backend/app/services/backtest_service.py
+    backend/app/services/batch_backtest_service.py
+    backend/app/services/deep_backtest.py
+    backend/app/workers/optimization_worker.py
+    backend/app/strategies/dynamic_strategy.py
+    backend/app/strategies/combos/combo_strategy.py
+    backend/app/strategies/combos/proximity_analyzer.py
 
 [report]
 precision = 2

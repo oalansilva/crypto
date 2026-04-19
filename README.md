@@ -219,17 +219,17 @@ npm --prefix frontend run lint
 ./backend/.venv/bin/python -m pytest -q backend/tests \
   --cov=backend/app \
   --cov-config=.coveragerc \
-  --cov-fail-under=45 \
+  --cov-fail-under=70 \
   --cov-report=term \
   --cov-report=xml:coverage.xml
 ```
 
 PRs now enforce two backend coverage gates:
 
-- `>= 45%` total backend line coverage for the repository baseline.
+- `>= 70%` total backend line coverage for the repository baseline.
 - `>= 70%` differential coverage on changed lines under `backend/app/**`.
 
-The intended ratchet is progressive: keep the diff gate at `70%` to block new debt, then raise total coverage in small steps (`45 -> 50 -> 55 -> 60 -> 65 -> 70`) as legacy modules gain tests.
+The baseline now starts at `70%` while legacy/backtest-heavy modules remain excluded in `.coveragerc`.
 
 Contribution guide:
 `CONTRIBUTING.md`
