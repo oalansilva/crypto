@@ -10,7 +10,6 @@ from __future__ import annotations
 from alembic import op
 import sqlalchemy as sa
 
-
 revision = "20260419_0001"
 down_revision = None
 branch_labels = None
@@ -35,9 +34,7 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_auto_backtest_runs_run_id", "auto_backtest_runs", ["run_id"], unique=True
-    )
+    op.create_index("ix_auto_backtest_runs_run_id", "auto_backtest_runs", ["run_id"], unique=True)
 
     op.create_table(
         "backtest_results",
@@ -121,7 +118,9 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("user_id", "symbol"),
     )
-    op.create_index("ix_monitor_preferences_symbol", "monitor_preferences", ["symbol"], unique=False)
+    op.create_index(
+        "ix_monitor_preferences_symbol", "monitor_preferences", ["symbol"], unique=False
+    )
 
     op.create_table(
         "onchain_signals",
@@ -140,7 +139,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_onchain_signals_chain", "onchain_signals", ["chain"], unique=False)
-    op.create_index("ix_onchain_signals_created_at", "onchain_signals", ["created_at"], unique=False)
+    op.create_index(
+        "ix_onchain_signals_created_at", "onchain_signals", ["created_at"], unique=False
+    )
     op.create_index(
         "ix_onchain_signals_token_chain", "onchain_signals", ["token", "chain"], unique=False
     )
@@ -180,7 +181,9 @@ def upgrade() -> None:
         ["archived"],
         unique=False,
     )
-    op.create_index("ix_onchain_signals_history_chain", "onchain_signals_history", ["chain"], unique=False)
+    op.create_index(
+        "ix_onchain_signals_history_chain", "onchain_signals_history", ["chain"], unique=False
+    )
     op.create_index(
         "ix_onchain_signals_history_created_at",
         "onchain_signals_history",
@@ -232,7 +235,9 @@ def upgrade() -> None:
         ["job_id", "created_at"],
         unique=False,
     )
-    op.create_index("ix_optimization_results_job_id", "optimization_results", ["job_id"], unique=False)
+    op.create_index(
+        "ix_optimization_results_job_id", "optimization_results", ["job_id"], unique=False
+    )
 
     op.create_table(
         "portfolio_snapshots",
@@ -250,7 +255,9 @@ def upgrade() -> None:
         sa.Column("user_id", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_portfolio_snapshots_user_id", "portfolio_snapshots", ["user_id"], unique=False)
+    op.create_index(
+        "ix_portfolio_snapshots_user_id", "portfolio_snapshots", ["user_id"], unique=False
+    )
 
     op.create_table(
         "signal_history",
