@@ -606,6 +606,8 @@ async def start_batch_backtest(
             raise HTTPException(status_code=503, detail="Batch queue is unavailable") from e
         logger.info("Batch backtest started job_id=%s symbols=%s", job_id, request.symbols)
         return ComboBatchBacktestResponse(job_id=job_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Batch backtest start failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
