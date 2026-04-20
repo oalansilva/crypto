@@ -1,0 +1,34 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e11]
+      - generic [ref=e14]:
+        - generic [ref=e15]: Painel
+        - generic [ref=e16]: Monitor de sinais
+      - navigation [ref=e17]:
+        - generic [ref=e18]
+        - generic [ref=e50]
+        - generic [ref=e59]
+      - button "Recolher menu" [ref=e78]:
+        - img [ref=e79]
+        - generic [ref=e81]: Recolher menu
+    - banner [ref=e82]:
+      - generic [ref=e83]:
+        - generic [ref=e84]
+        - generic [ref=e87]
+    - generic [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e105]
+        - generic [ref=e118]
+      - generic [ref=e139]:
+        - heading "Aguardando (1) Sem Posição" [level=2] [ref=e140]
+        - paragraph [ref=e143]: Estratégias aguardando sinal de entrada. A distância mostra o quanto falta para a média curta cruzar acima da longa.
+        - button "Open chart for BTC/USDT" [ref=e145] [cursor=pointer]
+  - generic [ref=e180]:
+    - generic [ref=e181]:
+      - generic [ref=e182]: Atualizado
+      - generic [ref=e183]: 2 estratégias analisadas
+    - button [ref=e184]:
+      - img [ref=e185]

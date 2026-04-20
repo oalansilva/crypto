@@ -1,0 +1,13 @@
+{
+  "disabled": false,
+  "before": "true",
+  "after": "false",
+  "patches": [
+    {
+      "symbol": "BTC/USDT",
+      "patch": {
+        "in_portfolio": false
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe, MonitorTheme } from '@/components/monitor/types';
+import { getOpportunityAssetType, getOpportunityBaseAsset, isDerivedPortfolioRuleActive, type Opportunity, type MonitorCardMode, type MonitorPreference, type MonitorPriceTimeframe, type MonitorTheme } from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { ChartModal } from '@/components/monitor/ChartModal';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +17,19 @@ type SortOption = 'distance' | 'tier_distance' | 'symbol';
 type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
 type ListFilter = 'in_portfolio' | 'all';
 type AssetTypeFilter = 'all' | 'crypto' | 'stocks';
+type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
+
+type BinanceBalanceRow = {
+    asset?: string;
+    total?: number | string | null;
+};
+
+type DerivedPortfolioStatus = {
+    active: boolean;
+    inPortfolio: boolean;
+    message: string | null;
+    tone: 'neutral' | 'success' | 'warning';
+};
 
 const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
@@ -26,6 +39,7 @@ const DEFAULT_PREFERENCE: MonitorPreference = {
 };
 
 const DEFAULT_THEME: MonitorTheme = 'dark-green';
+const BINANCE_MONITOR_PORTFOLIO_MIN_USD = 1;
 
 export const MonitorStatusTab: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -42,11 +56,69 @@ export const MonitorStatusTab: React.FC = () => {
     const [assetTypeFilter, setAssetTypeFilter] = useState<AssetTypeFilter>('all');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [preferences, setPreferences] = useState<Record<string, MonitorPreference>>({});
+    const [binanceConfigured, setBinanceConfigured] = useState(false);
+    const [walletHoldingsByAsset, setWalletHoldingsByAsset] = useState<Record<string, number>>({});
+    const [walletSyncState, setWalletSyncState] = useState<WalletSyncState>('idle');
+    const [walletSyncMessage, setWalletSyncMessage] = useState<string | null>(null);
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
     const { toast } = useToast();
 
     const getPreference = (symbol: string): MonitorPreference => {
         return preferences[symbol] ?? DEFAULT_PREFERENCE;
+    };
+
+    const fetchWalletPortfolio = async (configured: boolean) => {
+        if (!configured) {
+            setWalletHoldingsByAsset({});
+            setWalletSyncState('idle');
+            setWalletSyncMessage(null);
+            return;
+        }
+
+        setWalletSyncState('loading');
+        setWalletSyncMessage('Sincronizando carteira Binance...');
+
+        try {
+            const response = await authFetch(
+                `${API_BASE_URL}/external/binance/spot/balances?min_usd=${BINANCE_MONITOR_PORTFOLIO_MIN_USD}`,
+            );
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(String(payload?.detail || `Failed to load Binance wallet (${response.status})`));
+            }
+
+            const balances = Array.isArray(payload?.balances) ? payload.balances as BinanceBalanceRow[] : [];
+            const nextHoldings: Record<string, number> = {};
+            for (const row of balances) {
+                const asset = String(row?.asset || '').trim().toUpperCase();
+                const total = Number(row?.total ?? 0);
+                if (!asset || !Number.isFinite(total) || total <= 0) {
+                    continue;
+                }
+                nextHoldings[asset] = total;
+            }
+
+            setWalletHoldingsByAsset(nextHoldings);
+            if (Object.keys(nextHoldings).length === 0) {
+                setWalletSyncState('empty');
+                setWalletSyncMessage(
+                    `Nenhum ativo com saldo minimo de US$ ${BINANCE_MONITOR_PORTFOLIO_MIN_USD} foi encontrado na Carteira Binance.`,
+                );
+                return;
+            }
+
+            setWalletSyncState('ready');
+            setWalletSyncMessage(null);
+        } catch (error) {
+            console.error(error);
+            setWalletHoldingsByAsset({});
+            setWalletSyncState('error');
+            setWalletSyncMessage(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Carteira Binance indisponível no momento.',
+            );
+        }
     };
 
     const fetchMonitorContext = async () => {
@@ -84,6 +156,23 @@ export const MonitorStatusTab: React.FC = () => {
                 variant: 'destructive',
             });
         }
+
+        let configured = false;
+        try {
+            const credentialsResponse = await authFetch(`${API_BASE_URL}/user/binance-credentials`);
+            const payload = await credentialsResponse.json();
+            if (!credentialsResponse.ok) {
+                throw new Error(String(payload?.detail || `Failed to load Binance credential status (${credentialsResponse.status})`));
+            }
+            configured = Boolean(payload?.configured);
+            setBinanceConfigured(configured);
+        } catch (error) {
+            console.error(error);
+            setBinanceConfigured(false);
+            configured = false;
+        }
+
+        await fetchWalletPortfolio(configured);
     };
 
     const fetchOpportunities = async (tier?: TierFilter, options?: { refresh?: boolean }) => {
@@ -274,22 +363,83 @@ export const MonitorStatusTab: React.FC = () => {
         return sorted;
     }, [opportunities, sortBy]);
 
-    const filteredOpportunities = useMemo(() => {
-        const isCrypto = (symbol: string) => symbol.includes('/');
+    const portfolioStatusBySymbol = useMemo(() => {
+        const next: Record<string, DerivedPortfolioStatus> = {};
+        for (const opp of sortedOpportunities) {
+            if (!String(opp.symbol || '').trim() || next[opp.symbol]) {
+                continue;
+            }
 
+            const manualPreference = getPreference(opp.symbol);
+            const derivedActive = isDerivedPortfolioRuleActive(opp, binanceConfigured);
+            if (!derivedActive) {
+                next[opp.symbol] = {
+                    active: false,
+                    inPortfolio: manualPreference.in_portfolio,
+                    message: null,
+                    tone: 'neutral',
+                };
+                continue;
+            }
+
+            const baseAsset = getOpportunityBaseAsset(opp);
+            const hasWalletPosition = (walletHoldingsByAsset[baseAsset] ?? 0) > 0;
+            if (walletSyncState === 'loading') {
+                next[opp.symbol] = {
+                    active: true,
+                    inPortfolio: hasWalletPosition || manualPreference.in_portfolio,
+                    message: 'Sincronizando carteira Binance...',
+                    tone: 'neutral',
+                };
+                continue;
+            }
+
+            if (walletSyncState === 'error') {
+                next[opp.symbol] = {
+                    active: true,
+                    inPortfolio: false,
+                    message: walletSyncMessage || 'Carteira Binance indisponível. Portfólio bloqueado até a sincronização voltar.',
+                    tone: 'warning',
+                };
+                continue;
+            }
+
+            if (walletSyncState === 'empty') {
+                next[opp.symbol] = {
+                    active: true,
+                    inPortfolio: false,
+                    message: 'Sem posição elegível na Carteira Binance.',
+                    tone: 'warning',
+                };
+                continue;
+            }
+
+            next[opp.symbol] = {
+                active: true,
+                inPortfolio: hasWalletPosition,
+                message: hasWalletPosition
+                    ? `Sincronizado com a Carteira Binance (${baseAsset}).`
+                    : `Sem posição comprada de ${baseAsset} na Carteira Binance.`,
+                tone: hasWalletPosition ? 'success' : 'warning',
+            };
+        }
+        return next;
+    }, [binanceConfigured, sortedOpportunities, walletHoldingsByAsset, walletSyncMessage, walletSyncState, preferences]);
+
+    const filteredOpportunities = useMemo(() => {
         const afterAssetType = sortedOpportunities.filter((opp) => {
-            const sym = String(opp.symbol || '').trim();
-            if (!sym) return false;
-            if (assetTypeFilter === 'crypto') return isCrypto(sym);
-            if (assetTypeFilter === 'stocks') return !isCrypto(sym);
+            if (!String(opp.symbol || '').trim()) return false;
+            const assetType = getOpportunityAssetType(opp);
+            if (assetTypeFilter === 'crypto') return assetType === 'crypto';
+            if (assetTypeFilter === 'stocks') return assetType === 'stock';
             return true;
         });
 
         if (listFilter === 'all') {
             return afterAssetType;
         }
-        return afterAssetType.filter((opp) => preferences[opp.symbol]?.in_portfolio === true);
-    }, [assetTypeFilter, listFilter, preferences, sortedOpportunities]);
+        return afterAssetType.filter((opp) => portfolioStatusBySymbol[opp.symbol]?.inPortfolio === true);
+    }, [assetTypeFilter, listFilter, portfolioStatusBySymbol, sortedOpportunities]);
 
     // Render one card per symbol (preferences are per-symbol, and duplicate cards can fight over fetch/caches).
     const dedupedOpportunities = useMemo(() => {
@@ -308,7 +458,7 @@ export const MonitorStatusTab: React.FC = () => {
     const resolvedSections = useMemo(
         () => dedupedOpportunities.map((opp) => {
             const preference = preferences[opp.symbol] ?? DEFAULT_PREFERENCE;
-            const effectiveTimeframe: MonitorPriceTimeframe = opp.symbol.includes('/') ? preference.price_timeframe : '1d';
+            const effectiveTimeframe: MonitorPriceTimeframe = getOpportunityAssetType(opp) === 'crypto' ? preference.price_timeframe : '1d';
             return {
                 opportunity: opp,
                 resolved: resolveOpportunitySignal(opp, { selectedTimeframe: effectiveTimeframe }),
@@ -577,7 +727,13 @@ export const MonitorStatusTab: React.FC = () => {
                                         <OpportunityCard
                                             key={opp.id}
                                             opportunity={opp}
-                                            preference={getPreference(opp.symbol)}
+                                            preference={{
+                                                ...getPreference(opp.symbol),
+                                                in_portfolio: portfolioStatusBySymbol[opp.symbol]?.inPortfolio ?? getPreference(opp.symbol).in_portfolio,
+                                            }}
+                                            isPortfolioDerived={Boolean(portfolioStatusBySymbol[opp.symbol]?.active)}
+                                            portfolioStatusMessage={portfolioStatusBySymbol[opp.symbol]?.message}
+                                            portfolioStatusTone={portfolioStatusBySymbol[opp.symbol]?.tone}
                                             isSavingPreference={Boolean(savingSymbols[opp.symbol])}
                                             isOpeningChart={openingChartSymbol === opp.symbol}
                                             onToggleInPortfolio={handleToggleInPortfolio}

@@ -1,0 +1,37 @@
+{
+  "project_slug": "crypto",
+  "schema_version": 1,
+  "sensors": {
+    "build": {
+      "command": "npm --prefix frontend run build",
+      "required": true,
+      "timeout_seconds": 180
+    },
+    "healthcheck": {
+      "command": null,
+      "required": false,
+      "timeout_seconds": 60
+    },
+    "lint": {
+      "command": null,
+      "required": false,
+      "timeout_seconds": 120
+    },
+    "playwright": {
+      "command": null,
+      "required": true,
+      "timeout_seconds": 600
+    },
+    "test": {
+      "command": null,
+      "required": false,
+      "timeout_seconds": 300
+    },
+    "typecheck": {
+      "command": "cd frontend && npx tsc --noEmit",
+      "required": false,
+      "timeout_seconds": 120
+    }
+  },
+  "work_type": "frontend"
+}

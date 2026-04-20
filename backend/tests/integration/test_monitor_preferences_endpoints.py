@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
 from app.routes import monitor_preferences
+from app.services.user_exchange_credentials import BINANCE_PROVIDER, upsert_user_exchange_credential
 
 
 def _session_factory(tmp_path: Path):
@@ -182,4 +183,82 @@ def test_monitor_preferences_are_scoped_per_user(tmp_path: Path):
             "price_timeframe": "4h",
             "theme": "dark-green",
         },
+    }
+
+
+def test_monitor_preferences_reject_manual_portfolio_override_for_crypto_with_binance(
+    tmp_path: Path,
+):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        upsert_user_exchange_credential(
+            db,
+            user_id="user-a",
+            provider=BINANCE_PROVIDER,
+            api_key="test-api-key",
+            api_secret="test-api-secret-123",
+        )
+        with pytest.raises(HTTPException) as exc:
+            monitor_preferences.update_monitor_preferences(
+                payload=monitor_preferences.MonitorPreferenceUpdate(in_portfolio=True),
+                symbol="BTC/USDT",
+                current_user_id="user-a",
+                db=db,
+            )
+
+    assert exc.value.status_code == 409
+    assert "cannot be changed manually" in str(exc.value.detail)
+
+
+def test_monitor_preferences_allows_manual_portfolio_override_for_stock_with_binance(
+    tmp_path: Path,
+):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        upsert_user_exchange_credential(
+            db,
+            user_id="user-a",
+            provider=BINANCE_PROVIDER,
+            api_key="test-api-key",
+            api_secret="test-api-secret-123",
+        )
+        response = monitor_preferences.update_monitor_preferences(
+            payload=monitor_preferences.MonitorPreferenceUpdate(in_portfolio=True),
+            symbol="NVDA",
+            current_user_id="user-a",
+            db=db,
+        )
+
+    assert response == {
+        "in_portfolio": True,
+        "card_mode": "price",
+        "price_timeframe": "1d",
+        "theme": "dark-green",
+    }
+
+
+def test_monitor_preferences_allows_non_portfolio_updates_for_crypto_with_binance(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        upsert_user_exchange_credential(
+            db,
+            user_id="user-a",
+            provider=BINANCE_PROVIDER,
+            api_key="test-api-key",
+            api_secret="test-api-secret-123",
+        )
+        response = monitor_preferences.update_monitor_preferences(
+            payload=monitor_preferences.MonitorPreferenceUpdate(
+                card_mode="strategy", price_timeframe="4h"
+            ),
+            symbol="BTC/USDT",
+            current_user_id="user-a",
+            db=db,
+        )
+
+    assert response == {
+        "in_portfolio": False,
+        "card_mode": "strategy",
+        "price_timeframe": "4h",
+        "theme": "dark-green",
     }

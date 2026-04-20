@@ -35,6 +35,7 @@ async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
         {
             "id": 5,
             "symbol": "BTC/USDT",
+            "asset_type": "crypto",
             "timeframe": "1d",
             "template_name": "multi_ma_crossover",
             "name": "BTC Trend History",
@@ -83,6 +84,7 @@ async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
     response = await opportunity_routes.get_opportunities(tier="all", current_user_id="user-a")
 
     assert len(response) == 1
+    assert response[0]["asset_type"] == "crypto"
     assert response[0]["signal_history"][0]["type"] == "entry"
     assert response[0]["signal_history"][1]["type"] == "exit"
     assert response[0]["signal_history"][1]["reason"] == "exit_logic"

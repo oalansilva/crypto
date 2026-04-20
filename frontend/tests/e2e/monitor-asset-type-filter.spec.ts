@@ -111,6 +111,14 @@ async function setupApiMocks(page: any) {
     })
   )
 
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
   await page.route('**/api/market/candles**', (route: any) =>
     route.fulfill({
       status: 200,

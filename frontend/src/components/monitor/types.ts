@@ -1,3 +1,5 @@
+export type MonitorAssetType = 'crypto' | 'stock';
+
 export interface OpportunitySignalHistoryItem {
     timestamp: string;
     signal: 1 | -1;
@@ -9,6 +11,7 @@ export interface OpportunitySignalHistoryItem {
 export interface Opportunity {
     id: number;
     symbol: string;
+    asset_type?: string | null;
     timeframe: string;
     template_name: string;
     name: string;
@@ -50,3 +53,38 @@ export interface MonitorPreference {
     price_timeframe: MonitorPriceTimeframe;
     theme?: MonitorTheme;
 }
+
+const normalizeMonitorAssetType = (assetType: string | null | undefined): MonitorAssetType | null => {
+    const normalized = String(assetType || '').trim().toLowerCase();
+    if (normalized === 'crypto' || normalized === 'cryptomoeda' || normalized === 'criptomoeda') {
+        return 'crypto';
+    }
+    if (normalized === 'stock' || normalized === 'stocks' || normalized === 'acao' || normalized === 'acoes') {
+        return 'stock';
+    }
+    return null;
+};
+
+export const getOpportunityAssetType = (opportunity: Pick<Opportunity, 'asset_type' | 'symbol'>): MonitorAssetType => {
+    const explicitType = normalizeMonitorAssetType(opportunity.asset_type);
+    if (explicitType) {
+        return explicitType;
+    }
+    return String(opportunity.symbol || '').includes('/') ? 'crypto' : 'stock';
+};
+
+export const getOpportunityBaseAsset = (opportunity: Pick<Opportunity, 'symbol'> | string): string => {
+    const rawSymbol = typeof opportunity === 'string' ? opportunity : opportunity.symbol;
+    const normalized = String(rawSymbol || '').trim().toUpperCase();
+    if (!normalized) {
+        return '';
+    }
+    return normalized.split('/')[0]?.trim() || normalized;
+};
+
+export const isDerivedPortfolioRuleActive = (
+    opportunity: Pick<Opportunity, 'asset_type' | 'symbol'>,
+    binanceConfigured: boolean,
+): boolean => {
+    return binanceConfigured && getOpportunityAssetType(opportunity) === 'crypto';
+};
