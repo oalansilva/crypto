@@ -117,26 +117,12 @@ def test_ai_dashboard_is_dynamic_and_user_scoped(tmp_path: Path, monkeypatch):
             available_assets=["BTCUSDT"],
         )
 
-    async def fake_onchain_snapshot(*args, **kwargs):
-        class Pair:
-            symbol = "BTCUSDT"
-            token = "BTC"
-            chain = "ethereum"
-            last_price = 97100.0
-
-        class Result:
-            signal = "BUY"
-            confidence = 72
-
-        return [(Pair(), Result())]
-
     monkeypatch.setattr(ai_dashboard, "_fetch_coingecko_news", fake_news)
     monkeypatch.setattr(ai_dashboard.sentiment_service, "get_market_sentiment", fake_sentiment)
     monkeypatch.setattr(ai_dashboard.binance_service, "build_signal_feed", fake_signal_feed)
     monkeypatch.setattr(
         ai_dashboard.binance_service, "build_signal_feed_for_assets", fake_signal_feed
     )
-    monkeypatch.setattr(ai_dashboard, "build_onchain_snapshot", fake_onchain_snapshot)
 
     with SessionLocal() as db:
         db.add_all(
@@ -190,12 +176,11 @@ def test_ai_dashboard_is_dynamic_and_user_scoped(tmp_path: Path, monkeypatch):
     btc_signal = next(item for item in payload.recent_signals if item.asset == "BTC/USDT")
     assert btc_signal.action == "BUY"
     assert btc_signal.direction == "Compra forte"
-    assert btc_signal.strength == 3
-    assert btc_signal.total_sources == 3
+    assert btc_signal.strength == 2
+    assert btc_signal.total_sources == 2
     assert {source.source for source in btc_signal.sources} == {
         "AI Dashboard",
         "Signals",
-        "On-chain",
     }
     assert all(source.criteria for source in btc_signal.sources)
     assert btc_signal.price == 97250
@@ -229,16 +214,12 @@ def test_ai_dashboard_returns_empty_dynamic_state_without_history(tmp_path: Path
             signals=[], total=0, cached_at=None, is_stale=False, available_assets=[]
         )
 
-    async def empty_onchain_snapshot(*args, **kwargs):
-        return []
-
     monkeypatch.setattr(ai_dashboard, "_fetch_coingecko_news", failing_news)
     monkeypatch.setattr(ai_dashboard.sentiment_service, "get_market_sentiment", neutral_sentiment)
     monkeypatch.setattr(ai_dashboard.binance_service, "build_signal_feed", empty_signal_feed)
     monkeypatch.setattr(
         ai_dashboard.binance_service, "build_signal_feed_for_assets", empty_signal_feed
     )
-    monkeypatch.setattr(ai_dashboard, "build_onchain_snapshot", empty_onchain_snapshot)
 
     with SessionLocal() as db:
         payload = asyncio.run(ai_dashboard.get_ai_dashboard(current_user_id="user-empty", db=db))
@@ -272,16 +253,12 @@ def test_ai_dashboard_hides_legacy_single_source_signals_when_no_unified_overlap
             signals=[], total=0, cached_at=now, is_stale=False, available_assets=[]
         )
 
-    async def empty_onchain_snapshot(*args, **kwargs):
-        return []
-
     monkeypatch.setattr(ai_dashboard, "_fetch_coingecko_news", fake_news)
     monkeypatch.setattr(ai_dashboard.sentiment_service, "get_market_sentiment", fake_sentiment)
     monkeypatch.setattr(ai_dashboard.binance_service, "build_signal_feed", empty_signal_feed)
     monkeypatch.setattr(
         ai_dashboard.binance_service, "build_signal_feed_for_assets", empty_signal_feed
     )
-    monkeypatch.setattr(ai_dashboard, "build_onchain_snapshot", empty_onchain_snapshot)
 
     with SessionLocal() as db:
         db.add(
@@ -305,9 +282,7 @@ def test_ai_dashboard_hides_legacy_single_source_signals_when_no_unified_overlap
     assert "Nenhum sinal unificado disponível" in payload.section_errors["signals"]
 
 
-def test_ai_dashboard_targets_history_assets_when_onchain_snapshot_is_empty(
-    tmp_path: Path, monkeypatch
-):
+def test_ai_dashboard_targets_history_assets(tmp_path: Path, monkeypatch):
     SessionLocal = _session_factory(tmp_path)
     now = datetime.now(UTC)
 
@@ -356,16 +331,12 @@ def test_ai_dashboard_targets_history_assets_when_onchain_snapshot_is_empty(
             signals=[], total=0, cached_at=now, is_stale=False, available_assets=[]
         )
 
-    async def empty_onchain_snapshot(*args, **kwargs):
-        return []
-
     monkeypatch.setattr(ai_dashboard, "_fetch_coingecko_news", fake_news)
     monkeypatch.setattr(ai_dashboard.sentiment_service, "get_market_sentiment", fake_sentiment)
     monkeypatch.setattr(
         ai_dashboard.binance_service, "build_signal_feed_for_assets", targeted_signal_feed
     )
     monkeypatch.setattr(ai_dashboard.binance_service, "build_signal_feed", empty_signal_feed)
-    monkeypatch.setattr(ai_dashboard, "build_onchain_snapshot", empty_onchain_snapshot)
 
     with SessionLocal() as db:
         db.add(
@@ -440,40 +411,35 @@ def test_ai_dashboard_falls_back_to_broad_signal_feed_when_targeted_fetch_fails(
             available_assets=["BTCUSDT"],
         )
 
-    async def fake_onchain_snapshot(*args, **kwargs):
-        class Pair:
-            symbol = "BTCUSDT"
-            token = "BTC"
-            chain = "ethereum"
-            last_price = 97850.0
-
-        class Result:
-            signal = "BUY"
-            confidence = 70
-
-        return [(Pair(), Result())]
-
     monkeypatch.setattr(ai_dashboard, "_fetch_coingecko_news", fake_news)
     monkeypatch.setattr(ai_dashboard.sentiment_service, "get_market_sentiment", fake_sentiment)
     monkeypatch.setattr(
         ai_dashboard.binance_service, "build_signal_feed_for_assets", failing_targeted_signal_feed
     )
     monkeypatch.setattr(ai_dashboard.binance_service, "build_signal_feed", fallback_signal_feed)
-    monkeypatch.setattr(ai_dashboard, "build_onchain_snapshot", fake_onchain_snapshot)
 
     with SessionLocal() as db:
         payload = asyncio.run(ai_dashboard.get_ai_dashboard(current_user_id="user-a", db=db))
 
-    assert {item.asset for item in payload.recent_signals} == {"BTC/USDT"}
-    btc_signal = payload.recent_signals[0]
-    assert btc_signal.total_sources == 2
-    assert {source.source for source in btc_signal.sources} == {"Signals", "On-chain"}
-    assert all(source.criteria for source in btc_signal.sources)
+    assert payload.recent_signals == []
+    assert "Nenhum sinal unificado disponível" in payload.section_errors["signals"]
 
 
 def test_ai_dashboard_unified_signal_conflict_is_deterministic():
     recent = ai_dashboard._build_unified_signals(
-        ai_rows=[],
+        ai_rows=[
+            _make_signal(
+                signal_id="hist-btc",
+                user_id="user-a",
+                asset="BTCUSDT",
+                signal_type="SELL",
+                confidence=78,
+                created_at=datetime.now(UTC),
+                rsi=72.0,
+                macd="bearish",
+                target_price=96900,
+            )
+        ],
         signal_feed=[
             Signal(
                 id="sig-btc",
@@ -494,21 +460,6 @@ def test_ai_dashboard_unified_signal_conflict_is_deterministic():
                 current_price=97000,
             )
         ],
-        onchain_snapshot=[
-            (
-                type(
-                    "Pair",
-                    (),
-                    {
-                        "symbol": "BTCUSDT",
-                        "token": "BTC",
-                        "chain": "ethereum",
-                        "last_price": 96900.0,
-                    },
-                )(),
-                type("Result", (), {"signal": "SELL", "confidence": 78})(),
-            )
-        ],
     )
 
     assert len(recent) == 1
@@ -524,7 +475,6 @@ def test_ai_dashboard_unified_signal_conflict_is_deterministic():
 def test_ai_dashboard_unified_signal_builder_handles_many_assets_quickly():
     ai_rows: list[SignalHistory] = []
     signal_feed: list[Signal] = []
-    onchain_snapshot: list[tuple[object, object]] = []
     now = datetime.now(UTC)
 
     for index in range(200):
@@ -566,34 +516,10 @@ def test_ai_dashboard_unified_signal_builder_handles_many_assets_quickly():
                 current_price=110 + index,
             )
         )
-        onchain_snapshot.append(
-            (
-                type(
-                    "Pair",
-                    (),
-                    {
-                        "symbol": asset,
-                        "token": f"ASSET{index}",
-                        "chain": "ethereum",
-                        "last_price": 111 + index,
-                    },
-                )(),
-                type(
-                    "Result",
-                    (),
-                    {
-                        "signal": "BUY" if index % 2 == 0 else "SELL",
-                        "confidence": 60 + (index % 30),
-                    },
-                )(),
-            )
-        )
-
     started = time.perf_counter()
     recent = ai_dashboard._build_unified_signals(
         ai_rows=ai_rows,
         signal_feed=signal_feed,
-        onchain_snapshot=onchain_snapshot,
     )
     elapsed = time.perf_counter() - started
 

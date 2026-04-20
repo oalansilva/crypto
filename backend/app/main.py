@@ -35,7 +35,6 @@ from app.routes.user_profile import router as user_profile_router
 from app.routes.user_credentials import router as user_credentials_router
 from app.routes.system_preferences import router as system_preferences_router
 from app.routes.retrospectives import router as retrospectives_router
-from app.routes.onchain_signals import router as onchain_signals_router
 from app.services.signal_monitor import signal_monitor
 from app.services.binance_service import (
     start_signal_feed_snapshot_worker,
@@ -240,9 +239,6 @@ app.include_router(workflow_router)
 app.include_router(workflow_validation_router)
 app.include_router(market_router)
 app.include_router(portfolio_router)
-# NOTE: onchain_signals_router MUST be before signals_router to avoid
-# the /{signal_id} catch-all route in signals_router matching /api/signals/onchain
-app.include_router(onchain_signals_router)
 app.include_router(signals_router)
 app.include_router(ai_dashboard_router)
 app.include_router(auth_router)

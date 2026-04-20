@@ -17,6 +17,7 @@ from app.services.market_data_providers import (
     YahooMarketDataProvider,
     get_market_data_provider,
 )
+from app.services.asset_classification import classify_asset_type
 from app.services.preset_service import get_presets
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
 
@@ -169,10 +170,6 @@ async def get_indicator_schema_endpoint(strategy_name: str):
     return schema
 
 
-def _classify_asset(symbol: str) -> str:
-    return "crypto" if "/" in symbol else "stock"
-
-
 def _validate_market_timeframe(asset: str, timeframe: str) -> str:
     tf = str(timeframe or "").strip().lower()
     if asset == "stock" and tf != "1d":
@@ -279,7 +276,7 @@ async def get_market_candles(
         raise HTTPException(status_code=400, detail="Query param 'symbol' must not be empty.")
 
     try:
-        asset_type = _classify_asset(raw_symbol)
+        asset_type = classify_asset_type(raw_symbol)
         tf = _validate_market_timeframe(asset_type, timeframe)
         cached = _read_candles_cache(raw_symbol, tf, limit)
         if cached is not None:

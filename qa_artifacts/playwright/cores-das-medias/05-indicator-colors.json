@@ -1,0 +1,20 @@
+[
+  {
+    "key": "emaShort",
+    "text": "EMA 18",
+    "color": "rgb(255, 82, 82)",
+    "borderColor": "rgb(255, 82, 82)"
+  },
+  {
+    "key": "smaMedium",
+    "text": "SMA 20",
+    "color": "rgb(255, 152, 0)",
+    "borderColor": "rgb(255, 152, 0)"
+  },
+  {
+    "key": "smaLong",
+    "text": "SMA 35",
+    "color": "rgb(21, 101, 192)",
+    "borderColor": "rgb(21, 101, 192)"
+  }
+]

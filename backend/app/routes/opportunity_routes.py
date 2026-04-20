@@ -19,6 +19,7 @@ _OPPORTUNITIES_CACHE: dict[tuple[str, str | None], dict[str, Any]] = {}
 class OpportunityResponse(BaseModel):
     id: int
     symbol: str
+    asset_type: str
     timeframe: str
     template_name: str
     name: str  # user custom name

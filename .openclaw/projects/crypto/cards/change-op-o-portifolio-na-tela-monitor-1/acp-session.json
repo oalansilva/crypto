@@ -1,0 +1,15 @@
+{
+  "agent_id": "qa",
+  "card_key": "change-op-o-portifolio-na-tela-monitor-1",
+  "last_item_id": "dc867575-798a-40a0-9eb6-90aef4ac6ca4",
+  "last_reset_at": null,
+  "last_reset_reason": null,
+  "last_run_id": "srv1403390-qa-6b633e75b8d6",
+  "previous_session_key": null,
+  "project_slug": "crypto",
+  "reset_count": 0,
+  "schema_version": 1,
+  "session_key": "agent:qa:project-crypto:change-op-o-portifolio-na-tela-monitor-1",
+  "session_label": null,
+  "turn_count": 10
+}

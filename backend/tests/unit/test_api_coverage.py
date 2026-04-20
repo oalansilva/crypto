@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 import pandas as pd
 
 import app.api as api
+from app.services.asset_classification import classify_asset_type
 
 
 def _build_api_app() -> FastAPI:
@@ -192,8 +193,10 @@ def test_api_cache_read_and_write_helpers():
 
 
 def test_api_internal_helpers():
-    assert api._classify_asset("BTC/USDT") == "crypto"
-    assert api._classify_asset("AAPL") == "stock"
+    assert classify_asset_type("BTC/USDT") == "crypto"
+    assert classify_asset_type("AAPL") == "stock"
+    assert classify_asset_type("BTCUSDT", "cryptomoeda") == "crypto"
+    assert classify_asset_type("BTC/USDT", "stock") == "stock"
 
     assert api._validate_market_timeframe("stock", "1d") == "1d"
 

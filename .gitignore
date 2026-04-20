@@ -84,6 +84,7 @@ backend/full_execution_log.txt.1
 .env.docker.local
 backend/.env
 frontend/test-results/
+frontend/playwright-report/
 .playwright-mcp/
 .playwright-cli/
 qa-evidence/

@@ -35,7 +35,6 @@ const mainNavItems: NavItemConfig[] = [
   { to: '/monitor', label: 'Monitor', icon: Activity },
   { to: '/signals', label: 'Sinais', icon: TrendingUp },
   { to: '/signals/history', label: 'Histórico', icon: TrendingUp },
-  { to: '/signals/onchain', label: 'Onchain', icon: TrendingUp },
 ]
 
 const strategyNavItems: NavItemConfig[] = [
@@ -62,7 +61,6 @@ function resolvePageTitle(pathname: string) {
   if (pathname === '/monitor') return 'Monitor de sinais'
   if (pathname === '/signals') return 'Sinais de trading'
   if (pathname === '/signals/history') return 'Histórico de Sinais'
-  if (pathname.startsWith('/signals/onchain')) return 'Sinais Onchain'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
   if (pathname.startsWith('/profile')) return 'Meu Perfil'

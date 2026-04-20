@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from app.strategies.combos.proximity_analyzer import ProximityAnalyzer
 from app.strategies.combos.combo_strategy import ComboStrategy
 from app.services.combo_service import ComboService
+from app.services.asset_classification import classify_asset_type
 from app.services.market_data_providers import (
     CCXT_SOURCE,
     get_market_data_provider,
@@ -1239,6 +1240,7 @@ class OpportunityService:
                     {
                         "id": fav["id"],
                         "symbol": symbol,
+                        "asset_type": classify_asset_type(symbol),
                         "timeframe": tf,
                         "template_name": template_name,
                         "name": fav["name"],  # User custom name

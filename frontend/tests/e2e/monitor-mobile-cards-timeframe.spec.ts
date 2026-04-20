@@ -96,6 +96,14 @@ async function setupApiMocks(page: any) {
     })
   )
 
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
   await page.route('**/api/market/candles**', (route: any) =>
     route.fulfill({
       status: 200,
@@ -200,6 +208,14 @@ test('monitor card keeps strategy timeframe visible when chart timeframe differs
     })
   )
 
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
   await page.route('**/api/market/candles**', (route: any) =>
     route.fulfill({
       status: 200,
@@ -298,6 +314,14 @@ test('monitor renders exited strategies separately from stopped out ones', async
     })
   )
 
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
   await page.goto('/monitor')
 
   await expect(page.getByText('Saiu Pela Regra')).toBeVisible()
@@ -387,6 +411,14 @@ test('monitor keeps mismatched exit signals in WAIT state with explicit context'
         __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
         'BTC/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1h', theme: 'dark-green' },
       }),
+    })
+  )
+
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
     })
   )
 
@@ -515,6 +547,14 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
         __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
         'BTC/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
       }),
+    })
+  )
+
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
     })
   )
 
