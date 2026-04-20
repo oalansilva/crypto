@@ -186,7 +186,9 @@ def test_monitor_preferences_are_scoped_per_user(tmp_path: Path):
     }
 
 
-def test_monitor_preferences_reject_manual_portfolio_override_for_crypto_with_binance(tmp_path: Path):
+def test_monitor_preferences_reject_manual_portfolio_override_for_crypto_with_binance(
+    tmp_path: Path,
+):
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
         upsert_user_exchange_credential(
@@ -208,7 +210,9 @@ def test_monitor_preferences_reject_manual_portfolio_override_for_crypto_with_bi
     assert "cannot be changed manually" in str(exc.value.detail)
 
 
-def test_monitor_preferences_allows_manual_portfolio_override_for_stock_with_binance(tmp_path: Path):
+def test_monitor_preferences_allows_manual_portfolio_override_for_stock_with_binance(
+    tmp_path: Path,
+):
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
         upsert_user_exchange_credential(
@@ -244,7 +248,9 @@ def test_monitor_preferences_allows_non_portfolio_updates_for_crypto_with_binanc
             api_secret="test-api-secret-123",
         )
         response = monitor_preferences.update_monitor_preferences(
-            payload=monitor_preferences.MonitorPreferenceUpdate(card_mode="strategy", price_timeframe="4h"),
+            payload=monitor_preferences.MonitorPreferenceUpdate(
+                card_mode="strategy", price_timeframe="4h"
+            ),
             symbol="BTC/USDT",
             current_user_id="user-a",
             db=db,
