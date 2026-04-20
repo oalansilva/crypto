@@ -7,11 +7,14 @@ import { authFetch } from '@/lib/authFetch';
 import { MiniCandlesChart, type MarketCandle } from './MiniCandlesChart';
 import { resolveOpportunitySignal } from './signalResolution';
 
-import type { Opportunity, MonitorCardMode, MonitorPreference, MonitorPriceTimeframe } from './types';
+import { getOpportunityAssetType, type Opportunity, type MonitorCardMode, type MonitorPreference, type MonitorPriceTimeframe } from './types';
 
 interface OpportunityCardProps {
     opportunity: Opportunity;
     preference: MonitorPreference;
+    isPortfolioDerived: boolean;
+    portfolioStatusMessage?: string | null;
+    portfolioStatusTone?: 'neutral' | 'success' | 'warning';
     isSavingPreference: boolean;
     isOpeningChart: boolean;
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
@@ -51,6 +54,9 @@ const candleCacheKey = (symbol: string, timeframe: MonitorPriceTimeframe): strin
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     opportunity,
     preference,
+    isPortfolioDerived,
+    portfolioStatusMessage,
+    portfolioStatusTone = 'neutral',
     isSavingPreference,
     isOpeningChart,
     onToggleInPortfolio,
@@ -69,7 +75,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     } = opportunity;
 
     const isPriceMode = preference.card_mode === 'price';
-    const isStock = !symbol.includes('/');
+    const isStock = getOpportunityAssetType(opportunity) === 'stock';
     const effectiveTimeframe: MonitorPriceTimeframe = isStock ? '1d' : preference.price_timeframe;
 
     const [isEditingNotes, setIsEditingNotes] = React.useState(false);
@@ -242,6 +248,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     : { borderLeftWidth: '4px', borderLeftColor: 'rgb(203, 213, 225)' };
 
     const symbolTestKey = symbolKey(symbol);
+    const portfolioStatusClass = portfolioStatusTone === 'success'
+        ? 'text-emerald-300'
+        : portfolioStatusTone === 'warning'
+            ? 'text-amber-300'
+            : 'text-slate-300';
 
     const shouldIgnoreCardClick = (target: EventTarget | null) => {
         return target instanceof HTMLElement
@@ -254,6 +265,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             className={`${borderColor} ${cardBgColor} ${holdingIndicator} hover:shadow-lg transition-all hover:scale-[1.02] relative cursor-pointer focus-within:ring-2 focus-within:ring-blue-400/60`}
             style={cardStyle}
             data-testid={`monitor-card-${symbolTestKey}`}
+            data-portfolio-derived={isPortfolioDerived ? 'true' : 'false'}
             role="button"
             tabIndex={0}
             aria-haspopup="dialog"
@@ -315,11 +327,28 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <div className="flex items-center gap-1">
                         <button
                             type="button"
-                            className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${preference.in_portfolio ? 'border-amber-500 text-amber-400 bg-amber-500/20' : 'border-zinc-600 text-zinc-300 bg-zinc-800'}`}
-                            onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
+                            className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${
+                                preference.in_portfolio ? 'border-amber-500 text-amber-400 bg-amber-500/20' : 'border-zinc-600 text-zinc-300 bg-zinc-800'
+                            } ${isPortfolioDerived ? 'cursor-not-allowed opacity-60' : ''}`}
+                            onClick={() => {
+                                if (isPortfolioDerived || isSavingPreference) {
+                                    return;
+                                }
+                                onToggleInPortfolio(symbol, !preference.in_portfolio);
+                            }}
                             data-testid={`portfolio-toggle-${symbolTestKey}`}
-                            title={preference.in_portfolio ? 'Remove from In Portfolio' : 'Add to In Portfolio'}
+                            title={
+                                isPortfolioDerived
+                                    ? 'Portfolio synced from Binance wallet for crypto assets'
+                                    : preference.in_portfolio
+                                        ? 'Remove from In Portfolio'
+                                        : 'Add to In Portfolio'
+                            }
+                            disabled={isPortfolioDerived}
+                            aria-disabled={isPortfolioDerived}
+                            aria-pressed={preference.in_portfolio}
                             aria-busy={isSavingPreference}
+                            data-portfolio-selected={preference.in_portfolio ? 'true' : 'false'}
                         >
                             <Star className={`w-3 h-3 ${preference.in_portfolio ? 'fill-current' : ''}`} />
                             <span className="hidden sm:inline">Portfolio</span>
@@ -337,6 +366,14 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             <span data-testid={`mode-label-${symbolTestKey}`}>{isPriceMode ? 'Price' : 'Strategy'}</span>
                         </button>
                     </div>
+                    {isPortfolioDerived && portfolioStatusMessage ? (
+                        <p
+                            className={`max-w-[220px] text-right text-[11px] leading-4 ${portfolioStatusClass}`}
+                            data-testid={`portfolio-sync-status-${symbolTestKey}`}
+                        >
+                            {portfolioStatusMessage}
+                        </p>
+                    ) : null}
                 </div>
             </CardHeader>
 

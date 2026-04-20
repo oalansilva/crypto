@@ -21,7 +21,6 @@ from app.services.news_localization_service import (
     get_cached_localized_news,
     schedule_news_localization_refresh,
 )
-from app.services.onchain_service import build_onchain_snapshot
 
 router = APIRouter(prefix="/api/ai", tags=["ai-dashboard"])
 
@@ -244,16 +243,9 @@ def _symbol_key(asset: str | None) -> str:
     return str(asset or "").strip().upper().replace("/", "").replace("-", "")
 
 
-def _collect_target_assets(ai_rows: list[SignalHistory], onchain_assets: list[str]) -> list[str]:
+def _collect_target_assets(ai_rows: list[SignalHistory]) -> list[str]:
     target_assets: list[str] = []
     seen_assets: set[str] = set()
-
-    for asset in onchain_assets:
-        key = _symbol_key(asset)
-        if not key or key in seen_assets:
-            continue
-        seen_assets.add(key)
-        target_assets.append(key)
 
     for row in ai_rows:
         key = _symbol_key(row.asset)
@@ -558,50 +550,6 @@ def _build_signals_source_criteria(signal: Signal) -> list[DashboardSignalCriter
     ]
 
 
-def _build_onchain_source_criteria(pair: Any, result: Any) -> list[DashboardSignalCriterion]:
-    breakdown = getattr(result, "breakdown", None)
-    metrics = getattr(result, "metrics", None)
-    if not isinstance(breakdown, dict) or not breakdown:
-        chain = str(getattr(pair, "chain", "") or "").strip()
-        return [
-            DashboardSignalCriterion(
-                label="On-chain",
-                score=_clamp_score(float(getattr(result, "confidence", 0) or 0.0)),
-                value=chain.capitalize() if chain else "Snapshot",
-            )
-        ]
-
-    metric_value_map = {
-        "tvl": _compact_number(getattr(metrics, "tvl", None), currency=True),
-        "active_addresses": _compact_number(getattr(metrics, "active_addresses", None)),
-        "exchange_flow": _compact_number(getattr(metrics, "exchange_flow", None), currency=True),
-        "github_commits": _compact_number(getattr(metrics, "github_commits", None)),
-        "github_stars": _compact_number(getattr(metrics, "github_stars", None)),
-        "github_issues": _compact_number(getattr(metrics, "github_issues", None)),
-    }
-    labels = {
-        "tvl": "TVL",
-        "active_addresses": "Endereços",
-        "exchange_flow": "Exchange flow",
-        "github_commits": "Commits",
-        "github_stars": "Stars",
-        "github_issues": "Issues",
-    }
-
-    criteria: list[DashboardSignalCriterion] = []
-    for key, label in labels.items():
-        if key not in breakdown:
-            continue
-        criteria.append(
-            DashboardSignalCriterion(
-                label=label,
-                score=_clamp_score(float(breakdown.get(key) or 0.0)),
-                value=metric_value_map.get(key),
-            )
-        )
-    return criteria
-
-
 def _source_direction(action: str | None) -> str:
     normalized = str(action or "").strip().upper()
     if normalized == "BUY":
@@ -681,7 +629,7 @@ def _make_unified_signal(
     )
     direction = _direction_label(final_action, strength, len(opposing_sources))
     price = None
-    for preferred_source in ("Signals", "On-chain", "AI Dashboard"):
+    for preferred_source in ("Signals", "AI Dashboard"):
         price = next(
             (
                 _coerce_price(entry.get("price"))
@@ -739,7 +687,6 @@ def _build_unified_signals(
     *,
     ai_rows: list[SignalHistory],
     signal_feed: list[Signal],
-    onchain_snapshot: list[tuple[Any, Any]],
 ) -> list[DashboardSignalItem]:
     grouped: OrderedDict[str, dict[str, Any]] = OrderedDict()
 
@@ -796,26 +743,6 @@ def _build_unified_signals(
                 or f"Sinal {signal.type.value} com perfil {signal.risk_profile.value}.",
                 "price": _coerce_price(signal.current_price or signal.entry_price),
                 "criteria": _build_signals_source_criteria(signal),
-            }
-        )
-
-    seen_onchain_assets: set[str] = set()
-    for pair, result in onchain_snapshot:
-        key = _symbol_key(getattr(pair, "symbol", None))
-        if not key or key in seen_onchain_assets:
-            continue
-        seen_onchain_assets.add(key)
-        group = ensure_group(getattr(pair, "symbol", None))
-        if not group:
-            continue
-        group["entries"].append(
-            {
-                "source": "On-chain",
-                "action": str(result.signal).upper(),
-                "confidence": int(result.confidence),
-                "reason": f"{pair.token} em {pair.chain} com leitura on-chain consolidada.",
-                "price": _coerce_price(getattr(pair, "last_price", None)),
-                "criteria": _build_onchain_source_criteria(pair, result),
             }
         )
 
@@ -1032,12 +959,10 @@ async def get_ai_dashboard(
     indicators = _build_indicator_cards(history_rows)
     news_task = asyncio.create_task(_fetch_coingecko_news())
     sentiment_task = asyncio.create_task(sentiment_service.get_market_sentiment())
-    onchain_snapshot_task = asyncio.create_task(build_onchain_snapshot(limit=20))
 
-    news_result, sentiment_result, onchain_snapshot_result = await asyncio.gather(
+    news_result, sentiment_result = await asyncio.gather(
         news_task,
         sentiment_task,
-        onchain_snapshot_task,
         return_exceptions=True,
     )
 
@@ -1051,28 +976,6 @@ async def get_ai_dashboard(
     except Exception as exc:
         logger.warning("Failed to load AI dashboard stats from signal history: %s", exc)
         section_errors["stats"] = "Não foi possível consolidar o histórico de sinais."
-
-    if isinstance(onchain_snapshot_result, Exception):
-        logger.warning(
-            "Failed to load onchain snapshot for AI dashboard: %s", onchain_snapshot_result
-        )
-        section_errors["onchain"] = "Não foi possível atualizar os sinais on-chain."
-        onchain_snapshot = []
-        onchain_assets: list[str] = []
-    else:
-        onchain_snapshot = list(onchain_snapshot_result)
-        onchain_assets = []
-        seen_onchain_assets: set[str] = set()
-        for pair, _ in onchain_snapshot:
-            symbol = getattr(pair, "symbol", None)
-            if not symbol:
-                continue
-            normalized_symbol = str(symbol).upper()
-            key = normalized_symbol.replace("/", "").replace("-", "")
-            if key in seen_onchain_assets:
-                continue
-            seen_onchain_assets.add(key)
-            onchain_assets.append(normalized_symbol)
 
     if isinstance(sentiment_result, Exception):
         logger.warning("Failed to load AI dashboard sentiment: %s", sentiment_result)
@@ -1088,7 +991,7 @@ async def get_ai_dashboard(
             tone=fear_greed_tone,
         )
 
-    candidate_assets = _collect_target_assets(history_rows, onchain_assets)
+    candidate_assets = _collect_target_assets(history_rows)
     signal_feed: list[Signal] = []
 
     if candidate_assets:
@@ -1126,7 +1029,6 @@ async def get_ai_dashboard(
     recent_signals = _build_unified_signals(
         ai_rows=history_rows,
         signal_feed=signal_feed,
-        onchain_snapshot=onchain_snapshot,
     )
 
     if not recent_signals:

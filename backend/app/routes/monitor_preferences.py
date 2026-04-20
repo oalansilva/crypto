@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.middleware.authMiddleware import get_current_user
 from app.models import MonitorPreference
+from app.services.asset_classification import classify_asset_type
+from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
@@ -41,6 +43,12 @@ def _normalize_symbol(symbol: str) -> str:
 
 def _is_stock_symbol(symbol: str) -> bool:
     return "/" not in symbol
+
+
+def _is_portfolio_derived_symbol(db: Session, user_id: str, symbol: str) -> bool:
+    if classify_asset_type(symbol) != "crypto":
+        return False
+    return get_user_exchange_credential(db, user_id, BINANCE_PROVIDER) is not None
 
 
 def _normalize_price_timeframe(symbol: str, timeframe: Optional[str]) -> str:
@@ -88,10 +96,16 @@ def update_monitor_preferences(
 
     normalized_symbol = _normalize_symbol(symbol)
     is_stock = _is_stock_symbol(normalized_symbol)
+    is_portfolio_derived = _is_portfolio_derived_symbol(db, current_user_id, normalized_symbol)
     if is_stock and payload.price_timeframe is not None and payload.price_timeframe != "1d":
         raise HTTPException(
             status_code=400,
             detail="Stocks currently support only timeframe='1d'",
+        )
+    if is_portfolio_derived and payload.in_portfolio is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Portfolio is derived from Binance wallet for crypto assets and cannot be changed manually",
         )
 
     existing = (

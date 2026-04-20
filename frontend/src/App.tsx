@@ -16,8 +16,6 @@ import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
 import SignalsPage from './pages/SignalsPage'
 import SignalsHistoryPage from './pages/SignalsHistoryPage'
-import OnchainSignalsPage from './pages/OnchainSignalsPage'
-import OnchainBacktestPage from './pages/OnchainBacktestPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import SystemPreferencesPage from './pages/SystemPreferencesPage'
@@ -66,8 +64,6 @@ function App() {
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/signals" element={<SignalsPage />} />
           <Route path="/signals/history" element={<SignalsHistoryPage />} />
-          <Route path="/signals/onchain" element={<OnchainSignalsPage />} />
-          <Route path="/signals/onchain/backtest" element={<OnchainBacktestPage />} />
           <Route path="/combo/select" element={<ComboSelectPage />} />
           {/* Backward-compat route (old link/bookmark) */}
           <Route path="/combo/selectCrypto" element={<ComboSelectPage />} />

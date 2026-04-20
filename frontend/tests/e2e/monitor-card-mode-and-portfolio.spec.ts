@@ -1,5 +1,20 @@
 import { expect, test } from '@playwright/test'
 
+const AUTH_USER = {
+  id: 'test-user',
+  email: 'test@example.com',
+  name: 'Test User',
+  isAdmin: false,
+}
+
+async function mockAuthenticatedSession(page: any) {
+  await page.addInitScript((user) => {
+    window.localStorage.setItem('auth_access_token', 'test-access-token')
+    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token')
+    window.localStorage.setItem('auth_user', JSON.stringify(user))
+  }, AUTH_USER)
+}
+
 const FAVORITES_PAYLOAD = [
   {
     id: 1,
@@ -29,6 +44,7 @@ const OPPORTUNITIES_PAYLOAD = [
   {
     id: 1,
     symbol: 'BTC/USDT',
+    asset_type: 'cryptomoeda',
     timeframe: '4h',
     template_name: 'ema_rsi',
     name: 'BTC Trend',
@@ -47,6 +63,7 @@ const OPPORTUNITIES_PAYLOAD = [
   {
     id: 2,
     symbol: 'NVDA',
+    asset_type: 'stock',
     timeframe: '1d',
     template_name: 'ema_rsi',
     name: 'NVDA Trend',
@@ -77,17 +94,30 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 async function setupApiMocks(
   page: any,
   options?: {
+    binanceConfigured?: boolean
     candlesDelayMs?: number
     preferencePatchDelayMs?: number
+    balances?: Array<{ asset: string; total: number }>
+    initialPreferences?: Record<
+      string,
+      { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
+    >
+    balancesStatus?: number
+    balancesDetail?: string
   }
 ) {
+  await mockAuthenticatedSession(page)
+
   const requestedTimeframes: string[] = []
+  const requestedBalanceMinUsd: string[] = []
   const preferencePatches: Array<{ symbol: string; patch: any }> = []
   const preferences: Record<
     string,
     { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
   > = {
-    'BTC/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+    ...(options?.initialPreferences ?? {
+      'BTC/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+    }),
   }
 
   await page.route('**/*', (route: any) => {
@@ -103,6 +133,14 @@ async function setupApiMocks(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(FAVORITES_PAYLOAD),
+    })
+  )
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
     })
   )
 
@@ -145,6 +183,42 @@ async function setupApiMocks(
     })
   })
 
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        configured: Boolean(options?.binanceConfigured),
+        api_key_masked: options?.binanceConfigured ? 'test****key' : null,
+      }),
+    })
+  )
+
+  await page.route('**/api/external/binance/spot/balances**', (route: any) => {
+    const url = new URL(route.request().url())
+    requestedBalanceMinUsd.push(url.searchParams.get('min_usd') || '')
+
+    if ((options?.balancesStatus ?? 200) >= 400) {
+      return route.fulfill({
+        status: options?.balancesStatus ?? 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: options?.balancesDetail ?? 'wallet unavailable',
+        }),
+      })
+    }
+
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        balances: options?.balances ?? [{ asset: 'BTC', total: 0.42 }],
+        total_usd: 1000,
+        as_of: '2025-01-01T00:00:00Z',
+      }),
+    })
+  })
+
   await page.route('**/api/market/candles**', (route: any) =>
     {
       const url = new URL(route.request().url())
@@ -165,6 +239,7 @@ async function setupApiMocks(
   )
 
   return {
+    requestedBalanceMinUsd,
     requestedTimeframes,
     preferencePatches,
   }
@@ -176,6 +251,34 @@ test('defaults to In Portfolio and hides symbols without preference', async ({ p
 
   await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-card-nvda')).toHaveCount(0)
+})
+
+test('flags only crypto cards as portfolio-derived when Binance credentials are configured', async ({ page }) => {
+  await setupApiMocks(page, { binanceConfigured: true })
+  await page.goto('/monitor')
+
+  await page.getByTestId('monitor-filter-all').click()
+  await expect(page.getByTestId('monitor-card-btc-usdt')).toHaveAttribute('data-portfolio-derived', 'true')
+  await expect(page.getByTestId('monitor-card-nvda')).toHaveAttribute('data-portfolio-derived', 'false')
+  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
+  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('portfolio-toggle-nvda')).toBeEnabled()
+})
+
+test('uses Binance wallet holdings as the portfolio source for crypto cards', async ({ page }) => {
+  const mocks = await setupApiMocks(page, {
+    binanceConfigured: true,
+    balances: [{ asset: 'BTC', total: 0.42 }],
+    initialPreferences: {
+      'BTC/USDT': { in_portfolio: false, card_mode: 'price', price_timeframe: '1d' },
+    },
+  })
+  await page.goto('/monitor')
+
+  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('portfolio-sync-status-btc-usdt')).toContainText('Sincronizado com a Carteira Binance')
+  await expect.poll(() => mocks.requestedBalanceMinUsd.at(-1)).toBe('1')
 })
 
 test('toggle in_portfolio persists across reload', async ({ page }) => {
@@ -238,4 +341,29 @@ test('timeframe switch keeps non-chart controls interactive and shows localized 
 
   // Ensure there is no global blocking loading text
   await expect(page.locator('body')).not.toContainText('Loading candles...')
+})
+
+test('derived crypto portfolio toggle stays read-only and does not persist manual changes', async ({ page }) => {
+  const mocks = await setupApiMocks(page, { binanceConfigured: true })
+  await page.goto('/monitor')
+
+  await page.getByTestId('monitor-filter-all').click()
+  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
+  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('portfolio-toggle-nvda')).toBeEnabled()
+  await expect(mocks.preferencePatches).toHaveLength(0)
+})
+
+test('shows fallback feedback when Binance wallet is unavailable', async ({ page }) => {
+  await setupApiMocks(page, {
+    binanceConfigured: true,
+    balancesStatus: 503,
+    balancesDetail: 'Binance credentials not configured for this user',
+  })
+  await page.goto('/monitor')
+
+  await page.getByTestId('monitor-filter-all').click()
+  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
+  await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('portfolio-sync-status-btc-usdt')).toContainText('Binance credentials not configured')
 })
