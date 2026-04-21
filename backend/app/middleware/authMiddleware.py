@@ -5,6 +5,7 @@ Extrai user_id do JWT e adiciona ao contexto da requisição.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Optional
 import uuid
 import jwt
@@ -103,6 +104,11 @@ async def get_current_user(
             detail="User not found",
         )
 
+    now = datetime.utcnow()
+    if _ensure_user_accessible(user, now):
+        db.add(user)
+        db.commit()
+
     return user_id
 
 
@@ -121,6 +127,38 @@ async def get_current_admin(
             detail="Admin access required",
         )
     return current_user_id
+
+
+def _is_user_temporarily_suspended(user: User, now: datetime) -> bool:
+    if user.status != "suspended":
+        return False
+
+    if not user.suspended_until:
+        return True
+
+    return now < user.suspended_until.replace(tzinfo=None)
+
+
+def _ensure_user_accessible(user: User, now: datetime) -> bool:
+    if user.status == "banned" or user.is_banned:
+        raise HTTPException(
+            status_code=403,
+            detail="User account is banned",
+        )
+
+    if _is_user_temporarily_suspended(user, now):
+        raise HTTPException(
+            status_code=403,
+            detail="User account is suspended",
+        )
+
+    if user.status == "suspended" and not _is_user_temporarily_suspended(user, now):
+        user.status = "active"
+        user.suspended_until = None
+        user.suspension_reason = None
+        return True
+
+    return False
 
 
 # Type alias para uso nas rotas
