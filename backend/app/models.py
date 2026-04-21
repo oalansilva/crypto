@@ -224,8 +224,33 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
+    status = Column(String, default="active", nullable=False)
+    suspended_until = Column(DateTime, nullable=True, default=None)
+    suspension_reason = Column(Text, nullable=True)
+    is_banned = Column(Boolean, default=False)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True, default=None)
+
+
+class AdminActionLog(Base):
+    __tablename__ = "admin_action_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    actor_user_id = Column(String, nullable=False)
+    target_user_id = Column(String, nullable=False)
+    action = Column(String, nullable=False)
+    target_subject = Column(String, nullable=True)
+    reason = Column(Text, nullable=False)
+    metadata_json = Column(JSONType, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_admin_action_logs_actor", "actor_user_id"),
+        Index("ix_admin_action_logs_target", "target_user_id"),
+        Index("ix_admin_action_logs_action", "action"),
+        Index("ix_admin_action_logs_created_at", "created_at"),
+    )
 
 
 class UserExchangeCredential(Base):

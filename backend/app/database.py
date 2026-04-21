@@ -99,6 +99,52 @@ def ensure_sqlite_migrations() -> None:
             if "last_login" not in cols:
                 cur.execute("ALTER TABLE users ADD COLUMN last_login DATETIME")
                 conn.commit()
+            if "status" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
+                conn.commit()
+            if "suspended_until" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN suspended_until DATETIME")
+                conn.commit()
+            if "suspension_reason" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN suspension_reason TEXT")
+                conn.commit()
+            if "is_banned" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0")
+                conn.commit()
+            if "notes" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN notes TEXT")
+                conn.commit()
+
+        # admin_action_logs table
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='admin_action_logs'")
+        if not cur.fetchone():
+            cur.execute(
+                """
+                CREATE TABLE admin_action_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    actor_user_id TEXT NOT NULL,
+                    target_user_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    target_subject TEXT,
+                    reason TEXT NOT NULL,
+                    metadata_json TEXT,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_actor ON admin_action_logs (actor_user_id)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_target ON admin_action_logs (target_user_id)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_action ON admin_action_logs (action)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at ON admin_action_logs (created_at)"
+            )
+            conn.commit()
 
         # favorite_strategies: add user_id if missing and backfill legacy rows to the default owner when known
         cur.execute(
@@ -177,6 +223,109 @@ def ensure_runtime_schema_migrations() -> None:
 
     ensure_sqlite_migrations()
 
+    if DB_URL.startswith("sqlite:"):
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMP NULL
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS suspension_reason TEXT NULL
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS notes TEXT NULL
+                """
+            )
+        )
+
+        conn.execute(
+            text(
+                """
+                UPDATE users
+                SET status = 'active'
+                WHERE status IS NULL OR btrim(status) = ''
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS admin_action_logs (
+                    id SERIAL PRIMARY KEY,
+                    actor_user_id VARCHAR NOT NULL,
+                    target_user_id VARCHAR NOT NULL,
+                    action VARCHAR NOT NULL,
+                    target_subject VARCHAR NULL,
+                    reason TEXT NOT NULL,
+                    metadata_json TEXT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_admin_action_logs_actor
+                ON admin_action_logs (actor_user_id)
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_admin_action_logs_target
+                ON admin_action_logs (target_user_id)
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_admin_action_logs_action
+                ON admin_action_logs (action)
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at
+                ON admin_action_logs (created_at)
+                """
+            )
+        )
+
 
 def get_db():
     db = SessionLocal()
@@ -198,6 +347,7 @@ def sync_postgres_identity_sequences() -> None:
         "auto_backtest_runs",
         "portfolio_snapshots",
         "optimization_results",
+        "admin_action_logs",
     )
 
     with engine.begin() as conn:
