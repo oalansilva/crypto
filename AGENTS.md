@@ -4,7 +4,8 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 ## TL;DR
 
-- **Branch padrão:** trabalhe em `feature/long-change` (evite commits diretos na `main`).
+- **Branch padrão:** trabalhe em `develop` (evite commits diretos na `main`).
+- **Fluxo simplificado:** faça trabalho diário em `develop`, dê `push` e mantenha uma PR de `develop -> main` para promover.
 - **Fluxo operacional atual:** Workflow DB = fonte runtime; OpenSpec + `docs/coordination/*.md` = superfície viva de handoff, decisões e evidências; OpenSpec também é a camada de artefatos.
 - **Notas de operação ativa:** `docs/coordination/*.md` deixou de ser espelho; passa a ser o trilho de handoff e rastreabilidade visível no repositório, junto com o estado no runtime DB.
 - **Playbook operacional canônico (Phase 1):** seguir `docs/multiagent-operating-playbook.md` para responsabilidades por papel, contrato padrão de handoff, Definition of Done por coluna e regra de fechamento com runtime + handoff.

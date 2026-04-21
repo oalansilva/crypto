@@ -31,7 +31,10 @@ Regra operacional de stage: uma etapa intermediária só conta como concluída q
 - `proposal/specs/design/tasks` sempre em inglês.
 
 3) **Trabalhar em branch**
-- Evitar commitar direto no `main`.
+- Padrão operacional: trabalhar diretamente em `develop`.
+- Commits diretos em `develop` são aceitos.
+- Use PR `develop -> main` para promoção a produção.
+- Criar branch por tarefa apenas quando houver isolamento explícito necessário.
 
 4) **UI é validada pelo Alan**
 - O bot não “aprova” UI sozinho.
@@ -150,8 +153,12 @@ Só após QA OK a change pode ser considerada pronta para homologação.
 
 ### 10) Deploy
 
-- `git push origin <branch>`
-- (Se usando PR) abrir PR, aguardar CI verde, e fazer merge (padrão: merge commit)
+- `git checkout develop`
+- `git push origin develop`
+- Se ainda não houver PR aberta de `develop -> main`, abra com:
+  - `gh pr create --base main --head develop --title "chore: promote develop to main" --body "Sincronização de mudanças consolidadas em develop."`
+- Se já houver PR, ela se atualiza automaticamente com o novo commit.
+- Aguardar CI verde e fazer merge em `main` (merge commit padrão).
 - Deploy produção:
   - `./stop.sh`
   - `./start.sh`
