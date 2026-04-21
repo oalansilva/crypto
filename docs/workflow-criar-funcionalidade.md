@@ -7,7 +7,7 @@ Este documento descreve o fluxo padrão para criar funcionalidades no projeto **
 ### Definition of Done (DoD)
 Uma change só é considerada **Done** quando:
 - CI está **verde**
-- QA validou critérios de aceitação e atualizou/criou testes necessários
+- Critérios de aceitação foram validados e testes atualizados quando necessário
 - Alan homologou (UI/fluxo real)
 - Change foi arquivada no OpenSpec
 
@@ -31,9 +31,9 @@ Regra operacional de etapa: uma etapa só conta como concluída quando houve atu
 - `proposal/specs/design/tasks` sempre em inglês.
 
 3) **Trabalhar em branch**
-- Padrão operacional: trabalhar diretamente em `develop`.
-- Commits diretos em `develop` são aceitos.
-- Use PR `develop -> main` para promoção a produção.
+- Padrão operacional: trabalhar diretamente em `main`.
+- Commits diretos em `main` são aceitos.
+- PR de revisão é opcional: `feature/<slug> -> main`.
 - Criar branch por tarefa apenas quando houver isolamento explícito necessário.
 
 4) **UI é validada pelo Alan**
@@ -42,18 +42,17 @@ Regra operacional de etapa: uma etapa só conta como concluída quando houve atu
 5) **Testing é parte do DoD**
 - Para cada change, adicionar/atualizar testes conforme `docs/testing-playbook.md`.
 
-## Papéis e responsáveis
+## Responsável
 
-- **Alan (Stakeholder)**: valida a ideia (antes) e homologa o final (depois).
-- **main**: mantém o chat gerencial e consulta coordenação e artefatos como superfície principal.
-- **PO**: discovery, escopo/restrições, critérios de aceitação, artefatos OpenSpec (EN) + `review-ptbr.md`.
-- **DESIGN**: quando houver UI/UX, protótipo, decisões visuais e notas de aceite para DEV/QA.
-- **DEV**: implementação + commits/PR/merge/deploy.
-- **QA**: testes (unit/integration/E2E), valida critérios de aceitação, garante CI verde. **Tudo passa por QA.**
+Você é o único operador.  
+O fluxo usa OpenSpec + Codex CLI + revisão humana no fim pelo Alan.
 
-Contrato operacional curto por papel, handoff padrão e DoD por etapa: `docs/multiagent-operating-playbook.md` (sem uso de Kanban).
+Checklist de controle:
+- manter `docs/coordination/<change>.md` atualizado com o status e decisões;
+- registrar links de artefatos de aprovação e evidências de teste;
+- garantir revisão final com Alan antes de promover.
 
-Nota: o OpenSpec oficial define os artefatos do change, mas não define ownership por papel. Neste repositório, o `PO` gera os artefatos do change e o `DESIGN` complementa com protótipo visual e decisões de UX.
+Nota: use `docs/coordination/<change>.md` para manter trilha operacional de decisão e evidência.
 
 ## Passo a passo
 
@@ -75,9 +74,9 @@ Nota: o OpenSpec oficial define os artefatos do change, mas não define ownershi
 
 - `openspec new change <change-name>`
 
-### 3) Discovery (PO) — perguntas e decisões (obrigatório)
+### 3) Discovery — perguntas e decisões (você)
 
-O PO deve fechar (por escrito) antes do planning:
+Feche (por escrito) antes do planning:
 - objetivo
 - defaults
 - regras
@@ -103,12 +102,10 @@ Registrar no `docs/coordination/<change-name>.md` em "Decisions (locked)".
 
 - `openspec validate <change-name> --type change`
 
-### 6) Encerrar PO e seguir para DESIGN
+### 6) Handoff para implementação
 
-- PO revisa os artefatos, garante que decisões e critérios de aceitação estão travados.
-- Registra handoff em `docs/coordination/<change-name>.md` com artifacts prontos (`proposal/specs/tasks/design`).
-- DESIGN (quando aplicável) fecha protótipo/decisões de UI.
-- Somente após DESIGN finalizar (protótipo + links publicados) o handoff avança para `Alan approval`.
+- Consolidar `proposal/specs/tasks` (e `design.md` quando houver UI) e registrar em `docs/coordination/<change-name>.md`.
+- Avançar para aprovação do Alan apenas após critérios e decisões estarem fechados.
 
 ### 7) Revisão do Alan (antes de implementar)
 
@@ -125,19 +122,19 @@ Viewer (exemplos):
 
 > Importante: usar sempre o prefixo `/openspec/changes/`. O artifact `review-ptbr` precisa estar allowlisted no backend (`backend/app/routes/openspec.py`).
 
-### 8) Implementação (DEV)
+### 8) Implementação
 
 - Garantir branch + working tree limpos
 - Rodar:
   - `codex exec --full-auto --cd /root/.openclaw/workspace/crypto "Implementar as tasks da change <change-name> seguindo specs/design."`
 
-### 9) QA Gate (obrigatório)
+### 9) Validação (obrigatório)
 
-Sequência preferida: `DEV implementa -> QA valida -> merge`.
-- Mudanças locais da própria change não devem bloquear por si só `DEV -> QA`.
-- Controle de progresso é feito por commits/PR + validação humana no fim do fluxo, não por bloqueios preventivos.
+Sequência preferida: implementação -> validação -> merge.
+- Mudanças locais da própria change não devem bloquear por si só a revisão.
+- Controle de progresso é feito por commit/PR + validação em `docs/coordination/<change-name>.md`.
 
-O QA deve:
+A validação deve:
 - adicionar/atualizar testes conforme `docs/testing-playbook.md`
 - rodar suites relevantes (integration + E2E quando aplicável)
 - garantir CI verde
@@ -147,16 +144,19 @@ Checklist mínimo (PASSOU/FALHOU):
 - Backend integration: `./backend/.venv/bin/python -m pytest -q backend/tests/integration`
 - Frontend E2E (quando aplicável): `npm --prefix frontend run test:e2e`
 
-Só após QA OK a change pode ser considerada pronta para homologação.
+Só após validação OK a change pode ser considerada pronta para homologação.
 
 ### 10) Deploy
 
-- `git checkout develop`
-- `git push origin develop`
-- Se ainda não houver PR aberta de `develop -> main`, abra com:
-  - `gh pr create --base main --head develop --title "chore: promote develop to main" --body "Sincronização de mudanças consolidadas em develop."`
-- Se já houver PR, ela se atualiza automaticamente com o novo commit.
-- Aguardar CI verde e fazer merge em `main` (merge commit padrão).
+- `git checkout main`
+- `git push origin main`
+- Se preferir, crie PR de revisão:
+  - `git checkout -b feature/<slug>`
+  - implemente
+  - `git push -u origin feature/<slug>`
+  - `gh pr create --base main --head feature/<slug> --title "<resume>" --body "Resumo curto da mudança"`
+  - aguardar CI verde e fazer merge em `main`
+- No fluxo mais simples (sem revisão prévia), faça `git push origin main` após validação.
 - Deploy produção:
   - `./stop.sh`
   - `./start.sh`

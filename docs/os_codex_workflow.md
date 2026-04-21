@@ -11,7 +11,7 @@ Use pedidos diretos no chat, por exemplo:
 - `aplique a change <change_id>`
 - `archive a change <change_id>`
 
-## Passo a passo (humano + agente)
+## Passo a passo
 
 ### 1) Criar change
 ```bash
