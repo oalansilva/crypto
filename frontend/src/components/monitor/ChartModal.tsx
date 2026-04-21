@@ -1,4 +1,5 @@
 import React from 'react';
+import { Minus, Plus, RotateCcw } from 'lucide-react';
 import {
     ColorType,
     CrosshairMode,
@@ -47,6 +48,9 @@ const DEFAULT_INDICATORS: IndicatorState = {
     smaLong: true,
     rsi: true,
 };
+const LOGICAL_RANGE_PADDING = 8;
+const MIN_VISIBLE_BARS = 12;
+const ZOOM_STEP_FACTOR = 0.75;
 const MA_COLORS = ['#FF5252', '#FF9800', '#1565C0'] as const;
 type MAIndicatorKey = 'emaShort' | 'smaMedium' | 'smaLong';
 type MAColorByIndicator = Record<MAIndicatorKey, string>;
@@ -95,6 +99,40 @@ function formatTimestamp(value?: string | null) {
         minute: '2-digit',
         timeZone: 'UTC',
     }).format(new Date(value));
+}
+
+function getVisibleBarCount(range: LogicalRange | null) {
+    if (!range) {
+        return null;
+    }
+    return Math.max(1, Math.round(range.to - range.from));
+}
+
+function clampLogicalRange(center: number, span: number, candleCount: number): LogicalRange {
+    const minFrom = -LOGICAL_RANGE_PADDING;
+    const maxTo = Math.max(candleCount - 1, 0) + LOGICAL_RANGE_PADDING;
+    const maxSpan = Math.max(MIN_VISIBLE_BARS, maxTo - minFrom);
+    const nextSpan = Math.max(1, Math.min(span, maxSpan));
+
+    let from = center - nextSpan / 2;
+    let to = center + nextSpan / 2;
+
+    if (from < minFrom) {
+        const shift = minFrom - from;
+        from += shift;
+        to += shift;
+    }
+
+    if (to > maxTo) {
+        const shift = to - maxTo;
+        from -= shift;
+        to -= shift;
+    }
+
+    return {
+        from: Math.max(from, minFrom) as LogicalRange['from'],
+        to: Math.min(to, maxTo) as LogicalRange['to'],
+    };
 }
 
 function formatSignalReason(value?: string | null) {
@@ -274,12 +312,15 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [error, setError] = React.useState<string | null>(null);
     const [visibleIndicators, setVisibleIndicators] = React.useState<IndicatorState>(DEFAULT_INDICATORS);
     const [tooltip, setTooltip] = React.useState<TooltipSnapshot | null>(null);
+    const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null);
 
     const cacheRef = React.useRef<Map<string, MarketCandle[]>>(new Map([
         [`${symbol}|${initialTimeframe}`, initialCandles],
     ]));
     const mainChartRef = React.useRef<HTMLDivElement>(null);
     const rsiChartRef = React.useRef<HTMLDivElement>(null);
+    const mainChartApiRef = React.useRef<IChartApi | null>(null);
+    const rsiChartApiRef = React.useRef<IChartApi | null>(null);
 
     const sortedCandles = React.useMemo(
         () => [...candles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
@@ -432,6 +473,52 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         setVisibleIndicators((current) => ({ ...current, [key]: !current[key] }));
     };
 
+    const syncVisibleBars = (range: LogicalRange | null) => {
+        setVisibleBarCount(getVisibleBarCount(range));
+    };
+
+    const applyZoom = (direction: 'in' | 'out') => {
+        const mainChart = mainChartApiRef.current;
+        if (!mainChart || candlestickData.length === 0) {
+            return;
+        }
+
+        const currentRange = mainChart.timeScale().getVisibleLogicalRange();
+        const currentSpan = currentRange
+            ? Math.max(1, currentRange.to - currentRange.from)
+            : Math.max(candlestickData.length, MIN_VISIBLE_BARS);
+        const zoomMultiplier = direction === 'in' ? ZOOM_STEP_FACTOR : 1 / ZOOM_STEP_FACTOR;
+        const nextSpan = direction === 'in'
+            ? Math.max(MIN_VISIBLE_BARS, currentSpan * zoomMultiplier)
+            : Math.min(candlestickData.length + (LOGICAL_RANGE_PADDING * 2), currentSpan * zoomMultiplier);
+        const center = currentRange
+            ? (currentRange.from + currentRange.to) / 2
+            : (Math.max(candlestickData.length - 1, 0)) / 2;
+        const nextRange = clampLogicalRange(center, nextSpan, candlestickData.length);
+
+        mainChart.timeScale().setVisibleLogicalRange(nextRange);
+        syncVisibleBars(nextRange);
+    };
+
+    const resetZoom = () => {
+        const mainChart = mainChartApiRef.current;
+        const rsiChart = rsiChartApiRef.current;
+        if (!mainChart || !rsiChart) {
+            return;
+        }
+        mainChart.timeScale().fitContent();
+        rsiChart.timeScale().fitContent();
+        syncVisibleBars(mainChart.timeScale().getVisibleLogicalRange());
+    };
+
+    const handleChartWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+        if (candlestickData.length === 0 || Math.abs(event.deltaY) < 3) {
+            return;
+        }
+        event.preventDefault();
+        applyZoom(event.deltaY < 0 ? 'in' : 'out');
+    };
+
     React.useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
@@ -516,8 +603,18 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 secondsVisible: false,
                 rightOffset: 8,
             },
-            handleScroll: true,
-            handleScale: true,
+            handleScroll: {
+                mouseWheel: true,
+                pressedMouseMove: true,
+                horzTouchDrag: true,
+                vertTouchDrag: true,
+            },
+            handleScale: {
+                mouseWheel: true,
+                pinch: true,
+                axisPressedMouseMove: true,
+                axisDoubleClickReset: true,
+            },
         });
 
         const rsiChart = createChart(rsiChartRef.current, {
@@ -544,9 +641,21 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 vertLine: { color: 'rgba(210, 153, 34, 0.35)', width: 1, labelBackgroundColor: '#161b22' },
                 horzLine: { color: 'rgba(210, 153, 34, 0.35)', width: 1, labelBackgroundColor: '#161b22' },
             },
-            handleScroll: true,
-            handleScale: true,
+            handleScroll: {
+                mouseWheel: true,
+                pressedMouseMove: true,
+                horzTouchDrag: true,
+                vertTouchDrag: true,
+            },
+            handleScale: {
+                mouseWheel: true,
+                pinch: true,
+                axisPressedMouseMove: true,
+                axisDoubleClickReset: true,
+            },
         });
+        mainChartApiRef.current = mainChart;
+        rsiChartApiRef.current = rsiChart;
 
         const candleSeries = mainChart.addCandlestickSeries({
             upColor: '#22c55e',
@@ -685,6 +794,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
         const mainRangeHandler = syncRange(mainChart, rsiChart);
         const rsiRangeHandler = syncRange(rsiChart, mainChart);
+        const onVisibleRangeChange = (range: LogicalRange | null) => {
+            syncVisibleBars(range);
+        };
+        mainChart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange);
+        onVisibleRangeChange(mainChart.timeScale().getVisibleLogicalRange());
 
         const onCrosshairMove = (param: { time?: Time }) => {
             if (typeof param.time !== 'number') {
@@ -705,7 +819,14 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             window.removeEventListener('resize', onResize);
             mainChart.unsubscribeCrosshairMove(onCrosshairMove);
             mainChart.timeScale().unsubscribeVisibleLogicalRangeChange(mainRangeHandler);
+            mainChart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
             rsiChart.timeScale().unsubscribeVisibleLogicalRangeChange(rsiRangeHandler);
+            if (mainChartApiRef.current === mainChart) {
+                mainChartApiRef.current = null;
+            }
+            if (rsiChartApiRef.current === rsiChart) {
+                rsiChartApiRef.current = null;
+            }
             mainChart.remove();
             rsiChart.remove();
         };
@@ -856,6 +977,58 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                     );
                                 })}
                             </div>
+                            <div
+                                className="flex flex-wrap items-center gap-2 rounded-xl border border-[#1f6feb]/45 bg-[linear-gradient(135deg,rgba(31,111,235,0.18),rgba(9,105,218,0.06))] px-3 py-2 shadow-[0_10px_24px_rgba(9,105,218,0.18)]"
+                                role="group"
+                                aria-label="Chart zoom controls"
+                            >
+                                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#79c0ff]">
+                                    Zoom
+                                </span>
+                                <button
+                                    type="button"
+                                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#4c8dff] bg-[#0f2747] px-3 text-sm font-semibold text-[#dbeafe] transition hover:border-[#79c0ff] hover:bg-[#16345b] disabled:cursor-not-allowed disabled:opacity-50"
+                                    onClick={() => applyZoom('out')}
+                                    disabled={candlestickData.length === 0}
+                                    aria-label="Zoom out chart"
+                                    data-testid="chart-zoom-out"
+                                >
+                                    <Minus className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Out</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#4c8dff] bg-[#0f2747] px-3 text-sm font-semibold text-[#dbeafe] transition hover:border-[#79c0ff] hover:bg-[#16345b] disabled:cursor-not-allowed disabled:opacity-50"
+                                    onClick={() => applyZoom('in')}
+                                    disabled={candlestickData.length === 0}
+                                    aria-label="Zoom in chart"
+                                    data-testid="chart-zoom-in"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span className="hidden sm:inline">In</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#335c8e] bg-[#111c2a] px-3 text-sm font-medium text-[#c9d1d9] transition hover:border-[#79c0ff] hover:text-[#e6edf3] disabled:cursor-not-allowed disabled:opacity-50"
+                                    onClick={resetZoom}
+                                    disabled={candlestickData.length === 0}
+                                    aria-label="Reset chart zoom"
+                                    data-testid="chart-zoom-reset"
+                                >
+                                    <RotateCcw className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Reset</span>
+                                </button>
+                                <span
+                                    className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1 text-xs font-medium text-[#d0d7de]"
+                                    aria-live="polite"
+                                    data-testid="chart-visible-bars"
+                                >
+                                    {visibleBarCount ?? 0} candles
+                                </span>
+                                <span className="text-[11px] text-[#9fbad7]">
+                                    Mouse wheel: zoom
+                                </span>
+                            </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2" role="group" aria-label="Chart indicators">
                                 {[
                                     { key: 'emaShort', label: indicatorLabels.emaShort },
@@ -897,15 +1070,26 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
                             <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
                                 <div className="min-w-0 space-y-3">
-                                    <div className="relative rounded-2xl border border-[#30363d] bg-[#0b1118] p-2">
+                                    <div
+                                        className="relative rounded-2xl border border-[#30363d] bg-[#0b1118] p-2"
+                                        onWheel={handleChartWheel}
+                                        data-testid="chart-modal-main-chart-shell"
+                                    >
                                         <div ref={mainChartRef} className="h-[420px] w-full" data-testid="chart-modal-main-chart" />
+                                        <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-[#79c0ff]/25 bg-[#0d1117]/86 px-3 py-1 text-[11px] font-medium text-[#c9e6ff]">
+                                            Scroll to zoom
+                                        </div>
                                         {loading ? (
                                             <div className="absolute right-4 top-4 rounded-md bg-black/55 px-3 py-1.5 text-xs text-white">
                                                 Loading timeframe...
                                             </div>
                                         ) : null}
                                     </div>
-                                    <div className="rounded-2xl border border-[#30363d] bg-[#0b1118] p-2">
+                                    <div
+                                        className="rounded-2xl border border-[#30363d] bg-[#0b1118] p-2"
+                                        onWheel={handleChartWheel}
+                                        data-testid="chart-modal-rsi-chart-shell"
+                                    >
                                         <div ref={rsiChartRef} className="h-[140px] w-full" data-testid="chart-modal-rsi-chart" />
                                     </div>
                                 </div>

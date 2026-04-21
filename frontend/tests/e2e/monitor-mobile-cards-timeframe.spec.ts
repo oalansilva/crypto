@@ -590,3 +590,156 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByTestId('chart-modal-signal-history-item-1')).toContainText('EXIT')
   await expect(dialog.getByText('Markers aligned with chart timeframe.')).toBeVisible()
 })
+
+test('monitor modal zoom controls adjust visible range without reloading candles', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 6,
+          name: 'BTC Zoom Test',
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          strategy_name: 'multi_ma_crossover',
+          parameters: {},
+          metrics: {},
+          created_at: '2026-04-01T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 6,
+          symbol: 'BTC/USDT',
+          timeframe: '1d',
+          template_name: 'multi_ma_crossover',
+          name: 'BTC Zoom Test',
+          notes: '',
+          tier: 1,
+          parameters: { direction: 'long', ema_short: 9, sma_medium: 21, sma_long: 50, rsi_period: 14 },
+          indicator_values: {
+            ema_9: 73210.5,
+            sma_21: 72654.8,
+            sma_50: 71892.3,
+            rsi_14: 58.4,
+            close: 73420.2,
+          },
+          indicator_values_candle_time: '2026-04-20T00:00:00+00:00',
+          is_holding: false,
+          distance_to_next_status: 0.44,
+          next_status_label: 'entry',
+          status: 'WAIT',
+          message: 'Waiting for entry',
+          last_price: 73420.2,
+          timestamp: '2026-04-20T00:00:00Z',
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+        'BTC/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
+  const candles = Array.from({ length: 24 }, (_, index) => {
+    const base = 70000 + (index * 120)
+    return {
+      timestamp_utc: new Date(Date.UTC(2026, 3, index + 1, 0, 0, 0)).toISOString(),
+      open: base,
+      high: base + 85,
+      low: base - 75,
+      close: base + ((index % 2 === 0) ? 40 : -35),
+      volume: 100 + (index * 3.5),
+    }
+  })
+
+  let candleRequestCount = 0
+  await page.route('**/api/market/candles**', (route: any) => {
+    candleRequestCount += 1
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ candles }),
+    })
+  })
+
+  await page.goto('/monitor')
+
+  const card = page.getByTestId('monitor-card-btc-usdt')
+  await expect(card).toBeVisible()
+  await card.click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(page.getByTestId('chart-zoom-in')).toBeVisible()
+  await expect(page.getByTestId('chart-zoom-out')).toBeVisible()
+  await expect(page.getByTestId('chart-zoom-reset')).toBeVisible()
+  await expect(dialog.getByText('Mouse wheel: zoom')).toBeVisible()
+
+  const visibleBars = page.getByTestId('chart-visible-bars')
+  const readVisibleBars = async () => {
+    const raw = (await visibleBars.textContent()) ?? '0'
+    return Number.parseInt(raw, 10)
+  }
+
+  await expect.poll(readVisibleBars).toBeGreaterThan(0)
+  const initialVisibleBars = await readVisibleBars()
+
+  await page.getByTestId('chart-zoom-in').click()
+  await expect.poll(readVisibleBars).toBeLessThan(initialVisibleBars)
+  const zoomedInVisibleBars = await readVisibleBars()
+
+  await page.getByTestId('chart-zoom-out').focus()
+  await page.keyboard.press('Enter')
+  await expect.poll(readVisibleBars).toBeGreaterThan(zoomedInVisibleBars)
+  const zoomedOutVisibleBars = await readVisibleBars()
+
+  await page.getByTestId('chart-modal-main-chart-shell').hover()
+  await page.mouse.wheel(0, -600)
+  await expect.poll(readVisibleBars).toBeLessThan(zoomedOutVisibleBars)
+
+  expect(candleRequestCount).toBe(1)
+})
