@@ -134,7 +134,9 @@ def _load_user(db: Session, user_id: str) -> User:
     try:
         parsed_user_id = uuid.UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id format")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id format"
+        )
 
     user = db.query(User).filter(User.id == parsed_user_id).first()
     if not user:
@@ -270,10 +272,7 @@ def list_users(
 
     total = query.count()
     rows = (
-        query.order_by(User.created_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
+        query.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     )
 
     return AdminUserListResponse(
@@ -588,7 +587,10 @@ def list_user_actions(
     target_email_by_id = email_map
 
     return AdminActionLogListResponse(
-        items=[AdminActionLogItem(**_serialize_action_log(log, actor_email_by_id, target_email_by_id)) for log in logs],
+        items=[
+            AdminActionLogItem(**_serialize_action_log(log, actor_email_by_id, target_email_by_id))
+            for log in logs
+        ],
         total=total,
         page=page,
         pageSize=page_size,
