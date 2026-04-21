@@ -1,6 +1,6 @@
 # Workflow: Criar Funcionalidade (CX)
 
-Este documento descreve o fluxo padrão para criar funcionalidades no projeto **crypto** usando OpenSpec + Codex, com gate obrigatório de testes para reduzir dependência de validação manual.
+Este documento descreve o fluxo padrão para criar funcionalidades no projeto **crypto** usando OpenSpec + Codex CLI, com gate obrigatório de testes para reduzir dependência de validação manual.
 
 ## Regras Globais
 
@@ -11,7 +11,7 @@ Uma change só é considerada **Done** quando:
 - Alan homologou (UI/fluxo real)
 - Change foi arquivada no OpenSpec
 
-Regra operacional de stage: uma etapa intermediária só conta como concluída quando o runtime foi atualizado **e** o handoff correspondente foi registrado em `docs/coordination/<change>.md` no mesmo turno.
+Regra operacional de etapa: uma etapa só conta como concluída quando houve atualização no `docs/coordination/<change>.md` e o commit/PR correspondente.
 
 ### Regras de qualidade (obrigatórias)
 - Mudou schema de DB? Deve ter migração (SQLite `ALTER TABLE`/startup migration) + teste de integração.
@@ -42,16 +42,16 @@ Regra operacional de stage: uma etapa intermediária só conta como concluída q
 5) **Testing é parte do DoD**
 - Para cada change, adicionar/atualizar testes conforme `docs/testing-playbook.md`.
 
-## Papéis (multi-agente)
+## Papéis e responsáveis
 
 - **Alan (Stakeholder)**: valida a ideia (antes) e homologa o final (depois).
-- **main**: mantém o chat gerencial e consulta runtime + coordenação como superfície principal.
+- **main**: mantém o chat gerencial e consulta coordenação e artefatos como superfície principal.
 - **PO**: discovery, escopo/restrições, critérios de aceitação, artefatos OpenSpec (EN) + `review-ptbr.md`.
 - **DESIGN**: quando houver UI/UX, protótipo, decisões visuais e notas de aceite para DEV/QA.
 - **DEV**: implementação + commits/PR/merge/deploy.
 - **QA**: testes (unit/integration/E2E), valida critérios de aceitação, garante CI verde. **Tudo passa por QA.**
 
-Contrato operacional curto por papel, handoff padrão e DoD por estágio: `docs/multiagent-operating-playbook.md`.
+Contrato operacional curto por papel, handoff padrão e DoD por etapa: `docs/multiagent-operating-playbook.md` (sem uso de Kanban).
 
 Nota: o OpenSpec oficial define os artefatos do change, mas não define ownership por papel. Neste repositório, o `PO` gera os artefatos do change e o `DESIGN` complementa com protótipo visual e decisões de UX.
 
@@ -103,12 +103,11 @@ Registrar no `docs/coordination/<change-name>.md` em "Decisions (locked)".
 
 - `openspec validate <change-name> --type change`
 
-### 6) Encerrar PO e disparar DESIGN
+### 6) Encerrar PO e seguir para DESIGN
 
 - PO revisa os artefatos, garante que decisões e critérios de aceitação estão travados.
-- PO atualiza status da change para `DESIGN` no runtime (se necessário) e registra handoff em `docs/coordination/<change-name>.md`.
-- PO registra handoff com o status de saída da etapa: artifacts prontos (`proposal/specs/tasks/design`). DESIGN responsável por prototipar UI quando aplicável.
-- **PO dispara o agente DESIGN** (via spawn ou mensagem interna) após registrar os artefatos.
+- Registra handoff em `docs/coordination/<change-name>.md` com artifacts prontos (`proposal/specs/tasks/design`).
+- DESIGN (quando aplicável) fecha protótipo/decisões de UI.
 - Somente após DESIGN finalizar (protótipo + links publicados) o handoff avança para `Alan approval`.
 
 ### 7) Revisão do Alan (antes de implementar)
@@ -134,10 +133,9 @@ Viewer (exemplos):
 
 ### 9) QA Gate (obrigatório)
 
-Antes de mover a change para `QA`, **não use o upstream guard como bloqueio padrão da própria change**.
-- Sequência preferida: `DEV implementa -> QA valida -> commit/publish depois`.
+Sequência preferida: `DEV implementa -> QA valida -> merge`.
 - Mudanças locais da própria change não devem bloquear por si só `DEV -> QA`.
-- Só rode `./scripts/verify_upstream_published.py --for-status QA` se houver necessidade operacional fora desse fluxo.
+- Controle de progresso é feito por commits/PR + validação humana no fim do fluxo, não por bloqueios preventivos.
 
 O QA deve:
 - adicionar/atualizar testes conforme `docs/testing-playbook.md`
@@ -166,14 +164,11 @@ Só após QA OK a change pode ser considerada pronta para homologação.
 
 ### 11) Homologação (Alan)
 
-Antes de mover a change para `Homologation`, rode:
-- `./scripts/verify_upstream_published.py --for-status "Homologation"`
-- Alan testa e confirma “ok”.
+Alan testa e confirma “ok”.
 
 ### 12) Arquivar a change
 
 Antes de arquivar, rode:
-- `./scripts/verify_upstream_published.py --for-status Archived`
 - `./scripts/archive_change_safe.sh <change-name>`
 
 ### 13) Evidência
