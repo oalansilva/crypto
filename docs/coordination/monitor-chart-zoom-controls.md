@@ -29,3 +29,7 @@
 - [x] DEV: implementation completed.
 - [x] QA: validation completed.
 - [x] Archive: ready to archive with OpenSpec + workflow reconciliation.
+
+## Closed
+
+- Homologated by Alan and archived from the published `feature/zoon` branch because `main` is protected and requires PR checks.
