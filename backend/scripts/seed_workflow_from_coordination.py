@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
-"""Seed workflow DB from file-based coordination artifacts.
+"""Legacy one-off migration utility (compatibility only).
 
-Phase-1 cutover policy (centralize-workflow-state-db):
-- Workflow DB becomes the operational source of truth for active changes.
-- `docs/coordination/*.md` stays as a mirrored/audit artifact (human-readable).
-- Legacy comments stored under `data/coordination_comments/*.jsonl` are migrated
-  into `wf_comments` so the Kanban thread stays intact.
+This script previously seeded the workflow DB from
+`docs/coordination/*.md` during the DB cutover.
+`docs/coordination` was removed from the active solo workflow.
 
-This script is idempotent:
-- Projects/changes are upserted by slug/change_id.
-- Gate statuses are inserted only if no approval exists yet for that gate.
-- Comments are upserted by preserving the legacy comment `id` as the workflow
-  comment primary key.
+It now runs as a best-effort compatibility no-op:
+- if legacy coordination files are absent, it exits with warning;
+- if they exist, it keeps the old migration behavior.
+
+For normal operation, create workflow items directly via OpenSpec-backed flow.
 
 Usage (dev / VPS):
   WORKFLOW_DB_ENABLED=1 WORKFLOW_DATABASE_URL=postgresql+psycopg2://... \
@@ -42,6 +40,10 @@ from app.workflow_models import (
     WorkflowComment,
 )
 from app.services.coordination_service import list_coordination_changes, project_root
+
+if not project_root().joinpath("docs", "coordination").is_dir():
+    print("INFO: docs/coordination not found. Legacy migration skipped.")
+    raise SystemExit(0)
 
 
 def _parse_iso(ts: str) -> datetime | None:

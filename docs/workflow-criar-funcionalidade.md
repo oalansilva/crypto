@@ -1,6 +1,6 @@
-# Workflow: Criar Funcionalidade (CX)
+# Workflow: Criar Funcionalidade (Solo)
 
-Este documento descreve o fluxo padrão para criar funcionalidades no projeto **crypto** usando OpenSpec + Codex CLI, com gate obrigatório de testes para reduzir dependência de validação manual.
+Este documento descreve o fluxo padrão para criar funcionalidades no projeto **crypto** em modo solo (sem operações por times): OpenSpec + Codex CLI + validação humana no fim.
 
 ## Regras Globais
 
@@ -11,7 +11,7 @@ Uma change só é considerada **Done** quando:
 - Alan homologou (UI/fluxo real)
 - Change foi arquivada no OpenSpec
 
-Regra operacional de etapa: uma etapa só conta como concluída quando houve atualização no `docs/coordination/<change>.md` e o commit/PR correspondente.
+Regra operacional de etapa: uma etapa só conta como concluída quando houve atualização em commit/PR e evidência validada.
 
 ### Regras de qualidade (obrigatórias)
 - Mudou schema de DB? Deve ter migração (SQLite `ALTER TABLE`/startup migration) + teste de integração.
@@ -30,11 +30,10 @@ Regra operacional de etapa: uma etapa só conta como concluída quando houve atu
 2) **Artefatos de change em inglês**
 - `proposal/specs/design/tasks` sempre em inglês.
 
-3) **Trabalhar em branch**
-- Padrão operacional: trabalhar diretamente em `main`.
-- Commits diretos em `main` são aceitos.
-- PR de revisão é opcional: `feature/<slug> -> main`.
-- Criar branch por tarefa apenas quando houver isolamento explícito necessário.
+3) **Branches**
+- Padrão operacional simples: `main` é o branch principal.
+- O trabalho padrão é feito em `main` com commits pequenos e frequentes.
+- Quando precisar de isolamento/ revisão, use `feature/<slug> -> main` via PR.
 
 4) **UI é validada pelo Alan**
 - O bot não “aprova” UI sozinho.
@@ -48,11 +47,10 @@ Você é o único operador.
 O fluxo usa OpenSpec + Codex CLI + revisão humana no fim pelo Alan.
 
 Checklist de controle:
-- manter `docs/coordination/<change>.md` atualizado com o status e decisões;
 - registrar links de artefatos de aprovação e evidências de teste;
 - garantir revisão final com Alan antes de promover.
 
-Nota: use `docs/coordination/<change>.md` para manter trilha operacional de decisão e evidência.
+Observação: trilhas operacionais em `docs/coordination/*.md` foram descontinuadas. O estado da execução fica em OpenSpec/PR e na validação do Kanban runtime.
 
 ## Passo a passo
 
@@ -67,8 +65,11 @@ Nota: use `docs/coordination/<change>.md` para manter trilha operacional de deci
 
 ### 1) Criar trilha da change (obrigatório)
 
-- Criar `docs/coordination/<change-name>.md` usando `docs/coordination/template.md`.
-- Preencher o mínimo: Status + Links do viewer + Next actions.
+- Defina o nome da change e descreva o plano no próprio PR/commit:
+  - objetivo
+  - escopo
+  - critérios de aceitação
+  - riscos
 
 ### 2) Criar a change
 
@@ -85,7 +86,7 @@ Feche (por escrito) antes do planning:
 - persistência (backend/local)
 - critérios de aceitação
 
-Registrar no `docs/coordination/<change-name>.md` em "Decisions (locked)".
+Registrar decisões no `Change` (PR description ou commit) em "Decisions".
 
 ### 4) Planning (sem Codex)
 
@@ -104,7 +105,7 @@ Registrar no `docs/coordination/<change-name>.md` em "Decisions (locked)".
 
 ### 6) Handoff para implementação
 
-- Consolidar `proposal/specs/tasks` (e `design.md` quando houver UI) e registrar em `docs/coordination/<change-name>.md`.
+- Consolidar `proposal/specs/tasks` (e `design.md` quando houver UI) e registrar no sumário do PR.
 - Avançar para aprovação do Alan apenas após critérios e decisões estarem fechados.
 
 ### 7) Revisão do Alan (antes de implementar)
@@ -132,13 +133,13 @@ Viewer (exemplos):
 
 Sequência preferida: implementação -> validação -> merge.
 - Mudanças locais da própria change não devem bloquear por si só a revisão.
-- Controle de progresso é feito por commit/PR + validação em `docs/coordination/<change-name>.md`.
+- Controle de progresso é feito por commit/PR + validação do change.
 
 A validação deve:
 - adicionar/atualizar testes conforme `docs/testing-playbook.md`
 - rodar suites relevantes (integration + E2E quando aplicável)
 - garantir CI verde
-- registrar evidências no `docs/coordination/<change-name>.md` (Links + Notes)
+- registrar evidências no PR/Change (Links + Notes)
 
 Checklist mínimo (PASSOU/FALHOU):
 - Backend integration: `./backend/.venv/bin/python -m pytest -q backend/tests/integration`

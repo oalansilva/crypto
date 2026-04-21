@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Reconcile coordination files for archived OpenSpec changes.
+"""Legacy utility kept only for auditability.
+
+This script previously synchronized `docs/coordination/<change>.md` on archive.
+The solo workflow no longer writes coordination files, so this utility is now
+effectively a no-op unless the legacy directory exists.
 
 Goal:
 - If a change is archived under openspec/changes/archive/<...>/.openspec.yaml,
@@ -84,6 +88,9 @@ def set_homologation_approved(md: str) -> str:
 
 
 def main() -> int:
+    if not COORD_DIR.is_dir():
+        print("INFO: docs/coordination not present; nothing to reconcile")
+        return 0
     ids = archived_change_ids()
     changed = 0
     for cid in sorted(ids):

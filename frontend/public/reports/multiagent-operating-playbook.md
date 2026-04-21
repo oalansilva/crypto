@@ -1,11 +1,9 @@
-# Multi-agent Operating Playbook (Descontinuado)
+# Historical Operations Notes (Deprecated)
 
-Este arquivo está mantido como histórico.
+Este documento está descontinuado e mantido somente para histórico.
 
-O fluxo ativo deste repositório é operação solo:
-
+Fluxo ativo do repositório:
 - `AGENTS.md`
 - `docs/workflow-criar-funcionalidade.md`
-- `docs/coordination/README.md`
 - `docs/multiagent-operating-playbook.md`
-
+- `docs/os_codex_workflow.md`

@@ -1,6 +1,6 @@
-# Fluxo OpenSpec + Codex CLI
+# Fluxo OpenSpec + Codex CLI (Solo)
 
-Este projeto usa o workflow oficial do OpenSpec via **changes**.
+Este projeto usa o fluxo oficial do OpenSpec via **changes** com operação simplificada (um único operador).
 
 Schema atual: `spec-driven` (proposal → specs → design → tasks)
 
@@ -17,6 +17,10 @@ Use pedidos diretos no chat, por exemplo:
 ```bash
 openspec new change <change_id> --schema spec-driven --description "<resumo>"
 ```
+
+Padrão de branch:
+- Trabalhar em `main` com commits curtos.
+- Para revisão formal, usar `feature/<slug>` e PR para `main`.
 
 ### 2) Preencher artefatos do change
 Arquivos típicos:
@@ -55,6 +59,6 @@ openspec archive <change_id>
 ```
 
 ## Notas
-- Este repo usa o workflow oficial de `changes`, mas sem wrapper dedicado para Codex.
-- Se quiser atualizar as instruções do OpenSpec no projeto, rode `openspec update`.
-- Os artefatos principais continuam sendo `proposal.md`, `specs/**/*.md`, `design.md` e `tasks.md`.
+- Este repo usa o workflow oficial de `changes`, sem camada de coordenação por agente.
+- Atualize as instruções do OpenSpec do projeto com `openspec update` quando necessário.
+- Os artefatos principais permanecem: `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`.

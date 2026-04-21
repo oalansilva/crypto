@@ -7,66 +7,45 @@ if [ $# -lt 1 ]; then
 fi
 
 CHANGE_NAME="$1"
-PROJECT_SLUG="crypto"
+PROJECT_SLUG="${PROJECT_SLUG:-crypto}"
+WORKFLOW_BASE_URL="${WORKFLOW_BASE_URL:-http://127.0.0.1:8003}"
+WORKFLOW_HEALTH_URL="${WORKFLOW_HEALTH_URL:-$WORKFLOW_BASE_URL/api/workflow/health}"
+KANBAN_URL="${KANBAN_URL:-$WORKFLOW_BASE_URL/api/workflow/kanban/changes?project_slug=${PROJECT_SLUG}}"
+KANBAN_CREATE_URL="${WORKFLOW_BASE_URL}/api/workflow/kanban/changes?project_slug=${PROJECT_SLUG}"
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 OPENSPEC_DIR="openspec/changes/$CHANGE_NAME"
-COORD_FILE="docs/coordination/$CHANGE_NAME.md"
-WORKFLOW_HEALTH_URL="http://127.0.0.1:8003/api/workflow/health"
-KANBAN_URL="http://127.0.0.1:8003/api/workflow/kanban/changes?project_slug=${PROJECT_SLUG}"
+TASKS="openspec/changes/$CHANGE_NAME/tasks.md"
 
-# 1) Create OpenSpec change if missing
+# 1) Garante a change no OpenSpec
 if [ ! -d "$OPENSPEC_DIR" ]; then
   openspec new change "$CHANGE_NAME"
 fi
 
-# 2) Ensure coordination file exists (minimal bootstrap if missing)
-if [ ! -f "$COORD_FILE" ]; then
-  mkdir -p docs/coordination
-  cat > "$COORD_FILE" <<EOF
-# $CHANGE_NAME
-
-## Status
-- PO: in progress
-- DESIGN: skipped
-- Alan approval: not reviewed
-- DEV: not started
-- QA: not started
-- Homologation: not reviewed
-
-## Decisions (draft)
-- Change created and awaiting PO elaboration.
-
-## Links
-- Proposal: http://72.60.150.140:5173/openspec/changes/$CHANGE_NAME/proposal
-- Review PT-BR: http://72.60.150.140:5173/openspec/changes/$CHANGE_NAME/review-ptbr
-
-## Notes
-- Coordination card created automatically in the same turn as the change.
-
-## Next actions
-- [ ] PO: Elaborate proposal/spec/design/tasks.
-EOF
+if [ ! -f "$TASKS" ]; then
+  echo "WARN: tasks.md ainda não existe. Crie pelo assistente OpenSpec antes de avançar."
 fi
 
-# 3) Seed workflow DB if workflow is enabled and reachable
+# 2) Opcional: registra change no Workflow DB se o backend estiver no ar
 if curl -fsS "$WORKFLOW_HEALTH_URL" >/dev/null 2>&1; then
-  export PYTHONPATH=backend
-  if [ -f backend/.env ]; then
-    set -a
-    source backend/.env
-    set +a
-  fi
-  ./.venv/bin/python backend/scripts/seed_workflow_from_coordination.py --project "$PROJECT_SLUG"
-
-  # 4) Verify change is visible in Kanban API
-  if ! curl -fsS "$KANBAN_URL" | grep -q "$CHANGE_NAME"; then
-    echo "ERRO: change '$CHANGE_NAME' não apareceu no Kanban após seed." >&2
-    exit 2
+  echo "Backend workflow disponível; garantindo entrada do card no banco..."
+  if ! curl -fsS "$KANBAN_URL" | grep -q "\"id\":\"${CHANGE_NAME}\""; then
+    CREATE_PAYLOAD='{"title": "'"${CHANGE_NAME}"'", "description": "OpenSpec change bootstrap by create_change_and_seed.sh"}'
+    if ! HTTP_STATUS=$(curl -sS -o /tmp/create_change_http_response.json -w "%{http_code}" -H "Content-Type: application/json" -X POST -d "$CREATE_PAYLOAD" "$KANBAN_CREATE_URL"); then
+      echo "WARN: falha ao tentar criar card no workflow DB (HTTP request)." >&2
+    elif [[ "$HTTP_STATUS" != 2* ]]; then
+      echo "WARN: criação via workflow retornou HTTP ${HTTP_STATUS}. Verifique logs do backend." >&2
+      cat /tmp/create_change_http_response.json >&2 || true
+    else
+      echo "OK: card criado no workflow DB."
+    fi
+  else
+    echo "OK: change já existe no workflow DB."
   fi
 else
-  echo "Aviso: workflow health indisponível; change criada em OpenSpec + coordination, mas seed no DB não pôde ser validado agora." >&2
+  echo "Aviso: backend indisponível, change criada no OpenSpec apenas."
 fi
 
-echo "OK: change '$CHANGE_NAME' criada, coordination garantido e Kanban verificado."
+echo "OK: change '$CHANGE_NAME' preparada."

@@ -7,7 +7,7 @@ Este arquivo organiza o fluxo de trabalho para evitar retrabalho e manter padrã
 - **Branch padrão:** trabalhe direto em `main` para mudanças de rotina.
 - **Fluxo simplificado:** implemente, valide e confirme; se quiser revisão formal, abra PR `main <- feature/<nome>` e merge no mesmo repositório antes de fechar.
 - **Referência operacional:** `docs/workflow-criar-funcionalidade.md`.
-- `docs/coordination/<change>.md` é o trilho de decisão, status e evidências.
+- `docs/workflow-criar-funcionalidade.md` define onde registrar decisão e evidência por change (via PR e resumo no chat).
 - OpenSpec é a camada de especificação técnico (artifacts).
 - Validação humana final permanece com Alan antes de homologação.
 
@@ -60,7 +60,7 @@ npm --prefix frontend run build
 ## Regras de operação
 
 - Fluxo único (sem divisão por agentes): você conduz descoberta, planejamento, implementação, validação e fechamento.
-- Use `docs/coordination/<change>.md` para registrar:
+- Registre em `docs/workflow-criar-funcionalidade.md` e no PR:
   - status atual
   - decisões de escopo
   - evidências de teste/PR

@@ -6,12 +6,12 @@ This document replaced the multi-agent operating model for solo execution.
 
 Use this playbook when:
 - you are implementing directly in this repository (no separate PO/DESIGN/QA agents);
-- change tracking is done through OpenSpec and `docs/coordination/*.md`;
+- change tracking is done through OpenSpec and PR history;
 - `main` is the production branch; optional feature branches (`feature/*`) merge into `main`.
 
 ## Core rules
 
-1. Keep one source of status truth: the OpenSpec change + `docs/coordination/<change>.md`.
+1. Keep one source of status truth: the OpenSpec change + PR status.
 2. Before starting a change, ensure there is no active pending change in OpenSpec.
 3. If you stop a change or hit blocker, record:
    - current status
@@ -20,10 +20,10 @@ Use this playbook when:
 4. Never leave a step without commit/PR evidence.
 5. For approval:
    - keep an PT-BR summary for Alan,
-   - add OpenSpec links to the handoff file,
+   - add OpenSpec links to the PR summary,
    - ask for explicit "ok" before moving to production lane.
 
-## Handoff template (arquivo `docs/coordination/<change>.md`)
+## Handoff template (PR summary)
 
 ```text
 <DATE> <UTC_TIME>
