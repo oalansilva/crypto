@@ -21,6 +21,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import SystemPreferencesPage from './pages/SystemPreferencesPage'
 import ProfilePage from './pages/ProfilePage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
+import AdminUsersPage from './pages/AdminUsersPage'
 import { Toaster } from "@/components/ui/toaster"
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -78,6 +79,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/system/preferences" element={<ProtectedRoute requireAdmin><SystemPreferencesPage /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsersPage /></ProtectedRoute>} />
         </Route>
       </Routes>
       <Toaster />
