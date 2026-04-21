@@ -1,21 +1,21 @@
-# Workflow: Criar Funcionalidade (CX)
+# Workflow: Criar Funcionalidade (Solo)
 
-Este documento descreve o fluxo padrão para criar funcionalidades no projeto **crypto** usando OpenSpec + Codex, com **gate obrigatório de testes** para reduzir dependência de validação manual.
+Este documento descreve o fluxo padrão para criar funcionalidades no projeto **crypto** em modo solo (sem operações por times): OpenSpec + Codex CLI + validação humana no fim.
 
 ## Regras Globais
 
 ### Definition of Done (DoD)
 Uma change só é considerada **Done** quando:
 - CI está **verde**
-- QA validou critérios de aceitação e atualizou/criou testes necessários
+- Critérios de aceitação foram validados e testes atualizados quando necessário
 - Alan homologou (UI/fluxo real)
 - Change foi arquivada no OpenSpec
 
-Regra operacional de stage: uma etapa intermediária só conta como concluída quando o runtime/Kanban foi atualizado **e** o handoff correspondente foi publicado no card no mesmo turno.
+Regra operacional de etapa: uma etapa só conta como concluída quando houve atualização em commit/PR e evidência validada.
 
 ### Regras de qualidade (obrigatórias)
 - Mudou schema de DB? Deve ter migração (SQLite `ALTER TABLE`/startup migration) + teste de integração.
-- Endpoints de UI devem ter limites e não podem fazer backfill histórico gigante por padrão (ex: candles sempre bounded por `timeframe+limit`).
+- Endpoints de UI devem ter limites e não podem fazer backfill histórico gigante por padrão (ex: candles bounded por `timeframe+limit`).
 - Qualquer endpoint novo/alterado deve ter pelo menos 1 **teste de contrato** (integration) validando status + schema mínimo.
 - Tasks devem ser pequenas (ideal 30–90 min) para permitir execução em turnos.
 
@@ -30,8 +30,10 @@ Regra operacional de stage: uma etapa intermediária só conta como concluída q
 2) **Artefatos de change em inglês**
 - `proposal/specs/design/tasks` sempre em inglês.
 
-3) **Trabalhar em branch**
-- Evitar commitar direto no `main`.
+3) **Branches**
+- Padrão operacional simples: `main` é o branch principal.
+- O trabalho padrão é feito em `main` com commits pequenos e frequentes.
+- Quando precisar de isolamento/ revisão, use `feature/<slug> -> main` via PR.
 
 4) **UI é validada pelo Alan**
 - O bot não “aprova” UI sozinho.
@@ -39,18 +41,16 @@ Regra operacional de stage: uma etapa intermediária só conta como concluída q
 5) **Testing é parte do DoD**
 - Para cada change, adicionar/atualizar testes conforme `docs/testing-playbook.md`.
 
-## Papéis (multi-agente)
+## Responsável
 
-- **Alan (Stakeholder)**: valida a ideia (antes) e homologa o final (depois).
-- **main**: mantém o chat gerencial e consulta Kanban/runtime como superfície principal.
-- **PO**: discovery, escopo/restrições, critérios de aceitação, artefatos OpenSpec (EN) + `review-ptbr.md`.
-- **DESIGN**: quando houver UI/UX, protótipo, decisões visuais e notas de aceite para DEV/QA.
-- **DEV**: implementação + commits/PR/merge/deploy.
-- **QA**: testes (unit/integration/E2E), valida critérios de aceitação, garante CI verde. **Tudo passa por QA.**
+Você é o único operador.  
+O fluxo usa OpenSpec + Codex CLI + revisão humana no fim pelo Alan.
 
-Contrato operacional curto por papel, handoff padrão e DoD por coluna: `docs/multiagent-operating-playbook.md`.
+Checklist de controle:
+- registrar links de artefatos de aprovação e evidências de teste;
+- garantir revisão final com Alan antes de promover.
 
-Nota: o OpenSpec oficial define os artefatos do change, mas não define ownership por papel. Neste repositório, o `PO` gera os artefatos do change e o `DESIGN` complementa com protótipo visual e decisões de UX.
+Observação: trilhas operacionais em `docs/coordination/*.md` foram descontinuadas. O estado da execução fica em OpenSpec/PR e na validação do Kanban runtime.
 
 ## Passo a passo
 
@@ -63,18 +63,21 @@ Nota: o OpenSpec oficial define os artefatos do change, mas não define ownershi
   - `git branch --show-current`
   - `git status --porcelain` (deve estar vazio)
 
-### 1) Criar o Kanban da change (obrigatório)
+### 1) Criar trilha da change (obrigatório)
 
-- Criar `docs/coordination/<change-name>.md` usando `docs/coordination/template.md`.
-- Preencher o mínimo: Status + Links do viewer + Next actions.
+- Defina o nome da change e descreva o plano no próprio PR/commit:
+  - objetivo
+  - escopo
+  - critérios de aceitação
+  - riscos
 
 ### 2) Criar a change
 
 - `openspec new change <change-name>`
 
-### 3) Discovery (PO) — perguntas e decisões (obrigatório)
+### 3) Discovery — perguntas e decisões (você)
 
-O PO deve fechar (por escrito) antes do planning:
+Feche (por escrito) antes do planning:
 - objetivo
 - defaults
 - regras
@@ -83,11 +86,9 @@ O PO deve fechar (por escrito) antes do planning:
 - persistência (backend/local)
 - critérios de aceitação
 
-Registrar no kanban `docs/coordination/<change-name>.md` em "Decisions (locked)".
+Registrar decisões no `Change` (PR description ou commit) em "Decisions".
 
 ### 4) Planning (sem Codex)
-
-Gerar instruções e escrever os artefatos:
 
 - Proposal:
   - `openspec instructions proposal --change <change-name>` → `proposal.md`
@@ -95,7 +96,6 @@ Gerar instruções e escrever os artefatos:
   - `openspec instructions specs --change <change-name>` → `specs/<capability>/spec.md`
 - Tasks:
   - `openspec instructions tasks --change <change-name>` → `tasks.md`
-
 - Design:
   - `openspec instructions design --change <change-name>` → `design.md`
 
@@ -103,13 +103,10 @@ Gerar instruções e escrever os artefatos:
 
 - `openspec validate <change-name> --type change`
 
-### 6) Encerrar PO e disparar DESIGN
+### 6) Handoff para implementação
 
-- PO revisa os artefatos, garante que decisões e critérios de aceitação estão travados.
-- **PO move o card de PO → DESIGN no Kanban runtime** (`PATCH /api/workflow/projects/crypto/changes/<change_id>` com `{"status": "DESIGN"}`).
-- PO registra handoff comment no card: "📋 PO done. Artefatos prontos (proposal/specs/design/tasks). DESIGN responsável por prototipar UI."
-- **PO dispara o agente DESIGN** (via spawn ou mensagem interna).
-- Somente após DESIGN finalizar (protótipo + links publicados) o card vai para **Alan approval**.
+- Consolidar `proposal/specs/tasks` (e `design.md` quando houver UI) e registrar no sumário do PR.
+- Avançar para aprovação do Alan apenas após critérios e decisões estarem fechados.
 
 ### 7) Revisão do Alan (antes de implementar)
 
@@ -117,7 +114,7 @@ Enviar links do viewer do OpenSpec e aguardar o “ok” do Alan.
 
 **Camada de revisão PT-BR (obrigatória):**
 - Enviar um resumo curto em PT-BR no chat.
-- Criar o arquivo **não-canônico** `openspec/changes/<change-name>/review-ptbr.md`.
+- Criar `openspec/changes/<change-name>/review-ptbr.md`.
 - Incluir também o link do viewer para esse resumo PT-BR.
 
 Viewer (exemplos):
@@ -126,57 +123,55 @@ Viewer (exemplos):
 
 > Importante: usar sempre o prefixo `/openspec/changes/`. O artifact `review-ptbr` precisa estar allowlisted no backend (`backend/app/routes/openspec.py`).
 
-### 8) Implementação (DEV)
+### 8) Implementação
 
 - Garantir branch + working tree limpos
 - Rodar:
   - `codex exec --full-auto --cd /root/.openclaw/workspace/crypto "Implementar as tasks da change <change-name> seguindo specs/design."`
 
-### 9) QA Gate (obrigatório)
+### 9) Validação (obrigatório)
 
-Antes de mover a change para `QA`, **não use o upstream guard como bloqueio padrão da própria change**.
-- Sequência preferida: `DEV implementa -> QA valida -> commit/publish depois`.
-- Mudanças locais da própria change não devem bloquear por si só `DEV -> QA`.
-- Só rode `./scripts/verify_upstream_published.py --for-status QA` se houver uma necessidade operacional específica fora desse fluxo preferido.
+Sequência preferida: implementação -> validação -> merge.
+- Mudanças locais da própria change não devem bloquear por si só a revisão.
+- Controle de progresso é feito por commit/PR + validação do change.
 
-O QA deve:
+A validação deve:
 - adicionar/atualizar testes conforme `docs/testing-playbook.md`
 - rodar suites relevantes (integration + E2E quando aplicável)
 - garantir CI verde
-- registrar evidências no kanban (Links + Notes)
+- registrar evidências no PR/Change (Links + Notes)
 
-**Checklist mínimo (PASSOU/FALHOU):**
+Checklist mínimo (PASSOU/FALHOU):
 - Backend integration: `./backend/.venv/bin/python -m pytest -q backend/tests/integration`
 - Frontend E2E (quando aplicável): `npm --prefix frontend run test:e2e`
 
-> Se o E2E não rodar localmente (deps), registrar e confiar no CI.
+Só após validação OK a change pode ser considerada pronta para homologação.
 
-Só após QA OK a change pode ser considerada pronta para homologação.
+### 10) Deploy
 
-### 9) Deploy
-
-- `git push origin <branch>`
-- (Se usando PR) abrir PR, aguardar CI verde, e fazer merge (padrão: merge commit)
+- `git checkout main`
+- `git push origin main`
+- Se preferir, crie PR de revisão:
+  - `git checkout -b feature/<slug>`
+  - implemente
+  - `git push -u origin feature/<slug>`
+  - `gh pr create --base main --head feature/<slug> --title "<resume>" --body "Resumo curto da mudança"`
+  - aguardar CI verde e fazer merge em `main`
+- No fluxo mais simples (sem revisão prévia), faça `git push origin main` após validação.
 - Deploy produção:
   - `./stop.sh`
   - `./start.sh`
 - Pós-deploy: checar `/api/health`.
 
-### 10) Homologação (Alan)
+### 11) Homologação (Alan)
 
-Antes de mover a change para `Homologation`, rode:
-- `./scripts/verify_upstream_published.py --for-status "Homologation"`
+Alan testa e confirma “ok”.
 
-- Alan testa e confirma “ok”.
-
-### 11) Arquivar a change
+### 12) Arquivar a change
 
 Antes de arquivar, rode:
-- `./scripts/verify_upstream_published.py --for-status Archived`
-
-Use o helper seguro (recomendado), que também revalida o guard:
 - `./scripts/archive_change_safe.sh <change-name>`
 
-### 12) Evidência
+### 13) Evidência
 
 - Registrar hash do commit/PR associado no fechamento/arquivo.

@@ -40,7 +40,7 @@ test('Kanban loads and shows a mocked change', async ({ page }) => {
           id,
           title: id === mockedChangeId ? 'Kanban visual coordination' : 'Mobile Kanban UI rethink',
           card_number: id === mockedChangeId ? 41 : 42,
-          path: `docs/coordination/${id}.md`,
+          path: `openspec/changes/${id}/proposal`,
           status: {
             PO: 'done',
             'Approval': 'approved',
@@ -181,7 +181,7 @@ test('Kanban normalizes legacy gate labels in board and drawer', async ({ page }
             id: mockedChangeId,
             title: 'Legacy gate render',
             card_number: 64,
-            path: `docs/coordination/${mockedChangeId}.md`,
+          path: `openspec/changes/${mockedChangeId}/proposal`,
             status: {
               PO: 'done',
               DESIGN: 'done',

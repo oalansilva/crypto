@@ -1,21 +1,15 @@
-# AGENTS.md — Guia rápido para agentes (e humanos) neste repo
+# AGENTS.md — Guia rápido para operação local neste repo
 
-Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
+Este arquivo organiza o fluxo de trabalho para evitar retrabalho e manter padrão operacional no repo.
 
 ## TL;DR
 
-- **Branch padrão:** trabalhe em `feature/long-change` (evite commits diretos na `main`).
-- **Fluxo operacional atual:** Workflow DB/Postgres = fonte runtime; Kanban = interface principal; OpenSpec = artefatos/documentação.
-- **Legado proibido para operação ativa:** não usar `docs/coordination/*.md` como superfície operacional para tracking ativo, evidências de QA, handoffs ou progresso corrente; tratar esses arquivos como espelho/auditoria e usar workflow DB + Kanban comments/work items como superfície viva, com OpenSpec como camada de artefatos.
-- **Playbook operacional canônico (Phase 1):** seguir `docs/multiagent-operating-playbook.md` para responsabilidades por papel, contrato padrão de handoff, Definition of Done por coluna e regra de fechamento com runtime + handoff.
-- **Ownership dos artefatos OpenSpec neste repo:** o OpenSpec oficial define os artefatos, não os papéis; aqui o `PO` gera os artefatos do change (`proposal/specs/design/tasks/review-ptbr`) e o `DESIGN` gera o protótipo visual e decisões de UX.
-- **Criação de change:** use `scripts/create_change_and_seed.sh <change-name>` para garantir OpenSpec + coordination + workflow DB/Kanban no mesmo passo.
-- **QA UI/browser:** preferir **Microsoft Playwright CLI** (`playwright-cli`) em vez de MCP para automação de interface; usar como base a skill oficial local `skills/playwright-cli-official/`; salvar evidências por fluxo (screenshots e, quando útil, trace/video), registrar os caminhos/links no card/tracking e abrir work item do tipo `bug` quando houver problema real.
-- **Gates:** PO → DESIGN (quando UI) → Alan approval → DEV → QA → Homologation → archive.
-- **Testes UI/E2E:** QA é o dono da validação; Playwright é a ferramenta principal de automação; Codex CLI entra como apoio para escrever/ajustar/depurar/rodar os testes, sem substituir a decisão de QA.
-- **Design de interface em Codex CLI:** usar `skills/interface-design-codex/` como referência padrão para trabalho de DESIGN e apoio de revisão visual.
-- **Playwright headed neste servidor:** preferir `/usr/local/bin/playwright-cli-headed` e um único `run-code` com `goto + interações + screenshot` no mesmo fluxo.
-- **Escopo de mudanças:** prefira mexer apenas em `backend/`, `frontend/`, `src/`, `tests/`, `openspec/`.
+- **Branch padrão:** trabalhe direto em `main` para mudanças de rotina.
+- **Fluxo simplificado:** implemente, valide e confirme; se quiser revisão formal, abra PR `main <- feature/<nome>` e merge no mesmo repositório antes de fechar.
+- **Referência operacional:** `docs/workflow-criar-funcionalidade.md`.
+- `docs/workflow-criar-funcionalidade.md` define onde registrar decisão e evidência por change (via PR e resumo no chat).
+- OpenSpec é a camada de especificação técnico (artifacts).
+- Validação humana final permanece com Alan antes de homologação.
 
 ## Como rodar (VPS / dev)
 
@@ -58,83 +52,22 @@ npm --prefix frontend run build
 - Frontend: `frontend/README.md`
 - Workflow OpenSpec/Codex: `docs/os_codex_workflow.md`
 
-## Convenções de UI/UX (Lab)
+## Convenções de UI/UX
 
-- **Upstream** deve ser uma conversa fluida (Humano ↔ Trader) para clarificar inputs/constraints/risco.
+- **Upstream** deve ser uma conversa fluida (Humano ↔ Trader) para clarificar inputs, limites e risco.
 - O label "validator" na UI/copy deve aparecer como **Trader**.
 
-## Agentes e responsabilidades
+## Regras de operação
 
-O time é composto por 5 agentes, cada um com papel definido:
+- Fluxo único (sem divisão por agentes): você conduz descoberta, planejamento, implementação, validação e fechamento.
+- Registre em `docs/workflow-criar-funcionalidade.md` e no PR:
+  - status atual
+  - decisões de escopo
+  - evidências de teste/PR
+- Para promover produção, trabalhe em `main` e abra PR de revisão se quiser validação externa.
 
-### main — Project Manager / Team Leader
-**Template base:** Orion (productivity)
+## Ferramentas
 
-Orquestra o time, coordena workflow, delegation, status reports, prazos.
-- Mantém conversa com Alan curta/gerencial
-- Consulta Kanban como fonte principal
-- Move cards, celebra marcos, identifica riscos proativamente
-- Fornece próximo passo após completar tarefa
-- Pede clarifying questions quando necessário
-- Dá estimates de tempo quando possível
-
-### PO — Product Manager
-Define especificações, gerencia backlog, Requirements, escopo do produto.
-- Define taxonomia de work items (`change`, `story`, `bug`) e dependências
-- É dono dos artefatos OpenSpec da change: `proposal.md`, `specs/**`, `design.md`, `tasks.md` e `review-ptbr.md`
-- Só libera DEV depois de approval
-- **Quando não há change ativa (todas arquivadas), o PO deve puxar automaticamente o card de maior prioridade da coluna Pending para iniciar o planejamento no próximo turno.**
-
-### DESIGN — UX/UI Researcher
-**Template base:** UX Researcher (creative)
-
-Foca em UX/prototipação e pesquisa de usuário.
-- Publica protótipos e decisões visuais no Kanban/artefatos
-- Complementa a planning package com protótipo visual e decisões de UX para DEV/QA
-- Desenha pesquisas de usuário e scripts de entrevista
-- Analisa feedback de usuários (tickets, reviews, pesquisas)
-- Identifica problemas de usabilidade
-- Gera relatórios com recomendações baseadas em evidências
-
-### DEV — Software Engineer + Code Reviewer
-**Template base:** Lens (development)
-
-Implementa código +レビュー automática.
-- Implementa com base no workflow DB/Kanban como runtime
-- Respeita taxonomia `change`/`story`/`bug`, ownership, locks e dependências
-- Faz code review: bugs, security issues, logic errors
-- Scaneia vulnerabilidades (SQL injection, XSS, hardcoded secrets)
-- Avalia qualidade (A-F), sugere melhorias
-
-### QA — Tester + Bug Hunter
-**Template base:** Trace (development)
-
-Valida + análise profunda de bugs.
-- Valida regressões, consistência do workflow DB/Kanban e critérios de aceite
-- Bugs reais viram `bug` rastreável; bugs filhos bloqueiam story
-- Análise de erro: parse stack traces, identifica root cause vs symptoms
-- Fornece steps de debug em ordem de probabilidade
-- Cria bug reports com steps de reprodução e severidade
-
-### Regras operacionais dos agentes
-- O **Kanban** é o hub principal de consulta e handoff.
-- O **workflow DB** é a fonte operacional de verdade.
-- **OpenSpec** serve como camada de artefatos/documentação.
-- `docs/coordination/*.md` é espelho/auditoria; se divergir do runtime/Kanban, vence o runtime/Kanban.
-- Comentários do Kanban são o canal padrão entre agentes, com menções `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`.
-- Nenhum agente (PO/DESIGN/DEV/QA) pode considerar sua etapa concluída só com OpenSpec/arquivos; é obrigatório atualizar o runtime/Kanban e deixar comentário de handoff no mesmo turno.
-- Toda etapa só fecha de verdade com **runtime + handoff**; se um dos dois faltar, o próximo turno deve reconciliar antes de seguir.
-- O contrato operacional curto (papéis, handoff, DoD por coluna, bloqueios) fica consolidado em `docs/multiagent-operating-playbook.md`.
-- Quando Alan homologar uma change em chat, o orquestrador deve fechar e arquivar no mesmo turno (runtime/Kanban + OpenSpec), sem deixar pendência operacional.
-- `change` é o container raiz da entrega; `story` é a fatia padrão de execução quando houver ownership/dependência própria; `bug` representa defeito real. Não criar cards separados para micro-passos sem necessidade operacional.
-- Múltiplas stories/agentes podem trabalhar em paralelo, desde que respeitem **locks**, **dependências** e **WIP**.
-- Regra prática de WIP: por padrão, no máximo **2 stories ativas por change** e **1 story ativa por agent run**.
-- **Regra de auto-trigger:** Quando um card muda de coluna, o agente responsável pela nova etapa deve ser automaticamente acionado. Ex: card vai para PO → acionar PO; vai para DEV → acionar DEV; vai para QA → acionar QA.
-- **Regra de validação QA:** Antes de enviar para homologação Alan, QA deve rodar o checklist de validação UI (`docs/qa-ui-checklist.md`) e testes E2E (`frontend/tests/*.spec.ts`).
-- Lock padrão fica no nível da **story**; bug filho herda esse lock salvo reassignment explícito.
-- Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
-- Antes de promover para `QA`, `Homologation` ou `Archived`, reconciliar runtime/Kanban + `tasks.md` + handoff; para archive, preferir `scripts/archive_change_safe.sh`.
-
-## Engenharia de prompt
-
-Se for necessário mudar o tom de um agente (ex: deixar o design mais exploratório ou o DEV mais cauteloso), primeiro atualiza este arquivo com o novo prompt/personalidade e registra no Kanban. Nunca altere agentes apenas via jobs sem documentar aqui.
+- **QA UI/browser:** preferir Microsoft Playwright CLI (`playwright-cli`) em vez de MCP.
+- Para interfaces com evidência visual, usar `/usr/local/bin/playwright-cli-headed` no fluxo de captura.
+- Use `skills/playwright-cli-official/` e `skills/interface-design-codex/` como referência.

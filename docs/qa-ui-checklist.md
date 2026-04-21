@@ -10,7 +10,6 @@ Run this checklist before sending any change to Homologation.
   - [ ] Home (/)
   - [ ] Favorites (/favorites)
   - [ ] Monitor (/monitor)
-  - [ ] Kanban (/kanban)
   - [ ] Combo (/combo/select)
   - [ ] Carteira (/external/balances)
 - [ ] Verify NO duplicate headers/menus appear on ANY page
@@ -20,11 +19,9 @@ Run this checklist before sending any change to Homologation.
 - [ ] Take screenshots of each test case
 
 ## Desktop Validation
-- [ ] Navigate to Kanban board
-- [ ] Verify all columns render correctly
-- [ ] Check cards display proper styling
-- [ ] Verify click handlers work (cards open correctly)
-- [ ] Test modal/drawer opens and closes
+- [ ] Validate every changed/critical route for desktop rendering and interactions
+- [ ] Test modal/drawer behavior on changed flows
+- [ ] Verify no responsive regressions on impacted desktop views
 
 ## Mobile Validation  
 - [ ] Test responsive layout
@@ -32,11 +29,9 @@ Run this checklist before sending any change to Homologation.
 - [ ] Check touch interactions work
 
 ## Bug-Specific Validation (if change involves bugs)
-- [ ] Verify bug cards appear in correct column
-- [ ] Check bug cards have visual distinction (border/color)
-- [ ] Verify clicking bug opens bug detail (not parent)
-- [ ] Test toggle to show/hide bugs works
-- [ ] Verify parent story link displays correctly
+- [ ] Verify bug states appear correctly in the relevant UI
+- [ ] Verify bug details render in correct context (parent/child hierarchy)
+- [ ] Test bug toggles and filters if UI exposes them
 
 ## General
 - [ ] No console errors
