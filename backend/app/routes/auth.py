@@ -146,21 +146,36 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     return RegisterResponse(id=str(user.id), email=user.email, name=user.name)
 
 
+def _raise_if_blocked_by_status(user: User, now: datetime) -> None:
+    if user.is_banned or user.status == "banned":
+        raise HTTPException(status_code=403, detail="User account is banned")
+
+    if user.status == "suspended":
+        if user.suspended_until and user.suspended_until > now:
+            raise HTTPException(status_code=403, detail="User account is suspended")
+        if not user.suspended_until or user.suspended_until <= now:
+            user.status = "active"
+            user.suspended_until = None
+            user.suspension_reason = None
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
-    # DEV BYPASS: alan.silva@gmail.com pode entrar sem senha
-    if body.email.lower() == "o.alan.silva@gmail.com":
-        user = db.query(User).filter(User.email == body.email.lower()).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        logger.info(f"[AUTH] Login bypass usado para {body.email}")
-    else:
-        user = db.query(User).filter(User.email == body.email.lower()).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+    normalized_email = body.email.lower()
 
+    user = db.query(User).filter(User.email == normalized_email).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # DEV BYPASS: alan.silva@gmail.com pode entrar sem senha
+    if normalized_email != "o.alan.silva@gmail.com":
         if not _verify_password(body.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid credentials")
+    else:
+        logger.info(f"[AUTH] Login bypass usado para {body.email}")
+
+    now = datetime.utcnow()
+    _raise_if_blocked_by_status(user, now)
 
     user.last_login = datetime.utcnow()
     db.add(user)
@@ -219,6 +234,8 @@ def me(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
+    _raise_if_blocked_by_status(user, datetime.utcnow())
+
     return MeResponse(
         id=str(user.id), email=user.email, name=user.name, isAdmin=is_admin_email(user.email)
     )
@@ -238,6 +255,11 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+
+    _raise_if_blocked_by_status(user, datetime.utcnow())
+    user.last_login = datetime.utcnow()
+    db.add(user)
+    db.commit()
 
     access_token = _generate_access_token(user)
     refresh_token = _generate_refresh_token(user)

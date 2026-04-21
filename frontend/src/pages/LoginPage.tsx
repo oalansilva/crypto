@@ -74,8 +74,21 @@ export default function LoginPage() {
     } catch (err: unknown) {
       setIsLoading(false)
       if (axios.isAxiosError(err)) {
-        const msg = err.response?.data?.detail || 'Erro de conexão'
-        setErrors({ general: Array.isArray(msg) ? msg.join(', ') : String(msg) })
+        const responseData = err.response?.data
+        const detail =
+          typeof responseData === 'string'
+            ? responseData
+            : Array.isArray(responseData?.detail)
+              ? responseData.detail.join(', ')
+              : responseData?.detail
+
+        const msg =
+          detail ||
+          (err.response?.status ? `Falha no login (${err.response.status})` : null) ||
+          err.message ||
+          'Erro de conexao'
+
+        setErrors({ general: String(msg) })
       } else {
         setErrors({ general: 'Erro inesperado' })
       }

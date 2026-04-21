@@ -18,6 +18,7 @@ from app.database import Base
 from app.models import User
 import app.database as database_module
 import app.middleware.authMiddleware as auth_middleware
+import app.routes.auth as auth_routes
 
 
 @pytest.fixture
@@ -181,6 +182,37 @@ def test_sqlite_runtime_migrations_and_postgres_sequence_sync(monkeypatch, tmp_p
     assert any("setval" in sql for sql, _params in executed)
 
 
+def test_postgres_runtime_schema_migrations_execute_admin_user_statements(monkeypatch):
+    executed: list[str] = []
+
+    class FakeConn:
+        def execute(self, statement, params=None):
+            executed.append(str(statement))
+            return None
+
+    class FakeBegin:
+        def __enter__(self):
+            return FakeConn()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(database_module, "DB_URL", "postgresql://crypto")
+    monkeypatch.setattr(database_module, "engine", SimpleNamespace(begin=lambda: FakeBegin()))
+    monkeypatch.setattr(database_module, "ensure_sqlite_migrations", lambda: None)
+
+    database_module.ensure_runtime_schema_migrations()
+
+    joined = "\n".join(executed)
+    assert "ADD COLUMN IF NOT EXISTS status" in joined
+    assert "ADD COLUMN IF NOT EXISTS suspended_until" in joined
+    assert "ADD COLUMN IF NOT EXISTS suspension_reason" in joined
+    assert "ADD COLUMN IF NOT EXISTS is_banned" in joined
+    assert "ADD COLUMN IF NOT EXISTS notes" in joined
+    assert "CREATE TABLE IF NOT EXISTS admin_action_logs" in joined
+    assert "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at" in joined
+
+
 def test_decode_token_handles_valid_expired_and_invalid_tokens(monkeypatch):
     monkeypatch.setattr(auth_middleware, "JWT_SECRET", "unit-test-secret")
 
@@ -313,3 +345,153 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
     assert admin_exc.value.detail == "Admin access required"
 
     assert await auth_middleware.get_current_admin(str(admin_id), auth_db_session) == str(admin_id)
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_handles_banned_suspended_and_expired_users(
+    monkeypatch, auth_db_session
+):
+    monkeypatch.setattr(auth_middleware, "JWT_SECRET", "unit-test-secret")
+
+    banned_user = User(
+        id=uuid.uuid4(),
+        email="banned@example.com",
+        password_hash="secret",
+        name="Banned",
+        status="banned",
+        is_banned=True,
+    )
+    suspended_user = User(
+        id=uuid.uuid4(),
+        email="suspended@example.com",
+        password_hash="secret",
+        name="Suspended",
+        status="suspended",
+        suspended_until=datetime.utcnow() + timedelta(minutes=10),
+    )
+    expired_user = User(
+        id=uuid.uuid4(),
+        email="expired@example.com",
+        password_hash="secret",
+        name="Expired",
+        status="suspended",
+        suspended_until=datetime.utcnow() - timedelta(minutes=5),
+        suspension_reason="timeout",
+    )
+    auth_db_session.add_all([banned_user, suspended_user, expired_user])
+    auth_db_session.commit()
+
+    with pytest.raises(HTTPException, match="banned"):
+        auth_middleware._ensure_user_accessible(banned_user, datetime.utcnow())
+
+    with pytest.raises(HTTPException, match="suspended"):
+        auth_middleware._ensure_user_accessible(suspended_user, datetime.utcnow())
+
+    assert auth_middleware._is_user_temporarily_suspended(suspended_user, datetime.utcnow()) is True
+    assert auth_middleware._ensure_user_accessible(expired_user, datetime.utcnow()) is True
+    assert expired_user.status == "active"
+    assert expired_user.suspended_until is None
+    assert expired_user.suspension_reason is None
+
+    token = jwt.encode(
+        {"type": "access", "sub": str(expired_user.id)},
+        "unit-test-secret",
+        algorithm="HS256",
+    )
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+    assert await auth_middleware.get_current_user(credentials, auth_db_session) == str(
+        expired_user.id
+    )
+
+
+def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_session):
+    monkeypatch.setattr(auth_routes, "JWT_SECRET", "unit-test-secret")
+    monkeypatch.setattr(auth_routes, "JWT_ACCESS_EXPIRE_MINUTES", 15)
+    monkeypatch.setattr(auth_routes, "JWT_REFRESH_EXPIRE_DAYS", 7)
+    monkeypatch.setattr(
+        auth_routes, "_verify_password", lambda password, hashed: password == hashed
+    )
+
+    active_user = User(
+        id=uuid.uuid4(),
+        email="user@example.com",
+        password_hash="valid-pass",
+        name="User",
+        status="active",
+    )
+    banned_user = User(
+        id=uuid.uuid4(),
+        email="blocked@example.com",
+        password_hash="valid-pass",
+        name="Blocked",
+        status="banned",
+        is_banned=True,
+    )
+    expired_user = User(
+        id=uuid.uuid4(),
+        email="expired-login@example.com",
+        password_hash="valid-pass",
+        name="Expired Login",
+        status="suspended",
+        suspended_until=datetime.utcnow() - timedelta(minutes=1),
+        suspension_reason="expired",
+    )
+    suspended_user = User(
+        id=uuid.uuid4(),
+        email="suspended-login@example.com",
+        password_hash="valid-pass",
+        name="Suspended Login",
+        status="suspended",
+        suspended_until=datetime.utcnow() + timedelta(minutes=5),
+    )
+    auth_db_session.add_all([active_user, banned_user, expired_user, suspended_user])
+    auth_db_session.commit()
+
+    with pytest.raises(HTTPException, match="banned"):
+        auth_routes._raise_if_blocked_by_status(banned_user, datetime.utcnow())
+
+    with pytest.raises(HTTPException, match="suspended"):
+        auth_routes._raise_if_blocked_by_status(suspended_user, datetime.utcnow())
+
+    auth_routes._raise_if_blocked_by_status(expired_user, datetime.utcnow())
+    assert expired_user.status == "active"
+    assert expired_user.suspended_until is None
+    assert expired_user.suspension_reason is None
+
+    with pytest.raises(HTTPException, match="Invalid credentials"):
+        auth_routes.login(
+            auth_routes.LoginRequest(email="missing@example.com", password="x"), auth_db_session
+        )
+
+    with pytest.raises(HTTPException, match="Invalid credentials"):
+        auth_routes.login(
+            auth_routes.LoginRequest(email="user@example.com", password="wrong-pass"),
+            auth_db_session,
+        )
+
+    login_response = auth_routes.login(
+        auth_routes.LoginRequest(email="user@example.com", password="valid-pass"),
+        auth_db_session,
+    )
+    assert login_response.email == "user@example.com"
+    assert login_response.accessToken
+    assert login_response.refreshToken
+
+    access_token = auth_routes._generate_access_token(active_user)
+    me_response = auth_routes.me(authorization=f"Bearer {access_token}", db=auth_db_session)
+    assert me_response.email == "user@example.com"
+
+    refresh_token = auth_routes._generate_refresh_token(active_user)
+    refresh_response = auth_routes.refresh(
+        auth_routes.RefreshRequest(refreshToken=refresh_token),
+        auth_db_session,
+    )
+    assert refresh_response.email == "user@example.com"
+
+    with pytest.raises(HTTPException, match="User not found"):
+        ghost_refresh = jwt.encode(
+            {"sub": str(uuid.uuid4()), "type": "refresh"},
+            "unit-test-secret",
+            algorithm="HS256",
+        )
+        auth_routes.refresh(auth_routes.RefreshRequest(refreshToken=ghost_refresh), auth_db_session)
