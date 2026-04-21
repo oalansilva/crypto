@@ -237,9 +237,9 @@ class AdminActionLog(Base):
     __tablename__ = "admin_action_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    actor_user_id = Column(String, index=True, nullable=False)
-    target_user_id = Column(String, index=True, nullable=False)
-    action = Column(String, index=True, nullable=False)
+    actor_user_id = Column(String, nullable=False)
+    target_user_id = Column(String, nullable=False)
+    action = Column(String, nullable=False)
     target_subject = Column(String, nullable=True)
     reason = Column(Text, nullable=False)
     metadata_json = Column(JSONType, nullable=True)

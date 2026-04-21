@@ -205,8 +205,8 @@ export default function PortfolioAllocation() {
         {!query.isLoading && !query.isError && hasData ? (
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
             <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-3 sm:p-4">
-              <div className="relative mx-auto aspect-square w-full max-w-[360px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="relative mx-auto h-[320px] w-full min-w-0 max-w-[360px] sm:h-[360px]">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie
                       data={entries}

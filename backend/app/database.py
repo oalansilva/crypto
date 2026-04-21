@@ -223,6 +223,109 @@ def ensure_runtime_schema_migrations() -> None:
 
     ensure_sqlite_migrations()
 
+    if DB_URL.startswith("sqlite:"):
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMP NULL
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS suspension_reason TEXT NULL
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS notes TEXT NULL
+                """
+            )
+        )
+
+        conn.execute(
+            text(
+                """
+                UPDATE users
+                SET status = 'active'
+                WHERE status IS NULL OR btrim(status) = ''
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS admin_action_logs (
+                    id SERIAL PRIMARY KEY,
+                    actor_user_id VARCHAR NOT NULL,
+                    target_user_id VARCHAR NOT NULL,
+                    action VARCHAR NOT NULL,
+                    target_subject VARCHAR NULL,
+                    reason TEXT NOT NULL,
+                    metadata_json TEXT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_admin_action_logs_actor
+                ON admin_action_logs (actor_user_id)
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_admin_action_logs_target
+                ON admin_action_logs (target_user_id)
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_admin_action_logs_action
+                ON admin_action_logs (action)
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at
+                ON admin_action_logs (created_at)
+                """
+            )
+        )
+
 
 def get_db():
     db = SessionLocal()

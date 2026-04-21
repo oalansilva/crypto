@@ -73,6 +73,9 @@ type CreateState = {
   password: string
   status: 'active' | 'suspended' | 'banned'
   isBanned: boolean
+  suspendedUntil: string
+  suspensionReason: string
+  notes: string
   reason: string
 }
 
@@ -102,6 +105,9 @@ const EMPTY_CREATE: CreateState = {
   password: '',
   status: 'active',
   isBanned: false,
+  suspendedUntil: '',
+  suspensionReason: '',
+  notes: '',
   reason: '',
 }
 
@@ -130,6 +136,22 @@ function isActiveUserSuspended(user: AdminUser | null) {
   if (user.status !== 'suspended') return false
   if (!user.suspendedUntil) return true
   return new Date(user.suspendedUntil).getTime() > Date.now()
+}
+
+async function readErrorMessage(response: Response, fallback: string) {
+  const payload = await response.json().catch(() => null) as
+    | { detail?: string | string[] }
+    | null
+
+  if (Array.isArray(payload?.detail)) {
+    return payload.detail.join(', ')
+  }
+
+  if (typeof payload?.detail === 'string' && payload.detail.trim()) {
+    return payload.detail
+  }
+
+  return fallback
 }
 
 export default function AdminUsersPage() {
@@ -173,7 +195,7 @@ export default function AdminUsersPage() {
 
       const response = await authFetch(`${API_BASE_URL}/admin/users?${params.toString()}`)
       if (!response.ok) {
-        throw new Error(`Falha ao carregar usuários (${response.status})`)
+        throw new Error(await readErrorMessage(response, `Falha ao carregar usuários (${response.status})`))
       }
       const payload = (await response.json()) as AdminUsersResponse
       setUsers(payload.items)
@@ -193,7 +215,7 @@ export default function AdminUsersPage() {
     try {
       const response = await authFetch(`${API_BASE_URL}/admin/user-actions?targetUserId=${userId}&page=1&pageSize=20`)
       if (!response.ok) {
-        throw new Error(`Falha ao carregar logs (${response.status})`)
+        throw new Error(await readErrorMessage(response, `Falha ao carregar logs (${response.status})`))
       }
       const payload = (await response.json()) as AdminActionLogResponse
       setLogItems(payload.items)
@@ -259,18 +281,47 @@ export default function AdminUsersPage() {
 
   const submitCreate = async (event: FormEvent) => {
     event.preventDefault()
+    const trimmedName = createForm.name.trim()
+    const trimmedEmail = createForm.email.trim()
+    const trimmedPassword = createForm.password
+
+    if (!trimmedName) {
+      throw new Error('Informe o nome do usuário.')
+    }
+
+    if (!trimmedEmail) {
+      throw new Error('Informe o e-mail do usuário.')
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      throw new Error('Informe um e-mail válido.')
+    }
+
+    if (!trimmedPassword || trimmedPassword.length < 8) {
+      throw new Error('A senha inicial deve ter pelo menos 8 caracteres.')
+    }
+
+    if (createForm.status === 'suspended' && !createForm.suspendedUntil) {
+      throw new Error('Informe até quando a suspensão ficará ativa.')
+    }
+
     const response = await authFetch(`${API_BASE_URL}/admin/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...createForm,
+        email: trimmedEmail,
+        name: trimmedName,
+        password: trimmedPassword,
+        status: createForm.status,
         isBanned: createForm.isBanned,
+        suspendedUntil: createForm.suspendedUntil ? toIsoOrNull(createForm.suspendedUntil) : undefined,
+        suspensionReason: createForm.suspensionReason || undefined,
+        notes: createForm.notes || undefined,
         reason: createForm.reason || undefined,
       }),
     })
     if (!response.ok) {
-      const payload = await response.json().catch(() => null) as { detail?: string } | null
-      throw new Error(payload?.detail || `Falha ao criar usuário (${response.status})`)
+      throw new Error(await readErrorMessage(response, `Falha ao criar usuário (${response.status})`))
     }
     setCreateForm(EMPTY_CREATE)
     toast({
@@ -320,8 +371,7 @@ export default function AdminUsersPage() {
       }),
     })
     if (!response.ok) {
-      const payload = await response.json().catch(() => null) as { detail?: string } | null
-      throw new Error(payload?.detail || `Falha ao atualizar usuário (${response.status})`)
+      throw new Error(await readErrorMessage(response, `Falha ao atualizar usuário (${response.status})`))
     }
     const updated = (await response.json()) as AdminUser
     setUsers((rows) => rows.map((row) => (row.id === updated.id ? updated : row)))
@@ -366,8 +416,7 @@ export default function AdminUsersPage() {
         }),
       })
       if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { detail?: string } | null
-        throw new Error(payload?.detail || `Falha ao suspender usuário (${response.status})`)
+        throw new Error(await readErrorMessage(response, `Falha ao suspender usuário (${response.status})`))
       }
       const updated = (await response.json()) as AdminUser
       setUsers((rows) => rows.map((row) => (row.id === updated.id ? updated : row)))
@@ -406,8 +455,7 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ reason: banReason }),
       })
       if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { detail?: string } | null
-        throw new Error(payload?.detail || `Falha ao banir usuário (${response.status})`)
+        throw new Error(await readErrorMessage(response, `Falha ao banir usuário (${response.status})`))
       }
       const updated = (await response.json()) as AdminUser
       setUsers((rows) => rows.map((row) => (row.id === updated.id ? updated : row)))
@@ -445,8 +493,7 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ reason: reactivateReason }),
       })
       if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { detail?: string } | null
-        throw new Error(payload?.detail || `Falha ao reativar usuário (${response.status})`)
+        throw new Error(await readErrorMessage(response, `Falha ao reativar usuário (${response.status})`))
       }
       const updated = (await response.json()) as AdminUser
       setUsers((rows) => rows.map((row) => (row.id === updated.id ? updated : row)))
@@ -545,6 +592,37 @@ export default function AdminUsersPage() {
                 value={createForm.reason}
                 onChange={(event) => setCreateForm((prev) => ({ ...prev, reason: event.target.value }))}
                 placeholder="Motivo interno"
+              />
+            </div>
+            {createForm.status === 'suspended' ? (
+              <>
+                <Input
+                  label="Suspender até"
+                  type="datetime-local"
+                  value={createForm.suspendedUntil}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, suspendedUntil: event.target.value }))}
+                  required
+                />
+                <Input
+                  label="Razão da suspensão"
+                  value={createForm.suspensionReason}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, suspensionReason: event.target.value }))
+                  }
+                  placeholder="Motivo da suspensão"
+                />
+              </>
+            ) : null}
+            <div className="md:col-span-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                Observações
+              </label>
+              <textarea
+                value={createForm.notes}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, notes: event.target.value }))}
+                rows={3}
+                className="mt-2 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                placeholder="Observações internas"
               />
             </div>
             <div className="md:col-span-2 xl:col-span-2">
