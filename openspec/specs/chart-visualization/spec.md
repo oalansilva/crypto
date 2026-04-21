@@ -70,3 +70,26 @@ O gráfico SHALL exibir RSI em painel inferior (lower). RSI em roxo (#8b5cf6), l
 - **AND** linhas de referência são exibidas em rsi_min e rsi_max### Requirement: Sincronização de Indicadores com Parâmetros
 Os indicadores visualizados MUST refletir os parâmetros configurados (ema_fast, ema_slow, rsi_period). Backend MUST retornar metadados com name, color, data, panel ("main" para EMAs, "lower" para RSI).### Requirement: Visualização Fibonacci EMA
 O gráfico SHALL exibir EMA 200 e níveis Fibonacci (0.5, 0.618) quando a estratégia Fibonacci EMA é executada. Cores distintas para EMA e níveis.
+
+### Requirement: Supported chart surfaces expose explicit zoom controls
+Chart surfaces covered by this change SHALL provide explicit zoom-in and zoom-out controls in addition to gesture-based scaling.
+
+#### Scenario: Explicit controls complement existing scaling
+- **WHEN** a supported chart surface already allows mouse wheel or trackpad scaling
+- **THEN** the UI also provides explicit zoom-in and zoom-out controls
+
+#### Scenario: Explicit controls do not require new data fetch
+- **WHEN** the user zooms the chart with explicit controls
+- **THEN** the chart updates its visible range without requiring a new candle request by default
+
+### Requirement: Explicit zoom keeps synchronized panels aligned
+When a chart surface uses more than one synchronized panel, the system MUST keep the panels aligned after zoom actions.
+
+#### Scenario: Price and RSI panels stay synchronized
+- **WHEN** the user zooms a chart that has a main price panel and an RSI panel
+- **THEN** both panels keep the same visible time range after the zoom action
+
+#### Scenario: Crosshair context remains coherent after zoom
+- **WHEN** the user moves the cursor after a zoom action
+- **THEN** tooltip and crosshair data continue to map to the currently visible candle positions
+
