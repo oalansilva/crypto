@@ -93,7 +93,11 @@ async def test_market_endpoints_cover_running_and_nonrunning_paths(monkeypatch):
     }
 
     async def live_prices(_symbols):
-        return ([{"symbol": "BTCUSDT", "price": 1.0, "change_24h_pct": 2.5}], "2026-04-18T22:30:00Z", True)
+        return (
+            [{"symbol": "BTCUSDT", "price": 1.0, "change_24h_pct": 2.5}],
+            "2026-04-18T22:30:00Z",
+            True,
+        )
 
     monkeypatch.setattr(market_route, "is_running", lambda: True)
     monkeypatch.setattr(market_route, "get_market_latest_prices", live_prices)
@@ -190,7 +194,9 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     monkeypatch.setattr(main, "start_signal_feed_snapshot_worker", start_snapshot_worker)
     monkeypatch.setattr(main, "stop_signal_feed_snapshot_worker", stop_snapshot_worker)
     monkeypatch.setattr(main, "signal_monitor", signal_stub)
-    monkeypatch.setattr(main, "Base", SimpleNamespace(metadata=SimpleNamespace(create_all=lambda *_: None)))
+    monkeypatch.setattr(
+        main, "Base", SimpleNamespace(metadata=SimpleNamespace(create_all=lambda *_: None))
+    )
     monkeypatch.setattr(main, "engine", object())
     monkeypatch.setattr(main, "sync_postgres_identity_sequences", lambda: None)
     monkeypatch.setattr(main, "seed_combo_templates_if_empty", lambda: None)

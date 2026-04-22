@@ -317,6 +317,7 @@ async def test_ws_loop_and_consume_stream_pathways(monkeypatch):
     monkeypatch.setattr(connector.websockets, "connect", fake_connect)
     monkeypatch.setattr(connector.time, "time", lambda: 200.0)
     shutdown_calls = {"count": 0}
+
     async def current_pairs_second():
         shutdown_calls["count"] += 1
         if shutdown_calls["count"] == 1:
