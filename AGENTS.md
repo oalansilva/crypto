@@ -5,7 +5,8 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 ## TL;DR
 
 - **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
-- **Fluxo de produção:** implemente em `develop`, valide e abra PR `develop -> main` para promoção.
+- **Fluxo de produção:** implemente e valide diretamente em `develop`; para liberar produção, abra PR `develop -> main`.
+- **Regra de fluxo:** use somente `develop` e `main`; sem criação de branches por tasks usuais.
 - **Referência operacional:** `docs/workflow-criar-funcionalidade.md`.
 - OpenSpec é a camada de especificação técnico (artifacts).
 - Workflow DB e `docs/coordination/*.md` são fontes de operação e evidência.
@@ -17,7 +18,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
   - status atual
   - decisões de escopo
   - evidências de teste/PR
-- Para promover produção, trabalhe em `develop` e abra PR de `develop -> main`.
+- Para promover produção, trabalhe em `develop` (sem branch extra) e abra PR de `develop -> main`.
 
 ## Como rodar (VPS / dev)
 
