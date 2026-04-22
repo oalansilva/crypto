@@ -20,6 +20,7 @@ from app.services.market_data_providers import (
 from app.services.asset_classification import classify_asset_type
 from app.services.preset_service import get_presets
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
+from app.services.ohlcv_storage import MarketOhlcvRepository
 
 router = APIRouter(prefix="/api")
 NASDAQ100_VERSION = "2026-02-23"
@@ -27,9 +28,11 @@ NASDAQ100_CONFIG_PATH = (
     Path(__file__).resolve().parents[1] / "config" / f"nasdaq100_symbols.v{NASDAQ100_VERSION}.json"
 )
 
-_MARKET_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
+_MARKET_TIMEFRAMES = {"1m", "5m", "15m", "1h", "4h", "1d"}
 _DEFAULT_HISTORY_DAYS = {
     # Keep these windows small: the candles endpoint is for UI charts, not full-history backfills.
+    "1m": 1,
+    "5m": 3,
     "15m": 30,
     "1h": 180,
     "4h": 365,
@@ -38,6 +41,7 @@ _DEFAULT_HISTORY_DAYS = {
 _CANDLES_CACHE_TTL_SECONDS = 120.0
 _CANDLES_CACHE_LOCK = threading.Lock()
 _CANDLES_CACHE: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
+_OHLCV_REPO = MarketOhlcvRepository()
 
 
 @router.get("/health")
@@ -193,7 +197,11 @@ def _ui_default_since_str(timeframe: str, limit: int) -> str:
     base_days = int(_DEFAULT_HISTORY_DAYS.get(tf, 30))
 
     # Approximate days needed to cover `limit` candles.
-    if tf == "15m":
+    if tf == "1m":
+        days_needed = max(1, int(limit / 1440) + 1)
+    elif tf == "5m":
+        days_needed = max(1, int(limit / 288) + 1)
+    elif tf == "15m":
         days_needed = max(3, int(limit / 96) + 3)  # 96 candles/day
     elif tf == "1h":
         days_needed = max(7, int(limit / 24) + 7)
@@ -268,7 +276,7 @@ def _write_candles_cache(symbol: str, timeframe: str, limit: int, payload: Dict[
 @router.get("/market/candles")
 async def get_market_candles(
     symbol: str = Query(..., description="Ticker or pair (e.g. NVDA or BTC/USDT)"),
-    timeframe: str = Query("1d", description="One of: 15m, 1h, 4h, 1d"),
+    timeframe: str = Query("1d", description="One of: 1m, 5m, 15m, 1h, 4h, 1d"),
     limit: int = Query(200, ge=1, le=2000, description="Max candles to return"),
 ):
     raw_symbol = str(symbol or "").strip()
@@ -281,6 +289,25 @@ async def get_market_candles(
         cached = _read_candles_cache(raw_symbol, tf, limit)
         if cached is not None:
             return cached
+
+        if _OHLCV_REPO.enabled:
+            try:
+                persisted = _OHLCV_REPO.read_recent_candles(raw_symbol, tf, limit)
+            except Exception:
+                persisted = []
+            if persisted:
+                payload = {
+                    "symbol": raw_symbol,
+                    "asset_type": asset_type,
+                    "timeframe": tf,
+                    "data_source": "timescaledb",
+                    "limit": limit,
+                    "count": len(persisted),
+                    "candles": persisted,
+                }
+                _write_candles_cache(raw_symbol, tf, limit, payload)
+                return payload
+
         since_str = _ui_default_since_str(tf, limit=limit)
 
         data_source = ""
@@ -323,6 +350,11 @@ async def get_market_candles(
             "count": len(candles),
             "candles": candles,
         }
+        if _OHLCV_REPO.enabled and candles:
+            try:
+                _OHLCV_REPO.write_candles(raw_symbol, tf, data_source, df)
+            except Exception:
+                pass
         _write_candles_cache(raw_symbol, tf, limit, payload)
         return payload
     except ValueError as exc:

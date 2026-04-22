@@ -1,5 +1,6 @@
 # file: backend/app/database.py
 import os
+import logging
 import sys
 from pathlib import Path
 
@@ -57,6 +58,7 @@ if DB_URL.startswith("sqlite:"):
     engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 else:
     engine = create_engine(DB_URL, pool_pre_ping=True)
+logger = logging.getLogger(__name__)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -281,6 +283,93 @@ def ensure_runtime_schema_migrations() -> None:
                 CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at
                 ON admin_action_logs (created_at)
                 """))
+
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS market_ohlcv (
+                        symbol TEXT NOT NULL,
+                        timeframe TEXT NOT NULL,
+                        candle_time TIMESTAMPTZ NOT NULL,
+                        open NUMERIC NOT NULL,
+                        high NUMERIC NOT NULL,
+                        low NUMERIC NOT NULL,
+                        close NUMERIC NOT NULL,
+                        volume NUMERIC NOT NULL,
+                        source TEXT NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        PRIMARY KEY (symbol, timeframe, candle_time, source)
+                    )
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_market_ohlcv_symbol_timeframe_candle_time
+                    ON market_ohlcv (symbol, timeframe, candle_time)
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_time
+                    ON market_ohlcv (symbol, timeframe, candle_time DESC)
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_source
+                    ON market_ohlcv (symbol, timeframe, source)
+                    """
+                )
+            )
+
+            # Best effort Timescale migration path.
+            try:
+                conn.execute(
+                    text(
+                        "SELECT create_hypertable('market_ohlcv', 'candle_time', if_not_exists => TRUE)"
+                    )
+                )
+            except Exception as exc:
+                logger.warning("Could not create hypertable market_ohlcv: %s", exc)
+
+            try:
+                conn.execute(
+                    text(
+                        "SELECT add_retention_policy('market_ohlcv', INTERVAL '2 years', if_not_exists => TRUE)"
+                    )
+                )
+            except Exception as exc:
+                logger.warning("Could not apply timescale retention policy for market_ohlcv: %s", exc)
+
+            try:
+                conn.execute(
+                    text(
+                        "ALTER TABLE market_ohlcv SET (timescaledb.compress, "
+                        "timescaledb.compress_orderby = 'candle_time DESC', "
+                        "timescaledb.compress_segmentby = 'symbol, timeframe, source')"
+                    )
+                )
+            except Exception as exc:
+                logger.warning("Could not set compression settings for market_ohlcv: %s", exc)
+
+            try:
+                conn.execute(
+                    text(
+                        "SELECT add_compression_policy('market_ohlcv', INTERVAL '30 days', if_not_exists => TRUE)"
+                    )
+                )
+            except Exception as exc:
+                logger.warning("Could not apply timescale compression policy for market_ohlcv: %s", exc)
+        except Exception as exc:
+            logger.warning("Timescale configuration for market_ohlcv failed, keeping table as regular table: %s", exc)
 
 
 def get_db():
