@@ -448,19 +448,19 @@ async def test_public_accessors_use_singleton_connector(monkeypatch):
             return await self._delegate.get_top_pairs()
 
     async def get_status(self):
-            return await self._delegate.get_status()
+        return await self._delegate.get_status()
 
-        async def get_latest_prices(self, symbols=None):
-            return await self._delegate.get_latest_prices(symbols)
+    async def get_latest_prices(self, symbols=None):
+        return await self._delegate.get_latest_prices(symbols)
 
-        async def start(self):
-            self.started = True
+    async def start(self):
+        self.started = True
 
-        async def stop(self):
-            self.stopped = True
+    async def stop(self):
+        self.stopped = True
 
-        async def get_connector_status(self, *args):
-            return await self.get_status(*args)
+    async def get_connector_status(self, *args):
+        return await self.get_status(*args)
 
     dummy = _DummyConnector(c)
     monkeypatch.setattr(connector, "_connector", dummy)
