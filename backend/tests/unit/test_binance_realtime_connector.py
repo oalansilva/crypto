@@ -332,7 +332,7 @@ async def test_ws_loop_and_consume_stream_pathways(monkeypatch):
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-    async def fake_connect(*_a, **_k):
+    def fake_connect(*_a, **_k):
         connection_calls.append("connect")
         return _FakeConnect()
 
@@ -352,8 +352,10 @@ async def test_ws_loop_and_consume_stream_pathways(monkeypatch):
     await c._ws_loop()
     assert connection_calls == ["connect"]
     assert c._pairs_changed.is_set()
+    c._pairs_changed.clear()
+    c._shutdown.clear()
 
-    async def fake_connect_error(*_a, **_k):
+    def fake_connect_error(*_a, **_k):
         raise RuntimeError("ws failed")
 
     reconnect_calls = {"count": 0}
