@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const mockedSpecId = '07-strategy-lab-langgraph-v2'
+const mockedSpecId = '07-market-data-streaming-v2'
 
 test('Regression: /openspec list and detail pages still render', async ({ page }) => {
   await page.route('**/api/openspec/specs', async (route) => {

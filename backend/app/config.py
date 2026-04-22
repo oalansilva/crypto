@@ -25,6 +25,20 @@ class Settings(BaseSettings):
     # Main application DB. If omitted, runtime can fall back to workflow DB.
     database_url: str | None = None
 
+    # Binance market connector
+    binance_base_url: str = "https://api.binance.com"
+    binance_ws_base_url: str = "wss://stream.binance.com:9443"
+    binance_top_pairs_limit: int = 100
+    binance_top_pairs_refresh_seconds: int = 60
+    binance_top_pairs_ttl_seconds: int = 180
+    binance_price_ttl_seconds: float = 10.0
+    binance_ws_heartbeat_timeout_seconds: float = 20.0
+    binance_ws_reconnect_base_seconds: float = 1.0
+    binance_ws_reconnect_max_seconds: float = 30.0
+    binance_rate_limit_per_minute: int = 1200
+    binance_request_timeout_seconds: float = 8.0
+    binance_rest_max_retries: int = 3
+
     # Workflow DB (centralize-workflow-state-db)
     # NOTE: We declare these explicitly so values from backend/.env are available
     # through Settings even if they are not exported into os.environ.
