@@ -276,10 +276,14 @@ export const MonitorStatusTab: React.FC = () => {
         void persistPreference(symbol, { price_timeframe: nextTimeframe });
     };
 
+    const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
+        const preference = getPreference(opportunity.symbol).price_timeframe;
+        const requested = toChartTimeframe(preference || opportunity.timeframe);
+        return getOpportunityAssetType(opportunity) === 'stock' ? '1d' : requested;
+    };
+
     const handleOpenChart = async (opportunity: Opportunity) => {
-        const initialTimeframe = toChartTimeframe(
-            getPreference(opportunity.symbol).price_timeframe || opportunity.timeframe,
-        );
+        const initialTimeframe = resolveChartTimeframe(opportunity);
 
         setOpeningChartSymbol(opportunity.symbol);
 

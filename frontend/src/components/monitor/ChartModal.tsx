@@ -13,8 +13,8 @@ import {
 } from 'lightweight-charts';
 
 import type { MarketCandle } from './MiniCandlesChart';
-import type { Opportunity, OpportunitySignalHistoryItem } from './types';
-import { CHART_TIMEFRAMES, fetchMarketCandles, type ChartTimeframe } from './chartData';
+import { getOpportunityAssetType, type Opportunity, type OpportunitySignalHistoryItem } from './types';
+import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { resolveOpportunitySignal } from './signalResolution';
 
 interface ChartModalProps {
@@ -25,13 +25,18 @@ interface ChartModalProps {
     onClose: () => void;
 }
 
-type IndicatorKey = 'emaShort' | 'smaMedium' | 'smaLong' | 'rsi';
+type IndicatorKey = 'emaShort' | 'smaMedium' | 'smaLong';
+type TimeframePickerSource = 'algorithmic' | 'manual';
+type TimeframePickerItem = {
+    value: ChartTimeframe;
+    label: string;
+    source: TimeframePickerSource;
+};
 
 interface IndicatorState {
     emaShort: boolean;
     smaMedium: boolean;
     smaLong: boolean;
-    rsi: boolean;
 }
 
 interface TooltipSnapshot {
@@ -39,14 +44,12 @@ interface TooltipSnapshot {
     emaShort?: number;
     smaMedium?: number;
     smaLong?: number;
-    rsi?: number;
 }
 
 const DEFAULT_INDICATORS: IndicatorState = {
     emaShort: true,
     smaMedium: true,
     smaLong: true,
-    rsi: true,
 };
 const LOGICAL_RANGE_PADDING = 8;
 const MIN_VISIBLE_BARS = 12;
@@ -258,47 +261,6 @@ function calculateEma(candles: MarketCandle[], period: number): LineData<Time>[]
     return result;
 }
 
-function calculateRsi(candles: MarketCandle[], period: number): LineData<Time>[] {
-    if (candles.length <= period) {
-        return [];
-    }
-
-    let gains = 0;
-    let losses = 0;
-
-    for (let index = 1; index <= period; index += 1) {
-        const delta = candles[index].close - candles[index - 1].close;
-        gains += Math.max(delta, 0);
-        losses += Math.max(-delta, 0);
-    }
-
-    let avgGain = gains / period;
-    let avgLoss = losses / period;
-    const result: LineData<Time>[] = [];
-
-    const firstRs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    result.push({
-        time: toUtcTimestamp(candles[period].timestamp_utc),
-        value: 100 - 100 / (1 + firstRs),
-    });
-
-    for (let index = period + 1; index < candles.length; index += 1) {
-        const delta = candles[index].close - candles[index - 1].close;
-        const gain = Math.max(delta, 0);
-        const loss = Math.max(-delta, 0);
-        avgGain = ((avgGain * (period - 1)) + gain) / period;
-        avgLoss = ((avgLoss * (period - 1)) + loss) / period;
-        const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-
-        result.push({
-            time: toUtcTimestamp(candles[index].timestamp_utc),
-            value: 100 - 100 / (1 + rs),
-        });
-    }
-
-    return result;
-}
-
 export const ChartModal: React.FC<ChartModalProps> = ({
     symbol,
     opportunity,
@@ -306,7 +268,44 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     initialTimeframe,
     onClose,
 }) => {
-    const [timeframe, setTimeframe] = React.useState<ChartTimeframe>(initialTimeframe);
+    const isStockAsset = React.useMemo(
+        () => getOpportunityAssetType(opportunity) === 'stock',
+        [opportunity],
+    );
+    const strategyTimeframe = React.useMemo(
+        () => toChartTimeframe(opportunity.timeframe),
+        [opportunity.timeframe],
+    );
+    const timeframeOptions = React.useMemo(() => {
+        const options: TimeframePickerItem[] = [];
+        const addOption = (value: ChartTimeframe, label: string, source: TimeframePickerSource) => {
+            if (!options.some((item) => item.value === value)) {
+                options.push({ value, label, source });
+            }
+        };
+
+        addOption(strategyTimeframe, `Algorítmica (${strategyTimeframe.toUpperCase()})`, 'algorithmic');
+        CHART_TIMEFRAMES.forEach((item) => {
+            addOption(item, item, 'manual');
+        });
+
+        if (isStockAsset) {
+            return options.filter((item) => item.value === '1d');
+        }
+        return options;
+    }, [isStockAsset, strategyTimeframe]);
+    const supportedTimeframes = React.useMemo(
+        () => timeframeOptions.map((item) => item.value),
+        [timeframeOptions],
+    );
+    const defaultRequestedTimeframe = isStockAsset ? '1d' : initialTimeframe;
+    const resolvedInitialTimeframe = React.useMemo(() => (
+        supportedTimeframes.includes(defaultRequestedTimeframe)
+            ? defaultRequestedTimeframe
+            : supportedTimeframes[0] ?? '1d'
+    ), [defaultRequestedTimeframe, supportedTimeframes]);
+
+    const [timeframe, setTimeframe] = React.useState<ChartTimeframe>(resolvedInitialTimeframe);
     const [candles, setCandles] = React.useState<MarketCandle[]>(initialCandles);
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
@@ -315,12 +314,16 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null);
 
     const cacheRef = React.useRef<Map<string, MarketCandle[]>>(new Map([
-        [`${symbol}|${initialTimeframe}`, initialCandles],
+        [`${symbol}|${resolvedInitialTimeframe}`, initialCandles],
     ]));
     const mainChartRef = React.useRef<HTMLDivElement>(null);
-    const rsiChartRef = React.useRef<HTMLDivElement>(null);
     const mainChartApiRef = React.useRef<IChartApi | null>(null);
-    const rsiChartApiRef = React.useRef<IChartApi | null>(null);
+
+    React.useEffect(() => {
+        if (!supportedTimeframes.includes(timeframe)) {
+            setTimeframe(supportedTimeframes[0] ?? resolvedInitialTimeframe);
+        }
+    }, [supportedTimeframes, timeframe, resolvedInitialTimeframe]);
 
     const sortedCandles = React.useMemo(
         () => [...candles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
@@ -330,7 +333,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         emaShort: getNumericParameter(opportunity.parameters, ['ema_short', 'emaShort', 'sma_short', 'smaShort'], 9),
         smaMedium: getNumericParameter(opportunity.parameters, ['sma_medium', 'smaMedium', 'ema_medium', 'emaMedium'], 21),
         smaLong: getNumericParameter(opportunity.parameters, ['sma_long', 'smaLong', 'ema_long', 'emaLong'], 50),
-        rsi: getNumericParameter(opportunity.parameters, ['rsi_length', 'rsiLength', 'rsi_period', 'rsiPeriod'], 14),
     }), [opportunity.parameters]);
     const maColors = React.useMemo(() => getMAColorsByPeriod({
         emaShort: indicatorPeriods.emaShort,
@@ -341,7 +343,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         emaShort: `EMA ${indicatorPeriods.emaShort}`,
         smaMedium: `SMA ${indicatorPeriods.smaMedium}`,
         smaLong: `SMA ${indicatorPeriods.smaLong}`,
-        rsi: `RSI ${indicatorPeriods.rsi}`,
     }), [indicatorPeriods]);
 
     const candlestickData = React.useMemo(() => (
@@ -374,16 +375,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => calculateSma(sortedCandles, indicatorPeriods.smaLong),
         [indicatorPeriods.smaLong, sortedCandles],
     );
-    const rsiData = React.useMemo(
-        () => calculateRsi(sortedCandles, indicatorPeriods.rsi),
-        [indicatorPeriods.rsi, sortedCandles],
-    );
 
     const tooltipData = React.useMemo(() => {
         const emaShortMap = new Map<number, number>();
         const smaMediumMap = new Map<number, number>();
         const smaLongMap = new Map<number, number>();
-        const rsiMap = new Map<number, number>();
 
         emaShortData.forEach((point) => {
             if (typeof point.time === 'number') {
@@ -400,11 +396,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 smaLongMap.set(point.time, point.value);
             }
         });
-        rsiData.forEach((point) => {
-            if (typeof point.time === 'number') {
-                rsiMap.set(point.time, point.value);
-            }
-        });
 
         return new Map<number, TooltipSnapshot>(
             sortedCandles.map((candle) => {
@@ -416,12 +407,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                         emaShort: emaShortMap.get(time),
                         smaMedium: smaMediumMap.get(time),
                         smaLong: smaLongMap.get(time),
-                        rsi: rsiMap.get(time),
                     },
                 ];
             }),
         );
-    }, [emaShortData, rsiData, smaLongData, smaMediumData, sortedCandles]);
+    }, [emaShortData, smaLongData, smaMediumData, sortedCandles]);
 
     const latestCandle = sortedCandles[sortedCandles.length - 1] ?? null;
     const latestSnapshot = React.useMemo(
@@ -502,12 +492,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
     const resetZoom = () => {
         const mainChart = mainChartApiRef.current;
-        const rsiChart = rsiChartApiRef.current;
-        if (!mainChart || !rsiChart) {
+        if (!mainChart) {
             return;
         }
         mainChart.timeScale().fitContent();
-        rsiChart.timeScale().fitContent();
         syncVisibleBars(mainChart.timeScale().getVisibleLogicalRange());
     };
 
@@ -574,7 +562,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     }, [symbol, timeframe]);
 
     React.useEffect(() => {
-        if (!mainChartRef.current || !rsiChartRef.current || candlestickData.length === 0) {
+        if (!mainChartRef.current || candlestickData.length === 0) {
             return undefined;
         }
 
@@ -616,46 +604,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 axisDoubleClickReset: true,
             },
         });
-
-        const rsiChart = createChart(rsiChartRef.current, {
-            autoSize: true,
-            layout: {
-                background: { type: ColorType.Solid, color: '#0d1117' },
-                textColor: '#8b949e',
-            },
-            grid: {
-                vertLines: { color: 'rgba(48, 54, 61, 0.35)' },
-                horzLines: { color: 'rgba(48, 54, 61, 0.35)' },
-            },
-            rightPriceScale: {
-                borderColor: 'rgba(48, 54, 61, 0.85)',
-                scaleMargins: { top: 0.15, bottom: 0.15 },
-            },
-            timeScale: {
-                borderColor: 'rgba(48, 54, 61, 0.85)',
-                timeVisible: true,
-                secondsVisible: false,
-            },
-            crosshair: {
-                mode: CrosshairMode.Normal,
-                vertLine: { color: 'rgba(210, 153, 34, 0.35)', width: 1, labelBackgroundColor: '#161b22' },
-                horzLine: { color: 'rgba(210, 153, 34, 0.35)', width: 1, labelBackgroundColor: '#161b22' },
-            },
-            handleScroll: {
-                mouseWheel: true,
-                pressedMouseMove: true,
-                horzTouchDrag: true,
-                vertTouchDrag: true,
-            },
-            handleScale: {
-                mouseWheel: true,
-                pinch: true,
-                axisPressedMouseMove: true,
-                axisDoubleClickReset: true,
-            },
-        });
         mainChartApiRef.current = mainChart;
-        rsiChartApiRef.current = rsiChart;
 
         const candleSeries = mainChart.addCandlestickSeries({
             upColor: '#22c55e',
@@ -699,28 +648,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             lastValueVisible: false,
         });
 
-        const rsiSeries = rsiChart.addLineSeries({
-            color: '#a371f7',
-            lineWidth: 2,
-            visible: visibleIndicators.rsi,
-            priceLineVisible: false,
-        });
-
-        const rsiUpper = rsiChart.addLineSeries({
-            color: 'rgba(248, 81, 73, 0.4)',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        });
-        const rsiLower = rsiChart.addLineSeries({
-            color: 'rgba(34, 197, 94, 0.4)',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        });
-
         candleSeries.setData(candlestickData);
         candleSeries.setMarkers(
             historicalSignalMarkers.length > 0
@@ -739,20 +666,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         emaShortSeries.setData(emaShortData);
         smaMediumSeries.setData(smaMediumData);
         smaLongSeries.setData(smaLongData);
-        rsiSeries.setData(rsiData);
-
-        if (rsiData.length > 0) {
-            const firstRsiTime = rsiData[0].time;
-            const lastRsiTime = rsiData[rsiData.length - 1].time;
-            rsiUpper.setData([
-                { time: firstRsiTime, value: 70 },
-                { time: lastRsiTime, value: 70 },
-            ]);
-            rsiLower.setData([
-                { time: firstRsiTime, value: 30 },
-                { time: lastRsiTime, value: 30 },
-            ]);
-        }
 
         if (opportunity.entry_price !== null && opportunity.entry_price !== undefined) {
             candleSeries.createPriceLine({
@@ -776,24 +689,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         }
 
         mainChart.timeScale().fitContent();
-        rsiChart.timeScale().fitContent();
-
-        let syncing = false;
-        const syncRange = (source: IChartApi, target: IChartApi) => {
-            const handler = (range: LogicalRange | null) => {
-                if (!range || syncing) {
-                    return;
-                }
-                syncing = true;
-                target.timeScale().setVisibleLogicalRange(range);
-                syncing = false;
-            };
-            source.timeScale().subscribeVisibleLogicalRangeChange(handler);
-            return handler;
-        };
-
-        const mainRangeHandler = syncRange(mainChart, rsiChart);
-        const rsiRangeHandler = syncRange(rsiChart, mainChart);
         const onVisibleRangeChange = (range: LogicalRange | null) => {
             syncVisibleBars(range);
         };
@@ -811,24 +706,17 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
         const onResize = () => {
             mainChart.applyOptions({ width: mainChartRef.current?.clientWidth ?? 0 });
-            rsiChart.applyOptions({ width: rsiChartRef.current?.clientWidth ?? 0 });
         };
         window.addEventListener('resize', onResize);
 
         return () => {
             window.removeEventListener('resize', onResize);
             mainChart.unsubscribeCrosshairMove(onCrosshairMove);
-            mainChart.timeScale().unsubscribeVisibleLogicalRangeChange(mainRangeHandler);
             mainChart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange);
-            rsiChart.timeScale().unsubscribeVisibleLogicalRangeChange(rsiRangeHandler);
             if (mainChartApiRef.current === mainChart) {
                 mainChartApiRef.current = null;
             }
-            if (rsiChartApiRef.current === rsiChart) {
-                rsiChartApiRef.current = null;
-            }
             mainChart.remove();
-            rsiChart.remove();
         };
     }, [
         candlestickData,
@@ -845,13 +733,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         resolvedSignal.visual.markerColor,
         resolvedSignal.visual.markerPosition,
         resolvedSignal.visual.markerShape,
-        rsiData,
         signalLabel,
         smaLongData,
         smaMediumData,
         tooltipData,
         visibleIndicators.emaShort,
-        visibleIndicators.rsi,
         visibleIndicators.smaLong,
         visibleIndicators.smaMedium,
         volumeData,
@@ -885,22 +771,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             ),
             color: maColors.smaLong,
         },
-        {
-            label: indicatorLabels.rsi,
-            value: getIndicatorValue(
-                opportunity.indicator_values,
-                [`rsi_${indicatorPeriods.rsi}`, `rsi${indicatorPeriods.rsi}`, 'rsi_14', 'rsi14'],
-                latestSnapshot?.rsi,
-            ),
-            color: '#a371f7',
-        },
     ];
 
     const indicatorToggleStyles: Record<IndicatorKey, string> = React.useMemo(() => ({
         emaShort: maColors.emaShort,
         smaMedium: maColors.smaMedium,
         smaLong: maColors.smaLong,
-        rsi: '#c297ff',
     }), [maColors.emaShort, maColors.smaMedium, maColors.smaLong]);
 
     return (
@@ -914,7 +790,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             data-testid="chart-modal-backdrop"
         >
             <div
-                className="mx-auto flex h-full max-h-[860px] w-full max-w-[1440px] flex-col overflow-hidden rounded-2xl border border-[#30363d] bg-[#0d1117] shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
+                className="mx-auto flex h-full max-h-[900px] w-full max-w-[1600px] flex-col overflow-hidden rounded-2xl border border-[#30363d] bg-[#0d1117] shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="chart-modal-title"
@@ -957,22 +833,23 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     <div className="flex min-h-0 flex-1 flex-col border-b border-[#30363d] lg:border-b-0 lg:border-r">
                         <div className="flex flex-wrap items-center gap-2 border-b border-[#30363d] px-5 py-3">
                             <div className="flex items-center gap-2" role="group" aria-label="Chart timeframe selector">
-                                {CHART_TIMEFRAMES.map((item) => {
-                                    const active = item === timeframe;
+                                {timeframeOptions.map((item) => {
+                                    const active = item.value === timeframe;
                                     return (
                                         <button
-                                            key={item}
+                                            key={item.value}
                                             type="button"
                                             className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
                                                 active
                                                     ? 'border-[#388bfd] bg-[#388bfd]/20 text-[#e6edf3]'
                                                     : 'border-[#30363d] bg-[#161b22] text-[#8b949e] hover:text-[#e6edf3]'
                                             }`}
-                                            onClick={() => setTimeframe(item)}
+                                            onClick={() => setTimeframe(item.value)}
                                             aria-pressed={active}
-                                            data-testid={`chart-timeframe-${item}`}
+                                            title={item.source === 'algorithmic' ? 'Algorithmic timeframe' : 'Manual timeframe'}
+                                            data-testid={`chart-timeframe-${item.value}`}
                                         >
-                                            {item}
+                                            {item.label}
                                         </button>
                                     );
                                 })}
@@ -1034,7 +911,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                     { key: 'emaShort', label: indicatorLabels.emaShort },
                                     { key: 'smaMedium', label: indicatorLabels.smaMedium },
                                     { key: 'smaLong', label: indicatorLabels.smaLong },
-                                    { key: 'rsi', label: indicatorLabels.rsi },
                                 ].map((indicator) => {
                                     const active = visibleIndicators[indicator.key as IndicatorKey];
                                     return (
@@ -1068,14 +944,14 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                 </div>
                             ) : null}
 
-                            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+                            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
                                 <div className="min-w-0 space-y-3">
                                     <div
                                         className="relative rounded-2xl border border-[#30363d] bg-[#0b1118] p-2"
                                         onWheel={handleChartWheel}
                                         data-testid="chart-modal-main-chart-shell"
                                     >
-                                        <div ref={mainChartRef} className="h-[420px] w-full" data-testid="chart-modal-main-chart" />
+                                        <div ref={mainChartRef} className="h-[540px] w-full" data-testid="chart-modal-main-chart" />
                                         <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-[#79c0ff]/25 bg-[#0d1117]/86 px-3 py-1 text-[11px] font-medium text-[#c9e6ff]">
                                             Scroll to zoom
                                         </div>
@@ -1084,13 +960,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                                 Loading timeframe...
                                             </div>
                                         ) : null}
-                                    </div>
-                                    <div
-                                        className="rounded-2xl border border-[#30363d] bg-[#0b1118] p-2"
-                                        onWheel={handleChartWheel}
-                                        data-testid="chart-modal-rsi-chart-shell"
-                                    >
-                                        <div ref={rsiChartRef} className="h-[140px] w-full" data-testid="chart-modal-rsi-chart" />
                                     </div>
                                 </div>
 
@@ -1278,7 +1147,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.emaShort }} /> {indicatorLabels.emaShort}</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaMedium }} /> {indicatorLabels.smaMedium}</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaLong }} /> {indicatorLabels.smaLong}</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#a371f7]" /> {indicatorLabels.rsi}</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#3fb950]" /> Buy</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Sell</span>
                             </div>
