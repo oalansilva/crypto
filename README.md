@@ -147,7 +147,6 @@ make db-backup
 make celery-logs
 ```
 
-Queue and retry behavior is documented in [docs/async-processing.md](/root/.openclaw/workspace/crypto/docs/async-processing.md:1).
 
 ### Start/Stop Scripts (Ubuntu)
 
@@ -252,10 +251,7 @@ Contribution guide:
 `CONTRIBUTING.md`
 
 Branch protection checklist:
-`docs/branch-protection.md`
-
-Staging deploy setup:
-`docs/staging-deploy.md`
+consulte a configuração de proteção no repositório Git.
 
 ### Building for Production
 

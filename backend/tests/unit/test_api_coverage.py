@@ -213,6 +213,19 @@ def test_api_internal_helpers():
         assert "Unsupported timeframe '2h' for crypto" in str(exc)
     else:
         raise AssertionError("Expected ValueError")
+
+    one_minute = api._ui_default_since_str("1m", limit=3_000)
+    five_minute = api._ui_default_since_str("5m", limit=2_000)
+    fifteen_minute = api._ui_default_since_str("15m", limit=10_000)
+    one_hour = api._ui_default_since_str("1h", limit=50_000)
+    four_hour = api._ui_default_since_str("4h", limit=200_000)
+
+    assert (datetime.now(timezone.utc) - datetime.fromisoformat(one_minute)).days == 1
+    assert (datetime.now(timezone.utc) - datetime.fromisoformat(five_minute)).days in {3, 4}
+    assert (datetime.now(timezone.utc) - datetime.fromisoformat(fifteen_minute)).days == 30
+    assert (datetime.now(timezone.utc) - datetime.fromisoformat(one_hour)).days >= 7
+    assert (datetime.now(timezone.utc) - datetime.fromisoformat(four_hour)).days >= 30
+
     since = api._ui_default_since_str("1d", limit=60)
     since_dt = datetime.fromisoformat(since)
     now = datetime.now(timezone.utc)
@@ -233,3 +246,12 @@ def test_api_internal_helpers():
         assert "missing timestamp_utc" in str(exc)
     else:
         raise AssertionError("Expected ValueError")
+
+
+def test_api_market_candles_metrics_route():
+    client = TestClient(_build_api_app())
+    response = client.get("/api/market/candles/metrics")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] in {"market_ohlcv", "disabled"}
+    assert payload["metrics"]["ingest"]["rows_received"] >= 0

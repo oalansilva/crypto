@@ -194,6 +194,10 @@ function getBugCardClass(selected: boolean, hasBugs?: boolean, isBugCard?: boole
     : 'border-red-400/40 bg-red-950/20 hover:bg-red-950/30'
 }
 
+function sameImageData(left?: CardImage[] | null, right?: CardImage[] | null) {
+  return JSON.stringify(left ?? []) === JSON.stringify(right ?? [])
+}
+
 function TaskTree({
   item,
   depth,
@@ -1578,10 +1582,25 @@ export default function KanbanPage() {
                       <div className="text-xs text-zinc-500">Editar metadados preserva id, comments e gates.</div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
-                          onClick={() => updateSelectedChange.mutate({
-                            changeId: selected.id,
-                            payload: { title: editTitle.trim(), description: editDescription.trim(), image_data: editImages },
-                          })}
+                          onClick={() => {
+                            const payload: {
+                              title: string
+                              description: string
+                              image_data?: CardImage[]
+                            } = {
+                              title: editTitle.trim(),
+                              description: editDescription.trim(),
+                            }
+
+                            if (!sameImageData(editImages, selected?.image_data)) {
+                              payload.image_data = editImages
+                            }
+
+                            updateSelectedChange.mutate({
+                              changeId: selected.id,
+                              payload,
+                            })
+                          }}
                           disabled={updateSelectedChange.isPending || !editTitle.trim()}
                         >
                           {updateSelectedChange.isPending ? 'Salvando…' : 'Salvar'}
@@ -1601,12 +1620,12 @@ export default function KanbanPage() {
                           if (!window.confirm(`Cancelar o card ${selected.id}? O histórico será preservado.`)) return
                           updateSelectedChange.mutate({
                             changeId: selected.id,
-                            payload: { status: 'Canceled' },
+                            payload: { status: 'Archived', cancel_archive: true },
                           })
                         }}
-                        disabled={updateSelectedChange.isPending || selected.column === 'Canceled'}
+                        disabled={updateSelectedChange.isPending || selected.column === 'Archived'}
                       >
-                        {selected.column === 'Canceled' ? 'Já cancelado' : 'Cancelar card'}
+                        {selected.column === 'Archived' ? 'Já cancelado' : 'Cancelar card'}
                       </Button>
                     </div>
 

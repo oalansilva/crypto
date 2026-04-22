@@ -7,14 +7,13 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
 - **Fluxo de produção:** implemente e valide diretamente em `develop`; para liberar produção, abra PR `develop -> main`.
 - **Regra de fluxo:** use somente `develop` e `main`; sem criação de branches por tasks usuais.
-- **Referência operacional:** `docs/workflow-criar-funcionalidade.md`.
 - OpenSpec é a camada de especificação técnico (artifacts).
-- Workflow DB e `docs/coordination/*.md` são fontes de operação e evidência.
+- Workflow DB e OpenSpec são fontes de operação e evidência.
 
 ## Regras de operação
 
 - Fluxo único (sem divisão por agentes): você conduz descoberta, planejamento, implementação, validação e fechamento.
-- Registre em `docs/workflow-criar-funcionalidade.md` e no PR:
+- Registre em `openspec/changes/<change>/` e no PR:
   - status atual
   - decisões de escopo
   - evidências de teste/PR
@@ -59,7 +58,7 @@ npm --prefix frontend run build
 - Visão geral: `README.md`
 - Backend: `backend/README.md`
 - Frontend: `frontend/README.md`
-- Workflow OpenSpec/Codex: `docs/os_codex_workflow.md`
+- Workflow OpenSpec/Codex: `openspec/changes/` e `openspec/specs/`
 
 ## Convenções de UI/UX (Lab)
 
@@ -75,7 +74,7 @@ O time é composto por 5 agentes, cada um com papel definido:
 
 Orquestra o time, coordena workflow, delegation, status reports, prazos.
 - Mantém conversa com Alan curta/gerencial
-- Consulta workflow DB e `docs/coordination/*.md` como fonte principal
+- Consulte workflow DB e OpenSpec como fonte principal.
 - Move status de mudança no workflow, celebra marcos, identifica riscos proativamente
 - Fornece próximo passo após completar tarefa
 - Pede clarifying questions quando necessário
@@ -122,21 +121,20 @@ Valida + análise profunda de bugs.
 ### Regras operacionais dos agentes
 - O **workflow DB** é a fonte operacional de verdade.
 - **OpenSpec** define artefatos e a trilha técnica.
-- **`docs/coordination/*.md`** é o registro operacional vivo de handoff, evidências e status textual.
-- `docs/coordination/<change>.md` é o canal padrão entre agentes, com menções `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`.
+- `openspec/changes/<change>/` é o canal padrão entre agentes, com menções `@PO`, `@DESIGN`, `@DEV`, `@QA`, `@Alan`.
 - Nenhum agente (PO/DESIGN/DEV/QA) pode considerar sua etapa concluída só com artefatos; é obrigatório atualizar o runtime e registrar handoff no mesmo turno.
 - Toda etapa só fecha de verdade com **runtime + handoff registrado**; se um dos dois faltar, o próximo turno deve reconciliar antes de seguir.
-- O contrato operacional curto (papéis, handoff, DoD por status, bloqueios) fica consolidado em `docs/multiagent-operating-playbook.md`.
+- O contrato operacional curto (papéis, handoff, DoD por status, bloqueios) fica consolidado no fluxo operacional do projeto.
 - Quando Alan homologar uma change em chat, o orquestrador deve fechar e arquivar no mesmo turno (runtime + OpenSpec + handoff), sem pendência operacional.
 - `change` é o container raiz da entrega; `story` é a fatia padrão de execução quando houver ownership/dependência própria; `bug` representa defeito real. Não criar cards separados para micro-passos sem necessidade operacional.
 - Múltiplas stories/agentes podem trabalhar em paralelo, desde que respeitem **locks**, **dependências** e **WIP**.
 - Regra prática de WIP: por padrão, no máximo **2 stories ativas por change** e **1 story ativa por agent run**.
 - **Regra de auto-trigger:** Quando o status da change avança no runtime, o agente responsável pela nova etapa deve ser acionado. Ex: status vira PO → acionar PO; vira DEV → acionar DEV; vira QA → acionar QA.
-- **Regra de validação QA:** Antes de enviar para homologação Alan, QA deve rodar o checklist de validação UI (`docs/qa-ui-checklist.md`) e testes E2E (`frontend/tests/*.spec.ts`).
+- **Regra de validação QA:** Antes de enviar para homologação Alan, QA deve rodar testes E2E (`frontend/tests/*.spec.ts`) e revisar evidências registradas no fluxo operacional.
 - Lock padrão fica no nível da **story**; bug filho herda esse lock salvo reassignment explícito.
 - Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
-- Antes de promover para `QA`, `Homologation` ou `Archived`, reconciliar runtime + `docs/coordination/<change>.md` + `tasks.md` + handoff; para archive, preferir `scripts/archive_change_safe.sh`.
+- Antes de promover para `QA`, `Homologation` ou `Archived`, reconciliar runtime + `openspec/changes/<change>/tasks.md` + handoff.
 
 ## Engenharia de prompt
 
-Se for necessário mudar o tom de um agente (ex: deixar o design mais exploratório ou o DEV mais cauteloso), primeiro atualiza este arquivo com o novo prompt/personalidade e registra no `docs/coordination/<change>.md` do fluxo ativo. Nunca altere agentes apenas via jobs sem documentar aqui.
+Se for necessário mudar o tom de um agente (ex: deixar o design mais exploratório ou o DEV mais cauteloso), primeiro atualiza este arquivo com o novo prompt/personalidade e registra no `openspec/changes/<change>/` do fluxo ativo. Nunca altere agentes apenas via jobs sem documentar aqui.

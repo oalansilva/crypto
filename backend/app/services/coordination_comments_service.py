@@ -6,7 +6,7 @@ Storage:
 Rationale:
 - Single-tenant MVP; lightweight; no DB migrations required.
 
-Comment policy (v1, locked in docs/coordination/kanban-visual-coordination.md):
+Comment policy:
 - Append-only: no edit/delete.
 - Retention: indefinite (including archived changes).
 - Fields: id, change, author, created_at (UTC ISO-8601), body (plain text, max 2000 chars).
@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
 
-from app.services.coordination_service import coordination_dir, project_root
+from app.services.coordination_service import coordination_dir, project_root, resolve_change_root
 
 MAX_COMMENT_BODY_LEN = 2000
 
@@ -40,9 +40,12 @@ def _comments_dir() -> Path:
 
 
 def _change_exists(change_id: str) -> bool:
-    # A change is considered valid if its coordination markdown exists.
+    # A change is valid if its legacy coordination markdown exists
+    # or if OpenSpec still contains the change directory.
     p = coordination_dir() / f"{change_id}.md"
-    return p.exists() and p.is_file()
+    if p.exists() and p.is_file():
+        return True
+    return resolve_change_root(change_id).exists()
 
 
 def _normalize_change_id(change_id: str) -> str:

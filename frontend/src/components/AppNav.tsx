@@ -411,7 +411,10 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
           )}
         </div>
 
-        <nav className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-1 pb-3">
+        <nav
+          className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-1 pb-3"
+          aria-label="Navegação principal"
+        >
           <NavSection title="Principal" items={mainNavItems} collapsed={collapsed} pathname={pathname} />
           <NavSection title="Estratégias" items={strategyNavItems} collapsed={collapsed} pathname={pathname} />
           <NavSection title="Conta" items={accountNavItems} collapsed={collapsed} pathname={pathname} />

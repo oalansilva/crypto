@@ -14,6 +14,7 @@ import { ComboEditPage } from './pages/ComboEditPage'
 import OpenSpecListPage from './pages/OpenSpecListPage'
 import OpenSpecDetailPage from './pages/OpenSpecDetailPage'
 import ExternalBalancesPage from './pages/ExternalBalancesPage'
+import KanbanPage from './pages/KanbanPage'
 import SignalsPage from './pages/SignalsPage'
 import SignalsHistoryPage from './pages/SignalsHistoryPage'
 import LoginPage from './pages/LoginPage'
@@ -63,6 +64,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
+          <Route path="/kanban" element={<KanbanPage />} />
           <Route path="/signals" element={<SignalsPage />} />
           <Route path="/signals/history" element={<SignalsHistoryPage />} />
           <Route path="/combo/select" element={<ComboSelectPage />} />

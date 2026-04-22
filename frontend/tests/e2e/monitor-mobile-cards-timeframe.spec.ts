@@ -326,7 +326,7 @@ test('monitor renders exited strategies separately from stopped out ones', async
 
   await expect(page.getByText('Saiu Pela Regra')).toBeVisible()
   await expect(page.getByText('Saiu no Stop')).toHaveCount(0)
-  await expect(page.getByText('EXITED')).toBeVisible()
+  await expect(page.getByTestId('monitor-card-btc-usdt').getByText(/^EXITED$/)).toBeVisible()
 })
 
 test('monitor keeps mismatched exit signals in WAIT state with explicit context', async ({ page }) => {

@@ -45,6 +45,10 @@ from app.services.binance_realtime_connector import (
     start_binance_realtime_connector,
     stop_binance_realtime_connector,
 )
+from app.services.ohlcv_storage import (
+    start_ohlcv_ingestion,
+    stop_ohlcv_ingestion,
+)
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -151,9 +155,13 @@ async def lifespan(app: FastAPI):
                 db.commit()
                 for project in db.query(Project).all():
                     bootstrap_project_workflow_db(project)
-                db.close()
             except Exception as proj_err:
                 logger.warning(f"Project seed skipped/failed: {proj_err}")
+            finally:
+                try:
+                    db.close()
+                except Exception:
+                    pass
         except Exception as e:
             logger.warning(f"Workflow DB init skipped/failed: {e}")
 
@@ -163,11 +171,13 @@ async def lifespan(app: FastAPI):
         seed_combo_templates_if_empty()
         # signal_monitor.start()  # DISABLED FOR DEBUG
         # await start_signal_feed_snapshot_worker()  # DISABLED FOR DEBUG
+        start_ohlcv_ingestion()
         await start_binance_realtime_connector()
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 
     yield
+    stop_ohlcv_ingestion()
     await stop_binance_realtime_connector()
     await stop_signal_feed_snapshot_worker()
     signal_monitor.stop()

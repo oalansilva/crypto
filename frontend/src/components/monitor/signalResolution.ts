@@ -172,6 +172,7 @@ export const resolveOpportunitySignal = (
     } else if (rawStatus === 'EXITED') {
         if (!isHolding) {
             section = 'exited';
+            isUncertain = false;
         } else {
             section = 'waiting';
             isUncertain = true;
