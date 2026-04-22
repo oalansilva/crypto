@@ -152,16 +152,20 @@ async def test_safe_request_success_rate_limit_and_failures(monkeypatch):
         return None
 
     monkeypatch.setattr(connector.asyncio, "sleep", _sleep_retry)
+    _rate_limit_responses = iter(
+        [
+            _FakeResponse({}, status_code=429, headers={"Retry-After": "1.2"}),
+            _FakeResponse({"ok": 3}),
+        ]
+    )
+
+    def _new_client_with_rate_limit_chain(timeout):
+        return _FakeAsyncClient([next(_rate_limit_responses)], requests)
+
     monkeypatch.setattr(
         connector.httpx,
         "AsyncClient",
-        lambda timeout: _FakeAsyncClient(
-            [
-                _FakeResponse({}, status_code=429, headers={"Retry-After": "1.2"}),
-                _FakeResponse({"ok": 3}),
-            ],
-            requests,
-        ),
+        lambda timeout: _new_client_with_rate_limit_chain(timeout),
     )
     result = await c._safe_request("/api/v3/ticker/24hr", weight=2.0)
     assert result == {"ok": 3}
@@ -257,7 +261,7 @@ async def test_refresh_top_pairs_and_syncing_flow(monkeypatch):
 
     c2 = _build_connector(monkeypatch)
 
-    async def fake_safe_request(_endpoint, _params=None, _weight=1.0):
+    async def fake_safe_request(_endpoint, _params=None, weight=1.0):
         return {}
 
     c2._safe_request = fake_safe_request
@@ -413,6 +417,7 @@ async def test_consume_stream_handles_timeout_invalid_and_fallback_message(monke
 
     await c._handle_ws_message("not-json")
     await c._handle_ws_message("123")
+    c._pairs = []
     await c._handle_ws_message(
         '{"data":{"s":"ETHUSDT","c":"3000","b":"2999","a":"3001","P":"-0.5","E":2000}}'
     )

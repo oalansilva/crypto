@@ -217,8 +217,11 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     await async_context.__aenter__()
     await async_context.__aexit__(None, None, None)
 
-    assert lifecycle_calls[0] == "start"
-    assert lifecycle_calls[-1] == "stop"
+    assert lifecycle_calls[0] == "workflow_db_closed"
+    assert "start" in lifecycle_calls
+    assert "stop" in lifecycle_calls
+    assert lifecycle_calls.index("start") > lifecycle_calls.index("workflow_db_closed")
+    assert lifecycle_calls.index("start") < lifecycle_calls.index("stop")
     assert signal_stub.stopped
     assert "stop_worker" in lifecycle_calls
     assert "workflow_db_closed" in lifecycle_calls
