@@ -31,6 +31,42 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 const ACCESS_TOKEN_KEY = 'auth_access_token'
 const REFRESH_TOKEN_KEY = 'auth_refresh_token'
 const USER_KEY = 'auth_user'
+const E2E_AUTH_BYPASS = import.meta.env.VITE_E2E_AUTH_BYPASS === '1'
+const E2E_AUTH_FALLBACK_USER: AuthUser = {
+  id: 'test-user',
+  email: 'test@example.com',
+  name: 'Test User',
+  isAdmin: false,
+}
+
+const E2E_AUTH_FALLBACK_TOKENS = {
+  accessToken: 'test-access-token',
+  refreshToken: 'test-refresh-token',
+}
+
+function getE2EAuthState() {
+  const { accessToken: currentAccessToken, refreshToken: currentRefreshToken, user: currentUser } = loadFromStorage()
+  return {
+    accessToken: currentAccessToken || E2E_AUTH_FALLBACK_TOKENS.accessToken,
+    refreshToken: currentRefreshToken || E2E_AUTH_FALLBACK_TOKENS.refreshToken,
+    user: currentUser || E2E_AUTH_FALLBACK_USER,
+  }
+}
+
+function persistAuthState(accessToken: string | null, refreshToken: string | null, user: AuthUser | null) {
+  if (user && accessToken) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    return
+  }
+
+  localStorage.removeItem(ACCESS_TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+}
 
 function loadFromStorage() {
   try {
@@ -54,15 +90,22 @@ function loadFromStorage() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {
-    const stored = loadFromStorage()
+    const stored = E2E_AUTH_BYPASS ? getE2EAuthState() : loadFromStorage()
     return {
       ...stored,
-      isLoading: !!stored.accessToken,
+      isLoading: E2E_AUTH_BYPASS ? false : !!stored.accessToken,
     }
   })
 
   // Validate existing token on mount
   useEffect(() => {
+    if (E2E_AUTH_BYPASS) {
+      const { accessToken, refreshToken, user } = getE2EAuthState()
+      persistAuthState(accessToken, refreshToken, user)
+      setState({ user, accessToken, refreshToken, isLoading: false })
+      return
+    }
+
     const stored = loadFromStorage()
     if (!stored.accessToken) {
       setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
@@ -83,9 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         // Token invalid - clear storage
-        localStorage.removeItem(ACCESS_TOKEN_KEY)
-        localStorage.removeItem(REFRESH_TOKEN_KEY)
-        localStorage.removeItem(USER_KEY)
+        persistAuthState(null, null, null)
         setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
       })
   }, [])
@@ -98,10 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { accessToken, refreshToken, id, email: uEmail, name, isAdmin } = res.data
     const user: AuthUser = { id, email: uEmail, name, isAdmin }
 
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
-
+    persistAuthState(accessToken, refreshToken, user)
     setState({ user, accessToken, refreshToken, isLoading: false })
   }, [])
 
@@ -116,9 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [login])
 
   const logout = useCallback(() => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
+    persistAuthState(null, null, null)
     queryClient.clear() // Clear React Query cache on logout
     setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
   }, [])
@@ -129,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!current.user) return current
 
       const user = { ...current.user, ...patch }
-      localStorage.setItem(USER_KEY, JSON.stringify(user))
+      persistAuthState(current.accessToken, current.refreshToken, user)
       return { ...current, user }
     })
   }, [])

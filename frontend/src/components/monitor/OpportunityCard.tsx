@@ -325,15 +325,15 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         {resolvedSignal.visual.badgeText}
                     </Badge>
                     <div className="flex items-center gap-1">
-                        <button
-                            type="button"
+                            <button
+                            	type="button"
                             className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${
                                 preference.in_portfolio ? 'border-amber-500 text-amber-400 bg-amber-500/20' : 'border-zinc-600 text-zinc-300 bg-zinc-800'
                             } ${isPortfolioDerived ? 'cursor-not-allowed opacity-60' : ''}`}
                             onClick={() => {
-                                if (isPortfolioDerived || isSavingPreference) {
-                                    return;
-                                }
+                            		if (isPortfolioDerived) {
+	                            		return;
+	                            	}
                                 onToggleInPortfolio(symbol, !preference.in_portfolio);
                             }}
                             data-testid={`portfolio-toggle-${symbolTestKey}`}
@@ -393,7 +393,10 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                                                 ? 'border-blue-500 bg-blue-600 text-white'
                                                 : 'border-slate-300 bg-white text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200'
                                         } ${disabled && !active ? 'opacity-40 cursor-not-allowed' : ''}`}
-                                        onClick={() => onChangePriceTimeframe(symbol, tf)}
+                                        onClick={() => {
+                                            setShowChart(true)
+                                            onChangePriceTimeframe(symbol, tf)
+                                        }}
                                         disabled={disabled}
                                         aria-pressed={active}
                                         data-testid={`timeframe-toggle-${symbolTestKey}-${tf}`}
@@ -498,7 +501,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
                         <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-xs border border-slate-200 dark:border-slate-600">
                             <div className="flex flex-wrap gap-x-3 gap-y-1 text-slate-700 dark:text-slate-200">
-                                <span>signal: {resolvedSignal.visual.badgeText}</span>
+                                <span>signal: {resolvedSignal.visual.badgeText.toLowerCase()}</span>
                                 <span>strategy tf: {resolvedSignal.strategyTimeframe ?? '-'}</span>
                                 <span>display tf: {resolvedSignal.displayTimeframe ?? '-'}</span>
                                 <span>candle ref: {resolvedSignal.referenceCandleTime ?? '-'}</span>

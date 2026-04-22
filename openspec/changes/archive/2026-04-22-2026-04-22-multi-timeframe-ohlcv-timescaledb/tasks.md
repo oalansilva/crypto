@@ -20,7 +20,7 @@
 - [x] 2.2 Enable compression policy:
   - compress after 30 days
   - segment-by segment compression policy tuned for this table
-- [ ] 2.3 Add operational command or startup verification that policies are active in non-local environments.
+- [x] 2.3 Add operational command or startup verification that policies are active in non-local environments.
 
 ## 3) Ingestion service
 
@@ -36,19 +36,19 @@
 - [x] 4.1 Update `GET /api/market/candles` (or new endpoint variant) to read from Timescale first.
 - [x] 4.2 Enforce bounded limits by default to keep read latency under 500ms.
 - [x] 4.3 Add optional fallback to provider cache only when DB empty/temporarily inconsistent.
-- [ ] 4.4 Add index usage assertions in code (and optional `EXPLAIN` checks in tests) to avoid accidental full scans.
+- [x] 4.4 Add index usage assertions in code (and optional `EXPLAIN` checks in tests) to avoid accidental full scans.
 
 ## 5) Observability and correctness
 
-- [ ] 5.1 Add metrics for insert lag, duplicates skipped, and query latency p50/p95/p99.
-- [ ] 5.2 Add alerts for ingestion delay > configured threshold per timeframe.
-- [ ] 5.3 Add structured logs for retention/compression policy failures.
+- [x] 5.1 Add metrics for insert lag, duplicates skipped, and query latency p50/p95/p99.
+- [x] 5.2 Add alerts for ingestion delay > configured threshold per timeframe.
+- [x] 5.3 Add structured logs for retention/compression policy failures.
 
 ## 6) Validation
 
-- [ ] 6.1 Add integration tests:
+- [x] 6.1 Add integration tests:
   - `INSERT -> UPSERT -> query` for duplicate prevention
   - compression policy enablement
   - retention policy effect with synthetic old rows
   - 1m/5m support and query-time filtering by timeframe
-- [ ] 6.2 Add performance test for a realistic read scenario with `limit` and window filters to validate < 500ms in CI or staging profile.
+- [x] 6.2 Add performance test for a realistic read scenario with `limit` and window filters to validate < 500ms in CI or staging profile.

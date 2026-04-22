@@ -233,3 +233,12 @@ def test_api_internal_helpers():
         assert "missing timestamp_utc" in str(exc)
     else:
         raise AssertionError("Expected ValueError")
+
+
+def test_api_market_candles_metrics_route():
+    client = TestClient(_build_api_app())
+    response = client.get("/api/market/candles/metrics")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] in {"market_ohlcv", "disabled"}
+    assert payload["metrics"]["ingest"]["rows_received"] >= 0

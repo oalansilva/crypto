@@ -271,8 +271,8 @@ def audit_coordination(
 ):
     """Audit drift between file-based coordination artifacts and the workflow DB.
 
-    Policy (Phase 1): DB is operational source of truth. `docs/coordination/*.md`
-    remains a mirrored/audit artifact for active changes.
+    Policy: DB is operational source of truth. Legacy coordination markdown
+    files were used as mirrored/audit artifacts during transition.
 
     This endpoint intentionally stays read-only; it helps detect missing seeds or
     accidentally-created DB-only changes.
@@ -892,47 +892,14 @@ def update_change(
                             },
                         )
 
-                    if payload.cancel_archive:
-                        c.status = "Archived"
-                        c.sort_order = _next_sort_order(
-                            project_db, c.project_id, "Archived", exclude_change_pk=c.id
+                    c.status = "Archived"
+                    c.sort_order = _next_sort_order(
+                        project_db, c.project_id, "Archived", exclude_change_pk=c.id
+                    )
+                    if background_tasks:
+                        background_tasks.add_task(
+                            generate_retrospective_for_change, project_slug, change_id
                         )
-                        project_db.commit()
-                        if background_tasks:
-                            background_tasks.add_task(
-                                generate_retrospective_for_change, project_slug, change_id
-                            )
-                    else:
-                        try:
-                            archive_env = os.environ.copy()
-                            if registry_project.workflow_database_url:
-                                archive_env["WORKFLOW_DATABASE_URL"] = (
-                                    registry_project.workflow_database_url
-                                )
-                            subprocess.run(
-                                ["./scripts/archive_change_safe.sh", change_id],
-                                cwd=REPO_ROOT,
-                                env=archive_env,
-                                capture_output=True,
-                                text=True,
-                                check=True,
-                            )
-                            if background_tasks:
-                                background_tasks.add_task(
-                                    generate_retrospective_for_change, project_slug, change_id
-                                )
-                        except subprocess.CalledProcessError as exc:
-                            stderr = (exc.stderr or "").strip()
-                            stdout = (exc.stdout or "").strip()
-                            message = stderr or stdout or "archive flow failed"
-                            raise HTTPException(
-                                status_code=409,
-                                detail={
-                                    "code": "archive_flow_failed",
-                                    "message": message,
-                                    "target": new_status,
-                                },
-                            ) from exc
                 else:
                     if new_status in ENFORCED_STATUSES:
                         try:

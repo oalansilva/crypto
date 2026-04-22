@@ -63,8 +63,8 @@ cd backend
 alembic upgrade head
 ```
 
-O fluxo de backup diário em Docker e exemplos de restore estão em [docs/postgresql-operations.md](/root/.openclaw/workspace/crypto/docs/postgresql-operations.md:1).
-O fluxo de jobs assíncronos com Redis + Celery está em [docs/async-processing.md](/root/.openclaw/workspace/crypto/docs/async-processing.md:1).
+O fluxo de backup diário em Docker e exemplos de restore ficam na operação local da instância (scripts/processos de deploy).
+Para jobs assíncronos com Redis + Celery, confira a configuração em `.env` e no `docker-compose.yml`.
 
 ⚠️ **IMPORTANTE**: Nunca commite o arquivo `.env` com suas credenciais!
 

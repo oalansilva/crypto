@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Set workflow DB change status (kanban column) and optionally approve gates.
 
-Used by scripts/archive_change_safe.sh to make archiving atomic-ish across:
+Used by runtime flows to keep status transitions consistent across:
 - Workflow DB (runtime source of truth)
 - OpenSpec archive artifact
 

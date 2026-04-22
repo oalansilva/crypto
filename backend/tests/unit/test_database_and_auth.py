@@ -182,6 +182,21 @@ def test_sqlite_runtime_migrations_and_postgres_sequence_sync(monkeypatch, tmp_p
     assert any("setval" in sql for sql, _params in executed)
 
 
+def test_market_ohlcv_timescale_policy_check_controls(monkeypatch):
+    monkeypatch.delenv("MARKET_OHLCV_VERIFY_POLICIES", raising=False)
+    monkeypatch.setenv("APP_ENV", "development")
+    assert not database_module._policy_checks_enabled()
+
+    monkeypatch.setenv("APP_ENV", "production")
+    assert database_module._policy_checks_enabled()
+
+    monkeypatch.setenv("MARKET_OHLCV_VERIFY_POLICIES", "0")
+    assert not database_module._policy_checks_enabled()
+
+    monkeypatch.setenv("MARKET_OHLCV_VERIFY_POLICIES", "1")
+    assert database_module._policy_checks_enabled()
+
+
 def test_postgres_runtime_schema_migrations_execute_admin_user_statements(monkeypatch):
     executed: list[str] = []
 

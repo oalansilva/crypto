@@ -11,6 +11,38 @@ from app.config import get_settings
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "backtest.db"
+_LOCAL_RUNTIME_ENVIRONMENTS = {
+    "dev",
+    "development",
+    "devserver",
+    "local",
+    "localdev",
+    "qa",
+    "test",
+    "testing",
+}
+
+
+def _is_local_runtime() -> bool:
+    env = (
+        os.getenv("APP_ENV")
+        or os.getenv("APP_ENVIRONMENT")
+        or os.getenv("ENV")
+        or os.getenv("RUNTIME_ENV")
+        or ""
+    ).strip().lower()
+    if env in _LOCAL_RUNTIME_ENVIRONMENTS:
+        return True
+    return False
+
+
+def _policy_checks_enabled() -> bool:
+    override = os.getenv("MARKET_OHLCV_VERIFY_POLICIES", "").strip().lower()
+    if override in {"0", "false", "no", "off"}:
+        return False
+    if override in {"1", "true", "yes", "on"}:
+        return True
+    return not _is_local_runtime()
 
 
 def _allow_sqlite_for_tests() -> bool:
@@ -284,6 +316,7 @@ def ensure_runtime_schema_migrations() -> None:
                 ON admin_action_logs (created_at)
                 """))
 
+        timescale_functions_available = True
         try:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
             conn.execute(
@@ -338,7 +371,14 @@ def ensure_runtime_schema_migrations() -> None:
                     )
                 )
             except Exception as exc:
-                logger.warning("Could not create hypertable market_ohlcv: %s", exc)
+                logger.warning(
+                    "Could not create hypertable market_ohlcv.",
+                    extra={
+                        "event": "ohlcv_timescale_hypertable_error",
+                        "table": "market_ohlcv",
+                        "error": str(exc),
+                    },
+                )
 
             try:
                 conn.execute(
@@ -347,7 +387,15 @@ def ensure_runtime_schema_migrations() -> None:
                     )
                 )
             except Exception as exc:
-                logger.warning("Could not apply timescale retention policy for market_ohlcv: %s", exc)
+                logger.warning(
+                    "Could not apply timescale retention policy for market_ohlcv.",
+                    extra={
+                        "event": "ohlcv_timescale_retention_policy_error",
+                        "table": "market_ohlcv",
+                        "error": str(exc),
+                    },
+                )
+                timescale_functions_available = False
 
             try:
                 conn.execute(
@@ -358,7 +406,15 @@ def ensure_runtime_schema_migrations() -> None:
                     )
                 )
             except Exception as exc:
-                logger.warning("Could not set compression settings for market_ohlcv: %s", exc)
+                logger.warning(
+                    "Could not set compression settings for market_ohlcv.",
+                    extra={
+                        "event": "ohlcv_timescale_compression_setting_error",
+                        "table": "market_ohlcv",
+                        "error": str(exc),
+                    },
+                )
+                timescale_functions_available = False
 
             try:
                 conn.execute(
@@ -367,9 +423,28 @@ def ensure_runtime_schema_migrations() -> None:
                     )
                 )
             except Exception as exc:
-                logger.warning("Could not apply timescale compression policy for market_ohlcv: %s", exc)
+                logger.warning(
+                    "Could not apply timescale compression policy for market_ohlcv.",
+                    extra={
+                        "event": "ohlcv_timescale_compression_policy_error",
+                        "table": "market_ohlcv",
+                        "error": str(exc),
+                    },
+                )
+                timescale_functions_available = False
+            if _policy_checks_enabled():
+                _verify_market_ohlcv_timescale_policies(
+                    conn, timescale_functions_available=timescale_functions_available
+                )
         except Exception as exc:
-            logger.warning("Timescale configuration for market_ohlcv failed, keeping table as regular table: %s", exc)
+            logger.warning(
+                "Timescale configuration for market_ohlcv failed, keeping table as regular table.",
+                extra={
+                    "event": "ohlcv_timescale_setup_error",
+                    "table": "market_ohlcv",
+                    "error": str(exc),
+                },
+            )
 
 
 def get_db():
@@ -417,3 +492,107 @@ def sync_postgres_identity_sequences() -> None:
                 ),
                 {"sequence_name": sequence_name},
             )
+
+
+def _verify_market_ohlcv_timescale_policies(
+    conn,
+    *,
+    timescale_functions_available: bool = True,
+) -> None:
+    """Best-effort startup check for Timescale policy presence on market_ohlcv."""
+
+    checks = {
+        "hypertable": False,
+        "retention_policy": False,
+        "compression_setting": False,
+        "compression_policy": False,
+    }
+
+    try:
+        checks["hypertable"] = bool(
+            conn.execute(
+                text(
+                    """
+                    SELECT EXISTS(
+                        SELECT 1
+                        FROM timescaledb_information.hypertables
+                        WHERE hypertable_name = 'market_ohlcv'
+                          AND hypertable_schema = 'public'
+                    )
+                    """
+                )
+            ).scalar()
+        )
+
+        if timescale_functions_available:
+            for check_name, proc_name in (
+                ("retention_policy", "policy_retention"),
+                ("compression_policy", "policy_compression"),
+            ):
+                checks[check_name] = bool(
+                    conn.execute(
+                        text(
+                            """
+                            SELECT EXISTS(
+                                SELECT 1
+                                FROM timescaledb_information.jobs
+                                WHERE proc_name = :proc_name
+                                  AND hypertable_name = 'market_ohlcv'
+                            )
+                            """
+                        ),
+                        {"proc_name": proc_name},
+                    ).scalar()
+                )
+
+            checks["compression_setting"] = bool(
+                conn.execute(
+                    text(
+                        """
+                        SELECT EXISTS(
+                            SELECT 1
+                            FROM pg_class c
+                            JOIN pg_namespace n ON n.oid = c.relnamespace
+                            WHERE c.relname = 'market_ohlcv'
+                              AND n.nspname = 'public'
+                              AND EXISTS (
+                                    SELECT 1
+                                    FROM unnest(c.reloptions) AS opt(v)
+                                    WHERE lower(v::text) LIKE 'timescaledb.compress=%'
+                              )
+                        )
+                        """
+                    )
+                ).scalar()
+            )
+
+        missing = sorted(name for name, is_ok in checks.items() if not is_ok)
+        if missing:
+            logger.warning(
+                "Timescale policy verification is incomplete for market_ohlcv.",
+                extra={
+                    "event": "ohlcv_timescale_policy_verification_incomplete",
+                    "table": "market_ohlcv",
+                    "checks": checks,
+                    "missing": missing,
+                },
+            )
+            return
+
+        logger.info(
+            "Timescale policies for market_ohlcv verified as active.",
+            extra={
+                "event": "ohlcv_timescale_policies_verified",
+                "table": "market_ohlcv",
+                "checks": checks,
+            },
+        )
+    except Exception as exc:
+        logger.warning(
+            "Could not complete timescale policy verification for market_ohlcv.",
+            extra={
+                "event": "ohlcv_timescale_policy_verification_error",
+                "table": "market_ohlcv",
+                "error": str(exc),
+            },
+        )

@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import logging
 import os
+import json
+from collections import defaultdict, deque
 import threading
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 from app.database import DB_URL, engine
 from app.services.market_data_providers import (
@@ -49,6 +51,92 @@ _INGESTION_POLL_SECONDS = {
     "4h": 14400,
     "1d": 21600,
 }
+_INDEX_ASSERTION_ENABLED = os.getenv("MARKET_OHLCV_ASSERT_INDEX_PLAN", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+_INGESTION_LAG_ALERT_SECONDS = {
+    timeframe: int(seconds) * 6
+    for timeframe, seconds in [
+        ("1m", _INGESTION_POLL_SECONDS["1m"]),
+        ("5m", _INGESTION_POLL_SECONDS["5m"]),
+        ("15m", _INGESTION_POLL_SECONDS["15m"]),
+        ("1h", _INGESTION_POLL_SECONDS["1h"]),
+        ("4h", _INGESTION_POLL_SECONDS["4h"]),
+        ("1d", _INGESTION_POLL_SECONDS["1d"]),
+    ]
+}
+
+
+def _percentile(values: list[float], pct: float) -> float:
+    if not values:
+        return 0.0
+    sorted_values = sorted(values)
+    if len(sorted_values) == 1:
+        return float(sorted_values[0])
+    idx = int((len(sorted_values) - 1) * pct)
+    return float(sorted_values[idx])
+
+
+class OhlcvStorageMetrics:
+    """Minimal in-memory metrics used for ingestion and query observability."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._query_latency_seconds = deque(maxlen=5000)
+        self._insert_lag_seconds = deque(maxlen=5000)
+        self._rows_written = 0
+        self._rows_received = 0
+        self._rows_duplicate = 0
+        self._stale_seconds_by_timeframe: dict[str, deque[float]] = defaultdict(
+            lambda: deque(maxlen=5000)
+        )
+
+    def record_write(self, symbol: str, timeframe: str, rows_received: int, rows_duplicate: int, lag_seconds: float | None) -> None:
+        with self._lock:
+            self._rows_written += int(rows_received)
+            self._rows_received += int(rows_received)
+            self._rows_duplicate += int(rows_duplicate)
+            if lag_seconds is not None:
+                self._insert_lag_seconds.append(float(lag_seconds))
+                self._stale_seconds_by_timeframe[_normalize_timeframe(timeframe)].append(
+                    float(lag_seconds)
+                )
+
+    def record_query_latency(self, seconds: float) -> None:
+        with self._lock:
+            self._query_latency_seconds.append(float(seconds))
+
+    def duplicate_rows(self) -> int:
+        with self._lock:
+            return int(self._rows_duplicate)
+
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return {
+                "ingest": {
+                    "rows_written": self._rows_written,
+                    "rows_received": self._rows_received,
+                    "duplicates_skipped": self._rows_duplicate,
+                    "lag_seconds": {
+                        "p50": _percentile(list(self._insert_lag_seconds), 0.50),
+                        "p95": _percentile(list(self._insert_lag_seconds), 0.95),
+                        "p99": _percentile(list(self._insert_lag_seconds), 0.99),
+                    },
+                },
+                "query": {
+                    "latency_seconds": {
+                        "p50": _percentile(list(self._query_latency_seconds), 0.50),
+                        "p95": _percentile(list(self._query_latency_seconds), 0.95),
+                        "p99": _percentile(list(self._query_latency_seconds), 0.99),
+                    }
+                },
+            }
+
+
+_METRICS = OhlcvStorageMetrics()
 
 
 def _normalize_symbol(value: str) -> str:
@@ -73,6 +161,23 @@ def _to_float(value: Any) -> float | None:
     if pd.isna(parsed):
         return None
     return float(parsed)
+
+
+def _walk_plan_uses_index(node: Any, required_index: str) -> bool:
+    if not isinstance(node, dict):
+        return False
+
+    node_type = str(node.get("Node Type", ""))
+    index_name = str(node.get("Index Name", ""))
+    if required_index in index_name and node_type in {"Index Scan", "Index Only Scan", "Bitmap Index Scan"}:
+        return True
+
+    plans = node.get("Plans")
+    if isinstance(plans, list):
+        for child in plans:
+            if _walk_plan_uses_index(child, required_index):
+                return True
+    return False
 
 
 class MarketOhlcvRepository:
@@ -113,6 +218,51 @@ class MarketOhlcvRepository:
 
         return _to_utc_datetime(value)
 
+    @staticmethod
+    def _read_plan_uses_timeframe_index(plan_text: Any, required_index: str = "idx_market_ohlcv_symbol_timeframe_time") -> bool:
+        if not plan_text:
+            return False
+
+        if isinstance(plan_text, str):
+            try:
+                plan_text = json.loads(plan_text)
+            except Exception:
+                return required_index in plan_text
+
+        if isinstance(plan_text, list):
+            nodes = plan_text
+        else:
+            nodes = [plan_text]
+
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+
+            plan = node.get("Plan", node)
+            if isinstance(plan, dict):
+                candidates = [plan]
+            elif isinstance(plan, list):
+                candidates = plan
+            elif isinstance(plan, str):
+                if required_index in plan:
+                    return True
+                continue
+            else:
+                continue
+
+            for entry in candidates:
+                if not isinstance(entry, dict):
+                    continue
+                if any(
+                    field in str(entry.get("Index Name", ""))
+                    for field in (required_index, "Index")
+                ):
+                    if str(entry.get("Node Type", "")) in {"Index Scan", "Index Only Scan", "Bitmap Index Scan"}:
+                        return True
+                if _walk_plan_uses_index(entry, required_index):
+                    return True
+        return False
+
     def read_recent_candles(
         self, symbol: str, timeframe: str, limit: int
     ) -> list[dict[str, Any]]:
@@ -121,7 +271,44 @@ class MarketOhlcvRepository:
 
         normalized_symbol = _normalize_symbol(symbol)
         normalized_timeframe = _normalize_timeframe(timeframe)
+        start = time.perf_counter()
         with engine.begin() as conn:
+            if _INDEX_ASSERTION_ENABLED:
+                try:
+                    explain_sql = """
+                        EXPLAIN (FORMAT JSON)
+                        SELECT candle_time, open, high, low, close, volume, source
+                        FROM market_ohlcv
+                        WHERE symbol = :symbol
+                          AND timeframe = :timeframe
+                        ORDER BY candle_time DESC
+                        LIMIT :limit
+                    """
+                    plan_row = conn.execute(
+                        text(explain_sql),
+                        {
+                            "symbol": normalized_symbol,
+                            "timeframe": normalized_timeframe,
+                            "limit": int(limit),
+                        },
+                    ).scalar()
+                    if not self._read_plan_uses_timeframe_index(plan_row):
+                        logger.warning(
+                            "Index plan check failed for market_ohlcv read",
+                            extra={
+                                "event": "ohlcv_index_plan_check",
+                                "symbol": normalized_symbol,
+                                "timeframe": normalized_timeframe,
+                                "sql": "SELECT ... ORDER BY candle_time DESC LIMIT :limit",
+                                "plan": plan_row,
+                            },
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "Could not run plan check for market_ohlcv query",
+                        extra={"event": "ohlcv_plan_check_error", "error": str(exc)},
+                    )
+
             rows = conn.execute(
                 text(
                     """
@@ -161,6 +348,8 @@ class MarketOhlcvRepository:
                 }
             )
 
+        elapsed = time.perf_counter() - start
+        _METRICS.record_query_latency(elapsed)
         return list(reversed(candles))
 
     def write_candles(
@@ -216,10 +405,51 @@ class MarketOhlcvRepository:
                 }
             )
 
+        deduped = []
+        seen_timestamps: set[int] = set()
+        for row in rows_to_write:
+            ts_key = int(row["candle_time"].timestamp() * 1_000)
+            if ts_key in seen_timestamps:
+                continue
+            seen_timestamps.add(ts_key)
+            deduped.append(row)
+        rows_to_write = deduped
+
         if not rows_to_write:
             return 0
 
+        rows_duplicate = 0
+        insert_lag_seconds: float | None = None
+        if rows_to_write:
+            max_ts = max(row["candle_time"] for row in rows_to_write)
+            if isinstance(max_ts, datetime):
+                now = datetime.now(timezone.utc)
+                if max_ts.tzinfo is None:
+                    max_ts = max_ts.replace(tzinfo=timezone.utc)
+                insert_lag_seconds = (now - max_ts).total_seconds()
+
         with engine.begin() as conn:
+            existing_query = text(
+                """
+                SELECT COUNT(*)
+                FROM market_ohlcv
+                WHERE symbol = :symbol
+                  AND timeframe = :timeframe
+                  AND candle_time IN :candle_times
+                """
+            ).bindparams(bindparam("candle_times", expanding=True))
+            rows_duplicate = int(
+                conn.execute(
+                    existing_query,
+                    {
+                        "symbol": normalized_symbol,
+                        "timeframe": normalized_timeframe,
+                        "candle_times": [r["candle_time"] for r in rows_to_write],
+                    },
+                ).scalar()
+                or 0
+            )
+
             conn.execute(
                 text(
                     """
@@ -241,7 +471,17 @@ class MarketOhlcvRepository:
                 rows_to_write,
             )
 
+        _METRICS.record_write(
+            normalized_symbol,
+            normalized_timeframe,
+            rows_received=len(rows_to_write),
+            rows_duplicate=rows_duplicate,
+            lag_seconds=insert_lag_seconds,
+        )
         return len(rows_to_write)
+
+    def get_metrics(self) -> dict[str, Any]:
+        return _METRICS.snapshot()
 
 
 class OhlcvIngestionService:
@@ -348,6 +588,16 @@ class OhlcvIngestionService:
                 limit=1000,
             )
 
+    def _ingestion_lag_warning_threshold(self, timeframe: str) -> float:
+        env_key = f"MARKET_OHLCV_MAX_LAG_SECONDS_{timeframe.upper()}"
+        raw = os.getenv(env_key, "").strip().lower()
+        if raw:
+            try:
+                return max(60, int(float(raw)))
+            except ValueError:
+                pass
+        return float(_INGESTION_LAG_ALERT_SECONDS.get(_normalize_timeframe(timeframe), 3600))
+
     def _ingest_symbol(self, symbol: str, timeframe: str) -> None:
         normalized_symbol = _normalize_symbol(symbol)
         source = self._resolve_source(normalized_symbol, timeframe)
@@ -383,6 +633,21 @@ class OhlcvIngestionService:
         try:
             written = self._repo.write_candles(normalized_symbol, timeframe, source, df)
             if written:
+                latest = self._repo.get_latest_candle_time(normalized_symbol, timeframe)
+                if latest:
+                    lag = datetime.now(timezone.utc) - latest
+                    threshold = self._ingestion_lag_warning_threshold(timeframe)
+                    if lag.total_seconds() > threshold:
+                        logger.warning(
+                            "Market OHLCV ingestion lag exceeds threshold",
+                            extra={
+                                "event": "ohlcv_ingestion_lag_alert",
+                                "symbol": normalized_symbol,
+                                "timeframe": timeframe,
+                                "lag_seconds": lag.total_seconds(),
+                                "lag_threshold_seconds": threshold,
+                            },
+                        )
                 logger.debug(
                     "Ingested %s candles for %s [%s] from source=%s",
                     written,

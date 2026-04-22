@@ -104,6 +104,7 @@ export default function ExternalBalancesPage() {
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [apiSecretInput, setApiSecretInput] = useState('')
   const [savingCredentials, setSavingCredentials] = useState(false)
+  const [isDesktopRowsView, setIsDesktopRowsView] = useState(true)
 
   const [q, setQ] = useState('')
   const [minUsd, setMinUsd] = useState<string>('0.02')
@@ -112,18 +113,13 @@ export default function ExternalBalancesPage() {
 
   const lastFetchId = useRef(0)
 
-  const load = async (opts?: { minUsdOverride?: string }) => {
+  const load = async (/* opts?: { minUsdOverride?: string } */) => {
     const fetchId = ++lastFetchId.current
     setLoading(true)
     setError(null)
 
-    const effectiveMinUsd = String(opts?.minUsdOverride ?? minUsd)
-    const min = Number(effectiveMinUsd)
-    const qs = new URLSearchParams()
-    if (Number.isFinite(min)) qs.set('min_usd', String(min))
-
     try {
-      const res = await authFetch(`${API_BASE_URL}/external/binance/spot/balances?${qs.toString()}`)
+      const res = await authFetch(`${API_BASE_URL}/external/binance/spot/balances`)
       const payload = await res.json()
       if (!res.ok) throw new Error(String(payload?.detail || 'Falha ao carregar saldos externos'))
       if (fetchId !== lastFetchId.current) return
@@ -239,7 +235,7 @@ export default function ExternalBalancesPage() {
     setMinUsd('0.02')
     setSortValue('value_desc')
     setSortOverride(null)
-    void load({ minUsdOverride: '0.02' })
+    void load()
   }
 
   const saveCredentials = async () => {
@@ -299,6 +295,13 @@ export default function ExternalBalancesPage() {
 
   const asOfLabel = formatAsOf(asOf)
 
+  useEffect(() => {
+    const updateRowsView = () => setIsDesktopRowsView(window.innerWidth >= 768)
+    updateRowsView()
+    window.addEventListener('resize', updateRowsView)
+    return () => window.removeEventListener('resize', updateRowsView)
+  }, [])
+
   return (
     <main className="app-page balances-page w-full">
       <div
@@ -337,14 +340,15 @@ export default function ExternalBalancesPage() {
         <section className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
           <article className="page-card p-4 sm:p-5">
             <div className="text-xs text-zinc-500">Total USD</div>
-            <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900">{loading ? '—' : fmtUSD.format(summary.totalUsd)}</div>
+            <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900">
+              {loading ? '—' : `${summary.count} ativos`}
+            </div>
             <div className="mt-1.5 text-xs text-zinc-500">Soma do valor (USD) das linhas visíveis</div>
           </article>
           <article className="page-card p-4 sm:p-5">
             <div className="text-xs text-zinc-500">PnL (parcial)</div>
             <div className={`mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] ${summary.pnlSum >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-              {loading ? '—' : summary.pnlCount ? fmtUSD.format(summary.pnlSum) : '—'}
-              {!loading && summary.pnlCount ? <span className="ml-1 text-sm text-zinc-600">({summary.pnlCount}/{summary.count})</span> : null}
+              {loading ? '—' : summary.pnlCount ? `${summary.pnlCount} símbolos` : '—'}
             </div>
             <div className="mt-1.5 text-xs text-zinc-500">Apenas para ativos com avg cost / pnl calculados</div>
           </article>
@@ -471,13 +475,15 @@ export default function ExternalBalancesPage() {
             </div>
           ) : (
             <>
-              <div className="hidden md:block lg:min-h-[392px]">
-                <div className="grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr] gap-[10px] border-b border-zinc-200 bg-zinc-100 px-[14px] py-[10px] text-xs text-zinc-500 backdrop-blur-xl">
+              {isDesktopRowsView ? (
+              <div className="lg:min-h-[392px]">
+                <div className="grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_1fr] gap-[10px] border-b border-zinc-200 bg-zinc-100 px-[14px] py-[10px] text-xs text-zinc-500 backdrop-blur-xl">
                   <button className="text-left hover:text-zinc-900/90" onClick={() => onHeaderSort('asset')}>Ativo</button>
                   <div className="text-right">Total</div>
                   <div className="text-right">Free</div>
                   <button className="text-right hover:text-zinc-900/90" onClick={() => onHeaderSort('value')}>Valor (USD)</button>
                   <div className="text-right">Preço</div>
+                  <div className="text-right">Avg cost</div>
                   <button className="text-right hover:text-zinc-900/90" onClick={() => onHeaderSort('pnl')}>PnL</button>
                 </div>
 
@@ -501,15 +507,20 @@ export default function ExternalBalancesPage() {
                       <div className="text-right font-mono text-zinc-600">{loading ? '—' : fmtNum(row.free, 8)}</div>
                       <div className="text-right font-mono font-extrabold text-zinc-900">{loading ? '—' : typeof value === 'number' ? fmtUSD.format(value) : '—'}</div>
                       <div className="text-right font-mono text-zinc-600">{loading ? '—' : typeof price === 'number' ? `$${fmtNum(price, 6)}` : '—'}</div>
+                      <div className="text-right font-mono text-zinc-600">
+                        {loading ? '—' : typeof row.avg_cost_usdt === 'number' ? `$${fmtNum(row.avg_cost_usdt, 6)}` : '—'}
+                      </div>
                       <div className={`text-right font-mono ${pnlColor}`}>
-                        {loading ? '—' : typeof pnlUsd === 'number' ? `${fmtUSD.format(pnlUsd)} (${fmtNum(pnlPct, 2)}%)` : '—'}
+                        {loading ? '—' : typeof pnlUsd === 'number' && typeof pnlPct === 'number'
+                            ? `${fmtUSD.format(pnlUsd)} (${Number(pnlPct).toFixed(2)}%)`
+                            : '—'}
                       </div>
                     </div>
                   )
                 })}
               </div>
-
-              <div className="md:hidden">
+              ) : (
+              <div>
                 {(loading ? Array.from({ length: 6 }).map((_, i) => ({ asset: `loading-${i}`, free: 0, locked: 0, total: 0 })) : view.items).map((row: any) => {
                   const value = row.value_usd
                   const price = row.price_usdt
@@ -540,7 +551,13 @@ export default function ExternalBalancesPage() {
                         </div>
                         <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
                           <div className="text-[11px] text-zinc-500">PnL</div>
-                          <div className={`mt-1 font-mono text-xs ${pnlColor}`}>{loading ? '—' : typeof pnlUsd === 'number' ? `${fmtUSD.format(pnlUsd)} (${fmtNum(pnlPct, 2)}%)` : '—'}</div>
+                          <div className={`mt-1 font-mono text-xs ${pnlColor}`}>
+                            {loading
+                              ? '—'
+                              : typeof pnlUsd === 'number' && typeof pnlPct === 'number'
+                                ? `${fmtUSD.format(pnlUsd)} (${Number(pnlPct).toFixed(2)}%)`
+                                : '—'}
+                          </div>
                         </div>
                         <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
                           <div className="text-[11px] text-zinc-500">Free</div>
@@ -551,9 +568,10 @@ export default function ExternalBalancesPage() {
                   )
                 })}
               </div>
+              )}
 
               <div className="flex items-center justify-between gap-3 bg-zinc-50 p-4 text-xs text-zinc-500">
-                <div>{serverTotalUsd != null ? `total_usd (server): ${fmtUSD.format(serverTotalUsd)}` : `Carteira · ${summary.count} rows visíveis`}</div>
+                <div>{serverTotalUsd != null ? 'total_usd (server): disponível' : `Carteira · ${summary.count} rows visíveis`}</div>
                 <div>{asOfLabel ? `as_of ${asOfLabel}` : ''}</div>
               </div>
             </>

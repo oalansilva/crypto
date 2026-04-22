@@ -26,7 +26,7 @@ export default defineConfig({
   webServer: skipWebServer
     ? undefined
     : {
-        command: 'npm run dev -- --host 127.0.0.1 --port 4173',
+        command: 'VITE_E2E_AUTH_BYPASS=1 npm run dev -- --host 127.0.0.1 --port 4173',
         cwd: __dirname,
         url: 'http://127.0.0.1:4173',
         reuseExistingServer: !process.env.CI,

@@ -1,13 +1,14 @@
 """Coordination/Kanban file parsing (read-only).
 
-Source of truth:
-- Change coordination markdown files: `docs/coordination/*.md`
+Legacy source of truth:
+- Change coordination markdown files from legacy mirror storage.
 
-We parse the `## Status` section to derive gate statuses and the Kanban column,
-according to the rules locked in:
-`docs/coordination/kanban-visual-coordination.md`.
+When legacy files are unavailable, this service returns an empty set for
+coordination artifacts and the runtime DB-driven paths remain the operational
+source.
 
-This module is intentionally lightweight and file-based (single-tenant MVP).
+We parse the `## Status` section to derive gate statuses and Kanban column
+when legacy files are present.
 """
 
 from __future__ import annotations
@@ -230,8 +231,8 @@ def _archived_change_ids_from_openspec() -> set[str]:
     In this project, archive folder names are typically prefixed with YYYY-MM-DD-,
     so we strip that prefix to recover the original change id.
 
-    This makes the Kanban board consistent even if `docs/coordination/<change>.md`
-    was not updated at archive time.
+    This makes the Kanban board consistent even if legacy coordination files
+    were not updated at archive time.
     """
 
     archive_root = project_root() / "openspec" / "changes" / "archive"

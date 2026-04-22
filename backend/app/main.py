@@ -155,9 +155,13 @@ async def lifespan(app: FastAPI):
                 db.commit()
                 for project in db.query(Project).all():
                     bootstrap_project_workflow_db(project)
-                db.close()
             except Exception as proj_err:
                 logger.warning(f"Project seed skipped/failed: {proj_err}")
+            finally:
+                try:
+                    db.close()
+                except Exception:
+                    pass
         except Exception as e:
             logger.warning(f"Workflow DB init skipped/failed: {e}")
 

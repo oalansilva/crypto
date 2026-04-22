@@ -52,6 +52,17 @@ type MarketPricesResponse = {
   fetched_at: string | null
 }
 
+type KanbanChange = {
+  id: string
+  title: string
+  card_number?: number | null
+  path: string
+  status: Record<string, string>
+  archived: boolean
+  column: string
+  created_at?: string | null
+}
+
 
 
 function cx(...xs: Array<string | false | null | undefined>) {
@@ -229,6 +240,12 @@ export default function HomePage() {
     refetchInterval: 30_000,
   })
 
+  const changesQuery = useQuery<{ items: KanbanChange[] }>({
+    queryKey: ['home', 'workflow-changes', user?.id ?? 'anonymous'],
+    queryFn: () => fetchJson<{ items: KanbanChange[] }>('/workflow/kanban/changes?project_slug=crypto'),
+    refetchOnWindowFocus: false,
+  })
+
   const nowLabel = useMemo(() => formatDt(new Date()), [])
   const bestFavorite = useMemo(() => getBestFavorite(favoritesQuery.data || []), [favoritesQuery.data])
   const bestFavoriteRoi = getReturnPct(bestFavorite?.metrics)
@@ -236,6 +253,32 @@ export default function HomePage() {
   const marketPrices = marketQuery.data?.prices || []
   const marketFreshness = formatFreshness(marketQuery.data?.fetched_at || undefined)
   const healthStatus = healthQuery.data?.status === 'ok' ? 'ok' : healthQuery.isLoading ? 'loading' : 'error'
+  const activeChanges = useMemo(() => {
+    const items = changesQuery.data?.items || []
+    return items
+      .filter((item) => item && !item.archived && item.column !== 'Archived' && item.column !== 'Canceled')
+      .sort((left, right) => {
+        const leftNumber = left.card_number ?? Number.NEGATIVE_INFINITY
+        const rightNumber = right.card_number ?? Number.NEGATIVE_INFINITY
+        if (leftNumber !== rightNumber) return rightNumber - leftNumber
+        const leftTs = Date.parse(left.created_at || '') || 0
+        const rightTs = Date.parse(right.created_at || '') || 0
+        return rightTs - leftTs
+      })
+      .slice(0, 4)
+  }, [changesQuery.data])
+  const recentRuns = useMemo(() => {
+    const items = changesQuery.data?.items || []
+    return items
+      .slice()
+      .filter(Boolean)
+      .sort((left, right) => {
+        const leftTs = Date.parse(left.created_at || '') || 0
+        const rightTs = Date.parse(right.created_at || '') || 0
+        return rightTs - leftTs
+      })
+      .slice(0, 5)
+  }, [changesQuery.data])
 
   return (
     <main className="page-stack">
@@ -411,6 +454,52 @@ export default function HomePage() {
               </>
             )}
           </KpiCard>
+        </section>
+
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <div className="page-card p-6" data-testid="home-focus-section">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Foco atual</h2>
+            {changesQuery.isLoading ? (
+              <SectionSkeletonRows rows={2} />
+            ) : activeChanges.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-[var(--text-tertiary)]">
+                Nenhuma mudança ativa no momento
+              </div>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {activeChanges.map((change) => (
+                  <li key={change.id} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+                    <div className="text-sm font-semibold text-[var(--text-primary)]">{change.title}</div>
+                    <div className="mt-1 text-xs text-[var(--text-tertiary)]">
+                      {typeof change.card_number === 'number' ? `Card #${change.card_number}` : 'Sem número de card'}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="page-card p-6" data-testid="home-runs-section">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Runs recentes</h2>
+            {changesQuery.isLoading ? (
+              <SectionSkeletonRows rows={2} />
+            ) : recentRuns.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-[var(--text-tertiary)]">
+                Nenhuma run recente encontrada.
+              </div>
+              ) : (
+              <ul className="mt-4 space-y-3">
+                {recentRuns.map((change) => (
+                  <li key={change.id} className="rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] p-4">
+                    <div className="text-sm font-semibold text-[var(--text-primary)]">{change.title}</div>
+                    <div className="mt-1 text-xs text-[var(--text-tertiary)]">
+                      {typeof change.card_number === 'number' ? `Card #${change.card_number}` : 'Sem número de card'}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
 
         <PortfolioAllocation />

@@ -365,3 +365,12 @@ async def get_market_candles(
         raise HTTPException(
             status_code=500, detail=f"Failed fetching candles for '{raw_symbol}': {exc}"
         )
+
+
+@router.get("/market/candles/metrics")
+async def get_market_candles_metrics():
+    payload = _OHLCV_REPO.get_metrics()
+    return {
+        "source": "market_ohlcv" if _OHLCV_REPO.enabled else "disabled",
+        "metrics": payload,
+    }

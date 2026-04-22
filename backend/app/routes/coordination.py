@@ -1,6 +1,6 @@
 """Coordination/Kanban endpoints (MVP).
 
-- Changes list + status/column are derived from docs/coordination/*.md.
+- Changes list + status/column are derived from workflow runtime sources.
 - Tasks checklist is parsed from openspec/changes/<change>/tasks.md.
 - Comments are persisted server-side (append-only JSONL per change).
 """
