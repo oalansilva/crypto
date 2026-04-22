@@ -73,7 +73,7 @@ def _fallback_price_payload(item: dict[str, Any]) -> dict[str, Any] | None:
 
 async def _fetch_binance_prices(symbols: tuple[str, ...]) -> dict[str, Any]:
     # Build symbols param: [\"BTCUSDT\",\"ETHUSDT\"] (no spaces)
-    symbols_param = "[" + ",".join(f'\"{s}\"' for s in symbols) + "]"
+    symbols_param = "[" + ",".join(f'"{s}"' for s in symbols) + "]"
     params = {"symbols": symbols_param}
     timeout = httpx.Timeout(_TIMEOUT_SECONDS)
 
@@ -159,7 +159,9 @@ async def get_market_prices(
             if latest:
                 fallback_payload = _to_fallback_payload(latest)
                 if fallback_payload:
-                    _write_cache(normalized_symbols, {"prices": fallback_payload, "fetched_at": fetched_at})
+                    _write_cache(
+                        normalized_symbols, {"prices": fallback_payload, "fetched_at": fetched_at}
+                    )
                     return {"prices": fallback_payload, "fetched_at": fetched_at}
         except Exception as exc:
             logger.warning("Failed to read Binance realtime connector prices: %s", exc)

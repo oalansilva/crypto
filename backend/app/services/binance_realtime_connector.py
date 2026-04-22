@@ -93,7 +93,9 @@ class _TokenBucket:
             async with self._lock:
                 now = time.monotonic()
                 elapsed = max(0.0, now - self._last_refill)
-                self._tokens = min(self._max_tokens, self._tokens + elapsed * self._refill_per_second)
+                self._tokens = min(
+                    self._max_tokens, self._tokens + elapsed * self._refill_per_second
+                )
                 self._last_refill = now
 
                 if self._tokens >= required:
@@ -117,7 +119,9 @@ class BinanceRealtimeConnector:
         self._pair_refresh_seconds = max(5, int(settings.binance_top_pairs_refresh_seconds))
         self._pair_ttl_seconds = max(5, int(settings.binance_top_pairs_ttl_seconds))
         self._price_ttl_seconds = max(1, float(settings.binance_price_ttl_seconds))
-        self._heartbeat_timeout_seconds = max(8.0, float(settings.binance_ws_heartbeat_timeout_seconds))
+        self._heartbeat_timeout_seconds = max(
+            8.0, float(settings.binance_ws_heartbeat_timeout_seconds)
+        )
         self._reconnect_base_seconds = max(0.5, float(settings.binance_ws_reconnect_base_seconds))
         self._reconnect_max_seconds = max(1.0, float(settings.binance_ws_reconnect_max_seconds))
         rate_limit_per_minute = max(1, int(settings.binance_rate_limit_per_minute))
@@ -199,7 +203,7 @@ class BinanceRealtimeConnector:
 
                 if response.status_code == 429:
                     retry_after = response.headers.get("Retry-After")
-                    delay = float(retry_after) if retry_after else min(30.0, 2.0 ** attempt)
+                    delay = float(retry_after) if retry_after else min(30.0, 2.0**attempt)
                     logger.warning(
                         "[binance-realtime] rate-limited on %s, retrying in %.2fs (attempt=%s)",
                         endpoint,
@@ -461,9 +465,7 @@ class BinanceRealtimeConnector:
     async def get_top_pairs(self) -> dict[str, Any]:
         async with self._lock:
             cached_at = self._pair_cache_updated_at
-            is_stale = (
-                cached_at is not None and (time.time() - cached_at) > self._pair_ttl_seconds
-            )
+            is_stale = cached_at is not None and (time.time() - cached_at) > self._pair_ttl_seconds
             return {
                 "pairs": list(self._pairs),
                 "count": len(self._pairs),
@@ -590,9 +592,13 @@ class BinanceRealtimeConnector:
                 continue
 
         if timestamps:
-            cached_at = datetime.fromtimestamp(max(timestamps), tz=timezone.utc).isoformat().replace(
-                "+00:00",
-                "Z",
+            cached_at = (
+                datetime.fromtimestamp(max(timestamps), tz=timezone.utc)
+                .isoformat()
+                .replace(
+                    "+00:00",
+                    "Z",
+                )
             )
 
         return ordered, cached_at, stale
