@@ -201,7 +201,7 @@ def test_ohlcv_ingestion_service_resolve_symbols_and_timeframes(monkeypatch):
         "BNB/USDT",
         "XRP/USDT",
     ]
-    assert service._timeframes == ["1m", "5m", "1h", "4h", "1d"]
+    assert service._timeframes == ["1d", "1h", "1m", "4h", "5m"]
 
 
 def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
