@@ -339,8 +339,7 @@ textarea {
 .balances-page .text-zinc-800,
 .balances-page .text-zinc-700,
 .kanban-page .text-zinc-900,
-.openspec-page .text-slate-900,
-.lab-run-page .text-slate-900 {
+.openspec-page .text-slate-900 {
   color: var(--text-primary) !important;
 }
 
@@ -354,11 +353,6 @@ textarea {
 .balances-page .text-zinc-700,
 .kanban-page .text-zinc-400,
 .kanban-page .text-zinc-500,
-.lab-page .text-zinc-400,
-.lab-page .text-zinc-500,
-.lab-run-page .text-slate-400,
-.lab-run-page .text-slate-500,
-.lab-run-page .text-slate-600,
 .openspec-page .text-slate-400,
 .openspec-page .text-slate-500,
 .openspec-page .text-slate-600 {
@@ -374,8 +368,6 @@ textarea {
 .balances-page .bg-slate-50,
 .kanban-page .bg-zinc-950,
 .kanban-page .bg-zinc-900,
-.lab-run-page .bg-slate-50,
-.lab-run-page .bg-slate-100,
 .openspec-page .bg-slate-50,
 .openspec-page .bg-slate-100 {
   background: rgba(255, 255, 255, 0.045) !important;
@@ -389,7 +381,6 @@ textarea {
 .balances-page .border-zinc-300,
 .kanban-page .border-zinc-200,
 .kanban-page .border-zinc-300,
-.lab-run-page .border-slate-200,
 .openspec-page .border-slate-200 {
   border-color: var(--border-default) !important;
 }
@@ -397,14 +388,11 @@ textarea {
 .combo-page .hover\:bg-zinc-100:hover,
 .favorites-page .hover\:bg-zinc-100:hover,
 .balances-page .hover\:bg-zinc-100:hover,
-.lab-run-page .hover\:bg-slate-100:hover,
 .openspec-page .hover\:bg-slate-100:hover {
   background: rgba(255, 255, 255, 0.075) !important;
 }
 
 .combo-page main > div,
-.lab-page > div,
-.lab-run-page > div,
 .openspec-page > div,
 .balances-page > div {
   position: relative;
@@ -415,8 +403,6 @@ textarea {
 .favorites-page .glass-strong,
 .balances-page .glass,
 .balances-page .glass-strong,
-.lab-page .rounded-2xl.border,
-.lab-run-page .rounded-2xl.border,
 .openspec-page .rounded-xl.border,
 .kanban-page .bg-zinc-950\/40,
 .kanban-page .bg-zinc-950 {

@@ -18,8 +18,6 @@ async function mockHomeApis(
     balancesBody?: unknown
     changes?: unknown[]
     changeDetails?: Record<string, unknown>
-    labRunsStatus?: number
-    labRunsBody?: unknown
     marketPricesStatus?: number
     marketPricesBody?: unknown
   },
@@ -79,27 +77,6 @@ async function mockHomeApis(
     },
   }
 
-  const labRunsBody = opts?.labRunsBody ?? {
-    runs: [
-      {
-        run_id: 'run-btc-1d',
-        status: 'running',
-        step: 'execution',
-        created_at_ms: Date.parse('2026-03-24T12:15:00Z'),
-        updated_at_ms: Date.parse('2026-03-24T12:40:00Z'),
-        viewer_url: 'http://127.0.0.1:4173/lab/runs/run-btc-1d',
-      },
-      {
-        run_id: 'run-sol-4h',
-        status: 'done',
-        step: 'review',
-        created_at_ms: Date.parse('2026-03-24T08:00:00Z'),
-        updated_at_ms: Date.parse('2026-03-24T08:30:00Z'),
-        viewer_url: 'http://127.0.0.1:4173/lab/runs/run-sol-4h',
-      },
-    ],
-  }
-
   const marketPricesBody = opts?.marketPricesBody ?? {
     prices: [
       { symbol: 'BTCUSDT', price: 65234.12, change_24h_pct: 2.4 },
@@ -155,14 +132,6 @@ async function mockHomeApis(
     })
   })
 
-  await page.route('**/api/lab/runs?limit=5', async (route: any) => {
-    await route.fulfill({
-      status: opts?.labRunsStatus ?? 200,
-      contentType: 'application/json',
-      body: JSON.stringify(labRunsBody),
-    })
-  })
-
   await page.route('**/api/market/prices', async (route: any) => {
     await route.fulfill({
       status: opts?.marketPricesStatus ?? 200,
@@ -184,8 +153,6 @@ test('HomePage desktop renders real data and explicit snapshot labels', async ({
   await expect(page.getByTestId('home-kpi-freshness').getByText('há 25 min')).toBeVisible()
   await expect(page.getByTestId('home-focus-section').getByText('Implementa na interface inicial')).toBeVisible()
   await expect(page.getByTestId('home-focus-section').getByText('Card #48')).toBeVisible()
-  await expect(page.getByTestId('home-runs-section').getByText('run-btc-1d')).toBeVisible()
-  await expect(page.getByTestId('home-runs-section').getByText('execution')).toBeVisible()
   await expect(page.getByTestId('home-market-section').getByText('BTCUSDT')).toBeVisible()
   await expect(page.getByTestId('home-market-section').getByText('+2.4%')).toBeVisible()
 
@@ -204,7 +171,6 @@ test('HomePage mobile shows empty and error fallbacks without blank sections', a
     balancesBody: { detail: 'boom' },
     changes: [],
     changeDetails: {},
-    labRunsBody: { runs: [] },
     marketPricesBody: { prices: [], fetched_at: null },
   })
 
