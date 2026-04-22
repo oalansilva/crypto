@@ -312,6 +312,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [visibleIndicators, setVisibleIndicators] = React.useState<IndicatorState>(DEFAULT_INDICATORS);
     const [tooltip, setTooltip] = React.useState<TooltipSnapshot | null>(null);
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null);
+    const [chartMode, setChartMode] = React.useState<'compact' | 'algorithmic'>('algorithmic');
 
     const cacheRef = React.useRef<Map<string, MarketCandle[]>>(new Map([
         [`${symbol}|${resolvedInitialTimeframe}`, initialCandles],
@@ -375,7 +376,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => calculateSma(sortedCandles, indicatorPeriods.smaLong),
         [indicatorPeriods.smaLong, sortedCandles],
     );
-
     const tooltipData = React.useMemo(() => {
         const emaShortMap = new Map<number, number>();
         const smaMediumMap = new Map<number, number>();
@@ -391,13 +391,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 smaMediumMap.set(point.time, point.value);
             }
         });
-        smaLongData.forEach((point) => {
-            if (typeof point.time === 'number') {
-                smaLongMap.set(point.time, point.value);
-            }
-        });
-
-        return new Map<number, TooltipSnapshot>(
+    smaLongData.forEach((point) => {
+        if (typeof point.time === 'number') {
+            smaLongMap.set(point.time, point.value);
+        }
+    });
+    return new Map<number, TooltipSnapshot>(
             sortedCandles.map((candle) => {
                 const time = toUtcTimestamp(candle.timestamp_utc);
                 return [
@@ -418,6 +417,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => (latestCandle ? tooltipData.get(toUtcTimestamp(latestCandle.timestamp_utc)) ?? null : null),
         [latestCandle, tooltipData],
     );
+    const isAlgorithmicChartMode = chartMode === 'algorithmic';
 
     const displaySnapshot = tooltip ?? latestSnapshot;
     const resolvedSignal = React.useMemo(
@@ -525,6 +525,16 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     }, [onClose]);
 
     React.useEffect(() => {
+        if (isStockAsset && timeframe !== '1d') {
+            setTimeframe('1d');
+            return;
+        }
+
+        if (!isStockAsset && !supportedTimeframes.includes(timeframe)) {
+            setTimeframe(resolvedInitialTimeframe);
+            return;
+        }
+
         const cacheKey = `${symbol}|${timeframe}`;
         const cached = cacheRef.current.get(cacheKey);
         if (cached) {
@@ -559,7 +569,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         void run();
 
         return () => controller.abort();
-    }, [symbol, timeframe]);
+    }, [symbol, timeframe, isStockAsset, supportedTimeframes, resolvedInitialTimeframe]);
 
     React.useEffect(() => {
         if (!mainChartRef.current || candlestickData.length === 0) {
@@ -790,7 +800,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             data-testid="chart-modal-backdrop"
         >
             <div
-                className="mx-auto flex h-full max-h-[900px] w-full max-w-[1600px] flex-col overflow-hidden rounded-2xl border border-[#30363d] bg-[#0d1117] shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
+                className="mx-auto flex h-full max-h-[98vh] w-full max-w-[min(98vw,1680px)] flex-col overflow-hidden rounded-2xl border border-[#30363d] bg-[#0d1117] shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="chart-modal-title"
@@ -832,9 +842,9 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
                     <div className="flex min-h-0 flex-1 flex-col border-b border-[#30363d] lg:border-b-0 lg:border-r">
                         <div className="flex flex-wrap items-center gap-2 border-b border-[#30363d] px-5 py-3">
-                            <div className="flex items-center gap-2" role="group" aria-label="Chart timeframe selector">
-                                {timeframeOptions.map((item) => {
-                                    const active = item.value === timeframe;
+                                <div className="flex items-center gap-2" role="group" aria-label="Chart timeframe selector">
+                                    {timeframeOptions.map((item) => {
+                                        const active = item.value === timeframe;
                                     return (
                                         <button
                                             key={item.value}
@@ -906,6 +916,33 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                     Mouse wheel: zoom
                                 </span>
                             </div>
+                            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#1f6feb]/45 bg-[linear-gradient(135deg,rgba(31,111,235,0.18),rgba(9,105,218,0.06))] px-3 py-2">
+                                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#79c0ff]">
+                                    Layout
+                                </span>
+                                <button
+                                    type="button"
+                                    className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition ${
+                                        chartMode === 'compact'
+                                            ? 'border-[#4c8dff] bg-[#0f2747] text-[#dbeafe]'
+                                            : 'border-[#30363d] bg-[#0f2747]/55 text-[#8b949e]'
+                                    }`}
+                                    onClick={() => setChartMode('compact')}
+                                >
+                                    Compacto
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition ${
+                                        chartMode === 'algorithmic'
+                                            ? 'border-[#4c8dff] bg-[#0f2747] text-[#dbeafe]'
+                                            : 'border-[#30363d] bg-[#0f2747]/55 text-[#8b949e]'
+                                    }`}
+                                    onClick={() => setChartMode('algorithmic')}
+                                >
+                                    Algorítmica
+                                </button>
+                            </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2" role="group" aria-label="Chart indicators">
                                 {[
                                     { key: 'emaShort', label: indicatorLabels.emaShort },
@@ -937,21 +974,30 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             </div>
                         </div>
 
-                        <div className="relative flex min-h-0 flex-1 flex-col gap-3 p-4">
+                        <div className={`relative flex min-h-0 flex-1 flex-col gap-3 p-4 ${isAlgorithmicChartMode ? 'pb-5' : ''}`}>
                             {error ? (
                                 <div className="rounded-xl border border-[#f85149]/40 bg-[#f85149]/10 px-4 py-3 text-sm text-[#ffb1ac]">
                                     {error}
                                 </div>
                             ) : null}
 
-                            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+                            <div className={`grid gap-3 ${isAlgorithmicChartMode ? 'grid-cols-1' : 'xl:grid-cols-[minmax(0,1fr)_280px]'}`}>
                                 <div className="min-w-0 space-y-3">
                                     <div
-                                        className="relative rounded-2xl border border-[#30363d] bg-[#0b1118] p-2"
+                                        className={`relative rounded-2xl border border-[#30363d] bg-[#0b1118] p-2 ${isAlgorithmicChartMode ? 'min-h-0 flex-1' : ''}`}
                                         onWheel={handleChartWheel}
                                         data-testid="chart-modal-main-chart-shell"
                                     >
-                                        <div ref={mainChartRef} className="h-[540px] w-full" data-testid="chart-modal-main-chart" />
+                                        <div
+                                            ref={mainChartRef}
+                                            className="w-full h-full"
+                                            style={
+                                                isAlgorithmicChartMode
+                                                    ? { minHeight: '520px', height: 'min(82vh, calc(100vh - 250px))' }
+                                                    : undefined
+                                            }
+                                            data-testid="chart-modal-main-chart"
+                                        />
                                         <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-[#79c0ff]/25 bg-[#0d1117]/86 px-3 py-1 text-[11px] font-medium text-[#c9e6ff]">
                                             Scroll to zoom
                                         </div>
@@ -963,180 +1009,182 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="rounded-2xl border border-[#30363d] bg-[#11161d] p-4 text-sm text-[#c9d1d9]">
-                                    <div className="space-y-5">
-                                        <section>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal Context</p>
-                                            <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                <div className="flex justify-between gap-3">
-                                                    <span className="text-[#8b949e]">Resolved state</span>
-                                                    <span className="font-mono text-[#e6edf3]">{resolvedSignal.visual.badgeText}</span>
+                                {isAlgorithmicChartMode ? null : (
+                                    <div className="rounded-2xl border border-[#30363d] bg-[#11161d] p-4 text-sm text-[#c9d1d9]">
+                                        <div className="space-y-5">
+                                            <section>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal Context</p>
+                                                <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-[#8b949e]">Resolved state</span>
+                                                        <span className="font-mono text-[#e6edf3]">{resolvedSignal.visual.badgeText}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-[#8b949e]">Strategy timeframe</span>
+                                                        <span className="font-mono text-[#e6edf3]">{resolvedSignal.strategyTimeframe ?? '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-[#8b949e]">Displayed timeframe</span>
+                                                        <span className="font-mono text-[#e6edf3]">{resolvedSignal.displayTimeframe ?? '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-[#8b949e]">Reference candle</span>
+                                                        <span className="font-mono text-[#e6edf3]">{formatTimestamp(resolvedSignal.referenceCandleTime)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-[#8b949e]">Latest displayed candle</span>
+                                                        <span className="font-mono text-[#e6edf3]">{formatTimestamp(resolvedSignal.latestCandleTime)}</span>
+                                                    </div>
+                                                    <div className="rounded-lg border border-[#30363d] bg-[#11161d] px-3 py-2 text-xs text-[#c9d1d9]">
+                                                        {resolvedSignal.statusMessage}
+                                                        {resolvedSignal.freshnessReason ? ` ${resolvedSignal.freshnessReason}` : ''}
+                                                    </div>
                                                 </div>
-                                                <div className="flex justify-between gap-3">
-                                                    <span className="text-[#8b949e]">Strategy timeframe</span>
-                                                    <span className="font-mono text-[#e6edf3]">{resolvedSignal.strategyTimeframe ?? '-'}</span>
-                                                </div>
-                                                <div className="flex justify-between gap-3">
-                                                    <span className="text-[#8b949e]">Displayed timeframe</span>
-                                                    <span className="font-mono text-[#e6edf3]">{resolvedSignal.displayTimeframe ?? '-'}</span>
-                                                </div>
-                                                <div className="flex justify-between gap-3">
-                                                    <span className="text-[#8b949e]">Reference candle</span>
-                                                    <span className="font-mono text-[#e6edf3]">{formatTimestamp(resolvedSignal.referenceCandleTime)}</span>
-                                                </div>
-                                                <div className="flex justify-between gap-3">
-                                                    <span className="text-[#8b949e]">Latest displayed candle</span>
-                                                    <span className="font-mono text-[#e6edf3]">{formatTimestamp(resolvedSignal.latestCandleTime)}</span>
-                                                </div>
-                                                <div className="rounded-lg border border-[#30363d] bg-[#11161d] px-3 py-2 text-xs text-[#c9d1d9]">
-                                                    {resolvedSignal.statusMessage}
-                                                    {resolvedSignal.freshnessReason ? ` ${resolvedSignal.freshnessReason}` : ''}
-                                                </div>
-                                            </div>
-                                        </section>
+                                            </section>
 
-                                        <section>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Crosshair</p>
-                                            <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                <div>
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Time</p>
-                                                    <p className="font-mono text-sm text-[#e6edf3]">{formatTimestamp(displaySnapshot?.candle.timestamp_utc)}</p>
+                                            <section>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Crosshair</p>
+                                                <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                    <div>
+                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Time</p>
+                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatTimestamp(displaySnapshot?.candle.timestamp_utc)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Volume</p>
+                                                        <p className="font-mono text-sm text-[#e6edf3]">
+                                                            {displaySnapshot?.candle.volume?.toLocaleString('en-US') ?? '-'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Open</p>
+                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.open)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">High</p>
+                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.high)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Low</p>
+                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.low)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Close</p>
+                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.close)}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Volume</p>
-                                                    <p className="font-mono text-sm text-[#e6edf3]">
-                                                        {displaySnapshot?.candle.volume?.toLocaleString('en-US') ?? '-'}
+                                            </section>
+
+                                            <section>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Distance</p>
+                                                <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {resolvedSignal.visual.markerLabel.toLowerCase()}</p>
+                                                    <p className={`font-mono text-lg font-semibold ${
+                                                        (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'text-[#3fb950]' : 'text-[#e6edf3]'
+                                                    }`}>
+                                                        {formatPercent(opportunity.distance_to_next_status)}
                                                     </p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Open</p>
-                                                    <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.open)}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">High</p>
-                                                    <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.high)}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Low</p>
-                                                    <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.low)}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Close</p>
-                                                    <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.close)}</p>
-                                                </div>
-                                            </div>
-                                        </section>
+                                            </section>
 
-                                        <section>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Distance</p>
-                                            <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {resolvedSignal.visual.markerLabel.toLowerCase()}</p>
-                                                <p className={`font-mono text-lg font-semibold ${
-                                                    (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'text-[#3fb950]' : 'text-[#e6edf3]'
-                                                }`}>
-                                                    {formatPercent(opportunity.distance_to_next_status)}
-                                                </p>
-                                            </div>
-                                        </section>
+                                            <section>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Risk / Stop</p>
+                                                <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-[#8b949e]">Entry</span>
+                                                        <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.entry_price)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-[#8b949e]">Stop</span>
+                                                        <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.stop_price)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-[#8b949e]">Risk</span>
+                                                        <span className="font-mono text-[#f85149]">{formatPercent(opportunity.distance_to_stop_pct)}</span>
+                                                    </div>
+                                                </div>
+                                            </section>
 
-                                        <section>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Risk / Stop</p>
-                                            <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                <div className="flex justify-between gap-3">
-                                                    <span className="text-[#8b949e]">Entry</span>
-                                                    <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.entry_price)}</span>
+                                            <section>
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal History</p>
+                                                    <span className="text-[11px] text-[#8b949e]">
+                                                        {canRenderSignalHistoryMarkers
+                                                            ? 'Markers aligned with chart timeframe.'
+                                                            : 'Markers hidden: chart timeframe differs from strategy timeframe.'}
+                                                    </span>
                                                 </div>
-                                                <div className="flex justify-between gap-3">
-                                                    <span className="text-[#8b949e]">Stop</span>
-                                                    <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.stop_price)}</span>
-                                                </div>
-                                                <div className="flex justify-between gap-3">
-                                                    <span className="text-[#8b949e]">Risk</span>
-                                                    <span className="font-mono text-[#f85149]">{formatPercent(opportunity.distance_to_stop_pct)}</span>
-                                                </div>
-                                            </div>
-                                        </section>
-
-                                        <section>
-                                            <div className="flex items-center justify-between gap-3">
-                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal History</p>
-                                                <span className="text-[11px] text-[#8b949e]">
-                                                    {canRenderSignalHistoryMarkers
-                                                        ? 'Markers aligned with chart timeframe.'
-                                                        : 'Markers hidden: chart timeframe differs from strategy timeframe.'}
-                                                </span>
-                                            </div>
-                                            <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                {signalHistory.length > 0 ? (
-                                                    <div className="space-y-2" data-testid="chart-modal-signal-history">
-                                                        {signalHistory.map((item, index) => {
-                                                            const marker = getSignalHistoryMarker(item);
-                                                            return (
-                                                                <div
-                                                                    key={`${item.timestamp}-${item.type}-${index}`}
-                                                                    className="flex items-start justify-between gap-3 rounded-lg border border-[#30363d] bg-[#11161d] px-3 py-2"
-                                                                    data-testid={`chart-modal-signal-history-item-${index}`}
-                                                                >
-                                                                    <div className="space-y-1">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: marker.color }} />
-                                                                            <span className="font-mono text-sm text-[#e6edf3]">{getSignalHistoryLabel(item)}</span>
-                                                                            <span className="text-xs text-[#8b949e]">{formatSignalReason(item.reason)}</span>
+                                                <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                    {signalHistory.length > 0 ? (
+                                                        <div className="space-y-2" data-testid="chart-modal-signal-history">
+                                                            {signalHistory.map((item, index) => {
+                                                                const marker = getSignalHistoryMarker(item);
+                                                                return (
+                                                                    <div
+                                                                        key={`${item.timestamp}-${item.type}-${index}`}
+                                                                        className="flex items-start justify-between gap-3 rounded-lg border border-[#30363d] bg-[#11161d] px-3 py-2"
+                                                                        data-testid={`chart-modal-signal-history-item-${index}`}
+                                                                    >
+                                                                        <div className="space-y-1">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: marker.color }} />
+                                                                                <span className="font-mono text-sm text-[#e6edf3]">{getSignalHistoryLabel(item)}</span>
+                                                                                <span className="text-xs text-[#8b949e]">{formatSignalReason(item.reason)}</span>
+                                                                            </div>
+                                                                            <p className="text-xs text-[#8b949e]">{formatTimestamp(item.timestamp)}</p>
                                                                         </div>
-                                                                        <p className="text-xs text-[#8b949e]">{formatTimestamp(item.timestamp)}</p>
+                                                                        <span className="font-mono text-sm text-[#e6edf3]">{formatPrice(item.price)}</span>
                                                                     </div>
-                                                                    <span className="font-mono text-sm text-[#e6edf3]">{formatPrice(item.price)}</span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-[#8b949e]">No confirmed entry/exit history available for this strategy.</p>
-                                                )}
-                                            </div>
-                                        </section>
-
-                                        <section>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Parameters</p>
-                                            <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                {opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
-                                                    Object.entries(opportunity.parameters).map(([key, value]) => (
-                                                        <div key={key} className="flex justify-between gap-3">
-                                                            <span className="text-[#8b949e]">{key}</span>
-                                                            <span className="font-mono text-[#e6edf3]">{String(value)}</span>
+                                                                );
+                                                            })}
                                                         </div>
-                                                    ))
-                                                ) : (
-                                                    <p className="text-[#8b949e]">No parameters available.</p>
-                                                )}
-                                            </div>
-                                        </section>
+                                                    ) : (
+                                                        <p className="text-[#8b949e]">No confirmed entry/exit history available for this strategy.</p>
+                                                    )}
+                                                </div>
+                                            </section>
 
-                                        <section>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Indicators</p>
-                                            <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                {sidebarIndicators.map((item) => (
-                                                    <div key={item.label} className="flex items-center justify-between gap-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                                                            <span className="text-[#8b949e]">{item.label}</span>
+                                            <section>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Parameters</p>
+                                                <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                    {opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
+                                                        Object.entries(opportunity.parameters).map(([key, value]) => (
+                                                            <div key={key} className="flex justify-between gap-3">
+                                                                <span className="text-[#8b949e]">{key}</span>
+                                                                <span className="font-mono text-[#e6edf3]">{String(value)}</span>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-[#8b949e]">No parameters available.</p>
+                                                    )}
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Indicators</p>
+                                                <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                    {sidebarIndicators.map((item) => (
+                                                        <div key={item.label} className="flex items-center justify-between gap-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                                                <span className="text-[#8b949e]">{item.label}</span>
+                                                            </div>
+                                                            <span className="font-mono text-[#e6edf3]">{formatIndicator(item.value)}</span>
                                                         </div>
-                                                        <span className="font-mono text-[#e6edf3]">{formatIndicator(item.value)}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
+                                                    ))}
+                                                </div>
+                                            </section>
 
-                                        <section>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Notes</p>
-                                            <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                <p className="whitespace-pre-wrap text-sm text-[#c9d1d9]">
-                                                    {opportunity.notes?.trim() ? opportunity.notes : 'No notes for this strategy.'}
-                                                </p>
-                                            </div>
-                                        </section>
+                                            <section>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Notes</p>
+                                                <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                    <p className="whitespace-pre-wrap text-sm text-[#c9d1d9]">
+                                                        {opportunity.notes?.trim() ? opportunity.notes : 'No notes for this strategy.'}
+                                                    </p>
+                                                </div>
+                                            </section>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </div>
 
