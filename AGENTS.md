@@ -4,13 +4,23 @@ Este arquivo organiza o fluxo de trabalho para evitar retrabalho e manter padrã
 
 ## TL;DR
 
-- **Branch padrão:** trabalhe direto em `main` para mudanças de rotina.
-- **Fluxo simplificado:** implemente, valide e confirme; se quiser revisão formal, abra PR `main <- feature/<nome>` e merge no mesmo repositório antes de fechar.
+- **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
+- **Fluxo de produção:** implemente em `develop`, valide e abra PR `develop -> main` para promoção.
+- **Política de branching:** sem branchs de feature; trabalhe em `develop` e promova para `main` apenas via PR.
 - **Referência operacional:** `docs/workflow-criar-funcionalidade.md`.
 - `docs/workflow-criar-funcionalidade.md` define onde registrar decisão e evidência por change (via PR e resumo no chat).
 - OpenSpec é a camada de especificação técnico (artifacts).
-- Validação humana final permanece com Alan antes de homologação.
+- Workflow DB e `docs/coordination/*.md` são fontes de operação e evidência.
 
+## Regras de operação
+
+- Fluxo único (sem divisão por agentes): você conduz descoberta, planejamento, implementação, validação e fechamento.
+- Trabalhe sempre em `develop` para mudanças de implementação e use PR `develop -> main` para homologação.
+- Registre em `docs/workflow-criar-funcionalidade.md` e no PR:
+  - status atual
+  - decisões de escopo
+  - evidências de teste/PR
+- Para promover produção, trabalhe em `develop` e abra PR de `develop -> main`.
 ## Como rodar (VPS / dev)
 
 ### Backend (FastAPI)
