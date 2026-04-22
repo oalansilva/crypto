@@ -277,9 +277,11 @@ export const MonitorStatusTab: React.FC = () => {
     };
 
     const handleOpenChart = async (opportunity: Opportunity) => {
-        const initialTimeframe = toChartTimeframe(
+        const isStock = getOpportunityAssetType(opportunity) === 'stock';
+        const requestedTimeframe = toChartTimeframe(
             getPreference(opportunity.symbol).price_timeframe || opportunity.timeframe,
         );
+        const initialTimeframe: ChartTimeframe = isStock ? '1d' : requestedTimeframe;
 
         setOpeningChartSymbol(opportunity.symbol);
 

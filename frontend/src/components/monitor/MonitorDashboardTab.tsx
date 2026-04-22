@@ -66,6 +66,13 @@ export function MonitorDashboardTab() {
   }, [selectedSymbol, symbols])
 
   useEffect(() => {
+    const selectedMeta = symbols.find((item) => item.symbol === selectedSymbol);
+    if (selectedMeta?.assetType === 'stock' && timeframe !== '1d') {
+      setTimeframe('1d')
+    }
+  }, [selectedSymbol, symbols, timeframe])
+
+  useEffect(() => {
     const controller = new AbortController()
     const run = async () => {
       setFavoritesLoading(true)
