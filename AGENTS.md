@@ -4,18 +4,20 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 ## TL;DR
 
-- **Branch padrão:** trabalhe em `feature/long-change` (evite commits diretos na `main`).
-- **Fluxo operacional atual:** Workflow DB = fonte runtime; OpenSpec + `docs/coordination/*.md` = superfície viva de handoff, decisões e evidências; OpenSpec também é a camada de artefatos.
-- **Notas de operação ativa:** `docs/coordination/*.md` deixou de ser espelho; passa a ser o trilho de handoff e rastreabilidade visível no repositório, junto com o estado no runtime DB.
-- **Playbook operacional canônico (Phase 1):** seguir `docs/multiagent-operating-playbook.md` para responsabilidades por papel, contrato padrão de handoff, Definition of Done por coluna e regra de fechamento com runtime + handoff.
-- **Ownership dos artefatos OpenSpec neste repo:** o OpenSpec oficial define os artefatos, não os papéis; aqui o `PO` gera os artefatos do change (`proposal/specs/design/tasks/review-ptbr`) e o `DESIGN` gera o protótipo visual e decisões de UX.
-- **Criação de change:** use `scripts/create_change_and_seed.sh <change-name>` para garantir OpenSpec + coordination + workflow DB no mesmo passo.
-- **QA UI/browser:** preferir **Microsoft Playwright CLI** (`playwright-cli`) em vez de MCP para automação de interface; usar como base a skill oficial local `skills/playwright-cli-official/`; salvar evidências por fluxo (screenshots e, quando útil, trace/video), registrar os caminhos/links no trilho de handoff e abrir work item do tipo `bug` quando houver problema real.
-- **Gates:** PO → DESIGN (quando UI) → Alan approval → DEV → QA → Homologation → archive.
-- **Testes UI/E2E:** QA é o dono da validação; Playwright é a ferramenta principal de automação; Codex CLI entra como apoio para escrever/ajustar/depurar/rodar os testes, sem substituir a decisão de QA.
-- **Design de interface em Codex CLI:** usar `skills/interface-design-codex/` como referência padrão para trabalho de DESIGN e apoio de revisão visual.
-- **Playwright headed neste servidor:** preferir `/usr/local/bin/playwright-cli-headed` e um único `run-code` com `goto + interações + screenshot` no mesmo fluxo.
-- **Escopo de mudanças:** prefira mexer apenas em `backend/`, `frontend/`, `src/`, `tests/`, `openspec/`.
+- **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
+- **Fluxo de produção:** implemente em `develop`, valide e abra PR `develop -> main` para promoção.
+- **Referência operacional:** `docs/workflow-criar-funcionalidade.md`.
+- OpenSpec é a camada de especificação técnico (artifacts).
+- Workflow DB e `docs/coordination/*.md` são fontes de operação e evidência.
+
+## Regras de operação
+
+- Fluxo único (sem divisão por agentes): você conduz descoberta, planejamento, implementação, validação e fechamento.
+- Registre em `docs/workflow-criar-funcionalidade.md` e no PR:
+  - status atual
+  - decisões de escopo
+  - evidências de teste/PR
+- Para promover produção, trabalhe em `develop` e abra PR de `develop -> main`.
 
 ## Como rodar (VPS / dev)
 
