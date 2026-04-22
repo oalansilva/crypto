@@ -158,6 +158,12 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     async def stop_snapshot_worker():
         lifecycle_calls.append("stop_worker")
 
+    def start_ohlcv():
+        lifecycle_calls.append("start_ohlcv")
+
+    def stop_ohlcv():
+        lifecycle_calls.append("stop_ohlcv")
+
     class _SignalMonitorStub:
         def __init__(self):
             self.stopped = False
@@ -193,6 +199,8 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     monkeypatch.setattr(main, "stop_binance_realtime_connector", stop_connector)
     monkeypatch.setattr(main, "start_signal_feed_snapshot_worker", start_snapshot_worker)
     monkeypatch.setattr(main, "stop_signal_feed_snapshot_worker", stop_snapshot_worker)
+    monkeypatch.setattr(main, "start_ohlcv_ingestion", start_ohlcv)
+    monkeypatch.setattr(main, "stop_ohlcv_ingestion", stop_ohlcv)
     monkeypatch.setattr(main, "signal_monitor", signal_stub)
     monkeypatch.setattr(
         main,
@@ -222,6 +230,8 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     assert "stop" in lifecycle_calls
     assert lifecycle_calls.index("start") > lifecycle_calls.index("workflow_db_closed")
     assert lifecycle_calls.index("start") < lifecycle_calls.index("stop")
+    assert "start_ohlcv" in lifecycle_calls
+    assert lifecycle_calls.index("start_ohlcv") < lifecycle_calls.index("stop_ohlcv")
     assert signal_stub.stopped
     assert "stop_worker" in lifecycle_calls
     assert "workflow_db_closed" in lifecycle_calls

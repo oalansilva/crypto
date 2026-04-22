@@ -510,3 +510,114 @@ def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_ses
             algorithm="HS256",
         )
         auth_routes.refresh(auth_routes.RefreshRequest(refreshToken=ghost_refresh), auth_db_session)
+
+
+def test_database_timescale_policy_verification_reports_missing_and_exception_paths(monkeypatch):
+    class _Scalar:
+        def __init__(self, value):
+            self.value = value
+
+        def scalar(self):
+            return self.value
+
+    class _Conn:
+        def __init__(self, values):
+            self.values = values
+            self.executed = []
+            self.should_raise = None
+
+        def execute(self, statement, params=None):
+            sql = str(statement)
+            self.executed.append((sql, params))
+
+            if self.should_raise is not None:
+                raise self.should_raise
+
+            if "timescaledb_information.hypertables" in sql:
+                return _Scalar(self.values.get("hypertable", False))
+            if "FROM timescaledb_information.jobs" in sql:
+                proc_name = (params or {}).get("proc_name") if params else None
+                if proc_name == "policy_retention":
+                    return _Scalar(self.values.get("retention", False))
+                if proc_name == "policy_compression":
+                    return _Scalar(self.values.get("compression", False))
+            if "unNEST(C.RELOPTIONS" in sql.upper():
+                return _Scalar(self.values.get("compression_setting", False))
+            return _Scalar(False)
+
+    warnings = []
+    infos = []
+    def _warn(msg, *_, **__):
+        warnings.append(msg)
+
+    def _info(msg, *_, **__):
+        infos.append(msg)
+
+    monkeypatch.setattr(database_module.logger, "warning", _warn)
+    monkeypatch.setattr(database_module.logger, "info", _info)
+
+    conn = _Conn({"hypertable": True, "retention": False, "compression": False, "compression_setting": False})
+    database_module._verify_market_ohlcv_timescale_policies(conn)
+    assert any("incomplete" in str(item) for item in warnings)
+
+    warnings.clear()
+    complete_conn = _Conn(
+        {
+            "hypertable": True,
+            "retention": True,
+            "compression": True,
+            "compression_setting": True,
+        }
+    )
+    database_module._verify_market_ohlcv_timescale_policies(complete_conn)
+    assert any("verified as active" in str(item) for item in infos)
+
+    warnings.clear()
+    error_conn = _Conn({})
+    error_conn.should_raise = RuntimeError("boom")
+    database_module._verify_market_ohlcv_timescale_policies(error_conn)
+    assert any("Could not complete timescale policy verification" in str(item) for item in warnings)
+
+
+def test_database_runtime_schema_migrations_timescale_setup_exception_keeps_running(monkeypatch):
+    class _Scalar:
+        def scalar(self):
+            return None
+
+    class _FailingConn:
+        def __init__(self):
+            self.executed = []
+
+        def execute(self, statement, params=None):
+            sql = str(statement)
+            self.executed.append((sql, params))
+            if "create extension if not exists timescaledb" in sql.lower():
+                raise RuntimeError("timescaledb unavailable")
+            return _Scalar()
+
+    conn = _FailingConn()
+
+    class _Begin:
+        def __init__(self, c):
+            self._c = c
+
+        def __enter__(self):
+            return self._c
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    warnings = []
+    called = []
+
+    monkeypatch.setattr(database_module, "DB_URL", "postgresql://unit-tests")
+    monkeypatch.setattr(database_module, "engine", SimpleNamespace(begin=lambda: _Begin(conn)))
+    monkeypatch.setattr(database_module, "ensure_sqlite_migrations", lambda: None)
+    monkeypatch.setattr(database_module, "_verify_market_ohlcv_timescale_policies", lambda *_: called.append("called"))
+    monkeypatch.setattr(database_module.logger, "warning", lambda msg, *a, **k: warnings.append(msg))
+    monkeypatch.setattr(database_module, "_policy_checks_enabled", lambda: True)
+
+    database_module.ensure_runtime_schema_migrations()
+
+    assert called == []
+    assert any("Timescale configuration for market_ohlcv failed" in str(item) for item in warnings)
