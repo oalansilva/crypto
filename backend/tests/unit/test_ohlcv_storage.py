@@ -21,6 +21,9 @@ class _ScalarResult:
     def scalar(self):
         return self._value
 
+    def fetchone(self):
+        return (self._value,) if self._value is not None else None
+
 
 class _RowsResult:
     def __init__(self, rows):
@@ -46,7 +49,7 @@ class _FakeConnection:
     def execute(self, statement, params=None):
         sql = str(statement)
         if "SELECT MAX(candle_time)" in sql:
-            return (self._latest,) if self._latest else None
+            return _ScalarResult(self._latest)
         if "EXPLAIN" in sql:
             return _ScalarResult(self._explain_plan)
         if "COUNT(" in sql and "market_ohlcv" in sql:
@@ -150,7 +153,9 @@ def test_ohlcv_repository_reads_and_inserts_with_fake_connection(monkeypatch):
     assert len(conn.inserts[0]) == 2
 
 
-def test_ohlcv_repository_write_rejects_missing_timestamp():
+def test_ohlcv_repository_write_rejects_missing_timestamp(monkeypatch):
+    monkeypatch.setattr(ohlcv_storage, "DB_URL", "postgresql://unit-test")
+
     repo = MarketOhlcvRepository()
     with pytest.raises(ValueError, match="timestamp_utc"):
         repo.write_candles(
@@ -198,9 +203,7 @@ def test_ohlcv_ingestion_service_resolve_symbols_and_timeframes(monkeypatch):
         "BNB/USDT",
         "XRP/USDT",
     ]
-    assert service._timeframes == sorted(
-        ["1m", "5m", "1h", "4h", "1d"], reverse=False
-    )
+    assert service._timeframes == ["1m", "5m", "1h", "4h", "1d"]
 
 
 def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
@@ -270,5 +273,5 @@ def test_ohlcv_ingestion_symbol_skips_stooq_non_1d_and_runs_loop(monkeypatch):
     monkeypatch.setattr(service, "_ingest_symbol", _ingest)
     service._run_loop()
     assert ingested == [("AAPL", "1m")]
-    assert service._stop_event.is_set() is True
+    assert service._stop_event.is_set()
     assert original_stop() is False

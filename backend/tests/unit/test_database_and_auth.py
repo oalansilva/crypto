@@ -541,7 +541,7 @@ def test_database_timescale_policy_verification_reports_missing_and_exception_pa
                     return _Scalar(self.values.get("retention", False))
                 if proc_name == "policy_compression":
                     return _Scalar(self.values.get("compression", False))
-            if "unNEST(C.RELOPTIONS" in sql.upper():
+            if "UNNEST(C.RELOPTIONS" in sql.upper():
                 return _Scalar(self.values.get("compression_setting", False))
             return _Scalar(False)
 
