@@ -547,6 +547,7 @@ def test_database_timescale_policy_verification_reports_missing_and_exception_pa
 
     warnings = []
     infos = []
+
     def _warn(msg, *_, **__):
         warnings.append(msg)
 
@@ -556,7 +557,9 @@ def test_database_timescale_policy_verification_reports_missing_and_exception_pa
     monkeypatch.setattr(database_module.logger, "warning", _warn)
     monkeypatch.setattr(database_module.logger, "info", _info)
 
-    conn = _Conn({"hypertable": True, "retention": False, "compression": False, "compression_setting": False})
+    conn = _Conn(
+        {"hypertable": True, "retention": False, "compression": False, "compression_setting": False}
+    )
     database_module._verify_market_ohlcv_timescale_policies(conn)
     assert any("incomplete" in str(item) for item in warnings)
 
@@ -613,8 +616,14 @@ def test_database_runtime_schema_migrations_timescale_setup_exception_keeps_runn
     monkeypatch.setattr(database_module, "DB_URL", "postgresql://unit-tests")
     monkeypatch.setattr(database_module, "engine", SimpleNamespace(begin=lambda: _Begin(conn)))
     monkeypatch.setattr(database_module, "ensure_sqlite_migrations", lambda: None)
-    monkeypatch.setattr(database_module, "_verify_market_ohlcv_timescale_policies", lambda *_: called.append("called"))
-    monkeypatch.setattr(database_module.logger, "warning", lambda msg, *a, **k: warnings.append(msg))
+    monkeypatch.setattr(
+        database_module,
+        "_verify_market_ohlcv_timescale_policies",
+        lambda *_: called.append("called"),
+    )
+    monkeypatch.setattr(
+        database_module.logger, "warning", lambda msg, *a, **k: warnings.append(msg)
+    )
     monkeypatch.setattr(database_module, "_policy_checks_enabled", lambda: True)
 
     database_module.ensure_runtime_schema_migrations()

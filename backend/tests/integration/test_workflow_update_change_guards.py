@@ -32,10 +32,13 @@ def _build_client():
 
 
 def _create_change(client: TestClient, *, change_id: str, status: str):
-    assert client.post(
-        "/api/workflow/projects/crypto/changes",
-        json={"change_id": change_id, "title": f"{change_id}", "status": status},
-    ).status_code == 200
+    assert (
+        client.post(
+            "/api/workflow/projects/crypto/changes",
+            json={"change_id": change_id, "title": f"{change_id}", "status": status},
+        ).status_code
+        == 200
+    )
 
 
 def test_update_change_rejects_approval_without_openspec_artifacts(monkeypatch, tmp_path):

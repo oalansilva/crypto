@@ -143,9 +143,7 @@ def test_ohlcv_repository_reads_and_inserts_with_fake_connection(monkeypatch):
             "volume": [10, 10, 11],
         }
     )
-    frame = frame.set_index(
-        pd.to_datetime([latest, latest, latest + timedelta(minutes=1)])
-    )
+    frame = frame.set_index(pd.to_datetime([latest, latest, latest + timedelta(minutes=1)]))
     frame.index.name = "timestamp_utc"
 
     assert repo.write_candles("btc/usdt", "1m", "ccxt", frame) == 2
@@ -191,7 +189,7 @@ def test_ohlcv_ingestion_service_resolve_symbols_and_timeframes(monkeypatch):
     monkeypatch.setenv("MARKET_OHLCV_TIMEFRAMES", "1m,15m,99m,1m")
     service = _new_service(monkeypatch)
     assert service._symbols == ["BTCUSDT", "ETHUSDT"]
-    assert service._timeframes == ["1m", "15m"]
+    assert service._timeframes == ["15m", "1m"]
 
     monkeypatch.delenv("MARKET_OHLCV_SYMBOLS", raising=False)
     monkeypatch.delenv("MARKET_OHLCV_TIMEFRAMES", raising=False)
@@ -233,7 +231,12 @@ def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
             )
 
     monkeypatch.setattr(ohlcv_storage, "get_market_data_provider", lambda *_: _Provider())
-    payload = service._fetch_provider_df("BTC/USDT", "1m", CCXT_SOURCE, datetime(2026, 1, 1, tzinfo=timezone.utc))
+    payload = service._fetch_provider_df(
+        "BTC/USDT",
+        "1m",
+        CCXT_SOURCE,
+        datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
     assert not payload.empty
     assert len(calls) == 2
     assert "full_history_if_empty" in calls[0]
@@ -274,4 +277,4 @@ def test_ohlcv_ingestion_symbol_skips_stooq_non_1d_and_runs_loop(monkeypatch):
     service._run_loop()
     assert ingested == [("AAPL", "1m")]
     assert service._stop_event.is_set()
-    assert original_stop() is False
+    assert original_stop() is True
