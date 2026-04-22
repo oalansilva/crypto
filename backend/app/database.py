@@ -25,12 +25,16 @@ _LOCAL_RUNTIME_ENVIRONMENTS = {
 
 def _is_local_runtime() -> bool:
     env = (
-        os.getenv("APP_ENV")
-        or os.getenv("APP_ENVIRONMENT")
-        or os.getenv("ENV")
-        or os.getenv("RUNTIME_ENV")
-        or ""
-    ).strip().lower()
+        (
+            os.getenv("APP_ENV")
+            or os.getenv("APP_ENVIRONMENT")
+            or os.getenv("ENV")
+            or os.getenv("RUNTIME_ENV")
+            or ""
+        )
+        .strip()
+        .lower()
+    )
     if env in _LOCAL_RUNTIME_ENVIRONMENTS:
         return True
     return False
@@ -319,9 +323,7 @@ def ensure_runtime_schema_migrations() -> None:
         timescale_functions_available = True
         try:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
-            conn.execute(
-                text(
-                    """
+            conn.execute(text("""
                     CREATE TABLE IF NOT EXISTS market_ohlcv (
                         symbol TEXT NOT NULL,
                         timeframe TEXT NOT NULL,
@@ -335,33 +337,19 @@ def ensure_runtime_schema_migrations() -> None:
                         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                         PRIMARY KEY (symbol, timeframe, candle_time, source)
                     )
-                    """
-                )
-            )
-            conn.execute(
-                text(
-                    """
+                    """))
+            conn.execute(text("""
                     CREATE UNIQUE INDEX IF NOT EXISTS uq_market_ohlcv_symbol_timeframe_candle_time
                     ON market_ohlcv (symbol, timeframe, candle_time)
-                    """
-                )
-            )
-            conn.execute(
-                text(
-                    """
+                    """))
+            conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_time
                     ON market_ohlcv (symbol, timeframe, candle_time DESC)
-                    """
-                )
-            )
-            conn.execute(
-                text(
-                    """
+                    """))
+            conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_source
                     ON market_ohlcv (symbol, timeframe, source)
-                    """
-                )
-            )
+                    """))
 
             # Best effort Timescale migration path.
             try:
@@ -509,20 +497,14 @@ def _verify_market_ohlcv_timescale_policies(
     }
 
     try:
-        checks["hypertable"] = bool(
-            conn.execute(
-                text(
-                    """
+        checks["hypertable"] = bool(conn.execute(text("""
                     SELECT EXISTS(
                         SELECT 1
                         FROM timescaledb_information.hypertables
                         WHERE hypertable_name = 'market_ohlcv'
                           AND hypertable_schema = 'public'
                     )
-                    """
-                )
-            ).scalar()
-        )
+                    """)).scalar())
 
         if timescale_functions_available:
             for check_name, proc_name in (
@@ -531,24 +513,19 @@ def _verify_market_ohlcv_timescale_policies(
             ):
                 checks[check_name] = bool(
                     conn.execute(
-                        text(
-                            """
+                        text("""
                             SELECT EXISTS(
                                 SELECT 1
                                 FROM timescaledb_information.jobs
                                 WHERE proc_name = :proc_name
                                   AND hypertable_name = 'market_ohlcv'
                             )
-                            """
-                        ),
+                            """),
                         {"proc_name": proc_name},
                     ).scalar()
                 )
 
-            checks["compression_setting"] = bool(
-                conn.execute(
-                    text(
-                        """
+            checks["compression_setting"] = bool(conn.execute(text("""
                         SELECT EXISTS(
                             SELECT 1
                             FROM pg_class c
@@ -561,10 +538,7 @@ def _verify_market_ohlcv_timescale_policies(
                                     WHERE lower(v::text) LIKE 'timescaledb.compress=%'
                               )
                         )
-                        """
-                    )
-                ).scalar()
-            )
+                        """)).scalar())
 
         missing = sorted(name for name, is_ok in checks.items() if not is_ok)
         if missing:

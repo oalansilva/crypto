@@ -94,7 +94,14 @@ class OhlcvStorageMetrics:
             lambda: deque(maxlen=5000)
         )
 
-    def record_write(self, symbol: str, timeframe: str, rows_received: int, rows_duplicate: int, lag_seconds: float | None) -> None:
+    def record_write(
+        self,
+        symbol: str,
+        timeframe: str,
+        rows_received: int,
+        rows_duplicate: int,
+        lag_seconds: float | None,
+    ) -> None:
         with self._lock:
             self._rows_written += int(rows_received)
             self._rows_received += int(rows_received)
@@ -169,7 +176,11 @@ def _walk_plan_uses_index(node: Any, required_index: str) -> bool:
 
     node_type = str(node.get("Node Type", ""))
     index_name = str(node.get("Index Name", ""))
-    if required_index in index_name and node_type in {"Index Scan", "Index Only Scan", "Bitmap Index Scan"}:
+    if required_index in index_name and node_type in {
+        "Index Scan",
+        "Index Only Scan",
+        "Bitmap Index Scan",
+    }:
         return True
 
     plans = node.get("Plans")
@@ -196,14 +207,12 @@ class MarketOhlcvRepository:
         normalized_timeframe = _normalize_timeframe(timeframe)
         with engine.begin() as conn:
             row = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT MAX(candle_time) AS candle_time
                     FROM market_ohlcv
                     WHERE symbol = :symbol
                       AND timeframe = :timeframe
-                    """
-                ),
+                    """),
                 {"symbol": normalized_symbol, "timeframe": normalized_timeframe},
             ).fetchone()
 
@@ -219,7 +228,9 @@ class MarketOhlcvRepository:
         return _to_utc_datetime(value)
 
     @staticmethod
-    def _read_plan_uses_timeframe_index(plan_text: Any, required_index: str = "idx_market_ohlcv_symbol_timeframe_time") -> bool:
+    def _read_plan_uses_timeframe_index(
+        plan_text: Any, required_index: str = "idx_market_ohlcv_symbol_timeframe_time"
+    ) -> bool:
         if not plan_text:
             return False
 
@@ -254,18 +265,19 @@ class MarketOhlcvRepository:
                 if not isinstance(entry, dict):
                     continue
                 if any(
-                    field in str(entry.get("Index Name", ""))
-                    for field in (required_index, "Index")
+                    field in str(entry.get("Index Name", "")) for field in (required_index, "Index")
                 ):
-                    if str(entry.get("Node Type", "")) in {"Index Scan", "Index Only Scan", "Bitmap Index Scan"}:
+                    if str(entry.get("Node Type", "")) in {
+                        "Index Scan",
+                        "Index Only Scan",
+                        "Bitmap Index Scan",
+                    }:
                         return True
                 if _walk_plan_uses_index(entry, required_index):
                     return True
         return False
 
-    def read_recent_candles(
-        self, symbol: str, timeframe: str, limit: int
-    ) -> list[dict[str, Any]]:
+    def read_recent_candles(self, symbol: str, timeframe: str, limit: int) -> list[dict[str, Any]]:
         if not self.enabled:
             return []
 
@@ -309,23 +321,25 @@ class MarketOhlcvRepository:
                         extra={"event": "ohlcv_plan_check_error", "error": str(exc)},
                     )
 
-            rows = conn.execute(
-                text(
-                    """
+            rows = (
+                conn.execute(
+                    text("""
                     SELECT candle_time, open, high, low, close, volume, source
                     FROM market_ohlcv
                     WHERE symbol = :symbol
                       AND timeframe = :timeframe
                     ORDER BY candle_time DESC
                     LIMIT :limit
-                    """
-                ),
-                {
-                    "symbol": normalized_symbol,
-                    "timeframe": normalized_timeframe,
-                    "limit": int(limit),
-                },
-            ).mappings().all()
+                    """),
+                    {
+                        "symbol": normalized_symbol,
+                        "timeframe": normalized_timeframe,
+                        "limit": int(limit),
+                    },
+                )
+                .mappings()
+                .all()
+            )
 
         candles: list[dict[str, Any]] = []
         for row in rows:
@@ -429,15 +443,13 @@ class MarketOhlcvRepository:
                 insert_lag_seconds = (now - max_ts).total_seconds()
 
         with engine.begin() as conn:
-            existing_query = text(
-                """
+            existing_query = text("""
                 SELECT COUNT(*)
                 FROM market_ohlcv
                 WHERE symbol = :symbol
                   AND timeframe = :timeframe
                   AND candle_time IN :candle_times
-                """
-            ).bindparams(bindparam("candle_times", expanding=True))
+                """).bindparams(bindparam("candle_times", expanding=True))
             rows_duplicate = int(
                 conn.execute(
                     existing_query,
@@ -451,8 +463,7 @@ class MarketOhlcvRepository:
             )
 
             conn.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO market_ohlcv
                         (symbol, timeframe, candle_time, open, high, low, close, volume, source, created_at)
                     VALUES
@@ -466,8 +477,7 @@ class MarketOhlcvRepository:
                         close = EXCLUDED.close,
                         volume = EXCLUDED.volume,
                         created_at = NOW()
-                    """
-                ),
+                    """),
                 rows_to_write,
             )
 
@@ -569,7 +579,9 @@ class OhlcvIngestionService:
 
         return latest - self._timeframe_overlap(timeframe)
 
-    def _fetch_provider_df(self, symbol: str, timeframe: str, source: str, since: datetime) -> pd.DataFrame:
+    def _fetch_provider_df(
+        self, symbol: str, timeframe: str, source: str, since: datetime
+    ) -> pd.DataFrame:
         provider = get_market_data_provider(source)
 
         try:
@@ -664,9 +676,7 @@ class OhlcvIngestionService:
             )
 
     def _run_loop(self) -> None:
-        next_runs = {
-            tf: 0.0 for tf in self._timeframes if tf in SUPPORTED_OHLCV_TIMEFRAMES
-        }
+        next_runs = {tf: 0.0 for tf in self._timeframes if tf in SUPPORTED_OHLCV_TIMEFRAMES}
 
         while not self._stop_event.is_set():
             now = time.time()
