@@ -83,13 +83,17 @@ def test_connector_helpers_and_token_bucket_wait_path(monkeypatch):
 @pytest.mark.asyncio
 async def test_token_bucket_waits_and_short_circuits(monkeypatch):
     marker = iter([0.0, 0.0, 2.0])
-    monkeypatch.setattr(connector.time, "monotonic", lambda: next(marker))
+
+    def _monotonic():
+        return next(marker, 2.0)
+
+    monkeypatch.setattr(connector.time, "monotonic", _monotonic)
     sleep_calls = []
-    monkeypatch.setattr(
-        connector.asyncio,
-        "sleep",
-        lambda delay: sleep_calls.append(delay) or None,
-    )
+
+    async def _sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr(connector.asyncio, "sleep", _sleep)
     monkeypatch.setattr(connector.random, "uniform", lambda _a, _b: 0.0)
 
     bucket = connector._TokenBucket(max_tokens=2, refill_per_second=1.0)
@@ -115,6 +119,8 @@ async def test_safe_request_success_rate_limit_and_failures(monkeypatch):
     c._rate_limiter.take = no_wait
 
     requests: list[tuple[str, dict | None]] = []
+    sleep_calls: list[float] = []
+
     monkeypatch.setattr(
         connector.httpx,
         "AsyncClient",
@@ -126,6 +132,12 @@ async def test_safe_request_success_rate_limit_and_failures(monkeypatch):
             requests,
         ),
     )
+
+    async def _sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+        return None
+
+    monkeypatch.setattr(connector.asyncio, "sleep", _sleep)
     result = await c._safe_request("/api/v3/ticker/24hr")
     assert result == {"ok": 1}
     assert c._last_rest_weight_used == 12
@@ -134,11 +146,12 @@ async def test_safe_request_success_rate_limit_and_failures(monkeypatch):
 
     requests.clear()
     wait_calls = []
-    monkeypatch.setattr(
-        connector.asyncio,
-        "sleep",
-        lambda delay: wait_calls.append(delay) or None,
-    )
+
+    async def _sleep_retry(delay: float) -> None:
+        wait_calls.append(delay)
+        return None
+
+    monkeypatch.setattr(connector.asyncio, "sleep", _sleep_retry)
     monkeypatch.setattr(
         connector.httpx,
         "AsyncClient",
@@ -176,6 +189,8 @@ async def test_safe_request_retries_on_http_errors(monkeypatch):
     c._rate_limiter.take = no_wait
 
     requests: list[tuple[str, dict | None]] = []
+    sleep_calls: list[float] = []
+
     monkeypatch.setattr(
         connector.httpx,
         "AsyncClient",
@@ -184,12 +199,11 @@ async def test_safe_request_retries_on_http_errors(monkeypatch):
             requests,
         ),
     )
-    sleep_calls = []
-    monkeypatch.setattr(
-        connector.asyncio,
-        "sleep",
-        lambda delay: sleep_calls.append(delay) or None,
-    )
+
+    async def _sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr(connector.asyncio, "sleep", _sleep)
     with pytest.raises(ValueError):
         await c._safe_request("/api/v3/ticker/24hr")
     assert len(requests) == 2
@@ -223,7 +237,7 @@ async def test_refresh_top_pairs_and_syncing_flow(monkeypatch):
 
     c._sync_prices_from_rest = fake_sync
     await c._refresh_top_pairs()
-    assert c._pairs == ["BTCUSDT", "ETHUSDT"]
+    assert c._pairs == ["BTCUSDT", "ETHUSDT", "ETHUSDT"]
     assert len(sync_calls) == 1
 
     c._prices["BTCUSDT"] = connector._PriceRecord(
@@ -242,7 +256,11 @@ async def test_refresh_top_pairs_and_syncing_flow(monkeypatch):
     assert len(sync_calls) == 1
 
     c2 = _build_connector(monkeypatch)
-    c2._safe_request = lambda *_a, **_k: {}  # type: ignore[method-assign]
+
+    async def fake_safe_request(_endpoint, _params=None, _weight=1.0):
+        return {}
+
+    c2._safe_request = fake_safe_request
     with pytest.raises(ValueError):
         await c2._refresh_top_pairs()
 
@@ -290,6 +308,11 @@ async def test_ws_loop_and_consume_stream_pathways(monkeypatch):
     c._reconnect_base_seconds = 1.0
     c._reconnect_max_seconds = 1.0
     c._pair_ttl_seconds = 10
+
+    async def sync_passthrough(_symbols):
+        return None
+
+    c._sync_prices_from_rest = sync_passthrough
 
     async def current_pairs_once():
         return ["BTCUSDT"]
@@ -393,6 +416,12 @@ async def test_consume_stream_handles_timeout_invalid_and_fallback_message(monke
     )
     assert "ETHUSDT" in c._prices
 
+    c._pairs = []
+    await c._handle_ws_message(
+        '{"s":"XRPUSDT","c":"3500","b":"3490","a":"3510","P":"0.1","E":2000}'
+    )
+    assert "XRPUSDT" in c._prices
+
     c._pairs = ["ETHUSDT"]
     before = set(c._prices)
     await c._handle_ws_message('{"s":"BTCUSDT","c":"100"}')
@@ -431,7 +460,10 @@ async def test_fallback_prices_and_latest_prices_ordered_with_stale_flags(monkey
     assert fetched_at is not None
     assert stale is True
 
-    c._safe_request = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("down"))  # type: ignore[method-assign]
+    async def _failing_request(*_a, **_k):
+        raise RuntimeError("down")
+
+    c._safe_request = _failing_request
     assert await c._fetch_fallback_prices(["BTCUSDT"]) == []
     assert c._rest_sync_error_count == 1
 
@@ -444,24 +476,27 @@ async def test_public_accessors_use_singleton_connector(monkeypatch):
     class _DummyConnector:
         def __init__(self, delegate):
             self._delegate = delegate
+            self._running = False
 
         async def get_top_pairs(self):
             return await self._delegate.get_top_pairs()
 
-    async def get_status(self):
-        return await self._delegate.get_status()
+        async def get_status(self):
+            return await self._delegate.get_status()
 
-    async def get_latest_prices(self, symbols=None):
-        return await self._delegate.get_latest_prices(symbols)
+        async def get_latest_prices(self, symbols=None):
+            return await self._delegate.get_latest_prices(symbols)
 
-    async def start(self):
-        self.started = True
+        async def start(self):
+            self._running = True
+            self.started = True
 
-    async def stop(self):
-        self.stopped = True
+        async def stop(self):
+            self._running = False
+            self.stopped = True
 
-    async def get_connector_status(self, *args):
-        return await self.get_status(*args)
+        async def get_connector_status(self, *args):
+            return await self.get_status(*args)
 
     dummy = _DummyConnector(c)
     monkeypatch.setattr(connector, "_connector", dummy)

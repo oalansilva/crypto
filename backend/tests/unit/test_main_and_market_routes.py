@@ -195,7 +195,9 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     monkeypatch.setattr(main, "stop_signal_feed_snapshot_worker", stop_snapshot_worker)
     monkeypatch.setattr(main, "signal_monitor", signal_stub)
     monkeypatch.setattr(
-        main, "Base", SimpleNamespace(metadata=SimpleNamespace(create_all=lambda *_: None))
+        main,
+        "Base",
+        SimpleNamespace(metadata=SimpleNamespace(create_all=lambda *_args, **_kwargs: None)),
     )
     monkeypatch.setattr(main, "engine", object())
     monkeypatch.setattr(main, "sync_postgres_identity_sequences", lambda: None)
