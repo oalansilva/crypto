@@ -53,6 +53,7 @@ backend/runtime/
 # Large data files (prevent accidental commits)
 *.parquet
 *.csv
+!backend/tests/fixtures/tradingview/*.csv
 *.json.gz
 *.db
 *.sqlite
