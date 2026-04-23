@@ -5,7 +5,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
@@ -16,12 +16,13 @@ from app.services.sentiment_service import SentimentResult
 
 
 def _session_factory(tmp_path: Path):
-    db_file = tmp_path / "ai_dashboard_test.db"
     engine = create_engine(
         "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(text("TRUNCATE TABLE signal_history RESTART IDENTITY CASCADE"))
     return TestingSessionLocal
 
 
