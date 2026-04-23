@@ -289,6 +289,14 @@ async def test_start_noncritical_services_logs_timeout_and_failures(monkeypatch)
     assert any("Failed to start OHLCV ingestion service" in item for item in exceptions)
     assert any("Failed to start OHLCV backfill scheduler" in item for item in exceptions)
 
+    async def fake_wait_for_error(coro, timeout):
+        coro.close()
+        raise RuntimeError("connector")
+
+    monkeypatch.setattr(main.asyncio, "wait_for", fake_wait_for_error)
+    await main._start_noncritical_services()
+    assert any("Failed to start Binance realtime connector" in item for item in exceptions)
+
 
 @pytest.mark.asyncio
 async def test_lifespan_cancels_pending_noncritical_startup(monkeypatch):
