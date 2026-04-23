@@ -48,6 +48,7 @@ data/storage/
 
 # Backend runtime logs
 backend/logs/
+backend/runtime/
 
 # Large data files (prevent accidental commits)
 *.parquet

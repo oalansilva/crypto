@@ -160,6 +160,12 @@ O projeto `crypto` é independente e sobe apenas o runtime dele.
 
 `stop.sh` stops those systemd services when available and falls back to stopping `uvicorn`/`vite` processes.
 
+To install the stack as a persistent `systemd --user` service and enable autostart:
+
+```bash
+./install-systemd-user-service.sh
+```
+
 `start.ps1` and `stop.ps1` are kept only for legacy Windows workflows and are deprecated.
 
 ## Usage
