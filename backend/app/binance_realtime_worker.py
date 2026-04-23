@@ -36,6 +36,11 @@ def _to_float(value: Any) -> float | None:
     return parsed if parsed == parsed else None
 
 
+def _setting(settings: Any, name: str, default: Any) -> Any:
+    value = getattr(settings, name, default)
+    return default if value is None else value
+
+
 def _is_supported_binance_symbol(symbol: str) -> bool:
     normalized = str(symbol or "").strip().upper()
     if not normalized.endswith("USDT"):
@@ -83,7 +88,10 @@ async def _fetch_price_snapshot(
 
     for symbol in symbols:
         try:
-            response = await client.get(f"{base_url}/api/v3/ticker/24hr", params={"symbol": symbol})
+            response = await client.get(
+                f"{base_url}/api/v3/ticker/24hr",
+                params={"symbol": symbol},
+            )
             response.raise_for_status()
         except Exception as exc:
             logger.warning("[binance-worker] price fetch failed for %s: %s", symbol, exc)
@@ -141,7 +149,8 @@ def _build_snapshot_payload(
         "pairs": list(pairs),
         "count": len(pairs),
         "is_stale": bool(
-            top_pairs_cached_at_ts is not None and (now_ts - top_pairs_cached_at_ts) > pair_refresh_seconds
+            top_pairs_cached_at_ts is not None
+            and (now_ts - top_pairs_cached_at_ts) > pair_refresh_seconds
         ),
         "cached_at": _timestamp_to_iso(top_pairs_cached_at_ts),
         "ttl_seconds": pair_refresh_seconds,
@@ -187,7 +196,10 @@ async def _run_worker() -> None:
     settings = get_settings()
     base_url = str(settings.binance_base_url).rstrip("/")
     pair_limit = max(1, min(250, int(settings.binance_top_pairs_limit)))
-    ws_stream_limit = max(1, min(pair_limit, int(settings.binance_ws_stream_limit)))
+    ws_stream_limit = max(
+        1,
+        min(pair_limit, int(_setting(settings, "binance_ws_stream_limit", 10))),
+    )
     pair_refresh_seconds = max(5, int(settings.binance_top_pairs_refresh_seconds))
     price_ttl_seconds = max(1.0, float(settings.binance_price_ttl_seconds))
     request_timeout_seconds = max(2.0, float(settings.binance_request_timeout_seconds))

@@ -18,7 +18,11 @@ import httpx
 import websockets
 
 from app.config import get_settings
-from app.services.binance_realtime_snapshot_store import read_snapshot, snapshot_is_fresh, write_snapshot
+from app.services.binance_realtime_snapshot_store import (
+    read_snapshot,
+    snapshot_is_fresh,
+    write_snapshot,
+)
 
 logger = logging.getLogger(__name__)
 _BINANCE_SYMBOL_PATTERN = re.compile(r"^[A-Z0-9]{4,32}$")
@@ -48,6 +52,11 @@ def _to_int(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed
+
+
+def _setting(settings: Any, name: str, default: Any) -> Any:
+    value = getattr(settings, name, default)
+    return default if value is None else value
 
 
 def _normalize_symbols(raw_symbols: list[str] | None) -> list[str] | None:
@@ -141,10 +150,11 @@ class BinanceRealtimeConnector:
         self._pair_limit = max(1, min(250, int(settings.binance_top_pairs_limit)))
         self._ws_stream_limit = max(
             1,
-            min(self._pair_limit, int(settings.binance_ws_stream_limit)),
+            min(self._pair_limit, int(_setting(settings, "binance_ws_stream_limit", 10))),
         )
         self._snapshot_flush_seconds = max(
-            1.0, float(settings.binance_realtime_snapshot_flush_seconds)
+            1.0,
+            float(_setting(settings, "binance_realtime_snapshot_flush_seconds", 2.0)),
         )
         self._pair_refresh_seconds = max(5, int(settings.binance_top_pairs_refresh_seconds))
         self._pair_ttl_seconds = max(5, int(settings.binance_top_pairs_ttl_seconds))
@@ -264,7 +274,11 @@ class BinanceRealtimeConnector:
             fetched_at = None
             if prices:
                 fetched_at = max(
-                    (item.get("updated_at") for item in prices if isinstance(item.get("updated_at"), str)),
+                    (
+                        item.get("updated_at")
+                        for item in prices
+                        if isinstance(item.get("updated_at"), str)
+                    ),
                     default=None,
                 )
 

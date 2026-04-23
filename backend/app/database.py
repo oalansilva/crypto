@@ -320,37 +320,65 @@ def ensure_runtime_schema_migrations() -> None:
                 ON admin_action_logs (created_at)
                 """))
 
-        timescale_functions_available = True
-        try:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
+    timescale_functions_available = True
+    try:
+        with engine.begin() as conn:
             conn.execute(text("""
-                    CREATE TABLE IF NOT EXISTS market_ohlcv (
-                        symbol TEXT NOT NULL,
-                        timeframe TEXT NOT NULL,
-                        candle_time TIMESTAMPTZ NOT NULL,
-                        open NUMERIC NOT NULL,
-                        high NUMERIC NOT NULL,
-                        low NUMERIC NOT NULL,
-                        close NUMERIC NOT NULL,
-                        volume NUMERIC NOT NULL,
-                        source TEXT NOT NULL,
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                        PRIMARY KEY (symbol, timeframe, candle_time, source)
-                    )
-                    """))
+                CREATE TABLE IF NOT EXISTS market_ohlcv (
+                    symbol TEXT NOT NULL,
+                    timeframe TEXT NOT NULL,
+                    candle_time TIMESTAMPTZ NOT NULL,
+                    open NUMERIC NOT NULL,
+                    high NUMERIC NOT NULL,
+                    low NUMERIC NOT NULL,
+                    close NUMERIC NOT NULL,
+                    volume NUMERIC NOT NULL,
+                    source TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (symbol, timeframe, candle_time, source)
+                )
+                """))
             conn.execute(text("""
-                    CREATE UNIQUE INDEX IF NOT EXISTS uq_market_ohlcv_symbol_timeframe_candle_time
-                    ON market_ohlcv (symbol, timeframe, candle_time)
-                    """))
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_market_ohlcv_symbol_timeframe_candle_time
+                ON market_ohlcv (symbol, timeframe, candle_time)
+                """))
             conn.execute(text("""
-                    CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_time
-                    ON market_ohlcv (symbol, timeframe, candle_time DESC)
-                    """))
+                CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_time
+                ON market_ohlcv (symbol, timeframe, candle_time DESC)
+                """))
             conn.execute(text("""
-                    CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_source
-                    ON market_ohlcv (symbol, timeframe, source)
-                    """))
+                CREATE INDEX IF NOT EXISTS idx_market_ohlcv_symbol_timeframe_source
+                ON market_ohlcv (symbol, timeframe, source)
+                """))
+            logger.info("market_ohlcv table and indexes ensured.")
+    except Exception as exc:
+        logger.warning(
+            "Could not create or migrate market_ohlcv table/indexes.",
+            extra={
+                "event": "ohlcv_schema_create_error",
+                "table": "market_ohlcv",
+                "error": str(exc),
+            },
+        )
+        return
 
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
+        timescale_functions_available = True
+    except Exception as exc:
+        logger.warning(
+            "Could not enable timescaledb extension; keeping market_ohlcv as regular table.",
+            extra={
+                "event": "ohlcv_timescale_setup_error",
+                "table": "market_ohlcv",
+                "error": str(exc),
+            },
+        )
+        timescale_functions_available = False
+
+    if timescale_functions_available:
+        with engine.begin() as conn:
             # Best effort Timescale migration path.
             try:
                 conn.execute(
@@ -367,6 +395,7 @@ def ensure_runtime_schema_migrations() -> None:
                         "error": str(exc),
                     },
                 )
+                timescale_functions_available = False
 
             try:
                 conn.execute(
@@ -420,19 +449,12 @@ def ensure_runtime_schema_migrations() -> None:
                     },
                 )
                 timescale_functions_available = False
-            if _policy_checks_enabled():
+
+        if _policy_checks_enabled() and timescale_functions_available:
+            with engine.connect() as conn:
                 _verify_market_ohlcv_timescale_policies(
                     conn, timescale_functions_available=timescale_functions_available
                 )
-        except Exception as exc:
-            logger.warning(
-                "Timescale configuration for market_ohlcv failed, keeping table as regular table.",
-                extra={
-                    "event": "ohlcv_timescale_setup_error",
-                    "table": "market_ohlcv",
-                    "error": str(exc),
-                },
-            )
 
 
 def get_db():

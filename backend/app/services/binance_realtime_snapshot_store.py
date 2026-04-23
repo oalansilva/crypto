@@ -13,11 +13,15 @@ def _default_snapshot_path() -> Path:
     return backend_dir / "runtime" / "binance_realtime_snapshot.json"
 
 
-def get_snapshot_path() -> Path:
+def _setting(name: str, default: Any) -> Any:
     settings = get_settings()
-    configured = (
-        getattr(settings, "binance_realtime_snapshot_path", None)
-        or os.getenv("BINANCE_REALTIME_SNAPSHOT_PATH")
+    value = getattr(settings, name, default)
+    return default if value is None else value
+
+
+def get_snapshot_path() -> Path:
+    configured = _setting("binance_realtime_snapshot_path", None) or os.getenv(
+        "BINANCE_REALTIME_SNAPSHOT_PATH"
     )
     if configured:
         return Path(str(configured))
@@ -42,7 +46,10 @@ def write_snapshot(payload: dict[str, Any]) -> None:
     path = get_snapshot_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    temp_path.write_text(json.dumps(payload, ensure_ascii=True, separators=(",", ":")), encoding="utf-8")
+    temp_path.write_text(
+        json.dumps(payload, ensure_ascii=True, separators=(",", ":")),
+        encoding="utf-8",
+    )
     temp_path.replace(path)
 
 
@@ -54,8 +61,7 @@ def snapshot_is_fresh(payload: dict[str, Any] | None) -> bool:
     if not isinstance(heartbeat, (int, float)):
         return False
 
-    settings = get_settings()
-    max_age = max(2.0, float(settings.binance_realtime_snapshot_max_age_seconds))
+    max_age = max(2.0, float(_setting("binance_realtime_snapshot_max_age_seconds", 15.0)))
     now_ts = float(payload.get("now_ts") or 0.0)
     if now_ts <= 0:
         import time

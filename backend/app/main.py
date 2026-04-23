@@ -197,6 +197,11 @@ async def lifespan(app: FastAPI):
             _start_noncritical_services(),
             name="app-noncritical-services-startup",
         )
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(
+                asyncio.shield(app.state.noncritical_services_task),
+                timeout=0.2,
+            )
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 
