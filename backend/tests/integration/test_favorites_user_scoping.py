@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import HTTPException
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
@@ -17,6 +17,8 @@ def _session_factory(tmp_path: Path):
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(text("TRUNCATE TABLE favorite_strategies RESTART IDENTITY CASCADE"))
     return TestingSessionLocal
 
 

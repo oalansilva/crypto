@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+import threading as _stdlib_threading
 from uuid import uuid4
 
 import httpx
 import pytest
 from fastapi import FastAPI, Request
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 
@@ -198,12 +199,24 @@ async def test_signals_list_only_persists_history_for_authenticated_user(monkeyp
 
     persisted_calls: list[tuple[str, str | None]] = []
 
-    class _FakeThread:
-        def __init__(self, *, target, args=(), daemon=None):
-            self._target = target
-            self._args = args
+    class _FakeThread(_stdlib_threading.Thread):
+        def __init__(self, *args, **kwargs):
+            if self.__class__ is not _FakeThread:
+                super().__init__(*args, **kwargs)
+                return
+
+            self._target = kwargs.get("target")
+            if args and len(args) > 1:
+                self._args = args[1]
+            else:
+                self._args = kwargs.get("args", ())
+            if not isinstance(self._args, tuple):
+                self._args = tuple(self._args)
 
         def start(self):
+            if self.__class__ is not _FakeThread:
+                return super().start()
+
             signal = self._args[0]
             user_id = self._args[1] if len(self._args) > 1 else None
             persisted_calls.append((signal.id, user_id))
@@ -256,12 +269,28 @@ async def test_signals_list_skips_low_quality_signals_for_history(monkeypatch):
 
     persisted_calls: list[tuple[str, str | None]] = []
 
-    class _FakeThread:
-        def __init__(self, *, target, args=(), daemon=None):
-            self._target = target
-            self._args = args
+    class _FakeThread(_stdlib_threading.Thread):
+        def __init__(self, *args, **kwargs):
+            if self.__class__ is not _FakeThread:
+                super().__init__(*args, **kwargs)
+                return
+
+            self._target = kwargs.get("target")
+            if args and len(args) > 1:
+                self._args = args[1]
+            else:
+                self._args = kwargs.get("args", ())
+            if not isinstance(self._args, tuple):
+                self._args = tuple(self._args)
+
 
         def start(self):
+            if self.__class__ is not _FakeThread:
+                return super().start()
+
+            if not self._args:
+                return
+
             signal = self._args[0]
             user_id = self._args[1] if len(self._args) > 1 else None
             with SessionLocal() as db:
@@ -285,8 +314,11 @@ async def test_signals_list_skips_low_quality_signals_for_history(monkeypatch):
     assert persisted_calls == []
 
 
-async def test_signals_list_persists_only_when_new_calibrated_gate_passes(monkeypatch):
+async def test_signals_list_persists_only_when_new_calibrated_gate_passes(
+    monkeypatch, tmp_path: Path
+):
     app = _build_test_app()
+    session_local = _session_factory(tmp_path)
 
     def _fake_build_signal(*, asset: str, risk_profile: RiskProfile, candles, sentiment_score=None):
         return Signal(
@@ -308,15 +340,30 @@ async def test_signals_list_persists_only_when_new_calibrated_gate_passes(monkey
 
     persisted_calls: list[tuple[str, str | None]] = []
 
-    class _FakeThread:
-        def __init__(self, *, target, args=(), daemon=None):
-            self._target = target
-            self._args = args
+    class _FakeThread(_stdlib_threading.Thread):
+        def __init__(self, *args, **kwargs):
+            if self.__class__ is not _FakeThread:
+                super().__init__(*args, **kwargs)
+                return
+
+            self._target = kwargs.get("target")
+            if args and len(args) > 1:
+                self._args = args[1]
+            else:
+                self._args = kwargs.get("args", ())
+            if not isinstance(self._args, tuple):
+                self._args = tuple(self._args)
 
         def start(self):
+            if self.__class__ is not _FakeThread:
+                return super().start()
+
+            if not self._args:
+                return
+
             signal = self._args[0]
             user_id = self._args[1] if len(self._args) > 1 else None
-            with SessionLocal() as db:
+            with session_local() as db:
                 if signals_routes._passes_history_quality_gate(signal, db):
                     persisted_calls.append((signal.id, user_id))
 
@@ -406,6 +453,9 @@ def _session_factory(tmp_path: Path):
     )
     testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(text("TRUNCATE TABLE system_preferences RESTART IDENTITY CASCADE"))
+        connection.execute(text("TRUNCATE TABLE signal_history RESTART IDENTITY CASCADE"))
     return testing_session_local
 
 
