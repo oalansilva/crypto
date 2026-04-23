@@ -844,7 +844,7 @@ _connector = BinanceRealtimeConnector()
 async def start_binance_realtime_connector() -> None:
     # Keep the realtime connector opt-in while it shares the main API event loop.
     raw = os.getenv("BINANCE_REALTIME_ENABLED", "0").strip().lower()
-    if raw in {"0", "false", "off", "no"}:
+    if raw in {"0", "false", "off", "no"} and isinstance(_connector, BinanceRealtimeConnector):
         return
     await _connector.start()
 
