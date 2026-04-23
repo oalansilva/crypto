@@ -38,10 +38,7 @@ class JobManager:
         self._initialized = True
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.db_path = self.DATA_DIR / "results.db"
-        if DB_URL.startswith("sqlite:"):
-            self.engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
-        else:
-            self.engine = create_engine(DB_URL, pool_pre_ping=True)
+        self.engine = create_engine(DB_URL, pool_pre_ping=True)
         self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         self.active_jobs: Dict[str, Dict] = {}
         # In-memory flags for signaling pause

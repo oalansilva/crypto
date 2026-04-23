@@ -1,5 +1,5 @@
 import pandas as pd
-import pandas_ta as ta
+import talib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -75,11 +75,11 @@ class EmaRsiVolumeStrategy:
         df_sim = df.copy()
 
         # Calculate EMAs
-        df_sim["ema_fast"] = ta.ema(df_sim["close"], length=self.ema_fast)
-        df_sim["ema_slow"] = ta.ema(df_sim["close"], length=self.ema_slow)
+        df_sim["ema_fast"] = talib.EMA(df_sim["close"], timeperiod=self.ema_fast)
+        df_sim["ema_slow"] = talib.EMA(df_sim["close"], timeperiod=self.ema_slow)
 
         # Calculate RSI
-        df_sim["rsi"] = ta.rsi(df_sim["close"], length=self.rsi_period)
+        df_sim["rsi"] = talib.RSI(df_sim["close"], timeperiod=self.rsi_period)
 
         # Initialize signals
         signals = pd.Series(0, index=df_sim.index)

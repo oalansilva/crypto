@@ -11,6 +11,7 @@ from app.strategies.combos.proximity_analyzer import ProximityAnalyzer
 from app.strategies.combos.combo_strategy import ComboStrategy
 from app.services.combo_service import ComboService
 from app.services.asset_classification import classify_asset_type
+from app.services.market_indicator_service import get_market_indicator_service
 from app.services.market_data_providers import (
     CCXT_SOURCE,
     STOOQ_SOURCE,
@@ -71,6 +72,105 @@ def _normalize_market_timeframe(symbol: str, requested_timeframe: str, data_sour
         )
         return "1d"
     return tf
+
+
+def _coerce_positive_int(value: Any, default: int | None = None) -> int | None:
+    try:
+        parsed = int(float(value))
+        if parsed <= 0:
+            return default
+        return parsed
+    except Exception:
+        return default
+
+
+def _build_market_indicator_mappings(
+    indicators: list[dict[str, Any]],
+) -> dict[str, str]:
+    """
+    Build mapping from market_indicator table columns -> dataframe columns expected by logic.
+    """
+    mapping: dict[str, str] = {}
+    for indicator in indicators:
+        ind_type = str(indicator.get("type", "")).lower()
+        params = indicator.get("params", {}) or {}
+        alias = str(indicator.get("alias") or "").strip()
+
+        if ind_type == "ema":
+            length = _coerce_positive_int(params.get("length"), default=9)
+            if length == 9:
+                mapping["ema_9"] = alias if alias else "EMA_9"
+            elif length == 21:
+                mapping["ema_21"] = alias if alias else "EMA_21"
+            continue
+
+        if ind_type == "sma":
+            length = _coerce_positive_int(params.get("length"), default=20)
+            if length == 20:
+                mapping["sma_20"] = alias if alias else "SMA_20"
+            elif length == 50:
+                mapping["sma_50"] = alias if alias else "SMA_50"
+            continue
+
+        if ind_type == "rsi":
+            length = _coerce_positive_int(params.get("length", 14))
+            if length == 14:
+                mapping["rsi_14"] = "RSI_14"
+                if alias and alias != "RSI_14":
+                    mapping["rsi_14"] = alias
+            continue
+
+        if ind_type == "macd":
+            fast = _coerce_positive_int(params.get("fast", 12))
+            slow = _coerce_positive_int(params.get("slow", 26))
+            signal = _coerce_positive_int(params.get("signal", 9))
+            if fast == 12 and slow == 26 and signal == 9:
+                prefix = alias if alias else "MACD"
+                mapping["macd_line"] = f"{prefix}_macd"
+                mapping["macd_signal"] = f"{prefix}_signal"
+                mapping["macd_histogram"] = f"{prefix}_histogram"
+            continue
+
+    return mapping
+
+
+def _hydrate_with_stored_indicators(
+    df: pd.DataFrame,
+    rows: list[dict[str, Any]],
+    mappings: dict[str, str],
+) -> tuple[pd.DataFrame, bool]:
+    if df.empty or not rows or not mappings:
+        return df, False
+
+    source_df = pd.DataFrame(rows)
+    if "ts" not in source_df.columns or source_df.empty:
+        return df, False
+
+    source_df["ts"] = pd.to_datetime(source_df["ts"], utc=True, errors="coerce")
+    source_df = source_df.dropna(subset=["ts"]).set_index("ts").sort_index()
+
+    target_df = df.copy()
+    target_df.index = pd.to_datetime(target_df.index, utc=True, errors="coerce")
+    used_mapping = False
+
+    for source_col, target_col in mappings.items():
+        if source_col not in source_df.columns:
+            continue
+        if target_col in target_df.columns:
+            continue
+        target_df = target_df.join(
+            source_df[[source_col]].rename(columns={source_col: target_col}),
+            how="left",
+        )
+        used_mapping = used_mapping or target_col in target_df.columns
+
+    # Add compatibility columns used by legacy logic contracts.
+    if "MACD_signal" in target_df.columns and "MACDs_12_26_9" not in target_df.columns:
+        target_df["MACDs_12_26_9"] = target_df["MACD_signal"]
+    if "MACD_histogram" in target_df.columns and "MACDh_12_26_9" not in target_df.columns:
+        target_df["MACDh_12_26_9"] = target_df["MACD_histogram"]
+
+    return target_df, used_mapping
 
 
 def _read_ohlcv_cache(cache_key: str) -> Optional[pd.DataFrame]:
@@ -319,14 +419,16 @@ class OpportunityService:
         if db_path is None:
             self._session_factory = SessionLocal
         else:
-            db_url = db_path if "://" in db_path else f"sqlite:///{db_path}"
+            db_url = db_path if "://" in db_path else None
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
 
-            if db_url.startswith("sqlite:"):
-                engine = create_engine(db_url, connect_args={"check_same_thread": False})
-            else:
-                engine = create_engine(db_url, pool_pre_ping=True)
+            if db_url is None or not db_url.lower().startswith("postgresql"):
+                raise ValueError(
+                    "OpportunityService requires a PostgreSQL URL when db_path is provided."
+                )
+
+            engine = create_engine(db_url, pool_pre_ping=True)
             self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     def get_favorites(
@@ -439,6 +541,7 @@ class OpportunityService:
         # Cache for data to avoid refetching same symbol/timeframe
         data_cache = {}
         fetch_errors: dict[str, str] = {}
+        indicator_cache: dict[str, list[dict[str, Any]]] = {}
 
         # Track skipped strategies for debugging
         skipped_strategies = []
@@ -579,6 +682,9 @@ class OpportunityService:
                 if data_source == CCXT_SOURCE:
                     df = _apply_crypto_continuity_fix(df, normalized_tf)
 
+                normalized_symbol = symbol.strip().upper()
+                indicator_cache_key = f"{normalized_symbol}:{normalized_tf}:indicators"
+
                 # 2. Get Template Metadata from Database (entry_logic and exit_logic)
                 # This dynamically loads the buy/sell rules from combo_templates table
                 meta = self.combo_service.get_template_metadata(template_name)
@@ -686,6 +792,38 @@ class OpportunityService:
                             f"  - {ind.get('alias')} ({ind.get('type')}): {ind.get('params')}"
                         )
 
+                mapped_df = df
+                indicator_rows = indicator_cache.get(indicator_cache_key)
+                if indicator_rows is None:
+                    try:
+                        indicator_rows = get_market_indicator_service().get_time_series(
+                            symbol=symbol,
+                            timeframe=normalized_tf,
+                            limit=len(df),
+                        )
+                    except Exception as exc:
+                        indicator_rows = []
+                        logger.warning(
+                            "Falha ao carregar indicadores persistidos de %s (%s): %s",
+                            symbol,
+                            normalized_tf,
+                            exc,
+                        )
+                    indicator_cache[indicator_cache_key] = indicator_rows
+
+                mapped_df, used_stored_indicators = _hydrate_with_stored_indicators(
+                    df,
+                    indicator_rows,
+                    _build_market_indicator_mappings(final_indicators),
+                )
+                if used_stored_indicators:
+                    logger.debug(
+                        "Indicadores persistidos carregados para %s (%s): %s",
+                        symbol,
+                        normalized_tf,
+                        sorted(set(mapped_df.columns) - set(df.columns)),
+                    )
+
                 # 4. Instantiate Strategy with rules from database
                 # entry_logic and exit_logic come from combo_templates.template_data (JSON field)
                 sl_param = params.get("stop_loss", template_data.get("stop_loss", 0.0))
@@ -699,9 +837,10 @@ class OpportunityService:
                     entry_logic=entry_logic,  # Dynamic buy rule from database
                     exit_logic=exit_logic,  # Dynamic sell rule from database
                     stop_loss=float(sl_param),
+                    force_recompute=False,
                 )
 
-                df_with_inds = strategy.calculate_indicators(df)
+                df_with_inds = strategy.calculate_indicators(mapped_df)
 
                 # Debug: Log indicator values for SOL if symbol matches
                 if symbol == "SOL/USDT":

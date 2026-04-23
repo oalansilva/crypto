@@ -1,14 +1,35 @@
 import pandas as pd
-import pandas_ta as ta
 import logging
 
-# Setup basic logging
+
+def _rolling_mid(series, period):
+    return (
+        series.rolling(window=period, min_periods=period).max()
+        + series.rolling(window=period, min_periods=period).min()
+    ) / 2
+
+
+def build_ichimoku(high: pd.Series, low: pd.Series, close: pd.Series, tenkan=9, kijun=26, senkou=52):
+    its = _rolling_mid(high, tenkan)
+    iks = _rolling_mid(low, kijun)
+    isa = ((its + iks) / 2).shift(kijun)
+    isb = _rolling_mid(high, senkou).shift(kijun)
+    ichi = close.shift(-kijun)
+
+    return {
+        "ITS": its,
+        "IKS": iks,
+        "ISA": isa,
+        "ISB": isb,
+        "ICHI": ichi,
+    }
+
+
 logging.basicConfig(level=logging.INFO)
 
 
 def debug_ichimoku():
     print("Creating dummy data...")
-    # Create dummy OHLC data
     df = pd.DataFrame(
         {
             "open": [100] * 200,
@@ -19,24 +40,25 @@ def debug_ichimoku():
         }
     )
 
-    # Params DIFFERENT from previous test
     tenkan = 10
     kijun = 30
     senkou = 60
 
     print(f"Calculating Ichimoku with tenkan={tenkan}, kijun={kijun}, senkou={senkou}")
 
-    # Direct function call approach
-    ichimoku_tuple = ta.ichimoku(
-        df["high"], df["low"], df["close"], tenkan=tenkan, kijun=kijun, senkou=senkou
+    values = build_ichimoku(df["high"], df["low"], df["close"], tenkan=tenkan, kijun=kijun, senkou=senkou)
+    result = pd.DataFrame(
+        {
+            "ITS_10": values["ITS"],
+            "IKS_30": values["IKS"],
+            "ISA_10_30": values["ISA"],
+            "ISB_30": values["ISB"],
+            "ICHI_10": values["ICHI"],
+        }
     )
 
     print("\n--- Result Structure ---")
-    if isinstance(ichimoku_tuple, tuple):
-        print(f"Result is a tuple of length {len(ichimoku_tuple)}")
-        for i, item in enumerate(ichimoku_tuple):
-            if isinstance(item, pd.DataFrame):
-                print(f"Item {i} Columns: {list(item.columns)}")
+    print("Columns:", list(result.columns))
 
 
 if __name__ == "__main__":

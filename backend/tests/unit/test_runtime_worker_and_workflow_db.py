@@ -26,15 +26,13 @@ def test_workflow_db_helpers_cover_env_url_and_project_resolution(monkeypatch, t
         "get_settings",
         lambda: SimpleNamespace(workflow_db_enabled="1", workflow_database_url=None),
     )
-    monkeypatch.setenv("ALLOW_SQLITE_FOR_TESTS", "1")
     monkeypatch.delenv("WORKFLOW_DATABASE_URL", raising=False)
 
-    sqlite_url = workflow_database.get_workflow_db_url()
-    assert sqlite_url and sqlite_url.startswith("sqlite:///")
+    with pytest.raises(RuntimeError, match="WORKFLOW_DATABASE_URL is required"):
+        workflow_database.get_workflow_db_url()
+
     assert workflow_database._is_postgres_url("postgresql://db")
     assert workflow_database._enabled() is True
-    assert workflow_database._allow_sqlite_for_tests() is True
-    assert "workflow.db" in workflow_database._default_sqlite_url()
 
     monkeypatch.setattr(
         workflow_database,
@@ -54,9 +52,10 @@ def test_workflow_db_helpers_cover_env_url_and_project_resolution(monkeypatch, t
     monkeypatch.setattr(
         workflow_database,
         "get_settings",
-        lambda: SimpleNamespace(workflow_db_enabled="1", workflow_database_url="sqlite:///bad.db"),
+        lambda: SimpleNamespace(
+            workflow_db_enabled="1", workflow_database_url="mysql://bad"
+        ),
     )
-    monkeypatch.delenv("ALLOW_SQLITE_FOR_TESTS", raising=False)
     monkeypatch.setattr(workflow_database.sys, "argv", ["uvicorn"])
     with pytest.raises(RuntimeError, match="must point to PostgreSQL"):
         workflow_database.get_workflow_db_url()
@@ -73,16 +72,12 @@ def test_workflow_db_helpers_cover_env_url_and_project_resolution(monkeypatch, t
     monkeypatch.setattr(
         workflow_database,
         "get_settings",
-        lambda: SimpleNamespace(workflow_db_enabled="1", workflow_database_url=None),
+        lambda: SimpleNamespace(
+            workflow_db_enabled="1",
+            workflow_database_url="postgresql://registry",
+        ),
     )
-    monkeypatch.delenv("ALLOW_SQLITE_FOR_TESTS", raising=False)
-    monkeypatch.delenv("WORKFLOW_DATABASE_URL", raising=False)
-    monkeypatch.setattr(workflow_database.sys, "argv", ["uvicorn"])
-    with pytest.raises(RuntimeError, match="WORKFLOW_DATABASE_URL is required"):
-        workflow_database.get_workflow_db_url()
-
-    monkeypatch.setenv("ALLOW_SQLITE_FOR_TESTS", "1")
-    registry_url = f"sqlite:///{tmp_path / 'registry.db'}"
+    registry_url = "postgresql://registry"
     monkeypatch.setattr(workflow_database, "get_workflow_db_url", lambda: registry_url)
     project = SimpleNamespace(slug="crypto", workflow_database_url="postgresql://project-db")
     assert workflow_database.get_project_workflow_db_url(project) == registry_url
@@ -97,14 +92,14 @@ def test_workflow_db_helpers_cover_env_url_and_project_resolution(monkeypatch, t
 
 
 def test_workflow_db_init_sync_bootstrap_and_dependency(monkeypatch, tmp_path):
-    sqlite_url = f"sqlite:///{tmp_path / 'workflow.db'}"
-    workflow_database.init_workflow_schema_for_url(sqlite_url)
+    workflow_url = "postgresql://workflow-db"
+    workflow_database.init_workflow_schema_for_url(workflow_url)
 
-    engine = workflow_database.get_workflow_engine_for_url(sqlite_url)
-    maker = workflow_database.get_workflow_sessionmaker_for_url(sqlite_url)
-    monkeypatch.setattr(workflow_database, "get_workflow_db_url", lambda: sqlite_url)
-    assert engine is workflow_database.get_workflow_engine_for_url(sqlite_url)
-    assert maker is workflow_database.get_workflow_sessionmaker_for_url(sqlite_url)
+    engine = workflow_database.get_workflow_engine_for_url(workflow_url)
+    maker = workflow_database.get_workflow_sessionmaker_for_url(workflow_url)
+    monkeypatch.setattr(workflow_database, "get_workflow_db_url", lambda: workflow_url)
+    assert engine is workflow_database.get_workflow_engine_for_url(workflow_url)
+    assert maker is workflow_database.get_workflow_sessionmaker_for_url(workflow_url)
     assert workflow_database.get_workflow_engine() is engine
     assert workflow_database.get_registry_workflow_sessionmaker() is maker
     assert "wf_changes" in inspect(engine).get_table_names()
@@ -119,7 +114,7 @@ def test_workflow_db_init_sync_bootstrap_and_dependency(monkeypatch, tmp_path):
             database_url="postgresql://app-db",
             frontend_url="http://localhost:5173",
             backend_url="http://localhost:8003",
-            workflow_database_url=sqlite_url,
+            workflow_database_url=workflow_url,
             tech_stack="fastapi,react",
             created_at=datetime.now(timezone.utc),
         )
@@ -130,7 +125,7 @@ def test_workflow_db_init_sync_bootstrap_and_dependency(monkeypatch, tmp_path):
 
         saved = db.query(Project).filter(Project.slug == "crypto").first()
         assert saved is not None
-        assert saved.workflow_database_url == sqlite_url
+        assert saved.workflow_database_url == workflow_url
     finally:
         db.close()
 
@@ -142,7 +137,7 @@ def test_workflow_db_init_sync_bootstrap_and_dependency(monkeypatch, tmp_path):
         database_url="postgresql://app-db",
         frontend_url="http://localhost:5174",
         backend_url="http://localhost:8004",
-        workflow_database_url=sqlite_url,
+        workflow_database_url=workflow_url,
         tech_stack="fastapi,react",
         created_at=datetime.now(timezone.utc),
     )

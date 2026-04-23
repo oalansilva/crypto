@@ -6,11 +6,11 @@ multiple indicators with custom entry/exit logic.
 """
 
 import pandas as pd
-import pandas_ta as ta
 import numpy as np
 from typing import Dict, List, Any, Optional
 import re
 import ast
+import talib
 from .helpers import HELPER_FUNCTIONS
 
 
@@ -33,6 +33,7 @@ class ComboStrategy:
         stop_loss: float = 0.015,
         stop_gain: Optional[float] = None,
         derived_features: Optional[List[Dict[str, Any]]] = None,
+        force_recompute: bool = True,
     ):
         """
         Initialize combo strategy.
@@ -50,6 +51,7 @@ class ComboStrategy:
         self.stop_loss = stop_loss
         self.stop_gain = stop_gain
         self.derived_features = derived_features or []
+        self.force_recompute = bool(force_recompute)
 
         self._indicator_cache = {}
         self._validate_aliases()
@@ -60,6 +62,89 @@ class ComboStrategy:
         if len(aliases) != len(set(aliases)):
             duplicates = [a for a in aliases if aliases.count(a) > 1]
             raise ValueError(f"Duplicate aliases found: {set(duplicates)}")
+
+    @staticmethod
+    def _coerce_int(value: Any, default: int | None = None) -> int | None:
+        try:
+            parsed = int(float(value))
+            if parsed <= 0:
+                return default
+            return parsed
+        except Exception:
+            return default
+
+    @staticmethod
+    def _coerce_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except Exception:
+            return float(default)
+
+    @staticmethod
+    def _required_columns(indicator: Dict[str, Any]) -> list[str]:
+        ind_type = str(indicator.get("type", "")).lower()
+        params = indicator.get("params", {}) or {}
+        alias = indicator.get("alias")
+
+        if ind_type == "ema":
+            length = ComboStrategy._coerce_int(params.get("length", 9), default=9)
+            if length is None:
+                return []
+            return [alias if alias else f"EMA_{length}"]
+        if ind_type == "sma":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            return [alias if alias else f"SMA_{length}"]
+        if ind_type == "rsi":
+            length = ComboStrategy._coerce_int(params.get("length", 14), default=14)
+            if length is None:
+                return []
+            if alias:
+                return [alias]
+            return [f"RSI_{length}"]
+        if ind_type == "macd":
+            fast = ComboStrategy._coerce_int(params.get("fast", 12), default=12)
+            slow = ComboStrategy._coerce_int(params.get("slow", 26), default=26)
+            signal = ComboStrategy._coerce_int(params.get("signal", 9), default=9)
+            if fast is None or slow is None or signal is None:
+                return []
+            prefix = alias if alias else "MACD"
+            cols = [f"{prefix}_macd", f"{prefix}_signal", f"{prefix}_histogram"]
+            if not alias and fast == 12 and slow == 26 and signal == 9:
+                cols.extend(["MACDs_12_26_9", "MACDh_12_26_9"])
+            return cols
+        if ind_type in ("bbands", "bollinger"):
+            prefix = alias if alias else "BB"
+            return [f"{prefix}_upper", f"{prefix}_middle", f"{prefix}_lower"]
+        if ind_type == "atr":
+            length = ComboStrategy._coerce_int(params.get("length", 14), default=14)
+            if length is None:
+                return []
+            return [alias if alias else f"ATR_{length}"]
+        if ind_type == "adx":
+            length = ComboStrategy._coerce_int(params.get("length", 14), default=14)
+            if length is None:
+                return []
+            return [alias if alias else f"ADX_{length}"]
+        if ind_type == "roc":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            return [alias if alias else f"ROC_{length}"]
+        if ind_type == "volume_sma":
+            length = ComboStrategy._coerce_int(params.get("length", 20), default=20)
+            if length is None:
+                return []
+            return [alias if alias else f"VOL_SMA_{length}"]
+        if alias:
+            return [alias]
+        return []
+
+    @staticmethod
+    def _is_cached(df: pd.DataFrame, indicator: Dict[str, Any]) -> bool:
+        required = ComboStrategy._required_columns(indicator)
+        return bool(required) and all(col in df.columns for col in required)
 
     def _normalize_derived_feature(self, item: Any) -> Optional[Dict[str, Any]]:
         if isinstance(item, str):
@@ -169,148 +254,121 @@ class ComboStrategy:
         Returns:
             DataFrame with calculated indicators
         """
-        # Check cache
-        if "calculated" in self._indicator_cache:
-            return self._indicator_cache["calculated"].copy()
-
         df = df.copy()
+        if not self.force_recompute and "calculated" in self._indicator_cache:
+            return self._indicator_cache["calculated"].copy()
 
         for indicator in self.indicators:
             ind_type = indicator["type"].lower()
             params = indicator.get("params", {})
             alias = indicator.get("alias")
+            if not self.force_recompute and self._is_cached(df, indicator):
+                continue
 
             try:
                 if ind_type == "ema":
-                    length = params.get("length", 9)
+                    length = self._coerce_int(params.get("length", 9), default=9)
+                    if length is None:
+                        raise RuntimeError("Invalid length for EMA")
                     col_name = alias if alias else f"EMA_{length}"
-                    df[col_name] = ta.ema(df["close"], length=length)
+                    df[col_name] = talib.EMA(df["close"], timeperiod=length)
 
                 elif ind_type == "sma":
-                    length = params.get("length", 20)
+                    length = self._coerce_int(params.get("length", 20), default=20)
+                    if length is None:
+                        raise RuntimeError("Invalid length for SMA")
                     col_name = alias if alias else f"SMA_{length}"
-                    df[col_name] = ta.sma(df["close"], length=length)
+                    df[col_name] = talib.SMA(df["close"], timeperiod=length)
 
                 elif ind_type == "rsi":
-                    length = params.get("length", 14)
-                    # Keep the traditional RSI_{length} column name for backward-compatible logic,
-                    # but also support a stable alias (e.g. "rsi") when provided.
+                    length = self._coerce_int(params.get("length", 14), default=14)
+                    if length is None:
+                        raise RuntimeError("Invalid length for RSI")
                     col_name = f"RSI_{length}"
-                    rsi_series = ta.rsi(df["close"], length=length)
+                    rsi_series = talib.RSI(df["close"], timeperiod=length)
                     df[col_name] = rsi_series
                     if alias and alias != col_name:
                         df[alias] = rsi_series
 
                 elif ind_type == "macd":
-                    fast = params.get("fast", 12)
-                    slow = params.get("slow", 26)
-                    signal = params.get("signal", 9)
+                    fast = self._coerce_int(params.get("fast", 12), default=12)
+                    slow = self._coerce_int(params.get("slow", 26), default=26)
+                    signal = self._coerce_int(params.get("signal", 9), default=9)
+                    if fast is None or slow is None or signal is None:
+                        raise RuntimeError("Invalid parameters for MACD")
                     alias_prefix = alias if alias else "MACD"
 
-                    macd_result = ta.macd(df["close"], fast=fast, slow=slow, signal=signal)
-                    df[f"{alias_prefix}_macd"] = macd_result[f"MACD_{fast}_{slow}_{signal}"]
-                    df[f"{alias_prefix}_signal"] = macd_result[f"MACDs_{fast}_{slow}_{signal}"]
-                    df[f"{alias_prefix}_histogram"] = macd_result[f"MACDh_{fast}_{slow}_{signal}"]
+                    macd_line, macd_signal, macd_hist = talib.MACD(
+                        df["close"],
+                        fastperiod=fast,
+                        slowperiod=slow,
+                        signalperiod=signal,
+                    )
+                    df[f"{alias_prefix}_macd"] = macd_line
+                    df[f"{alias_prefix}_signal"] = macd_signal
+                    df[f"{alias_prefix}_histogram"] = macd_hist
+                    if not alias and fast == 12 and slow == 26 and signal == 9:
+                        df["MACDs_12_26_9"] = macd_signal
+                        df["MACDh_12_26_9"] = macd_hist
 
                 elif ind_type == "bbands" or ind_type == "bollinger":
-                    length = params.get("length", 20)
-                    std = params.get("std", 2)
+                    length = self._coerce_int(params.get("length", 20), default=20)
+                    std = self._coerce_float(params.get("std", 2), default=2)
+                    if length is None:
+                        raise RuntimeError("Invalid length for BBANDS")
                     alias_prefix = alias if alias else "BB"
 
-                    bbands_result = ta.bbands(df["close"], length=length, std=std)
-                    # Handle potential column name variations (e.g. with .0 suffix)
-                    cols = bbands_result.columns.tolist()
-                    lower_col = next(c for c in cols if c.startswith(f"BBL_{length}_{std}"))
-                    mid_col = next(c for c in cols if c.startswith(f"BBM_{length}_{std}"))
-                    upper_col = next(c for c in cols if c.startswith(f"BBU_{length}_{std}"))
-
-                    df[f"{alias_prefix}_upper"] = bbands_result[upper_col]
-                    df[f"{alias_prefix}_middle"] = bbands_result[mid_col]
-                    df[f"{alias_prefix}_lower"] = bbands_result[lower_col]
+                    upper, middle, lower = talib.BBANDS(
+                        df["close"],
+                        timeperiod=length,
+                        nbdevup=std,
+                        nbdevdn=std,
+                        matype=0,
+                    )
+                    df[f"{alias_prefix}_upper"] = upper
+                    df[f"{alias_prefix}_middle"] = middle
+                    df[f"{alias_prefix}_lower"] = lower
 
                 elif ind_type == "atr":
-                    length = params.get("length", 14)
+                    length = self._coerce_int(params.get("length", 14), default=14)
+                    if length is None:
+                        raise RuntimeError("Invalid length for ATR")
                     col_name = f"ATR_{length}"
-                    atr_series = ta.atr(df["high"], df["low"], df["close"], length=length)
+                    atr_series = talib.ATR(df["high"], df["low"], df["close"], timeperiod=length)
                     df[col_name] = atr_series
                     # Support stable alias when provided (e.g. "atr")
                     if alias and alias != col_name:
                         df[alias] = atr_series
 
                 elif ind_type == "adx":
-                    length = params.get("length", 14)
+                    length = self._coerce_int(params.get("length", 14), default=14)
+                    if length is None:
+                        raise RuntimeError("Invalid length for ADX")
                     col_name = f"ADX_{length}"
-                    adx_result = ta.adx(df["high"], df["low"], df["close"], length=length)
-                    adx_series = adx_result[f"ADX_{length}"]
-                    df[col_name] = adx_series
+                    df[col_name] = talib.ADX(df["high"], df["low"], df["close"], timeperiod=length)
                     # Support stable alias when provided (e.g. "adx")
                     if alias and alias != col_name:
-                        df[alias] = adx_series
+                        df[alias] = df[col_name]
 
                 elif ind_type == "roc":
-                    length = params.get("length", 20)
+                    length = self._coerce_int(params.get("length", 20), default=20)
+                    if length is None:
+                        raise RuntimeError("Invalid length for ROC")
+                    roc_series = talib.ROC(df["close"], timeperiod=length)
                     col_name = f"ROC_{length}"
-                    roc_series = ta.roc(df["close"], length=length)
                     df[col_name] = roc_series
                     if alias and alias != col_name:
                         df[alias] = roc_series
 
                 elif ind_type == "volume_sma":
-                    length = params.get("length", 20)
+                    length = self._coerce_int(params.get("length", 20), default=20)
+                    if length is None:
+                        raise RuntimeError("Invalid length for VOLUME_SMA")
                     col_name = alias if alias else f"VOL_SMA_{length}"
-                    df[col_name] = ta.sma(df["volume"], length=length)
+                    df[col_name] = talib.SMA(df["volume"], timeperiod=length)
 
                 else:
-                    # Generic pandas_ta indicator support
-                    func = getattr(ta, ind_type, None)
-                    if func is None:
-                        raise RuntimeError(f"Unsupported indicator type: {ind_type}")
-
-                    import inspect
-
-                    sig = None
-                    try:
-                        sig = inspect.signature(func)
-                    except Exception:
-                        sig = None
-
-                    kwargs = dict(params or {})
-                    if sig is not None:
-                        for name in sig.parameters:
-                            if (
-                                name in ("open", "high", "low", "close", "volume")
-                                and name not in kwargs
-                            ):
-                                if name in df.columns:
-                                    kwargs[name] = df[name]
-
-                    result = None
-                    try:
-                        if any(k in kwargs for k in ("open", "high", "low", "close", "volume")):
-                            result = func(**kwargs)
-                        else:
-                            result = func(df["close"], **kwargs)
-                    except Exception as e:
-                        raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
-
-                    if isinstance(result, pd.DataFrame):
-                        if alias and alias in result.columns:
-                            series = result[alias]
-                            col_name = alias
-                        else:
-                            col_name = alias or str(result.columns[0])
-                            series = result.iloc[:, 0]
-                        df[col_name] = series
-                    else:
-                        col_name = alias if alias else ind_type
-                        df[col_name] = result
-
-                    if alias and alias != col_name:
-                        df[alias] = df[col_name]
-
-                    length = params.get("length", 20)
-                    col_name = alias if alias else f"VOL_SMA_{length}"
-                    df[col_name] = ta.sma(df["volume"], length=length)
+                    raise RuntimeError(f"Unsupported indicator type for TA-Lib strategy: {ind_type}")
 
             except Exception as e:
                 raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")
@@ -318,7 +376,6 @@ class ComboStrategy:
         df = self._apply_derived_features(df)
 
         # Ensure all columns are numeric to prevent NoneType errors in eval evaluation
-        # This handles cases where pandas-ta might return object types with None
         # IMPORTANT: Skip 'regime' column as it contains categorical strings
         for col in df.columns:
             if col == "regime":  # Preserve regime column

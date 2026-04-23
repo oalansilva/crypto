@@ -14,7 +14,6 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 import re
-import os
 from contextlib import contextmanager
 from typing import Dict, List, Literal, Optional
 
@@ -250,8 +249,7 @@ def _slugify_change_title(title: str) -> str:
 @router.get("/health")
 def workflow_health() -> dict:
     url = _require_db_url()
-    url_type = "sqlite" if url.startswith("sqlite") else "postgres"
-    return {"enabled": True, "db": url_type}
+    return {"enabled": True, "db": "postgres"}
 
 
 # --- Audit/sync helpers (Phase 1 transition) ---
@@ -354,11 +352,7 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_workflow_db
     database_url = payload.database_url.strip() if payload.database_url else None
     registry_workflow_url = get_workflow_db_url()
 
-    if (
-        not workflow_database_url
-        and registry_workflow_url
-        and not str(registry_workflow_url).startswith("sqlite:")
-    ):
+    if not workflow_database_url and registry_workflow_url:
         raise HTTPException(
             status_code=400,
             detail="workflow_database_url is required for each project in multi-project runtime mode",
@@ -553,13 +547,6 @@ def _get_project_by_slug(db: Session, slug: str) -> Project:
 @contextmanager
 def _project_db_session(registry_db: Session, slug: str):
     registry_project = _get_project_by_slug(registry_db, slug)
-    registry_bind = registry_db.get_bind()
-    registry_bind_url = str(getattr(registry_bind, "url", "") or "")
-    if registry_bind_url.startswith("sqlite:") and os.getenv(
-        "ALLOW_SQLITE_FOR_TESTS", ""
-    ).strip().lower() in {"1", "true", "yes", "on"}:
-        yield registry_project, registry_db
-        return
 
     SessionLocal = get_project_workflow_sessionmaker(registry_project)
     db = SessionLocal()

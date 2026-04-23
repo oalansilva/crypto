@@ -237,7 +237,7 @@ def _extract_scalar_value(result: Any) -> Any | None:
 
 class MarketOhlcvRepository:
     def __init__(self) -> None:
-        self._enabled = bool(DB_URL) and not DB_URL.startswith("sqlite:")
+        self._enabled = bool(DB_URL)
 
     @property
     def enabled(self) -> bool:
@@ -798,7 +798,7 @@ class OhlcvIngestionService:
             return
 
         if not self._repo.enabled:
-            logger.info("[ohlcv] storage is disabled (sqlite/test); skipping ingestion thread")
+            logger.info("[ohlcv] storage is disabled; skipping ingestion thread")
             return
 
         if self._thread is not None and self._thread.is_alive():

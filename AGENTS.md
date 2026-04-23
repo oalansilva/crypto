@@ -7,8 +7,49 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
 - **Fluxo de produção:** implemente e valide diretamente em `develop`; para liberar produção, abra PR `develop -> main`.
 - **Regra de fluxo:** use somente `develop` e `main`; sem criação de branches por tasks usuais.
+- **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
+- **Não usar SQLite** como banco de operação. Em runtime/QA/Homologação, use apenas PostgreSQL (`DATABASE_URL` e `WORKFLOW_DATABASE_URL`).
 - OpenSpec é a camada de especificação técnico (artifacts).
 - Workflow DB e OpenSpec são fontes de operação e evidência.
+
+## Fluxo Git operacional (sempre)
+
+- Trabalhe sempre em `develop`; não crie `feature/*`, `bugfix/*` ou outras branches para tarefas isoladas.
+- Commite cada ajuste em `develop`.
+- Abra PR de `develop` para `main` para liberar produção.
+- Após merge em `main`, atualize `develop` para refletir o estado da produção.
+
+Exemplo mínimo:
+```bash
+git switch develop
+git pull
+# ...alterações locais...
+git add .
+git commit -m "feat: descrição da mudança"
+git push
+gh pr create --base main --head develop --title "..."
+
+# após merge:
+git pull
+```
+
+Checklist de rotina (diária/por mudança):
+
+1. `git switch develop`
+2. `git pull`
+3. aplicar alteração
+4. `git add .`
+5. `git commit -m "tipo: mensagem"`
+6. `git push`
+7. `gh pr create --base main --head develop --title "<titulo>" --body "descricao breve"`
+8. Após merge: `git pull`
+
+Padrão de commit recomendado:
+- `feat: adicionar fluxo de merge develop->main`
+- `fix: corrigir validação de entrada no endpoint de backtest`
+- `chore: atualizar documentação e scripts de desenvolvimento`
+- `refactor: simplificar regra de configuração`
+- `docs: registrar padrão operacional no AGENTS`
 
 ## Regras de operação
 

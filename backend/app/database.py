@@ -1,16 +1,12 @@
 # file: backend/app/database.py
 import os
 import logging
-import sys
-from pathlib import Path
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import get_settings
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "backtest.db"
 _LOCAL_RUNTIME_ENVIRONMENTS = {
     "dev",
     "development",
@@ -49,13 +45,6 @@ def _policy_checks_enabled() -> bool:
     return not _is_local_runtime()
 
 
-def _allow_sqlite_for_tests() -> bool:
-    raw = os.getenv("ALLOW_SQLITE_FOR_TESTS", "").strip().lower()
-    if raw in {"1", "true", "yes", "on"}:
-        return True
-    return any("pytest" in arg for arg in sys.argv)
-
-
 def _is_postgres_url(url: str) -> bool:
     normalized = (url or "").strip().lower()
     return normalized.startswith("postgresql://") or normalized.startswith("postgresql+psycopg2://")
@@ -64,36 +53,26 @@ def _is_postgres_url(url: str) -> bool:
 def resolve_db_url() -> str:
     """Resolve the main app DB URL.
 
-    Priority:
-    1. DATABASE_URL / settings.database_url (Postgres only in runtime)
-
-    The workflow database is managed separately and must not be reused as the
-    main application runtime database.
+    Production and QA runtime are PostgreSQL-only.
     """
 
     settings = get_settings()
     explicit_url = getattr(settings, "database_url", None) or os.getenv("DATABASE_URL")
     if explicit_url:
-        if not _is_postgres_url(explicit_url) and not _allow_sqlite_for_tests():
+        if not _is_postgres_url(explicit_url):
             raise RuntimeError(
-                "DATABASE_URL must point to PostgreSQL. SQLite is no longer supported in runtime."
+                "DATABASE_URL must point to PostgreSQL. Set DATABASE_URL/postgres://..."
             )
         return explicit_url
 
-    if _allow_sqlite_for_tests():
-        return f"sqlite:///{DB_PATH}"
-
     raise RuntimeError(
-        "DATABASE_URL is required and must point to PostgreSQL. SQLite fallback was removed."
+        "DATABASE_URL is required and must point to PostgreSQL."
     )
 
 
 DB_URL = resolve_db_url()
 
-if DB_URL.startswith("sqlite:"):
-    engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
-else:
-    engine = create_engine(DB_URL, pool_pre_ping=True)
+engine = create_engine(DB_URL, pool_pre_ping=True)
 logger = logging.getLogger(__name__)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -101,168 +80,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-def ensure_sqlite_migrations() -> None:
-    """Apply lightweight SQLite migrations that SQLAlchemy create_all won't handle.
-
-    We keep this minimal: add missing columns when the table already exists.
-    """
-
-    if not DB_URL.startswith("sqlite:"):
-        return
-
-    import sqlite3
-
-    conn = sqlite3.connect(str(DB_PATH))
-    try:
-        cur = conn.cursor()
-
-        def _resolve_default_user_id() -> str | None:
-            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-            if not cur.fetchone():
-                return None
-            cur.execute(
-                "SELECT id FROM users WHERE lower(email) = ? LIMIT 1",
-                ("o.alan.silva@gmail.com",),
-            )
-            row = cur.fetchone()
-            return str(row[0]) if row and row[0] else None
-
-        default_user_id = _resolve_default_user_id()
-
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-        row = cur.fetchone()
-        if row:
-            cur.execute("PRAGMA table_info(users)")
-            cols = {r[1] for r in cur.fetchall()}
-            if "last_login" not in cols:
-                cur.execute("ALTER TABLE users ADD COLUMN last_login DATETIME")
-                conn.commit()
-            if "status" not in cols:
-                cur.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
-                conn.commit()
-            if "suspended_until" not in cols:
-                cur.execute("ALTER TABLE users ADD COLUMN suspended_until DATETIME")
-                conn.commit()
-            if "suspension_reason" not in cols:
-                cur.execute("ALTER TABLE users ADD COLUMN suspension_reason TEXT")
-                conn.commit()
-            if "is_banned" not in cols:
-                cur.execute("ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0")
-                conn.commit()
-            if "notes" not in cols:
-                cur.execute("ALTER TABLE users ADD COLUMN notes TEXT")
-                conn.commit()
-
-        # admin_action_logs table
-        cur.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='admin_action_logs'"
-        )
-        if not cur.fetchone():
-            cur.execute("""
-                CREATE TABLE admin_action_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    actor_user_id TEXT NOT NULL,
-                    target_user_id TEXT NOT NULL,
-                    action TEXT NOT NULL,
-                    target_subject TEXT,
-                    reason TEXT NOT NULL,
-                    metadata_json TEXT,
-                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-                """)
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_actor ON admin_action_logs (actor_user_id)"
-            )
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_target ON admin_action_logs (target_user_id)"
-            )
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_action ON admin_action_logs (action)"
-            )
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at ON admin_action_logs (created_at)"
-            )
-            conn.commit()
-
-        # favorite_strategies: add user_id if missing and backfill legacy rows to the default owner when known
-        cur.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='favorite_strategies'"
-        )
-        row = cur.fetchone()
-        if row:
-            cur.execute("PRAGMA table_info(favorite_strategies)")
-            cols = {r[1] for r in cur.fetchall()}
-            if "user_id" not in cols:
-                cur.execute("ALTER TABLE favorite_strategies ADD COLUMN user_id TEXT")
-                conn.commit()
-                if default_user_id:
-                    cur.execute(
-                        "UPDATE favorite_strategies SET user_id = ? WHERE user_id IS NULL",
-                        (default_user_id,),
-                    )
-                    conn.commit()
-
-        # monitor_preferences: add price_timeframe if missing
-        cur.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='monitor_preferences'"
-        )
-        row = cur.fetchone()
-        if row:
-            cur.execute("PRAGMA table_info(monitor_preferences)")
-            cols = {r[1] for r in cur.fetchall()}  # r[1] = name
-            if "price_timeframe" not in cols:
-                cur.execute(
-                    "ALTER TABLE monitor_preferences ADD COLUMN price_timeframe TEXT DEFAULT '1d'"
-                )
-                conn.commit()
-
-            # monitor_preferences: add theme if missing
-            if "theme" not in cols:
-                cur.execute(
-                    "ALTER TABLE monitor_preferences ADD COLUMN theme TEXT NOT NULL DEFAULT 'dark-green'"
-                )
-                conn.commit()
-
-            # monitor_preferences started as single-tenant with PK(symbol). Rebuild with PK(user_id, symbol).
-            if "user_id" not in cols:
-                cur.execute("ALTER TABLE monitor_preferences RENAME TO monitor_preferences_legacy")
-                cur.execute("""
-                    CREATE TABLE monitor_preferences (
-                        user_id TEXT NOT NULL,
-                        symbol TEXT NOT NULL,
-                        in_portfolio BOOLEAN NOT NULL DEFAULT 0,
-                        card_mode TEXT NOT NULL DEFAULT 'price',
-                        price_timeframe TEXT NOT NULL DEFAULT '1d',
-                        theme TEXT NOT NULL DEFAULT 'dark-green',
-                        updated_at DATETIME,
-                        PRIMARY KEY (user_id, symbol)
-                    )
-                    """)
-                if default_user_id:
-                    cur.execute(
-                        """
-                        INSERT INTO monitor_preferences (
-                            user_id, symbol, in_portfolio, card_mode, price_timeframe, theme, updated_at
-                        )
-                        SELECT ?, symbol, in_portfolio, card_mode, COALESCE(price_timeframe, '1d'),
-                               COALESCE(theme, 'dark-green'), updated_at
-                        FROM monitor_preferences_legacy
-                        """,
-                        (default_user_id,),
-                    )
-                cur.execute("DROP TABLE monitor_preferences_legacy")
-                conn.commit()
-    finally:
-        conn.close()
-
-
 def ensure_runtime_schema_migrations() -> None:
     """Backward-compatible runtime migration entrypoint used during app startup."""
-
-    ensure_sqlite_migrations()
-
-    if DB_URL.startswith("sqlite:"):
-        return
 
     with engine.begin() as conn:
         conn.execute(text("""
@@ -318,6 +137,41 @@ def ensure_runtime_schema_migrations() -> None:
         conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at
                 ON admin_action_logs (created_at)
+                """))
+        conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS market_indicator (
+                    id BIGSERIAL PRIMARY KEY,
+                    symbol TEXT NOT NULL,
+                    timeframe TEXT NOT NULL,
+                    ts TIMESTAMPTZ NOT NULL,
+                    ema_9 NUMERIC,
+                    ema_21 NUMERIC,
+                    sma_20 NUMERIC,
+                    sma_50 NUMERIC,
+                    rsi_14 NUMERIC,
+                    macd_line NUMERIC,
+                    macd_signal NUMERIC,
+                    macd_histogram NUMERIC,
+                    source TEXT NOT NULL DEFAULT 'market',
+                    provider TEXT NOT NULL DEFAULT 'talib',
+                    source_window JSONB,
+                    row_count INTEGER,
+                    is_recomputed BOOLEAN NOT NULL DEFAULT FALSE,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE (symbol, timeframe, ts)
+                )
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS uq_market_indicator_symbol_timeframe_ts
+                ON market_indicator (symbol, timeframe, ts)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_market_indicator_symbol_timeframe_ts
+                ON market_indicator (symbol, timeframe, ts DESC)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_market_indicator_updated_at
+                ON market_indicator (updated_at)
                 """))
 
     timescale_functions_available = True
@@ -469,9 +323,6 @@ def get_db():
 
 def sync_postgres_identity_sequences() -> None:
     """Advance Postgres integer PK sequences after importing explicit IDs."""
-
-    if DB_URL.startswith("sqlite:"):
-        return
 
     tables = (
         "favorite_strategies",

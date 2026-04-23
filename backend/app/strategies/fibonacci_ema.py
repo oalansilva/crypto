@@ -1,5 +1,5 @@
 import pandas as pd
-import pandas_ta as ta
+import talib
 import numpy as np
 import logging
 
@@ -181,7 +181,7 @@ class FibonacciEmaStrategy:
         df_sim = df.copy()
 
         # Calculate EMA 200
-        df_sim["ema"] = ta.ema(df_sim["close"], length=self.ema_period)
+        df_sim["ema"] = talib.EMA(df_sim["close"], timeperiod=self.ema_period)
 
         # Detect swing points
         swing_highs, swing_lows, swing_high_prices, swing_low_prices = self._detect_swings(df_sim)
