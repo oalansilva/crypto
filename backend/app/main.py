@@ -36,6 +36,7 @@ from app.routes.user_credentials import router as user_credentials_router
 from app.routes.system_preferences import router as system_preferences_router
 from app.routes.retrospectives import router as retrospectives_router
 from app.routes.admin_users import router as admin_users_router
+from app.routes.admin_backfill import router as admin_backfill_router
 from app.services.signal_monitor import signal_monitor
 from app.services.binance_service import (
     start_signal_feed_snapshot_worker,
@@ -49,6 +50,7 @@ from app.services.ohlcv_storage import (
     start_ohlcv_ingestion,
     stop_ohlcv_ingestion,
 )
+from app.services.ohlcv_backfill_service import get_backfill_service
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -173,6 +175,7 @@ async def lifespan(app: FastAPI):
         # await start_signal_feed_snapshot_worker()  # DISABLED FOR DEBUG
         start_ohlcv_ingestion()
         await start_binance_realtime_connector()
+        get_backfill_service().start_scheduler()
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 
@@ -181,6 +184,7 @@ async def lifespan(app: FastAPI):
     await stop_binance_realtime_connector()
     await stop_signal_feed_snapshot_worker()
     signal_monitor.stop()
+    get_backfill_service().stop_scheduler()
 
 
 settings = get_settings()
@@ -264,6 +268,7 @@ app.include_router(user_credentials_router)
 app.include_router(system_preferences_router)
 app.include_router(retrospectives_router)
 app.include_router(admin_users_router)
+app.include_router(admin_backfill_router)
 
 
 @app.get("/")

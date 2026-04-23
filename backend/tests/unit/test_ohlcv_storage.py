@@ -164,6 +164,54 @@ def test_ohlcv_repository_write_rejects_missing_timestamp(monkeypatch):
         )
 
 
+def test_market_repo_reads_and_writes_earliest_time(monkeypatch):
+    latest = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    conn = _FakeConnection(latest=latest, rows=[], count=1)
+    monkeypatch.setattr(ohlcv_storage, "DB_URL", "postgresql://unit-test")
+    monkeypatch.setattr(ohlcv_storage, "engine", _FakeEngine(conn))
+
+    repo = MarketOhlcvRepository()
+    assert repo.get_earliest_candle_time("BTC/USDT", "1d") == latest
+
+
+def test_ohlcv_repository_write_candles_supports_return_metrics(monkeypatch):
+    latest = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    rows = [
+        {
+            "candle_time": latest,
+            "open": 1.0,
+            "high": 1.2,
+            "low": 0.8,
+            "close": 1.1,
+            "volume": 10.0,
+            "source": "ccxt",
+        },
+    ]
+    conn = _FakeConnection(latest=latest, rows=rows, count=1)
+    monkeypatch.setattr(ohlcv_storage, "DB_URL", "postgresql://unit-test")
+    monkeypatch.setattr(ohlcv_storage, "engine", _FakeEngine(conn))
+    monkeypatch.setattr(ohlcv_storage, "_INDEX_ASSERTION_ENABLED", True)
+
+    repo = MarketOhlcvRepository()
+    result = repo.write_candles(
+        "BTC/USDT",
+        "1d",
+        "ccxt",
+        pd.DataFrame(
+            {
+                "timestamp_utc": [latest, latest + timedelta(minutes=1)],
+                "open": [1.0, 1.2],
+                "high": [1.1, 1.3],
+                "low": [0.9, 1.1],
+                "close": [1.0, 1.2],
+                "volume": [5.0, 7.0],
+            }
+        ),
+        return_metrics=True,
+    )
+    assert result == (1, 1)
+
+
 def test_ohlcv_plan_parser_helpers_handle_dict_list_and_json_string():
     assert MarketOhlcvRepository._read_plan_uses_timeframe_index(
         [

@@ -191,6 +191,50 @@ def _walk_plan_uses_index(node: Any, required_index: str) -> bool:
     return False
 
 
+def _extract_scalar_value(result: Any) -> Any | None:
+    if result is None:
+        return None
+
+    try:
+        scalar = result.scalar()
+        return scalar
+    except Exception:
+        pass
+
+    row = None
+    try:
+        row = result.fetchone()
+    except Exception:
+        row = None
+
+    if row:
+        try:
+            return row[0]
+        except Exception:
+            pass
+
+    mappings = getattr(result, "mappings", None)
+    if callable(mappings):
+        try:
+            rows = mappings()
+        except Exception:
+            rows = None
+        if rows is not None and hasattr(rows, "all"):
+            try:
+                mapped_rows = rows.all()
+            except Exception:
+                mapped_rows = []
+            if mapped_rows:
+                first = mapped_rows[0]
+                if isinstance(first, dict):
+                    return first.get("candle_time")
+                try:
+                    return first[0]
+                except Exception:
+                    return None
+    return None
+
+
 class MarketOhlcvRepository:
     def __init__(self) -> None:
         self._enabled = bool(DB_URL) and not DB_URL.startswith("sqlite:")
@@ -220,6 +264,50 @@ class MarketOhlcvRepository:
             return None
 
         value = row[0]
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc)
+
+        return _to_utc_datetime(value)
+
+    def get_earliest_candle_time(self, symbol: str, timeframe: str) -> datetime | None:
+        if not self.enabled:
+            return None
+
+        normalized_symbol = _normalize_symbol(symbol)
+        normalized_timeframe = _normalize_timeframe(timeframe)
+        with engine.begin() as conn:
+            value = _extract_scalar_value(
+                conn.execute(
+                    text("""
+                    SELECT MIN(candle_time) AS candle_time
+                    FROM market_ohlcv
+                    WHERE symbol = :symbol
+                      AND timeframe = :timeframe
+                    """),
+                    {"symbol": normalized_symbol, "timeframe": normalized_timeframe},
+                )
+            )
+
+            if value is None:
+                value = _extract_scalar_value(
+                    conn.execute(
+                        text("""
+                        SELECT MAX(candle_time) AS candle_time
+                        FROM market_ohlcv
+                        WHERE symbol = :symbol
+                          AND timeframe = :timeframe
+                        """),
+                        {"symbol": normalized_symbol, "timeframe": normalized_timeframe},
+                    )
+                )
+
+        if value is None:
+            return None
+
+        if isinstance(value, dict):
+            value = value.get("candle_time")
         if isinstance(value, datetime):
             if value.tzinfo is None:
                 return value.replace(tzinfo=timezone.utc)
@@ -372,7 +460,8 @@ class MarketOhlcvRepository:
         timeframe: str,
         source: str,
         df: pd.DataFrame,
-    ) -> int:
+        return_metrics: bool = False,
+    ) -> int | tuple[int, int]:
         if not self.enabled:
             return 0
 
@@ -481,13 +570,15 @@ class MarketOhlcvRepository:
                 rows_to_write,
             )
 
-        _METRICS.record_write(
-            normalized_symbol,
-            normalized_timeframe,
-            rows_received=len(rows_to_write),
-            rows_duplicate=rows_duplicate,
-            lag_seconds=insert_lag_seconds,
-        )
+            _METRICS.record_write(
+                normalized_symbol,
+                normalized_timeframe,
+                rows_received=len(rows_to_write),
+                rows_duplicate=rows_duplicate,
+                lag_seconds=insert_lag_seconds,
+            )
+        if return_metrics:
+            return len(rows_to_write) - rows_duplicate, rows_duplicate
         return len(rows_to_write)
 
     def get_metrics(self) -> dict[str, Any]:
