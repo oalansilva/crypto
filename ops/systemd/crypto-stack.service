@@ -1,0 +1,16 @@
+[Unit]
+Description=Crypto stack bootstrap
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=__ROOT_DIR__
+ExecStart=__ROOT_DIR__/start.sh
+ExecStop=__ROOT_DIR__/stop.sh
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=default.target

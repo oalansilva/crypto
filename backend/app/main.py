@@ -1,5 +1,6 @@
 # file: backend/app/main.py
 # force reload 14
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -73,7 +74,7 @@ logger.info("=" * 80)
 logger.info("Backend starting up - logging to %s", log_file)
 logger.info("=" * 80)
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from app.database import Base, engine, sync_postgres_identity_sequences
 
 # Import models to register them with Base
@@ -90,6 +91,25 @@ def seed_combo_templates_if_empty():
             logger.info("Seeded %s combo_templates from JSON export", inserted)
     except Exception as e:
         logger.error(f"Error seeding combo_templates: {e}")
+
+
+async def _start_noncritical_services() -> None:
+    try:
+        await asyncio.to_thread(start_ohlcv_ingestion)
+    except Exception:
+        logger.exception("Failed to start OHLCV ingestion service")
+
+    try:
+        await asyncio.wait_for(start_binance_realtime_connector(), timeout=5.0)
+    except asyncio.TimeoutError:
+        logger.error("Timed out while starting Binance realtime connector")
+    except Exception:
+        logger.exception("Failed to start Binance realtime connector")
+
+    try:
+        await asyncio.to_thread(get_backfill_service().start_scheduler)
+    except Exception:
+        logger.exception("Failed to start OHLCV backfill scheduler")
 
 
 @asynccontextmanager
@@ -173,18 +193,25 @@ async def lifespan(app: FastAPI):
         seed_combo_templates_if_empty()
         # signal_monitor.start()  # DISABLED FOR DEBUG
         # await start_signal_feed_snapshot_worker()  # DISABLED FOR DEBUG
-        start_ohlcv_ingestion()
-        await start_binance_realtime_connector()
-        get_backfill_service().start_scheduler()
+        app.state.noncritical_services_task = asyncio.create_task(
+            _start_noncritical_services(),
+            name="app-noncritical-services-startup",
+        )
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 
     yield
-    stop_ohlcv_ingestion()
+    startup_task = getattr(app.state, "noncritical_services_task", None)
+    if startup_task is not None and not startup_task.done():
+        startup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await startup_task
+
+    await asyncio.to_thread(stop_ohlcv_ingestion)
     await stop_binance_realtime_connector()
     await stop_signal_feed_snapshot_worker()
     signal_monitor.stop()
-    get_backfill_service().stop_scheduler()
+    await asyncio.to_thread(get_backfill_service().stop_scheduler)
 
 
 settings = get_settings()

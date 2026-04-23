@@ -29,9 +29,15 @@ class Settings(BaseSettings):
     binance_base_url: str = "https://api.binance.com"
     binance_ws_base_url: str = "wss://stream.binance.com:9443"
     binance_top_pairs_limit: int = 100
+    binance_ws_stream_limit: int = 10
     binance_top_pairs_refresh_seconds: int = 60
     binance_top_pairs_ttl_seconds: int = 180
     binance_price_ttl_seconds: float = 10.0
+    binance_realtime_snapshot_path: str = str(
+        _BACKEND_DIR / "runtime" / "binance_realtime_snapshot.json"
+    )
+    binance_realtime_snapshot_flush_seconds: float = 2.0
+    binance_realtime_snapshot_max_age_seconds: float = 15.0
     binance_ws_heartbeat_timeout_seconds: float = 20.0
     binance_ws_reconnect_base_seconds: float = 1.0
     binance_ws_reconnect_max_seconds: float = 30.0

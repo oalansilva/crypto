@@ -5,6 +5,7 @@ BACKEND_UNIT="crypto-backend"
 FRONTEND_UNIT="crypto-frontend"
 RUNTIME_WORKER_UNIT="crypto-runtime-worker"
 CELERY_WORKER_UNIT="crypto-celery-worker"
+BINANCE_WORKER_UNIT="crypto-binance-realtime-worker"
 BACKEND_PORT="${CRYPTO_BACKEND_PORT:-8003}"
 FRONTEND_PORT="${CRYPTO_FRONTEND_PORT:-5173}"
 REDIS_CONTAINER_NAME="crypto-runtime-redis"
@@ -12,6 +13,7 @@ BACKEND_PID_FILE="/tmp/crypto-backend.pid"
 FRONTEND_PID_FILE="/tmp/crypto-frontend.pid"
 RUNTIME_WORKER_PID_FILE="/tmp/crypto-runtime-worker.pid"
 CELERY_WORKER_PID_FILE="/tmp/crypto-celery-worker.pid"
+BINANCE_WORKER_PID_FILE="/tmp/crypto-binance-realtime-worker.pid"
 
 user_systemd_available() {
   command -v systemctl >/dev/null 2>&1 || return 1
@@ -93,17 +95,20 @@ stop_user_unit "$BACKEND_UNIT"
 stop_user_unit "$FRONTEND_UNIT"
 stop_user_unit "$RUNTIME_WORKER_UNIT"
 stop_user_unit "$CELERY_WORKER_UNIT"
+stop_user_unit "$BINANCE_WORKER_UNIT"
 
 kill_pid_file "$BACKEND_PID_FILE"
 kill_pid_file "$FRONTEND_PID_FILE"
 kill_pid_file "$RUNTIME_WORKER_PID_FILE"
 kill_pid_file "$CELERY_WORKER_PID_FILE"
+kill_pid_file "$BINANCE_WORKER_PID_FILE"
 kill_by_port "$BACKEND_PORT"
 kill_by_port "$FRONTEND_PORT"
 kill_by_pattern "uvicorn app.main:app.*--port ${BACKEND_PORT}"
 kill_by_pattern "vite.*--port ${FRONTEND_PORT}"
 kill_by_pattern "python -m app.workers.runtime_worker"
 kill_by_pattern "celery .*app.celery_app:celery_app worker"
+kill_by_pattern "python -m app.binance_realtime_worker"
 
 if command -v docker >/dev/null 2>&1 && docker inspect "$REDIS_CONTAINER_NAME" >/dev/null 2>&1; then
   docker rm -f "$REDIS_CONTAINER_NAME" >/dev/null 2>&1 || true
