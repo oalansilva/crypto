@@ -227,6 +227,34 @@ class MarketOhlcvRepository:
 
         return _to_utc_datetime(value)
 
+    def get_earliest_candle_time(self, symbol: str, timeframe: str) -> datetime | None:
+        if not self.enabled:
+            return None
+
+        normalized_symbol = _normalize_symbol(symbol)
+        normalized_timeframe = _normalize_timeframe(timeframe)
+        with engine.begin() as conn:
+            row = conn.execute(
+                text("""
+                    SELECT MIN(candle_time) AS candle_time
+                    FROM market_ohlcv
+                    WHERE symbol = :symbol
+                      AND timeframe = :timeframe
+                    """),
+                {"symbol": normalized_symbol, "timeframe": normalized_timeframe},
+            ).fetchone()
+
+        if not row or row[0] is None:
+            return None
+
+        value = row[0]
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc)
+
+        return _to_utc_datetime(value)
+
     @staticmethod
     def _read_plan_uses_timeframe_index(
         plan_text: Any, required_index: str = "idx_market_ohlcv_symbol_timeframe_time"
@@ -372,7 +400,8 @@ class MarketOhlcvRepository:
         timeframe: str,
         source: str,
         df: pd.DataFrame,
-    ) -> int:
+        return_metrics: bool = False,
+    ) -> int | tuple[int, int]:
         if not self.enabled:
             return 0
 
@@ -481,13 +510,15 @@ class MarketOhlcvRepository:
                 rows_to_write,
             )
 
-        _METRICS.record_write(
-            normalized_symbol,
-            normalized_timeframe,
-            rows_received=len(rows_to_write),
-            rows_duplicate=rows_duplicate,
-            lag_seconds=insert_lag_seconds,
-        )
+            _METRICS.record_write(
+                normalized_symbol,
+                normalized_timeframe,
+                rows_received=len(rows_to_write),
+                rows_duplicate=rows_duplicate,
+                lag_seconds=insert_lag_seconds,
+            )
+        if return_metrics:
+            return len(rows_to_write) - rows_duplicate, rows_duplicate
         return len(rows_to_write)
 
     def get_metrics(self) -> dict[str, Any]:

@@ -5,6 +5,7 @@ import {
   Bookmark,
   ChevronLeft,
   Home,
+  Play,
   KeyRound,
   Layers,
   LogOut,
@@ -51,6 +52,7 @@ const accountNavItems: NavItemConfig[] = [
 const adminNavItems: NavItemConfig[] = [
   { to: '/system/preferences', label: 'Preferências', icon: Settings },
   { to: '/admin/users', label: 'Usuários', icon: UsersRound },
+  { to: '/admin/backfill', label: 'Backfill', icon: Play },
 ]
 
 export function openMobileMenu() {
@@ -69,6 +71,7 @@ function resolvePageTitle(pathname: string) {
   if (pathname.startsWith('/change-password')) return 'Alterar senha'
   if (pathname.startsWith('/system/preferences')) return 'Preferências do sistema'
   if (pathname.startsWith('/admin/users')) return 'Usuários'
+  if (pathname.startsWith('/admin/backfill')) return 'Backfill de histórico'
   if (pathname.startsWith('/openspec')) return 'OpenSpec'
   return 'Crypto'
 }
