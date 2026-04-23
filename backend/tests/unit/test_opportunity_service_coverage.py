@@ -29,8 +29,10 @@ def _sample_ohlcv():
 
 
 class _FakeComboStrategy:
-    def __init__(self, *args, **kwargs):
-        pass
+    def __init__(self, *args, entry_logic: str = "", exit_logic: str = "", stop_loss: float = 0.0, **kwargs):
+        self.entry_logic = entry_logic
+        self.exit_logic = exit_logic
+        self.stop_loss = stop_loss
 
     def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         out = df.copy()
