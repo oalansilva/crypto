@@ -7,7 +7,6 @@ import bcrypt
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.database import Base
 from app.models import AdminActionLog, User
@@ -16,11 +15,7 @@ from app.routes import admin_users
 
 @pytest.fixture
 def admin_db_session():
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()

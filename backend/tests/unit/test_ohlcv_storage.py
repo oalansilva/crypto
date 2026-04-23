@@ -89,7 +89,7 @@ def _new_service(monkeypatch):
 
 
 def test_ohlcv_repository_disabled_branches_short_circuit(monkeypatch):
-    monkeypatch.setattr(ohlcv_storage, "DB_URL", "sqlite:///:memory:")
+    monkeypatch.setattr(ohlcv_storage, "DB_URL", "")
     repo = MarketOhlcvRepository()
     assert repo.enabled is False
     assert repo.get_latest_candle_time("BTC/USDT", "1m") is None

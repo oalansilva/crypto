@@ -479,6 +479,7 @@ async def test_fallback_prices_and_latest_prices_ordered_with_stale_flags(monkey
 async def test_public_accessors_use_singleton_connector(monkeypatch):
     c = _build_connector(monkeypatch)
     c._pairs = ["BTCUSDT"]
+    monkeypatch.setattr(connector, "_read_external_snapshot", lambda: None)
 
     class _DummyConnector:
         def __init__(self, delegate):

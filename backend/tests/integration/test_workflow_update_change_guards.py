@@ -3,7 +3,6 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.routes import workflow as workflow_routes
@@ -13,9 +12,7 @@ from app.workflow_database import WorkflowBase, get_workflow_db
 
 def _build_client():
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -28,7 +25,15 @@ def _build_client():
             db.close()
 
     app.dependency_overrides[get_workflow_db] = override_get_db
-    return TestClient(app)
+    client = TestClient(app)
+    client.engine = engine  # type: ignore[attr-defined]
+    return client
+
+
+def _close_client(client: TestClient) -> None:
+    client.close()
+    client.app.dependency_overrides.clear()
+    client.engine.dispose()  # type: ignore[attr-defined]
 
 
 def _create_change(client: TestClient, *, change_id: str, status: str):
@@ -55,7 +60,7 @@ def test_update_change_rejects_approval_without_openspec_artifacts(monkeypatch, 
     detail = response.json()["detail"]
     assert detail["code"] == "missing_openspec_artifacts"
     assert set(detail["missing_files"]) == {"proposal.md", "review-ptbr.md", "tasks.md"}
-    client.app.dependency_overrides.clear()
+    _close_client(client)
 
 
 def test_update_change_rejects_homologation_when_qa_not_approved(monkeypatch, tmp_path):
@@ -81,7 +86,7 @@ def test_update_change_rejects_homologation_when_qa_not_approved(monkeypatch, tm
     assert response.status_code == 409
     detail = response.json()["detail"]
     assert detail["code"] == "qa_not_approved"
-    client.app.dependency_overrides.clear()
+    _close_client(client)
 
 
 def test_update_change_rejects_homologation_when_upstream_guard_blocks(monkeypatch):
@@ -114,7 +119,7 @@ def test_update_change_rejects_homologation_when_upstream_guard_blocks(monkeypat
     assert response.status_code == 409
     detail = response.json()["detail"]
     assert detail["code"] == "upstream_guard_blocked"
-    client.app.dependency_overrides.clear()
+    _close_client(client)
 
 
 def test_update_change_rejects_archive_with_open_bugs():
@@ -144,4 +149,4 @@ def test_update_change_rejects_archive_with_open_bugs():
     detail = response.json()["detail"]
     assert detail["code"] == "open_bugs_block_archive"
     assert "Open bug" in detail["open_bugs"]
-    client.app.dependency_overrides.clear()
+    _close_client(client)

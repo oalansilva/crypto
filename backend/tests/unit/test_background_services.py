@@ -23,7 +23,7 @@ def isolated_job_manager(monkeypatch, tmp_path):
     monkeypatch.setattr(
         job_manager_service,
         "DB_URL",
-        f"sqlite:///{tmp_path / 'optimization-results.sqlite'}",
+        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
     monkeypatch.setattr(job_manager_service.JobManager, "DATA_DIR", tmp_path / "jobs")
     job_manager_service.JobManager._instance = None

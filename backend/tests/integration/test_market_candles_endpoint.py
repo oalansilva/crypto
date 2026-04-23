@@ -5,9 +5,23 @@ from dataclasses import dataclass
 from fastapi import FastAPI
 import httpx
 import pandas as pd
+import pytest
 
 from app import api as app_api
 from utils.market_data_mocks import block_external_network
+
+
+@pytest.fixture(autouse=True)
+def isolate_market_candles_storage(monkeypatch):
+    class _DisabledOhlcvRepository:
+        enabled = False
+
+    with app_api._CANDLES_CACHE_LOCK:
+        app_api._CANDLES_CACHE.clear()
+    monkeypatch.setattr(app_api, "_OHLCV_REPO", _DisabledOhlcvRepository())
+    yield
+    with app_api._CANDLES_CACHE_LOCK:
+        app_api._CANDLES_CACHE.clear()
 
 
 def _build_df(rows: list[dict]) -> pd.DataFrame:

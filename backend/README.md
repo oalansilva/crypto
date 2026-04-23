@@ -74,6 +74,22 @@ Para jobs assíncronos com Redis + Celery, confira a configuração em `.env` e 
 pip install -r requirements.txt
 ```
 
+#### TA-Lib (dependência desta change)
+
+Esta change depende de `TA-Lib` em runtime.
+Em Linux/Ubuntu comum, instale a dependência do sistema antes do `pip`:
+
+```bash
+sudo apt-get update && sudo apt-get install -y build-essential python3-dev
+sudo apt-get install -y libta-lib0 libta-lib0-dev
+```
+
+Se necessário, force rebuild do pacote Python no mesmo ambiente virtual:
+
+```bash
+pip install --force-reinstall --no-binary=:all: TA-Lib
+```
+
 ### 5. Aplicar Migrations Versionadas
 
 ```bash

@@ -119,6 +119,7 @@ async def test_market_route_covers_normalization_cache_fetch_and_failures(monkey
 
     monkeypatch.setattr(market_route, "datetime", FrozenDateTime)
     monkeypatch.setattr(market_route, "_DEFAULT_SYMBOLS", ("BTCUSDT", "ETHUSDT", "SOLUSDT"))
+    monkeypatch.setattr(market_route, "is_running", lambda: False)
     market_route._PRICE_CACHE.clear()
 
     assert market_route._utc_now_iso() == "2026-04-18T22:30:00Z"

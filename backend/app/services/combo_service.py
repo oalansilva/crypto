@@ -1,7 +1,7 @@
 import json
 import re
+import os
 from typing import Dict, List, Any, Optional
-from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
@@ -15,17 +15,30 @@ from app.strategies.combos import ComboStrategy
 class ComboService:
     """Service for managing combo strategies (database-driven)."""
 
+    @staticmethod
+    def _is_test_database_url(db_url: str) -> bool:
+        if not os.getenv("PYTEST_CURRENT_TEST"):
+            return False
+        return db_url.startswith("sqlite://") or db_url == ":memory:"
+
     def __init__(self, db_path: str = None):
         self.db_path = db_path
         if db_path is None:
             self._session_factory = SessionLocal
             return
 
-        db_url = db_path if "://" in db_path else f"sqlite:///{Path(db_path).resolve()}"
-        if db_url.startswith("sqlite:"):
-            engine = create_engine(db_url, connect_args={"check_same_thread": False})
+        if db_path == ":memory:":
+            db_url = "sqlite:///:memory:"
         else:
-            engine = create_engine(db_url, pool_pre_ping=True)
+            db_url = db_path if "://" in db_path else None
+
+        if db_url is None:
+            raise ValueError("ComboService requires a valid database URL when db_path is provided.")
+
+        if not self._is_test_database_url(db_url) and not db_url.lower().startswith("postgresql"):
+            raise ValueError("ComboService requires a PostgreSQL URL when db_path is provided.")
+
+        engine = create_engine(db_url, pool_pre_ping=True)
         self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     @staticmethod

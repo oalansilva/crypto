@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -14,20 +17,29 @@ from app.services.workflow_core_service import (
 )
 
 
-def _session():
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+@pytest.fixture
+def db():
+    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    return SessionLocal()
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        engine.dispose()
 
 
 def _seed_change(db):
-    project = Project(slug="crypto", name="Crypto")
+    suffix = uuid4().hex[:8]
+    project = Project(slug=f"crypto-{suffix}", name="Crypto")
     db.add(project)
     db.flush()
 
     change = Change(
-        project_id=project.id, change_id="centralize-workflow-state-db", title="Workflow DB"
+        project_id=project.id,
+        change_id=f"centralize-workflow-state-db-{suffix}",
+        title="Workflow DB",
     )
     db.add(change)
     db.flush()
@@ -50,8 +62,7 @@ def _bug(db, change, parent, title: str, state: WorkItemState = WorkItemState.qu
     return item
 
 
-def test_assign_story_enforces_change_wip_limit_of_two_active_stories():
-    db = _session()
+def test_assign_story_enforces_change_wip_limit_of_two_active_stories(db):
     change = _seed_change(db)
     story1 = _story(db, change, "Story 1")
     story2 = _story(db, change, "Story 2")
@@ -71,8 +82,7 @@ def test_assign_story_enforces_change_wip_limit_of_two_active_stories():
         assert "WIP limit" in str(exc)
 
 
-def test_assign_story_enforces_one_active_story_per_agent_run():
-    db = _session()
+def test_assign_story_enforces_one_active_story_per_agent_run(db):
     change = _seed_change(db)
     story1 = _story(db, change, "Story 1")
     story2 = _story(db, change, "Story 2")
@@ -87,8 +97,7 @@ def test_assign_story_enforces_one_active_story_per_agent_run():
         assert "already owns another active story" in str(exc)
 
 
-def test_assign_story_rejects_open_dependencies_until_predecessor_done():
-    db = _session()
+def test_assign_story_rejects_open_dependencies_until_predecessor_done(db):
     change = _seed_change(db)
     predecessor = _story(db, change, "Predecessor", state=WorkItemState.active)
     successor = _story(db, change, "Successor")
@@ -107,8 +116,7 @@ def test_assign_story_rejects_open_dependencies_until_predecessor_done():
     assert successor.owner_run_id == run.id
 
 
-def test_add_dependency_rejects_cross_change_links():
-    db = _session()
+def test_add_dependency_rejects_cross_change_links(db):
     change1 = _seed_change(db)
     change2 = Change(project_id=change1.project_id, change_id="other-change", title="Other")
     db.add(change2)
@@ -124,8 +132,7 @@ def test_add_dependency_rejects_cross_change_links():
         assert "same change" in str(exc)
 
 
-def test_story_lock_is_exclusive_and_bug_completion_blocks_story_done():
-    db = _session()
+def test_story_lock_is_exclusive_and_bug_completion_blocks_story_done(db):
     change = _seed_change(db)
     story = _story(db, change, "Story")
     bug = _bug(db, change, story, "Bug", state=WorkItemState.active)

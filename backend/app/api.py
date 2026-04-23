@@ -105,7 +105,7 @@ async def get_us_nasdaq100_symbols():
 
 @router.get("/strategies/metadata")
 async def get_strategies_metadata():
-    """Get metadata for all available pandas-ta indicators + custom strategies"""
+    """Get metadata for all available TA-Lib indicators + custom strategies"""
     try:
         result = get_all_indicators_metadata()
 
@@ -163,13 +163,13 @@ async def get_strategies_metadata():
 
 @router.get("/indicator/{strategy_name}/schema")
 async def get_indicator_schema_endpoint(strategy_name: str):
-    """Get parameter schema for a specific indicator - dynamically generated from pandas_ta"""
+    """Get parameter schema for a specific indicator - dynamically generated from TA-Lib"""
     from app.schemas.dynamic_schema_generator import get_dynamic_indicator_schema
 
     schema = get_dynamic_indicator_schema(strategy_name)
     if not schema:
         raise HTTPException(
-            status_code=404, detail=f"Indicator '{strategy_name}' not found in pandas_ta library"
+            status_code=404, detail=f"Indicator '{strategy_name}' not found in TA-Lib library"
         )
     return schema
 

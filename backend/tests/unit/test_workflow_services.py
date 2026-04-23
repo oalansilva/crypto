@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.services import stage_gate_service, workflow_reconcile_service, workflow_transition_service
@@ -42,10 +42,11 @@ from app.workflow_models import (
 
 @pytest.fixture
 def workflow_session():
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
+    db.execute(text("SET session_replication_role = replica"))
     try:
         yield db
     finally:

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
@@ -15,11 +15,14 @@ from app.routes import user_credentials
 def _session_factory(tmp_path: Path):
     db_file = tmp_path / "external_balances_test.db"
     engine = create_engine(
-        f"sqlite:///{db_file}",
-        connect_args={"check_same_thread": False},
+        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(
+            text("TRUNCATE TABLE user_exchange_credentials RESTART IDENTITY CASCADE")
+        )
     return TestingSessionLocal
 
 

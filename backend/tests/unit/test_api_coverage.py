@@ -6,9 +6,26 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pandas as pd
+import pytest
 
 import app.api as api
 from app.services.asset_classification import classify_asset_type
+
+
+@pytest.fixture(autouse=True)
+def isolate_api_market_candles_storage(monkeypatch):
+    class _DisabledOhlcvRepository:
+        enabled = False
+
+        def get_metrics(self):
+            return {"ingest": {"rows_received": 0}}
+
+    with api._CANDLES_CACHE_LOCK:
+        api._CANDLES_CACHE.clear()
+    monkeypatch.setattr(api, "_OHLCV_REPO", _DisabledOhlcvRepository())
+    yield
+    with api._CANDLES_CACHE_LOCK:
+        api._CANDLES_CACHE.clear()
 
 
 def _build_api_app() -> FastAPI:

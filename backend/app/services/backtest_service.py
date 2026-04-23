@@ -58,7 +58,7 @@ from app.metrics import (
 
 # New imports for context/regime
 from app.metrics.regime import calculate_regime_classification
-from app.metrics.indicators import calculate_avg_indicators
+from app.metrics.indicators import calculate_avg_indicators, ensure_ta_lib_context_columns
 
 # Import Job Manager
 from app.services.job_manager import JobManager
@@ -847,7 +847,10 @@ class BacktestService:
 
                 # Calculate heavy metrics
                 heavy_metrics = self._calculate_heavy_metrics(
-                    df_for_metrics, result.get("metrics", {}), config.get("cash", 10000)
+                    df_for_metrics,
+                    result.get("metrics", {}),
+                    config.get("cash", 10000),
+                    result.get("trades", []),
                 )
 
                 # Update result metrics
@@ -919,7 +922,7 @@ class BacktestService:
 
             return values
         except:
-            return [range_def]  # Fallback
+            return []
 
     def _sanitize(self, obj):
         import math
@@ -1008,12 +1011,16 @@ class BacktestService:
             return {}
 
     def _calculate_heavy_metrics(
-        self, df: pd.DataFrame, existing_metrics: dict, initial_capital: float
+        self,
+        df: pd.DataFrame,
+        existing_metrics: dict,
+        initial_capital: float,
+        trades: list = None,
     ) -> dict:
         """
         Calculate computationally expensive metrics (ATR, ADX, Alpha).
         Only called for top N results to avoid performance impact.
-        Does not require trades list - uses only OHLCV data and existing metrics.
+        Uses regime segmentation only when trades are provided.
 
         Args:
             df: OHLCV DataFrame
@@ -1024,33 +1031,14 @@ class BacktestService:
             Dict with heavy metrics
         """
         heavy = {}
+        trades = trades or []
 
         try:
-            import pandas_ta as ta
-
             context_df = df.copy()
-
-            # Calculate indicators if needed
-            if not any(c.startswith("ATR") for c in context_df.columns):
-                context_df.ta.atr(length=14, append=True)
-            if not any(c.startswith("ADX") for c in context_df.columns):
-                context_df.ta.adx(length=14, append=True)
+            context_df = ensure_ta_lib_context_columns(context_df)
 
             # Average indicators
             from app.metrics.indicators import calculate_avg_indicators
-
-            # Ensure ATR and ADX exist for metrics
-            if not any(c.startswith("ATR") for c in context_df.columns):
-                try:
-                    context_df.ta.atr(length=14, append=True)
-                except:
-                    pass
-
-            if not any(c.startswith("ADX") for c in context_df.columns):
-                try:
-                    context_df.ta.adx(length=14, append=True)
-                except:
-                    pass
 
             avg_inds = calculate_avg_indicators(context_df)
             heavy.update(avg_inds)
@@ -1070,9 +1058,7 @@ class BacktestService:
             try:
                 from app.metrics.regime import calculate_regime_classification
 
-                # Check/Calc SMA (200) for Regime
-                if "SMA_200" not in context_df.columns:
-                    context_df.ta.sma(length=200, append=True)
+                context_df = ensure_ta_lib_context_columns(context_df)
 
                 # Regime Classification
                 regime_df = calculate_regime_classification(context_df, sma_period=200)
@@ -1267,32 +1253,9 @@ class BacktestService:
 
             # === Market Context (Avg ATR/ADX) & Regime Analysis ===
             try:
-                # 1. Ensure Indicators exist (if simple strategy didn't calculate them)
-                # Need pandas_ta or manual calc?
-                # We can try using pandas_ta if available on the DF, or just rely on what is there.
-                # If the strategy uses them, they are in df (maybe).
-                # Actually, DynamicStrategy *returns* signals, but Backtester doesn't modify DF with indicators unless strategy did.
-                # The 'df' passed here is the original OHLCV (mostly).
-                # If we want context, we might need to calc them here for the reporting.
-                import pandas_ta as ta
-
                 # We work on a copy to not affect other things
                 context_df = df.copy()
-
-                # Check/Calc ATR (14)
-                if not any(c.startswith("ATR") for c in context_df.columns):
-                    context_df.ta.atr(length=14, append=True)
-
-                # Check/Calc ADX (14)
-                if not any(c.startswith("ADX") for c in context_df.columns):
-                    context_df.ta.adx(length=14, append=True)
-
-                # Check/Calc SMA (200) for Regime
-                if "SMA_200" not in context_df.columns:
-                    context_df.ta.sma(length=200, append=True)
-
-                # DEBUG: Print columns to verify SMA_200 existence
-                print(f"DEBUG: Context DF Columns after TA: {context_df.columns.tolist()}")
+                context_df = ensure_ta_lib_context_columns(context_df)
 
                 # 2. Avg Indicators
                 avg_inds = calculate_avg_indicators(context_df)
@@ -1348,10 +1311,6 @@ class BacktestService:
                             stats["win_rate"] = (stats["wins"] / total) * 100
 
                     enhanced["regime_performance"] = regime_stats
-                    # DEBUG: Print final stats
-                    enhanced["regime_performance"] = regime_stats
-                    # DEBUG: Print final stats
-                    # print(f"DEBUG: Final Regime Stats: {regime_stats}")
 
             except Exception as e:
                 print(f"Error calculating context/regime metrics: {e}")

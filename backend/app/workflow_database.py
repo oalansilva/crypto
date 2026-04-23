@@ -1,8 +1,8 @@
 # file: backend/app/workflow_database.py
 """Workflow state database (Postgres-first).
 
-This module is intentionally separate from `app.database` because the legacy app
-DB currently defaults to SQLite and stores backtesting / UI data.
+This module is intentionally separate from `app.database` because workflow state
+is managed in a dedicated operational registry DB.
 
 For this change (centralize-workflow-state-db), we introduce a dedicated
 *workflow* database that will eventually become the operational source of truth
@@ -12,14 +12,14 @@ Enable with:
 - WORKFLOW_DB_ENABLED=1
 - WORKFLOW_DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/workflow_registry
 
-Runtime now requires PostgreSQL. SQLite is allowed only in explicit test mode.
+Runtime is PostgreSQL-only.
 """
 
 from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
+from urllib.parse import urlparse
 from typing import Dict
 
 from sqlalchemy import create_engine
@@ -33,6 +33,19 @@ _workflow_engines: Dict[str, object] = {}
 _workflow_sessionmakers: Dict[str, sessionmaker] = {}
 
 
+def _resolve_test_workflow_url(url: str) -> str:
+    if not os.getenv("PYTEST_CURRENT_TEST"):
+        return url
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if "workflow" in host or "project-db" in host:
+        fallback = os.getenv("DATABASE_URL", "")
+        return fallback or url
+
+    return url
+
+
 def _enabled() -> bool:
     # Prefer Settings() because backend/.env is loaded by pydantic-settings,
     # but those values are not automatically exported into os.environ.
@@ -41,19 +54,6 @@ def _enabled() -> bool:
     if raw is None:
         raw = os.getenv("WORKFLOW_DB_ENABLED", "0")
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _allow_sqlite_for_tests() -> bool:
-    raw = os.getenv("ALLOW_SQLITE_FOR_TESTS", "").strip().lower()
-    if raw in {"1", "true", "yes", "on"}:
-        return True
-    return any("pytest" in arg for arg in sys.argv)
-
-
-def _default_sqlite_url() -> str:
-    base_dir = Path(__file__).resolve().parent.parent  # backend/
-    db_path = base_dir / "workflow.db"
-    return f"sqlite:///{db_path}"
 
 
 def _is_postgres_url(url: str) -> bool:
@@ -68,14 +68,11 @@ def get_workflow_db_url() -> str | None:
     settings = get_settings()
     url = getattr(settings, "workflow_database_url", None) or os.getenv("WORKFLOW_DATABASE_URL")
     if url:
-        if not _is_postgres_url(url) and not _allow_sqlite_for_tests():
+        if not _is_postgres_url(url):
             raise RuntimeError(
                 "WORKFLOW_DATABASE_URL must point to PostgreSQL. SQLite is no longer supported in runtime."
             )
         return url
-
-    if _allow_sqlite_for_tests():
-        return _default_sqlite_url()
 
     raise RuntimeError(
         "WORKFLOW_DATABASE_URL is required and must point to PostgreSQL. SQLite fallback was removed."
@@ -91,11 +88,7 @@ def get_workflow_engine():
     if cached is not None:
         return cached
 
-    if url.startswith("sqlite:"):
-        engine = create_engine(url, connect_args={"check_same_thread": False})
-    else:
-        # Postgres / others
-        engine = create_engine(url, pool_pre_ping=True)
+    engine = create_engine(_resolve_test_workflow_url(url), pool_pre_ping=True)
 
     _workflow_engines[url] = engine
     return engine
@@ -117,10 +110,7 @@ def get_workflow_engine_for_url(url: str):
     if cached is not None:
         return cached
 
-    if url.startswith("sqlite:"):
-        engine = create_engine(url, connect_args={"check_same_thread": False})
-    else:
-        engine = create_engine(url, pool_pre_ping=True)
+    engine = create_engine(_resolve_test_workflow_url(url), pool_pre_ping=True)
 
     _workflow_engines[url] = engine
     return engine
@@ -162,17 +152,13 @@ def init_workflow_schema_for_url(url: str) -> None:
     # Lightweight forward-only migration for older workflow DBs.
     with workflow_engine.begin() as conn:
         try:
-            is_sqlite = str(workflow_engine.url).startswith("sqlite:")
-            if is_sqlite:
-                cols = {row[1] for row in conn.execute(text("PRAGMA table_info(wf_changes)"))}
-            else:
-                rows = conn.execute(text("""
+            rows = conn.execute(text("""
                         SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = current_schema()
                           AND table_name = 'wf_changes'
                         """))
-                cols = {str(row[0]) for row in rows}
+            cols = {str(row[0]) for row in rows}
             if "description" not in cols:
                 conn.execute(
                     text("ALTER TABLE wf_changes ADD COLUMN description TEXT NOT NULL DEFAULT ''")
@@ -190,18 +176,13 @@ def init_workflow_schema_for_url(url: str) -> None:
 
             project_cols = None
             try:
-                if is_sqlite:
-                    project_cols = {
-                        row[1] for row in conn.execute(text("PRAGMA table_info(wf_projects)"))
-                    }
-                else:
-                    rows = conn.execute(text("""
+                rows = conn.execute(text("""
                             SELECT column_name
                             FROM information_schema.columns
                             WHERE table_schema = current_schema()
                               AND table_name = 'wf_projects'
                             """))
-                    project_cols = {str(row[0]) for row in rows}
+                project_cols = {str(row[0]) for row in rows}
             except Exception:
                 pass
 
@@ -234,18 +215,13 @@ def init_workflow_schema_for_url(url: str) -> None:
             # Lightweight forward-only migration for work_items table
             work_items_cols = None
             try:
-                if is_sqlite:
-                    work_items_cols = {
-                        row[1] for row in conn.execute(text("PRAGMA table_info(wf_work_items)"))
-                    }
-                else:
-                    rows = conn.execute(text("""
+                rows = conn.execute(text("""
                             SELECT column_name
                             FROM information_schema.columns
                             WHERE table_schema = current_schema()
                               AND table_name = 'wf_work_items'
                             """))
-                    work_items_cols = {str(row[0]) for row in rows}
+                work_items_cols = {str(row[0]) for row in rows}
             except Exception:
                 pass
 
@@ -280,29 +256,28 @@ def init_workflow_schema() -> None:
 
 def get_project_workflow_db_url(project) -> str:
     url = getattr(project, "workflow_database_url", None)
+    allow_shared = os.getenv("WORKFLOW_ALLOW_SHARED_PROJECT_DB", "1").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     registry_url = get_workflow_db_url()
+
     if url:
-        # Tests often store placeholder Postgres URLs as metadata while still using the
-        # shared SQLite workflow DB for in-process isolation.
-        if (
-            _allow_sqlite_for_tests()
-            and registry_url
-            and registry_url.startswith("sqlite:")
-            and not str(url).startswith("sqlite:")
-        ):
-            return registry_url
-        if not _is_postgres_url(url) and not _allow_sqlite_for_tests():
+        if not _is_postgres_url(url):
             raise RuntimeError(f"Project '{project.slug}' must use a PostgreSQL workflow database.")
+        if allow_shared and registry_url:
+            return registry_url
         return url
 
-    if registry_url and (
-        registry_url.startswith("sqlite:")
-        or os.getenv("WORKFLOW_ALLOW_SHARED_PROJECT_DB", "").strip().lower()
-        in {"1", "true", "yes", "on"}
-    ):
-        return registry_url
+    if not registry_url:
+        raise RuntimeError(f"Project '{project.slug}' has no workflow_database_url configured.")
 
-    raise RuntimeError(f"Project '{project.slug}' has no workflow_database_url configured.")
+    if not allow_shared:
+        raise RuntimeError(f"Project '{project.slug}' has no workflow_database_url configured.")
+
+    return registry_url
 
 
 def get_project_workflow_sessionmaker(project):
@@ -342,15 +317,6 @@ def sync_project_to_workflow_db(project, db_session) -> None:
 
 
 def bootstrap_project_workflow_db(project, registry_db=None) -> None:
-    if registry_db is not None:
-        bind = registry_db.get_bind()
-        bind_url = str(getattr(bind, "url", "") or "")
-        if _allow_sqlite_for_tests() and bind_url.startswith("sqlite:"):
-            WorkflowBase.metadata.create_all(bind=bind)
-            sync_project_to_workflow_db(project, registry_db)
-            registry_db.commit()
-            return
-
     url = get_project_workflow_db_url(project)
     init_workflow_schema_for_url(url)
     SessionLocal = get_project_workflow_sessionmaker(project)

@@ -1,5 +1,5 @@
 import pandas as pd
-import pandas_ta as ta
+import talib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,11 @@ class CruzamentoMedias:
         self.media_longa = config.get("media_longa") or config.get("sma_long") or 38
         self.media_inter = config.get("media_inter") or config.get("sma_medium") or 21
 
+        for attr in ("media_curta", "media_longa", "media_inter"):
+            value = getattr(self, attr)
+            if isinstance(value, float) and value.is_integer():
+                setattr(self, attr, int(value))
+
         logger.info(
             f"CRUZAMENTOMEDIAS initialized: curta={self.media_curta}, longa={self.media_longa}, inter={self.media_inter}"
         )
@@ -55,9 +60,9 @@ class CruzamentoMedias:
         df_sim = df.copy()
 
         # Calculate moving averages
-        df_sim["media_curta"] = ta.ema(df_sim["close"], length=self.media_curta)
-        df_sim["media_longa"] = ta.sma(df_sim["close"], length=self.media_longa)
-        df_sim["media_inter"] = ta.sma(df_sim["close"], length=self.media_inter)
+        df_sim["media_curta"] = talib.EMA(df_sim["close"], timeperiod=self.media_curta)
+        df_sim["media_longa"] = talib.SMA(df_sim["close"], timeperiod=self.media_longa)
+        df_sim["media_inter"] = talib.SMA(df_sim["close"], timeperiod=self.media_inter)
 
         # Initialize signals
         signals = pd.Series(0, index=df_sim.index)
