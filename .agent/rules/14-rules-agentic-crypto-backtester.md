@@ -321,5 +321,40 @@ Without determinism there is no science.
 Without reproducibility there is no trust.
 
 ==================================================
+OPERATING RULES FOR THIS REPOSITORY
+==================================================
+
+Scope:
+- apply to day-to-day work in this workspace.
+
+Branching and flow:
+- main branch is production/release only.
+- develop is the daily implementation branch.
+- PRs should follow: develop -> main.
+- do not create task-specific feature branches for routine work.
+
+Required workflow:
+- keep `develop` as source of truth for implementation and validation.
+- for production release, open PR from `develop` to `main`.
+- only proceed to main after check pass and review in PR.
+
+Required records:
+- update `openspec/changes/<change>/` for each active change.
+- keep PR description and notes aligned with runtime/status updates.
+
+CI and validation notes:
+- backend local test command: `./backend/.venv/bin/python -m pytest -q`
+- frontend build command: `npm --prefix frontend run build`
+- PR failures must be resolved on the same commit under review before merge attempts.
+
+Operational lock semantics:
+- maintain work within one active story per agent run when possible.
+- do not close a change/story without runtime + handoff update.
+
+==================================================
+END OF FILE
+==================================================
+
+==================================================
 END OF FILE
 ==================================================
