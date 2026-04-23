@@ -112,9 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => {
+      controller.abort()
+    }, 8000)
+
     axios
       .get<AuthUser>(`${API_BASE}/auth/me`, {
         headers: { Authorization: `Bearer ${stored.accessToken}` },
+        signal: controller.signal,
       })
       .then((res) => {
         setState({
@@ -128,6 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Token invalid - clear storage
         persistAuthState(null, null, null)
         setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId)
+        setState((prev) => ({ ...prev, isLoading: false }))
       })
   }, [])
 
