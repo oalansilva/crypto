@@ -29,7 +29,9 @@ def _sample_ohlcv():
 
 
 class _FakeComboStrategy:
-    def __init__(self, *args, entry_logic: str = "", exit_logic: str = "", stop_loss: float = 0.0, **kwargs):
+    def __init__(
+        self, *args, entry_logic: str = "", exit_logic: str = "", stop_loss: float = 0.0, **kwargs
+    ):
         self.entry_logic = entry_logic
         self.exit_logic = exit_logic
         self.stop_loss = stop_loss
@@ -64,7 +66,9 @@ class _MockProvider:
         return self.df.copy()
 
 
-def _sample_favorite(symbol: str, timeframe: str, template="trend", data_source: str = STOOQ_SOURCE):
+def _sample_favorite(
+    symbol: str, timeframe: str, template="trend", data_source: str = STOOQ_SOURCE
+):
     return {
         "id": 7,
         "name": "Test Favorite",
@@ -91,8 +95,12 @@ def test_get_opportunities_stooq_error_fallback_to_yahoo(monkeypatch):
     stooq_provider = _FailingProvider()
     yahoo_provider = _MockProvider(_sample_ohlcv())
 
-    monkeypatch.setattr(opportunity_service, "resolve_data_source_for_symbol", lambda *_args: STOOQ_SOURCE)
-    monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_args: stooq_provider)
+    monkeypatch.setattr(
+        opportunity_service, "resolve_data_source_for_symbol", lambda *_args: STOOQ_SOURCE
+    )
+    monkeypatch.setattr(
+        opportunity_service, "get_market_data_provider", lambda *_args: stooq_provider
+    )
     monkeypatch.setattr(opportunity_service, "YahooMarketDataProvider", lambda: yahoo_provider)
     monkeypatch.setattr(
         service.combo_service,
@@ -130,7 +138,9 @@ def test_get_opportunities_fetch_error_for_ccxt_is_skipped(monkeypatch):
     service.get_favorites = lambda *_args, **_kwargs: [favorite]
 
     provider = _FailingProvider()
-    monkeypatch.setattr(opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE)
+    monkeypatch.setattr(
+        opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE
+    )
     monkeypatch.setattr(opportunity_service, "_is_unsupported_symbol", lambda *_args: False)
     monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_args: provider)
 
@@ -150,7 +160,9 @@ def test_get_opportunities_ccxt_applies_continuity_fix(monkeypatch):
         fixed["called"] = True
         return df
 
-    monkeypatch.setattr(opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE)
+    monkeypatch.setattr(
+        opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE
+    )
     monkeypatch.setattr(opportunity_service, "_is_unsupported_symbol", lambda *_args: False)
     monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_args: provider)
     monkeypatch.setattr(
