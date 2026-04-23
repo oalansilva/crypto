@@ -21,7 +21,9 @@ def _session_factory(tmp_path: Path):
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE TABLE monitor_preferences RESTART IDENTITY CASCADE"))
-        connection.execute(text("TRUNCATE TABLE user_exchange_credentials RESTART IDENTITY CASCADE"))
+        connection.execute(
+            text("TRUNCATE TABLE user_exchange_credentials RESTART IDENTITY CASCADE")
+        )
     return TestingSessionLocal
 
 

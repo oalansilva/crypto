@@ -283,7 +283,6 @@ async def test_signals_list_skips_low_quality_signals_for_history(monkeypatch):
             if not isinstance(self._args, tuple):
                 self._args = tuple(self._args)
 
-
         def start(self):
             if self.__class__ is not _FakeThread:
                 return super().start()
@@ -467,7 +466,9 @@ def test_history_quality_gate_uses_defaults_when_system_preferences_table_is_mis
             return self
 
         def first(self):
-            raise OperationalError("SELECT 1", (), Exception("relation system_preferences does not exist"))
+            raise OperationalError(
+                "SELECT 1", (), Exception("relation system_preferences does not exist")
+            )
 
     class _FailingSession:
         def query(self, *_args, **_kwargs):

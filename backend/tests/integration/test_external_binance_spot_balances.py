@@ -20,7 +20,9 @@ def _session_factory(tmp_path: Path):
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE user_exchange_credentials RESTART IDENTITY CASCADE"))
+        connection.execute(
+            text("TRUNCATE TABLE user_exchange_credentials RESTART IDENTITY CASCADE")
+        )
     return TestingSessionLocal
 
 
