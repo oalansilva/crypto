@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -250,3 +251,116 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     assert signal_stub.stopped
     assert "stop_worker" in lifecycle_calls
     assert "workflow_db_closed" in lifecycle_calls
+
+
+@pytest.mark.asyncio
+async def test_start_noncritical_services_logs_timeout_and_failures(monkeypatch):
+    errors: list[str] = []
+    exceptions: list[str] = []
+
+    def failing_ohlcv():
+        raise RuntimeError("ohlcv")
+
+    async def start_connector():
+        return None
+
+    async def fake_wait_for(coro, timeout):
+        coro.close()
+        raise asyncio.TimeoutError()
+
+    class _SchedulerStub:
+        def start_scheduler(self):
+            raise RuntimeError("scheduler")
+
+    monkeypatch.setattr(main, "start_ohlcv_ingestion", failing_ohlcv)
+    monkeypatch.setattr(main, "start_binance_realtime_connector", start_connector)
+    monkeypatch.setattr(main.asyncio, "wait_for", fake_wait_for)
+    monkeypatch.setattr(main, "get_backfill_service", lambda: _SchedulerStub())
+    monkeypatch.setattr(main.logger, "error", lambda message, *a, **k: errors.append(str(message)))
+    monkeypatch.setattr(
+        main.logger,
+        "exception",
+        lambda message, *a, **k: exceptions.append(str(message)),
+    )
+
+    await main._start_noncritical_services()
+
+    assert "Timed out while starting Binance realtime connector" in errors
+    assert any("Failed to start OHLCV ingestion service" in item for item in exceptions)
+    assert any("Failed to start OHLCV backfill scheduler" in item for item in exceptions)
+
+
+@pytest.mark.asyncio
+async def test_lifespan_cancels_pending_noncritical_startup(monkeypatch):
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    async def pending_start():
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    class _SignalMonitorStub:
+        def stop(self):
+            return None
+
+    class _BackfillSchedulerStub:
+        def stop_scheduler(self):
+            return None
+
+    class _WorkflowSession:
+        def query(self, model):
+            return self
+
+        def filter(self, *_, **__):
+            return self
+
+        def first(self):
+            return None
+
+        def all(self):
+            return []
+
+        def add(self, *_args, **_kwargs):
+            return None
+
+        def commit(self):
+            return None
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(main, "_start_noncritical_services", pending_start)
+    monkeypatch.setattr(main, "stop_binance_realtime_connector", lambda: asyncio.sleep(0))
+    monkeypatch.setattr(main, "stop_signal_feed_snapshot_worker", lambda: asyncio.sleep(0))
+    monkeypatch.setattr(main, "stop_ohlcv_ingestion", lambda: None)
+    monkeypatch.setattr(main, "signal_monitor", _SignalMonitorStub())
+    monkeypatch.setattr(main, "get_backfill_service", lambda: _BackfillSchedulerStub())
+    monkeypatch.setattr(
+        main,
+        "Base",
+        SimpleNamespace(metadata=SimpleNamespace(create_all=lambda *_args, **_kwargs: None)),
+    )
+    monkeypatch.setattr(main, "engine", object())
+    monkeypatch.setattr(main, "sync_postgres_identity_sequences", lambda: None)
+    monkeypatch.setattr(main, "seed_combo_templates_if_empty", lambda: None)
+
+    import app.database as app_database
+    import app.workflow_database as workflow_database
+    import app.workflow_models as workflow_models
+
+    monkeypatch.setattr(app_database, "ensure_runtime_schema_migrations", lambda: None)
+    monkeypatch.setattr(workflow_database, "init_workflow_schema", lambda: None)
+    monkeypatch.setattr(workflow_database, "get_workflow_db", lambda: iter([_WorkflowSession()]))
+    monkeypatch.setattr(workflow_database, "bootstrap_project_workflow_db", lambda *_: None)
+    monkeypatch.setattr(workflow_models, "Project", object)
+
+    async_context = main.lifespan(main.app)
+    await async_context.__aenter__()
+    await started.wait()
+    assert main.app.state.noncritical_services_task.done() is False
+    await async_context.__aexit__(None, None, None)
+    assert cancelled.is_set()

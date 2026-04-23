@@ -521,3 +521,205 @@ async def test_public_accessors_use_singleton_connector(monkeypatch):
     assert dummy.started is True
     assert dummy.stopped is True
     assert connector.is_running() is False
+
+
+@pytest.mark.asyncio
+async def test_snapshot_payload_and_external_snapshot_accessors(monkeypatch):
+    c = _build_connector(
+        monkeypatch, binance_top_pairs_ttl_seconds=10, binance_price_ttl_seconds=5.0
+    )
+    monkeypatch.setattr(connector.time, "time", lambda: 100.0)
+
+    c._running = True
+    c._pairs = ["ETHUSDT", "BTCUSDT"]
+    c._pair_cache_updated_at = 95.0
+    c._last_pair_refresh_at = 96.0
+    c._last_ws_connect_at = 97.0
+    c._last_ws_disconnect_at = 98.0
+    c._last_ws_message_at = 99.0
+    c._last_ws_event_loop_ms = 12.5
+    c._pair_snapshot_error_count = 1
+    c._rest_sync_error_count = 2
+    c._ws_reconnect_count = 3
+    c._ws_disconnect_count = 4
+    c._last_rest_weight_used = 11
+    c._last_rest_weight_limit = 1200
+    c._latency_ms.extend([10.0, 20.0, 30.0])
+    c._prices = {
+        "ETHUSDT": connector._PriceRecord(
+            symbol="ETHUSDT",
+            price=3000.0,
+            change_24h_pct=-1.0,
+            bid=2999.0,
+            ask=3001.0,
+            event_time_ms=1,
+            event_to_cache_ms=9.0,
+            updated_at_iso="2026-04-23T03:00:00Z",
+            updated_at_ts=90.0,
+            source="ws",
+        ),
+        "BTCUSDT": connector._PriceRecord(
+            symbol="BTCUSDT",
+            price=64000.0,
+            change_24h_pct=1.5,
+            bid=63999.0,
+            ask=64001.0,
+            event_time_ms=2,
+            event_to_cache_ms=7.0,
+            updated_at_iso="2026-04-23T03:01:00Z",
+            updated_at_ts=91.0,
+            source="rest",
+        ),
+    }
+
+    payload = await c._build_snapshot_payload()
+    assert payload["running"] is True
+    assert payload["top_pairs"]["count"] == 2
+    assert [item["symbol"] for item in payload["prices"]] == ["BTCUSDT", "ETHUSDT"]
+    assert payload["status"]["latency_p95_ms"] == 30.0
+    assert payload["status"]["rest_sync_errors"] == 2
+
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        connector, "write_snapshot", lambda data: captured.setdefault("payload", data)
+    )
+    await c._flush_snapshot(running=False)
+    assert captured["payload"]["running"] is False
+
+    class _ExternalOnlyConnector:
+        _running = False
+
+        async def get_top_pairs(self):
+            raise AssertionError("should use external snapshot")
+
+        async def get_status(self):
+            raise AssertionError("should use external snapshot")
+
+        async def get_latest_prices(self, symbols=None):
+            raise AssertionError("should use external snapshot")
+
+    monkeypatch.setattr(connector, "_connector", _ExternalOnlyConnector())
+    monkeypatch.setattr(connector, "read_snapshot", lambda: captured["payload"])
+    monkeypatch.setattr(connector, "snapshot_is_fresh", lambda payload: True)
+
+    assert connector.is_running() is True
+    top = await connector.get_top_pairs()
+    assert top["pairs"] == ["ETHUSDT", "BTCUSDT"]
+    status = await connector.get_connector_status()
+    assert status["running"] is True
+    assert status["top_pairs_count"] == 2
+
+    prices, fetched_at, stale = await connector.get_market_latest_prices(["ETHUSDT", "BTCUSDT"])
+    assert [item["symbol"] for item in prices] == ["ETHUSDT", "BTCUSDT"]
+    assert fetched_at == payload["fetched_at"]
+    assert stale is False
+
+
+@pytest.mark.asyncio
+async def test_snapshot_helper_branches_and_worker_runner(monkeypatch):
+    c = _build_connector(monkeypatch)
+
+    seen: list[bool | None] = []
+
+    async def fake_flush(*, running=None):
+        seen.append(running)
+        c._shutdown.set()
+
+    monkeypatch.setattr(c, "_flush_snapshot", fake_flush)
+    await c._snapshot_loop()
+    assert seen == [None]
+
+    fallback_prices = ([{"symbol": "BTCUSDT", "price": 1.0}], "2026-04-23T00:00:00Z", True)
+
+    class _FallbackConnector:
+        _running = False
+
+        async def get_top_pairs(self):
+            return {
+                "pairs": ["LOCAL"],
+                "count": 1,
+                "is_stale": False,
+                "cached_at": "x",
+                "ttl_seconds": 60,
+            }
+
+        async def get_status(self):
+            return {"running": False, "top_pairs_count": 1}
+
+        async def get_latest_prices(self, symbols=None):
+            return fallback_prices
+
+        async def start(self):
+            self.started = True
+
+        async def stop(self):
+            self.stopped = True
+
+    dummy = _FallbackConnector()
+    dummy.started = False
+    dummy.stopped = False
+    monkeypatch.setattr(connector, "_connector", dummy)
+    monkeypatch.setattr(connector, "snapshot_is_fresh", lambda payload: bool(payload))
+
+    monkeypatch.setattr(connector, "read_snapshot", lambda: {"running": False})
+    assert connector._read_external_snapshot() is None
+
+    monkeypatch.setattr(
+        connector,
+        "read_snapshot",
+        lambda: {"running": True, "top_pairs": "bad", "status": "bad", "prices": "bad"},
+    )
+    assert await connector.get_top_pairs() == {
+        "pairs": [],
+        "count": 0,
+        "is_stale": False,
+        "cached_at": None,
+        "ttl_seconds": 0,
+    }
+    assert await connector.get_connector_status() == {
+        "running": True,
+        "service": "binance-realtime-connector",
+        "pair_limit": 0,
+        "pair_refresh_seconds": 0,
+        "price_ttl_seconds": 0,
+        "ws_stream_limit": 0,
+    }
+    assert await connector.get_market_latest_prices(["BTCUSDT"]) == ([], None, True)
+
+    monkeypatch.setattr(connector, "read_snapshot", lambda: None)
+    assert await connector.get_top_pairs() == await dummy.get_top_pairs()
+    assert await connector.get_connector_status() == await dummy.get_status()
+    assert await connector.get_market_latest_prices(["BTCUSDT"]) == fallback_prices
+
+    real_connector = _build_connector(monkeypatch)
+    started = {"value": False}
+
+    async def real_start():
+        started["value"] = True
+
+    monkeypatch.setattr(real_connector, "start", real_start)
+    monkeypatch.setattr(connector, "_connector", real_connector)
+    monkeypatch.setenv("BINANCE_REALTIME_ENABLED", "0")
+    await connector.start_binance_realtime_connector()
+    assert started["value"] is False
+    monkeypatch.setenv("BINANCE_REALTIME_ENABLED", "1")
+    await connector.start_binance_realtime_connector()
+    assert started["value"] is True
+
+    events: list[str] = []
+
+    class _Loop:
+        def add_signal_handler(self, _sig, handler):
+            handler()
+
+    class _WorkerConnector:
+        async def start(self):
+            events.append("start")
+
+        async def stop(self):
+            events.append("stop")
+
+    monkeypatch.setattr(connector.asyncio, "get_running_loop", lambda: _Loop())
+    monkeypatch.setattr(connector, "_connector", _WorkerConnector())
+    await connector.run_binance_realtime_worker()
+    assert events == ["start", "stop"]
