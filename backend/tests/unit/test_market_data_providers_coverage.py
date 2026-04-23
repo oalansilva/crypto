@@ -233,6 +233,19 @@ def test_stooq_provider_download_fetch_with_cache_and_fallback(tmp_path, monkeyp
     assert not fallback.empty
 
 
+def test_stooq_provider_detects_protected_payload(tmp_path, monkeypatch):
+    provider = StooqEodProvider(
+        cache_dir=tmp_path, ttl_seconds=60, max_retries=1, retry_backoff_seconds=0.0
+    )
+
+    def protected_get(*_args, **_kwargs):
+        return _FakeResponse("Get your apikey at stooq.com")
+
+    monkeypatch.setattr(providers.httpx, "get", protected_get)
+    with pytest.raises(ValueError, match="protected response"):
+        provider.fetch_ohlcv("AAPL", "1d", limit=1)
+
+
 def test_stooq_download_retry_behaviour(tmp_path, monkeypatch):
     provider = StooqEodProvider(cache_dir=tmp_path, max_retries=2, retry_backoff_seconds=0.0)
     counters = {"calls": 0}
@@ -246,6 +259,42 @@ def test_stooq_download_retry_behaviour(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="Stooq request failed"):
         provider._download_csv("aapl.us")
     assert counters["calls"] == 2
+
+
+def test_yahoo_provider_retries_429_and_succeeds(tmp_path, monkeypatch):
+    payload = {
+        "chart": {
+            "result": [
+                {
+                    "timestamp": [1710000000, 1710003600],
+                    "indicators": {
+                        "quote": [
+                            {
+                                "open": [100, 101],
+                                "high": [110, 112],
+                                "low": [99, 100],
+                                "close": [108, 109],
+                                "volume": [10, 20],
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
+    }
+    calls = {"count": 0}
+
+    def failing_then_ok(*_args, **_kwargs):
+        calls["count"] += 1
+        if calls["count"] < 2:
+            return _FakeResponse({}, status_code=429)
+        return _FakeResponse(payload)
+
+    monkeypatch.setattr(providers.httpx, "get", failing_then_ok)
+    provider = YahooMarketDataProvider(max_retries=3, retry_backoff_seconds=0.0)
+    parsed = provider.fetch_ohlcv("AAPL", "15m")
+    assert not parsed.empty
+    assert calls["count"] == 2
 
 
 def test_yahoo_provider_parse_and_fetch(monkeypatch):
