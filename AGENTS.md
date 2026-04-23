@@ -17,6 +17,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - Trabalhe sempre em `develop`; não crie `feature/*`, `bugfix/*` ou outras branches para tarefas isoladas.
 - Commite cada ajuste em `develop`.
 - Abra PR de `develop` para `main` para liberar produção.
+- O merge em `main` é o passo final e de homologação da mudança.
 - Após merge em `main`, atualize `develop` para refletir o estado da produção.
 
 Exemplo mínimo:
@@ -42,7 +43,8 @@ Checklist de rotina (diária/por mudança):
 5. `git commit -m "tipo: mensagem"`
 6. `git push`
 7. `gh pr create --base main --head develop --title "<titulo>" --body "descricao breve"`
-8. Após merge: `git pull`
+8. Mescle o PR em `main` (passo final da mudança).
+9. Após merge: `git pull`
 
 Padrão de commit recomendado:
 - `feat: adicionar fluxo de merge develop->main`
