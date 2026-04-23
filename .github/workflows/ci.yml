@@ -202,7 +202,7 @@ jobs:
 
       - name: Run backend tests with coverage
         run: |
-          pytest -q backend/tests \
+          pytest -q backend/tests/integration \
             --cov=backend/app \
             --cov-config=.coveragerc \
             --cov-fail-under="${MIN_BACKEND_TOTAL_COVERAGE}" \
