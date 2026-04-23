@@ -151,6 +151,18 @@ def ensure_runtime_schema_migrations() -> None:
                     macd_line NUMERIC,
                     macd_signal NUMERIC,
                     macd_histogram NUMERIC,
+                    bb_upper_20_2 NUMERIC,
+                    bb_middle_20_2 NUMERIC,
+                    bb_lower_20_2 NUMERIC,
+                    atr_14 NUMERIC,
+                    stoch_k_14_3_3 NUMERIC,
+                    stoch_d_14_3_3 NUMERIC,
+                    obv NUMERIC,
+                    ichimoku_tenkan_9 NUMERIC,
+                    ichimoku_kijun_26 NUMERIC,
+                    ichimoku_senkou_a_9_26_52 NUMERIC,
+                    ichimoku_senkou_b_9_26_52 NUMERIC,
+                    ichimoku_chikou_26 NUMERIC,
                     source TEXT NOT NULL DEFAULT 'market',
                     provider TEXT NOT NULL DEFAULT 'talib',
                     source_window JSONB,
@@ -159,6 +171,21 @@ def ensure_runtime_schema_migrations() -> None:
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     UNIQUE (symbol, timeframe, ts)
                 )
+                """))
+        conn.execute(text("""
+                ALTER TABLE market_indicator
+                    ADD COLUMN IF NOT EXISTS bb_upper_20_2 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS bb_middle_20_2 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS bb_lower_20_2 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS atr_14 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS stoch_k_14_3_3 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS stoch_d_14_3_3 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS obv NUMERIC,
+                    ADD COLUMN IF NOT EXISTS ichimoku_tenkan_9 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS ichimoku_kijun_26 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS ichimoku_senkou_a_9_26_52 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS ichimoku_senkou_b_9_26_52 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS ichimoku_chikou_26 NUMERIC
                 """))
         conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS uq_market_indicator_symbol_timeframe_ts

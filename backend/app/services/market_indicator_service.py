@@ -30,6 +30,20 @@ MAX_LOOKBACK_LOOKUP = {
 
 DEFAULT_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
 PROVIDER_NAME = "talib"
+ADVANCED_INDICATOR_COLUMNS = (
+    "bb_upper_20_2",
+    "bb_middle_20_2",
+    "bb_lower_20_2",
+    "atr_14",
+    "stoch_k_14_3_3",
+    "stoch_d_14_3_3",
+    "obv",
+    "ichimoku_tenkan_9",
+    "ichimoku_kijun_26",
+    "ichimoku_senkou_a_9_26_52",
+    "ichimoku_senkou_b_9_26_52",
+    "ichimoku_chikou_26",
+)
 
 
 def _normalize_timeframe(value: str) -> str:
@@ -59,6 +73,16 @@ def _to_utc_timestamp(value: Any) -> datetime | None:
 
 def _required_interval(tf: str) -> timedelta:
     return MAX_LOOKBACK_LOOKUP.get(_normalize_timeframe(tf), timedelta(hours=1))
+
+
+def _nullable_float(value: Any) -> float | None:
+    return None if pd.isna(value) else float(value)
+
+
+def _rolling_midpoint(high: pd.Series, low: pd.Series, period: int) -> pd.Series:
+    highest_high = high.rolling(window=period, min_periods=period).max()
+    lowest_low = low.rolling(window=period, min_periods=period).min()
+    return (highest_high + lowest_low) / 2
 
 
 class MarketIndicatorService:
@@ -109,6 +133,18 @@ class MarketIndicatorService:
                             macd_line,
                             macd_signal,
                             macd_histogram,
+                            bb_upper_20_2,
+                            bb_middle_20_2,
+                            bb_lower_20_2,
+                            atr_14,
+                            stoch_k_14_3_3,
+                            stoch_d_14_3_3,
+                            obv,
+                            ichimoku_tenkan_9,
+                            ichimoku_kijun_26,
+                            ichimoku_senkou_a_9_26_52,
+                            ichimoku_senkou_b_9_26_52,
+                            ichimoku_chikou_26,
                             source,
                             provider,
                             source_window,
@@ -202,6 +238,9 @@ class MarketIndicatorService:
             return df.copy()
 
         close = df["close"].astype(float).to_numpy()
+        high = df["high"].astype(float).to_numpy()
+        low = df["low"].astype(float).to_numpy()
+        volume = df["volume"].astype(float).to_numpy()
         ema_9 = talib.EMA(close, timeperiod=9)
         ema_21 = talib.EMA(close, timeperiod=21)
         sma_20 = talib.SMA(close, timeperiod=20)
@@ -210,6 +249,30 @@ class MarketIndicatorService:
         macd_line, macd_signal, macd_hist = talib.MACD(
             close, fastperiod=12, slowperiod=26, signalperiod=9
         )
+        bb_upper, bb_middle, bb_lower = talib.BBANDS(
+            close, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0
+        )
+        atr_14 = talib.ATR(high, low, close, timeperiod=14)
+        stoch_k, stoch_d = talib.STOCH(
+            high,
+            low,
+            close,
+            fastk_period=14,
+            slowk_period=3,
+            slowk_matype=0,
+            slowd_period=3,
+            slowd_matype=0,
+        )
+        obv = talib.OBV(close, volume)
+
+        numeric_high = pd.to_numeric(df["high"], errors="coerce")
+        numeric_low = pd.to_numeric(df["low"], errors="coerce")
+        numeric_close = pd.to_numeric(df["close"], errors="coerce")
+        ichimoku_tenkan = _rolling_midpoint(numeric_high, numeric_low, 9)
+        ichimoku_kijun = _rolling_midpoint(numeric_high, numeric_low, 26)
+        ichimoku_senkou_a = (ichimoku_tenkan + ichimoku_kijun) / 2
+        ichimoku_senkou_b = _rolling_midpoint(numeric_high, numeric_low, 52)
+        ichimoku_chikou = numeric_close
 
         out = df.copy()
         out["ema_9"] = ema_9
@@ -220,17 +283,43 @@ class MarketIndicatorService:
         out["macd_line"] = macd_line
         out["macd_signal"] = macd_signal
         out["macd_histogram"] = macd_hist
+        out["bb_upper_20_2"] = bb_upper
+        out["bb_middle_20_2"] = bb_middle
+        out["bb_lower_20_2"] = bb_lower
+        out["atr_14"] = atr_14
+        out["stoch_k_14_3_3"] = stoch_k
+        out["stoch_d_14_3_3"] = stoch_d
+        out["obv"] = obv
+        out["ichimoku_tenkan_9"] = ichimoku_tenkan
+        out["ichimoku_kijun_26"] = ichimoku_kijun
+        out["ichimoku_senkou_a_9_26_52"] = ichimoku_senkou_a
+        out["ichimoku_senkou_b_9_26_52"] = ichimoku_senkou_b
+        out["ichimoku_chikou_26"] = ichimoku_chikou
         out["symbol"] = _normalize_symbol(symbol)
         out["timeframe"] = _normalize_timeframe(timeframe)
         out["source"] = "technical"
         out["provider"] = PROVIDER_NAME
         out["row_count"] = int(len(out))
-        out["source_window"] = {
+        source_window = {
             "timeframe": timeframe,
             "engine": PROVIDER_NAME,
             "lookback_bars": LOOKBACK_BARS,
             "max_history_bars": MAX_HISTORY_BARS,
+            "advanced_indicators": {
+                "bollinger": {"length": 20, "stddev": 2, "matype": "sma"},
+                "atr": {"length": 14, "smoothing": "talib_atr_wilder"},
+                "stochastic": {"fast_k": 14, "slow_k": 3, "slow_d": 3, "matype": "sma"},
+                "obv": {"inputs": ["close", "volume"]},
+                "ichimoku": {
+                    "tenkan": 9,
+                    "kijun": 26,
+                    "senkou_b": 52,
+                    "displacement": 26,
+                    "storage": "source_candle_aligned",
+                },
+            },
         }
+        out["source_window"] = [source_window] * len(out)
         return out
 
     def _upsert_indicators(self, rows: pd.DataFrame, *, is_recomputed: bool) -> None:
@@ -244,18 +333,18 @@ class MarketIndicatorService:
                     "symbol": row["symbol"],
                     "timeframe": row["timeframe"],
                     "ts": row["ts"].to_pydatetime(),
-                    "ema_9": None if pd.isna(row["ema_9"]) else float(row["ema_9"]),
-                    "ema_21": None if pd.isna(row["ema_21"]) else float(row["ema_21"]),
-                    "sma_20": None if pd.isna(row["sma_20"]) else float(row["sma_20"]),
-                    "sma_50": None if pd.isna(row["sma_50"]) else float(row["sma_50"]),
-                    "rsi_14": None if pd.isna(row["rsi_14"]) else float(row["rsi_14"]),
-                    "macd_line": None if pd.isna(row["macd_line"]) else float(row["macd_line"]),
-                    "macd_signal": (
-                        None if pd.isna(row["macd_signal"]) else float(row["macd_signal"])
-                    ),
-                    "macd_histogram": (
-                        None if pd.isna(row["macd_histogram"]) else float(row["macd_histogram"])
-                    ),
+                    "ema_9": _nullable_float(row["ema_9"]),
+                    "ema_21": _nullable_float(row["ema_21"]),
+                    "sma_20": _nullable_float(row["sma_20"]),
+                    "sma_50": _nullable_float(row["sma_50"]),
+                    "rsi_14": _nullable_float(row["rsi_14"]),
+                    "macd_line": _nullable_float(row["macd_line"]),
+                    "macd_signal": _nullable_float(row["macd_signal"]),
+                    "macd_histogram": _nullable_float(row["macd_histogram"]),
+                    **{
+                        column: _nullable_float(row[column])
+                        for column in ADVANCED_INDICATOR_COLUMNS
+                    },
                     "source": row["source"],
                     "provider": row["provider"],
                     "source_window": json.dumps(row["source_window"]),
@@ -280,6 +369,18 @@ class MarketIndicatorService:
                         macd_line,
                         macd_signal,
                         macd_histogram,
+                        bb_upper_20_2,
+                        bb_middle_20_2,
+                        bb_lower_20_2,
+                        atr_14,
+                        stoch_k_14_3_3,
+                        stoch_d_14_3_3,
+                        obv,
+                        ichimoku_tenkan_9,
+                        ichimoku_kijun_26,
+                        ichimoku_senkou_a_9_26_52,
+                        ichimoku_senkou_b_9_26_52,
+                        ichimoku_chikou_26,
                         source,
                         provider,
                         source_window,
@@ -299,6 +400,18 @@ class MarketIndicatorService:
                         :macd_line,
                         :macd_signal,
                         :macd_histogram,
+                        :bb_upper_20_2,
+                        :bb_middle_20_2,
+                        :bb_lower_20_2,
+                        :atr_14,
+                        :stoch_k_14_3_3,
+                        :stoch_d_14_3_3,
+                        :obv,
+                        :ichimoku_tenkan_9,
+                        :ichimoku_kijun_26,
+                        :ichimoku_senkou_a_9_26_52,
+                        :ichimoku_senkou_b_9_26_52,
+                        :ichimoku_chikou_26,
                         :source,
                         :provider,
                         :source_window,
@@ -316,6 +429,18 @@ class MarketIndicatorService:
                         macd_line = EXCLUDED.macd_line,
                         macd_signal = EXCLUDED.macd_signal,
                         macd_histogram = EXCLUDED.macd_histogram,
+                        bb_upper_20_2 = EXCLUDED.bb_upper_20_2,
+                        bb_middle_20_2 = EXCLUDED.bb_middle_20_2,
+                        bb_lower_20_2 = EXCLUDED.bb_lower_20_2,
+                        atr_14 = EXCLUDED.atr_14,
+                        stoch_k_14_3_3 = EXCLUDED.stoch_k_14_3_3,
+                        stoch_d_14_3_3 = EXCLUDED.stoch_d_14_3_3,
+                        obv = EXCLUDED.obv,
+                        ichimoku_tenkan_9 = EXCLUDED.ichimoku_tenkan_9,
+                        ichimoku_kijun_26 = EXCLUDED.ichimoku_kijun_26,
+                        ichimoku_senkou_a_9_26_52 = EXCLUDED.ichimoku_senkou_a_9_26_52,
+                        ichimoku_senkou_b_9_26_52 = EXCLUDED.ichimoku_senkou_b_9_26_52,
+                        ichimoku_chikou_26 = EXCLUDED.ichimoku_chikou_26,
                         source = EXCLUDED.source,
                         provider = EXCLUDED.provider,
                         source_window = EXCLUDED.source_window,
