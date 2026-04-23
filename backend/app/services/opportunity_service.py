@@ -132,6 +132,47 @@ def _build_market_indicator_mappings(
                 mapping["macd_histogram"] = f"{prefix}_histogram"
             continue
 
+        if ind_type in {"bbands", "bollinger"}:
+            length = _coerce_positive_int(params.get("length"), default=20)
+            std = float(params.get("std", 2) or 2)
+            if length == 20 and std == 2:
+                prefix = alias if alias else "BB"
+                mapping["bb_upper_20_2"] = f"{prefix}_upper"
+                mapping["bb_middle_20_2"] = f"{prefix}_middle"
+                mapping["bb_lower_20_2"] = f"{prefix}_lower"
+            continue
+
+        if ind_type == "atr":
+            length = _coerce_positive_int(params.get("length"), default=14)
+            if length == 14:
+                mapping["atr_14"] = alias if alias else "ATR_14"
+            continue
+
+        if ind_type in {"stoch", "stochf"}:
+            k = _coerce_positive_int(params.get("k"), default=14)
+            d = _coerce_positive_int(params.get("d"), default=3)
+            smooth_k = _coerce_positive_int(params.get("smooth_k"), default=3)
+            if ind_type == "stoch" and k == 14 and d == 3 and smooth_k == 3:
+                mapping["stoch_k_14_3_3"] = "STOCH14_3_3"
+                mapping["stoch_d_14_3_3"] = "STOCHd_14_3_3"
+            continue
+
+        if ind_type == "obv":
+            mapping["obv"] = alias if alias else "OBV"
+            continue
+
+        if ind_type == "ichimoku":
+            tenkan = _coerce_positive_int(params.get("tenkan"), default=9)
+            kijun = _coerce_positive_int(params.get("kijun"), default=26)
+            senkou = _coerce_positive_int(params.get("senkou"), default=52)
+            if tenkan == 9 and kijun == 26 and senkou == 52:
+                mapping["ichimoku_tenkan_9"] = "ITS_9"
+                mapping["ichimoku_kijun_26"] = "IKS_26"
+                mapping["ichimoku_senkou_a_9_26_52"] = "ISA_9"
+                mapping["ichimoku_senkou_b_9_26_52"] = "ISB_26"
+                mapping["ichimoku_chikou_26"] = "ICHI_9_26_52"
+            continue
+
     return mapping
 
 

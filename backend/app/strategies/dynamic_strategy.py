@@ -118,16 +118,16 @@ class DynamicStrategy:
         high = pd.to_numeric(df["high"], errors="coerce")
         low = pd.to_numeric(df["low"], errors="coerce")
 
-        def _rolling_mid(series, period):
+        def _rolling_mid(period):
             return (
-                series.rolling(window=period, min_periods=period).max()
-                + series.rolling(window=period, min_periods=period).min()
+                high.rolling(window=period, min_periods=period).max()
+                + low.rolling(window=period, min_periods=period).min()
             ) / 2
 
-        its = _rolling_mid(high, tenkan)
-        iks = _rolling_mid(low, kijun)
+        its = _rolling_mid(tenkan)
+        iks = _rolling_mid(kijun)
         span_a = ((its + iks) / 2).shift(kijun)
-        span_b = _rolling_mid(high, senkou).shift(kijun)
+        span_b = _rolling_mid(senkou).shift(kijun)
         chikou = close.shift(-kijun)
 
         return {
