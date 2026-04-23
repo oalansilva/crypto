@@ -237,6 +237,7 @@ class OhlcvBackfillStore:
             return _coerce_job_for_response(_MEMORY_JOBS.get(job_id))
 
     def save_job(self, job: dict[str, Any]) -> dict[str, Any]:
+        global _MEMORY_JOBS_LIST
         payload = copy.deepcopy(job)
         payload["updated_at"] = _now_iso()
         payload["attempts"] = _to_int(payload.get("attempts"), default=0) or 0

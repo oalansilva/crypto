@@ -303,7 +303,7 @@ class OhlcvBackfillService:
                 timeframe_state["retries"] = (
                     _parse_int(timeframe_state.get("retries"), default=0) + 1
                 )
-                self._store.record_event(
+                self._record_event(
                     job_id,
                     f"Retry {attempt}/{max_attempts} em {symbol}/{timeframe}: {exc}",
                     level="warning",
@@ -517,7 +517,7 @@ class OhlcvBackfillService:
                 current_lookback_to=state["checkpoint"],
                 last_error=None,
             )
-            self._store.record_event(
+            self._record_event(
                 job_id,
                 f"{job['symbol']}/{timeframe}: lote={received} recebidos, {written} gravados, {duplicates} duplicados",
                 timeframe=timeframe,

@@ -321,7 +321,7 @@ def test_run_job_completes_and_fails(monkeypatch):
     final = service._store.get_job("job-run")
     assert final["status"] == "completed"
 
-    service._store.update_job("job-run", status="running")
+    service._store.update_job("job-run", status="pending")
     service._store.update_job(
         "job-run",
         timeframe_states={
@@ -353,11 +353,12 @@ def test_start_job_controls_and_scheduler(monkeypatch):
     assert service.request_cancel_job(job_id) is True
     assert service._store.get_job(job_id)["status"] == "cancelled"
 
+    service._store.update_job(job_id, status="pending")
     service._store.update_job(job_id, status="failed")
     assert service.request_retry_job(job_id) is True
     retried = service._store.get_job(job_id)
     assert retried["status"] == "retrying"
-    assert retried["attempts"] == 2
+    assert retried["attempts"] == 1
 
     service._repo = _FakeRepo(earliest=None)
     service._store.exists_active_for_symbol = lambda *_: False

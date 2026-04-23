@@ -191,6 +191,50 @@ def _walk_plan_uses_index(node: Any, required_index: str) -> bool:
     return False
 
 
+def _extract_scalar_value(result: Any) -> Any | None:
+    if result is None:
+        return None
+
+    try:
+        scalar = result.scalar()
+        return scalar
+    except Exception:
+        pass
+
+    row = None
+    try:
+        row = result.fetchone()
+    except Exception:
+        row = None
+
+    if row:
+        try:
+            return row[0]
+        except Exception:
+            pass
+
+    mappings = getattr(result, "mappings", None)
+    if callable(mappings):
+        try:
+            rows = mappings()
+        except Exception:
+            rows = None
+        if rows is not None and hasattr(rows, "all"):
+            try:
+                mapped_rows = rows.all()
+            except Exception:
+                mapped_rows = []
+            if mapped_rows:
+                first = mapped_rows[0]
+                if isinstance(first, dict):
+                    return first.get("candle_time")
+                try:
+                    return first[0]
+                except Exception:
+                    return None
+    return None
+
+
 class MarketOhlcvRepository:
     def __init__(self) -> None:
         self._enabled = bool(DB_URL) and not DB_URL.startswith("sqlite:")
@@ -234,20 +278,23 @@ class MarketOhlcvRepository:
         normalized_symbol = _normalize_symbol(symbol)
         normalized_timeframe = _normalize_timeframe(timeframe)
         with engine.begin() as conn:
-            row = conn.execute(
-                text("""
+            value = _extract_scalar_value(
+                conn.execute(
+                    text("""
                     SELECT MIN(candle_time) AS candle_time
                     FROM market_ohlcv
                     WHERE symbol = :symbol
                       AND timeframe = :timeframe
                     """),
-                {"symbol": normalized_symbol, "timeframe": normalized_timeframe},
-            ).fetchone()
+                    {"symbol": normalized_symbol, "timeframe": normalized_timeframe},
+                )
+            )
 
-        if not row or row[0] is None:
+        if value is None:
             return None
 
-        value = row[0]
+        if isinstance(value, dict):
+            value = value.get("candle_time")
         if isinstance(value, datetime):
             if value.tzinfo is None:
                 return value.replace(tzinfo=timezone.utc)

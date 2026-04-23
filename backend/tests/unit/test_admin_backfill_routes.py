@@ -89,14 +89,20 @@ def test_admin_backfill_list_and_detail_routes(monkeypatch):
     monkeypatch.setattr(admin_backfill, "get_backfill_service", lambda: service)
 
     listed = admin_backfill.list_backfill_jobs(
-        status="running", symbol="BTC/USDT", _admin_user_id="admin"
+        status="running",
+        symbol="BTC/USDT",
+        page=1,
+        page_size=20,
+        _admin_user_id="admin",
     )
     assert listed["total"] == 1
-    assert listed["items"][0]["job_id"] == "job-1"
+    first_item = listed["items"][0]
+    assert (first_item.job_id if hasattr(first_item, "job_id") else first_item["job_id"]) == "job-1"
 
     details = admin_backfill.get_backfill_job("job-1", _admin_user_id="admin")
-    assert details["symbol"] == "BTC/USDT"
-    assert details["status"] == "running"
+    details_payload = details.model_dump() if hasattr(details, "model_dump") else details
+    assert details_payload["symbol"] == "BTC/USDT"
+    assert details_payload["status"] == "running"
 
     with pytest.raises(HTTPException) as exc:
         admin_backfill.get_backfill_job("missing", _admin_user_id="admin")
@@ -115,7 +121,8 @@ def test_admin_backfill_create_and_action_routes(monkeypatch):
         max_requests_per_minute=120,
     )
     created = admin_backfill.start_backfill_job(payload, _admin_user_id="admin")
-    assert created["job_id"] == "job-1"
+    created_payload = created.model_dump() if hasattr(created, "model_dump") else created
+    assert created_payload["job_id"] == "job-1"
     assert service.start_count == 1
     assert service.last_status["symbol"] == "BTC/USDT"
     assert service.last_status["timeframes"] == ["1d", "1h"]
