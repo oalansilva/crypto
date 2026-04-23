@@ -8,6 +8,7 @@ BACKEND_UNIT="crypto-backend"
 FRONTEND_UNIT="crypto-frontend"
 RUNTIME_WORKER_UNIT="crypto-runtime-worker"
 CELERY_WORKER_UNIT="crypto-celery-worker"
+BINANCE_WORKER_UNIT="crypto-binance-realtime-worker"
 BACKEND_PORT="${CRYPTO_BACKEND_PORT:-8003}"
 FRONTEND_PORT="${CRYPTO_FRONTEND_PORT:-5173}"
 REDIS_HOST="${CRYPTO_REDIS_HOST:-127.0.0.1}"
@@ -16,10 +17,12 @@ BACKEND_LOG="/tmp/crypto-uvicorn-${BACKEND_PORT}.log"
 FRONTEND_LOG="/tmp/crypto-vite-${FRONTEND_PORT}.log"
 RUNTIME_WORKER_LOG="/tmp/crypto-runtime-worker.log"
 CELERY_WORKER_LOG="/tmp/crypto-celery-worker.log"
+BINANCE_WORKER_LOG="/tmp/crypto-binance-realtime-worker.log"
 BACKEND_PID_FILE="/tmp/crypto-backend.pid"
 FRONTEND_PID_FILE="/tmp/crypto-frontend.pid"
 RUNTIME_WORKER_PID_FILE="/tmp/crypto-runtime-worker.pid"
 CELERY_WORKER_PID_FILE="/tmp/crypto-celery-worker.pid"
+BINANCE_WORKER_PID_FILE="/tmp/crypto-binance-realtime-worker.pid"
 HEALTH_URL="http://127.0.0.1:${BACKEND_PORT}/api/health"
 FRONTEND_URL="http://127.0.0.1:${FRONTEND_PORT}"
 VENV_PYTHON="$BACKEND_DIR/.venv/bin/python"
@@ -48,6 +51,7 @@ export CELERY_RESULT_BACKEND="${CELERY_RESULT_BACKEND:-redis://${REDIS_HOST}:${R
 export CELERY_WORKER_CONCURRENCY="${CELERY_WORKER_CONCURRENCY:-1}"
 export CELERY_WORKER_PREFETCH_MULTIPLIER="${CELERY_WORKER_PREFETCH_MULTIPLIER:-1}"
 export CELERY_LOG_LEVEL="${CELERY_LOG_LEVEL:-INFO}"
+export BINANCE_REALTIME_WORKER_ENABLED="${BINANCE_REALTIME_WORKER_ENABLED:-1}"
 
 require_env_var() {
   local var_name="$1"
@@ -131,6 +135,12 @@ wait_for_tcp_open() {
     sleep "$sleep_s"
   done
   return 1
+}
+
+flag_enabled() {
+  local raw="${1:-}"
+  raw="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  [[ "$raw" != "0" && "$raw" != "false" && "$raw" != "no" && "$raw" != "off" ]]
 }
 
 store_runtime_pid() {
@@ -268,6 +278,7 @@ remove_stale_pid_file "$BACKEND_PID_FILE"
 remove_stale_pid_file "$FRONTEND_PID_FILE"
 remove_stale_pid_file "$RUNTIME_WORKER_PID_FILE"
 remove_stale_pid_file "$CELERY_WORKER_PID_FILE"
+remove_stale_pid_file "$BINANCE_WORKER_PID_FILE"
 
 if ! wait_for_http_ok "$HEALTH_URL" 2 1; then
   if user_systemd_available; then
@@ -275,11 +286,13 @@ if ! wait_for_http_ok "$HEALTH_URL" 2 1; then
       "$BACKEND_UNIT" \
       "$BACKEND_DIR" \
       "$BACKEND_LOG" \
-      "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; exec $(shell_escape "$VENV_PYTHON") -m uvicorn app.main:app --host 0.0.0.0 --port $(shell_escape "$BACKEND_PORT")"
+      "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; export BINANCE_REALTIME_ENABLED=0; exec $(shell_escape "$VENV_PYTHON") -m uvicorn app.main:app --host 0.0.0.0 --port $(shell_escape "$BACKEND_PORT")"
   else
     (
       cd "$BACKEND_DIR"
-      nohup "$VENV_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 < /dev/null &
+      nohup env \
+        BINANCE_REALTIME_ENABLED=0 \
+        "$VENV_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 < /dev/null &
     )
   fi
   store_runtime_pid "$BACKEND_PID_FILE" "uvicorn app.main:app.*--port ${BACKEND_PORT}" || true
@@ -337,6 +350,30 @@ ensure_process_running \
   "celery .*app.celery_app:celery_app worker" \
   "crypto celery worker"
 
+if flag_enabled "$BINANCE_REALTIME_WORKER_ENABLED"; then
+  if ! pgrep -f "python -m app.binance_realtime_worker" >/dev/null 2>&1; then
+    if user_systemd_available; then
+      start_transient_unit \
+        "$BINANCE_WORKER_UNIT" \
+        "$BACKEND_DIR" \
+        "$BINANCE_WORKER_LOG" \
+        "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; export BINANCE_REALTIME_ENABLED=1; exec $(shell_escape "$VENV_PYTHON") -m app.binance_realtime_worker"
+    else
+      (
+        cd "$BACKEND_DIR"
+        nohup env \
+          BINANCE_REALTIME_ENABLED=1 \
+          "$VENV_PYTHON" -m app.binance_realtime_worker >"$BINANCE_WORKER_LOG" 2>&1 < /dev/null &
+        echo "$!" >"$BINANCE_WORKER_PID_FILE"
+      )
+    fi
+  fi
+  ensure_process_running \
+    "$BINANCE_WORKER_PID_FILE" \
+    "python -m app.binance_realtime_worker" \
+    "crypto binance realtime worker"
+fi
+
 if ! wait_for_http_ok "$FRONTEND_URL" 2 1; then
   if user_systemd_available; then
     start_transient_unit \
@@ -366,6 +403,12 @@ ensure_process_running \
   "$CELERY_WORKER_PID_FILE" \
   "celery .*app.celery_app:celery_app worker" \
   "crypto celery worker"
+if flag_enabled "$BINANCE_REALTIME_WORKER_ENABLED"; then
+  ensure_process_running \
+    "$BINANCE_WORKER_PID_FILE" \
+    "python -m app.binance_realtime_worker" \
+    "crypto binance realtime worker"
+fi
 
 echo "crypto backend:  ${CRYPTO_BACKEND_URL:-http://127.0.0.1:${BACKEND_PORT}}"
 echo "crypto frontend: ${CRYPTO_FRONTEND_URL:-http://127.0.0.1:${FRONTEND_PORT}}"
