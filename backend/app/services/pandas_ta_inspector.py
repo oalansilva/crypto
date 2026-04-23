@@ -151,7 +151,14 @@ def get_all_indicators_metadata():
         metadata[category] = []
 
         for name in indicators:
-            if not ta or not hasattr(ta, name):
+            if not ta:
+                # Fallback path when TA-Lib is unavailable.
+                pass
+            elif not hasattr(ta, name):
+                # If a runtime TA map advertises an unknown indicator, ignore it.
+                continue
+
+            if not ta:
                 params = []
                 for mapped_name in _derive_params_for_indicator(name):
                     default = _extract_default(mapped_name, inspect.Parameter(mapped_name, inspect.Parameter.POSITIONAL_OR_KEYWORD, default=0))

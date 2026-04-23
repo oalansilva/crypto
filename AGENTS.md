@@ -61,6 +61,8 @@ Padrão de commit recomendado:
   - decisões de escopo
   - evidências de teste/PR
 - Para promover produção, trabalhe em `develop` (sem branch extra) e abra PR de `develop -> main`.
+- Política adicional: quando houver falha recorrente de unit tests de DB, aplique isolamento por teste (reset de tabelas/fixtures) antes de alterar regras de negócio.
+- Ao registrar bloqueios de CI, incluir evidência e impacto de `Unit tests` e `Backend format` no comentário do PR, e manter esta orientação em `AGENTS.md` para repetição.
 
 ## Como rodar (VPS / dev)
 
@@ -179,5 +181,7 @@ Valida + análise profunda de bugs.
 - Antes de promover para `QA`, `Homologation` ou `Archived`, reconciliar runtime + `openspec/changes/<change>/tasks.md` + handoff.
 
 ## Engenharia de prompt
+
+Reforço de fluxo de fechamento: em qualquer entrega, a atividade só pode ser concluída com o merge em `main` (via PR `develop -> main`) após validação e evidências registradas.
 
 Se for necessário mudar o tom de um agente (ex: deixar o design mais exploratório ou o DEV mais cauteloso), primeiro atualiza este arquivo com o novo prompt/personalidade e registra no `openspec/changes/<change>/` do fluxo ativo. Nunca altere agentes apenas via jobs sem documentar aqui.

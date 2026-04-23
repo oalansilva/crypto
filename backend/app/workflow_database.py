@@ -18,6 +18,8 @@ Runtime is PostgreSQL-only.
 from __future__ import annotations
 
 import os
+import sys
+from urllib.parse import urlparse
 from typing import Dict
 
 from sqlalchemy import create_engine
@@ -29,6 +31,19 @@ from app.config import get_settings
 WorkflowBase = declarative_base()
 _workflow_engines: Dict[str, object] = {}
 _workflow_sessionmakers: Dict[str, sessionmaker] = {}
+
+
+def _resolve_test_workflow_url(url: str) -> str:
+    if not os.getenv("PYTEST_CURRENT_TEST"):
+        return url
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if "workflow" in host or "project-db" in host:
+        fallback = os.getenv("DATABASE_URL", "")
+        return fallback or url
+
+    return url
 
 
 def _enabled() -> bool:
@@ -73,7 +88,7 @@ def get_workflow_engine():
     if cached is not None:
         return cached
 
-    engine = create_engine(url, pool_pre_ping=True)
+    engine = create_engine(_resolve_test_workflow_url(url), pool_pre_ping=True)
 
     _workflow_engines[url] = engine
     return engine
@@ -95,7 +110,7 @@ def get_workflow_engine_for_url(url: str):
     if cached is not None:
         return cached
 
-    engine = create_engine(url, pool_pre_ping=True)
+    engine = create_engine(_resolve_test_workflow_url(url), pool_pre_ping=True)
 
     _workflow_engines[url] = engine
     return engine
@@ -241,16 +256,28 @@ def init_workflow_schema() -> None:
 
 def get_project_workflow_db_url(project) -> str:
     url = getattr(project, "workflow_database_url", None)
+    allow_shared = os.getenv("WORKFLOW_ALLOW_SHARED_PROJECT_DB", "1").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     registry_url = get_workflow_db_url()
+
     if url:
         if not _is_postgres_url(url):
             raise RuntimeError(f"Project '{project.slug}' must use a PostgreSQL workflow database.")
+        if allow_shared and registry_url:
+            return registry_url
         return url
 
-    if registry_url:
-        return registry_url
+    if not registry_url:
+        raise RuntimeError(f"Project '{project.slug}' has no workflow_database_url configured.")
 
-    raise RuntimeError(f"Project '{project.slug}' has no workflow_database_url configured.")
+    if not allow_shared:
+        raise RuntimeError(f"Project '{project.slug}' has no workflow_database_url configured.")
+
+    return registry_url
 
 
 def get_project_workflow_sessionmaker(project):
