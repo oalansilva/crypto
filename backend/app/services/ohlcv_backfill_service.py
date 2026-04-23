@@ -13,7 +13,12 @@ from requests.exceptions import RequestException
 
 from app.config import get_settings
 from app.services.ohlcv_storage import SUPPORTED_OHLCV_TIMEFRAMES, MarketOhlcvRepository
-from app.services.market_data_providers import CCXT_SOURCE, STOOQ_SOURCE, get_market_data_provider, resolve_data_source_for_symbol
+from app.services.market_data_providers import (
+    CCXT_SOURCE,
+    STOOQ_SOURCE,
+    get_market_data_provider,
+    resolve_data_source_for_symbol,
+)
 from app.services.ohlcv_backfill_store import (
     OhlcvBackfillStore,
     _default_job_state,
@@ -59,7 +64,9 @@ def _normalize_timeframe(value: str) -> str:
 
 
 def _normalize_timeframes(values: list[str]) -> list[str]:
-    normalized = [_normalize_timeframe(value) for value in (values or []) if _normalize_timeframe(value)]
+    normalized = [
+        _normalize_timeframe(value) for value in (values or []) if _normalize_timeframe(value)
+    ]
     output: list[str] = []
     seen: set[str] = set()
     for timeframe in normalized:
@@ -112,7 +119,17 @@ def _estimate_total_for_range(start: datetime, end: datetime, timeframe: str) ->
 
 def _is_retriable_error(error: BaseException) -> bool:
     message = str(error).lower()
-    if any(token in message for token in ("429", "temporarily", "too many requests", "timeout", "connection", "temporario")):
+    if any(
+        token in message
+        for token in (
+            "429",
+            "temporarily",
+            "too many requests",
+            "timeout",
+            "connection",
+            "temporario",
+        )
+    ):
         return True
 
     status = getattr(error, "status", None)
@@ -170,7 +187,9 @@ class OhlcvBackfillService:
     @staticmethod
     def _default_timeframes() -> list[str]:
         raw = os.getenv("BACKFILL_DEFAULT_TIMEFRAMES", "1d")
-        filtered = [tf for tf in _normalize_timeframes([part.strip() for part in str(raw).split(",")]) if tf]
+        filtered = [
+            tf for tf in _normalize_timeframes([part.strip() for part in str(raw).split(",")]) if tf
+        ]
         return filtered or ["1d"]
 
     def _sleep_for_rate_limit(self, max_requests_per_minute: int) -> None:
@@ -188,7 +207,9 @@ class OhlcvBackfillService:
                 time.sleep(self._next_request_time - now)
             self._next_request_time = time.monotonic() + interval
 
-    def _record_event(self, job_id: str, message: str, *, level: str = "info", timeframe: str | None = None) -> None:
+    def _record_event(
+        self, job_id: str, message: str, *, level: str = "info", timeframe: str | None = None
+    ) -> None:
         payload = {
             "ts": _to_iso(),
             "level": level,
@@ -220,7 +241,9 @@ class OhlcvBackfillService:
             estimated_total += _parse_int(state.get("estimated_total"), default=0)
 
         percent = self._store.calculate_percent(processed, estimated_total or None)
-        eta_seconds = self._store.estimate_eta_seconds(job.get("started_at"), processed, estimated_total or None)
+        eta_seconds = self._store.estimate_eta_seconds(
+            job.get("started_at"), processed, estimated_total or None
+        )
         self._store.update_job(
             job_id,
             processed=processed,
@@ -235,7 +258,9 @@ class OhlcvBackfillService:
         if not self._repo.enabled:
             return False
         now = _utc_now()
-        window_start = now - timedelta(days=_WINDOW_YEAR_DAYS * _parse_int(history_years, default=2))
+        window_start = now - timedelta(
+            days=_WINDOW_YEAR_DAYS * _parse_int(history_years, default=2)
+        )
         for timeframe in timeframes:
             earliest = self._repo.get_earliest_candle_time(symbol, timeframe)
             if earliest is None:
@@ -275,7 +300,9 @@ class OhlcvBackfillService:
                 if attempt >= max_attempts or not _is_retriable_error(exc):
                     raise
 
-                timeframe_state["retries"] = _parse_int(timeframe_state.get("retries"), default=0) + 1
+                timeframe_state["retries"] = (
+                    _parse_int(timeframe_state.get("retries"), default=0) + 1
+                )
                 self._store.record_event(
                     job_id,
                     f"Retry {attempt}/{max_attempts} em {symbol}/{timeframe}: {exc}",
@@ -302,11 +329,15 @@ class OhlcvBackfillService:
         state = timeframe_states.get(timeframe)
         if state is None:
             estimate_total = _estimate_total_for_range(window_start, window_end, timeframe)
-            state = self._store.build_timeframe_state(timeframe, window_start.isoformat(), estimate_total)
+            state = self._store.build_timeframe_state(
+                timeframe, window_start.isoformat(), estimate_total
+            )
             timeframe_states[timeframe] = state
 
         interval_seconds = _TIMEFRAME_INTERVAL_SECONDS.get(_normalize_timeframe(timeframe), 60)
-        checkpoint_raw = state.get("checkpoint") or requested_window.get("start") or window_start.isoformat()
+        checkpoint_raw = (
+            state.get("checkpoint") or requested_window.get("start") or window_start.isoformat()
+        )
         checkpoint = _parse_iso(checkpoint_raw)
         if checkpoint < window_start:
             checkpoint = window_start
@@ -352,7 +383,9 @@ class OhlcvBackfillService:
                 state["status"] = "completed"
                 state["checkpoint"] = _to_iso(checkpoint)
                 timeframe_states[timeframe] = state
-                self._store.update_job(job_id, timeframe_states=timeframe_states, current_timeframe=timeframe)
+                self._store.update_job(
+                    job_id, timeframe_states=timeframe_states, current_timeframe=timeframe
+                )
                 return True
 
             try:
@@ -413,17 +446,23 @@ class OhlcvBackfillService:
                 if frame.index.name == "timestamp_utc":
                     frame = frame.reset_index()
                 elif "time" in frame.columns:
-                    frame["timestamp_utc"] = pd.to_datetime(frame["time"], utc=True, errors="coerce")
+                    frame["timestamp_utc"] = pd.to_datetime(
+                        frame["time"], utc=True, errors="coerce"
+                    )
                 else:
-                    raise ValueError("Provider returned invalid dataframe without timestamp_utc/time.")
+                    raise ValueError(
+                        "Provider returned invalid dataframe without timestamp_utc/time."
+                    )
 
             normalized = frame.copy()
-            normalized["timestamp_utc"] = pd.to_datetime(normalized["timestamp_utc"], utc=True, errors="coerce")
+            normalized["timestamp_utc"] = pd.to_datetime(
+                normalized["timestamp_utc"], utc=True, errors="coerce"
+            )
             normalized = normalized.dropna(subset=["timestamp_utc"]).sort_values("timestamp_utc")
 
             windowed = normalized[
-                (normalized["timestamp_utc"] >= pd.Timestamp(window_start)) &
-                (normalized["timestamp_utc"] <= pd.Timestamp(window_end))
+                (normalized["timestamp_utc"] >= pd.Timestamp(window_start))
+                & (normalized["timestamp_utc"] <= pd.Timestamp(window_end))
             ]
             if windowed.empty:
                 state["status"] = "partial_complete" if checkpoint < window_end else "completed"
@@ -488,13 +527,19 @@ class OhlcvBackfillService:
             if state["checkpoint"] and _parse_iso(state["checkpoint"]) >= window_end:
                 state["status"] = "completed"
                 timeframe_states[timeframe] = state
-                self._store.update_job(job_id, timeframe_states=timeframe_states, current_timeframe=timeframe)
+                self._store.update_job(
+                    job_id, timeframe_states=timeframe_states, current_timeframe=timeframe
+                )
                 return True
 
             if received < page_size:
                 # Provider returned fewer rows than requested before reaching the requested window end:
                 # usually means no more historical window available.
-                state["status"] = "partial_complete" if _parse_iso(state["checkpoint"]) < window_end else "completed"
+                state["status"] = (
+                    "partial_complete"
+                    if _parse_iso(state["checkpoint"]) < window_end
+                    else "completed"
+                )
                 timeframe_states[timeframe] = state
                 self._store.update_job(
                     job_id,
@@ -525,7 +570,9 @@ class OhlcvBackfillService:
             current_timeframe=None,
             attempts=_parse_int(job.get("attempts"), default=0) + 1,
         )
-        self._record_event(job_id, f"Iniciando backfill de {job['symbol']} via {source}", level="info")
+        self._record_event(
+            job_id, f"Iniciando backfill de {job['symbol']} via {source}", level="info"
+        )
         self._store.update_job(job_id, total_estimate=0)
 
         job = self._store.get_job(job_id)
@@ -549,7 +596,12 @@ class OhlcvBackfillService:
 
             checkpoint = _parse_iso(state.get("checkpoint"))
             if checkpoint > datetime.fromtimestamp(0, tz=UTC):
-                self._record_event(job_id, f"Retomando {job['symbol']}/{timeframe} em {checkpoint.isoformat()}", timeframe=timeframe, level="info")
+                self._record_event(
+                    job_id,
+                    f"Retomando {job['symbol']}/{timeframe} em {checkpoint.isoformat()}",
+                    timeframe=timeframe,
+                    level="info",
+                )
             if state_status == "completed":
                 continue
             self._store.update_job(job_id, current_timeframe=timeframe)
@@ -575,7 +627,9 @@ class OhlcvBackfillService:
                 continue
 
         if failed or _coerce_status(job.get("status")) == "cancelled":
-            final_status = "cancelled" if _coerce_status(job.get("status")) == "cancelled" else "failed"
+            final_status = (
+                "cancelled" if _coerce_status(job.get("status")) == "cancelled" else "failed"
+            )
         elif partial_found or not all_complete:
             final_status = "partial_complete"
         else:
@@ -647,7 +701,11 @@ class OhlcvBackfillService:
         initial["max_retries"] = _parse_int(max_retries, default=_MAX_RETRIES)
 
         self._store.init_job(initial)
-        self._record_event(job_id, f"Job criado para {normalized_symbol} ({', '.join(normalized_timeframes)})", level="info")
+        self._record_event(
+            job_id,
+            f"Job criado para {normalized_symbol} ({', '.join(normalized_timeframes)})",
+            level="info",
+        )
 
         with self._jobs_lock:
             threading.Thread(
@@ -668,7 +726,9 @@ class OhlcvBackfillService:
         self._store.update_job(
             job_id,
             cancel_requested=True,
-            status="cancelled" if job.get("status") == "pending" else _coerce_status(job.get("status")),
+            status=(
+                "cancelled" if job.get("status") == "pending" else _coerce_status(job.get("status"))
+            ),
             finished_at=_to_iso() if job.get("status") == "pending" else None,
             last_error="Cancelamento solicitado.",
         )
@@ -725,7 +785,12 @@ class OhlcvBackfillService:
             if self._store is None:
                 return 0
 
-            enabled = os.getenv("BACKFILL_SCHEDULER_ENABLED", "1").strip().lower() not in {"0", "false", "no", "off"}
+            enabled = os.getenv("BACKFILL_SCHEDULER_ENABLED", "1").strip().lower() not in {
+                "0",
+                "false",
+                "no",
+                "off",
+            }
             if not enabled:
                 return 0
 
@@ -738,7 +803,16 @@ class OhlcvBackfillService:
                 symbols = self._default_symbols()
 
             timeframes = _normalize_timeframes(
-                [part.strip() for part in str(os.getenv("BACKFILL_SCHEDULER_TIMEFRAMES", ",",)).split(",") if part.strip()]
+                [
+                    part.strip()
+                    for part in str(
+                        os.getenv(
+                            "BACKFILL_SCHEDULER_TIMEFRAMES",
+                            ",",
+                        )
+                    ).split(",")
+                    if part.strip()
+                ]
             )
             if not timeframes:
                 timeframes = self._default_timeframes()
@@ -782,7 +856,12 @@ class OhlcvBackfillService:
                 logger.exception("Backfill scheduler loop failed: %s", exc)
 
     def start_scheduler(self) -> None:
-        enabled = os.getenv("BACKFILL_SCHEDULER_ENABLED", "1").strip().lower() not in {"0", "false", "no", "off"}
+        enabled = os.getenv("BACKFILL_SCHEDULER_ENABLED", "1").strip().lower() not in {
+            "0",
+            "false",
+            "no",
+            "off",
+        }
         if not enabled:
             return
 
@@ -807,4 +886,3 @@ class OhlcvBackfillService:
 
 def get_backfill_service() -> OhlcvBackfillService:
     return OhlcvBackfillService()
-

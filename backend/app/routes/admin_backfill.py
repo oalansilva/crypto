@@ -96,7 +96,10 @@ def start_backfill_job(
 
     job = service.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create backfill job")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create backfill job",
+        )
     return _serialize_job(job)
 
 
@@ -141,4 +144,3 @@ def _normalize_status_filter(status: str | None) -> str | None:
     if not status:
         return None
     return status.strip().lower()
-

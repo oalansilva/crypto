@@ -171,7 +171,19 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
         def stop(self):
             self.stopped = True
 
+    class _BackfillSchedulerStub:
+        def __init__(self):
+            self.started = False
+            self.stopped = False
+
+        def start_scheduler(self):
+            self.started = True
+
+        def stop_scheduler(self):
+            self.stopped = True
+
     signal_stub = _SignalMonitorStub()
+    scheduler_stub = _BackfillSchedulerStub()
 
     class _WorkflowSession:
         def query(self, model):
@@ -202,6 +214,7 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     monkeypatch.setattr(main, "start_ohlcv_ingestion", start_ohlcv)
     monkeypatch.setattr(main, "stop_ohlcv_ingestion", stop_ohlcv)
     monkeypatch.setattr(main, "signal_monitor", signal_stub)
+    monkeypatch.setattr(main, "get_backfill_service", lambda: scheduler_stub)
     monkeypatch.setattr(
         main,
         "Base",
@@ -226,6 +239,8 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
     await async_context.__aexit__(None, None, None)
 
     assert lifecycle_calls[0] == "workflow_db_closed"
+    assert scheduler_stub.started is True
+    assert scheduler_stub.stopped is True
     assert "start" in lifecycle_calls
     assert "stop" in lifecycle_calls
     assert lifecycle_calls.index("start") > lifecycle_calls.index("workflow_db_closed")

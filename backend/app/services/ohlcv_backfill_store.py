@@ -50,7 +50,9 @@ def _to_float(value: Any, *, default: float | None = None) -> float | None:
         return default
 
 
-def _estimate_eta_seconds(started_at: str | None, processed: int, estimated_total: int | None) -> float | None:
+def _estimate_eta_seconds(
+    started_at: str | None, processed: int, estimated_total: int | None
+) -> float | None:
     if not processed or processed <= 0:
         return None
     if not estimated_total or estimated_total <= 0:
@@ -93,9 +95,7 @@ def _coerce_job_for_response(job: dict[str, Any] | None) -> dict[str, Any] | Non
     percent = _calculate_percent(processed, estimated_total)
     eta_seconds = response.get("eta_seconds")
     if eta_seconds is None:
-        eta_seconds = _estimate_eta_seconds(
-            response.get("started_at"), processed, estimated_total
-        )
+        eta_seconds = _estimate_eta_seconds(response.get("started_at"), processed, estimated_total)
 
     response.update(
         {
@@ -145,9 +145,9 @@ def _default_job_state(
     requested_window: dict[str, Any],
     provider: str,
 ) -> dict[str, Any]:
-    estimated_total = sum(
-        int(state.get("estimated_total") or 0) for state in timeframes_state.values()
-    ) or None
+    estimated_total = (
+        sum(int(state.get("estimated_total") or 0) for state in timeframes_state.values()) or None
+    )
 
     return {
         "job_id": job_id,
@@ -226,7 +226,9 @@ class OhlcvBackfillStore:
                 raw = self._redis.get(_job_key(job_id))
                 if raw is None:
                     return None
-                return _coerce_job_for_response(json.loads(raw) if isinstance(raw, str) else json.loads(str(raw)))
+                return _coerce_job_for_response(
+                    json.loads(raw) if isinstance(raw, str) else json.loads(str(raw))
+                )
             except (RedisError, json.JSONDecodeError) as exc:
                 logger.warning("Failed to get backfill job %s from Redis: %s", job_id, exc)
                 self._redis = None
@@ -261,7 +263,9 @@ class OhlcvBackfillStore:
                         self._save_list(_MEMORY_JOBS_LIST)
                 return _coerce_job_for_response(payload) or payload
             except (RedisError, TypeError) as exc:
-                logger.warning("Failed to persist backfill job %s to Redis: %s", payload.get("job_id"), exc)
+                logger.warning(
+                    "Failed to persist backfill job %s to Redis: %s", payload.get("job_id"), exc
+                )
                 self._redis = None
 
         with _MEMORY_LOCK:
@@ -379,4 +383,3 @@ class OhlcvBackfillStore:
 @lru_cache()
 def get_backfill_store() -> OhlcvBackfillStore:
     return OhlcvBackfillStore()
-

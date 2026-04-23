@@ -12,13 +12,21 @@ from pydantic import BaseModel, Field, field_validator
 class OhlcvBackfillStartRequest(BaseModel):
     """Request to start a historical backfill job."""
 
-    symbol: str = Field(..., min_length=1, max_length=40, description="Trading symbol, e.g. BTC/USDT")
-    timeframes: List[str] = Field(default_factory=lambda: ["1d"], description="Timeframes to backfill")
-    data_source: Optional[str] = Field(None, description="Optional data source override (ccxt/stooq/yahoo)")
+    symbol: str = Field(
+        ..., min_length=1, max_length=40, description="Trading symbol, e.g. BTC/USDT"
+    )
+    timeframes: List[str] = Field(
+        default_factory=lambda: ["1d"], description="Timeframes to backfill"
+    )
+    data_source: Optional[str] = Field(
+        None, description="Optional data source override (ccxt/stooq/yahoo)"
+    )
     history_window_years: int = Field(
         default=2, ge=1, le=10, description="How many years of history to backfill"
     )
-    page_size: int = Field(default=1000, ge=100, le=5000, description="Batch size per provider request")
+    page_size: int = Field(
+        default=1000, ge=100, le=5000, description="Batch size per provider request"
+    )
     max_requests_per_minute: int = Field(
         default=60, ge=10, le=6000, description="Max API calls per minute"
     )
