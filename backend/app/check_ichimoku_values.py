@@ -9,7 +9,9 @@ def _rolling_mid(series, period):
     ) / 2
 
 
-def build_ichimoku(high: pd.Series, low: pd.Series, close: pd.Series, tenkan=9, kijun=26, senkou=52):
+def build_ichimoku(
+    high: pd.Series, low: pd.Series, close: pd.Series, tenkan=9, kijun=26, senkou=52
+):
     its = _rolling_mid(high, tenkan)
     iks = _rolling_mid(low, kijun)
     isa = ((its + iks) / 2).shift(kijun)

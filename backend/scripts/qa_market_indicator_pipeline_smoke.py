@@ -15,7 +15,6 @@ from app.database import DB_URL, engine
 from app.services.market_indicator_service import get_market_indicator_service
 from app.services.market_indicator_service import ACTIVE_TIMEFRAMES
 
-
 TIMEFRAME_TO_DELTA_SECONDS = {
     "1m": 60,
     "5m": 300,
@@ -143,8 +142,7 @@ def _query_latest_rows(symbol: str, timeframes: list[str]) -> QAResult:
         for tf in timeframes:
             rows = (
                 conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             ts,
                             ema_9,
@@ -166,8 +164,7 @@ def _query_latest_rows(symbol: str, timeframes: list[str]) -> QAResult:
                           AND timeframe = :timeframe
                         ORDER BY ts DESC
                         LIMIT 5
-                        """
-                    ),
+                        """),
                     {"symbol": symbol, "timeframe": tf},
                 )
                 .mappings()
@@ -182,21 +179,24 @@ def _query_latest_rows(symbol: str, timeframes: list[str]) -> QAResult:
     return QAResult(
         section="latest_rows",
         status="pass",
-        details={tf: {"count": len(rows), "latest_ts": str(rows[0]["ts"]) if rows else None} for tf, rows in rows_by_tf.items()},
+        details={
+            tf: {"count": len(rows), "latest_ts": str(rows[0]["ts"]) if rows else None}
+            for tf, rows in rows_by_tf.items()
+        },
     )
 
 
-def _check_uniqueness_and_utc(symbol: str, timeframes: list[str], strict_gaps: bool) -> list[QAResult]:
+def _check_uniqueness_and_utc(
+    symbol: str, timeframes: list[str], strict_gaps: bool
+) -> list[QAResult]:
     duplicates = []
     tz_ok = []
     gaps = []
 
     with engine.begin() as conn:
         for tf in timeframes:
-            dup_rows = (
-                conn.execute(
-                    text(
-                        """
+            dup_rows = conn.execute(
+                text("""
                         SELECT ts, COUNT(*) AS total
                         FROM market_indicator
                         WHERE symbol = :symbol
@@ -204,26 +204,21 @@ def _check_uniqueness_and_utc(symbol: str, timeframes: list[str], strict_gaps: b
                         GROUP BY symbol, timeframe, ts
                         HAVING COUNT(*) > 1
                         ORDER BY ts ASC
-                        """
-                    ),
-                    {"symbol": symbol, "timeframe": tf},
-                )
-                .all()
-            )
+                        """),
+                {"symbol": symbol, "timeframe": tf},
+            ).all()
             if dup_rows:
                 duplicates.append({"timeframe": tf, "rows": [list(r) for r in dup_rows]})
 
             ts_rows = (
                 conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT ts
                         FROM market_indicator
                         WHERE symbol = :symbol
                           AND timeframe = :timeframe
                         ORDER BY ts ASC
-                        """
-                    ),
+                        """),
                     {"symbol": symbol, "timeframe": tf},
                 )
                 .scalars()
@@ -244,7 +239,9 @@ def _check_uniqueness_and_utc(symbol: str, timeframes: list[str], strict_gaps: b
             if strict_gaps and len(parsed) >= 2:
                 expected = pd.Timedelta(seconds=TIMEFRAME_TO_DELTA_SECONDS[tf])
                 deltas = pd.Series(parsed).diff().dropna()
-                too_large = [float(delta.total_seconds()) for delta in deltas if delta > (2 * expected)]
+                too_large = [
+                    float(delta.total_seconds()) for delta in deltas if delta > (2 * expected)
+                ]
                 if too_large:
                     gaps.append({"timeframe": tf, "oversized_gaps": too_large})
 
@@ -260,7 +257,11 @@ def _check_uniqueness_and_utc(symbol: str, timeframes: list[str], strict_gaps: b
 
     return [
         QAResult(section="uniqueness_and_tz", status="pass", details={"rows": tz_ok}),
-        QAResult(section="gaps", status="pass", details={"timeframes": [row["timeframe"] for row in tz_ok]}),
+        QAResult(
+            section="gaps",
+            status="pass",
+            details={"timeframes": [row["timeframe"] for row in tz_ok]},
+        ),
     ]
 
 
@@ -275,7 +276,9 @@ def _to_pretty(results: list[QAResult]) -> str:
 
 def _run(args: argparse.Namespace) -> int:
     if not str(DB_URL).startswith("postgresql"):
-        raise RuntimeError("QA smoke check for market_indicator requires PostgreSQL (DATABASE_URL).")
+        raise RuntimeError(
+            "QA smoke check for market_indicator requires PostgreSQL (DATABASE_URL)."
+        )
 
     symbol = args.symbol.strip().upper()
     timeframes = _validate_timeframes(args.timeframes)

@@ -120,7 +120,23 @@ def _param_name_already_exists(params: List[Dict[str, Any]], name: str) -> bool:
 
 def _derive_params_for_indicator(indicator_name: str) -> List[str]:
     indicator_name = indicator_name.lower()
-    if indicator_name in {"ema", "sma", "wma", "dema", "tema", "atr", "adx", "cci", "rsi", "willr", "mfi", "obv", "natr", "ad", "adosc"}:
+    if indicator_name in {
+        "ema",
+        "sma",
+        "wma",
+        "dema",
+        "tema",
+        "atr",
+        "adx",
+        "cci",
+        "rsi",
+        "willr",
+        "mfi",
+        "obv",
+        "natr",
+        "ad",
+        "adosc",
+    }:
         return ["length"]
     if indicator_name == "macd":
         return ["fast", "slow", "signal"]
@@ -161,7 +177,12 @@ def get_all_indicators_metadata():
             if not ta:
                 params = []
                 for mapped_name in _derive_params_for_indicator(name):
-                    default = _extract_default(mapped_name, inspect.Parameter(mapped_name, inspect.Parameter.POSITIONAL_OR_KEYWORD, default=0))
+                    default = _extract_default(
+                        mapped_name,
+                        inspect.Parameter(
+                            mapped_name, inspect.Parameter.POSITIONAL_OR_KEYWORD, default=0
+                        ),
+                    )
                     if default is None:
                         continue
                     params.append({"name": mapped_name, "type": "number", "default": default})

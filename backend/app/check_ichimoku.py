@@ -9,7 +9,9 @@ def _rolling_mid(series, period):
     ) / 2
 
 
-def build_ichimoku(high: pd.Series, low: pd.Series, close: pd.Series, tenkan=9, kijun=26, senkou=52):
+def build_ichimoku(
+    high: pd.Series, low: pd.Series, close: pd.Series, tenkan=9, kijun=26, senkou=52
+):
     its = _rolling_mid(high, tenkan)
     iks = _rolling_mid(low, kijun)
     isa = ((its + iks) / 2).shift(kijun)
@@ -47,7 +49,9 @@ def debug_ichimoku():
 
     print(f"Calculating Ichimoku with tenkan={tenkan}, kijun={kijun}, senkou={senkou}")
 
-    values = build_ichimoku(df["high"], df["low"], df["close"], tenkan=tenkan, kijun=kijun, senkou=senkou)
+    values = build_ichimoku(
+        df["high"], df["low"], df["close"], tenkan=tenkan, kijun=kijun, senkou=senkou
+    )
     result = pd.DataFrame(
         {
             "ITS_9": values["ITS"],

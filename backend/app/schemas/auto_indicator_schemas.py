@@ -8,9 +8,13 @@ of truth when present.
 
 from typing import Dict, Any, Optional
 
-from app.schemas.indicator_params import IndicatorSchema, ParameterSchema, OptimizationRange, INDICATOR_SCHEMAS
+from app.schemas.indicator_params import (
+    IndicatorSchema,
+    ParameterSchema,
+    OptimizationRange,
+    INDICATOR_SCHEMAS,
+)
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
-
 
 # Default optimization ranges by parameter name pattern
 DEFAULT_PARAM_RANGES = {
@@ -180,4 +184,3 @@ def get_all_auto_schemas() -> Dict[str, IndicatorSchema]:
             schemas[indicator_name] = schema
 
     return schemas
-

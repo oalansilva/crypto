@@ -368,7 +368,9 @@ class ComboStrategy:
                     df[col_name] = talib.SMA(df["volume"], timeperiod=length)
 
                 else:
-                    raise RuntimeError(f"Unsupported indicator type for TA-Lib strategy: {ind_type}")
+                    raise RuntimeError(
+                        f"Unsupported indicator type for TA-Lib strategy: {ind_type}"
+                    )
 
             except Exception as e:
                 raise RuntimeError(f"Error calculating {ind_type}: {str(e)}")

@@ -17,12 +17,16 @@ service = OpportunityService()
 # DB Connection
 # 0. Check for duplicates
 with engine.connect() as conn:
-    all_btc = conn.execute(
-        text(
-            "SELECT id, strategy_name, parameters FROM favorite_strategies "
-            "WHERE symbol='BTC/USDT'"
+    all_btc = (
+        conn.execute(
+            text(
+                "SELECT id, strategy_name, parameters FROM favorite_strategies "
+                "WHERE symbol='BTC/USDT'"
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
 print(f"\n--- ALL BTC STRATEGIES ({len(all_btc)}) ---")
 for r in all_btc:

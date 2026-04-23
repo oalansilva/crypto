@@ -37,7 +37,9 @@ class DynamicStrategy:
             indicator_name = config["name"].lower()
             params = {k: v for k, v in config.items() if k != "name"}
 
-            logger.info("DEBUG __init__ SIMPLIFIED: indicator_name=%s, params=%s", indicator_name, params)
+            logger.info(
+                "DEBUG __init__ SIMPLIFIED: indicator_name=%s, params=%s", indicator_name, params
+            )
             self.indicators_config = [{"kind": indicator_name, **params}]
             self.entry_expr, self.exit_expr = self._generate_auto_signals(indicator_name, params)
         else:
@@ -77,11 +79,7 @@ class DynamicStrategy:
                         indicator_name = ind.get("kind", "").lower()
 
                         if indicator_name:
-                            params = {
-                                k: v
-                                for k, v in ind.items()
-                                if k != "kind" and v is not None
-                            }
+                            params = {k: v for k, v in ind.items() if k != "kind" and v is not None}
 
                             new_entry, new_exit = self._generate_auto_signals(
                                 indicator_name, params
@@ -241,9 +239,7 @@ class DynamicStrategy:
             # Normalize params
             normalized_params = {}
             for key, value in params.items():
-                normalized_params[key] = (
-                    self._as_int(value) if isinstance(value, float) else value
-                )
+                normalized_params[key] = self._as_int(value) if isinstance(value, float) else value
 
             try:
                 if indicator_name in ["ema", "sma", "wma", "dema", "tema"]:
@@ -253,24 +249,36 @@ class DynamicStrategy:
 
                     if indicator_name == "ema":
                         values = talib.EMA(close, timeperiod=period)
-                        df_sim[f"EMA_{period}"] = self._coerce_series(values, df_sim.index, f"EMA_{period}")
+                        df_sim[f"EMA_{period}"] = self._coerce_series(
+                            values, df_sim.index, f"EMA_{period}"
+                        )
                     elif indicator_name == "sma":
                         values = talib.SMA(close, timeperiod=period)
-                        df_sim[f"SMA_{period}"] = self._coerce_series(values, df_sim.index, f"SMA_{period}")
+                        df_sim[f"SMA_{period}"] = self._coerce_series(
+                            values, df_sim.index, f"SMA_{period}"
+                        )
                     elif indicator_name == "wma":
                         values = talib.WMA(close, timeperiod=period)
-                        df_sim[f"WMA_{period}"] = self._coerce_series(values, df_sim.index, f"WMA_{period}")
+                        df_sim[f"WMA_{period}"] = self._coerce_series(
+                            values, df_sim.index, f"WMA_{period}"
+                        )
                     elif indicator_name == "dema":
                         values = talib.DEMA(close, timeperiod=period)
-                        df_sim[f"DEMA_{period}"] = self._coerce_series(values, df_sim.index, f"DEMA_{period}")
+                        df_sim[f"DEMA_{period}"] = self._coerce_series(
+                            values, df_sim.index, f"DEMA_{period}"
+                        )
                     else:
                         values = talib.TEMA(close, timeperiod=period)
-                        df_sim[f"TEMA_{period}"] = self._coerce_series(values, df_sim.index, f"TEMA_{period}")
+                        df_sim[f"TEMA_{period}"] = self._coerce_series(
+                            values, df_sim.index, f"TEMA_{period}"
+                        )
 
                 elif indicator_name == "rsi":
                     length = self._as_int(normalized_params.get("length", 14))
                     values = talib.RSI(close, timeperiod=length)
-                    df_sim[f"RSI_{length}"] = self._coerce_series(values, df_sim.index, f"RSI_{length}")
+                    df_sim[f"RSI_{length}"] = self._coerce_series(
+                        values, df_sim.index, f"RSI_{length}"
+                    )
 
                 elif indicator_name == "macd":
                     fast = self._as_int(normalized_params.get("fast", 12))
@@ -375,12 +383,16 @@ class DynamicStrategy:
                 elif indicator_name == "atr":
                     length = self._as_int(normalized_params.get("length", 14))
                     atr = talib.ATR(high, low, close, timeperiod=length)
-                    df_sim[f"ATR_{length}"] = self._coerce_series(atr, df_sim.index, f"ATR_{length}")
+                    df_sim[f"ATR_{length}"] = self._coerce_series(
+                        atr, df_sim.index, f"ATR_{length}"
+                    )
 
                 elif indicator_name == "adx":
                     length = self._as_int(normalized_params.get("length", 14))
                     adx = talib.ADX(high, low, close, timeperiod=length)
-                    df_sim[f"ADX_{length}"] = self._coerce_series(adx, df_sim.index, f"ADX_{length}")
+                    df_sim[f"ADX_{length}"] = self._coerce_series(
+                        adx, df_sim.index, f"ADX_{length}"
+                    )
 
                 elif indicator_name == "obv":
                     obv = talib.OBV(close, volume)

@@ -59,7 +59,9 @@ def _serialize_job(job: dict[str, Any]) -> IndicatorRecomputeJobResponse:
     )
 
 
-@router.post("/recompute", response_model=IndicatorRecomputeResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/recompute", response_model=IndicatorRecomputeResponse, status_code=status.HTTP_202_ACCEPTED
+)
 def start_recompute_indicators(
     payload: IndicatorRecomputeRequest,
     _admin_user_id: str = Depends(get_current_admin),
@@ -114,7 +116,9 @@ def get_latest_indicators(
     _admin_user_id: str = Depends(get_current_admin),
 ):
     _ = _admin_user_id
-    rows = get_market_indicator_service().get_latest(symbol=symbol, timeframe=timeframe, limit=limit)
+    rows = get_market_indicator_service().get_latest(
+        symbol=symbol, timeframe=timeframe, limit=limit
+    )
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

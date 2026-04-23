@@ -38,7 +38,9 @@ def _resolve_timeframe_delta(timeframe: str) -> pd.Timedelta:
     return mapping[timeframe]
 
 
-def _assert_timeframe_regular_and_utc(df: pd.DataFrame, timeframe: str, *, require_no_gaps: bool = True) -> None:
+def _assert_timeframe_regular_and_utc(
+    df: pd.DataFrame, timeframe: str, *, require_no_gaps: bool = True
+) -> None:
     assert df["timestamp_utc"].dt.tz is not None
     deltas = df["timestamp_utc"].diff().dropna()
     if deltas.empty:
@@ -90,7 +92,9 @@ def _assert_matching(
         TradingViewFixture("NVDA", "1h", "nvda_1h_tradingview_reference.csv"),
     ],
 )
-def test_market_indicator_tradingview_fixture_parity_with_tolerance(fixture: TradingViewFixture) -> None:
+def test_market_indicator_tradingview_fixture_parity_with_tolerance(
+    fixture: TradingViewFixture,
+) -> None:
     pytest.importorskip("talib", reason="TA-Lib required for indicator parity tests")
 
     from app.services.market_indicator_service import MarketIndicatorService

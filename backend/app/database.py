@@ -66,9 +66,7 @@ def resolve_db_url() -> str:
             )
         return explicit_url
 
-    raise RuntimeError(
-        "DATABASE_URL is required and must point to PostgreSQL."
-    )
+    raise RuntimeError("DATABASE_URL is required and must point to PostgreSQL.")
 
 
 DB_URL = resolve_db_url()

@@ -420,17 +420,20 @@ class OpportunityService:
         if db_path is None:
             self._session_factory = SessionLocal
         else:
-            db_url = "sqlite:///:memory:" if db_path == ":memory:" else db_path if "://" in db_path else None
+            db_url = (
+                "sqlite:///:memory:"
+                if db_path == ":memory:"
+                else db_path if "://" in db_path else None
+            )
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
 
             if db_url is None:
-                raise ValueError("OpportunityService requires a valid database URL when db_path is provided.")
+                raise ValueError(
+                    "OpportunityService requires a valid database URL when db_path is provided."
+                )
 
-            if (
-                not os.getenv("PYTEST_CURRENT_TEST")
-                and not db_url.lower().startswith("postgresql")
-            ):
+            if not os.getenv("PYTEST_CURRENT_TEST") and not db_url.lower().startswith("postgresql"):
                 raise ValueError(
                     "OpportunityService requires a PostgreSQL URL when db_path is provided."
                 )

@@ -52,9 +52,7 @@ def test_workflow_db_helpers_cover_env_url_and_project_resolution(monkeypatch, t
     monkeypatch.setattr(
         workflow_database,
         "get_settings",
-        lambda: SimpleNamespace(
-            workflow_db_enabled="1", workflow_database_url="mysql://bad"
-        ),
+        lambda: SimpleNamespace(workflow_db_enabled="1", workflow_database_url="mysql://bad"),
     )
     monkeypatch.setattr(workflow_database.sys, "argv", ["uvicorn"])
     with pytest.raises(RuntimeError, match="must point to PostgreSQL"):

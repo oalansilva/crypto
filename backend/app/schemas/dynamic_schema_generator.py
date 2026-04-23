@@ -9,7 +9,6 @@ from typing import Dict, Any, Optional
 
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
 
-
 KNOWN_DEFAULTS = {
     "rsi": {"length": 14},
     "macd": {"fast": 12, "slow": 26, "signal": 9},
@@ -67,7 +66,9 @@ RISK_MANAGEMENT_SCHEMA = {
 }
 
 
-def generate_optimization_range(param_name: str, param_type: str, default_value: Any) -> Optional[Dict[str, float]]:
+def generate_optimization_range(
+    param_name: str, param_type: str, default_value: Any
+) -> Optional[Dict[str, float]]:
     param_name = str(param_name or "").lower()
     param_lower = param_name.lower()
     if param_type not in ["int", "float", "number"]:
@@ -134,7 +135,9 @@ def generate_optimization_range(param_name: str, param_type: str, default_value:
     if any(keyword in param_lower for keyword in ["percent", "pct", "ratio"]):
         return {"min": max(0, default - 0.1), "max": default + 0.1, "step": 0.01}
 
-    if isinstance(default_value, int) or (isinstance(default_value, str) and str(default_value).isdigit()):
+    if isinstance(default_value, int) or (
+        isinstance(default_value, str) and str(default_value).isdigit()
+    ):
         return {"min": max(1, int(default * 0.5)), "max": int(default * 1.5), "step": 1}
 
     return {"min": max(0.1, default * 0.5), "max": default * 1.5, "step": 0.1}
@@ -143,7 +146,9 @@ def generate_optimization_range(param_name: str, param_type: str, default_value:
 def generate_market_standard(param_name: str, default_value: Any) -> str:
     param_lower = str(param_name or "").lower()
     if any(k in param_lower for k in ["period", "length", "fast", "slow"]):
-        return f"Most traders use {default_value}. Standard range tests sensitivity around this value."
+        return (
+            f"Most traders use {default_value}. Standard range tests sensitivity around this value."
+        )
     if "multiplier" in param_lower or "std" in param_lower:
         return f"Standard is {default_value}. Adjust based on volatility."
     if "overbought" in param_lower:
@@ -284,7 +289,9 @@ def get_dynamic_indicator_schema(strategy_name: str) -> Optional[Dict[str, Any]]
                 if default_value is None:
                     continue
 
-                opt_range = generate_optimization_range(param_name, param.get("type", "int"), default_value)
+                opt_range = generate_optimization_range(
+                    param_name, param.get("type", "int"), default_value
+                )
                 param_schema = {
                     "default": default_value,
                     "description": f"{param_name} parameter for {indicator['name']}",
@@ -297,4 +304,3 @@ def get_dynamic_indicator_schema(strategy_name: str) -> Optional[Dict[str, Any]]
             return schema
 
     return None
-

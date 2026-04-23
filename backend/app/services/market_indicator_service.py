@@ -82,13 +82,11 @@ class MarketIndicatorService:
                 return []
 
             rows = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT DISTINCT timeframe
                     FROM market_ohlcv
                     WHERE symbol = :symbol
-                    """
-                ),
+                    """),
                 {"symbol": normalized_symbol},
             ).fetchall()
         available = {str(r[0]).strip().lower() for r in rows}
@@ -98,8 +96,7 @@ class MarketIndicatorService:
         with engine.begin() as conn:
             rows = (
                 conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             symbol,
                             timeframe,
@@ -123,8 +120,7 @@ class MarketIndicatorService:
                           AND timeframe = :timeframe
                         ORDER BY ts DESC
                         LIMIT :limit
-                        """
-                    ),
+                        """),
                     {
                         "symbol": _normalize_symbol(symbol),
                         "timeframe": _normalize_timeframe(timeframe),
@@ -141,15 +137,13 @@ class MarketIndicatorService:
             if since is None:
                 rows = (
                     conn.execute(
-                        text(
-                            """
+                        text("""
                             SELECT candle_time, open, high, low, close, volume
                             FROM market_ohlcv
                             WHERE symbol = :symbol
                               AND timeframe = :timeframe
                             ORDER BY candle_time ASC
-                            """
-                        ),
+                            """),
                         {"symbol": _normalize_symbol(symbol), "timeframe": timeframe},
                     )
                     .mappings()
@@ -158,16 +152,14 @@ class MarketIndicatorService:
             else:
                 rows = (
                     conn.execute(
-                        text(
-                            """
+                        text("""
                             SELECT candle_time, open, high, low, close, volume
                             FROM market_ohlcv
                             WHERE symbol = :symbol
                               AND timeframe = :timeframe
                               AND candle_time >= :since
                             ORDER BY candle_time ASC
-                            """
-                        ),
+                            """),
                         {
                             "symbol": _normalize_symbol(symbol),
                             "timeframe": timeframe,
@@ -188,14 +180,12 @@ class MarketIndicatorService:
     def _fetch_existing_latest_ts(self, symbol: str, timeframe: str) -> datetime | None:
         with engine.begin() as conn:
             row = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT MAX(ts) AS ts
                     FROM market_indicator
                     WHERE symbol = :symbol
                       AND timeframe = :timeframe
-                    """
-                ),
+                    """),
                 {"symbol": _normalize_symbol(symbol), "timeframe": timeframe},
             ).fetchone()
         if not row or row[0] is None:
@@ -260,7 +250,9 @@ class MarketIndicatorService:
                     "sma_50": None if pd.isna(row["sma_50"]) else float(row["sma_50"]),
                     "rsi_14": None if pd.isna(row["rsi_14"]) else float(row["rsi_14"]),
                     "macd_line": None if pd.isna(row["macd_line"]) else float(row["macd_line"]),
-                    "macd_signal": None if pd.isna(row["macd_signal"]) else float(row["macd_signal"]),
+                    "macd_signal": (
+                        None if pd.isna(row["macd_signal"]) else float(row["macd_signal"])
+                    ),
                     "macd_histogram": (
                         None if pd.isna(row["macd_histogram"]) else float(row["macd_histogram"])
                     ),
@@ -275,8 +267,7 @@ class MarketIndicatorService:
 
         with engine.begin() as conn:
             conn.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO market_indicator (
                         symbol,
                         timeframe,
@@ -331,22 +322,19 @@ class MarketIndicatorService:
                         row_count = EXCLUDED.row_count,
                         is_recomputed = EXCLUDED.is_recomputed,
                         updated_at = EXCLUDED.updated_at
-                    """
-                ),
+                    """),
                 write_rows,
             )
 
     def _estimated_bars(self, symbol: str, timeframe: str) -> int:
         with engine.begin() as conn:
             value = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT COUNT(*)
                     FROM market_ohlcv
                     WHERE symbol = :symbol
                       AND timeframe = :timeframe
-                    """
-                ),
+                    """),
                 {"symbol": _normalize_symbol(symbol), "timeframe": timeframe},
             ).scalar()
         try:
@@ -404,10 +392,15 @@ class MarketIndicatorService:
         finally:
             with self._lock:
                 for timeframe in timeframes:
-                    self._active.pop(f"{_normalize_symbol(normalized_symbol)}:{_normalize_timeframe(timeframe)}", None)
+                    self._active.pop(
+                        f"{_normalize_symbol(normalized_symbol)}:{_normalize_timeframe(timeframe)}",
+                        None,
+                    )
                 self._jobs[job_id]["finished_at"] = _utcnow().isoformat()
 
-    def start_recompute(self, symbol: str, timeframes: list[str] | None, force_full: bool) -> dict[str, Any]:
+    def start_recompute(
+        self, symbol: str, timeframes: list[str] | None, force_full: bool
+    ) -> dict[str, Any]:
         normalized_symbol = _normalize_symbol(symbol)
         resolved_timeframes = self._resolve_timeframes(timeframes)
 
@@ -417,7 +410,9 @@ class MarketIndicatorService:
                 if key in self._active:
                     raise RuntimeError(f"recompute already running for {key}")
 
-            estimated_bars = sum(self._estimated_bars(normalized_symbol, tf) for tf in resolved_timeframes)
+            estimated_bars = sum(
+                self._estimated_bars(normalized_symbol, tf) for tf in resolved_timeframes
+            )
             job_id = str(uuid.uuid4())
             self._jobs[job_id] = {
                 "job_id": job_id,
@@ -469,9 +464,7 @@ class MarketIndicatorService:
         rows = self._fetch_latest_rows(normalized_symbol, normalized_timeframe, int(limit) or 1)
         return rows
 
-    def get_time_series(
-        self, symbol: str, timeframe: str, limit: int
-    ) -> list[dict[str, Any]]:
+    def get_time_series(self, symbol: str, timeframe: str, limit: int) -> list[dict[str, Any]]:
         normalized_symbol = _normalize_symbol(symbol)
         normalized_timeframe = _normalize_timeframe(timeframe)
         if not normalized_symbol or normalized_timeframe not in ACTIVE_TIMEFRAMES:

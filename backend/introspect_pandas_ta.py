@@ -15,9 +15,9 @@ def introspect_talib():
 
     sample = ["ema", "sma", "rsi", "macd", "bbands", "atr", "adx", "stoch", "cci"]
     for indicator_name in sample:
-        if indicator_name not in all_indicators.get("trend", []) and indicator_name not in all_indicators.get(
-            "momentum", []
-        ):
+        if indicator_name not in all_indicators.get(
+            "trend", []
+        ) and indicator_name not in all_indicators.get("momentum", []):
             continue
 
         # Locate descriptor by id
