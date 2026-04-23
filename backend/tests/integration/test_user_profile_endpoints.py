@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 import httpx
 import pytest
 from sqlalchemy import create_engine
@@ -44,11 +46,14 @@ def _install_fast_password_helpers():
     user_profile_routes._verify_password = _verify_password
 
 
-async def _register_and_login(client: httpx.AsyncClient) -> dict[str, str]:
+async def _register_and_login(
+    client: httpx.AsyncClient, email: str | None = None
+) -> tuple[dict[str, str], str]:
+    email = email or f"profile-{uuid4().hex}@example.com"
     register = await client.post(
         "/api/auth/register",
         json={
-            "email": "profile@example.com",
+            "email": email,
             "password": "supersecret123",
             "name": "Profile Tester",
         },
@@ -58,12 +63,12 @@ async def _register_and_login(client: httpx.AsyncClient) -> dict[str, str]:
     login = await client.post(
         "/api/auth/login",
         json={
-            "email": "profile@example.com",
+            "email": email,
             "password": "supersecret123",
         },
     )
     assert login.status_code == 200
-    return login.json()
+    return login.json(), email
 
 
 @pytest.mark.asyncio
@@ -75,7 +80,7 @@ async def test_get_me_returns_authenticated_profile():
 
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            auth = await _register_and_login(client)
+            auth, email = await _register_and_login(client)
 
             response = await client.get(
                 "/api/users/me",
@@ -84,7 +89,7 @@ async def test_get_me_returns_authenticated_profile():
 
         assert response.status_code == 200
         body = response.json()
-        assert body["email"] == "profile@example.com"
+        assert body["email"] == email
         assert body["name"] == "Profile Tester"
         assert body["createdAt"] is not None
         assert body["lastLogin"] is not None
@@ -117,7 +122,7 @@ async def test_put_me_updates_name():
 
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            auth = await _register_and_login(client)
+            auth, _ = await _register_and_login(client)
 
             response = await client.put(
                 "/api/users/me",
@@ -140,7 +145,7 @@ async def test_put_password_changes_password_when_current_matches():
 
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            auth = await _register_and_login(client)
+            auth, email = await _register_and_login(client)
 
             response = await client.put(
                 "/api/users/password",
@@ -152,7 +157,7 @@ async def test_put_password_changes_password_when_current_matches():
             )
             relogin = await client.post(
                 "/api/auth/login",
-                json={"email": "profile@example.com", "password": "newsupersecret456"},
+                json={"email": email, "password": "newsupersecret456"},
             )
 
         assert response.status_code == 200
@@ -171,7 +176,7 @@ async def test_put_password_rejects_incorrect_current_password():
 
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            auth = await _register_and_login(client)
+            auth, _ = await _register_and_login(client)
 
             response = await client.put(
                 "/api/users/password",

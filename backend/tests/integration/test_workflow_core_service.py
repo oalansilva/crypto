@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -22,12 +24,15 @@ def _session():
 
 
 def _seed_change(db):
-    project = Project(slug="crypto", name="Crypto")
+    suffix = uuid4().hex[:8]
+    project = Project(slug=f"crypto-{suffix}", name="Crypto")
     db.add(project)
     db.flush()
 
     change = Change(
-        project_id=project.id, change_id="centralize-workflow-state-db", title="Workflow DB"
+        project_id=project.id,
+        change_id=f"centralize-workflow-state-db-{suffix}",
+        title="Workflow DB",
     )
     db.add(change)
     db.flush()

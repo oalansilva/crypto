@@ -14,6 +14,7 @@ def _build_client():
     engine = create_engine(
         "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
+    WorkflowBase.metadata.drop_all(bind=engine)
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

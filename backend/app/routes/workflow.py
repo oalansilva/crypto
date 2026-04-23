@@ -352,11 +352,10 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_workflow_db
     database_url = payload.database_url.strip() if payload.database_url else None
     registry_workflow_url = get_workflow_db_url()
 
+    # Preserve legacy project-creation calls by defaulting to the registry workflow DB
+    # when the runtime is already backed by PostgreSQL.
     if not workflow_database_url and registry_workflow_url:
-        raise HTTPException(
-            status_code=400,
-            detail="workflow_database_url is required for each project in multi-project runtime mode",
-        )
+        workflow_database_url = registry_workflow_url
 
     if workflow_database_url and not workflow_database_url.lower().startswith("postgresql"):
         raise HTTPException(

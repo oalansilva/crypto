@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -28,22 +30,25 @@ def _build_client():
 
 def test_audit_coordination_reports_missing_changes(monkeypatch):
     client = _build_client()
+    project_slug = f"crypto-{uuid4().hex[:8]}"
 
     # Seed DB with a project + 2 changes.
     assert (
-        client.post("/api/workflow/projects", json={"slug": "crypto", "name": "Crypto"}).status_code
+        client.post(
+            "/api/workflow/projects", json={"slug": project_slug, "name": "Crypto"}
+        ).status_code
         == 200
     )
     assert (
         client.post(
-            "/api/workflow/projects/crypto/changes",
+            f"/api/workflow/projects/{project_slug}/changes",
             json={"change_id": "a", "title": "A", "status": "DEV"},
         ).status_code
         == 200
     )
     assert (
         client.post(
-            "/api/workflow/projects/crypto/changes",
+            f"/api/workflow/projects/{project_slug}/changes",
             json={"change_id": "c", "title": "C", "status": "DEV"},
         ).status_code
         == 200
@@ -62,7 +67,7 @@ def test_audit_coordination_reports_missing_changes(monkeypatch):
         ],
     )
 
-    res = client.get("/api/workflow/audit/coordination?project_slug=crypto")
+    res = client.get(f"/api/workflow/audit/coordination?project_slug={project_slug}")
     assert res.status_code == 200
     body = res.json()
 
