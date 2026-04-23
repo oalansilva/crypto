@@ -885,13 +885,7 @@ async def get_top_pairs() -> dict[str, Any]:
 
     payload = _read_external_snapshot()
     if payload is None:
-        return {
-            "pairs": [],
-            "count": 0,
-            "is_stale": False,
-            "cached_at": None,
-            "ttl_seconds": 0,
-        }
+        return await _connector.get_top_pairs()
 
     top_pairs = payload.get("top_pairs")
     if not isinstance(top_pairs, dict):
@@ -911,7 +905,7 @@ async def get_connector_status() -> dict[str, Any]:
 
     payload = _read_external_snapshot()
     if payload is None:
-        return _default_connector_status()
+        return await _connector.get_status()
 
     status = payload.get("status")
     if not isinstance(status, dict):
@@ -928,7 +922,7 @@ async def get_market_latest_prices(
 
     payload = _read_external_snapshot()
     if payload is None:
-        return [], None, True
+        return await _connector.get_latest_prices(symbols)
 
     requested = _normalize_symbols(symbols)
     prices_payload = payload.get("prices")

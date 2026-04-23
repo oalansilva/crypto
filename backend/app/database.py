@@ -368,7 +368,7 @@ def ensure_runtime_schema_migrations() -> None:
         timescale_functions_available = True
     except Exception as exc:
         logger.warning(
-            "Could not enable timescaledb extension; keeping market_ohlcv as regular table.",
+            "Timescale configuration for market_ohlcv failed, keeping table as regular table.",
             extra={
                 "event": "ohlcv_timescale_setup_error",
                 "table": "market_ohlcv",
@@ -451,7 +451,9 @@ def ensure_runtime_schema_migrations() -> None:
                 timescale_functions_available = False
 
         if _policy_checks_enabled() and timescale_functions_available:
-            with engine.connect() as conn:
+            connect = getattr(engine, "connect", None)
+            context = connect() if callable(connect) else engine.begin()
+            with context as conn:
                 _verify_market_ohlcv_timescale_policies(
                     conn, timescale_functions_available=timescale_functions_available
                 )
