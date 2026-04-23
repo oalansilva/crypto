@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
+import app.workflow_database as workflow_database
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -12,8 +13,20 @@ from app.main import app
 from app.workflow_database import WorkflowBase, get_workflow_db
 
 
+def _reset_workflow_engine_cache():
+    for cached_engine in workflow_database._workflow_engines.values():
+        try:
+            cached_engine.dispose()
+        except Exception:
+            pass
+    workflow_database._workflow_engines.clear()
+    workflow_database._workflow_sessionmakers.clear()
+    workflow_database.WorkflowSessionLocal = None
+
+
 @contextmanager
 def _build_client():
+    _reset_workflow_engine_cache()
     engine = create_engine(
         "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
@@ -36,6 +49,7 @@ def _build_client():
         client.close()
         app.dependency_overrides.clear()
         engine.dispose()
+        _reset_workflow_engine_cache()
 
 
 def test_projects_api_list_and_create():

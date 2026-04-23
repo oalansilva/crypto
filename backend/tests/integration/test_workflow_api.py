@@ -26,7 +26,15 @@ def _build_client():
             db.close()
 
     app.dependency_overrides[get_workflow_db] = override_get_db
-    return TestClient(app), workflow_database_url
+    client = TestClient(app)
+    client.engine = engine  # type: ignore[attr-defined]
+    return client, workflow_database_url
+
+
+def _close_client(client: TestClient) -> None:
+    client.close()
+    client.app.dependency_overrides.clear()
+    client.engine.dispose()  # type: ignore[attr-defined]
 
 
 def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
@@ -165,4 +173,4 @@ def test_workflow_api_supports_changes_tasks_comments_approvals_and_handoffs():
     assert handoffs.status_code == 200
     assert len(handoffs.json()) == 1
 
-    client.app.dependency_overrides.clear()
+    _close_client(client)

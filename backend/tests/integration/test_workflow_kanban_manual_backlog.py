@@ -28,8 +28,15 @@ def _build_client():
 
     app.dependency_overrides[get_workflow_db] = override_get_db
     client = TestClient(app)
+    client.engine = engine  # type: ignore[attr-defined]
     client.session_local = SessionLocal  # type: ignore[attr-defined]
     return client
+
+
+def _close_client(client: TestClient) -> None:
+    client.close()
+    client.app.dependency_overrides.clear()
+    client.engine.dispose()  # type: ignore[attr-defined]
 
 
 def _project_slug() -> str:
@@ -69,7 +76,7 @@ def test_kanban_create_change_starts_in_pending_with_description():
     assert fetched.json()["description"] == "Created directly from Kanban"
     assert fetched.json()["card_number"] == 1
 
-    client.app.dependency_overrides.clear()
+    _close_client(client)
 
 
 def test_kanban_reorder_persists_within_same_column():
@@ -134,7 +141,7 @@ def test_kanban_reorder_persists_within_same_column():
     ]
     assert [item["card_number"] for item in board_after_down.json()["items"]] == [1, 2, 3]
 
-    client.app.dependency_overrides.clear()
+    _close_client(client)
 
 
 def test_kanban_backfills_missing_card_numbers_for_legacy_rows():
@@ -193,7 +200,7 @@ def test_kanban_backfills_missing_card_numbers_for_legacy_rows():
     assert next_created.status_code == 200
     assert next_created.json()["item"]["card_number"] == 3
 
-    client.app.dependency_overrides.clear()
+    _close_client(client)
 
 
 def test_kanban_reorder_recovers_legacy_zeroed_positions():
@@ -233,7 +240,7 @@ def test_kanban_reorder_recovers_legacy_zeroed_positions():
         "legacy-c",
     ]
 
-    client.app.dependency_overrides.clear()
+    _close_client(client)
 
 
 def test_reorder_does_not_move_between_columns():
@@ -276,4 +283,4 @@ def test_reorder_does_not_move_between_columns():
     assert pending_ids == ["pending-a"]
     assert po_ids == ["pending-b"]
 
-    client.app.dependency_overrides.clear()
+    _close_client(client)

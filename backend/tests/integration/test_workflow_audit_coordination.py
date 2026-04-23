@@ -25,7 +25,15 @@ def _build_client():
             db.close()
 
     app.dependency_overrides[get_workflow_db] = override_get_db
-    return TestClient(app)
+    client = TestClient(app)
+    client.engine = engine  # type: ignore[attr-defined]
+    return client
+
+
+def _close_client(client: TestClient) -> None:
+    client.close()
+    client.app.dependency_overrides.clear()
+    client.engine.dispose()  # type: ignore[attr-defined]
 
 
 def test_audit_coordination_reports_missing_changes(monkeypatch):
@@ -74,3 +82,4 @@ def test_audit_coordination_reports_missing_changes(monkeypatch):
     assert body["coordination_active"] == 2
     assert set(body["missing_in_db"]) == {"b"}
     assert set(body["missing_in_coordination"]) == {"c"}
+    _close_client(client)
