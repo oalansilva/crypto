@@ -585,6 +585,8 @@ async def test_snapshot_payload_and_external_snapshot_accessors(monkeypatch):
     )
     await c._flush_snapshot(running=False)
     assert captured["payload"]["running"] is False
+    external_payload = dict(payload)
+    external_payload["running"] = True
 
     class _ExternalOnlyConnector:
         _running = False
@@ -599,7 +601,7 @@ async def test_snapshot_payload_and_external_snapshot_accessors(monkeypatch):
             raise AssertionError("should use external snapshot")
 
     monkeypatch.setattr(connector, "_connector", _ExternalOnlyConnector())
-    monkeypatch.setattr(connector, "read_snapshot", lambda: captured["payload"])
+    monkeypatch.setattr(connector, "read_snapshot", lambda: external_payload)
     monkeypatch.setattr(connector, "snapshot_is_fresh", lambda payload: True)
 
     assert connector.is_running() is True
