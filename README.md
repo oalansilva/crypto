@@ -206,6 +206,41 @@ To install the stack as a persistent `systemd --user` service and enable autosta
 
 ## Development
 
+### Fluxo de desenvolvimento do repositório
+
+- Use apenas `develop` para implementação e validação.
+- Abra PR de `develop` para `main` para liberar produção.
+- Mantenha `develop` como base de trabalho única para desenvolvimento solo (sem branches de task).
+
+Checklist rápido:
+
+- `git switch develop`
+- `git pull`
+- `git add .`
+- `git commit -m "feat: ..."`
+- `git push`
+- `gh pr create --base main --head develop --title "..." --body "..."`
+- após merge em `main`: `git pull`
+
+Padrão de commit recomendado:
+
+- `feat: ...`
+- `fix: ...`
+- `chore: ...`
+- `refactor: ...`
+- `docs: ...`
+
+Exemplo:
+
+```bash
+git switch develop
+git pull
+git add .
+git commit -m "feat: ..."
+git push
+gh pr create --base main --head develop --title "..."
+```
+
 ### Backend Development
 
 ```bash

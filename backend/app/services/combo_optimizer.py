@@ -34,6 +34,7 @@ from app.services.market_data_providers import (
 )
 from src.data.incremental_loader import IncrementalLoader
 from app.services.deep_backtest import simulate_execution_with_15m
+from app.metrics.indicators import ensure_ta_lib_context_columns
 
 # -----------------------------------------------------------------------------
 # WORKER-SIDE INTRADAY CACHE (per process)
@@ -1256,20 +1257,8 @@ class ComboOptimizer:
         # Enrich DF with Regime/Context Metrics (if not present) to enable Worker Logic
         if df is not None and not df.empty and "regime" not in df.columns:
             try:
-                import pandas_ta as ta
-                import numpy as np
-
                 df = df.copy()
-
-                # Use SMA_50 for Regime (better coverage than SMA_200)
-                if "SMA_50" not in df.columns:
-                    df.ta.sma(length=50, append=True)
-
-                # ATR/ADX for Avg Metrics
-                if not any(c.startswith("ATR") for c in df.columns):
-                    df.ta.atr(length=14, append=True)
-                if not any(c.startswith("ADX") for c in df.columns):
-                    df.ta.adx(length=14, append=True)
+                df = ensure_ta_lib_context_columns(df)
 
                 # Regime Classification with NaN handling
                 sma_col = "SMA_50"
@@ -1920,20 +1909,11 @@ class ComboOptimizer:
             # Enrich df_final with regime for heavy metrics calculation
             if "regime" not in df_final.columns:
                 try:
-                    import pandas_ta as ta
-                    import numpy as np
+                    df_final = ensure_ta_lib_context_columns(df_final)
 
-                    if "SMA_200" not in df_final.columns:
-                        df_final.ta.sma(length=200, append=True)
-
-                    if not any(c.startswith("ATR") for c in df_final.columns):
-                        df_final.ta.atr(length=14, append=True)
-                    if not any(c.startswith("ADX") for c in df_final.columns):
-                        df_final.ta.adx(length=14, append=True)
-
-                    # Use SMA_50 as fallback for better coverage (SMA_200 has too many NaN)
-                    if "SMA_50" not in df_final.columns:
-                        df_final.ta.sma(length=50, append=True)
+                    # Use SMA_50 as fallback for better coverage (SMA_200 has more warmup NaNs)
+                    if "SMA_50" not in df_final.columns and "SMA_200" in df_final.columns:
+                        df_final["SMA_50"] = df_final["SMA_200"]
 
                     sma_col = "SMA_50" if "SMA_50" in df_final.columns else "SMA_200"
                     if sma_col in df_final.columns:

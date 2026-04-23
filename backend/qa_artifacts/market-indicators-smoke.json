@@ -1,0 +1,77 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframes": [
+    "1d",
+    "1h"
+  ],
+  "force_full": true,
+  "results": [
+    {
+      "section": "start",
+      "status": "accepted",
+      "details": {
+        "job_id": "80c5e992-c1b5-40eb-982c-5e7703eb80e8"
+      }
+    },
+    {
+      "section": "pipeline_job",
+      "status": "completed",
+      "details": {
+        "job_id": "80c5e992-c1b5-40eb-982c-5e7703eb80e8",
+        "symbol": "BTCUSDT",
+        "timeframes": [
+          "1d",
+          "1h"
+        ],
+        "estimated_bars": 480,
+        "estimated_bars_remaining": 0,
+        "processed_timeframes": 2,
+        "error": null
+      }
+    },
+    {
+      "section": "latest_rows",
+      "status": "pass",
+      "details": {
+        "1d": {
+          "count": 5,
+          "latest_ts": "2026-04-08 00:00:00+00:00"
+        },
+        "1h": {
+          "count": 5,
+          "latest_ts": "2026-01-11 19:00:00+00:00"
+        }
+      }
+    },
+    {
+      "section": "uniqueness_and_tz",
+      "status": "pass",
+      "details": {
+        "rows": [
+          {
+            "timeframe": "1d",
+            "count": 220,
+            "tz_aware": true,
+            "monotonic": true
+          },
+          {
+            "timeframe": "1h",
+            "count": 260,
+            "tz_aware": true,
+            "monotonic": true
+          }
+        ]
+      }
+    },
+    {
+      "section": "gaps",
+      "status": "pass",
+      "details": {
+        "timeframes": [
+          "1d",
+          "1h"
+        ]
+      }
+    }
+  ]
+}

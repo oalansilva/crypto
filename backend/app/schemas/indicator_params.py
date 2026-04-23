@@ -276,7 +276,7 @@ def get_indicator_schema(strategy_name: str) -> Optional[IndicatorSchema]:
     Get indicator schema by strategy name.
 
     First checks manual schemas (MACD, RSI, Bollinger), then falls back to auto-generation
-    for all other pandas-ta indicators.
+    for all other TA-Lib indicators.
 
     Args:
         strategy_name: Name of the strategy (case-insensitive)
@@ -290,7 +290,7 @@ def get_indicator_schema(strategy_name: str) -> Optional[IndicatorSchema]:
     if strategy_lower in INDICATOR_SCHEMAS:
         return INDICATOR_SCHEMAS[strategy_lower]
 
-    # Auto-generate schema for pandas-ta indicators
+        # Auto-generate schema for TA-Lib indicators
     from app.schemas.auto_indicator_schemas import generate_indicator_schema
 
     return generate_indicator_schema(strategy_lower)

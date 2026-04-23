@@ -5,7 +5,6 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.workflow_database import WorkflowBase, get_workflow_db
@@ -13,9 +12,7 @@ from app.workflow_database import WorkflowBase, get_workflow_db
 
 def _build_client():
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
     WorkflowBase.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import builtins
 import io
-import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -23,7 +22,7 @@ import app.routes.auth as auth_routes
 
 @pytest.fixture
 def auth_db_session():
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
@@ -35,20 +34,12 @@ def auth_db_session():
 
 
 def test_database_url_resolution_helpers_and_dependency(monkeypatch, tmp_path):
-    monkeypatch.delenv("ALLOW_SQLITE_FOR_TESTS", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(database_module.sys, "argv", ["uvicorn"])
 
-    assert database_module._allow_sqlite_for_tests() is False
-    monkeypatch.setenv("ALLOW_SQLITE_FOR_TESTS", "yes")
-    assert database_module._allow_sqlite_for_tests() is True
-    monkeypatch.delenv("ALLOW_SQLITE_FOR_TESTS", raising=False)
-    monkeypatch.setattr(database_module.sys, "argv", ["pytest", "-q"])
-    assert database_module._allow_sqlite_for_tests() is True
-
     assert database_module._is_postgres_url("postgresql://db")
     assert database_module._is_postgres_url("postgresql+psycopg2://db")
-    assert database_module._is_postgres_url(" sqlite:///db ") is False
+    assert database_module._is_postgres_url("mysql://db") is False
 
     monkeypatch.setattr(
         database_module,
@@ -61,18 +52,16 @@ def test_database_url_resolution_helpers_and_dependency(monkeypatch, tmp_path):
     monkeypatch.setattr(database_module, "get_settings", lambda: SimpleNamespace(database_url=None))
     assert database_module.resolve_db_url() == "postgresql://env"
 
-    monkeypatch.setenv("DATABASE_URL", "sqlite:///runtime.db")
+    monkeypatch.setenv("DATABASE_URL", "mysql://runtime.db")
     monkeypatch.setattr(database_module.sys, "argv", ["uvicorn"])
     with pytest.raises(RuntimeError, match="must point to PostgreSQL"):
         database_module.resolve_db_url()
 
-    sqlite_path = tmp_path / "test.db"
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setenv("ALLOW_SQLITE_FOR_TESTS", "1")
-    monkeypatch.setattr(database_module, "DB_PATH", sqlite_path)
-    assert database_module.resolve_db_url() == f"sqlite:///{sqlite_path}"
+    monkeypatch.setenv("DATABASE_URL", "postgresql://env")
+    assert database_module.resolve_db_url() == "postgresql://env"
 
-    monkeypatch.delenv("ALLOW_SQLITE_FOR_TESTS", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(database_module.sys, "argv", ["uvicorn"])
     with pytest.raises(RuntimeError, match="DATABASE_URL is required"):
         database_module.resolve_db_url()
@@ -93,60 +82,7 @@ def test_database_url_resolution_helpers_and_dependency(monkeypatch, tmp_path):
     assert fake_session.closed is True
 
 
-def test_sqlite_runtime_migrations_and_postgres_sequence_sync(monkeypatch, tmp_path):
-    db_file = tmp_path / "legacy.db"
-    conn = sqlite3.connect(db_file)
-    try:
-        cur = conn.cursor()
-        cur.execute("CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT NOT NULL)")
-        cur.execute(
-            "INSERT INTO users (id, email) VALUES (?, ?)",
-            ("user-1", "o.alan.silva@gmail.com"),
-        )
-        cur.execute("CREATE TABLE favorite_strategies (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
-        cur.execute("INSERT INTO favorite_strategies (id, name) VALUES (1, 'Legacy favorite')")
-        cur.execute("""
-            CREATE TABLE monitor_preferences (
-                symbol TEXT PRIMARY KEY,
-                in_portfolio BOOLEAN NOT NULL DEFAULT 0,
-                card_mode TEXT NOT NULL DEFAULT 'price',
-                updated_at DATETIME
-            )
-            """)
-        cur.execute("""
-            INSERT INTO monitor_preferences (symbol, in_portfolio, card_mode, updated_at)
-            VALUES ('BTC/USDT', 1, 'price', '2026-04-18T00:00:00Z')
-            """)
-        conn.commit()
-    finally:
-        conn.close()
-
-    monkeypatch.setattr(database_module, "DB_URL", f"sqlite:///{db_file}")
-    monkeypatch.setattr(database_module, "DB_PATH", db_file)
-    database_module.ensure_runtime_schema_migrations()
-
-    conn = sqlite3.connect(db_file)
-    try:
-        cur = conn.cursor()
-
-        cur.execute("PRAGMA table_info(users)")
-        assert "last_login" in {row[1] for row in cur.fetchall()}
-
-        cur.execute("PRAGMA table_info(favorite_strategies)")
-        assert "user_id" in {row[1] for row in cur.fetchall()}
-        cur.execute("SELECT user_id FROM favorite_strategies WHERE id = 1")
-        assert cur.fetchone()[0] == "user-1"
-
-        cur.execute("PRAGMA table_info(monitor_preferences)")
-        monitor_cols = {row[1] for row in cur.fetchall()}
-        assert {"user_id", "price_timeframe", "theme"}.issubset(monitor_cols)
-        cur.execute("""
-            SELECT user_id, symbol, in_portfolio, card_mode, price_timeframe, theme
-            FROM monitor_preferences
-            """)
-        assert cur.fetchone() == ("user-1", "BTC/USDT", 1, "price", "1d", "dark-green")
-    finally:
-        conn.close()
+def test_postgres_identity_sequence_sync(monkeypatch):
 
     executed: list[tuple[str, dict | None]] = []
 
@@ -214,7 +150,6 @@ def test_postgres_runtime_schema_migrations_execute_admin_user_statements(monkey
 
     monkeypatch.setattr(database_module, "DB_URL", "postgresql://crypto")
     monkeypatch.setattr(database_module, "engine", SimpleNamespace(begin=lambda: FakeBegin()))
-    monkeypatch.setattr(database_module, "ensure_sqlite_migrations", lambda: None)
 
     database_module.ensure_runtime_schema_migrations()
 
@@ -615,7 +550,6 @@ def test_database_runtime_schema_migrations_timescale_setup_exception_keeps_runn
 
     monkeypatch.setattr(database_module, "DB_URL", "postgresql://unit-tests")
     monkeypatch.setattr(database_module, "engine", SimpleNamespace(begin=lambda: _Begin(conn)))
-    monkeypatch.setattr(database_module, "ensure_sqlite_migrations", lambda: None)
     monkeypatch.setattr(
         database_module,
         "_verify_market_ohlcv_timescale_policies",

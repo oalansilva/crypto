@@ -1,66 +1,55 @@
 """
-Auto-generate indicator schemas from pandas-ta introspection.
+Auto-generate indicator schemas from TA-Lib inspection.
 
-This module automatically creates IndicatorSchema objects for all pandas-ta indicators
-by introspecting their function signatures and applying sensible defaults.
+This module builds `IndicatorSchema` objects from the metadata returned by
+`get_all_indicators_metadata()` and keeps manual parameter definitions as source
+of truth when present.
 """
 
-import inspect
-import pandas_ta as ta
 from typing import Dict, Any, Optional
-from app.schemas.indicator_params import IndicatorSchema, ParameterSchema, OptimizationRange
+
+from app.schemas.indicator_params import IndicatorSchema, ParameterSchema, OptimizationRange, INDICATOR_SCHEMAS
+from app.services.pandas_ta_inspector import get_all_indicators_metadata
+
 
 # Default optimization ranges by parameter name pattern
 DEFAULT_PARAM_RANGES = {
-    # Length-based parameters (most common)
     "length": OptimizationRange(min=7, max=50, step=1),
     "period": OptimizationRange(min=7, max=50, step=1),
-    # MACD-specific
     "fast": OptimizationRange(min=6, max=18, step=1),
     "slow": OptimizationRange(min=20, max=32, step=1),
     "signal": OptimizationRange(min=6, max=12, step=1),
-    # Stochastic
     "k": OptimizationRange(min=10, max=20, step=1),
     "d": OptimizationRange(min=2, max=5, step=1),
     "smooth_k": OptimizationRange(min=1, max=5, step=1),
-    # Bollinger Bands
     "std": OptimizationRange(min=1.5, max=3.0, step=0.1),
     "lower_std": OptimizationRange(min=1.5, max=3.0, step=0.1),
     "upper_std": OptimizationRange(min=1.5, max=3.0, step=0.1),
-    # RSI thresholds
     "overbought": OptimizationRange(min=65, max=80, step=1),
     "oversold": OptimizationRange(min=20, max=35, step=1),
-    # ADX
     "signal_length": OptimizationRange(min=10, max=20, step=1),
     "adxr_length": OptimizationRange(min=10, max=20, step=1),
 }
 
 
-# Default values by parameter name (ALL MARKET STANDARDS)
+# Default values by parameter name (market standards)
 DEFAULT_PARAM_VALUES = {
-    # Length/Period parameters
-    "length": 14,  # Market standard for most oscillators (RSI, ADX, ATR, etc.)
-    "period": 14,  # Same as length
-    # MACD parameters (Appel's original settings)
-    "fast": 12,  # Fast EMA for MACD
-    "slow": 26,  # Slow EMA for MACD
-    "signal": 9,  # Signal line for MACD
-    # Stochastic parameters
-    "k": 14,  # %K period (market standard)
-    "d": 3,  # %D smoothing (market standard)
-    "smooth_k": 3,  # %K smoothing (market standard)
-    # Bollinger Bands parameters (Bollinger's original settings)
-    "std": 2.0,  # Standard deviation multiplier
-    # RSI/Oscillator thresholds
-    "overbought": 70,  # Standard overbought level
-    "oversold": 30,  # Standard oversold level
-    # ADX parameters
-    "signal_length": 14,  # ADX signal length
-    "adxr_length": 14,  # ADXR length
+    "length": 14,
+    "period": 14,
+    "fast": 12,
+    "slow": 26,
+    "signal": 9,
+    "k": 14,
+    "d": 3,
+    "smooth_k": 3,
+    "std": 2.0,
+    "overbought": 70,
+    "oversold": 30,
+    "signal_length": 14,
+    "adxr_length": 14,
 }
 
 
-# Market standard descriptions
 MARKET_STANDARDS = {
     "length": "Common values: 9, 14, 21, 50, 200. Range 7-50 covers short to medium-term.",
     "period": "Common values: 9, 14, 21, 50. Standard period for most indicators.",
@@ -82,142 +71,109 @@ SKIP_PARAMS = {
     "open",
     "high",
     "low",
-    "volume",  # OHLCV data
-    "talib",
+    "volume",
     "offset",
     "drift",
-    "kwargs",  # Technical params
+    "kwargs",
     "mamode",
     "ddof",
     "presma",
-    "prenan",  # Mode/preprocessing
+    "prenan",
     "scalar",
     "tvmode",
-    "c",  # Misc technical
+    "c",
     "adjust",
     "sma",
     "fillna",
-    "fill_method",  # EMA/SMA preprocessing
+    "fill_method",
     "lower_std",
-    "upper_std",  # Skip redundant BBands params (use std)
+    "upper_std",
 }
+
+
+def _build_parameter_schema(param_name: str, value: Any) -> ParameterSchema:
+    param_range = DEFAULT_PARAM_RANGES.get(param_name)
+    return ParameterSchema(
+        default=value,
+        optimization_range=param_range,
+        market_standard=MARKET_STANDARDS.get(
+            param_name, f"Parameter for {param_name.replace('_', ' ').upper()} indicator"
+        ),
+        description=f"{param_name.replace('_', ' ').title()} parameter",
+    )
 
 
 def generate_indicator_schema(indicator_name: str) -> Optional[IndicatorSchema]:
     """
-    Auto-generate an IndicatorSchema for a pandas-ta indicator.
+    Auto-generate an IndicatorSchema for a TA-Lib indicator.
 
     Args:
         indicator_name: Name of the indicator (e.g., 'ema', 'rsi', 'macd')
-
     Returns:
-        IndicatorSchema if successful, None if indicator not found or error
+        IndicatorSchema if successful, None if indicator not found or no params.
     """
-    try:
-        # Get the indicator function
-        if not hasattr(ta, indicator_name):
-            return None
+    name = str(indicator_name or "").strip().lower()
+    if name in INDICATOR_SCHEMAS:
+        return INDICATOR_SCHEMAS[name]
 
-        indicator_func = getattr(ta, indicator_name)
-
-        # Skip if not callable or is a class
-        if not callable(indicator_func) or inspect.isclass(indicator_func):
-            return None
-
-        # Get function signature
-        sig = inspect.signature(indicator_func)
-
-        # Build parameters dict
-        parameters = {}
-
-        if indicator_name == "bbands":
-            print(f"DEBUG: Generating schema for BBANDS. SKIP_PARAMS: {SKIP_PARAMS}")
-
-        for param_name, param in sig.parameters.items():
-            # Skip unwanted parameters
-            if param_name in SKIP_PARAMS:
-                if indicator_name == "bbands":
-                    print(f"DEBUG: Skipping param {param_name}")
+    all_metadata = get_all_indicators_metadata()
+    for indicators in all_metadata.values():
+        for indicator in indicators:
+            if indicator.get("id", "").lower() != name:
                 continue
 
-            # Get default value
-            default = param.default
-            if default == inspect.Parameter.empty:
-                continue  # Skip required params (OHLCV data)
+            parameters: Dict[str, ParameterSchema] = {}
+            for param in indicator.get("params", []):
+                param_name = param.get("name")
+                if not param_name or param_name in SKIP_PARAMS:
+                    continue
 
-            # Skip None defaults that aren't in our known params
-            if default is None and param_name not in DEFAULT_PARAM_VALUES:
-                continue
+                default = param.get("default", DEFAULT_PARAM_VALUES.get(param_name))
+                if default is None:
+                    continue
 
-            # Use our default if available, otherwise use function's default
-            param_default = DEFAULT_PARAM_VALUES.get(param_name, default)
+                # Preserve known manual defaults when inspector metadata changes.
+                default = DEFAULT_PARAM_VALUES.get(param_name, default)
+                parameters[param_name] = _build_parameter_schema(param_name, default)
 
-            # Get optimization range if available
-            opt_range = DEFAULT_PARAM_RANGES.get(param_name)
+            if not parameters:
+                return None
+            return IndicatorSchema(name=indicator["name"], parameters=parameters)
 
-            # Get market standard description
-            market_std = MARKET_STANDARDS.get(
-                param_name, f"Parameter for {indicator_name.upper()} indicator"
-            )
-
-            # Create parameter schema
-            parameters[param_name] = ParameterSchema(
-                default=param_default,
-                optimization_range=opt_range,
-                market_standard=market_std,
-                description=f"{param_name.replace('_', ' ').title()} parameter",
-            )
-
-        # Only create schema if we have parameters to optimize
-        if not parameters:
-            return None
-
-        return IndicatorSchema(name=indicator_name.upper(), parameters=parameters)
-
-    except Exception as e:
-        print(f"Error generating schema for {indicator_name}: {e}")
-        return None
+    return None
 
 
 def get_all_auto_schemas() -> Dict[str, IndicatorSchema]:
-    """
-    Generate schemas for all common pandas-ta indicators.
-
-    Returns:
-        Dictionary mapping indicator names to their schemas
-    """
-    # List of common indicators to auto-generate
+    """Generate schemas for common TA-Lib indicators."""
     common_indicators = [
         "ema",
         "sma",
         "wma",
         "dema",
         "tema",
-        "hma",  # Moving averages
         "rsi",
         "stoch",
         "stochf",
-        "stochrsi",  # Oscillators
+        "stochrsi",
         "macd",
         "ppo",
-        "apo",  # MACD family
+        "apo",
         "bbands",
         "kc",
-        "donchian",  # Bands
+        "donchian",
         "atr",
-        "natr",  # Volatility
+        "natr",
         "adx",
         "aroon",
         "cci",
         "mfi",
-        "willr",  # Trend/Momentum
+        "willr",
         "obv",
         "cmf",
-        "vwap",  # Volume
+        "vwap",
     ]
 
-    schemas = {}
-
+    schemas: Dict[str, IndicatorSchema] = {}
     for indicator_name in common_indicators:
         schema = generate_indicator_schema(indicator_name)
         if schema:
@@ -225,31 +181,3 @@ def get_all_auto_schemas() -> Dict[str, IndicatorSchema]:
 
     return schemas
 
-
-if __name__ == "__main__":
-    # Test the auto-generation
-    print("Testing Auto-Schema Generation")
-    print("=" * 60)
-
-    # Test EMA
-    ema_schema = generate_indicator_schema("ema")
-    if ema_schema:
-        print(f"\nEMA Schema:")
-        print(f"  Name: {ema_schema.name}")
-        print(f"  Parameters: {list(ema_schema.parameters.keys())}")
-        for param_name, param_schema in ema_schema.parameters.items():
-            print(
-                f"    - {param_name}: default={param_schema.default}, range={param_schema.optimization_range}"
-            )
-
-    # Test all common indicators
-    print(f"\n\n{'='*60}")
-    print("All Auto-Generated Schemas:")
-    print(f"{'='*60}")
-
-    all_schemas = get_all_auto_schemas()
-    for ind_name, schema in all_schemas.items():
-        params = list(schema.parameters.keys())
-        print(f"{ind_name:12s}: {', '.join(params)}")
-
-    print(f"\nTotal schemas generated: {len(all_schemas)}")

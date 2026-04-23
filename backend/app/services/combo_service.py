@@ -1,7 +1,6 @@
 import json
 import re
 from typing import Dict, List, Any, Optional
-from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
@@ -21,11 +20,11 @@ class ComboService:
             self._session_factory = SessionLocal
             return
 
-        db_url = db_path if "://" in db_path else f"sqlite:///{Path(db_path).resolve()}"
-        if db_url.startswith("sqlite:"):
-            engine = create_engine(db_url, connect_args={"check_same_thread": False})
-        else:
-            engine = create_engine(db_url, pool_pre_ping=True)
+        db_url = db_path if "://" in db_path else None
+        if db_url is None or not db_url.lower().startswith("postgresql"):
+            raise ValueError("ComboService requires a PostgreSQL URL when db_path is provided.")
+
+        engine = create_engine(db_url, pool_pre_ping=True)
         self._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     @staticmethod

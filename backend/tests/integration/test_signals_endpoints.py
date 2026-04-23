@@ -9,6 +9,7 @@ import pytest
 from fastapi import FastAPI, Request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import OperationalError
 
 from app.database import Base
 from app.middleware.authMiddleware import get_current_user_optional
@@ -400,29 +401,29 @@ async def test_signal_snapshots_can_be_loaded_from_disk(monkeypatch, tmp_path: P
 
 
 def _session_factory(tmp_path: Path):
-    db_file = tmp_path / "signals_test.db"
     engine = create_engine(
-        f"sqlite:///{db_file}",
-        connect_args={"check_same_thread": False},
+        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
     testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
     return testing_session_local
 
 
-def test_history_quality_gate_uses_defaults_when_system_preferences_table_is_missing(
-    tmp_path: Path,
-):
-    db_file = tmp_path / "signals_defaults_only.db"
-    engine = create_engine(
-        f"sqlite:///{db_file}",
-        connect_args={"check_same_thread": False},
-    )
-    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+def test_history_quality_gate_uses_defaults_when_system_preferences_table_is_missing():
     signal = _make_signal("BTCUSDT", SignalType.BUY, 88, RiskProfile.moderate)
 
-    with testing_session_local() as db:
-        assert signals_routes._passes_history_quality_gate(signal, db) is True
+    class _FailingQuery:
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def first(self):
+            raise OperationalError("SELECT 1", (), Exception("relation system_preferences does not exist"))
+
+    class _FailingSession:
+        def query(self, *_args, **_kwargs):
+            return _FailingQuery()
+
+    assert signals_routes._passes_history_quality_gate(signal, _FailingSession()) is True
 
 
 async def test_open_positions_returns_entry_current_price_and_pnl(monkeypatch, tmp_path: Path):

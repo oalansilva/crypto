@@ -1,24 +1,29 @@
-import sqlite3
 import logging
 from datetime import datetime, timedelta
+
 import pandas as pd
-import pandas_ta as ta
+from sqlalchemy import text
+
+from app.database import DB_URL, engine
 from app.services.opportunity_service import OpportunityService
 from app.strategies.combos.combo_strategy import ComboStrategy
 
 logging.basicConfig(level=logging.INFO)
+if not str(DB_URL).startswith("postgresql"):
+    raise RuntimeError("check_defaults now requires PostgreSQL (set DATABASE_URL).")
+
 service = OpportunityService()
 
 # DB Connection
-conn = sqlite3.connect("backtest.db")
-conn.row_factory = sqlite3.Row
-cursor = conn.cursor()
-
 # 0. Check for duplicates
-cursor.execute(
-    "SELECT id, strategy_name, parameters FROM favorite_strategies WHERE symbol='BTC/USDT'"
-)
-all_btc = cursor.fetchall()
+with engine.connect() as conn:
+    all_btc = conn.execute(
+        text(
+            "SELECT id, strategy_name, parameters FROM favorite_strategies "
+            "WHERE symbol='BTC/USDT'"
+        )
+    ).mappings().all()
+
 print(f"\n--- ALL BTC STRATEGIES ({len(all_btc)}) ---")
 for r in all_btc:
     print(dict(r))

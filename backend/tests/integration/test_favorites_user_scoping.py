@@ -13,8 +13,7 @@ from app.routes import favorites
 def _session_factory(tmp_path: Path):
     db_file = tmp_path / "favorites_test.db"
     engine = create_engine(
-        f"sqlite:///{db_file}",
-        connect_args={"check_same_thread": False},
+        "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)

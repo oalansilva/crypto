@@ -18,7 +18,7 @@ from app.database import Base
 
 @pytest.fixture
 def app_db_session():
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
