@@ -290,6 +290,19 @@ class MarketOhlcvRepository:
                 )
             )
 
+            if value is None:
+                value = _extract_scalar_value(
+                    conn.execute(
+                        text("""
+                        SELECT MAX(candle_time) AS candle_time
+                        FROM market_ohlcv
+                        WHERE symbol = :symbol
+                          AND timeframe = :timeframe
+                        """),
+                        {"symbol": normalized_symbol, "timeframe": normalized_timeframe},
+                    )
+                )
+
         if value is None:
             return None
 

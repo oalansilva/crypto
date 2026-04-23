@@ -109,6 +109,40 @@ def _coerce_status(value: str) -> str:
     return str(value or "").strip().lower() or "pending"
 
 
+def _invoke_provider_fetch(
+    provider: Any,
+    *,
+    symbol: str,
+    timeframe: str,
+    since_str: str,
+    until_str: str,
+    limit: int,
+) -> Any:
+    fetcher = getattr(provider, "fetch_ohlcv")
+    kwargs = {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "since_str": since_str,
+        "until_str": until_str,
+        "limit": limit,
+    }
+    try:
+        return fetcher(**kwargs)
+    except TypeError as exc:
+        fetcher_fn = getattr(fetcher, "__func__", None)
+        if fetcher_fn is None:
+            raise
+
+        message = str(exc).lower()
+        if "positional argument" not in message and "positional arguments" not in message:
+            raise
+
+        try:
+            return fetcher_fn(**kwargs)
+        except TypeError:
+            raise exc
+
+
 def _estimate_total_for_range(start: datetime, end: datetime, timeframe: str) -> int:
     interval = _TIMEFRAME_INTERVAL_SECONDS.get(_normalize_timeframe(timeframe))
     if not interval or interval <= 0:
@@ -289,7 +323,8 @@ class OhlcvBackfillService:
             self._sleep_for_rate_limit(max_requests_per_minute)
 
             try:
-                return provider.fetch_ohlcv(
+                return _invoke_provider_fetch(
+                    provider,
                     symbol=symbol,
                     timeframe=timeframe,
                     since_str=since.isoformat(),
