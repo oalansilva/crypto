@@ -39,7 +39,6 @@ _DEFAULT_HISTORY_DAYS = {
     "1d": 400,
 }
 _CANDLES_CACHE_TTL_SECONDS = 120.0
-_STOCK_1D_STALENESS_DAYS = 12
 _CANDLES_CACHE_LOCK = threading.Lock()
 _CANDLES_CACHE: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
 _OHLCV_REPO = MarketOhlcvRepository()
@@ -216,24 +215,6 @@ def _ui_default_since_str(timeframe: str, limit: int) -> str:
     return since.isoformat()
 
 
-def _is_stock_1d_data_stale(df: pd.DataFrame, timeframe: str) -> bool:
-    if timeframe != "1d" or df is None:
-        return False
-    if df.empty:
-        return True
-
-    index_values = pd.to_datetime(df.index, utc=True, errors="coerce")
-    if index_values.empty:
-        return True
-
-    latest = index_values.max()
-    if pd.isna(latest):
-        return True
-
-    threshold = datetime.now(timezone.utc) - timedelta(days=_STOCK_1D_STALENESS_DAYS)
-    return latest < pd.Timestamp(threshold)
-
-
 def _normalize_candles_frame(df, limit: int):
     if df is None:
         return []
@@ -356,20 +337,6 @@ async def get_market_candles(
                 df = YahooMarketDataProvider().fetch_ohlcv(
                     raw_symbol, tf, since_str=since_str, limit=limit
                 )
-            else:
-                if _is_stock_1d_data_stale(df, tf):
-                    yahoo_provider = YahooMarketDataProvider()
-                    try:
-                        yahoo_df = yahoo_provider.fetch_ohlcv(
-                            raw_symbol, tf, since_str=since_str, limit=limit
-                        )
-                    except Exception:
-                        pass
-                    else:
-                        df = yahoo_df
-                        data_source = "yahoo"
-                        provider = yahoo_provider
-
         candles = _normalize_candles_frame(df, limit=limit)
         payload = {
             "symbol": raw_symbol,

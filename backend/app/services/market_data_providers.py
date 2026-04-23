@@ -412,17 +412,6 @@ class YahooMarketDataProvider:
     DEFAULT_TIMEOUT_SECONDS = 20.0
     DEFAULT_MAX_RETRIES = 3
     DEFAULT_RETRY_BACKOFF_SECONDS = 1.0
-    _REQUEST_HEADERS = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Accept": "application/json",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Connection": "keep-alive",
-    }
-
     _VALID_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
     _DEFAULT_RANGE_BY_TF = {
         "15m": "1mo",  # ~30d
@@ -603,7 +592,6 @@ class YahooMarketDataProvider:
                         "includePrePost": "false",
                         "events": "div,splits",
                     },
-                    headers=self._REQUEST_HEADERS,
                     timeout=self.timeout_seconds,
                 )
                 if response.status_code == 429:
