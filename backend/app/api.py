@@ -337,9 +337,6 @@ async def get_market_candles(
                 df = YahooMarketDataProvider().fetch_ohlcv(
                     raw_symbol, tf, since_str=since_str, limit=limit
                 )
-        else:
-            raise ValueError("Stocks currently support only timeframe='1d'.")
-
         candles = _normalize_candles_frame(df, limit=limit)
         payload = {
             "symbol": raw_symbol,

@@ -13,6 +13,8 @@ from app.services.combo_service import ComboService
 from app.services.asset_classification import classify_asset_type
 from app.services.market_data_providers import (
     CCXT_SOURCE,
+    STOOQ_SOURCE,
+    YahooMarketDataProvider,
     get_market_data_provider,
     resolve_data_source_for_symbol,
 )
@@ -54,6 +56,21 @@ def _history_limit_for_timeframe(timeframe: str) -> int:
     if tf == "4h":
         return 320
     return 320
+
+
+def _normalize_market_timeframe(symbol: str, requested_timeframe: str, data_source: str) -> str:
+    tf = str(requested_timeframe or "1d").strip().lower()
+    if data_source == STOOQ_SOURCE and tf != "1d":
+        # US stocks/ETFs use only daily EOD candles in the current pipeline.
+        # Keep backward compatibility by coercing legacy intraday favorites to 1d,
+        # so monitor does not silently skip these strategies.
+        logger.warning(
+            "Coercing timeframe '%s' to '1d' for stooq symbol '%s' in monitor jobs",
+            tf,
+            symbol,
+        )
+        return "1d"
+    return tf
 
 
 def _read_ohlcv_cache(cache_key: str) -> Optional[pd.DataFrame]:
@@ -434,13 +451,14 @@ class OpportunityService:
             data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
             if data_source == CCXT_SOURCE and _is_unsupported_symbol(symbol):
                 continue
-            cache_key = f"{data_source}:{symbol}_{tf}"
+            normalized_tf = _normalize_market_timeframe(symbol, tf, data_source)
+            cache_key = f"{data_source}:{symbol}_{normalized_tf}"
             if cache_key in unique_market_jobs:
                 continue
             unique_market_jobs[cache_key] = {
                 "data_source": data_source,
                 "symbol": symbol,
-                "timeframe": tf,
+                "timeframe": normalized_tf,
             }
 
         def _fetch_market_job(job: dict[str, Any]) -> tuple[str, pd.DataFrame]:
@@ -452,13 +470,31 @@ class OpportunityService:
             history_days = _history_days_for_timeframe(job["timeframe"])
             history_limit = _history_limit_for_timeframe(job["timeframe"])
             start_date = (datetime.now() - timedelta(days=history_days)).strftime("%Y-%m-%d")
+
             provider = get_market_data_provider(job["data_source"])
-            df = provider.fetch_ohlcv(
-                symbol=job["symbol"],
-                timeframe=job["timeframe"],
-                since_str=start_date,
-                limit=history_limit,
-            )
+            try:
+                df = provider.fetch_ohlcv(
+                    symbol=job["symbol"],
+                    timeframe=job["timeframe"],
+                    since_str=start_date,
+                    limit=history_limit,
+                )
+            except Exception as exc:
+                if job["data_source"] == STOOQ_SOURCE and job["timeframe"] == "1d":
+                    logger.warning(
+                        "Falling back to Yahoo for stock symbol '%s' after stooq error: %s",
+                        job["symbol"],
+                        exc,
+                    )
+                    df = YahooMarketDataProvider().fetch_ohlcv(
+                        symbol=job["symbol"],
+                        timeframe=job["timeframe"],
+                        since_str=start_date,
+                        limit=history_limit,
+                    )
+                else:
+                    raise
+
             _write_ohlcv_cache(cache_key, df)
             return cache_key, df
 
@@ -483,9 +519,10 @@ class OpportunityService:
                 template_name = fav["strategy_name"]
                 params = fav.get("parameters") or {}
                 data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
+                normalized_tf = _normalize_market_timeframe(symbol, tf, data_source)
 
                 logger.debug(
-                    f"Processing strategy {fav['id']}: {symbol} {tf} - {template_name} (source={data_source})"
+                    f"Processing strategy {fav['id']}: {symbol} {normalized_tf} - {template_name} (source={data_source})"
                 )
 
                 # 0. Skip known unsupported symbols (delisted / no data) before fetching
@@ -494,14 +531,14 @@ class OpportunityService:
                         {
                             "id": fav["id"],
                             "symbol": symbol,
-                            "timeframe": tf,
+                            "timeframe": normalized_tf,
                             "reason": "Symbol delisted or not available on exchange (e.g. Binance leveraged tokens)",
                         }
                     )
                     continue
 
                 # 1. Fetch Data (1D usually)
-                cache_key = f"{data_source}:{symbol}_{tf}"
+                cache_key = f"{data_source}:{symbol}_{normalized_tf}"
                 if cache_key not in data_cache:
                     fetch_exc = fetch_errors.get(cache_key)
                     if fetch_exc:
@@ -509,7 +546,7 @@ class OpportunityService:
                             {
                                 "id": fav["id"],
                                 "symbol": symbol,
-                                "timeframe": tf,
+                                "timeframe": normalized_tf,
                                 "reason": f"Error fetching data ({data_source}): {fetch_exc}",
                             }
                         )
@@ -518,7 +555,7 @@ class OpportunityService:
                         {
                             "id": fav["id"],
                             "symbol": symbol,
-                            "timeframe": tf,
+                            "timeframe": normalized_tf,
                             "reason": f"No cached market data available for {cache_key}",
                         }
                     )
@@ -531,7 +568,7 @@ class OpportunityService:
                         {
                             "id": fav["id"],
                             "symbol": symbol,
-                            "timeframe": tf,
+                            "timeframe": normalized_tf,
                             "reason": "No data (symbol may be delisted, or cache/API issue)",
                         }
                     )
@@ -540,20 +577,20 @@ class OpportunityService:
                 # Heuristic: fix corrupted tail candles (open[t] != close[t-1]) so MAs match TradingView/Binance.
                 # This is especially important for the last closed candle used in distance calculations.
                 if data_source == CCXT_SOURCE:
-                    df = _apply_crypto_continuity_fix(df, tf)
+                    df = _apply_crypto_continuity_fix(df, normalized_tf)
 
                 # 2. Get Template Metadata from Database (entry_logic and exit_logic)
                 # This dynamically loads the buy/sell rules from combo_templates table
                 meta = self.combo_service.get_template_metadata(template_name)
                 if not meta:
                     logger.warning(
-                        f"Strategy {fav['id']} ({symbol} {tf}): Template '{template_name}' not found"
+                        f"Strategy {fav['id']} ({symbol} {normalized_tf}): Template '{template_name}' not found"
                     )
                     skipped_strategies.append(
                         {
                             "id": fav["id"],
                             "symbol": symbol,
-                            "timeframe": tf,
+                            "timeframe": normalized_tf,
                             "template_name": template_name,
                             "reason": f"Template '{template_name}' not found",
                         }
@@ -1241,7 +1278,7 @@ class OpportunityService:
                         "id": fav["id"],
                         "symbol": symbol,
                         "asset_type": classify_asset_type(symbol),
-                        "timeframe": tf,
+                        "timeframe": normalized_tf,
                         "template_name": template_name,
                         "name": fav["name"],  # User custom name
                         "notes": fav.get("notes"),

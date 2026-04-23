@@ -151,6 +151,18 @@ class StooqEodProvider:
             return ts.tz_localize("UTC")
         return ts.tz_convert("UTC")
 
+    @staticmethod
+    def _is_protected_stooq_payload(body: str) -> bool:
+        if not isinstance(body, str):
+            return False
+        lower = body.lower()
+        return (
+            "get your apikey" in lower
+            or "captcha" in lower
+            or "api key required" in lower
+            or "protected response" in lower
+        )
+
     def _normalize_timeframe(self, timeframe: str) -> str:
         tf = str(timeframe or "").strip().lower()
         if tf != "1d":
@@ -284,6 +296,10 @@ class StooqEodProvider:
                 body = response.text.strip()
                 if not body:
                     raise ValueError("empty response body")
+                if self._is_protected_stooq_payload(body):
+                    raise ValueError(
+                        f"Stooq returned protected response for '{provider_symbol}' (API key required)."
+                    )
                 if "no data" in body.lower():
                     raise ValueError(
                         f"No EOD data returned by Stooq for symbol '{provider_symbol}'."
@@ -366,7 +382,15 @@ class StooqEodProvider:
                 fresh_df, since_str=since_str, until_str=until_str, limit=limit
             )
         except Exception as exc:
+            protected_source = self._is_protected_stooq_payload(str(exc))
             if cached_df is not None:
+                if protected_source:
+                    logger.warning(
+                        "Stooq refresh blocked for %s; forcing caller-level fallback for '%s'.",
+                        provider_symbol,
+                        symbol,
+                    )
+                    raise
                 logger.warning(
                     "Stooq refresh failed for %s; serving stale cache (%d rows): %s",
                     provider_symbol,
@@ -386,7 +410,8 @@ class YahooMarketDataProvider:
 
     source = "yahoo"
     DEFAULT_TIMEOUT_SECONDS = 20.0
-
+    DEFAULT_MAX_RETRIES = 3
+    DEFAULT_RETRY_BACKOFF_SECONDS = 1.0
     _VALID_TIMEFRAMES = {"15m", "1h", "4h", "1d"}
     _DEFAULT_RANGE_BY_TF = {
         "15m": "1mo",  # ~30d
@@ -401,8 +426,15 @@ class YahooMarketDataProvider:
         "1d": "1d",
     }
 
-    def __init__(self, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS):
+    def __init__(
+        self,
+        timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS,
+    ):
         self.timeout_seconds = max(1.0, float(timeout_seconds))
+        self.max_retries = max(1, int(max_retries))
+        self.retry_backoff_seconds = max(0.2, float(retry_backoff_seconds))
 
     @staticmethod
     def _normalize_symbol(symbol: str) -> str:
@@ -548,21 +580,34 @@ class YahooMarketDataProvider:
         range_param = self._range_for_since(since_str, self._DEFAULT_RANGE_BY_TF[tf])
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
 
-        try:
-            response = httpx.get(
-                url,
-                params={
-                    "interval": interval,
-                    "range": range_param,
-                    "includePrePost": "false",
-                    "events": "div,splits",
-                },
-                timeout=self.timeout_seconds,
-            )
-            response.raise_for_status()
-            payload = response.json()
-        except Exception as exc:
-            raise ValueError(f"Yahoo request failed for '{ticker}': {exc}") from exc
+        payload: dict = {}
+        last_error: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = httpx.get(
+                    url,
+                    params={
+                        "interval": interval,
+                        "range": range_param,
+                        "includePrePost": "false",
+                        "events": "div,splits",
+                    },
+                    timeout=self.timeout_seconds,
+                )
+                if response.status_code == 429:
+                    raise ValueError(f"HTTP 429 Too Many Requests from Yahoo for '{ticker}'.")
+                response.raise_for_status()
+                payload = response.json()
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt < self.max_retries and isinstance(exc, ValueError) and "429" in str(exc):
+                    time.sleep(self.retry_backoff_seconds * (2 ** (attempt - 1)))
+                    continue
+                if attempt >= self.max_retries:
+                    raise ValueError(f"Yahoo request failed for '{ticker}': {exc}") from exc
+                time.sleep(self.retry_backoff_seconds)
+                continue
 
         out = self._parse_payload(payload, symbol=ticker)
         if tf == "4h":
