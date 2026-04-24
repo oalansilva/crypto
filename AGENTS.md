@@ -181,6 +181,33 @@ Valida + análise profunda de bugs.
 - Uma **story** só pode ser fechada quando todos os **bugs filhos** estiverem concluídos.
 - Antes de promover para `QA`, `Homologation` ou `Archived`, reconciliar runtime + `openspec/changes/<change>/tasks.md` + handoff.
 
+### Uso padrão de subagents Codex
+
+Para tarefas médias ou grandes, o agente principal deve orquestrar subagents quando houver benefício claro de paralelismo, investigação independente ou revisão especializada.
+
+Use subagents por padrão nestes casos:
+- revisão de PR ou comparação `develop -> main`;
+- investigação de bug sem causa clara;
+- mudanças que envolvam backend + frontend;
+- alterações com impacto em banco, segurança, autenticação ou dados financeiros;
+- validação de UI com Playwright;
+- mudanças OpenSpec com múltiplas etapas.
+
+Não use subagents por padrão nestes casos:
+- perguntas conceituais simples;
+- alterações pequenas e localizadas;
+- comandos diretos;
+- ajustes textuais ou documentação pequena.
+
+Arquitetura preferida:
+- `code_mapper` para mapear fluxos, arquivos e pontos de edição;
+- `pr_explorer` para revisar diffs, PRs e escopo de comparação;
+- `browser_debugger` para reproduzir e investigar UI com evidências;
+- `reviewer` para revisar riscos, regressões, segurança e testes;
+- `worker` built-in para implementação quando necessário.
+
+O agente principal continua responsável por consolidar decisões, evitar trabalho duplicado, respeitar o escopo do OpenSpec/workflow DB e entregar o resultado final.
+
 ## Engenharia de prompt
 
 Reforço de fluxo de fechamento: em qualquer entrega, a atividade só pode ser concluída com o merge em `main` (via PR `develop -> main`) após validação e evidências registradas.
