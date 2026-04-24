@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.middleware.authMiddleware import get_current_admin
+from app.services.indicator_score_service import get_indicator_score_service
 from app.services.market_indicator_service import get_market_indicator_service
 
 router = APIRouter(prefix="/api/admin/indicators", tags=["admin-indicators"])
@@ -39,6 +40,26 @@ class IndicatorRecomputeJobResponse(BaseModel):
     finished_at: str | None
     current_timeframe: str | None
     error: str | None = None
+
+
+class IndicatorScoreItem(BaseModel):
+    name: str
+    score: float = Field(ge=0, le=10)
+    rule_version: str
+    rule_type: str
+    inputs: dict[str, float]
+
+
+class IndicatorScoreRow(BaseModel):
+    symbol: str | None
+    timeframe: str | None
+    ts: Any | None
+    rule_version: str
+    scores: list[IndicatorScoreItem]
+
+
+class IndicatorScoresResponse(BaseModel):
+    items: list[IndicatorScoreRow]
 
 
 def _serialize_job(job: dict[str, Any]) -> IndicatorRecomputeJobResponse:
@@ -125,3 +146,23 @@ def get_latest_indicators(
             detail="No indicators found for symbol/timeframe",
         )
     return {"items": rows}
+
+
+@router.get("/latest/scores", response_model=IndicatorScoresResponse)
+def get_latest_indicator_scores(
+    symbol: str = Query(..., min_length=1),
+    timeframe: str = Query(..., min_length=1),
+    limit: int = Query(default=1, ge=1, le=200),
+    _admin_user_id: str = Depends(get_current_admin),
+):
+    _ = _admin_user_id
+    rows = get_market_indicator_service().get_latest(
+        symbol=symbol, timeframe=timeframe, limit=limit
+    )
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No indicators found for symbol/timeframe",
+        )
+
+    return IndicatorScoresResponse(items=get_indicator_score_service().score_rows(rows))
