@@ -21,7 +21,8 @@ def upgrade() -> None:
         BEGIN
             IF to_regclass('public.market_indicator') IS NOT NULL THEN
                 ALTER TABLE market_indicator ADD COLUMN IF NOT EXISTS chart_patterns JSONB;
-            END $$;
+            END IF;
+        END $$;
         """)
 
 
@@ -31,5 +32,6 @@ def downgrade() -> None:
         BEGIN
             IF to_regclass('public.market_indicator') IS NOT NULL THEN
                 ALTER TABLE market_indicator DROP COLUMN IF EXISTS chart_patterns;
-            END $$;
+            END IF;
+        END $$;
         """)
