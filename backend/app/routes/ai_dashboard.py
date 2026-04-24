@@ -683,6 +683,39 @@ def _make_unified_signal(
     )
 
 
+def _unified_signal_rank(entries: list[dict[str, Any]]) -> tuple[int, int]:
+    weighted_score = sum(
+        _source_score(entry.get("action")) * (int(entry.get("confidence") or 0) / 100)
+        for entry in entries
+    )
+    has_directional_entry = any(_source_score(entry.get("action")) != 0 for entry in entries)
+    if has_directional_entry and abs(weighted_score) >= 0.35:
+        final_action = "BUY" if weighted_score > 0 else "SELL"
+    else:
+        final_action = "HOLD"
+
+    final_score = _source_score(final_action)
+    if final_action == "HOLD":
+        supporting_sources = [
+            entry for entry in entries if _source_score(entry.get("action")) == 0
+        ]
+    else:
+        supporting_sources = [
+            entry for entry in entries if _source_score(entry.get("action")) == final_score
+        ]
+
+    strength = len(supporting_sources)
+    confidence = (
+        round(
+            sum(int(entry.get("confidence") or 0) for entry in supporting_sources)
+            / len(supporting_sources)
+        )
+        if supporting_sources
+        else 0
+    )
+    return strength, confidence
+
+
 def _build_unified_signals(
     *,
     ai_rows: list[SignalHistory],
@@ -746,15 +779,19 @@ def _build_unified_signals(
             }
         )
 
-    unified = [
-        _make_unified_signal(
-            asset_key=asset_key, display_asset=str(data["asset"]), entries=list(data["entries"])
-        )
+    ranked_groups = [
+        (_unified_signal_rank(data["entries"]), asset_key, data)
         for asset_key, data in grouped.items()
         if len(data["entries"]) >= 2
     ]
-    unified.sort(key=lambda item: (item.strength, item.confidence), reverse=True)
-    return unified[:8]
+    ranked_groups.sort(key=lambda item: item[0], reverse=True)
+
+    return [
+        _make_unified_signal(
+            asset_key=asset_key, display_asset=str(data["asset"]), entries=list(data["entries"])
+        )
+        for _, asset_key, data in ranked_groups[:8]
+    ]
 
 
 def _build_indicator_cards(rows: list[SignalHistory]) -> list[IndicatorCardPayload]:

@@ -1,5 +1,0 @@
-URL: http://127.0.0.1:5173/monitor
-BTC toggle disabled: true
-BTC toggle aria-pressed: true
-BTC sync message: Sincronizado com a Carteira Binance (BTC).
-NVDA toggle enabled: true

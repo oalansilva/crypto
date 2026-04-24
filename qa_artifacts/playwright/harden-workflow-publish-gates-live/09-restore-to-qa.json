@@ -1,1 +1,0 @@
-{"project": "crypto", "change": "harden-workflow-publish-gates", "previous_status": "DEV", "new_status": "QA", "approved_gates": [], "gate_states": {"PO": "approved", "DESIGN": "approved", "Alan approval": "approved", "DEV": "pending", "QA": "pending", "Homologation": "pending"}}
