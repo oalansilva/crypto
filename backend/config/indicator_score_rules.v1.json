@@ -1,0 +1,80 @@
+{
+  "version": "technical-normalization/v1",
+  "description": "Default normalized 0-10 technical indicator scores for the composite engine.",
+  "indicators": [
+    {
+      "name": "ema_trend",
+      "type": "crossover",
+      "inputs": {"fast": "ema_9", "slow": "ema_21"},
+      "percent_scale": 2.0
+    },
+    {
+      "name": "sma_trend",
+      "type": "crossover",
+      "inputs": {"fast": "sma_20", "slow": "sma_50"},
+      "percent_scale": 3.0
+    },
+    {
+      "name": "rsi_14",
+      "type": "linear",
+      "inputs": {"value": "rsi_14"},
+      "min": 30.0,
+      "max": 70.0,
+      "polarity": "inverse"
+    },
+    {
+      "name": "macd_histogram",
+      "type": "centered_tanh",
+      "inputs": {"value": "macd_histogram"},
+      "center": 0.0,
+      "scale": 1.0,
+      "polarity": "normal"
+    },
+    {
+      "name": "bollinger_width",
+      "type": "band_width",
+      "inputs": {
+        "upper": "bb_upper_20_2",
+        "middle": "bb_middle_20_2",
+        "lower": "bb_lower_20_2"
+      },
+      "min_percent": 2.0,
+      "max_percent": 12.0,
+      "polarity": "inverse"
+    },
+    {
+      "name": "atr_14",
+      "type": "ratio_linear",
+      "inputs": {"numerator": "atr_14", "denominator": "bb_middle_20_2"},
+      "min_percent": 0.5,
+      "max_percent": 6.0,
+      "polarity": "inverse"
+    },
+    {
+      "name": "stochastic",
+      "type": "linear",
+      "inputs": {"value": "stoch_k_14_3_3"},
+      "min": 20.0,
+      "max": 80.0,
+      "polarity": "inverse"
+    },
+    {
+      "name": "ichimoku_trend",
+      "type": "crossover",
+      "inputs": {"fast": "ichimoku_tenkan_9", "slow": "ichimoku_kijun_26"},
+      "percent_scale": 2.0
+    },
+    {
+      "name": "pivot_range",
+      "type": "range_width",
+      "inputs": {
+        "upper": "resistance_1",
+        "center": "pivot_point",
+        "lower": "support_1"
+      },
+      "min_percent": 0.5,
+      "max_percent": 8.0,
+      "polarity": "inverse"
+    }
+  ]
+}
