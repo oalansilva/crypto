@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     # Market data providers (optional)
     alphavantage_api_key: str | None = None
 
+    # Glassnode on-chain metrics connector
+    glassnode_api_key: str | None = None
+    glassnode_base_url: str = "https://api.glassnode.com"
+    glassnode_cache_ttl_seconds: int = 900
+    glassnode_rate_limit_per_minute: int = 60
+    glassnode_request_timeout_seconds: float = 10.0
+
     # Main application DB. If omitted, runtime can fall back to workflow DB.
     database_url: str | None = None
 
