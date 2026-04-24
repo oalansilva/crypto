@@ -14,8 +14,7 @@ from app.services.combo_service import ComboService
 def _init_combo_db(db_path: Path) -> None:
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE combo_templates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -28,8 +27,7 @@ def _init_combo_db(db_path: Path) -> None:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-        """
-    )
+        """)
     conn.commit()
     conn.close()
 
