@@ -364,9 +364,15 @@ def test_advanced_market_indicator_upsert_serializes_nullable_values_and_conflic
     assert "bb_upper_20_2 = EXCLUDED.bb_upper_20_2" in fake_engine.conn.statement
     assert "ichimoku_chikou_26 = EXCLUDED.ichimoku_chikou_26" in fake_engine.conn.statement
     assert "chart_patterns = EXCLUDED.chart_patterns" in fake_engine.conn.statement
+    assert "pivot_point = EXCLUDED.pivot_point" in fake_engine.conn.statement
+    assert "support_3 = EXCLUDED.support_3" in fake_engine.conn.statement
+    assert "resistance_3 = EXCLUDED.resistance_3" in fake_engine.conn.statement
     assert fake_engine.conn.params[0]["bb_upper_20_2"] is None
     assert fake_engine.conn.params[0]["atr_14"] is None
     assert fake_engine.conn.params[0]["ichimoku_tenkan_9"] is None
     assert fake_engine.conn.params[0]["obv"] == 42000.0
+    assert fake_engine.conn.params[0]["pivot_point"] is None
+    assert fake_engine.conn.params[0]["support_1"] is None
+    assert fake_engine.conn.params[0]["resistance_1"] is None
     assert '"pattern": "golden_cross"' in fake_engine.conn.params[0]["chart_patterns"]
     assert fake_engine.conn.params[0]["is_recomputed"] is True
