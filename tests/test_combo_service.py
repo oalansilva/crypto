@@ -14,8 +14,7 @@ from app.services.combo_service import ComboService
 def _init_combo_db(db_path: Path) -> None:
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE combo_templates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -28,8 +27,7 @@ def _init_combo_db(db_path: Path) -> None:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-        """
-    )
+        """)
     conn.commit()
     conn.close()
 
@@ -38,7 +36,7 @@ def test_create_template_success(tmp_path: Path) -> None:
     db_path = tmp_path / "combo.db"
     _init_combo_db(db_path)
 
-    service = ComboService(db_path=str(db_path))
+    service = ComboService(db_path=f"sqlite:///{db_path}")
     saved = service.create_template(
         name="lab_test_template",
         template_data={
@@ -66,7 +64,7 @@ def test_create_template_missing_entry_logic(tmp_path: Path) -> None:
     db_path = tmp_path / "combo.db"
     _init_combo_db(db_path)
 
-    service = ComboService(db_path=str(db_path))
+    service = ComboService(db_path=f"sqlite:///{db_path}")
 
     with pytest.raises(ValueError, match="entry_logic"):
         service.create_template(
