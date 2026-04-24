@@ -19,6 +19,11 @@ GLASSNODE_METRICS: dict[str, str] = {
     "realized_cap": "/v1/metrics/market/marketcap_realized_usd",
     "sopr": "/v1/metrics/indicators/sopr",
 }
+GLASSNODE_EXCHANGE_FLOW_METRICS: dict[str, str] = {
+    "inflow": "/v1/metrics/transactions/transfers_volume_to_exchanges_sum",
+    "outflow": "/v1/metrics/transactions/transfers_volume_from_exchanges_sum",
+    "netflow": "/v1/metrics/transactions/transfers_volume_exchanges_net",
+}
 
 
 class GlassnodeConfigError(RuntimeError):
@@ -156,7 +161,7 @@ class GlassnodeService:
             raise GlassnodeConfigError("GLASSNODE_API_KEY is required to fetch Glassnode metrics")
 
         await self._respect_rate_limit()
-        endpoint = GLASSNODE_METRICS[normalized_metric]
+        endpoint = self._metric_endpoint(normalized_metric)
         client = self._get_client()
         params: dict[str, Any] = {
             "a": normalized_asset,
@@ -238,10 +243,19 @@ class GlassnodeService:
     @staticmethod
     def _normalize_metric(metric: str) -> str:
         normalized = str(metric or "").strip().lower()
-        if normalized not in GLASSNODE_METRICS:
-            supported = ", ".join(sorted(GLASSNODE_METRICS))
+        if (
+            normalized not in GLASSNODE_METRICS
+            and normalized not in GLASSNODE_EXCHANGE_FLOW_METRICS
+        ):
+            supported = ", ".join(
+                sorted((*GLASSNODE_METRICS.keys(), *GLASSNODE_EXCHANGE_FLOW_METRICS.keys()))
+            )
             raise ValueError(f"Unsupported Glassnode metric '{metric}'. Supported: {supported}")
         return normalized
+
+    @staticmethod
+    def _metric_endpoint(metric: str) -> str:
+        return GLASSNODE_METRICS.get(metric) or GLASSNODE_EXCHANGE_FLOW_METRICS[metric]
 
     @staticmethod
     def _normalize_asset(asset: str) -> str:
