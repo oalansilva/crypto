@@ -163,6 +163,7 @@ def ensure_runtime_schema_migrations() -> None:
                     ichimoku_senkou_a_9_26_52 NUMERIC,
                     ichimoku_senkou_b_9_26_52 NUMERIC,
                     ichimoku_chikou_26 NUMERIC,
+                    chart_patterns JSONB,
                     source TEXT NOT NULL DEFAULT 'market',
                     provider TEXT NOT NULL DEFAULT 'talib',
                     source_window JSONB,
@@ -185,7 +186,8 @@ def ensure_runtime_schema_migrations() -> None:
                     ADD COLUMN IF NOT EXISTS ichimoku_kijun_26 NUMERIC,
                     ADD COLUMN IF NOT EXISTS ichimoku_senkou_a_9_26_52 NUMERIC,
                     ADD COLUMN IF NOT EXISTS ichimoku_senkou_b_9_26_52 NUMERIC,
-                    ADD COLUMN IF NOT EXISTS ichimoku_chikou_26 NUMERIC
+                    ADD COLUMN IF NOT EXISTS ichimoku_chikou_26 NUMERIC,
+                    ADD COLUMN IF NOT EXISTS chart_patterns JSONB
                 """))
         conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS uq_market_indicator_symbol_timeframe_ts

@@ -316,6 +316,18 @@ def test_advanced_market_indicator_upsert_serializes_nullable_values_and_conflic
 
     df = _load_reference_df("btcusdt_1d_tradingview_reference.csv")
     computed = _compute_fixture(MarketIndicatorService(), df, "BTCUSDT", "1d").head(1)
+    computed.at[computed.index[0], "chart_patterns"] = [
+        {
+            "pattern": "golden_cross",
+            "direction": "bullish",
+            "confidence": 100,
+            "ts": "2026-01-01T00:00:00Z",
+            "reference_price": 100.0,
+            "source": "chart_pattern_service",
+            "dedupe_key": "golden_cross:1",
+            "metadata": {"fast_ma": "sma_20", "slow_ma": "sma_50"},
+        }
+    ]
 
     class FakeConn:
         def __init__(self) -> None:
@@ -351,8 +363,10 @@ def test_advanced_market_indicator_upsert_serializes_nullable_values_and_conflic
     assert "ON CONFLICT (symbol, timeframe, ts)" in fake_engine.conn.statement
     assert "bb_upper_20_2 = EXCLUDED.bb_upper_20_2" in fake_engine.conn.statement
     assert "ichimoku_chikou_26 = EXCLUDED.ichimoku_chikou_26" in fake_engine.conn.statement
+    assert "chart_patterns = EXCLUDED.chart_patterns" in fake_engine.conn.statement
     assert fake_engine.conn.params[0]["bb_upper_20_2"] is None
     assert fake_engine.conn.params[0]["atr_14"] is None
     assert fake_engine.conn.params[0]["ichimoku_tenkan_9"] is None
     assert fake_engine.conn.params[0]["obv"] == 42000.0
+    assert '"pattern": "golden_cross"' in fake_engine.conn.params[0]["chart_patterns"]
     assert fake_engine.conn.params[0]["is_recomputed"] is True

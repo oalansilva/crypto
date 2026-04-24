@@ -12,6 +12,7 @@ import talib
 from sqlalchemy import text
 
 from app.database import engine
+from app.services.chart_pattern_service import detect_chart_patterns
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,16 @@ def _required_interval(tf: str) -> timedelta:
 
 def _nullable_float(value: Any) -> float | None:
     return None if pd.isna(value) else float(value)
+
+
+def _json_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, float) and pd.isna(value):
+        return None
+    if isinstance(value, list) and not value:
+        return None
+    return json.dumps(value)
 
 
 def _rolling_midpoint(high: pd.Series, low: pd.Series, period: int) -> pd.Series:
@@ -145,6 +156,7 @@ class MarketIndicatorService:
                             ichimoku_senkou_a_9_26_52,
                             ichimoku_senkou_b_9_26_52,
                             ichimoku_chikou_26,
+                            chart_patterns,
                             source,
                             provider,
                             source_window,
@@ -295,6 +307,7 @@ class MarketIndicatorService:
         out["ichimoku_senkou_a_9_26_52"] = ichimoku_senkou_a
         out["ichimoku_senkou_b_9_26_52"] = ichimoku_senkou_b
         out["ichimoku_chikou_26"] = ichimoku_chikou
+        out["chart_patterns"] = detect_chart_patterns(out)
         out["symbol"] = _normalize_symbol(symbol)
         out["timeframe"] = _normalize_timeframe(timeframe)
         out["source"] = "technical"
@@ -345,6 +358,7 @@ class MarketIndicatorService:
                         column: _nullable_float(row[column])
                         for column in ADVANCED_INDICATOR_COLUMNS
                     },
+                    "chart_patterns": _json_or_none(row.get("chart_patterns")),
                     "source": row["source"],
                     "provider": row["provider"],
                     "source_window": json.dumps(row["source_window"]),
@@ -381,6 +395,7 @@ class MarketIndicatorService:
                         ichimoku_senkou_a_9_26_52,
                         ichimoku_senkou_b_9_26_52,
                         ichimoku_chikou_26,
+                        chart_patterns,
                         source,
                         provider,
                         source_window,
@@ -412,6 +427,7 @@ class MarketIndicatorService:
                         :ichimoku_senkou_a_9_26_52,
                         :ichimoku_senkou_b_9_26_52,
                         :ichimoku_chikou_26,
+                        :chart_patterns,
                         :source,
                         :provider,
                         :source_window,
@@ -441,6 +457,7 @@ class MarketIndicatorService:
                         ichimoku_senkou_a_9_26_52 = EXCLUDED.ichimoku_senkou_a_9_26_52,
                         ichimoku_senkou_b_9_26_52 = EXCLUDED.ichimoku_senkou_b_9_26_52,
                         ichimoku_chikou_26 = EXCLUDED.ichimoku_chikou_26,
+                        chart_patterns = EXCLUDED.chart_patterns,
                         source = EXCLUDED.source,
                         provider = EXCLUDED.provider,
                         source_window = EXCLUDED.source_window,
