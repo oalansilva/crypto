@@ -45,6 +45,15 @@ ADVANCED_INDICATOR_COLUMNS = (
     "ichimoku_senkou_b_9_26_52",
     "ichimoku_chikou_26",
 )
+PIVOT_LEVEL_COLUMNS = (
+    "pivot_point",
+    "support_1",
+    "support_2",
+    "support_3",
+    "resistance_1",
+    "resistance_2",
+    "resistance_3",
+)
 
 
 def _normalize_timeframe(value: str) -> str:
@@ -94,6 +103,25 @@ def _rolling_midpoint(high: pd.Series, low: pd.Series, period: int) -> pd.Series
     highest_high = high.rolling(window=period, min_periods=period).max()
     lowest_low = low.rolling(window=period, min_periods=period).min()
     return (highest_high + lowest_low) / 2
+
+
+def _classic_pivot_levels(
+    high: pd.Series, low: pd.Series, close: pd.Series
+) -> dict[str, pd.Series]:
+    previous_high = high.shift(1)
+    previous_low = low.shift(1)
+    previous_close = close.shift(1)
+    pivot = (previous_high + previous_low + previous_close) / 3
+    previous_range = previous_high - previous_low
+    return {
+        "pivot_point": pivot,
+        "support_1": (2 * pivot) - previous_high,
+        "support_2": pivot - previous_range,
+        "support_3": previous_low - (2 * (previous_high - pivot)),
+        "resistance_1": (2 * pivot) - previous_low,
+        "resistance_2": pivot + previous_range,
+        "resistance_3": previous_high + (2 * (pivot - previous_low)),
+    }
 
 
 class MarketIndicatorService:
@@ -157,6 +185,13 @@ class MarketIndicatorService:
                             ichimoku_senkou_b_9_26_52,
                             ichimoku_chikou_26,
                             chart_patterns,
+                            pivot_point,
+                            support_1,
+                            support_2,
+                            support_3,
+                            resistance_1,
+                            resistance_2,
+                            resistance_3,
                             source,
                             provider,
                             source_window,
@@ -201,11 +236,23 @@ class MarketIndicatorService:
                 rows = (
                     conn.execute(
                         text("""
+                            WITH previous_candle AS (
+                                SELECT candle_time
+                                FROM market_ohlcv
+                                WHERE symbol = :symbol
+                                  AND timeframe = :timeframe
+                                  AND candle_time < :since
+                                ORDER BY candle_time DESC
+                                LIMIT 1
+                            )
                             SELECT candle_time, open, high, low, close, volume
                             FROM market_ohlcv
                             WHERE symbol = :symbol
                               AND timeframe = :timeframe
-                              AND candle_time >= :since
+                              AND (
+                                  candle_time >= :since
+                                  OR candle_time = (SELECT candle_time FROM previous_candle)
+                              )
                             ORDER BY candle_time ASC
                             """),
                         {
@@ -285,6 +332,7 @@ class MarketIndicatorService:
         ichimoku_senkou_a = (ichimoku_tenkan + ichimoku_kijun) / 2
         ichimoku_senkou_b = _rolling_midpoint(numeric_high, numeric_low, 52)
         ichimoku_chikou = numeric_close
+        pivot_levels = _classic_pivot_levels(numeric_high, numeric_low, numeric_close)
 
         out = df.copy()
         out["ema_9"] = ema_9
@@ -307,6 +355,8 @@ class MarketIndicatorService:
         out["ichimoku_senkou_a_9_26_52"] = ichimoku_senkou_a
         out["ichimoku_senkou_b_9_26_52"] = ichimoku_senkou_b
         out["ichimoku_chikou_26"] = ichimoku_chikou
+        for column, values in pivot_levels.items():
+            out[column] = values
         out["chart_patterns"] = detect_chart_patterns(out)
         out["symbol"] = _normalize_symbol(symbol)
         out["timeframe"] = _normalize_timeframe(timeframe)
@@ -329,6 +379,21 @@ class MarketIndicatorService:
                     "senkou_b": 52,
                     "displacement": 26,
                     "storage": "source_candle_aligned",
+                },
+            },
+            "support_resistance": {
+                "pivot": {
+                    "method": "classic",
+                    "source": "previous_candle_ohlc",
+                    "levels": [
+                        "pivot_point",
+                        "support_1",
+                        "support_2",
+                        "support_3",
+                        "resistance_1",
+                        "resistance_2",
+                        "resistance_3",
+                    ],
                 },
             },
         }
@@ -358,6 +423,7 @@ class MarketIndicatorService:
                         column: _nullable_float(row[column])
                         for column in ADVANCED_INDICATOR_COLUMNS
                     },
+                    **{column: _nullable_float(row[column]) for column in PIVOT_LEVEL_COLUMNS},
                     "chart_patterns": _json_or_none(row.get("chart_patterns")),
                     "source": row["source"],
                     "provider": row["provider"],
@@ -396,6 +462,13 @@ class MarketIndicatorService:
                         ichimoku_senkou_b_9_26_52,
                         ichimoku_chikou_26,
                         chart_patterns,
+                        pivot_point,
+                        support_1,
+                        support_2,
+                        support_3,
+                        resistance_1,
+                        resistance_2,
+                        resistance_3,
                         source,
                         provider,
                         source_window,
@@ -428,6 +501,13 @@ class MarketIndicatorService:
                         :ichimoku_senkou_b_9_26_52,
                         :ichimoku_chikou_26,
                         :chart_patterns,
+                        :pivot_point,
+                        :support_1,
+                        :support_2,
+                        :support_3,
+                        :resistance_1,
+                        :resistance_2,
+                        :resistance_3,
                         :source,
                         :provider,
                         :source_window,
@@ -458,6 +538,13 @@ class MarketIndicatorService:
                         ichimoku_senkou_b_9_26_52 = EXCLUDED.ichimoku_senkou_b_9_26_52,
                         ichimoku_chikou_26 = EXCLUDED.ichimoku_chikou_26,
                         chart_patterns = EXCLUDED.chart_patterns,
+                        pivot_point = EXCLUDED.pivot_point,
+                        support_1 = EXCLUDED.support_1,
+                        support_2 = EXCLUDED.support_2,
+                        support_3 = EXCLUDED.support_3,
+                        resistance_1 = EXCLUDED.resistance_1,
+                        resistance_2 = EXCLUDED.resistance_2,
+                        resistance_3 = EXCLUDED.resistance_3,
                         source = EXCLUDED.source,
                         provider = EXCLUDED.provider,
                         source_window = EXCLUDED.source_window,
