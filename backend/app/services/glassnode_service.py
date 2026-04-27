@@ -24,6 +24,11 @@ GLASSNODE_EXCHANGE_FLOW_METRICS: dict[str, str] = {
     "outflow": "/v1/metrics/transactions/transfers_volume_from_exchanges_sum",
     "netflow": "/v1/metrics/transactions/transfers_volume_exchanges_net",
 }
+GLASSNODE_MINING_METRICS: dict[str, str] = {
+    "hash_rate": "/v1/metrics/mining/hash_rate_mean",
+    "difficulty": "/v1/metrics/mining/difficulty_latest",
+    "miner_revenue_total": "/v1/metrics/mining/revenue_sum",
+}
 
 
 class GlassnodeConfigError(RuntimeError):
@@ -246,16 +251,21 @@ class GlassnodeService:
         if (
             normalized not in GLASSNODE_METRICS
             and normalized not in GLASSNODE_EXCHANGE_FLOW_METRICS
+            and normalized not in GLASSNODE_MINING_METRICS
         ):
-            supported = ", ".join(
-                sorted((*GLASSNODE_METRICS.keys(), *GLASSNODE_EXCHANGE_FLOW_METRICS.keys()))
+            metric_names = (
+                *GLASSNODE_METRICS.keys(),
+                *GLASSNODE_EXCHANGE_FLOW_METRICS.keys(),
+                *GLASSNODE_MINING_METRICS.keys(),
             )
+            supported = ", ".join(sorted(metric_names))
             raise ValueError(f"Unsupported Glassnode metric '{metric}'. Supported: {supported}")
         return normalized
 
     @staticmethod
     def _metric_endpoint(metric: str) -> str:
-        return GLASSNODE_METRICS.get(metric) or GLASSNODE_EXCHANGE_FLOW_METRICS[metric]
+        endpoint = GLASSNODE_METRICS.get(metric) or GLASSNODE_EXCHANGE_FLOW_METRICS.get(metric)
+        return endpoint or GLASSNODE_MINING_METRICS[metric]
 
     @staticmethod
     def _normalize_asset(asset: str) -> str:

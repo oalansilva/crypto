@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from app.services.glassnode_service import (
+    GLASSNODE_MINING_METRICS,
     GLASSNODE_METRICS,
     GlassnodeConfigError,
     GlassnodeRateLimitError,
@@ -145,6 +146,24 @@ def test_unsupported_asset_and_metric_are_rejected() -> None:
 
     with pytest.raises(ValueError, match="Unsupported Glassnode metric"):
         service._normalize_metric("foo")
+
+
+@pytest.mark.asyncio
+async def test_fetch_metric_supports_mining_metric_endpoints() -> None:
+    client = FakeGlassnodeClient()
+    service = GlassnodeService(api_key="secret", client=client, rate_limit_per_minute=0)
+
+    result = await service.fetch_metric("hash_rate", "BTC", since=1, until=2)
+
+    assert result.metric == "hash_rate"
+    assert result.endpoint == GLASSNODE_MINING_METRICS["hash_rate"]
+    assert client.calls == [
+        {
+            "url": "https://api.glassnode.com/v1/metrics/mining/hash_rate_mean",
+            "params": {"a": "BTC", "i": "24h", "f": "json", "s": 1, "u": 2},
+            "headers": {"X-Api-Key": "secret"},
+        }
+    ]
 
 
 def test_normalize_points_preserves_glassnode_value_shapes() -> None:
