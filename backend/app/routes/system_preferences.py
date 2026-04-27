@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.middleware.authMiddleware import get_current_admin
 from app.services.system_preferences_service import (
-    MINIMAX_API_KEY_KEY,
     SIGNAL_HISTORY_ALLOW_AGGRESSIVE_KEY,
     SIGNAL_HISTORY_ALLOW_BUY_KEY,
     SIGNAL_HISTORY_ALLOW_CONSERVATIVE_KEY,
@@ -19,14 +18,10 @@ from app.services.system_preferences_service import (
     SIGNAL_HISTORY_MIN_CONFIDENCE_KEY,
     SIGNAL_HISTORY_MIN_REWARD_RISK_KEY,
     SIGNAL_HISTORY_MIN_RSI_KEY,
-    delete_system_preference_value,
     get_system_preference_bool,
     get_system_preference_float,
     get_system_preference_int,
-    get_system_preference_value,
-    mask_secret,
     set_optional_system_preference_value,
-    set_system_preference_value,
 )
 
 router = APIRouter(prefix="/api/system/preferences", tags=["system-preferences"])
@@ -45,8 +40,6 @@ DEFAULT_SIGNAL_HISTORY_ALLOW_AGGRESSIVE = True
 
 
 class SystemPreferencesResponse(BaseModel):
-    minimax_api_key_configured: bool
-    minimax_api_key_masked: str | None = None
     signal_history_min_confidence: int
     signal_history_min_reward_risk: float
     signal_history_max_reward_risk: float
@@ -61,7 +54,6 @@ class SystemPreferencesResponse(BaseModel):
 
 
 class SystemPreferencesPayload(BaseModel):
-    minimax_api_key: str | None = Field(default=None, min_length=10, max_length=512)
     signal_history_min_confidence: int = Field(
         default=DEFAULT_SIGNAL_HISTORY_MIN_CONFIDENCE, ge=0, le=100
     )
@@ -86,10 +78,7 @@ class SystemPreferencesPayload(BaseModel):
 
 
 def _build_response(db: Session) -> SystemPreferencesResponse:
-    value = get_system_preference_value(db, MINIMAX_API_KEY_KEY)
     return SystemPreferencesResponse(
-        minimax_api_key_configured=bool(value),
-        minimax_api_key_masked=mask_secret(value),
         signal_history_min_confidence=get_system_preference_int(
             db,
             SIGNAL_HISTORY_MIN_CONFIDENCE_KEY,
@@ -162,13 +151,6 @@ def put_system_preferences(
     admin_user_id: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    if payload.minimax_api_key is not None:
-        set_system_preference_value(
-            db,
-            key=MINIMAX_API_KEY_KEY,
-            value=payload.minimax_api_key,
-            updated_by_user_id=admin_user_id,
-        )
     set_optional_system_preference_value(
         db,
         key=SIGNAL_HISTORY_MIN_CONFIDENCE_KEY,
@@ -243,5 +225,4 @@ def delete_system_preferences(
     _admin_user_id: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    delete_system_preference_value(db, key=MINIMAX_API_KEY_KEY)
     return {"message": "System preferences cleared"}

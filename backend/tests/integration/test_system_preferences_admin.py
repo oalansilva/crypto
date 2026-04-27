@@ -24,7 +24,6 @@ def test_admin_can_put_get_and_delete_system_preferences(tmp_path: Path):
     with SessionLocal() as db:
         created = system_preferences.put_system_preferences(
             system_preferences.SystemPreferencesPayload(
-                minimax_api_key="minimax-secret-key-12345",
                 signal_history_min_confidence=78,
                 signal_history_min_reward_risk=2.4,
                 signal_history_max_reward_risk=4.5,
@@ -44,8 +43,6 @@ def test_admin_can_put_get_and_delete_system_preferences(tmp_path: Path):
         deleted = system_preferences.delete_system_preferences(_admin_user_id="admin-user", db=db)
         empty = system_preferences.get_system_preferences(_admin_user_id="admin-user", db=db)
 
-    assert created.minimax_api_key_configured is True
-    assert created.minimax_api_key_masked is not None
     assert created.signal_history_min_confidence == 78
     assert created.signal_history_min_reward_risk == 2.4
     assert created.signal_history_max_reward_risk == 4.5
@@ -57,8 +54,6 @@ def test_admin_can_put_get_and_delete_system_preferences(tmp_path: Path):
     assert created.signal_history_allow_conservative is False
     assert created.signal_history_allow_moderate is True
     assert created.signal_history_allow_aggressive is True
-    assert status.minimax_api_key_configured is True
-    assert status.minimax_api_key_masked is not None
     assert status.signal_history_min_confidence == 78
     assert status.signal_history_min_reward_risk == 2.4
     assert status.signal_history_max_reward_risk == 4.5
@@ -71,8 +66,6 @@ def test_admin_can_put_get_and_delete_system_preferences(tmp_path: Path):
     assert status.signal_history_allow_moderate is True
     assert status.signal_history_allow_aggressive is True
     assert deleted["message"] == "System preferences cleared"
-    assert empty.minimax_api_key_configured is False
-    assert empty.minimax_api_key_masked is None
     assert empty.signal_history_min_confidence == 78
     assert empty.signal_history_min_reward_risk == 2.4
     assert empty.signal_history_max_reward_risk == 4.5

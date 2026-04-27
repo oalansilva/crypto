@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.models import SystemPreference
 
-MINIMAX_API_KEY_KEY = "minimax_api_key"
 SIGNAL_HISTORY_MIN_CONFIDENCE_KEY = "signal_history_min_confidence"
 SIGNAL_HISTORY_MIN_REWARD_RISK_KEY = "signal_history_min_reward_risk"
 SIGNAL_HISTORY_MAX_REWARD_RISK_KEY = "signal_history_max_reward_risk"

@@ -350,43 +350,10 @@ def test_signal_monitor_loop_and_lifecycle(monkeypatch):
 
 
 def test_news_localization_helpers_and_cache(monkeypatch):
-    class FakeSession:
-        def close(self):
-            self.closed = True
-
-    monkeypatch.setattr(news_localization_service, "SessionLocal", lambda: FakeSession())
-    monkeypatch.setattr(
-        news_localization_service, "get_system_preference_value", lambda db, key: "stored-key"
-    )
-    assert news_localization_service._get_minimax_api_key() == "stored-key"
-
-    monkeypatch.setattr(
-        news_localization_service, "get_system_preference_value", lambda db, key: ""
-    )
-    monkeypatch.setenv("MINIMAX_API_KEY", "env-key")
-    assert news_localization_service._get_minimax_api_key() == "env-key"
-
     assert news_localization_service._fallback_summary("", "") == "Resumo indisponível no momento."
     assert (
         news_localization_service._fallback_summary("Alta do BTC", "CoinDesk")
         == "Resumo automático indisponível. Fonte original: CoinDesk."
-    )
-    assert (
-        news_localization_service._extract_json_object('```json\n{"title_pt":"Oi"}\n```')
-        == '{"title_pt":"Oi"}'
-    )
-    assert news_localization_service._parse_localized_content(
-        '{"title_pt":"Titulo","summary_pt":"Resumo"}'
-    ) == (
-        "Titulo",
-        "Resumo",
-    )
-    assert news_localization_service._parse_localized_content(
-        "TITLE_PT: Titulo\nSUMMARY_PT: Resumo"
-    ) == ("Titulo", "Resumo")
-    assert news_localization_service._parse_localized_content("Titulo\nResumo 1\nResumo 2") == (
-        "Titulo",
-        "Resumo 1 Resumo 2",
     )
     assert news_localization_service._build_fingerprint(
         [{"id": 1, "title": "BTC"}, "skip", {"id": 2, "title": "ETH"}]
@@ -457,61 +424,19 @@ def test_news_localization_scheduler_branches(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_localize_news_items_handles_empty_fallback_retry_and_failure(monkeypatch):
+async def test_localize_news_items_handles_empty_fallback():
     assert await news_localization_service.localize_news_items([]) == []
 
     items = [
         {"id": "1", "title": "BTC up", "source": "CoinDesk"},
         {"id": "2", "title": "ETH down", "source": "The Block"},
-        {"id": "3", "title": "SOL flat", "source": "Decrypt"},
     ]
 
-    monkeypatch.setattr(news_localization_service, "_get_minimax_api_key", lambda: "")
-    fallback = await news_localization_service.localize_news_items(items)
-    assert fallback[0]["title_pt"] == "BTC up"
-    assert fallback[0]["summary_pt"].startswith("Resumo automático indisponível")
-
-    monkeypatch.setattr(news_localization_service, "_get_minimax_api_key", lambda: "minimax-key")
-
-    class FakeResponse:
-        def __init__(self, content):
-            self._content = content
-
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return {"choices": [{"message": {"content": self._content}}]}
-
-    attempts: dict[str, int] = {}
-
-    class FakeAsyncClient:
-        def __init__(self, timeout=None):
-            self.timeout = timeout
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb):
-            return False
-
-        async def post(self, url, headers=None, json=None):
-            payload = json_module.loads(json["messages"][1]["content"])
-            item_id = payload["id"]
-            attempts[item_id] = attempts.get(item_id, 0) + 1
-            if item_id == "1":
-                return FakeResponse("TITLE_PT: BTC sobe\nSUMMARY_PT: Resumo BTC")
-            if item_id == "2" and attempts[item_id] == 1:
-                return FakeResponse("TITLE_PT: ETH cai")
-            if item_id == "2":
-                return FakeResponse("TITLE_PT: ETH cai\nSUMMARY_PT: Resumo ETH")
-            raise RuntimeError("provider unavailable")
-
-    json_module = json
-    monkeypatch.setattr(news_localization_service.httpx, "AsyncClient", FakeAsyncClient)
     localized = await news_localization_service.localize_news_items(items)
 
-    assert localized[0] == {"id": "1", "title_pt": "BTC sobe", "summary_pt": "Resumo BTC"}
-    assert localized[1] == {"id": "2", "title_pt": "ETH cai", "summary_pt": "Resumo ETH"}
-    assert localized[2]["title_pt"] == "SOL flat"
-    assert localized[2]["summary_pt"].startswith("Resumo automático indisponível")
+    assert localized[0]["title_pt"] == "BTC up"
+    assert localized[0]["summary_pt"] == "Resumo automático indisponível. Fonte original: CoinDesk."
+    assert localized[1]["title_pt"] == "ETH down"
+    assert (
+        localized[1]["summary_pt"] == "Resumo automático indisponível. Fonte original: The Block."
+    )
