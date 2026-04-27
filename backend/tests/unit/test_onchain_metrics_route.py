@@ -64,6 +64,44 @@ class FakeExchangeFlowService:
         }
 
 
+class FakeMiningMetricService:
+    async def fetch_mining_metrics(
+        self,
+        asset: str,
+        interval: str,
+        since: int | None,
+        until: int | None,
+    ):
+        assert asset == "BTC"
+        assert interval == "24h"
+        assert since == 1
+        assert until == 2
+        now = datetime(2026, 4, 27, tzinfo=timezone.utc)
+        return {
+            "asset": "BTC",
+            "interval": "24h",
+            "since": 1,
+            "until": 2,
+            "cached": False,
+            "metrics": [
+                {
+                    "metric": "hash_rate",
+                    "asset": "BTC",
+                    "interval": "24h",
+                    "endpoint": "/v1/metrics/mining/hash_rate_mean",
+                    "points": [{"t": 1, "v": 100.0}],
+                    "latest": {"t": 1, "v": 100.0},
+                    "ath": {"t": 1, "v": 100.0},
+                    "drop_pct_vs_ma_7d": None,
+                    "alerts": [],
+                    "fetched_at": now,
+                    "cached_until": now,
+                    "cached": False,
+                }
+            ],
+        }
+
+
 @pytest.mark.asyncio
 async def test_glassnode_onchain_route_returns_service_payload(monkeypatch) -> None:
     monkeypatch.setattr(onchain_metrics, "get_glassnode_service", lambda: FakeGlassnodeService())
@@ -96,6 +134,44 @@ async def test_glassnode_exchange_flows_route_returns_service_payload(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_glassnode_mining_metrics_route_returns_service_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        onchain_metrics,
+        "get_mining_metric_service",
+        lambda: FakeMiningMetricService(),
+    )
+
+    payload = await onchain_metrics.get_glassnode_mining_metrics(
+        asset="BTC",
+        interval="24h",
+        since=1,
+        until=2,
+    )
+
+    assert payload["asset"] == "BTC"
+    assert payload["metrics"][0]["metric"] == "hash_rate"
+    assert payload["metrics"][0]["ath"] == {"t": 1, "v": 100.0}
+
+
+@pytest.mark.asyncio
+async def test_glassnode_mining_metrics_route_rejects_non_daily_interval(monkeypatch) -> None:
+    class RejectingMiningMetricService:
+        async def fetch_mining_metrics(self, *_args, **_kwargs):
+            raise ValueError("Unsupported mining metric interval '1h'. Supported: 24h")
+
+    monkeypatch.setattr(
+        onchain_metrics,
+        "get_mining_metric_service",
+        lambda: RejectingMiningMetricService(),
+    )
+
+    with pytest.raises(HTTPException) as raised:
+        await onchain_metrics.get_glassnode_mining_metrics(asset="BTC", interval="1h")
+
+    assert raised.value.status_code == 400
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("exc", "status_code"),
     [
@@ -119,6 +195,34 @@ async def test_glassnode_onchain_route_maps_service_errors(
 
     with pytest.raises(HTTPException) as raised:
         await onchain_metrics.get_glassnode_onchain_metrics(asset="BTC")
+
+    assert raised.value.status_code == status_code
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("exc", "status_code"),
+    [
+        (ValueError("bad asset"), 400),
+        (GlassnodeConfigError("missing key"), 503),
+        (GlassnodeRateLimitError("rate limited"), 429),
+    ],
+)
+async def test_glassnode_mining_metrics_route_maps_service_errors(
+    monkeypatch, exc: Exception, status_code: int
+) -> None:
+    class FailingMiningMetricService:
+        async def fetch_mining_metrics(self, *_args, **_kwargs):
+            raise exc
+
+    monkeypatch.setattr(
+        onchain_metrics,
+        "get_mining_metric_service",
+        lambda: FailingMiningMetricService(),
+    )
+
+    with pytest.raises(HTTPException) as raised:
+        await onchain_metrics.get_glassnode_mining_metrics(asset="BTC")
 
     assert raised.value.status_code == status_code
 
