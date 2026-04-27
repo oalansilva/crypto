@@ -17,6 +17,7 @@ import ExternalBalancesPage from './pages/ExternalBalancesPage'
 import KanbanPage from './pages/KanbanPage'
 import SignalsPage from './pages/SignalsPage'
 import SignalsHistoryPage from './pages/SignalsHistoryPage'
+import SupplyDistributionPage from './pages/SupplyDistributionPage'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import SystemPreferencesPage from './pages/SystemPreferencesPage'
@@ -68,6 +69,7 @@ function App() {
           <Route path="/kanban" element={<KanbanPage />} />
           <Route path="/signals" element={<SignalsPage />} />
           <Route path="/signals/history" element={<SignalsHistoryPage />} />
+          <Route path="/supply-distribution" element={<SupplyDistributionPage />} />
           <Route path="/combo/select" element={<ComboSelectPage />} />
           {/* Backward-compat route (old link/bookmark) */}
           <Route path="/combo/selectCrypto" element={<ComboSelectPage />} />

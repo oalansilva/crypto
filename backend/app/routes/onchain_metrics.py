@@ -14,6 +14,7 @@ from app.services.glassnode_service import (
 )
 from app.services.onchain_exchange_flow_service import get_exchange_flow_service
 from app.services.onchain_mining_metric_service import get_mining_metric_service
+from app.services.onchain_supply_distribution_service import get_supply_distribution_service
 
 router = APIRouter(prefix="/api/onchain", tags=["onchain"])
 
@@ -94,6 +95,72 @@ class MiningMetricsResponse(BaseModel):
     metrics: list[MiningMetricPayload]
 
 
+class SupplyDistributionSourcePayload(BaseModel):
+    endpoint: str
+    points: int
+    cached: bool
+    fetched_at: datetime
+    cached_until: datetime
+
+
+class SupplyDistributionBandPayload(BaseModel):
+    id: str
+    metric: str
+    label: str
+    min_btc: float | None
+    max_btc: float | None
+    latest: float | None
+    latest_timestamp: int | None
+    previous: float | None
+    previous_timestamp: int | None
+    change_abs: float | None
+    change_pct: float | None
+    share_pct: float | None
+
+
+class SupplyDistributionCohortPayload(BaseModel):
+    id: str
+    label: str
+    band_ids: list[str]
+    latest: float | None
+    latest_timestamp: int | None
+    previous: float | None
+    previous_timestamp: int | None
+    change_abs: float | None
+    change_pct: float | None
+    share_pct: float | None
+
+
+class SupplyDistributionWhaleMovementPayload(BaseModel):
+    threshold_btc: float
+    change_abs: float | None
+    direction: str
+    alert: bool
+
+
+class SupplyDistributionAlertPayload(BaseModel):
+    type: str
+    threshold_btc: float
+    change_abs: float | None
+    direction: str
+    window: str
+
+
+class SupplyDistributionResponse(BaseModel):
+    asset: str
+    basis: str
+    window: str
+    interval: str
+    since: int
+    until: int
+    cached: bool
+    bands: list[SupplyDistributionBandPayload]
+    cohorts: dict[str, SupplyDistributionCohortPayload]
+    whale_movement: SupplyDistributionWhaleMovementPayload
+    alerts: list[SupplyDistributionAlertPayload]
+    sources: dict[str, SupplyDistributionSourcePayload]
+
+
 @router.get("/glassnode/{asset}", response_model=GlassnodeMetricsResponse)
 async def get_glassnode_onchain_metrics(
     asset: str,
@@ -107,6 +174,30 @@ async def get_glassnode_onchain_metrics(
             interval=interval,
             since=since,
             until=until,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except GlassnodeConfigError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    except GlassnodeRateLimitError as exc:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc))
+    return payload
+
+
+@router.get(
+    "/glassnode/{asset}/supply-distribution",
+    response_model=SupplyDistributionResponse,
+)
+async def get_glassnode_supply_distribution(
+    asset: str,
+    basis: str = Query(default="entity", pattern="^entity$"),
+    window: str = Query(default="24h", pattern="^(24h|7d|30d)$"),
+):
+    try:
+        payload = await get_supply_distribution_service().fetch_supply_distribution(
+            asset,
+            basis=basis,
+            window=window,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

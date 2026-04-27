@@ -29,6 +29,19 @@ GLASSNODE_MINING_METRICS: dict[str, str] = {
     "difficulty": "/v1/metrics/mining/difficulty_latest",
     "miner_revenue_total": "/v1/metrics/mining/revenue_sum",
 }
+GLASSNODE_SUPPLY_DISTRIBUTION_METRICS: dict[str, str] = {
+    "entity_supply_less_0001": "/v1/metrics/entities/supply_balance_less_0001",
+    "entity_supply_0001_001": "/v1/metrics/entities/supply_balance_0001_001",
+    "entity_supply_001_01": "/v1/metrics/entities/supply_balance_001_01",
+    "entity_supply_01_1": "/v1/metrics/entities/supply_balance_01_1",
+    "entity_supply_1_10": "/v1/metrics/entities/supply_balance_1_10",
+    "entity_supply_10_100": "/v1/metrics/entities/supply_balance_10_100",
+    "entity_supply_100_1k": "/v1/metrics/entities/supply_balance_100_1k",
+    "entity_supply_1k_10k": "/v1/metrics/entities/supply_balance_1k_10k",
+    "entity_supply_10k_100k": "/v1/metrics/entities/supply_balance_10k_100k",
+    "entity_supply_more_100k": "/v1/metrics/entities/supply_balance_more_100k",
+    "lth_supply": "/v1/metrics/supply/lth_sum",
+}
 
 
 class GlassnodeConfigError(RuntimeError):
@@ -252,11 +265,13 @@ class GlassnodeService:
             normalized not in GLASSNODE_METRICS
             and normalized not in GLASSNODE_EXCHANGE_FLOW_METRICS
             and normalized not in GLASSNODE_MINING_METRICS
+            and normalized not in GLASSNODE_SUPPLY_DISTRIBUTION_METRICS
         ):
             metric_names = (
                 *GLASSNODE_METRICS.keys(),
                 *GLASSNODE_EXCHANGE_FLOW_METRICS.keys(),
                 *GLASSNODE_MINING_METRICS.keys(),
+                *GLASSNODE_SUPPLY_DISTRIBUTION_METRICS.keys(),
             )
             supported = ", ".join(sorted(metric_names))
             raise ValueError(f"Unsupported Glassnode metric '{metric}'. Supported: {supported}")
@@ -265,7 +280,8 @@ class GlassnodeService:
     @staticmethod
     def _metric_endpoint(metric: str) -> str:
         endpoint = GLASSNODE_METRICS.get(metric) or GLASSNODE_EXCHANGE_FLOW_METRICS.get(metric)
-        return endpoint or GLASSNODE_MINING_METRICS[metric]
+        endpoint = endpoint or GLASSNODE_MINING_METRICS.get(metric)
+        return endpoint or GLASSNODE_SUPPLY_DISTRIBUTION_METRICS[metric]
 
     @staticmethod
     def _normalize_asset(asset: str) -> str:

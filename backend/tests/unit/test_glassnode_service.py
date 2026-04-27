@@ -8,6 +8,7 @@ import pytest
 from app.services.glassnode_service import (
     GLASSNODE_MINING_METRICS,
     GLASSNODE_METRICS,
+    GLASSNODE_SUPPLY_DISTRIBUTION_METRICS,
     GlassnodeConfigError,
     GlassnodeRateLimitError,
     GlassnodeService,
@@ -160,6 +161,24 @@ async def test_fetch_metric_supports_mining_metric_endpoints() -> None:
     assert client.calls == [
         {
             "url": "https://api.glassnode.com/v1/metrics/mining/hash_rate_mean",
+            "params": {"a": "BTC", "i": "24h", "f": "json", "s": 1, "u": 2},
+            "headers": {"X-Api-Key": "secret"},
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_metric_supports_supply_distribution_metric_endpoints() -> None:
+    client = FakeGlassnodeClient()
+    service = GlassnodeService(api_key="secret", client=client, rate_limit_per_minute=0)
+
+    result = await service.fetch_metric("entity_supply_1k_10k", "BTC", since=1, until=2)
+
+    assert result.metric == "entity_supply_1k_10k"
+    assert result.endpoint == GLASSNODE_SUPPLY_DISTRIBUTION_METRICS["entity_supply_1k_10k"]
+    assert client.calls == [
+        {
+            "url": "https://api.glassnode.com/v1/metrics/entities/supply_balance_1k_10k",
             "params": {"a": "BTC", "i": "24h", "f": "json", "s": 1, "u": 2},
             "headers": {"X-Api-Key": "secret"},
         }
