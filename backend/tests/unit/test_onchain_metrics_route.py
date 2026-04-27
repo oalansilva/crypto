@@ -102,6 +102,77 @@ class FakeMiningMetricService:
         }
 
 
+class FakeSupplyDistributionService:
+    async def fetch_supply_distribution(self, asset: str, basis: str, window: str):
+        assert asset == "BTC"
+        assert basis == "entity"
+        assert window == "7d"
+        now = datetime(2026, 4, 27, tzinfo=timezone.utc)
+        return {
+            "asset": "BTC",
+            "basis": "entity",
+            "window": "7d",
+            "interval": "24h",
+            "since": 1,
+            "until": 2,
+            "cached": True,
+            "bands": [
+                {
+                    "id": "1k_10k",
+                    "metric": "entity_supply_1k_10k",
+                    "label": "1k - 10k BTC",
+                    "min_btc": 1000.0,
+                    "max_btc": 10000.0,
+                    "latest": 2600.0,
+                    "latest_timestamp": 2,
+                    "previous": 1000.0,
+                    "previous_timestamp": 1,
+                    "change_abs": 1600.0,
+                    "change_pct": 160.0,
+                    "share_pct": 40.0,
+                }
+            ],
+            "cohorts": {
+                "whales": {
+                    "id": "whales",
+                    "label": "Whales (>= 1000 BTC)",
+                    "band_ids": ["1k_10k"],
+                    "latest": 2600.0,
+                    "latest_timestamp": 2,
+                    "previous": 1000.0,
+                    "previous_timestamp": 1,
+                    "change_abs": 1600.0,
+                    "change_pct": 160.0,
+                    "share_pct": 40.0,
+                }
+            },
+            "whale_movement": {
+                "threshold_btc": 1000.0,
+                "change_abs": 1600.0,
+                "direction": "accumulation",
+                "alert": True,
+            },
+            "alerts": [
+                {
+                    "type": "whale-alert",
+                    "threshold_btc": 1000.0,
+                    "change_abs": 1600.0,
+                    "direction": "accumulation",
+                    "window": "7d",
+                }
+            ],
+            "sources": {
+                "entity_supply_1k_10k": {
+                    "endpoint": "/v1/metrics/entities/supply_balance_1k_10k",
+                    "points": 2,
+                    "cached": True,
+                    "fetched_at": now,
+                    "cached_until": now,
+                }
+            },
+        }
+
+
 @pytest.mark.asyncio
 async def test_glassnode_onchain_route_returns_service_payload(monkeypatch) -> None:
     monkeypatch.setattr(onchain_metrics, "get_glassnode_service", lambda: FakeGlassnodeService())
@@ -151,6 +222,27 @@ async def test_glassnode_mining_metrics_route_returns_service_payload(monkeypatc
     assert payload["asset"] == "BTC"
     assert payload["metrics"][0]["metric"] == "hash_rate"
     assert payload["metrics"][0]["ath"] == {"t": 1, "v": 100.0}
+
+
+@pytest.mark.asyncio
+async def test_glassnode_supply_distribution_route_returns_service_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        onchain_metrics,
+        "get_supply_distribution_service",
+        lambda: FakeSupplyDistributionService(),
+    )
+
+    payload = await onchain_metrics.get_glassnode_supply_distribution(
+        asset="BTC",
+        basis="entity",
+        window="7d",
+    )
+
+    assert payload["asset"] == "BTC"
+    assert payload["basis"] == "entity"
+    assert payload["bands"][0]["id"] == "1k_10k"
+    assert payload["cohorts"]["whales"]["change_abs"] == 1600.0
+    assert payload["alerts"][0]["type"] == "whale-alert"
 
 
 @pytest.mark.asyncio
@@ -251,5 +343,33 @@ async def test_glassnode_exchange_flows_route_maps_service_errors(
 
     with pytest.raises(HTTPException) as raised:
         await onchain_metrics.get_glassnode_exchange_flows(asset="BTC")
+
+    assert raised.value.status_code == status_code
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("exc", "status_code"),
+    [
+        (ValueError("bad basis"), 400),
+        (GlassnodeConfigError("missing key"), 503),
+        (GlassnodeRateLimitError("rate limited"), 429),
+    ],
+)
+async def test_glassnode_supply_distribution_route_maps_service_errors(
+    monkeypatch, exc: Exception, status_code: int
+) -> None:
+    class FailingSupplyDistributionService:
+        async def fetch_supply_distribution(self, *_args, **_kwargs):
+            raise exc
+
+    monkeypatch.setattr(
+        onchain_metrics,
+        "get_supply_distribution_service",
+        lambda: FailingSupplyDistributionService(),
+    )
+
+    with pytest.raises(HTTPException) as raised:
+        await onchain_metrics.get_glassnode_supply_distribution(asset="BTC")
 
     assert raised.value.status_code == status_code
