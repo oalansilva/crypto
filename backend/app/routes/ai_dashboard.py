@@ -127,7 +127,7 @@ def _relative_time(value: datetime) -> str:
 
 
 async def _fetch_coingecko_news() -> list[DashboardNewsItem]:
-    """Fetch real crypto news from CoinGecko without blocking on MiniMax localization."""
+    """Fetch real crypto news from CoinGecko without blocking on localization."""
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
             response = await client.get(f"{COINGECKO_NEWS_URL}?per_page=5&page=1")
