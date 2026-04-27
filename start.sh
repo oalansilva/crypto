@@ -286,13 +286,13 @@ if ! wait_for_http_ok "$HEALTH_URL" 2 1; then
       "$BACKEND_UNIT" \
       "$BACKEND_DIR" \
       "$BACKEND_LOG" \
-      "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; export BINANCE_REALTIME_ENABLED=0; exec $(shell_escape "$VENV_PYTHON") -m uvicorn app.main:app --host 0.0.0.0 --port $(shell_escape "$BACKEND_PORT")"
+      "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; export BINANCE_REALTIME_ENABLED=0; exec $(shell_escape "$VENV_PYTHON") -m uvicorn app.main:app --host 127.0.0.1 --port $(shell_escape "$BACKEND_PORT")"
   else
     (
       cd "$BACKEND_DIR"
       nohup env \
         BINANCE_REALTIME_ENABLED=0 \
-        "$VENV_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 < /dev/null &
+        "$VENV_PYTHON" -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 < /dev/null &
     )
   fi
   store_runtime_pid "$BACKEND_PID_FILE" "uvicorn app.main:app.*--port ${BACKEND_PORT}" || true
