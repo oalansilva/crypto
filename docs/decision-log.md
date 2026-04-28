@@ -2,9 +2,9 @@
 
 ## 2026-04-28 - Stack de acompanhamento do projeto
 
-**Decisao:** usar `crypto_backlog_po.xlsx` no SharePoint como fonte executiva/canonica e GitHub Projects + Issues como ferramenta de execucao tecnica.
+**Decisao:** usar GitHub Projects + Issues como fonte operacional de execucao e `crypto_backlog_po.xlsx` no SharePoint como visao executiva/produto.
 
-**Motivo:** a planilha e melhor para visao de produto, prioridade, validacao comercial e evidencia executiva; GitHub e melhor para issue, PR, commit, teste e rastreabilidade tecnica.
+**Motivo:** nao manter dois backlogs ativos. GitHub e melhor para issue, PR, commit, teste, status e rastreabilidade tecnica; a planilha e melhor para roadmap macro, decisao de produto, validacao comercial e evidencia executiva consolidada.
 
 **Alternativas avaliadas:**
 
@@ -14,7 +14,7 @@
 - ClickUp: completo, mas pesado demais para a fase atual.
 - Taiga/OpenProject/Kanboard self-hosted: gratuitos, mas adicionam manutencao.
 
-**Regra:** Telegram nao e fonte da verdade. Chat serve para alinhamento rapido; decisoes e evidencias precisam ir para planilha, GitHub ou docs.
+**Regra:** Telegram nao e fonte da verdade. Chat serve para alinhamento rapido; item em execucao vive no GitHub Project; a planilha recebe resumo/evidencia apenas quando isso mudar produto, roadmap, beta ou negocio.
 
 ## 2026-04-28 - Criterio de conclusao
 

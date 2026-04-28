@@ -60,6 +60,7 @@ Padrão de commit recomendado:
 ## Regras de operação
 
 - Fluxo único (sem divisão por agentes): você conduz descoberta, planejamento, implementação, validação e fechamento.
+- Novo requisito de produto/UX/tech deve gerar um item novo no GitHub (Issue) antes de virar tarefa ativa da sprint/turno; mudanças relacionadas a itens já fechados devem ser registradas em issue filha/linkada.
 - Registre em `openspec/changes/<change>/` e no PR:
   - status atual
   - decisões de escopo

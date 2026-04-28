@@ -4,12 +4,14 @@
 
 Este projeto usa dois artefatos complementares:
 
-- **SharePoint Excel `crypto_backlog_po.xlsx`**: fonte executiva e canonica de produto, roadmap, prioridade, decisao e evidencia.
-- **GitHub Projects + Issues**: execucao tecnica semanal, ligada a issue, PR, commit, teste e evidencia.
+- **GitHub Projects + Issues**: fonte operacional de execucao, ligada a issue, PR, commit, teste e evidencia.
+- **SharePoint Excel `crypto_backlog_po.xlsx`**: visao executiva de produto, roadmap, decisao de negocio e evidencia consolidada.
 
 Telegram e chat servem para alinhamento rapido. Nao sao fonte da verdade.
 
 ## Regra Principal
+
+Nao existem dois backlogs ativos. Um item escolhido para execucao vive no GitHub Project. A planilha nao deve duplicar status tecnico; ela recebe resumo ou evidencia apenas quando isso muda produto, roadmap, beta ou negocio.
 
 Um item so e considerado concluido quando tiver evidencia registrada.
 
