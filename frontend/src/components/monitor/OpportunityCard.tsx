@@ -67,6 +67,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const {
         symbol,
         name,
+        template_name,
         timeframe,
         is_holding,
         distance_to_next_status,
@@ -233,6 +234,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 : `Waiting for ${next_status_label} signal`
         ));
 
+    const displayName = (name || '').trim() || template_name;
+    const shouldShowTemplate = Boolean((template_name || '').trim()) && String(name || '').trim() !== String(template_name || '').trim();
+
     // NOTE: Avoid hardcoded light backgrounds via inline styles.
     // They reduce contrast on mobile/dark mode. Background colors are handled via Tailwind classes.
     const cardStyle = resolvedSignal.section === 'holding'
@@ -316,8 +320,13 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         ) : null}
                     </CardTitle>
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[220px] font-medium">
-                        {name || opportunity.template_name}
+                        {displayName}
                     </span>
+                    {shouldShowTemplate ? (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[220px]">
+                            {template_name}
+                        </span>
+                    ) : null}
                 </div>
 
                 <div className="flex flex-col items-end gap-2">
@@ -617,6 +626,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     </div>
                 )}
             </CardContent>
-        </Card>
+    </Card>
     );
 };

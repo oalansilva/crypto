@@ -445,22 +445,8 @@ export const MonitorStatusTab: React.FC = () => {
         return afterAssetType.filter((opp) => portfolioStatusBySymbol[opp.symbol]?.inPortfolio === true);
     }, [assetTypeFilter, listFilter, portfolioStatusBySymbol, sortedOpportunities]);
 
-    // Render one card per symbol (preferences are per-symbol, and duplicate cards can fight over fetch/caches).
-    const dedupedOpportunities = useMemo(() => {
-        const seen = new Set<string>();
-        const out: Opportunity[] = [];
-        for (const opp of filteredOpportunities) {
-            const sym = String(opp.symbol || '').trim();
-            if (!sym) continue;
-            if (seen.has(sym)) continue;
-            seen.add(sym);
-            out.push(opp);
-        }
-        return out;
-    }, [filteredOpportunities]);
-
     const resolvedSections = useMemo(
-        () => dedupedOpportunities.map((opp) => {
+        () => filteredOpportunities.map((opp) => {
             const preference = preferences[opp.symbol] ?? DEFAULT_PREFERENCE;
             const effectiveTimeframe: MonitorPriceTimeframe = getOpportunityAssetType(opp) === 'crypto' ? preference.price_timeframe : '1d';
             return {
@@ -468,7 +454,7 @@ export const MonitorStatusTab: React.FC = () => {
                 resolved: resolveOpportunitySignal(opp, { selectedTimeframe: effectiveTimeframe }),
             };
         }),
-        [dedupedOpportunities, preferences],
+        [filteredOpportunities, preferences],
     );
 
     const holding = resolvedSections.filter(({ resolved }) => resolved.section === 'holding').map(({ opportunity }) => opportunity);

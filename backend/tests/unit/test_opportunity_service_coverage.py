@@ -192,3 +192,58 @@ def test_get_opportunities_ccxt_applies_continuity_fix(monkeypatch):
     assert len(out) == 1
     assert fixed["called"] is True
     assert out[0]["timeframe"] == "1h"
+
+
+def test_filter_by_tier_all_keeps_null_tier_favorites():
+    service = OpportunityService(db_path=":memory:")
+    favorites = [
+        {
+            "id": 1,
+            "name": "A",
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "strategy_name": "s1",
+            "parameters": {},
+            "tier": 1,
+        },
+        {
+            "id": 2,
+            "name": "B",
+            "symbol": "ETH/USDT",
+            "timeframe": "1d",
+            "strategy_name": "s2",
+            "parameters": {},
+            "tier": None,
+        },
+    ]
+
+    assert service._filter_by_tier(favorites, None) == favorites
+    assert service._filter_by_tier(favorites, "all") == favorites
+
+
+def test_filter_by_tier_none_returns_only_null_tier_favorites():
+    service = OpportunityService(db_path=":memory:")
+    favorites = [
+        {
+            "id": 1,
+            "name": "A",
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "strategy_name": "s1",
+            "parameters": {},
+            "tier": 1,
+        },
+        {
+            "id": 2,
+            "name": "B",
+            "symbol": "ETH/USDT",
+            "timeframe": "1d",
+            "strategy_name": "s2",
+            "parameters": {},
+            "tier": None,
+        },
+    ]
+
+    filtered = service._filter_by_tier(favorites, "none")
+    assert len(filtered) == 1
+    assert filtered[0]["id"] == 2
