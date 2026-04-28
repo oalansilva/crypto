@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { Layout } from './Layout'
 import { useAuth } from '@/stores/authStore'
 
@@ -8,6 +8,7 @@ import { useAuth } from '@/stores/authStore'
  */
 export function ProtectedLayout() {
   const { user, isLoading } = useAuth()
+  const location = useLocation()
 
   // Enquanto valida token, mostra loading
   if (isLoading) {
@@ -20,7 +21,7 @@ export function ProtectedLayout() {
 
   // Não autenticado → redireciona para login
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace state={{ returnTo: location.pathname }} />
   }
 
   // Autenticado → renderiza o Layout normal

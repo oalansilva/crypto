@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useEffect } from 'react'
 import { ProtectedLayout } from './components/ProtectedLayout'
 import { AuthLayout } from './components/AuthLayout'
@@ -63,7 +63,8 @@ function App() {
         </Route>
 
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<HomePage />} />
+          <Route index element={<Navigate to="/monitor" replace />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/kanban" element={<KanbanPage />} />
