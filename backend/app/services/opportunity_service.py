@@ -491,7 +491,8 @@ class OpportunityService:
 
             normalized_tier_filter = str(tier_filter or "").strip().lower()
             if not normalized_tier_filter or normalized_tier_filter == "all":
-                query = query.filter(FavoriteStrategy.tier.in_([1, 2, 3]))
+                # Keep behavior consistent with API docs: "all"/empty = sem filtro por tier.
+                pass
             elif normalized_tier_filter == "none":
                 query = query.filter(FavoriteStrategy.tier.is_(None))
             else:
@@ -548,8 +549,8 @@ class OpportunityService:
             Filtered list of favorites
         """
         if not tier_filter or tier_filter.lower() == "all":
-            # "All" = apenas Tier 1, 2 e 3 (excluir Sem tier)
-            return [f for f in favorites if f.get("tier") in (1, 2, 3)]
+            # "all" = no filter (including Sem tier), aligned with docs.
+            return favorites
 
         tier_filter = tier_filter.lower().strip()
 
