@@ -145,7 +145,7 @@ test('HomePage desktop renders real data and explicit snapshot labels', async ({
   await blockExternalNetwork(page)
   await mockHomeApis(page)
 
-  await page.goto('/')
+  await page.goto('/home')
 
   await expect(page.getByRole('heading', { name: 'Seu snapshot diário de crypto' })).toBeVisible()
   await expect(page.getByTestId('home-kpi-best-strategy').getByText('Breakout Pro')).toBeVisible()
@@ -174,7 +174,7 @@ test('HomePage mobile shows empty and error fallbacks without blank sections', a
     marketPricesBody: { prices: [], fetched_at: null },
   })
 
-  await page.goto('/')
+  await page.goto('/home')
 
   await expect(page.getByTestId('home-kpi-best-strategy').getByText('Nenhuma estratégia favoritada')).toBeVisible()
   await expect(page.getByTestId('home-kpi-freshness').getByText('não disponível')).toBeVisible()

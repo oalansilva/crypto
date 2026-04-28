@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/stores/authStore'
 import axios from 'axios'
 import { Eye, EyeOff, TrendingUp } from 'lucide-react'
@@ -15,7 +15,11 @@ interface FormErrors {
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login, register } = useAuth()
+
+  const fallbackRoute = '/monitor'
+  const destination = ((location.state as { returnTo?: string } | null)?.returnTo || fallbackRoute).trim() || fallbackRoute
 
   const [mode, setMode] = useState<Mode>('login')
   const [showPassword, setShowPassword] = useState(false)
@@ -66,10 +70,10 @@ export default function LoginPage() {
     try {
       if (mode === 'login') {
         await login(email, password)
-        navigate('/')
+        navigate(destination, { replace: true })
       } else {
         await register(name, email, password)
-        navigate('/')
+        navigate(destination, { replace: true })
       }
     } catch (err: unknown) {
       setIsLoading(false)
@@ -259,15 +263,6 @@ export default function LoginPage() {
         </form>
       </div>
 
-      {/* Back link */}
-      <div className="mt-6 text-center">
-        <Link
-          to="/"
-          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
-        >
-          ← Voltar para o Playground
-        </Link>
-      </div>
     </div>
   )
 }

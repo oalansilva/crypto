@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/stores/authStore'
 
 interface ProtectedRouteProps {
@@ -12,6 +12,7 @@ interface ProtectedRouteProps {
  */
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth()
+  const location = useLocation()
 
   // Enquanto valida token, mostra loading
   if (isLoading) {
@@ -24,11 +25,11 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
 
   // Não autenticado → redireciona para login
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace state={{ returnTo: location.pathname }} />
   }
 
   if (requireAdmin && !user.isAdmin) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/monitor" replace />
   }
 
   return <>{children}</>

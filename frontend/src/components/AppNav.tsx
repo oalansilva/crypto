@@ -5,7 +5,6 @@ import {
   Bookmark,
   ChartPie,
   ChevronLeft,
-  Home,
   Play,
   KeyRound,
   Layers,
@@ -33,9 +32,8 @@ type NavItemConfig = {
 }
 
 const mainNavItems: NavItemConfig[] = [
-  { to: '/', label: 'Playground', icon: Home },
-  { to: '/favorites', label: 'Favoritos', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
+  { to: '/favorites', label: 'Favoritos', icon: Bookmark },
   { to: '/signals', label: 'Sinais', icon: TrendingUp },
   { to: '/signals/history', label: 'Histórico', icon: TrendingUp },
   { to: '/supply-distribution', label: 'Distribuição', icon: ChartPie },
@@ -62,9 +60,8 @@ export function openMobileMenu() {
 }
 
 function resolvePageTitle(pathname: string) {
-  if (pathname === '/') return 'Dashboard principal'
+  if (pathname === '/' || pathname === '/monitor') return 'Monitor de sinais'
   if (pathname === '/favorites') return 'Favoritos'
-  if (pathname === '/monitor') return 'Monitor de sinais'
   if (pathname === '/signals') return 'Sinais de trading'
   if (pathname === '/signals/history') return 'Histórico de Sinais'
   if (pathname === '/supply-distribution') return 'Distribuição de supply'
@@ -129,8 +126,8 @@ function NavSection({
       <div className="space-y-1">
         {items.map(({ to, label, icon: Icon }) => {
           const isActive =
-            to === '/'
-              ? pathname === '/'
+            to === '/monitor'
+              ? pathname === '/monitor' || pathname === '/'
               : to.startsWith('/combo')
                 ? pathname.startsWith('/combo')
                 : pathname === to || pathname.startsWith(`${to}/`)
