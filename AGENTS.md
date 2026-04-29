@@ -8,6 +8,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Fluxo de produção:** implemente e valide diretamente em `develop`; para liberar produção, abra PR `develop -> main`, resolva automaticamente checks/políticas bloqueantes quando possível e realize o merge quando permitido.
 - **Regra de fluxo:** use somente `develop` e `main`; sem criação de branches por tasks usuais.
 - **Regra de merge:** após abrir um PR de `develop -> main`, o fluxo padrão é tentar o merge automático (se possível) sem esperar nova intervenção manual.
+- **Regra de autonomia operacional:** após validação e evidência, o agente tem autonomia para repetir tentativas de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
 - **Não usar SQLite** como banco de operação. Em runtime/QA/Homologação, use apenas PostgreSQL (`DATABASE_URL` e `WORKFLOW_DATABASE_URL`).
 - **Funcionalidades novas:** siga OpenSpec por padrão antes de implementar (`openspec/changes/<change>/` com proposal/spec/design/tasks quando aplicável).
@@ -21,6 +22,8 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - Commite cada ajuste em `develop`.
 - Abra PR de `develop` para `main` para liberar produção.
 - O merge em `main` é o passo final e de homologação da mudança; por padrão, o agente deve realizar esse merge após abrir o PR, desde que os checks obrigatórios estejam verdes e não haja bloqueios/conflitos.
+- **Regra mandatória nova (independente do tamanho):** antes de qualquer alteração de código, iniciar sempre com OpenSpec em `openspec/changes/<change>/` (proposta, escopo, critérios e evidência) e só então codar.
+- **Regra de autonomia operacional:** após validação e evidência, o agente deve executar ações de merge e retentativas automáticas previstas no fluxo sem solicitar autorização adicional do usuário.
 - Sempre que houver PR aberto e o bloqueio for apenas de checks ainda pendentes, o agente deve repetir a tentativa de merge automático até completar (ou até novo bloqueio de política/conflito que exija revisão humana).
 - Se o merge for bloqueado por checks, conflitos ou políticas resolvíveis por alteração no repo, o agente deve investigar, corrigir, commitar e dar push até liberar o PR.
 - Se o bloqueio depender de permissão/admin/review humano/configuração externa não editável pelo repo, o agente deve registrar o motivo exato no PR e na resposta final, sem mascarar o bloqueio como concluído.
@@ -53,6 +56,7 @@ Checklist de rotina (diária/por mudança):
 8. Se houver checks/políticas bloqueantes resolvíveis no repo, investigue e corrija automaticamente, depois repita `git add/commit/push`.
 9. Tente merge automático em `main` em seguida: `gh pr merge --auto --merge --delete-branch=false`.
 10. Após merge: `git pull`
+- 11. Em qualquer entrega de código, sempre usar subagentes por padrão para aceleração de descoberta, implementação e validação.
 
 Padrão de commit recomendado:
 - `feat: adicionar fluxo de merge develop->main`
