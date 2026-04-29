@@ -1,6 +1,6 @@
 import type { Opportunity } from './types';
 
-export type MonitorSignalKind = 'holding' | 'stoppedOut' | 'exited' | 'missedEntry' | 'waiting';
+export type MonitorSignalKind = 'hold' | 'wait' | 'exit';
 
 type MarkerDirection = 'aboveBar' | 'belowBar';
 type MarkerShape = 'arrowDown' | 'arrowUp';
@@ -44,7 +44,7 @@ const TIMEFRAME_TO_MS: Record<string, number> = {
 };
 
 const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
-    holding: {
+    hold: {
         badgeText: 'HOLD',
         badgeClass: 'bg-green-600 text-white border-green-600 font-bold shadow-md',
         borderClass: 'border-l-green-600 border-l-4',
@@ -56,43 +56,19 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
         markerColor: '#0ea5e9',
         statusClass: 'info',
     },
-    exited: {
-        badgeText: 'EXITED',
+    exit: {
+        badgeText: 'EXIT',
         badgeClass: 'bg-sky-600 text-white border-sky-600 font-bold shadow-md',
         borderClass: 'border-l-sky-600 border-l-4',
         cardBgClass: 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700',
         titleClass: 'text-sky-700 dark:text-sky-300',
-        markerLabel: 'EXIT',
+        markerLabel: 'ENTRY',
         markerPosition: 'aboveBar',
         markerShape: 'arrowDown',
         markerColor: '#0284c7',
         statusClass: 'info',
     },
-    stoppedOut: {
-        badgeText: 'STOPPED OUT',
-        badgeClass: 'bg-red-600 text-white border-red-600 font-bold shadow-md',
-        borderClass: 'border-l-red-600 border-l-4',
-        cardBgClass: 'bg-red-50 dark:bg-red-900/40 border-red-400 dark:border-red-600',
-        titleClass: 'text-red-700 dark:text-red-300',
-        markerLabel: 'ENTRY',
-        markerPosition: 'belowBar',
-        markerShape: 'arrowUp',
-        markerColor: '#dc2626',
-        statusClass: 'danger',
-    },
-    missedEntry: {
-        badgeText: 'MISSED',
-        badgeClass: 'bg-yellow-500 text-white border-yellow-500 font-bold shadow-md',
-        borderClass: 'border-l-yellow-500 border-l-4',
-        cardBgClass: 'bg-yellow-50 dark:bg-yellow-900/40 border-yellow-400 dark:border-yellow-600',
-        titleClass: 'text-yellow-700 dark:text-yellow-300',
-        markerLabel: 'ENTRY',
-        markerPosition: 'belowBar',
-        markerShape: 'arrowUp',
-        markerColor: '#f59e0b',
-        statusClass: 'warning',
-    },
-    waiting: {
+    wait: {
         badgeText: 'WAIT',
         badgeClass: 'bg-slate-200 text-slate-600 border-slate-300',
         borderClass: 'border-l-slate-300 border-l-4',
@@ -108,15 +84,23 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
 
 const asStatus = (rawStatus: unknown): string => String(rawStatus || '').trim().toUpperCase();
 const normalizeTimeframe = (timeframe: string | null | undefined): string => String(timeframe || '').trim().toLowerCase();
+const normalizeNextStatus = (nextStatusLabel: string | null | undefined): string => {
+    const normalized = String(nextStatusLabel || '').trim().toLowerCase();
+    if (normalized === 'entry') return 'entrada';
+    if (normalized === 're-entry') return 'reentrada';
+    if (normalized === 'confirmation') return 'confirmação';
+    if (normalized === 'exit') return 'saída';
+    return 'próxima decisão';
+};
 
 const toMsByTimeframe = (timeframe: string | null | undefined): number => {
     return TIMEFRAME_TO_MS[normalizeTimeframe(timeframe) || '1d'] ?? TIMEFRAME_TO_MS['1d'];
 };
 
 const isStale = (referenceTime: string | null | undefined, timeframe: string | undefined): boolean => {
-    if (!referenceTime) return true;
+    if (!referenceTime) return false;
     const candleTime = Date.parse(referenceTime);
-    if (Number.isNaN(candleTime)) return true;
+    if (Number.isNaN(candleTime)) return false;
 
     const maxAge = toMsByTimeframe(timeframe) * 3;
     return Date.now() - candleTime > maxAge;
@@ -150,7 +134,7 @@ export const resolveOpportunitySignal = (
         context.latestCandleTime,
     );
 
-    let section: MonitorSignalKind = 'waiting';
+    let section: MonitorSignalKind = 'wait';
     let isUncertain = uncertainty || timeframeMismatch || candleMismatch;
     const reasons: string[] = [];
     if (uncertainty) {
@@ -163,42 +147,38 @@ export const resolveOpportunitySignal = (
         reasons.push('EXIT bloqueado: candle de referência não corresponde ao último candle exibido.');
     }
 
-    if (rawStatus === 'HOLDING' || rawStatus === 'EXIT_NEAR' || rawStatus === 'EXIT_SIGNAL') {
-        section = isHolding ? 'holding' : 'waiting';
+    if (rawStatus === 'HOLDING' || rawStatus === 'HOLD' || rawStatus === 'EXIT_NEAR' || rawStatus === 'EXIT_SIGNAL') {
+        section = isHolding ? 'hold' : 'wait';
         if (!isHolding) {
             isUncertain = true;
-            reasons.push('Status indica saída em preparo com posição fechada.');
+            reasons.push('Estado de decisão indica posição ativa, mas o sinal não está em hold.');
         }
-    } else if (rawStatus === 'EXITED') {
-        if (!isHolding) {
-            section = 'exited';
-            isUncertain = false;
-        } else {
-            section = 'waiting';
+    } else if (rawStatus === 'EXITED' || rawStatus === 'STOPPED_OUT' || rawStatus === 'MISSED_ENTRY' || rawStatus === 'MISSED') {
+        section = isHolding ? 'wait' : 'exit';
+        if (isHolding) {
             isUncertain = true;
-            reasons.push('Status de saída inconsistente com posição aberta.');
+            reasons.push('Estado de saída inconsistente com posição aberta.');
         }
-    } else if (rawStatus === 'STOPPED_OUT') {
-        section = 'stoppedOut';
-    } else if (rawStatus === 'MISSED_ENTRY' || rawStatus === 'MISSED') {
-        section = 'missedEntry';
     } else if (rawStatus === 'WAIT' || rawStatus === 'NEUTRAL' || rawStatus === 'BUY_NEAR' || rawStatus === 'BUY_SIGNAL') {
-        section = 'waiting';
+        section = 'wait';
     } else if (rawStatus) {
-        section = isHolding ? 'holding' : 'waiting';
+        section = isHolding ? 'hold' : 'wait';
         if (!isHolding) {
             isUncertain = true;
-            reasons.push('Status desconhecido, tratado como estado de espera.');
+            reasons.push('Estado desconhecido, tratado como espera.');
         }
     }
 
-    const visual = VISUAL_BY_KIND[section];
-    const effectiveSection = isUncertain ? 'waiting' : section;
+    const effectiveSection = isUncertain ? 'wait' : section;
     const sectionVisual = VISUAL_BY_KIND[effectiveSection];
     const freshnessReason = reasons.length > 0 ? reasons.join(' ') : null;
     const fallbackStatusMessage = isUncertain
-        ? 'SINAL INCONCLUSIVO: estado não confirmado.'
-        : (opportunity.message || `Waiting for ${opportunity.next_status_label} signal`);
+        ? 'Estado em revisão: decisão não confirmada pelo contexto atual.'
+        : (opportunity.message || `Aguardando condição de ${normalizeNextStatus(opportunity.next_status_label)} para decisão.`);
+
+    const markerLabel = isUncertain
+        ? 'WAIT'
+        : sectionVisual.markerLabel;
 
     return {
         section: effectiveSection,
@@ -211,11 +191,7 @@ export const resolveOpportunitySignal = (
         latestCandleTime: context.latestCandleTime ?? null,
         visual: {
             ...sectionVisual,
-            markerLabel: isUncertain
-                ? sectionVisual.markerLabel
-                : section === 'holding'
-                    ? sectionVisual.markerLabel
-                    : (rawStatus === 'EXIT_SIGNAL' || rawStatus === 'EXIT_NEAR' ? 'EXIT' : sectionVisual.markerLabel),
+            markerLabel,
             markerColor: isUncertain ? '#8b949e' : sectionVisual.markerColor,
             markerShape: isUncertain ? 'arrowUp' : sectionVisual.markerShape,
             markerPosition: isUncertain ? 'belowBar' : sectionVisual.markerPosition,

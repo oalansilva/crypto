@@ -457,24 +457,20 @@ export const MonitorStatusTab: React.FC = () => {
         [filteredOpportunities, preferences],
     );
 
-    const holding = resolvedSections.filter(({ resolved }) => resolved.section === 'holding').map(({ opportunity }) => opportunity);
-    const stoppedOut = resolvedSections.filter(({ resolved }) => resolved.section === 'stoppedOut').map(({ opportunity }) => opportunity);
-    const exited = resolvedSections.filter(({ resolved }) => resolved.section === 'exited').map(({ opportunity }) => opportunity);
-    const missedEntry = resolvedSections.filter(({ resolved }) => resolved.section === 'missedEntry').map(({ opportunity }) => opportunity);
-    const waiting = resolvedSections.filter(({ resolved }) => resolved.section === 'waiting').map(({ opportunity }) => opportunity);
+    const holding = resolvedSections.filter(({ resolved }) => resolved.section === 'hold').map(({ opportunity }) => opportunity);
+    const exited = resolvedSections.filter(({ resolved }) => resolved.section === 'exit').map(({ opportunity }) => opportunity);
+    const waiting = resolvedSections.filter(({ resolved }) => resolved.section === 'wait').map(({ opportunity }) => opportunity);
 
-    type SectionKey = 'holding' | 'stoppedOut' | 'exited' | 'missedEntry' | 'waiting';
+    type SectionKey = 'hold' | 'exit' | 'wait';
     const orderedCards = useMemo(() => {
-        const withSection = (arr: Opportunity[], s: SectionKey) =>
-            arr.map((opp) => ({ opp, section: s }));
+        const withSection = (arr: Opportunity[], section: SectionKey) =>
+            arr.map((opp) => ({ opp, section }));
         return [
-            ...withSection(holding, 'holding'),
-            ...withSection(stoppedOut, 'stoppedOut'),
-            ...withSection(exited, 'exited'),
-            ...withSection(missedEntry, 'missedEntry'),
-            ...withSection(waiting, 'waiting'),
+            ...withSection(holding, 'hold'),
+            ...withSection(exited, 'exit'),
+            ...withSection(waiting, 'wait'),
         ];
-    }, [holding, stoppedOut, exited, missedEntry, waiting]);
+    }, [holding, exited, waiting]);
 
     const { visibleItems, hasMore, sentinelRef } = useInfiniteScroll(orderedCards, 12, 12);
 
@@ -490,45 +486,29 @@ export const MonitorStatusTab: React.FC = () => {
     }, [visibleItems]);
 
     const SECTION_CONFIG: Record<SectionKey, { title: string; subtitle: string; dotClass: string; h2Class: string; badgeClass: string; description: string }> = {
-        holding: {
-            title: 'Em Hold',
-            subtitle: 'Posições Ativas',
+        hold: {
+            title: 'Estado HOLD',
+            subtitle: 'Posição ativa',
             dotClass: 'bg-green-500',
             h2Class: 'text-green-600',
             badgeClass: 'bg-green-500/10 text-green-600',
-            description: 'Estratégias com posição aberta. A distância mostra o quanto falta para o sinal de saída.',
+            description: 'Padrão atual de decisão: posição ativa com gestão em acompanhamento contínuo.',
         },
-        stoppedOut: {
-            title: 'Saiu no Stop',
-            subtitle: 'Stop Loss Ativado',
-            dotClass: 'bg-red-500',
-            h2Class: 'text-red-600',
-            badgeClass: 'bg-red-500/10 text-red-600',
-            description: 'A média curta está acima da longa (condição de entrada satisfeita), mas a posição foi fechada no stop loss. Aguardando cruzamento para baixo ou nova entrada.',
-        },
-        exited: {
-            title: 'Saiu Pela Regra',
-            subtitle: 'Exit Logic',
+        exit: {
+            title: 'Estado EXIT',
+            subtitle: 'Sem posição ativa',
             dotClass: 'bg-sky-500',
             h2Class: 'text-sky-600',
             badgeClass: 'bg-sky-500/10 text-sky-600',
-            description: 'Estratégias que fecharam a posição pela regra de saída da estratégia, sem stop loss. A distância mostra o quanto falta para a próxima reentrada.',
+            description: 'Condição de saída detectada; monitorando nova oportunidade com base em contexto técnico.',
         },
-        missedEntry: {
-            title: 'Entrada Perdida',
-            subtitle: 'Sem Posição',
-            dotClass: 'bg-yellow-500',
-            h2Class: 'text-yellow-600',
-            badgeClass: 'bg-yellow-500/10 text-yellow-600',
-            description: 'A média curta está acima da longa (condição de entrada satisfeita), mas não há posição ativa. Aguardando confirmação ou nova entrada.',
-        },
-        waiting: {
-            title: 'Aguardando',
-            subtitle: 'Sem Posição',
+        wait: {
+            title: 'Estado WAIT',
+            subtitle: 'Sem posição ativa',
             dotClass: 'bg-gray-400',
             h2Class: 'text-gray-500',
             badgeClass: 'bg-gray-500/10 text-gray-600',
-            description: 'Estratégias aguardando sinal de entrada. A distância mostra o quanto falta para a média curta cruzar acima da longa.',
+            description: 'Contexto técnico em monitoramento sem recomendação ativa de compra/venda.',
         },
     };
 
@@ -699,7 +679,7 @@ export const MonitorStatusTab: React.FC = () => {
                 <div className="space-y-10">
                     {visibleGroups.map(({ section, cards }) => {
                         const cfg = SECTION_CONFIG[section];
-                        const total = { holding: holding.length, stoppedOut: stoppedOut.length, exited: exited.length, missedEntry: missedEntry.length, waiting: waiting.length }[section];
+                        const total = { hold: holding.length, exit: exited.length, wait: waiting.length }[section];
                         return (
                             <section key={section} className="space-y-4">
                                 <h2 className={`text-xl font-semibold flex items-center gap-2 ${cfg.h2Class}`}>

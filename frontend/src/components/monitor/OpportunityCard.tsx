@@ -195,30 +195,22 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         ? Math.max(0, Math.min(100, (1 - distance) * 100))
         : 0;
 
-    const status = opportunity.status || (is_holding ? 'HOLD' : 'WAIT');
-    const isStoppedOut = status === 'STOPPED_OUT';
-    const isExited = status === 'EXITED';
-    const isMissedEntry = status === 'MISSED_ENTRY';
-    const isWait = !is_holding && !isStoppedOut && !isExited && !isMissedEntry;
     const tierStyles = getTierStyles(opportunity.tier);
     const resolvedSignal = React.useMemo(
         () => resolveOpportunitySignal(opportunity, { selectedTimeframe: effectiveTimeframe }),
         [effectiveTimeframe, opportunity],
     );
+    const isWait = resolvedSignal.section === 'wait';
 
     const badgeColor = resolvedSignal.visual.badgeClass;
     let borderColor = resolvedSignal.visual.borderClass;
     let cardBgColor = resolvedSignal.visual.cardBgClass;
     let holdingIndicator = '';
 
-    if (resolvedSignal.section === 'holding') {
+    if (resolvedSignal.section === 'hold') {
         holdingIndicator = 'ring-2 ring-green-400 shadow-lg shadow-green-500/30';
-    } else if (resolvedSignal.section === 'stoppedOut') {
-        holdingIndicator = 'ring-2 ring-red-400 shadow-lg shadow-red-500/30';
-    } else if (resolvedSignal.section === 'exited') {
+    } else if (resolvedSignal.section === 'exit') {
         holdingIndicator = 'ring-2 ring-sky-400 shadow-lg shadow-sky-500/20';
-    } else if (resolvedSignal.section === 'missedEntry') {
-        holdingIndicator = 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-500/30';
     } else if (!resolvedSignal.isUncertain && isWait && tierStyles) {
         borderColor = 'border-l-4';
         cardBgColor = tierStyles.dot === 'bg-green-500' ? 'bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
@@ -230,8 +222,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         ? `${resolvedSignal.statusMessage}${resolvedSignal.freshnessReason ? ` ${resolvedSignal.freshnessReason}` : ''}`
         : (opportunity.message || (
             distance !== null && distance !== undefined
-                ? `${distance.toFixed(2)}% to ${next_status_label}`
-                : `Waiting for ${next_status_label} signal`
+                ? `${distance.toFixed(2)}% até ${next_status_label}`
+                : `Aguardando estado para decisão`
         ));
 
     const displayName = (name || '').trim() || template_name;
@@ -239,17 +231,13 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
     // NOTE: Avoid hardcoded light backgrounds via inline styles.
     // They reduce contrast on mobile/dark mode. Background colors are handled via Tailwind classes.
-    const cardStyle = resolvedSignal.section === 'holding'
+    const cardStyle = resolvedSignal.section === 'hold'
         ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(22, 163, 74)' }
-        : resolvedSignal.section === 'stoppedOut'
-            ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(220, 38, 38)' }
-            : resolvedSignal.section === 'exited'
+        : resolvedSignal.section === 'exit'
                 ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(2, 132, 199)' }
-                : resolvedSignal.section === 'missedEntry'
-                ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(234, 179, 8)' }
                 : !resolvedSignal.isUncertain && isWait && tierStyles
-                    ? { borderLeftWidth: '4px', borderLeftColor: tierStyles.border }
-                    : { borderLeftWidth: '4px', borderLeftColor: 'rgb(203, 213, 225)' };
+                        ? { borderLeftWidth: '4px', borderLeftColor: tierStyles.border }
+                        : { borderLeftWidth: '4px', borderLeftColor: 'rgb(203, 213, 225)' };
 
     const symbolTestKey = symbolKey(symbol);
     const portfolioStatusClass = portfolioStatusTone === 'success'
@@ -510,7 +498,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
                         <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-xs border border-slate-200 dark:border-slate-600">
                             <div className="flex flex-wrap gap-x-3 gap-y-1 text-slate-700 dark:text-slate-200">
-                                <span>signal: {resolvedSignal.visual.badgeText.toLowerCase()}</span>
+                                <span>Estado: {resolvedSignal.visual.badgeText}</span>
                                 <span>strategy tf: {resolvedSignal.strategyTimeframe ?? '-'}</span>
                                 <span>display tf: {resolvedSignal.displayTimeframe ?? '-'}</span>
                                 <span>candle ref: {resolvedSignal.referenceCandleTime ?? '-'}</span>
