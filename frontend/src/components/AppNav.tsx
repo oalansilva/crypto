@@ -34,13 +34,13 @@ type NavItemConfig = {
 const mainNavItems: NavItemConfig[] = [
   { to: '/monitor', label: 'Monitor', icon: Activity },
   { to: '/favorites', label: 'Favoritos', icon: Bookmark },
-  { to: '/signals', label: 'Sinais', icon: TrendingUp },
   { to: '/signals/history', label: 'Histórico', icon: TrendingUp },
   { to: '/supply-distribution', label: 'Distribuição', icon: ChartPie },
 ]
 
 const strategyNavItems: NavItemConfig[] = [
   { to: '/combo/select', label: 'Combo', icon: Layers },
+  { to: '/signals', label: 'Backtests', icon: TrendingUp },
 ]
 
 const accountNavItems: NavItemConfig[] = [
@@ -62,7 +62,7 @@ export function openMobileMenu() {
 function resolvePageTitle(pathname: string) {
   if (pathname === '/' || pathname === '/monitor') return 'Monitor de sinais'
   if (pathname === '/favorites') return 'Favoritos'
-  if (pathname === '/signals') return 'Sinais de trading'
+  if (pathname === '/signals') return 'Backtests'
   if (pathname === '/signals/history') return 'Histórico de Sinais'
   if (pathname === '/supply-distribution') return 'Distribuição de supply'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
