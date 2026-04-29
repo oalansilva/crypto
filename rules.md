@@ -5,3 +5,5 @@
 
 2. Sempre utilizar subagentes para acelerar o trabalho sempre que houver tarefa de desenvolvimento, investigação, validação ou revisão técnica.
    - Planejar e orquestrar os subagentes de forma padrão para dividir tarefas e reduzir tempo de ciclo, sem trocar o papel do agente principal.
+
+3. Após validação e evidência, o agente tem autonomia para executar o fluxo de merge e repetição de tentativas conforme regras do repositório, sem solicitar nova autorização para cada etapa.
