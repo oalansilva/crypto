@@ -21,6 +21,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - Commite cada ajuste em `develop`.
 - Abra PR de `develop` para `main` para liberar produção.
 - O merge em `main` é o passo final e de homologação da mudança; por padrão, o agente deve realizar esse merge após abrir o PR, desde que os checks obrigatórios estejam verdes e não haja bloqueios/conflitos.
+- **Regra mandatória nova (independente do tamanho):** antes de qualquer alteração de código, iniciar sempre com OpenSpec em `openspec/changes/<change>/` (proposta, escopo, critérios e evidência) e só então codar.
 - Sempre que houver PR aberto e o bloqueio for apenas de checks ainda pendentes, o agente deve repetir a tentativa de merge automático até completar (ou até novo bloqueio de política/conflito que exija revisão humana).
 - Se o merge for bloqueado por checks, conflitos ou políticas resolvíveis por alteração no repo, o agente deve investigar, corrigir, commitar e dar push até liberar o PR.
 - Se o bloqueio depender de permissão/admin/review humano/configuração externa não editável pelo repo, o agente deve registrar o motivo exato no PR e na resposta final, sem mascarar o bloqueio como concluído.
@@ -53,6 +54,7 @@ Checklist de rotina (diária/por mudança):
 8. Se houver checks/políticas bloqueantes resolvíveis no repo, investigue e corrija automaticamente, depois repita `git add/commit/push`.
 9. Tente merge automático em `main` em seguida: `gh pr merge --auto --merge --delete-branch=false`.
 10. Após merge: `git pull`
+- 11. Em qualquer entrega de código, sempre usar subagentes por padrão para aceleração de descoberta, implementação e validação.
 
 Padrão de commit recomendado:
 - `feat: adicionar fluxo de merge develop->main`
