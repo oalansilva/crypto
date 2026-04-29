@@ -1,12 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { getOpportunityAssetType, getOpportunityBaseAsset, isDerivedPortfolioRuleActive, type Opportunity, type MonitorCardMode, type MonitorPreference, type MonitorPriceTimeframe, type MonitorTheme } from '@/components/monitor/types';
+import {
+    getOpportunityAssetType,
+    getOpportunityBaseAsset,
+    isDerivedPortfolioRuleActive,
+    type Opportunity,
+    type MonitorCardMode,
+    type MonitorPreference,
+    type MonitorPriceTimeframe,
+    type MonitorTheme,
+} from '@/components/monitor/types';
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { ChartModal } from '@/components/monitor/ChartModal';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { RefreshCw, ArrowUpDown, ChevronDown } from 'lucide-react';
-import { useToast } from "@/components/ui/use-toast";
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { RefreshCw, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import type { MarketCandle } from './MiniCandlesChart';
@@ -18,6 +25,7 @@ type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
 type ListFilter = 'in_portfolio' | 'all';
 type AssetTypeFilter = 'all' | 'crypto' | 'stocks';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
+type SectionKey = 'hold' | 'wait' | 'exit';
 
 type BinanceBalanceRow = {
     asset?: string;
@@ -31,6 +39,25 @@ type DerivedPortfolioStatus = {
     tone: 'neutral' | 'success' | 'warning';
 };
 
+type RowMode = {
+    symbol: string;
+    expanded: boolean;
+};
+
+type SectionRecord = {
+    title: string;
+    label: string;
+    dotClass: 'monitor-dot--hold' | 'monitor-dot--wait' | 'monitor-dot--exit';
+    badgeClass: string;
+    countClass: string;
+    description: string;
+};
+
+type ResolvedSectionRow = {
+    opportunity: Opportunity;
+    resolved: ReturnType<typeof resolveOpportunitySignal>;
+};
+
 const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
     card_mode: 'price',
@@ -40,6 +67,59 @@ const DEFAULT_PREFERENCE: MonitorPreference = {
 
 const DEFAULT_THEME: MonitorTheme = 'dark-green';
 const BINANCE_MONITOR_PORTFOLIO_MIN_USD = 1;
+const ROWS_WITH_EXPANSION_INITIAL: RowMode[] = [];
+
+const SECTION_DOT_COLOR: Record<SectionKey, string> = {
+    hold: 'var(--accent-success)',
+    wait: 'var(--accent-warning)',
+    exit: 'var(--monitor-primary)',
+};
+
+const SectionConfig: Record<SectionKey, SectionRecord> = {
+    hold: {
+        title: 'HOLD',
+        label: 'Posição ativa',
+        dotClass: 'monitor-dot--hold',
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40',
+        countClass: 'text-emerald-300',
+        description: 'Sinais com decisão favorável e gestão ativa.',
+    },
+    wait: {
+        title: 'WAIT',
+        label: 'Aguardando',
+        dotClass: 'monitor-dot--wait',
+        badgeClass: 'bg-slate-400/20 text-slate-200 border border-slate-400/40',
+        countClass: 'text-slate-300',
+        description: 'Aguardando confirmação para entrada ou saída.',
+    },
+    exit: {
+        title: 'EXIT',
+        label: 'Em observação',
+        dotClass: 'monitor-dot--exit',
+        badgeClass: 'bg-sky-500/20 text-sky-200 border border-sky-400/40',
+        countClass: 'text-sky-300',
+        description: 'Condição de saída detectada para novo monitoramento.',
+    },
+};
+
+const SECTION_ORDER: SectionKey[] = ['hold', 'wait', 'exit'];
+
+const getDistanceLabel = (distance: number | null | undefined): string => {
+    if (distance === null || distance === undefined) return '-';
+    return `${distance.toFixed(2)}%`;
+};
+
+const formatPrice = (value: number | null | undefined): string => {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+        return '-';
+    }
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6,
+    }).format(value);
+};
 
 export const MonitorStatusTab: React.FC = () => {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -61,10 +141,17 @@ export const MonitorStatusTab: React.FC = () => {
     const [walletSyncState, setWalletSyncState] = useState<WalletSyncState>('idle');
     const [walletSyncMessage, setWalletSyncMessage] = useState<string | null>(null);
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
+    const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>(
+        Object.fromEntries(ROWS_WITH_EXPANSION_INITIAL.map((row) => [row.symbol, row.expanded]))
+    );
     const { toast } = useToast();
 
     const getPreference = (symbol: string): MonitorPreference => {
         return preferences[symbol] ?? DEFAULT_PREFERENCE;
+    };
+
+    const getActiveRowCount = (sectionRows: Record<SectionKey, ResolvedSectionRow[]>, sectionKey: SectionKey) => {
+        return sectionRows[sectionKey]?.length ?? 0;
     };
 
     const fetchWalletPortfolio = async (configured: boolean) => {
@@ -190,7 +277,7 @@ export const MonitorStatusTab: React.FC = () => {
                 apiTier = tierParam;
             }
 
-            const baseUrl = import.meta.env.VITE_API_URL || "/api";
+            const baseUrl = import.meta.env.VITE_API_URL || '/api';
             const refreshParam = options?.refresh ? '&refresh=true' : '';
             const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}${refreshParam}`;
             const response = await authFetch(url);
@@ -200,15 +287,15 @@ export const MonitorStatusTab: React.FC = () => {
             setLastUpdated(new Date());
 
             toast({
-                title: "Atualizado",
+                title: 'Atualizado',
                 description: `${data.length} estratégias analisadas`,
             });
         } catch (error) {
             console.error(error);
             toast({
-                title: "Erro",
-                description: "Não foi possível carregar. O backend está rodando?",
-                variant: "destructive"
+                title: 'Erro',
+                description: 'Não foi possível carregar. O backend está rodando?',
+                variant: 'destructive',
             });
         } finally {
             setLoading(false);
@@ -278,8 +365,8 @@ export const MonitorStatusTab: React.FC = () => {
     };
 
     const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
-        const preference = getPreference(opportunity.symbol).price_timeframe;
-        const requested = toChartTimeframe(preference || opportunity.timeframe);
+        const preference = getPreference(opportunity.symbol);
+        const requested = toChartTimeframe(preference.price_timeframe || opportunity.timeframe);
         return getOpportunityAssetType(opportunity) === 'stock' ? '1d' : requested;
     };
 
@@ -311,8 +398,15 @@ export const MonitorStatusTab: React.FC = () => {
                 variant: 'destructive',
             });
         } finally {
-            setOpeningChartSymbol((current) => current === opportunity.symbol ? null : current);
+            setOpeningChartSymbol((current) => (current === opportunity.symbol ? null : current));
         }
+    };
+
+    const handleToggleRow = (symbol: string) => {
+        setExpandedRows((current) => ({
+            ...current,
+            [symbol]: !(current[symbol] ?? true),
+        }));
     };
 
     useEffect(() => {
@@ -446,111 +540,84 @@ export const MonitorStatusTab: React.FC = () => {
         return afterAssetType.filter((opp) => portfolioStatusBySymbol[opp.symbol]?.inPortfolio === true);
     }, [assetTypeFilter, listFilter, portfolioStatusBySymbol, sortedOpportunities]);
 
-    const resolvedSections = useMemo(
-        () => filteredOpportunities.map((opp) => {
-            const preference = preferences[opp.symbol] ?? DEFAULT_PREFERENCE;
-            const effectiveTimeframe: MonitorPriceTimeframe = getOpportunityAssetType(opp) === 'crypto' ? preference.price_timeframe : '1d';
-            return {
-                opportunity: opp,
-                resolved: resolveOpportunitySignal(opp, { selectedTimeframe: effectiveTimeframe }),
-            };
-        }),
-        [filteredOpportunities, preferences],
-    );
+    const resolvedSections = useMemo(() => {
+        const groups: Record<SectionKey, ResolvedSectionRow[]> = {
+            hold: [],
+            wait: [],
+            exit: [],
+        };
 
-    const holding = resolvedSections.filter(({ resolved }) => resolved.section === 'hold').map(({ opportunity }) => opportunity);
-    const exited = resolvedSections.filter(({ resolved }) => resolved.section === 'exit').map(({ opportunity }) => opportunity);
-    const waiting = resolvedSections.filter(({ resolved }) => resolved.section === 'wait').map(({ opportunity }) => opportunity);
-
-    type SectionKey = 'hold' | 'exit' | 'wait';
-    const orderedCards = useMemo(() => {
-        const withSection = (arr: Opportunity[], section: SectionKey) =>
-            arr.map((opp) => ({ opp, section }));
-        return [
-            ...withSection(holding, 'hold'),
-            ...withSection(exited, 'exit'),
-            ...withSection(waiting, 'wait'),
-        ];
-    }, [holding, exited, waiting]);
-
-    const { visibleItems, hasMore, sentinelRef } = useInfiniteScroll(orderedCards, 12, 12);
-
-    const visibleGroups = useMemo(() => {
-        const g: { section: SectionKey; cards: Opportunity[] }[] = [];
-        for (const { opp, section } of visibleItems) {
-            if (g.length > 0 && g[g.length - 1].section === section)
-                g[g.length - 1].cards.push(opp);
-            else
-                g.push({ section, cards: [opp] });
+        for (const opportunity of filteredOpportunities) {
+            const preference = preferences[opportunity.symbol] ?? DEFAULT_PREFERENCE;
+            const effectiveTimeframe: MonitorPriceTimeframe =
+                getOpportunityAssetType(opportunity) === 'crypto' ? preference.price_timeframe : '1d';
+            const resolved = resolveOpportunitySignal(opportunity, { selectedTimeframe: effectiveTimeframe });
+            groups[resolved.section].push({ opportunity, resolved });
         }
-        return g;
-    }, [visibleItems]);
 
-    const SECTION_CONFIG: Record<SectionKey, { title: string; subtitle: string; dotClass: string; h2Class: string; badgeClass: string; description: string }> = {
-        hold: {
-            title: 'Estado HOLD',
-            subtitle: 'Posição ativa',
-            dotClass: 'bg-green-500',
-            h2Class: 'text-green-600',
-            badgeClass: 'bg-green-500/10 text-green-600',
-            description: 'Padrão atual de decisão: posição ativa com gestão em acompanhamento contínuo.',
-        },
-        exit: {
-            title: 'Estado EXIT',
-            subtitle: 'Sem posição ativa',
-            dotClass: 'bg-sky-500',
-            h2Class: 'text-sky-600',
-            badgeClass: 'bg-sky-500/10 text-sky-600',
-            description: 'Condição de saída detectada; monitorando nova oportunidade com base em contexto técnico.',
-        },
-        wait: {
-            title: 'Estado WAIT',
-            subtitle: 'Sem posição ativa',
-            dotClass: 'bg-gray-400',
-            h2Class: 'text-gray-500',
-            badgeClass: 'bg-gray-500/10 text-gray-600',
-            description: 'Contexto técnico em monitoramento sem recomendação ativa de compra/venda.',
-        },
-    };
+        for (const section of SECTION_ORDER) {
+            groups[section].sort((a, b) => {
+                if (a.opportunity.tier !== b.opportunity.tier) {
+                    return (a.opportunity.tier ?? 999) - (b.opportunity.tier ?? 999);
+                }
+                return getDistanceLabel(a.opportunity.distance_to_next_status).localeCompare(
+                    getDistanceLabel(b.opportunity.distance_to_next_status),
+                );
+            });
+        }
+
+        return groups;
+    }, [filteredOpportunities, preferences]);
+
+    const sectionCountByType = useMemo(() => ({
+        hold: resolvedSections.hold.length,
+        wait: resolvedSections.wait.length,
+        exit: resolvedSections.exit.length,
+    }), [resolvedSections]);
+
+    const inPortfolioCount = useMemo(() => {
+        return Object.values(portfolioStatusBySymbol).filter((item) => item.inPortfolio).length;
+    }, [portfolioStatusBySymbol]);
 
     const noResultsForInPortfolio = !loading && opportunities.length > 0 && filteredOpportunities.length === 0 && listFilter === 'in_portfolio';
 
-    const theme: MonitorTheme = (
-        preferences['__global__']?.theme ?? DEFAULT_THEME
-    );
+    const totalKpi = {
+        active: opportunities.length,
+        visible: filteredOpportunities.length,
+        inPortfolio: inPortfolioCount,
+    };
+
+    const theme: MonitorTheme = preferences['__global__']?.theme ?? DEFAULT_THEME;
 
     return (
-        <div
-            className={`min-h-screen monitor-theme monitor-theme--${theme} py-6`}
-            data-testid="monitor-status-tab"
-        >
-            <div className="container mx-auto p-6 space-y-8">
-
-            <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center">
-                    <div className="space-y-1">
-                        <h1 className="text-3xl font-bold tracking-tight">Opportunity Board</h1>
-                        <p className="text-muted-foreground">
-                            Monitor your favorite strategies.
-                        </p>
-                        {lastUpdated && (
-                            <p className="text-xs text-muted-foreground">
-                                Last updated: {lastUpdated.toLocaleTimeString()}
+        <div className={`min-h-screen monitor-theme monitor-theme--${theme} py-6`} data-testid="monitor-status-tab">
+            <div className="container mx-auto monitor-shell p-6 space-y-6">
+                <header className="monitor-board-header">
+                    <div className="space-y-2">
+                        <p className="text-xs uppercase tracking-[0.14em] text-[var(--monitor-muted)]">Crypto / Monitor</p>
+                        <h1 className="text-3xl font-bold text-[var(--monitor-text)]">Monitor de sinais</h1>
+                        {lastUpdated ? (
+                            <p className="text-xs text-[var(--monitor-muted)]">
+                                Última atualização: {lastUpdated.toLocaleTimeString('pt-BR')}
                             </p>
-                        )}
+                        ) : null}
+                        <p className="text-sm text-[var(--monitor-muted)]">
+                            Filtro por carteira, seção e timeframe em tabela para leitura rápida.
+                        </p>
                     </div>
-                    <div className="flex gap-2 items-center">
+
+                    <div className="monitor-actions-row">
                         <button
                             type="button"
-                            className="text-sm border rounded px-2 py-1.5 bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)]"
+                            className="monitor-btn"
                             onClick={() => {
                                 const next: MonitorTheme = theme === 'dark-green' ? 'black' : 'dark-green';
                                 void persistPreference('__global__', { theme: next });
                             }}
                             data-testid="monitor-theme-toggle"
-                            title="Toggle Monitor theme"
+                            title="Alternar tema do monitor"
                         >
-                            Theme: {theme}
+                            Tema: {theme}
                         </button>
 
                         <Button
@@ -560,177 +627,303 @@ export const MonitorStatusTab: React.FC = () => {
                             }}
                             disabled={loading}
                         >
-                            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                            Refresh
+                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                            Atualizar
                         </Button>
                     </div>
-                </div>
+                </header>
 
-                <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-2" role="group" aria-label="Monitor list filter">
-                        <span className="text-sm font-medium">List:</span>
-                        <button
-                            type="button"
-                            className={`text-sm border rounded px-2 py-1.5 ${listFilter === 'in_portfolio' ? 'bg-blue-600 text-white border-blue-600' : 'bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)]'}`}
-                            onClick={() => setListFilter('in_portfolio')}
-                            data-testid="monitor-filter-in-portfolio"
-                        >
-                            In Portfolio
-                        </button>
-                        <button
-                            type="button"
-                            className={`text-sm border rounded px-2 py-1.5 ${listFilter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)]'}`}
-                            onClick={() => setListFilter('all')}
-                            data-testid="monitor-filter-all"
-                        >
-                            All
-                        </button>
-                    </div>
+                <section className="monitor-layout-grid" aria-label="Painel do monitor">
+                    <aside className="monitor-side-panel">
+                        <header className="monitor-side-header">
+                            <h2 className="text-sm font-semibold text-[var(--monitor-text)]">Resumo</h2>
+                            <p className="text-xs text-[var(--monitor-muted)]">Indicadores rápidos</p>
+                        </header>
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Asset Type:</span>
-                        <div className="relative">
-                            <select
-                                value={assetTypeFilter}
-                                onChange={(e) => setAssetTypeFilter(e.target.value as AssetTypeFilter)}
-                                className="text-sm border rounded pl-2 pr-8 py-1.5 bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)] appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
-                                title="Filtrar por tipo de ativo"
-                                data-testid="monitor-filter-asset-type"
-                            >
-                                <option value="all" className="bg-gray-900">Asset Type: All</option>
-                                <option value="crypto" className="bg-gray-900">Asset Type: Crypto</option>
-                                <option value="stocks" className="bg-gray-900">Asset Type: Stocks</option>
-                            </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <div className="monitor-kpis">
+                            <div className="monitor-kpi-card">
+                                <span className="monitor-kpi-label">Total</span>
+                                <span className="monitor-kpi-value">{totalKpi.active}</span>
+                            </div>
+                            <div className="monitor-kpi-card">
+                                <span className="monitor-kpi-label">Visíveis</span>
+                                <span className="monitor-kpi-value">{totalKpi.visible}</span>
+                            </div>
+                            <div className="monitor-kpi-card">
+                                <span className="monitor-kpi-label">Em carteira</span>
+                                <span className="monitor-kpi-value">{totalKpi.inPortfolio}</span>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Tier:</span>
-                        <div className="relative">
-                            <select
-                                value={tierFilter}
-                                onChange={(e) => setTierFilter(e.target.value as TierFilter)}
-                                className="text-sm border rounded pl-2 pr-8 py-1.5 bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)] appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
-                                title="Filtrar por tier"
-                            >
-                                <option value="all" className="bg-gray-900">Tier: All</option>
-                                <option value="1" className="bg-gray-900">Tier 1 – Core</option>
-                                <option value="2" className="bg-gray-900">Tier 2 – Complementares</option>
-                                <option value="3" className="bg-gray-900">Tier 3</option>
-                                <option value="1_2" className="bg-gray-900">Tier 1 + Tier 2</option>
-                                <option value="none" className="bg-gray-900">Sem tier</option>
-                            </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <div className="monitor-kpi-card monitor-kpi-stack">
+                            <span className="monitor-kpi-label">Estados</span>
+                            <div className="monitor-state-list">
+                                {SECTION_ORDER.map((section) => {
+                                    const cfg = SectionConfig[section];
+                                    return (
+                                        <div key={section} className="monitor-state-item">
+                                            <span className="monitor-state-dot" style={{ backgroundColor: SECTION_DOT_COLOR[section] }} />
+                                            <span>{cfg.title}</span>
+                                            <span className="ml-auto text-[var(--monitor-text)] font-semibold">{getActiveRowCount(resolvedSections, section)}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                        <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Sort:</span>
-                        <div className="relative">
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                                className="text-sm border rounded pl-2 pr-8 py-1.5 bg-[var(--monitor-surface)] text-[var(--monitor-text)] border-[var(--monitor-border)] appearance-none cursor-pointer focus:ring-1 focus:ring-primary focus:border-primary"
-                            >
-                                <option value="tier_distance" className="bg-gray-900">Tier + Distância</option>
-                                <option value="distance" className="bg-gray-900">Distância (mais próximo)</option>
-                                <option value="symbol" className="bg-gray-900">Símbolo</option>
-                            </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <div className="monitor-kpi-card monitor-kpi-stack">
+                            <span className="monitor-kpi-label">Carteira Binance</span>
+                            <span className="text-sm text-[var(--monitor-muted)]">
+                                {walletSyncState === 'idle' && 'Não configurada para sincronização'}
+                                {walletSyncState === 'loading' && 'Sincronizando ativos...'}
+                                {walletSyncState === 'ready' && 'Sincronização ativa'}
+                                {walletSyncState === 'empty' && 'Carteira sem ativo elegível'}
+                                {walletSyncState === 'error' && 'Erro na sincronização'}
+                            </span>
+                            {walletSyncMessage ? <p className="monitor-guard-text">{walletSyncMessage}</p> : null}
                         </div>
-                    </div>
-                </div>
-            </div>
 
-            {loading && opportunities.length === 0 ? (
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {[1, 2, 3, 4].map(i => (
-                            <Card key={i} className="border-l-4 border-l-gray-300 animate-pulse">
-                                <CardHeader className="space-y-2">
-                                    <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-                                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <div className="h-4 bg-gray-200 rounded"></div>
-                                    <div className="h-4 bg-gray-200 rounded"></div>
-                                    <div className="h-12 bg-gray-200 rounded"></div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-            ) : opportunities.length === 0 && !loading ? (
-                <div className="text-center py-20 space-y-4">
-                    <p className="text-muted-foreground">No favorites found. Star some strategies in the Backtester to see them here!</p>
-                    <Button variant="secondary" onClick={() => window.location.href = '/'}>
-                        Go to Backtester
-                    </Button>
-                </div>
-            ) : noResultsForInPortfolio ? (
-                <div className="text-center py-16 space-y-4" data-testid="monitor-empty-in-portfolio">
-                    <p className="text-muted-foreground">No symbols are marked as In Portfolio yet.</p>
-                    <Button variant="secondary" onClick={() => setListFilter('all')}>Show All Symbols</Button>
-                </div>
-            ) : (
-                <div className="space-y-10">
-                    {visibleGroups.map(({ section, cards }) => {
-                        const cfg = SECTION_CONFIG[section];
-                        const total = { hold: holding.length, exit: exited.length, wait: waiting.length }[section];
-                        return (
-                            <section key={section} className="space-y-4">
-                                <h2 className={`text-xl font-semibold flex items-center gap-2 ${cfg.h2Class}`}>
-                                    <span className={`w-3 h-3 ${cfg.dotClass} rounded-full`}></span>
-                                    {cfg.title} ({total})
-                                    <span className={`${cfg.badgeClass} text-xs px-2 py-0.5 rounded-full ml-2`}>
-                                        {cfg.subtitle}
-                                    </span>
-                                </h2>
-                                <p className="text-sm text-muted-foreground ml-5">
-                                    {cfg.description}
-                                </p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {cards.map((opp) => (
-                                        <OpportunityCard
-                                            key={opp.id}
-                                            opportunity={opp}
-                                            preference={{
-                                                ...getPreference(opp.symbol),
-                                                in_portfolio: portfolioStatusBySymbol[opp.symbol]?.inPortfolio ?? getPreference(opp.symbol).in_portfolio,
-                                            }}
-                                            isPortfolioDerived={Boolean(portfolioStatusBySymbol[opp.symbol]?.active)}
-                                            portfolioStatusMessage={portfolioStatusBySymbol[opp.symbol]?.message}
-                                            portfolioStatusTone={portfolioStatusBySymbol[opp.symbol]?.tone}
-                                            isSavingPreference={Boolean(savingSymbols[opp.symbol])}
-                                            isOpeningChart={openingChartSymbol === opp.symbol}
-                                            onToggleInPortfolio={handleToggleInPortfolio}
-                                            onToggleCardMode={handleToggleCardMode}
-                                            onChangePriceTimeframe={handleChangePriceTimeframe}
-                                            onOpenChart={handleOpenChart}
-                                        />
-                                    ))}
+                        <div className="monitor-kpi-card monitor-kpi-stack">
+                            <span className="monitor-kpi-label">Ações</span>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    className={`monitor-filter-chip ${listFilter === 'in_portfolio' ? 'monitor-filter-chip--active' : ''}`}
+                                    onClick={() => setListFilter('in_portfolio')}
+                                    data-testid="monitor-filter-in-portfolio"
+                                >
+                                    In Portfolio
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`monitor-filter-chip ${listFilter === 'all' ? 'monitor-filter-chip--active' : ''}`}
+                                    onClick={() => setListFilter('all')}
+                                    data-testid="monitor-filter-all"
+                                >
+                                    All
+                                </button>
+                            </div>
+
+                            <div className="monitor-control-group">
+                                <label htmlFor="monitor-filter-asset-type" className="monitor-kpi-label">Ativo</label>
+                                <select
+                                    id="monitor-filter-asset-type"
+                                    value={assetTypeFilter}
+                                    onChange={(e) => setAssetTypeFilter(e.target.value as AssetTypeFilter)}
+                                    className="monitor-select"
+                                    data-testid="monitor-filter-asset-type"
+                                >
+                                    <option value="all">Todos</option>
+                                    <option value="crypto">Crypto</option>
+                                    <option value="stocks">Ações</option>
+                                </select>
+                            </div>
+
+                            <div className="monitor-control-group">
+                                <label htmlFor="monitor-tier-filter" className="monitor-kpi-label">Tier</label>
+                                <select
+                                    id="monitor-tier-filter"
+                                    value={tierFilter}
+                                    onChange={(e) => setTierFilter(e.target.value as TierFilter)}
+                                    className="monitor-select"
+                                >
+                                    <option value="all">Todas</option>
+                                    <option value="1">Tier 1</option>
+                                    <option value="2">Tier 2</option>
+                                    <option value="3">Tier 3</option>
+                                    <option value="1_2">1 + 2</option>
+                                    <option value="none">Sem tier</option>
+                                </select>
+                            </div>
+
+                            <div className="monitor-control-group">
+                                <div className="monitor-sort-label">
+                                    <ArrowUpDown className="h-4 w-4" />
+                                    <label htmlFor="monitor-sort-select">Ordenação</label>
                                 </div>
-                            </section>
-                        );
-                    })}
-                    {hasMore && (
-                        <div ref={sentinelRef} className="flex justify-center py-8" aria-hidden="true">
-                            <span className="text-sm text-muted-foreground animate-pulse">Carregando mais…</span>
+                                <select
+                                    id="monitor-sort-select"
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                                    className="monitor-select"
+                                >
+                                    <option value="tier_distance">Tier + Distância</option>
+                                    <option value="distance">Distância</option>
+                                    <option value="symbol">Símbolo</option>
+                                </select>
+                            </div>
                         </div>
-                    )}
-                </div>
-            )}
-            {activeChart ? (
-                <ChartModal
-                    symbol={activeChart.opportunity.symbol}
-                    opportunity={activeChart.opportunity}
-                    initialCandles={activeChart.initialCandles}
-                    initialTimeframe={activeChart.initialTimeframe}
-                    onClose={() => setActiveChart(null)}
-                />
-            ) : null}
+                    </aside>
+
+                    <main className="monitor-main-panel">
+                        {loading && opportunities.length === 0 ? (
+                            <div className="space-y-4">
+                                {SECTION_ORDER.map((sectionKey) => {
+                                    const cfg = SectionConfig[sectionKey];
+                                    return (
+                                        <section key={sectionKey} className="space-y-3 rounded-2xl border border-[var(--monitor-border)] bg-[var(--monitor-surface)] p-4">
+                                            <div className="monitor-section-head">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`monitor-dot ${cfg.dotClass}`} />
+                                                    <div>
+                                                        <p className="monitor-section-title">{cfg.title}</p>
+                                                        <p className="monitor-section-subtitle">{cfg.label}</p>
+                                                    </div>
+                                                </div>
+                                                <span className="monitor-section-count">0</span>
+                                            </div>
+                                            <div className="h-28 animate-pulse rounded-xl bg-white/5" />
+                                        </section>
+                                    );
+                                })}
+                            </div>
+                        ) : opportunities.length === 0 && !loading ? (
+                            <section className="rounded-2xl border border-[var(--monitor-border)] bg-[var(--monitor-surface)] p-8 text-center space-y-4">
+                                <p className="text-[var(--monitor-muted)]">Nenhum ativo favoritado ainda.</p>
+                                <Button variant="secondary" onClick={() => window.location.href = '/' }>
+                                    Ir para Backtester
+                                </Button>
+                            </section>
+                        ) : noResultsForInPortfolio ? (
+                            <section className="rounded-2xl border border-[var(--monitor-border)] bg-[var(--monitor-surface)] p-8 text-center space-y-4" data-testid="monitor-empty-in-portfolio">
+                                <p className="text-[var(--monitor-muted)]">Nenhum ativo na lista portfolio.</p>
+                                <Button variant="secondary" onClick={() => setListFilter('all')}>Mostrar todos</Button>
+                            </section>
+                        ) : (
+                            <div className="space-y-6">
+                                {SECTION_ORDER.map((sectionKey) => {
+                                    const cfg = SectionConfig[sectionKey];
+                                    const rows = resolvedSections[sectionKey];
+
+                                    return (
+                                        <section key={sectionKey} className="monitor-table-section">
+                                            <header className="monitor-table-section-head">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`monitor-dot ${cfg.dotClass}`} />
+                                                    <h3 className="text-lg font-semibold">{cfg.title}</h3>
+                                                    <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] ${cfg.badgeClass}`}>
+                                                        {cfg.label}
+                                                    </span>
+                                                </div>
+                                                <div className={`text-sm font-medium ${cfg.countClass}`}>{rows.length}</div>
+                                            </header>
+                                            <p className="text-xs text-[var(--monitor-muted)]">{cfg.description}</p>
+
+                                            {rows.length === 0 ? (
+                                                <p className="monitor-empty-row">Sem registros nesta seção.</p>
+                                            ) : (
+                                                <div className="monitor-table-wrap">
+                                                    <table className="monitor-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col" className="w-[33%]">Sinal</th>
+                                                                <th scope="col">Tier</th>
+                                                                <th scope="col">Distância</th>
+                                                                <th scope="col">Último preço</th>
+                                                                <th scope="col">Status</th>
+                                                                <th scope="col">Portfólio</th>
+                                                                <th scope="col">Timeframe</th>
+                                                                <th scope="col" />
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {rows.map(({ opportunity, resolved }) => {
+                                                                const pref = getPreference(opportunity.symbol);
+                                                                const derived = portfolioStatusBySymbol[opportunity.symbol];
+                                                                const inPortfolio = derived?.inPortfolio ?? pref.in_portfolio;
+                                                                const expanded = expandedRows[opportunity.symbol] ?? true;
+
+                                                                return (
+                                                                    <React.Fragment key={opportunity.id}>
+                                                                        <tr className="monitor-table-row">
+                                                                            <td>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleToggleRow(opportunity.symbol)}
+                                                                                    className="monitor-row-toggler"
+                                                                                >
+                                                                                    <ChevronDown
+                                                                                        className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                                                                                    />
+                                                                                    <span className="font-semibold text-[var(--monitor-text)]">{opportunity.symbol}</span>
+                                                                                </button>
+                                                                                <div className="monitor-row-subtitle">{opportunity.name || opportunity.template_name}</div>
+                                                                            </td>
+                                                                            <td>
+                                                                                <span className="monitor-row-badge">
+                                                                                    {opportunity.tier ? `Tier ${opportunity.tier}` : 'Sem tier'}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td>{getDistanceLabel(opportunity.distance_to_next_status)}</td>
+                                                                            <td className="font-mono">{formatPrice(opportunity.last_price)}</td>
+                                                                            <td>
+                                                                                <span className={`monitor-row-badge ${resolved.isUncertain ? 'monitor-row-badge-warning' : 'monitor-row-badge-neutral'}`}>
+                                                                                    {resolved.visual.badgeText}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td>
+                                                                                <span className={`monitor-row-badge ${inPortfolio ? 'monitor-row-badge-success' : 'monitor-row-badge-danger'}`}>
+                                                                                    {inPortfolio ? 'Sim' : 'Não'}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td>{getOpportunityAssetType(opportunity) === 'stock' ? '1d' : pref.price_timeframe}</td>
+                                                                            <td className="text-right">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleOpenChart(opportunity)}
+                                                                                    className="monitor-table-action"
+                                                                                    disabled={openingChartSymbol === opportunity.symbol}
+                                                                                >
+                                                                                    {openingChartSymbol === opportunity.symbol ? 'Abrindo...' : 'Abrir gráfico'}
+                                                                                </button>
+                                                                            </td>
+                                                                        </tr>
+                                                                        {expanded ? (
+                                                                            <tr>
+                                                                                <td colSpan={8} className="monitor-row-expanded-cell">
+                                                                                    <OpportunityCard
+                                                                                        opportunity={opportunity}
+                                                                                        preference={{
+                                                                                            ...pref,
+                                                                                            in_portfolio: inPortfolio,
+                                                                                        }}
+                                                                                        isPortfolioDerived={Boolean(derived?.active)}
+                                                                                        portfolioStatusMessage={derived?.message}
+                                                                                        portfolioStatusTone={derived?.tone}
+                                                                                        isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
+                                                                                        isOpeningChart={openingChartSymbol === opportunity.symbol}
+                                                                                        onToggleInPortfolio={handleToggleInPortfolio}
+                                                                                        onToggleCardMode={handleToggleCardMode}
+                                                                                        onChangePriceTimeframe={handleChangePriceTimeframe}
+                                                                                        onOpenChart={handleOpenChart}
+                                                                                    />
+                                                                                </td>
+                                                                            </tr>
+                                                                        ) : null}
+                                                                    </React.Fragment>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </section>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </main>
+                </section>
+
+                {activeChart ? (
+                    <ChartModal
+                        symbol={activeChart.opportunity.symbol}
+                        opportunity={activeChart.opportunity}
+                        initialCandles={activeChart.initialCandles}
+                        initialTimeframe={activeChart.initialTimeframe}
+                        onClose={() => setActiveChart(null)}
+                    />
+                ) : null}
             </div>
         </div>
     );
