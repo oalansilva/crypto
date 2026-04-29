@@ -7,9 +7,12 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
 - **Fluxo de produção:** implemente e valide diretamente em `develop`; para liberar produção, abra PR `develop -> main`, resolva automaticamente checks/políticas bloqueantes quando possível e realize o merge quando permitido.
 - **Regra de fluxo:** use somente `develop` e `main`; sem criação de branches por tasks usuais.
+- **Regra de merge:** após abrir um PR de `develop -> main`, o fluxo padrão é tentar o merge automático (se possível) sem esperar nova intervenção manual.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
 - **Não usar SQLite** como banco de operação. Em runtime/QA/Homologação, use apenas PostgreSQL (`DATABASE_URL` e `WORKFLOW_DATABASE_URL`).
-- OpenSpec é a camada de especificação técnico (artifacts).
+- **Funcionalidades novas:** siga OpenSpec por padrão antes de implementar (`openspec/changes/<change>/` com proposal/spec/design/tasks quando aplicável).
+- **Subagents:** use subagents sempre que houver ganho claro de paralelismo, investigação independente, validação especializada ou aceleração sem duplicar trabalho.
+- OpenSpec é a camada de especificação técnica (artifacts).
 - Workflow DB e OpenSpec são fontes de operação e evidência.
 
 ## Fluxo Git operacional (sempre)
@@ -18,6 +21,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - Commite cada ajuste em `develop`.
 - Abra PR de `develop` para `main` para liberar produção.
 - O merge em `main` é o passo final e de homologação da mudança; por padrão, o agente deve realizar esse merge após abrir o PR, desde que os checks obrigatórios estejam verdes e não haja bloqueios/conflitos.
+- Sempre que houver PR aberto e o bloqueio for apenas de checks ainda pendentes, o agente deve repetir a tentativa de merge automático até completar (ou até novo bloqueio de política/conflito que exija revisão humana).
 - Se o merge for bloqueado por checks, conflitos ou políticas resolvíveis por alteração no repo, o agente deve investigar, corrigir, commitar e dar push até liberar o PR.
 - Se o bloqueio depender de permissão/admin/review humano/configuração externa não editável pelo repo, o agente deve registrar o motivo exato no PR e na resposta final, sem mascarar o bloqueio como concluído.
 - Após merge em `main`, atualize `develop` para refletir o estado da produção.
@@ -47,7 +51,7 @@ Checklist de rotina (diária/por mudança):
 6. `git push`
 7. `gh pr create --base main --head develop --title "<titulo>" --body "descricao breve"`
 8. Se houver checks/políticas bloqueantes resolvíveis no repo, investigue e corrija automaticamente, depois repita `git add/commit/push`.
-9. Mescle o PR em `main` quando os checks obrigatórios permitirem (`gh pr merge --merge --delete-branch=false`).
+9. Tente merge automático em `main` em seguida: `gh pr merge --auto --merge --delete-branch=false`.
 10. Após merge: `git pull`
 
 Padrão de commit recomendado:
@@ -61,6 +65,9 @@ Padrão de commit recomendado:
 
 - Fluxo único (sem divisão por agentes): você conduz descoberta, planejamento, implementação, validação e fechamento.
 - Novo requisito de produto/UX/tech deve gerar um item novo no GitHub (Issue) antes de virar tarefa ativa da sprint/turno; mudanças relacionadas a itens já fechados devem ser registradas em issue filha/linkada.
+- Toda funcionalidade nova deve seguir o fluxo OpenSpec sempre que houver mudança de comportamento, UX, API, regra de negócio, dados, segurança, monitoramento ou operação. Antes de codar, crie/atualize `openspec/changes/<change>/` com escopo, decisões, tarefas e critérios de aceite proporcionais ao tamanho da mudança.
+- Mudanças pequenas e localizadas podem usar OpenSpec enxuto, mas não devem pular a etapa quando alterarem contrato do produto ou comportamento observável.
+- Sempre que possível, acelere o processo com subagents em tarefas médias/grandes, especialmente para mapear código, revisar riscos, validar UI/Playwright, investigar bugs ou dividir backend/frontend. O agente principal continua responsável por consolidar resultados e evitar trabalho duplicado.
 - Registre em `openspec/changes/<change>/` e no PR:
   - status atual
   - decisões de escopo
