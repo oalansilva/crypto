@@ -221,6 +221,7 @@ export const MonitorStatusTab: React.FC = () => {
             in_portfolio: patch.in_portfolio ?? prev.in_portfolio,
             card_mode: patch.card_mode ?? prev.card_mode,
             price_timeframe: patch.price_timeframe ?? prev.price_timeframe,
+            theme: patch.theme ?? prev.theme ?? DEFAULT_THEME,
         };
 
         setPreferences((current) => ({ ...current, [symbol]: next }));
@@ -515,9 +516,7 @@ export const MonitorStatusTab: React.FC = () => {
     const noResultsForInPortfolio = !loading && opportunities.length > 0 && filteredOpportunities.length === 0 && listFilter === 'in_portfolio';
 
     const theme: MonitorTheme = (
-        preferences['__global__']?.theme
-        || Object.values(preferences).find((p) => p?.theme)?.theme
-        || DEFAULT_THEME
+        preferences['__global__']?.theme ?? DEFAULT_THEME
     );
 
     return (
