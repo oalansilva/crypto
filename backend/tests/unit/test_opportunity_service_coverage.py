@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import time
 
 from app.services.market_data_providers import CCXT_SOURCE, STOOQ_SOURCE
 from app.services.opportunity_service import OpportunityService, _normalize_market_timeframe
@@ -54,6 +55,19 @@ class _FailingProvider:
     def fetch_ohlcv(self, *_args, **_kwargs):
         self.calls += 1
         raise RuntimeError("provider-failed")
+
+
+class _DelayAndReturnProvider:
+    def __init__(self, delay_seconds: float, delayed_symbol: str):
+        self.calls = 0
+        self.delay_seconds = delay_seconds
+        self.delayed_symbol = delayed_symbol
+
+    def fetch_ohlcv(self, symbol: str, timeframe: str, since_str=None, until_str=None, limit=None):
+        self.calls += 1
+        if symbol == self.delayed_symbol:
+            time.sleep(self.delay_seconds)
+        return _sample_ohlcv()
 
 
 class _MockProvider:
@@ -146,6 +160,47 @@ def test_get_opportunities_fetch_error_for_ccxt_is_skipped(monkeypatch):
 
     out = service.get_opportunities("user")
     assert out == []
+
+
+def test_get_opportunities_parallel_fetch_timeout_keeps_fast_strategies(monkeypatch):
+    service = OpportunityService(db_path=":memory:")
+    fast_favorite = _sample_favorite("BTC/USDT", "1h", data_source=CCXT_SOURCE)
+    slow_favorite = _sample_favorite("ETH/USDT", "1h", data_source=CCXT_SOURCE)
+    fast_favorite["id"] = 1
+    slow_favorite["id"] = 2
+    service.get_favorites = lambda *_args, **_kwargs: [fast_favorite, slow_favorite]
+
+    provider = _DelayAndReturnProvider(delay_seconds=0.5, delayed_symbol="ETH/USDT")
+
+    monkeypatch.setattr(opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE)
+    monkeypatch.setattr(opportunity_service, "_is_unsupported_symbol", lambda *_args: False)
+    monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_args: provider)
+    monkeypatch.setenv("OPPORTUNITIES_MARKET_FETCH_TIMEOUT_SECONDS", "0.05")
+    monkeypatch.setattr(
+        service.combo_service,
+        "get_template_metadata",
+        lambda template_name: {
+            "indicators": [],
+            "entry_logic": "close > open",
+            "exit_logic": "close < open",
+            "stop_loss": 0.1,
+        },
+    )
+    monkeypatch.setattr(opportunity_service, "ComboStrategy", _FakeComboStrategy)
+    monkeypatch.setattr(
+        service.analyzer,
+        "analyze",
+        lambda *args, **kwargs: {
+            "status": "HOLD",
+            "badge": "info",
+            "message": "ok",
+            "distance": 0.5,
+        },
+    )
+
+    out = service.get_opportunities("user")
+    assert len(out) == 1
+    assert out[0]["id"] == 1
 
 
 def test_get_opportunities_ccxt_applies_continuity_fix(monkeypatch):
