@@ -1014,7 +1014,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                         <div className="space-y-5">
                                             <section>
                                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal Context</p>
-                                                <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
+                                                <div
+                                                    className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3"
+                                                    data-testid="chart-modal-signal-context"
+                                                >
                                                     <div className="flex justify-between gap-3">
                                                         <span className="text-[#8b949e]">Resolved state</span>
                                                         <span className="font-mono text-[#e6edf3]">{resolvedSignal.visual.badgeText}</span>

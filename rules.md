@@ -30,3 +30,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 7. Apos validacao e evidencia, o agente tem autonomia para executar o fluxo manual de fechamento previsto no `AGENTS.md`, sem solicitar nova autorizacao para cada etapa.
    - Essa autonomia nao autoriza pular teste, OpenSpec, homologacao, commit unico ou merge manual.
+
+8. Usar a skill `caveman` em modo `lite` como padrao de comunicacao com Alan.
+   - Manter respostas curtas, diretas e sem filler, preservando clareza tecnica, seguranca e ordem correta em instrucoes criticas.
+   - Desativar somente quando Alan pedir explicitamente `stop caveman` ou `normal mode`.

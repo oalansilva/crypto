@@ -73,6 +73,7 @@ const DEFAULT_THEME: MonitorTheme = 'black';
 const BINANCE_MONITOR_PORTFOLIO_MIN_USD = 1;
 const FAVORITES_STORAGE_KEY = 'crypto-monitor-favorites-v1';
 const SPARKLINE_LIMIT = 14;
+const symbolTestKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
 const toFavoriteKey = (opportunity: Opportunity): string => String(opportunity.id);
 const normalizeFavoriteKey = (value: string | null | undefined): string => String(value || '').trim();
 
@@ -1096,6 +1097,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                 <tr
                                                                     className={`head-row ${expanded ? 'expanded' : ''}`}
                                                                     data-idx={rowKey}
+                                                                    data-testid={`monitor-row-${symbolTestKey(opportunity.symbol)}`}
                                                                     onClick={(event) => handleRowClick(event, rowKey)}
                                                                 >
                                                                     <td>
