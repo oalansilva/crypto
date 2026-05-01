@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
+from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from app.routes import onchain_metrics
 from app.services.glassnode_service import GlassnodeConfigError, GlassnodeRateLimitError
@@ -106,12 +108,12 @@ class FakeSupplyDistributionService:
     async def fetch_supply_distribution(self, asset: str, basis: str, window: str):
         assert asset == "BTC"
         assert basis == "entity"
-        assert window == "7d"
+        assert window in {"24h", "7d"}
         now = datetime(2026, 4, 27, tzinfo=timezone.utc)
         return {
             "asset": "BTC",
             "basis": "entity",
-            "window": "7d",
+            "window": window,
             "interval": "24h",
             "since": 1,
             "until": 2,
@@ -171,6 +173,27 @@ class FakeSupplyDistributionService:
                 }
             },
         }
+
+
+def test_glassnode_supply_distribution_http_route_is_registered(monkeypatch) -> None:
+    monkeypatch.setattr(
+        onchain_metrics,
+        "get_supply_distribution_service",
+        lambda: FakeSupplyDistributionService(),
+    )
+
+    app = FastAPI()
+    app.include_router(onchain_metrics.router)
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/onchain/glassnode/BTC/supply-distribution",
+        params={"basis": "entity", "window": "24h"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["asset"] == "BTC"
+    assert response.json()["window"] == "24h"
 
 
 @pytest.mark.asyncio

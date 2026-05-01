@@ -23,6 +23,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
   4. Fazer **um único commit de encerramento** em `develop`.
   5. Subir para GitHub: push em `develop`, abrir/reusar PR `develop -> main`, fazer merge manual em `main` e atualizar `develop`.
   6. Só então mover o card para `Homologado`.
+- **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `In Progress` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste durante a homologação, corrija e reteste mantendo o card em `Done`; ele só deve mudar de `Done` diretamente para `Homologado` no último passo.
 - **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
 - **Regra de commit único por entrega:** o único commit da entrega é o de encerramento, feito após a sua confirmação de homologação. Se CI/checks falharem depois do push, corrija preservando um commit final sempre que tecnicamente possível (ex.: amend + push seguro); se isso não for possível sem risco, registre a exceção e o motivo.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
