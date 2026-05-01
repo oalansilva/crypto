@@ -1,35 +1,110 @@
-# AGENTS.md — Guia rápido para agentes (e humanos) neste repo
+# AGENTS.md — Guia rapido para agentes (e humanos) neste repo
 
 Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
+
+## Escopo deste arquivo
+
+- `rules.md` define as regras obrigatorias curtas do projeto.
+- `AGENTS.md` define como executar essas regras na pratica: comandos, status, evidencias, OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
+- Use os dois arquivos. Em conflito real, aplique a regra mais restritiva e registre a ambiguidade antes de alterar codigo, card ou Git.
 
 ## TL;DR
 
 - **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
-- **Fluxo de produção:** implemente e valide diretamente em `develop`; para liberar produção, abra PR `develop -> main`, resolva automaticamente checks/políticas bloqueantes quando possível e realize o merge quando permitido.
+- **Fluxo de produção:** implemente e valide diretamente em `develop`; para liberar produção, abra PR `develop -> main`, resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** use somente `develop` e `main`; sem criação de branches por tasks usuais.
-- **Regra de merge:** após abrir um PR de `develop -> main`, o fluxo padrão é tentar o merge automático (se possível) sem esperar nova intervenção manual.
-- **Regra de autonomia operacional:** após validação e evidência, o agente tem autonomia para repetir tentativas de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
-- **Regra de implementação por card:** ao receber pedido com número de card (ex.: `#99`), localizar o card no board `github.com/users/oalansilva/projects/1`, mover para `In Progress`, executar usando OpenSpec e subagents conforme o escopo, executar `./restart`, e só então mover o card para `Done`.
+- **Regra de merge:** após abrir um PR de `develop -> main`, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
+- **Regra de autonomia operacional:** após validação e evidência, o agente tem autonomia para repetir tentativas manuais de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
+- **Regra de implementação por card:** ao receber pedido com número de card (ex.: `#99`), localizar o card no board `github.com/users/oalansilva/projects/1`, mover para `In Progress`, executar usando OpenSpec e subagents conforme o escopo, rodar `/opsx:verify`, executar `./restart`, e só então mover o card para `Done`. Não arquivar nem commitar nesta etapa.
+- **Regra de homologação direta por card (solicitação do cliente):** ao pedir para mover um card para `Homologado`, execute esta ordem:
+  1. Revisar se há mudanças locais pendentes e garantir que o commit único não foi feito ainda.
+  2. Rodar `/opsx:verify` para validação final da change. Se houver falha de teste/validação, corrigir a causa e repetir validação.
+  3. Se válida e completa, rodar `/opsx:archive`.
+  4. Fazer **um único commit de encerramento** em `develop`.
+  5. Subir para GitHub: push em `develop`, abrir/reusar PR `develop -> main`, fazer merge manual em `main` e atualizar `develop`.
+  6. Só então mover o card para `Homologado`.
+- **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
+- **Regra de commit único por entrega:** o único commit da entrega é o de encerramento, feito após a sua confirmação de homologação. Se CI/checks falharem depois do push, corrija preservando um commit final sempre que tecnicamente possível (ex.: amend + push seguro); se isso não for possível sem risco, registre a exceção e o motivo.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
 - **Não usar SQLite** como banco de operação. Em runtime/QA/Homologação, use apenas PostgreSQL (`DATABASE_URL` e `WORKFLOW_DATABASE_URL`).
 - **Funcionalidades novas:** siga OpenSpec por padrão antes de implementar (`openspec/changes/<change>/` com proposal/spec/design/tasks quando aplicável).
-- **Regra obrigatória de criação via OpenSpec:** ao iniciar uma mudança por card, execute o fluxo ` /opsx:new ──► /opsx:ff ──► /opsx:apply ` antes de qualquer implementação.
+- **Regra obrigatória de criação via OpenSpec:** ao iniciar uma mudança por card, execute o fluxo ` /opsx:new ──► /opsx:ff ──► /opsx:apply ──► /opsx:verify ` antes de mover para `Done`; execute `/opsx:archive` somente no fechamento de homologação.
   - Se o projeto ainda não estiver inicializado com OpenSpec, rode `openspec init` e então comece o fluxo.
 - **Observação de fluxo OpenSpec:** use os comandos nesta ordem para mudanças novas; ajuste a cadência apenas com justificativa explícita.
 - **Subagents:** use subagents sempre que houver ganho claro de paralelismo, investigação independente, validação especializada ou aceleração sem duplicar trabalho.
 - OpenSpec é a camada de especificação técnica (artifacts).
 - Workflow DB e OpenSpec são fontes de operação e evidência.
 
+## De-para OpenSpec/OPSX no Codex
+
+Quando o cliente Codex não interpretar `/opsx:*` como slash command, trate o texto como intenção operacional e acione a skill local equivalente. Não substitua a skill por criação manual de arquivos.
+
+Regra obrigatória:
+- Primeiro use a skill OpenSpec correspondente.
+- Depois execute a CLI `openspec` indicada pela própria skill.
+- Só crie ou edite arquivos em `openspec/changes/<change>/` seguindo `openspec instructions ... --json`.
+- Não invente artefatos manualmente fora do fluxo da skill.
+- Ao final de cada etapa, registre no handoff/status qual skill foi usada, qual comando CLI foi executado e qual evidência foi produzida.
+
+De-para principal:
+
+| Intenção / comando | Skill Codex obrigatória | CLI base | Resultado esperado |
+| --- | --- | --- | --- |
+| `/opsx:new <change>` | `$openspec-new-change` | `openspec new change "<change>"`; `openspec status --change "<change>"`; `openspec instructions <artifact-id> --change "<change>"` | Cria apenas o scaffold da change, mostra status e instrução do primeiro artifact. Não cria artifacts ainda. |
+| `/opsx:ff <change>` | `$openspec-ff-change` | `openspec status --change "<change>" --json`; `openspec instructions <artifact-id> --change "<change>" --json` | Gera todos os artifacts necessários para ficar pronto para implementação, respeitando dependências e templates retornados pela CLI. |
+| `/opsx:apply <change>` | `$openspec-apply-change` | `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Lê `contextFiles`, implementa as tasks pendentes e marca checkboxes em `tasks.md` somente após concluir cada item. |
+| `/opsx:verify <change>` | `$openspec-verify-change` | `openspec list --json` quando a change estiver ambígua; `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Verifica completude, corretude e coerência entre artifacts, specs, tasks, design, testes e implementação real. |
+| `/opsx:archive <change>` | `$openspec-archive-change` | `openspec status --change "<change>" --json`; avaliar sync de specs; mover para `openspec/changes/archive/YYYY-MM-DD-<change>/` | Arquiva somente após homologação, checando artifacts, tasks, delta specs e registrando warnings se algo ficar incompleto. |
+
+De-para complementar:
+
+| Intenção / comando | Skill Codex obrigatória | Uso correto |
+| --- | --- | --- |
+| `/opsx:continue <change>` | `$openspec-continue-change` | Continuar a criação do próximo artifact pronto, usando `openspec status` e `openspec instructions`, sem pular dependências. |
+| `/opsx:sync <change>` | `$openspec-sync-specs` | Sincronizar delta specs de `openspec/changes/<change>/specs/` para `openspec/specs/` antes ou durante o archive, conforme avaliação da skill. |
+| `/opsx:bulk-archive` | `$openspec-bulk-archive-change` | Arquivar várias changes concluídas, uma a uma, preservando evidência e warnings por change. |
+| `/opsx:onboard` | `$openspec-onboard` | Fazer onboarding guiado do fluxo OpenSpec antes de iniciar implementação quando o contexto operacional estiver confuso. |
+
+Fluxo canônico para implementação por card:
+
+```text
+/opsx:new <change>
+  -> usar $openspec-new-change
+  -> criar scaffold e identificar primeiro artifact
+
+/opsx:ff <change>
+  -> usar $openspec-ff-change
+  -> gerar artifacts até apply-ready
+
+/opsx:apply <change>
+  -> usar $openspec-apply-change
+  -> implementar tasks e atualizar tasks.md
+
+/opsx:verify <change>
+  -> usar $openspec-verify-change
+  -> validar artifacts versus implementação e testes
+```
+
+Fechamento após homologação:
+
+```text
+/opsx:archive <change>
+  -> usar $openspec-archive-change
+  -> sincronizar specs quando aplicável e arquivar a change
+```
+
+Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover arquivos para `archive/` sem declarar a skill OpenSpec usada, considere o fluxo incompleto e corrija antes de avançar para DEV, QA, homologação ou merge.
+
 ## Fluxo Git operacional (sempre)
 
 - Trabalhe sempre em `develop`; não crie `feature/*`, `bugfix/*` ou outras branches para tarefas isoladas.
-- Commite cada ajuste em `develop`.
+- Não faça commit durante a implementação (nem por subetapas). O único commit ocorre após homologação confirmada.
 - Abra PR de `develop` para `main` para liberar produção.
-- O merge em `main` é o passo final e de homologação da mudança; por padrão, o agente deve realizar esse merge após abrir o PR, desde que os checks obrigatórios estejam verdes e não haja bloqueios/conflitos.
+- O merge em `main` é o passo final e de homologação da mudança; o merge deve ser feito manualmente após abrir o PR, desde que os checks obrigatórios estejam verdes e não haja bloqueios/conflitos.
 - **Regra mandatória nova (independente do tamanho):** antes de qualquer alteração de código, iniciar sempre com OpenSpec em `openspec/changes/<change>/` (proposta, escopo, critérios e evidência) e só então codar.
-- **Regra de autonomia operacional:** após validação e evidência, o agente deve executar ações de merge e retentativas automáticas previstas no fluxo sem solicitar autorização adicional do usuário.
-- Sempre que houver PR aberto e o bloqueio for apenas de checks ainda pendentes, o agente deve repetir a tentativa de merge automático até completar (ou até novo bloqueio de política/conflito que exija revisão humana).
-- Se o merge for bloqueado por checks, conflitos ou políticas resolvíveis por alteração no repo, o agente deve investigar, corrigir, commitar e dar push até liberar o PR.
+- **Regra de autonomia operacional:** após validação e evidência, o agente deve executar ações de merge e retentativas manuais previstas no fluxo sem solicitar autorização adicional do usuário.
+- Sempre que houver PR aberto e o bloqueio for apenas de checks ainda pendentes, o agente deve repetir a tentativa manual de merge até completar (ou até novo bloqueio de política/conflito que exija revisão humana).
+- Se o merge for bloqueado por checks, conflitos ou políticas resolvíveis por alteração no repo, o agente deve investigar, corrigir, revalidar e preservar a regra de commit único sempre que tecnicamente seguro.
 - Se o bloqueio depender de permissão/admin/review humano/configuração externa não editável pelo repo, o agente deve registrar o motivo exato no PR e na resposta final, sem mascarar o bloqueio como concluído.
 - Após merge em `main`, atualize `develop` para refletir o estado da produção.
 
@@ -38,6 +113,8 @@ Exemplo mínimo:
 git switch develop
 git pull
 # ...alterações locais...
+# ...validações locais e evidências...
+# após homologação confirmada:
 git add .
 git commit -m "feat: descrição da mudança"
 git push
@@ -53,14 +130,16 @@ Checklist de rotina (diária/por mudança):
 1. `git switch develop`
 2. `git pull`
 3. aplicar alteração
-4. `git add .`
-5. `git commit -m "tipo: mensagem"`
-6. `git push`
-7. `gh pr create --base main --head develop --title "<titulo>" --body "descricao breve"`
-8. Se houver checks/políticas bloqueantes resolvíveis no repo, investigue e corrija automaticamente, depois repita `git add/commit/push`.
-9. Tente merge automático em `main` em seguida: `gh pr merge --auto --merge --delete-branch=false`.
-10. Após merge: `git pull`
-- 11. Em qualquer entrega de código, sempre usar subagentes por padrão para aceleração de descoberta, implementação e validação.
+4. validar localmente e preparar evidências
+5. após homologação confirmada: `git add .`
+6. após homologação confirmada: `git commit -m "tipo: mensagem"`
+7. `git push`
+8. `gh pr create --base main --head develop --title "<titulo>" --body "descricao breve"`
+9. Se houver pontos de falha antes do fechamento, investigue e corrija antes do commit de encerramento; evite novo ciclo de commit em lote para não quebrar a regra de commit único.
+10. Faça o merge manualmente em `main` em seguida: `gh pr merge --merge --delete-branch=false`.
+11. Após merge: `git pull`
+
+Em entrega de código por card, use subagents por padrão para acelerar descoberta, implementação e validação, respeitando escopo e evitando trabalho duplicado.
 
 Padrão de commit recomendado:
 - `feat: adicionar fluxo de merge develop->main`
@@ -71,7 +150,7 @@ Padrão de commit recomendado:
 
 ## Regras de operação
 
-- Fluxo único (sem divisão por agentes): você conduz descoberta, planejamento, implementação, validação e fechamento.
+- Responsabilidade única: o agente principal conduz descoberta, planejamento, implementação, validação e fechamento, mesmo quando usar subagents para acelerar partes independentes.
 - Novo requisito de produto/UX/tech deve gerar um item novo no GitHub (Issue) antes de virar tarefa ativa da sprint/turno; mudanças relacionadas a itens já fechados devem ser registradas em issue filha/linkada.
 - Toda funcionalidade nova deve seguir o fluxo OpenSpec sempre que houver mudança de comportamento, UX, API, regra de negócio, dados, segurança, monitoramento ou operação. Antes de codar, crie/atualize `openspec/changes/<change>/` com escopo, decisões, tarefas e critérios de aceite proporcionais ao tamanho da mudança.
 - Mudanças pequenas e localizadas podem usar OpenSpec enxuto, mas não devem pular a etapa quando alterarem contrato do produto ou comportamento observável.
@@ -80,7 +159,7 @@ Padrão de commit recomendado:
   - status atual
   - decisões de escopo
   - evidências de teste/PR
-- Para promover produção, trabalhe em `develop` (sem branch extra), abra PR de `develop -> main`, resolva automaticamente checks/políticas bloqueantes quando forem corrigíveis por código/configuração do repo e realize o merge do PR como fechamento padrão da entrega.
+- Para promover produção, trabalhe em `develop` (sem branch extra), abra PR de `develop -> main`, resolva checks/políticas bloqueantes quando forem corrigíveis por código/configuração do repo e realize o merge manual do PR como fechamento padrão da entrega.
 - Política adicional: quando houver falha recorrente de unit tests de DB, aplique isolamento por teste (reset de tabelas/fixtures) antes de alterar regras de negócio.
 - Ao registrar bloqueios de CI, incluir evidência e impacto de `Unit tests` e `Backend format` no comentário do PR, e manter esta orientação em `AGENTS.md` para repetição.
 - Em workflows com `push` e `pull_request`, a `concurrency.group` deve diferenciar `github.event_name`; caso contrário, o run de `pull_request` pode cancelar o run de `push` do mesmo SHA em `develop`, deixando checks obrigatórios como `cancelled` e bloqueando o merge em `main`.
@@ -231,6 +310,6 @@ O agente principal continua responsável por consolidar decisões, evitar trabal
 
 ## Engenharia de prompt
 
-Reforço de fluxo de fechamento: em qualquer entrega, a atividade só pode ser concluída com o merge em `main` (via PR `develop -> main`) após validação e evidências registradas.
+Reforço de fluxo de fechamento: em qualquer entrega, a atividade só pode ser concluída com o merge manual em `main` (via PR `develop -> main`) após validação e evidências registradas.
 
 Se for necessário mudar o tom de um agente (ex: deixar o design mais exploratório ou o DEV mais cauteloso), primeiro atualiza este arquivo com o novo prompt/personalidade e registra no `openspec/changes/<change>/` do fluxo ativo. Nunca altere agentes apenas via jobs sem documentar aqui.
