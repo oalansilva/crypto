@@ -573,9 +573,9 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
 
   await page.goto('/monitor')
 
-  const card = page.getByTestId('monitor-card-btc-usdt')
-  await expect(card).toBeVisible()
-  await card.click()
+  const row = page.getByTestId('monitor-row-btc-usdt')
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: 'Abrir gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
