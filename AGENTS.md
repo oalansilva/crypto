@@ -124,6 +124,7 @@ npm --prefix frontend run build
 
 ## Convenções de UI/UX (Lab)
 
+- Para qualquer tarefa em `frontend/`, use a skill local `$crypto-frontend` como padrão inicial de qualidade e validação visual.
 - **Upstream** deve ser uma conversa fluida (Humano ↔ Trader) para clarificar inputs/constraints/risco.
 - O label "validator" na UI/copy deve aparecer como **Trader**.
 

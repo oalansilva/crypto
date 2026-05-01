@@ -1,12 +1,8 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Target, Activity, Settings, Star, BarChart3 } from "lucide-react";
-import { API_BASE_URL, apiUrl } from '../../lib/apiBase';
+import { Download, LineChart, RefreshCw, ShieldCheck } from 'lucide-react';
+import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
-import { MiniCandlesChart, type MarketCandle } from './MiniCandlesChart';
 import { resolveOpportunitySignal } from './signalResolution';
-
 import { getOpportunityAssetType, type Opportunity, type MonitorCardMode, type MonitorPreference, type MonitorPriceTimeframe } from './types';
 
 interface OpportunityCardProps {
@@ -19,37 +15,37 @@ interface OpportunityCardProps {
     isOpeningChart: boolean;
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
-    onChangePriceTimeframe: (symbol: string, nextTimeframe: MonitorPriceTimeframe) => void;
     onOpenChart: (opportunity: Opportunity) => void;
 }
 
-const PRICE_TIMEFRAMES: MonitorPriceTimeframe[] = ['15m', '1h', '4h', '1d'];
-const CANDLE_LIMIT = '60';
-const candlesCache = new Map<string, MarketCandle[]>();
-const inflightBySymbol = new Map<string, AbortController>();
-
-const getDistanceColor = (distance: number | null | undefined): string => {
-    if (distance === null || distance === undefined) return 'text-gray-600 dark:text-gray-400';
-    if (distance < 0.5) return 'text-green-600 dark:text-green-400 font-bold';
-    if (distance < 1.0) return 'text-yellow-600 dark:text-yellow-400 font-bold';
-    return 'text-gray-600 dark:text-gray-400';
-};
-
-const getTierStyles = (tier: number | null | undefined) => {
-    switch (tier) {
-        case 1:
-            return { dot: 'bg-green-500', border: 'rgb(34, 197, 94)', label: 'Tier 1', ring: 'ring-green-400' };
-        case 2:
-            return { dot: 'bg-amber-500', border: 'rgb(245, 158, 11)', label: 'Tier 2', ring: 'ring-amber-400' };
-        case 3:
-            return { dot: 'bg-red-500', border: 'rgb(239, 68, 68)', label: 'Tier 3', ring: 'ring-red-400' };
-        default:
-            return null;
-    }
-};
-
 const symbolKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
-const candleCacheKey = (symbol: string, timeframe: MonitorPriceTimeframe): string => `${symbol}|${timeframe}`;
+
+const toDisplayValue = (value: unknown, precision = 2): string => {
+    if (value === null || value === undefined) {
+        return '-';
+    }
+    if (typeof value === 'number') {
+        if (!Number.isFinite(value)) return '-';
+        if (Number.isInteger(value) || value > 1e8 || precision === 0) {
+            return new Intl.NumberFormat('en-US').format(value);
+        }
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: precision,
+            maximumFractionDigits: precision,
+        }).format(value);
+    }
+    if (typeof value === 'boolean') return value ? 'true' : 'false';
+    if (typeof value === 'string') return value || '-';
+    return String(value);
+};
+
+const renderKeyValueRows = (values?: Record<string, unknown>): Array<[string, string]> => {
+    if (!values || Object.keys(values).length === 0) {
+        return [['Sem dados', '-']];
+    }
+
+    return Object.entries(values).map(([label, value]) => [label, toDisplayValue(value)]);
+};
 
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     opportunity,
@@ -61,7 +57,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     isOpeningChart,
     onToggleInPortfolio,
     onToggleCardMode,
-    onChangePriceTimeframe,
     onOpenChart,
 }) => {
     const {
@@ -71,174 +66,36 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         timeframe,
         is_holding,
         distance_to_next_status,
-        next_status_label,
         last_price,
     } = opportunity;
 
-    const isPriceMode = preference.card_mode === 'price';
     const isStock = getOpportunityAssetType(opportunity) === 'stock';
     const effectiveTimeframe: MonitorPriceTimeframe = isStock ? '1d' : preference.price_timeframe;
+    const distance = distance_to_next_status;
+    const distanceStr = distance !== null && distance !== undefined ? `${distance.toFixed(2)}%` : '-';
 
     const [isEditingNotes, setIsEditingNotes] = React.useState(false);
     const [notesValue, setNotesValue] = React.useState(opportunity.notes || '');
     const [isSavingNotes, setIsSavingNotes] = React.useState(false);
 
-    const [candles, setCandles] = React.useState<MarketCandle[]>([]);
-    const [candlesLoading, setCandlesLoading] = React.useState(false);
-    const [candlesError, setCandlesError] = React.useState<string | null>(null);
-    const cardRef = React.useRef<HTMLDivElement | null>(null);
-    const [isNearViewport, setIsNearViewport] = React.useState(false);
-    const [showChart, setShowChart] = React.useState(false);
-
     React.useEffect(() => {
         setNotesValue(opportunity.notes || '');
     }, [opportunity.notes]);
 
-    React.useEffect(() => {
-        const node = cardRef.current;
-        if (!node) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (!entries[0]?.isIntersecting) return;
-                setIsNearViewport(true);
-                observer.disconnect();
-            },
-            { root: null, rootMargin: '300px', threshold: 0.01 }
-        );
-        observer.observe(node);
-        return () => observer.disconnect();
-    }, []);
-
-    React.useEffect(() => {
-        if (!isPriceMode || !isNearViewport || !showChart) {
-            setCandlesError(null);
-            setCandlesLoading(false);
-            return;
-        }
-
-        const cacheKey = candleCacheKey(symbol, effectiveTimeframe);
-        const cached = candlesCache.get(cacheKey);
-        if (cached) {
-            setCandles(cached);
-            setCandlesError(null);
-            setCandlesLoading(false);
-            return;
-        }
-
-        inflightBySymbol.get(symbol)?.abort();
-        const controller = new AbortController();
-        inflightBySymbol.set(symbol, controller);
-
-        const run = async () => {
-            setCandlesLoading(true);
-            setCandlesError(null);
-            try {
-                const url = apiUrl('/market/candles');
-                url.searchParams.set('symbol', symbol);
-                url.searchParams.set('timeframe', effectiveTimeframe);
-                url.searchParams.set('limit', CANDLE_LIMIT);
-
-                const response = await authFetch(url.toString(), { signal: controller.signal });
-                const payload = await response.json();
-                if (!response.ok) {
-                    throw new Error(String(payload?.detail || `Failed to load candles (${response.status})`));
-                }
-
-                const rows = Array.isArray(payload?.candles) ? payload.candles : [];
-                candlesCache.set(cacheKey, rows);
-                setCandles(rows);
-            } catch (error) {
-                const isAbortError =
-                    controller.signal.aborted
-                    || (error instanceof DOMException && error.name === 'AbortError')
-                    || (error instanceof Error && error.name === 'AbortError');
-
-                if (!isAbortError) {
-                    setCandles([]);
-                    setCandlesError(error instanceof Error ? error.message : 'Failed to load candles');
-                }
-            } finally {
-                if (!controller.signal.aborted) {
-                    setCandlesLoading(false);
-                }
-                if (inflightBySymbol.get(symbol) === controller) {
-                    inflightBySymbol.delete(symbol);
-                }
-            }
-        };
-
-        run();
-        return () => {
-            if (inflightBySymbol.get(symbol) === controller) {
-                inflightBySymbol.delete(symbol);
-            }
-            controller.abort();
-        };
-    }, [isNearViewport, isPriceMode, showChart, symbol, effectiveTimeframe]);
-
-    const formattedPrice = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 8,
-    }).format(last_price);
-
-    const distance = distance_to_next_status;
-    const distanceStr = distance !== null && distance !== undefined
-        ? `${distance.toFixed(2)}%`
-        : '-';
-    const distanceColor = getDistanceColor(distance);
-
-    const showProgress = distance !== null && distance !== undefined && distance < 1.0;
-    const progressPercent = showProgress
-        ? Math.max(0, Math.min(100, (1 - distance) * 100))
-        : 0;
-
-    const tierStyles = getTierStyles(opportunity.tier);
     const resolvedSignal = React.useMemo(
         () => resolveOpportunitySignal(opportunity, { selectedTimeframe: effectiveTimeframe }),
         [effectiveTimeframe, opportunity],
     );
-    const isWait = resolvedSignal.section === 'wait';
-
-    const badgeColor = resolvedSignal.visual.badgeClass;
-    let borderColor = resolvedSignal.visual.borderClass;
-    let cardBgColor = resolvedSignal.visual.cardBgClass;
-    let holdingIndicator = '';
-
-    if (resolvedSignal.section === 'hold') {
-        holdingIndicator = 'ring-2 ring-green-400 shadow-lg shadow-green-500/30';
-    } else if (resolvedSignal.section === 'exit') {
-        holdingIndicator = 'ring-2 ring-sky-400 shadow-lg shadow-sky-500/20';
-    } else if (!resolvedSignal.isUncertain && isWait && tierStyles) {
-        borderColor = 'border-l-4';
-        cardBgColor = tierStyles.dot === 'bg-green-500' ? 'bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
-                      tierStyles.dot === 'bg-amber-500' ? 'bg-amber-50/50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' :
-                      'bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
-    }
-
-    const statusMessage = resolvedSignal.isUncertain
-        ? `${resolvedSignal.statusMessage}${resolvedSignal.freshnessReason ? ` ${resolvedSignal.freshnessReason}` : ''}`
-        : (opportunity.message || (
-            distance !== null && distance !== undefined
-                ? `${distance.toFixed(2)}% até ${next_status_label}`
-                : `Aguardando estado para decisão`
-        ));
-
-    const displayName = (name || '').trim() || template_name;
-    const shouldShowTemplate = Boolean((template_name || '').trim()) && String(name || '').trim() !== String(template_name || '').trim();
-
-    // NOTE: Avoid hardcoded light backgrounds via inline styles.
-    // They reduce contrast on mobile/dark mode. Background colors are handled via Tailwind classes.
-    const cardStyle = resolvedSignal.section === 'hold'
-        ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(22, 163, 74)' }
-        : resolvedSignal.section === 'exit'
-                ? { borderLeftWidth: '4px', borderLeftColor: 'rgb(2, 132, 199)' }
-                : !resolvedSignal.isUncertain && isWait && tierStyles
-                        ? { borderLeftWidth: '4px', borderLeftColor: tierStyles.border }
-                        : { borderLeftWidth: '4px', borderLeftColor: 'rgb(203, 213, 225)' };
-
+    const statusMessage = resolvedSignal.statusMessage;
+    const exitClassName = resolvedSignal.section === 'exit'
+        ? ''
+        : resolvedSignal.section === 'wait'
+            ? 'wait-msg'
+            : 'hold-msg';
+    const batchReference = typeof opportunity.notes === 'string'
+        ? opportunity.notes.match(/\(([^)]+)\)/)?.[1] ?? '-'
+        : '-';
+    const batchInfo = opportunity.timestamp ? new Date(opportunity.timestamp).toLocaleString('en-US') : '-';
     const symbolTestKey = symbolKey(symbol);
     const portfolioStatusClass = portfolioStatusTone === 'success'
         ? 'text-emerald-300'
@@ -246,374 +103,249 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             ? 'text-amber-300'
             : 'text-slate-300';
 
-    const shouldIgnoreCardClick = (target: EventTarget | null) => {
-        return target instanceof HTMLElement
-            && Boolean(target.closest('button, textarea, input, select, a, [data-prevent-card-click="true"]'));
+    const parameterRows = renderKeyValueRows(
+        opportunity.parameters as Record<string, unknown> | undefined,
+    );
+    const indicatorRows = renderKeyValueRows(
+        opportunity.indicator_values as Record<string, unknown> | undefined,
+    );
+
+    const priceString = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 8,
+    }).format(last_price);
+
+    const saveNotes = async () => {
+        try {
+            setIsSavingNotes(true);
+            const response = await authFetch(`${API_BASE_URL}/favorites/${opportunity.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: notesValue }),
+            });
+            if (!response.ok) {
+                throw new Error('Erro ao salvar notas');
+            }
+            setIsEditingNotes(false);
+        } catch (error) {
+            console.error('Error saving notes:', error);
+            alert('Erro ao salvar notas. Tente novamente.');
+        } finally {
+            setIsSavingNotes(false);
+        }
+    };
+
+    const exportSummary = async () => {
+        const payload = {
+            symbol,
+            template_name,
+            timeframe,
+            last_price,
+            distance_to_next_status,
+            is_holding,
+            status: resolvedSignal.visual.badgeText,
+            message: statusMessage,
+            parameters: opportunity.parameters ?? {},
+            indicator_values: opportunity.indicator_values ?? {},
+            notes: notesValue,
+        };
+
+        if (navigator?.clipboard?.writeText) {
+            try {
+                await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+                return;
+            } catch {
+                // fallback below
+            }
+        }
+        window.prompt('Resumo da oportunidade:', JSON.stringify(payload));
+    };
+
+    const confirmManagement = () => {
+        if (isPortfolioDerived) {
+            return;
+        }
+        onToggleInPortfolio(symbol, true);
     };
 
     return (
-        <Card
-            ref={cardRef}
-            className={`${borderColor} ${cardBgColor} ${holdingIndicator} hover:shadow-lg transition-all hover:scale-[1.02] relative cursor-pointer focus-within:ring-2 focus-within:ring-blue-400/60`}
-            style={cardStyle}
-            data-testid={`monitor-card-${symbolTestKey}`}
-            data-portfolio-derived={isPortfolioDerived ? 'true' : 'false'}
-            role="button"
-            tabIndex={0}
-            aria-haspopup="dialog"
-            aria-label={`Open chart for ${symbol}`}
-            onClick={(event) => {
-                if (shouldIgnoreCardClick(event.target)) {
-                    return;
-                }
-                onOpenChart(opportunity);
-            }}
-            onKeyDown={(event) => {
-                if (shouldIgnoreCardClick(event.target)) {
-                    return;
-                }
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onOpenChart(opportunity);
-                }
-            }}
-        >
-            {isOpeningChart ? (
-                <div className="absolute right-3 top-3 z-10 rounded-md bg-slate-950/80 px-2 py-1 text-[11px] font-medium text-white">
-                    Opening chart...
-                </div>
-            ) : null}
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-2">
-                <div className="flex flex-col min-w-0">
-                    <CardTitle className={`text-xl font-bold flex items-center gap-2 ${
-                        resolvedSignal.visual.titleClass
-                    }`}>
-                        {tierStyles && (
-                            <span className={`w-2 h-2 rounded-full ${tierStyles.dot} ring-1 ${tierStyles.ring} flex-shrink-0`} title={tierStyles.label} />
-                        )}
-                        <span className="truncate">{symbol}</span>
-                        <span
-                            className="text-sm font-normal text-[var(--monitor-muted)] bg-[var(--monitor-surface)] border border-[var(--monitor-border)] px-2 py-1 rounded"
-                            title="Strategy timeframe"
-                        >
-                            {timeframe}
+        <div data-testid={`monitor-card-${symbolTestKey}`} data-portfolio-derived={isPortfolioDerived ? 'true' : 'false'}>
+            <div className="detail">
+                <div>
+                    <h5 className="h5-exit">
+                        <span className="swatch" />
+                        Saída · {resolvedSignal.visual.badgeText}
+                    </h5>
+                    <div className={`exit-msg ${exitClassName}`}>
+                        <span className="label">Mensagem</span>
+                        <span>{statusMessage}</span>
+                    </div>
+                    <div className="candle-meta">
+                        <span>
+                            estratégia <b>{template_name || name || symbol}</b>
                         </span>
-                        {isPriceMode && effectiveTimeframe !== timeframe ? (
-                            <span
-                                className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-2 py-1 rounded"
-                                title="Price chart timeframe"
-                            >
-                                chart {effectiveTimeframe}
+                        <span>
+                            tf <b>{effectiveTimeframe}</b>
+                        </span>
+                        <span>
+                            candle <b>{opportunity.indicator_values_candle_time || '-'}</b>
+                        </span>
+                        {resolvedSignal.freshnessReason ? (
+                            <span>
+                                alerta <b>{resolvedSignal.freshnessReason}</b>
                             </span>
                         ) : null}
-                    </CardTitle>
-                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[220px] font-medium">
-                        {displayName}
-                    </span>
-                    {shouldShowTemplate ? (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[220px]">
-                            {template_name}
-                        </span>
-                    ) : null}
-                </div>
-
-                <div className="flex flex-col items-end gap-2">
-                    <Badge variant="outline" className={`${badgeColor} uppercase text-sm font-bold shadow-sm px-3 py-1`}>
-                        {resolvedSignal.visual.badgeText}
-                    </Badge>
-                    <div className="flex items-center gap-1">
-                            <button
-                            	type="button"
-                            className={`rounded-md border px-2 py-1 text-xs flex items-center gap-1 ${
-                                preference.in_portfolio ? 'border-amber-500 text-amber-400 bg-amber-500/20' : 'border-zinc-600 text-zinc-300 bg-zinc-800'
-                            } ${isPortfolioDerived ? 'cursor-not-allowed opacity-60' : ''}`}
-                            onClick={() => {
-                            		if (isPortfolioDerived) {
-	                            		return;
-	                            	}
-                                onToggleInPortfolio(symbol, !preference.in_portfolio);
-                            }}
-                            data-testid={`portfolio-toggle-${symbolTestKey}`}
-                            title={
-                                isPortfolioDerived
-                                    ? 'Portfolio synced from Binance wallet for crypto assets'
-                                    : preference.in_portfolio
-                                        ? 'Remove from In Portfolio'
-                                        : 'Add to In Portfolio'
-                            }
-                            disabled={isPortfolioDerived}
-                            aria-disabled={isPortfolioDerived}
-                            aria-pressed={preference.in_portfolio}
-                            aria-busy={isSavingPreference}
-                            data-portfolio-selected={preference.in_portfolio ? 'true' : 'false'}
-                        >
-                            <Star className={`w-3 h-3 ${preference.in_portfolio ? 'fill-current' : ''}`} />
-                            <span className="hidden sm:inline">Portfolio</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            className="rounded-md border border-zinc-600 px-2 py-1 text-xs flex items-center gap-1 bg-zinc-800 text-zinc-300"
-                            onClick={() => onToggleCardMode(symbol, isPriceMode ? 'strategy' : 'price')}
-                            data-testid={`mode-toggle-${symbolTestKey}`}
-                            title={isPriceMode ? 'Switch to strategy mode' : 'Switch to price mode'}
-                            aria-busy={isSavingPreference}
-                        >
-                            <BarChart3 className="w-3 h-3" />
-                            <span data-testid={`mode-label-${symbolTestKey}`}>{isPriceMode ? 'Price' : 'Strategy'}</span>
-                        </button>
                     </div>
                     {isPortfolioDerived && portfolioStatusMessage ? (
-                        <p
-                            className={`max-w-[220px] text-right text-[11px] leading-4 ${portfolioStatusClass}`}
-                            data-testid={`portfolio-sync-status-${symbolTestKey}`}
-                        >
+                        <p className={`monitor-status-card-note ${portfolioStatusClass}`} data-testid={`portfolio-sync-status-${symbolTestKey}`}>
                             {portfolioStatusMessage}
                         </p>
                     ) : null}
+                    {isOpeningChart ? (
+                        <p className="monitor-status-card-note text-slate-300 text-[11px] mt-2">Abrindo gráfico...</p>
+                    ) : null}
                 </div>
-            </CardHeader>
 
-            <CardContent>
-                {isPriceMode ? (
-                    <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2" role="group" aria-label={`Price timeframe for ${symbol}`}>
-                            {PRICE_TIMEFRAMES.map((tf) => {
-                                const active = tf === effectiveTimeframe;
-                                const disabled = isStock && tf !== '1d';
-                                return (
-                                    <button
-                                        key={tf}
-                                        type="button"
-                                        className={`rounded-md border px-2 py-1 text-xs font-medium ${
-                                            active
-                                                ? 'border-blue-500 bg-blue-600 text-white'
-                                                : 'border-slate-300 bg-white text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200'
-                                        } ${disabled && !active ? 'opacity-40 cursor-not-allowed' : ''}`}
-                                        onClick={() => {
-                                            setShowChart(true)
-                                            onChangePriceTimeframe(symbol, tf)
-                                        }}
-                                        disabled={disabled}
-                                        aria-pressed={active}
-                                        data-testid={`timeframe-toggle-${symbolTestKey}-${tf}`}
-                                    >
-                                        {tf}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Price:</span>
-                            <span className="font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formattedPrice}</span>
-                        </div>
-                        <div
-                            className="relative p-2 bg-gray-100 dark:bg-gray-800 rounded-md text-xs border border-gray-300 dark:border-gray-600 min-h-[80px]"
-                            data-testid={`candles-chart-area-${symbolTestKey}`}
-                        >
-                            {!showChart ? (
-                                <div className="flex min-h-[64px] items-center justify-between gap-3">
-                                    <span className="text-slate-600 dark:text-slate-300">Gráfico sob demanda</span>
-                                    <button
-                                        type="button"
-                                        className="rounded-md border border-blue-500 bg-blue-600 px-2 py-1 text-xs font-medium text-white"
-                                        onClick={() => setShowChart(true)}
-                                        data-testid={`load-chart-${symbolTestKey}`}
-                                    >
-                                        Carregar gráfico
-                                    </button>
-                                </div>
-                            ) : null}
-                            {showChart && candlesError ? <span className="text-red-600 dark:text-red-300">{candlesError}</span> : null}
-                            {showChart && !candlesError && candles.length === 0 && !candlesLoading ? <span>No candle data.</span> : null}
-                            {showChart && !candlesError && candles.length > 0 ? <MiniCandlesChart candles={candles} /> : null}
-                            {showChart && candlesLoading ? (
-                                <div
-                                    className="absolute top-2 right-2 inline-flex items-center gap-1 rounded bg-slate-900/75 px-2 py-1 text-[10px] font-medium text-white pointer-events-none"
-                                    data-testid={`candles-loading-${symbolTestKey}`}
-                                    role="status"
-                                    aria-live="polite"
+                <div>
+                    <h5 className="h5-params">
+                        <span className="swatch" />
+                        Parâmetros
+                    </h5>
+                    <dl className="kv">
+                        {parameterRows.map(([label, value]) => (
+                            <React.Fragment key={`param-${label}`}>
+                                <dt>{label}</dt>
+                                <dd>{value}</dd>
+                            </React.Fragment>
+                        ))}
+                    </dl>
+                    <div style={{ height: '14px' }} />
+                    <h5 className="h5-indicators">
+                        <span className="swatch" />
+                        Indicadores
+                    </h5>
+                    <dl className="kv">
+                        {indicatorRows.map(([label, value]) => (
+                            <React.Fragment key={`indicator-${label}`}>
+                                <dt>{label}</dt>
+                                <dd>{value}</dd>
+                            </React.Fragment>
+                        ))}
+                    </dl>
+                </div>
+
+                <div>
+                    <h5 className="h5-notes">
+                        <span className="swatch" />
+                        Notas operacionais
+                    </h5>
+                    {isEditingNotes ? (
+                        <div className="notes-edit-block">
+                            <textarea
+                                className="note-textarea"
+                                value={notesValue}
+                                onChange={(event) => setNotesValue(event.target.value)}
+                                placeholder="Adicionar nota"
+                                rows={3}
+                            />
+                            <div className="detail-edit-actions">
+                                <button
+                                    type="button"
+                                    className="btn ghost"
+                                    onClick={() => {
+                                        setNotesValue(opportunity.notes || '');
+                                        setIsEditingNotes(false);
+                                    }}
+                                    disabled={isSavingNotes}
                                 >
-                                    <span className="inline-block h-2 w-2 rounded-full border border-white/80 border-t-transparent animate-spin" />
-                                    <span>Loading chart...</span>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-4 mt-2">
-                        <div className="flex justify-between items-center">
-                            <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Price:</span>
-                            <span className="font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{formattedPrice}</span>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                            <div className="flex justify-between items-center">
-                                <span className="text-base font-semibold text-gray-700 dark:text-gray-300">Distance:</span>
-                                <div className="flex items-center gap-2">
-                                    <Target className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                                    <span className={`font-mono font-bold text-lg ${distanceColor}`}>
-                                        {distanceStr}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {is_holding && opportunity.distance_to_stop_pct !== null && opportunity.distance_to_stop_pct !== undefined ? (
-                                <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20 p-2">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stop risk:</span>
-                                        <span className="font-mono font-bold text-sm text-red-700 dark:text-red-300">
-                                            {opportunity.distance_to_stop_pct.toFixed(2)}%
-                                        </span>
-                                    </div>
-                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-mono text-gray-700 dark:text-gray-300">
-                                        {opportunity.entry_price !== null && opportunity.entry_price !== undefined ? (
-                                            <span>entry: ${opportunity.entry_price.toFixed(8)}</span>
-                                        ) : null}
-                                        {opportunity.stop_price !== null && opportunity.stop_price !== undefined ? (
-                                            <span>stop: ${opportunity.stop_price.toFixed(8)}</span>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            ) : null}
-
-                            {showProgress && (
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                                    <div
-                                        className={`h-full transition-all ${
-                                            is_holding ? 'bg-orange-500' : 'bg-yellow-500'
-                                        }`}
-                                        style={{ width: `${progressPercent}%` }}
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm border border-gray-300 dark:border-gray-600">
-                            <div className="flex items-start gap-2">
-                                <Activity className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                                <span className="font-medium text-gray-800 dark:text-gray-200 break-words">{statusMessage}</span>
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn"
+                                    onClick={saveNotes}
+                                    disabled={isSavingNotes}
+                                >
+                                    {isSavingNotes ? 'Salvando...' : 'Salvar'}
+                                </button>
                             </div>
                         </div>
-
-                        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-xs border border-slate-200 dark:border-slate-600">
-                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-slate-700 dark:text-slate-200">
-                                <span>Estado: {resolvedSignal.visual.badgeText}</span>
-                                <span>strategy tf: {resolvedSignal.strategyTimeframe ?? '-'}</span>
-                                <span>display tf: {resolvedSignal.displayTimeframe ?? '-'}</span>
-                                <span>candle ref: {resolvedSignal.referenceCandleTime ?? '-'}</span>
-                            </div>
-                            {resolvedSignal.freshnessReason ? (
-                                <p className="mt-2 text-amber-700 dark:text-amber-300">{resolvedSignal.freshnessReason}</p>
-                            ) : null}
+                    ) : (
+                        <div className="notes-block">
+                            <span>{notesValue || <span className="empty">Sem notas para esta posição.</span>}</span>
+                            <button type="button" className="notes-edit" onClick={() => setIsEditingNotes(true)} disabled={isSavingPreference}>
+                                Editar
+                            </button>
                         </div>
+                    )}
 
-                        {opportunity.parameters && Object.keys(opportunity.parameters).length > 0 && (
-                            <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm border border-gray-300 dark:border-gray-600">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Settings className="w-4 h-4 text-violet-600 dark:text-violet-400 flex-shrink-0" />
-                                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                        Parameters
-                                    </span>
-                                </div>
-                                <p className="font-mono text-xs text-gray-700 dark:text-gray-300 break-words">
-                                    {Object.entries(opportunity.parameters)
-                                        .map(([k, v]) => `${k}=${v}`)
-                                        .join(' ')}
-                                </p>
-                            </div>
-                        )}
+                    <div style={{ height: '14px' }} />
+                    <h5 className="h5-notes">
+                        <span className="swatch" />
+                        Entry / Stop
+                    </h5>
+                    <dl className="kv">
+                        <dt>entry</dt>
+                        <dd>
+                            {opportunity.entry_price !== null && opportunity.entry_price !== undefined
+                                ? `$${toDisplayValue(opportunity.entry_price, 8)}`
+                                : '-'}
+                        </dd>
+                        <dt>stop</dt>
+                        <dd>
+                            {opportunity.stop_price !== null && opportunity.stop_price !== undefined
+                                ? `$${toDisplayValue(opportunity.stop_price, 8)}`
+                                : '-'}
+                        </dd>
+                        <dt>preço atual</dt>
+                        <dd>{priceString}</dd>
+                        <dt>distância stop</dt>
+                        <dd>
+                            {opportunity.distance_to_stop_pct !== null && opportunity.distance_to_stop_pct !== undefined
+                                ? `${toDisplayValue(opportunity.distance_to_stop_pct, 2)}%`
+                                : '-'}
+                        </dd>
+                        <dt>distância objetivo</dt>
+                        <dd>{distanceStr}</dd>
+                    </dl>
+                </div>
+            </div>
 
-                        {opportunity.indicator_values && Object.keys(opportunity.indicator_values).length > 0 && (
-                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md text-sm border border-blue-200 dark:border-blue-800">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Target className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
-                                        Indicator Values
-                                    </span>
-                                </div>
-                                <p className="font-mono text-xs text-gray-700 dark:text-gray-300 break-words">
-                                    {Object.entries(opportunity.indicator_values)
-                                        .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v}`)
-                                        .join(' · ')}
-                                </p>
-                            </div>
-                        )}
+            <div className="detail-foot">
+                <div className="hint">Lote {batchInfo} · ref {batchReference}</div>
+                <div className="actions">
+                    <button type="button" className="btn ghost" onClick={exportSummary}>
+                        <Download className="h-3.5 w-3.5" />
+                        Exportar
+                    </button>
+                    <button
+                        type="button"
+                        className="btn"
+                        onClick={() => onToggleCardMode(symbol, isStock ? 'strategy' : 'price')}
+                        data-testid={`mode-toggle-${symbolTestKey}`}
+                        title={isStock ? 'Alternar para modo strategy' : 'Alternar para modo price'}
+                    >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Reavaliar
+                    </button>
+                    <button type="button" className="btn" onClick={() => onOpenChart(opportunity)}>
+                        <LineChart className="h-3.5 w-3.5" />
+                        Ver gráfico
+                    </button>
+                    <button
+                        type="button"
+                        className="btn primary"
+                        onClick={confirmManagement}
+                        disabled={isSavingPreference}
+                    >
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Confirmar gestão
+                    </button>
+                </div>
+            </div>
 
-                        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-md text-sm border border-slate-200 dark:border-slate-600">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                    Notes
-                                </span>
-                                {!isEditingNotes && (
-                                    <button
-                                        type="button"
-                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                                        onClick={() => setIsEditingNotes(true)}
-                                    >
-                                        Edit
-                                    </button>
-                                )}
-                            </div>
-
-                            {isEditingNotes ? (
-                                <div className="mt-2 space-y-2">
-                                    <textarea
-                                        className="w-full min-h-[60px] text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                        value={notesValue}
-                                        onChange={(e) => setNotesValue(e.target.value)}
-                                        placeholder="Add notes for this strategy..."
-                                    />
-                                    <div className="flex justify-end gap-2">
-                                        <button
-                                            type="button"
-                                            className="px-2 py-1 text-xs rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                                            onClick={() => {
-                                                setNotesValue(opportunity.notes || '');
-                                                setIsEditingNotes(false);
-                                            }}
-                                            disabled={isSavingNotes}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                                            onClick={async () => {
-                                                try {
-                                                    setIsSavingNotes(true);
-                                                    const res = await authFetch(`${API_BASE_URL}/favorites/${opportunity.id}`, {
-                                                        method: 'PATCH',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ notes: notesValue }),
-                                                    });
-                                                    if (!res.ok) {
-                                                        alert('Error saving notes.');
-                                                        return;
-                                                    }
-                                                    setIsEditingNotes(false);
-                                                } catch (err) {
-                                                    console.error('Error saving notes:', err);
-                                                    alert('Error saving notes.');
-                                                } finally {
-                                                    setIsSavingNotes(false);
-                                                }
-                                            }}
-                                            disabled={isSavingNotes}
-                                        >
-                                            {isSavingNotes ? 'Saving...' : 'Save'}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="mt-1 font-medium text-slate-700 dark:text-slate-200 break-words text-xs whitespace-pre-wrap">
-                                    {notesValue || 'No notes.'}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-    </Card>
+        </div>
     );
 };

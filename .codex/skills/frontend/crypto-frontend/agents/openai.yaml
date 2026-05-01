@@ -1,0 +1,7 @@
+interface:
+  display_name: "Crypto Frontend"
+  short_description: "Frontend padrao para o projeto crypto"
+  default_prompt: "Use $crypto-frontend para implementar ou revisar uma interface frontend no projeto crypto."
+
+policy:
+  allow_implicit_invocation: true
