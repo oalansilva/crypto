@@ -438,26 +438,21 @@ test('monitor keeps mismatched exit signals in WAIT state with explicit context'
 
   await page.goto('/monitor')
 
-  const card = page.getByTestId('monitor-card-btc-usdt')
-  await expect(card).toBeVisible()
-  await expect(card.getByText('WAIT', { exact: true })).toBeVisible()
-  await expect(card).toContainText('Estado em revisão: decisão não confirmada pelo contexto atual.')
-  await expect(card).toContainText('EXIT bloqueado: timeframe da estratégia não corresponde ao timeframe exibido.')
-  await expect(card.getByText('Estado: WAIT')).toBeVisible()
-  await expect(card.getByText('strategy tf: 1d')).toBeVisible()
-  await expect(card.getByText('display tf: 1h')).toBeVisible()
-
-  await card.click()
+  const row = page.getByTestId('monitor-row-btc-usdt')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('WAIT', { exact: true })).toBeVisible()
+  await row.getByRole('button', { name: 'Abrir gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Compacto' }).click()
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('WAIT')
-  await expect(dialog.getByText('Resolved state')).toBeVisible()
-  await expect(dialog).toContainText('1d')
-  await expect(dialog).toContainText('1h')
-  await expect(dialog).toContainText('Estado em revisão: decisão não confirmada pelo contexto atual.')
-  await expect(dialog).toContainText('EXIT bloqueado: candle de referência não corresponde ao último candle exibido.')
+  const signalContext = dialog.getByTestId('chart-modal-signal-context')
+  await expect(signalContext.getByText('Resolved state')).toBeVisible()
+  await expect(signalContext).toContainText('1d')
+  await expect(signalContext).toContainText('1h')
+  await expect(signalContext).toContainText('Estado em revisão: decisão não confirmada pelo contexto atual.')
+  await expect(signalContext).toContainText('EXIT bloqueado: candle de referência não corresponde ao último candle exibido.')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {

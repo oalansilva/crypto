@@ -11,6 +11,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 ## TL;DR
 
 - **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
+- **Comunicação padrão com Alan:** usar sempre a skill `caveman` em modo `lite`: curto, direto, sem filler, mantendo clareza técnica. Só desligar se Alan pedir explicitamente `stop caveman` ou `normal mode`.
 - **Fluxo de produção:** implemente e valide diretamente em `develop`; para liberar produção, abra PR `develop -> main`, resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** use somente `develop` e `main`; sem criação de branches por tasks usuais.
 - **Regra de merge:** após abrir um PR de `develop -> main`, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
@@ -220,7 +221,7 @@ O time é composto por 5 agentes, cada um com papel definido:
 **Template base:** Orion (productivity)
 
 Orquestra o time, coordena workflow, delegation, status reports, prazos.
-- Mantém conversa com Alan curta/gerencial
+- Mantém conversa com Alan curta/gerencial, usando `caveman lite` como padrão permanente
 - Consulte workflow DB e OpenSpec como fonte principal.
 - Move status de mudança no workflow, celebra marcos, identifica riscos proativamente
 - Fornece próximo passo após completar tarefa
