@@ -31,19 +31,20 @@ test('external balances page loads and shows balances', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Carteira' })).toBeVisible()
 
   await expect(page.getByText('Total USD')).toBeVisible()
-  await expect(page.getByText('PnL (parcial)')).toBeVisible()
+  await expect(page.getByText('PnL parcial')).toBeVisible()
   await expect(page.getByText('Locked only')).toHaveCount(0)
   await expect(page.getByText('Locked USD')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Locked' })).toHaveCount(0)
   await expect(page.getByText('Locked', { exact: true })).toHaveCount(0)
 
   // Rows present
-  await expect(page.getByText('HBAR', { exact: true })).toBeVisible()
-  await expect(page.getByText('USDC', { exact: true })).toBeVisible()
+  await expect(page.getByRole('row', { name: /HBAR.*896\.103/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /USDC.*0\.455/ })).toBeVisible()
 
-  // Values render/formatted
-  await expect(page.getByText('89.61')).toBeVisible() // HBAR value_usd (toFixed(2))
-  await expect(page.getByText('0.08')).toBeVisible() // HBAR avg_cost_usdt
-  await expect(page.getByText('17.92')).toBeVisible() // HBAR pnl_usd (toFixed(2))
-  await expect(page.getByText('25.00')).toBeVisible() // HBAR pnl_pct (toFixed(2))
+  // Values render/formatted in the desktop table row.
+  const hbarRow = page.getByRole('row', { name: /HBAR.*896\.103/ })
+  await expect(hbarRow.getByText('$89.61')).toBeVisible()
+  await expect(hbarRow.getByText('$0.08')).toBeVisible()
+  await expect(hbarRow.getByText('+$17.92')).toBeVisible()
+  await expect(hbarRow.getByText('+25.00%')).toBeVisible()
 })
