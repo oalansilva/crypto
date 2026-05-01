@@ -176,8 +176,8 @@ async def get_indicator_schema_endpoint(strategy_name: str):
 
 def _validate_market_timeframe(asset: str, timeframe: str) -> str:
     tf = str(timeframe or "").strip().lower()
-    if asset == "stock" and tf != "1d":
-        raise ValueError("Stocks currently support only timeframe='1d'.")
+    if asset == "stock" and tf not in {"1d", "4h"}:
+        raise ValueError("Stocks currently support only timeframe='1d' or '4h'.")
     if tf not in _MARKET_TIMEFRAMES:
         supported = ", ".join(sorted(_MARKET_TIMEFRAMES))
         raise ValueError(
@@ -326,6 +326,10 @@ async def get_market_candles(
                 )
             except TypeError:
                 df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+        elif tf == "4h":
+            data_source = "yahoo"
+            provider = YahooMarketDataProvider()
+            df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
         elif tf == "1d":
             # Prefer free Stooq EOD for stocks; fallback to Yahoo daily when needed.
             data_source = STOOQ_SOURCE

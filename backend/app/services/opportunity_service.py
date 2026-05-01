@@ -85,6 +85,16 @@ def _coerce_positive_int(value: Any, default: int | None = None) -> int | None:
         return default
 
 
+def _coerce_positive_float(value: Any, default: float) -> float:
+    try:
+        parsed = float(value)
+        if parsed <= 0:
+            return default
+        return parsed
+    except Exception:
+        return default
+
+
 def _build_market_indicator_mappings(
     indicators: list[dict[str, Any]],
 ) -> dict[str, str]:
@@ -600,21 +610,45 @@ class OpportunityService:
 
         unique_market_jobs: dict[str, dict[str, Any]] = {}
         for fav in favorites:
-            symbol = fav["symbol"]
-            tf = fav["timeframe"]
-            params = fav.get("parameters") or {}
-            data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
-            if data_source == CCXT_SOURCE and _is_unsupported_symbol(symbol):
-                continue
-            normalized_tf = _normalize_market_timeframe(symbol, tf, data_source)
-            cache_key = f"{data_source}:{symbol}_{normalized_tf}"
-            if cache_key in unique_market_jobs:
-                continue
-            unique_market_jobs[cache_key] = {
-                "data_source": data_source,
-                "symbol": symbol,
-                "timeframe": normalized_tf,
-            }
+            try:
+                symbol = (fav.get("symbol") or "").strip()
+                tf = fav.get("timeframe") or "1d"
+                if not symbol:
+                    skipped_strategies.append(
+                        {
+                            "id": fav.get("id", "unknown"),
+                            "symbol": "",
+                            "timeframe": tf,
+                            "reason": "Missing symbol in favorite configuration",
+                        }
+                    )
+                    continue
+
+                params = fav.get("parameters") or {}
+                data_source = resolve_data_source_for_symbol(symbol, params.get("data_source"))
+                if data_source == CCXT_SOURCE and _is_unsupported_symbol(symbol):
+                    continue
+
+                normalized_tf = _normalize_market_timeframe(symbol, tf, data_source)
+                cache_key = f"{data_source}:{symbol}_{normalized_tf}"
+                if cache_key in unique_market_jobs:
+                    continue
+                unique_market_jobs[cache_key] = {
+                    "data_source": data_source,
+                    "symbol": symbol,
+                    "timeframe": normalized_tf,
+                }
+            except Exception as exc:
+                skipped_strategies.append(
+                    {
+                        "id": fav.get("id", "unknown"),
+                        "symbol": (
+                            (fav.get("symbol") or "").strip() if isinstance(fav, dict) else "?"
+                        ),
+                        "timeframe": fav.get("timeframe") if isinstance(fav, dict) else "unknown",
+                        "reason": f"Cannot schedule market fetch: {exc}",
+                    }
+                )
 
         def _fetch_market_job(job: dict[str, Any]) -> tuple[str, pd.DataFrame]:
             cache_key = f"{job['data_source']}:{job['symbol']}_{job['timeframe']}"
@@ -659,13 +693,27 @@ class OpportunityService:
                     executor.submit(_fetch_market_job, job): cache_key
                     for cache_key, job in unique_market_jobs.items()
                 }
-                for future in as_completed(future_map):
-                    cache_key = future_map[future]
-                    try:
-                        result_key, df = future.result()
-                        data_cache[result_key] = df
-                    except Exception as exc:
-                        fetch_errors[cache_key] = str(exc)
+
+                fetch_timeout_seconds = _coerce_positive_float(
+                    os.getenv("OPPORTUNITIES_MARKET_FETCH_TIMEOUT_SECONDS", "8.0"), 8.0
+                )
+                try:
+                    for future in as_completed(future_map, timeout=fetch_timeout_seconds):
+                        cache_key = future_map[future]
+                        try:
+                            result_key, df = future.result()
+                            data_cache[result_key] = df
+                        except Exception as exc:
+                            fetch_errors[cache_key] = str(exc)
+                except TimeoutError:
+                    # Keep the response stable: mark pending fetches as skipped and continue.
+                    for future, cache_key in future_map.items():
+                        if not future.done():
+                            future.cancel()
+                            fetch_errors.setdefault(
+                                cache_key,
+                                f"Market fetch timed out after {fetch_timeout_seconds:.2f}s",
+                            )
 
         for fav in favorites:
             try:
