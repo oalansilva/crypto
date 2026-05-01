@@ -642,7 +642,9 @@ class OpportunityService:
                 skipped_strategies.append(
                     {
                         "id": fav.get("id", "unknown"),
-                        "symbol": (fav.get("symbol") or "").strip() if isinstance(fav, dict) else "?",
+                        "symbol": (
+                            (fav.get("symbol") or "").strip() if isinstance(fav, dict) else "?"
+                        ),
                         "timeframe": fav.get("timeframe") if isinstance(fav, dict) else "unknown",
                         "reason": f"Cannot schedule market fetch: {exc}",
                     }

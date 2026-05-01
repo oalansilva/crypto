@@ -220,7 +220,7 @@ def test_api_internal_helpers():
     try:
         api._validate_market_timeframe("stock", "1h")
     except ValueError as exc:
-        assert "Stocks currently support only timeframe='1d'." in str(exc)
+        assert "Stocks currently support only timeframe='1d' or '4h'." in str(exc)
     else:
         raise AssertionError("Expected ValueError")
 

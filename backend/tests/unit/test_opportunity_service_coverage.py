@@ -172,7 +172,9 @@ def test_get_opportunities_parallel_fetch_timeout_keeps_fast_strategies(monkeypa
 
     provider = _DelayAndReturnProvider(delay_seconds=0.5, delayed_symbol="ETH/USDT")
 
-    monkeypatch.setattr(opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE)
+    monkeypatch.setattr(
+        opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE
+    )
     monkeypatch.setattr(opportunity_service, "_is_unsupported_symbol", lambda *_args: False)
     monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_args: provider)
     monkeypatch.setenv("OPPORTUNITIES_MARKET_FETCH_TIMEOUT_SECONDS", "0.05")
