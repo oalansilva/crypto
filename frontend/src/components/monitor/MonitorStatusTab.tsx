@@ -12,7 +12,14 @@ import {
 import { OpportunityCard } from '@/components/monitor/OpportunityCard';
 import { ChartModal } from '@/components/monitor/ChartModal';
 import { Button } from '@/components/ui/Button';
-import { RefreshCw, ChevronDown, ArrowUpDown } from 'lucide-react';
+import {
+    ChevronRight,
+    LineChart,
+    MoreHorizontal,
+    RefreshCw,
+    Search,
+    Star,
+} from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
@@ -20,10 +27,12 @@ import type { MarketCandle } from './MiniCandlesChart';
 import { fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { resolveOpportunitySignal } from './signalResolution';
 
-type SortOption = 'distance' | 'tier_distance' | 'symbol';
+type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
 type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
-type ListFilter = 'in_portfolio' | 'all';
+type ListFilter = 'in_portfolio' | 'all' | 'favorites';
 type AssetTypeFilter = 'all' | 'crypto' | 'stocks';
+type StrategyFilter = 'all' | string;
+type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 type SectionKey = 'hold' | 'wait' | 'exit';
 
@@ -37,11 +46,6 @@ type DerivedPortfolioStatus = {
     inPortfolio: boolean;
     message: string | null;
     tone: 'neutral' | 'success' | 'warning';
-};
-
-type RowMode = {
-    symbol: string;
-    expanded: boolean;
 };
 
 type SectionRecord = {
@@ -62,17 +66,67 @@ const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
     card_mode: 'price',
     price_timeframe: '1d',
-    theme: 'dark-green',
+    theme: 'black',
 };
 
-const DEFAULT_THEME: MonitorTheme = 'dark-green';
+const DEFAULT_THEME: MonitorTheme = 'black';
 const BINANCE_MONITOR_PORTFOLIO_MIN_USD = 1;
-const ROWS_WITH_EXPANSION_INITIAL: RowMode[] = [];
+const FAVORITES_STORAGE_KEY = 'crypto-monitor-favorites-v1';
+const SPARKLINE_LIMIT = 14;
+const toFavoriteKey = (opportunity: Opportunity): string => String(opportunity.id);
+const normalizeFavoriteKey = (value: string | null | undefined): string => String(value || '').trim();
 
-const SECTION_DOT_COLOR: Record<SectionKey, string> = {
-    hold: 'var(--accent-success)',
-    wait: 'var(--accent-warning)',
-    exit: 'var(--monitor-primary)',
+const getSparklineKey = (symbol: string, timeframe: ChartTimeframe): string => `${symbol}|${timeframe}`;
+
+const renderSparkPath = (values: number[]): { line: string; area: string; dot: { x: number; y: number } } => {
+    if (values.length === 0) {
+        return { line: '', area: '', dot: { x: 0, y: 0 } };
+    }
+
+    const width = 80;
+    const height = 22;
+    const pad = 2;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+
+    const points = values.map((value, index) => {
+        const x = pad + (width - 2 * pad) * (index / Math.max(1, values.length - 1));
+        const y = pad + (height - 2 * pad) * (1 - (value - min) / range);
+        return { x, y };
+    });
+
+    const line = points
+        .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)},${point.y.toFixed(2)}`)
+        .join(' ');
+
+    const first = points[0];
+    const last = points[points.length - 1];
+    const area = `${line} L ${last.x.toFixed(2)},${height.toFixed(2)} L ${first.x.toFixed(2)},${height.toFixed(2)} Z`;
+
+    return { line, area, dot: { x: last.x, y: last.y } };
+};
+
+const loadFavoriteKeys = (): Set<string> => {
+    if (typeof window === 'undefined') return new Set<string>();
+
+    const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
+    if (!raw) return new Set<string>();
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            return new Set(
+                parsed
+                    .map((item) => normalizeFavoriteKey(String(item)))
+                    .filter((symbol) => symbol.length > 0),
+            );
+        }
+    } catch (error) {
+        console.error('Failed to load monitor favorites from localStorage', error);
+    }
+
+    return new Set<string>();
 };
 
 const SectionConfig: Record<SectionKey, SectionRecord> = {
@@ -109,6 +163,11 @@ const getDistanceLabel = (distance: number | null | undefined): string => {
     return `${distance.toFixed(2)}%`;
 };
 
+const formatPercent = (value: number | null | undefined): string => {
+    if (value === null || value === undefined || Number.isNaN(value)) return '-';
+    return `${value.toFixed(2)}%`;
+};
+
 const formatPrice = (value: number | null | undefined): string => {
     if (value === null || value === undefined || Number.isNaN(value)) {
         return '-';
@@ -119,6 +178,14 @@ const formatPrice = (value: number | null | undefined): string => {
         minimumFractionDigits: 2,
         maximumFractionDigits: 6,
     }).format(value);
+};
+
+const toStringSearch = (value: string | null | undefined): string => String(value || '').toLowerCase().trim();
+
+const averageDistance = (values: Array<number | null | undefined>): number | null => {
+    const filtered = values.filter((value) => Number.isFinite(value ?? NaN));
+    if (filtered.length === 0) return null;
+    return filtered.reduce((acc, value) => acc + (value ?? 0), 0) / filtered.length;
 };
 
 export const MonitorStatusTab: React.FC = () => {
@@ -134,24 +201,27 @@ export const MonitorStatusTab: React.FC = () => {
     const [tierFilter, setTierFilter] = useState<TierFilter>('all');
     const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
     const [assetTypeFilter, setAssetTypeFilter] = useState<AssetTypeFilter>('all');
+    const [strategyFilter, setStrategyFilter] = useState<StrategyFilter>('all');
+    const [timeframeFilter, setTimeframeFilter] = useState<TimeframeFilter>('all');
+    const [searchTerm, setSearchTerm] = useState('');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [preferences, setPreferences] = useState<Record<string, MonitorPreference>>({});
     const [binanceConfigured, setBinanceConfigured] = useState(false);
     const [walletHoldingsByAsset, setWalletHoldingsByAsset] = useState<Record<string, number>>({});
     const [walletSyncState, setWalletSyncState] = useState<WalletSyncState>('idle');
     const [walletSyncMessage, setWalletSyncMessage] = useState<string | null>(null);
+    const [favoriteSymbols, setFavoriteSymbols] = useState<Set<string>>(new Set<string>());
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
+    const [sparklineByKey, setSparklineByKey] = useState<Record<string, number[]>>({});
+    const [sparklineLoadingByKey, setSparklineLoadingByKey] = useState<Record<string, boolean>>({});
+    const [sparklineErrorByKey, setSparklineErrorByKey] = useState<Record<string, boolean>>({});
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>(
-        Object.fromEntries(ROWS_WITH_EXPANSION_INITIAL.map((row) => [row.symbol, row.expanded]))
+        {}
     );
     const { toast } = useToast();
 
     const getPreference = (symbol: string): MonitorPreference => {
         return preferences[symbol] ?? DEFAULT_PREFERENCE;
-    };
-
-    const getActiveRowCount = (sectionRows: Record<SectionKey, ResolvedSectionRow[]>, sectionKey: SectionKey) => {
-        return sectionRows[sectionKey]?.length ?? 0;
     };
 
     const fetchWalletPortfolio = async (configured: boolean) => {
@@ -228,7 +298,7 @@ export const MonitorStatusTab: React.FC = () => {
                             || raw?.price_timeframe === '1d'
                             ? raw.price_timeframe
                             : '1d',
-                        theme: raw?.theme === 'black' ? 'black' : 'dark-green',
+                        theme: 'black',
                     };
                 }
                 setPreferences(normalized);
@@ -337,7 +407,7 @@ export const MonitorStatusTab: React.FC = () => {
                         || payload?.price_timeframe === '1d'
                         ? payload.price_timeframe
                         : '1d',
-                    theme: payload?.theme === 'black' ? 'black' : 'dark-green',
+                    theme: 'black',
                 },
             }));
         } catch (error) {
@@ -360,8 +430,24 @@ export const MonitorStatusTab: React.FC = () => {
         void persistPreference(symbol, { card_mode: nextMode });
     };
 
-    const handleChangePriceTimeframe = (symbol: string, nextTimeframe: MonitorPriceTimeframe) => {
-        void persistPreference(symbol, { price_timeframe: nextTimeframe });
+    const handleToggleFavorite = (opportunity: Opportunity) => {
+        const key = toFavoriteKey(opportunity);
+        if (!key) return;
+
+        setFavoriteSymbols((current) => {
+            const next = new Set(current);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(next)));
+            }
+
+            return next;
+        });
     };
 
     const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
@@ -402,15 +488,34 @@ export const MonitorStatusTab: React.FC = () => {
         }
     };
 
-    const handleToggleRow = (symbol: string) => {
+    const handleToggleRow = (rowKey: string) => {
         setExpandedRows((current) => ({
             ...current,
-            [symbol]: !(current[symbol] ?? true),
+            [rowKey]: !(current[rowKey] ?? false),
         }));
+    };
+
+    const getSparklineColor = (sectionKey: SectionKey): string => {
+        if (sectionKey === 'wait') return '#e5b057';
+        if (sectionKey === 'exit') return '#f26e7e';
+        return '#3dd68c';
+    };
+
+    const handleRowClick = (event: React.MouseEvent<HTMLTableRowElement>, rowKey: string) => {
+        const target = event.target as HTMLElement;
+        if (target.closest('.row-action') || target.closest('.row-toggle')) {
+            return;
+        }
+
+        handleToggleRow(rowKey);
     };
 
     useEffect(() => {
         void fetchMonitorContext();
+    }, []);
+
+    useEffect(() => {
+        setFavoriteSymbols(loadFavoriteKeys());
     }, []);
 
     useEffect(() => {
@@ -452,6 +557,13 @@ export const MonitorStatusTab: React.FC = () => {
                 const tierB = b.tier ?? 999;
                 if (tierA !== tierB) {
                     return tierA - tierB;
+                }
+                return a.symbol.localeCompare(b.symbol);
+            } else if (sortBy === 'risk') {
+                const riskA = a.distance_to_stop_pct ?? 999;
+                const riskB = b.distance_to_stop_pct ?? 999;
+                if (riskA !== riskB) {
+                    return riskA - riskB;
                 }
                 return a.symbol.localeCompare(b.symbol);
             } else if (sortBy === 'symbol') {
@@ -525,7 +637,20 @@ export const MonitorStatusTab: React.FC = () => {
         return next;
     }, [binanceConfigured, sortedOpportunities, walletHoldingsByAsset, walletSyncMessage, walletSyncState, preferences]);
 
+    const strategyOptions = useMemo(() => {
+        const next = new Set<string>();
+        for (const opp of sortedOpportunities) {
+            const strategy = toStringSearch(opp.template_name);
+            if (strategy) {
+                next.add(opp.template_name.trim());
+            }
+        }
+        return ['all', ...Array.from(next).sort((a, b) => a.localeCompare(b))];
+    }, [sortedOpportunities]);
+
     const filteredOpportunities = useMemo(() => {
+        const normalizedSearch = toStringSearch(searchTerm);
+
         const afterAssetType = sortedOpportunities.filter((opp) => {
             if (!String(opp.symbol || '').trim()) return false;
             const assetType = getOpportunityAssetType(opp);
@@ -534,11 +659,49 @@ export const MonitorStatusTab: React.FC = () => {
             return true;
         });
 
-        if (listFilter === 'all') {
-            return afterAssetType;
+        const afterListFilter =
+            listFilter === 'favorites'
+                ? afterAssetType.filter((opp) => favoriteSymbols.has(toFavoriteKey(opp)))
+                : listFilter === 'in_portfolio'
+                    ? afterAssetType.filter((opp) => portfolioStatusBySymbol[opp.symbol]?.inPortfolio === true)
+                    : afterAssetType;
+
+        const afterStrategyFilter =
+            strategyFilter === 'all'
+                ? afterListFilter
+                : afterListFilter.filter((opp) => toStringSearch(opp.template_name) === toStringSearch(strategyFilter));
+
+        const afterTimeframeFilter =
+            timeframeFilter === 'all'
+                ? afterStrategyFilter
+                : afterStrategyFilter.filter((opp) => opp.timeframe === timeframeFilter);
+
+        if (!normalizedSearch) {
+            return afterTimeframeFilter;
         }
-        return afterAssetType.filter((opp) => portfolioStatusBySymbol[opp.symbol]?.inPortfolio === true);
-    }, [assetTypeFilter, listFilter, portfolioStatusBySymbol, sortedOpportunities]);
+
+            return afterTimeframeFilter.filter((opp) => {
+                const candidate = [
+                    opp.symbol,
+                    opp.name,
+                    opp.template_name,
+                getOpportunityAssetType(opp),
+                toStringSearch(opp.next_status_label),
+                opp.tier ? `tier ${opp.tier}` : '',
+            ].map((value) => toStringSearch(String(value))).join(' ');
+
+            return candidate.includes(normalizedSearch);
+        });
+    }, [
+        assetTypeFilter,
+        favoriteSymbols,
+        listFilter,
+        portfolioStatusBySymbol,
+        searchTerm,
+        strategyFilter,
+        timeframeFilter,
+        sortedOpportunities,
+    ]);
 
     const resolvedSections = useMemo(() => {
         const groups: Record<SectionKey, ResolvedSectionRow[]> = {
@@ -575,356 +738,528 @@ export const MonitorStatusTab: React.FC = () => {
         exit: resolvedSections.exit.length,
     }), [resolvedSections]);
 
+    const sectionAverageDistance = useMemo(() => ({
+        hold: averageDistance(resolvedSections.hold.map(({ opportunity }) => opportunity.distance_to_next_status)),
+        wait: averageDistance(resolvedSections.wait.map(({ opportunity }) => opportunity.distance_to_next_status)),
+        exit: averageDistance(resolvedSections.exit.map(({ opportunity }) => opportunity.distance_to_next_status)),
+    }), [resolvedSections]);
+
     const inPortfolioCount = useMemo(() => {
         return Object.values(portfolioStatusBySymbol).filter((item) => item.inPortfolio).length;
     }, [portfolioStatusBySymbol]);
 
-    const noResultsForInPortfolio = !loading && opportunities.length > 0 && filteredOpportunities.length === 0 && listFilter === 'in_portfolio';
+    const noResultsForInPortfolio =
+        !loading &&
+        opportunities.length > 0 &&
+        filteredOpportunities.length === 0 &&
+        (listFilter === 'in_portfolio' || listFilter === 'favorites');
+    const emptyFilterMessage =
+        listFilter === 'favorites'
+            ? 'Nenhum ativo encontrado nos favoritos.'
+            : 'Nenhum ativo encontrado na lista de carteira.';
+
+    const sectionAverageRisk = useMemo(() => ({
+        hold: averageDistance(resolvedSections.hold.map(({ opportunity }) => opportunity.distance_to_stop_pct)),
+        wait: averageDistance(resolvedSections.wait.map(({ opportunity }) => opportunity.distance_to_stop_pct)),
+        exit: averageDistance(resolvedSections.exit.map(({ opportunity }) => opportunity.distance_to_stop_pct)),
+    }), [resolvedSections]);
+
+    useEffect(() => {
+        const rowsToFetch = new Map<string, { symbol: string; timeframe: ChartTimeframe }>();
+        for (const section of SECTION_ORDER) {
+            for (const { opportunity } of resolvedSections[section]) {
+                const timeframe = resolveChartTimeframe(opportunity);
+                const key = getSparklineKey(opportunity.symbol, timeframe);
+
+                if (
+                    !rowsToFetch.has(key)
+                    && !sparklineByKey[key]
+                    && !sparklineLoadingByKey[key]
+                    && !sparklineErrorByKey[key]
+                ) {
+                    rowsToFetch.set(key, { symbol: opportunity.symbol, timeframe });
+                }
+            }
+        }
+
+        if (rowsToFetch.size === 0) {
+            return;
+        }
+
+        setSparklineLoadingByKey((current) => {
+            const next = { ...current };
+            let changed = false;
+            for (const key of rowsToFetch.keys()) {
+                if (!next[key]) {
+                    next[key] = true;
+                    changed = true;
+                }
+            }
+            return changed ? next : current;
+        });
+
+        let cancelled = false;
+        const controllers = new Map<string, AbortController>();
+
+        void (async () => {
+            await Promise.all(
+                Array.from(rowsToFetch.entries()).map(async ([key, request]) => {
+                    const controller = new AbortController();
+                    controllers.set(key, controller);
+
+                    try {
+                        const rows = await fetchMarketCandles(
+                            request.symbol,
+                            request.timeframe,
+                            controller.signal,
+                            SPARKLINE_LIMIT,
+                        );
+                        const values = rows
+                            .map((row) => Number(row.close))
+                            .filter((value) => Number.isFinite(value));
+
+                        if (cancelled) return;
+
+                        setSparklineByKey((current) => {
+                            if (current[key]) {
+                                return current;
+                            }
+                            return { ...current, [key]: values };
+                        });
+                        setSparklineErrorByKey((current) => ({ ...current, [key]: false }));
+                    } catch (error) {
+                        if (error instanceof DOMException && error.name === 'AbortError') {
+                            return;
+                        }
+                        if (!cancelled) {
+                            console.error(`Failed to load sparkline for ${request.symbol} (${request.timeframe})`, error);
+                            setSparklineErrorByKey((current) => ({ ...current, [key]: true }));
+                        }
+                    } finally {
+                        if (!cancelled) {
+                            setSparklineLoadingByKey((current) => ({ ...current, [key]: false }));
+                        }
+                    }
+                }),
+            );
+        })();
+
+        return () => {
+            cancelled = true;
+            for (const controller of controllers.values()) {
+                controller.abort();
+            }
+        };
+    }, [resolvedSections, sparklineByKey, sparklineErrorByKey, sparklineLoadingByKey]);
 
     const totalKpi = {
-        active: opportunities.length,
+        hold: sectionCountByType.hold,
+        wait: sectionCountByType.wait,
+        exit: sectionCountByType.exit,
         visible: filteredOpportunities.length,
         inPortfolio: inPortfolioCount,
+        avgHoldRisk: formatPercent(sectionAverageRisk.hold),
+        avgWaitRisk: formatPercent(sectionAverageRisk.wait),
     };
 
     const theme: MonitorTheme = preferences['__global__']?.theme ?? DEFAULT_THEME;
+    const effectiveSearchPlaceholder = 'Buscar par, estratégia, tag...';
 
     return (
-        <div className={`min-h-screen monitor-theme monitor-theme--${theme} py-6`} data-testid="monitor-status-tab">
-            <div className="container mx-auto monitor-shell p-6 space-y-6">
-                <header className="monitor-board-header">
-                    <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-[0.14em] text-[var(--monitor-muted)]">Crypto / Monitor</p>
-                        <h1 className="text-3xl font-bold text-[var(--monitor-text)]">Monitor de sinais</h1>
-                        {lastUpdated ? (
-                            <p className="text-xs text-[var(--monitor-muted)]">
-                                Última atualização: {lastUpdated.toLocaleTimeString('pt-BR')}
-                            </p>
-                        ) : null}
-                        <p className="text-sm text-[var(--monitor-muted)]">
-                            Filtro por carteira, seção e timeframe em tabela para leitura rápida.
-                        </p>
-                    </div>
-
-                    <div className="monitor-actions-row">
-                        <button
-                            type="button"
-                            className="monitor-btn"
-                            onClick={() => {
-                                const next: MonitorTheme = theme === 'dark-green' ? 'black' : 'dark-green';
-                                void persistPreference('__global__', { theme: next });
-                            }}
-                            data-testid="monitor-theme-toggle"
-                            title="Alternar tema do monitor"
-                        >
-                            Tema: {theme}
-                        </button>
-
-                        <Button
-                            variant="secondary"
-                            onClick={() => {
-                                void Promise.all([fetchOpportunities(undefined, { refresh: true }), fetchMonitorContext()]);
-                            }}
-                            disabled={loading}
-                        >
-                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                            Atualizar
-                        </Button>
-                    </div>
+        <div className={`monitor-page-shell monitor-theme monitor-theme--${theme}`} data-testid="monitor-status-tab">
+            <div className="monitor-main">
+                <header className="topbar">
+                    <div className="topbar-spacer" />
+                    <label className="search">
+                        <Search className="h-4 w-4" />
+                        <input
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder={effectiveSearchPlaceholder}
+                        />
+                        <span className="kbd">⌘K</span>
+                    </label>
+                    <span className="conn-pill">
+                        <span
+                            className={`dot ${
+                                walletSyncState === 'ready'
+                                    ? 'green'
+                                    : walletSyncState === 'loading'
+                                        ? 'amber'
+                                        : 'muted'
+                            }`}
+                        />
+                        Binance · live
+                    </span>
+                    <Button
+                        variant="secondary"
+                        className="topbar-btn primary"
+                        onClick={() => {
+                            void Promise.all([fetchOpportunities(undefined, { refresh: true }), fetchMonitorContext()]);
+                        }}
+                        disabled={loading}
+                    >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        Atualizar
+                    </Button>
                 </header>
 
-                <section className="monitor-layout-grid" aria-label="Painel do monitor">
-                    <aside className="monitor-side-panel">
-                        <header className="monitor-side-header">
-                            <h2 className="text-sm font-semibold text-[var(--monitor-text)]">Resumo</h2>
-                            <p className="text-xs text-[var(--monitor-muted)]">Indicadores rápidos</p>
-                        </header>
-
-                        <div className="monitor-kpis">
-                            <div className="monitor-kpi-card">
-                                <span className="monitor-kpi-label">Total</span>
-                                <span className="monitor-kpi-value">{totalKpi.active}</span>
-                            </div>
-                            <div className="monitor-kpi-card">
-                                <span className="monitor-kpi-label">Visíveis</span>
-                                <span className="monitor-kpi-value">{totalKpi.visible}</span>
-                            </div>
-                            <div className="monitor-kpi-card">
-                                <span className="monitor-kpi-label">Em carteira</span>
-                                <span className="monitor-kpi-value">{totalKpi.inPortfolio}</span>
-                            </div>
-                        </div>
-
-                        <div className="monitor-kpi-card monitor-kpi-stack">
-                            <span className="monitor-kpi-label">Estados</span>
-                            <div className="monitor-state-list">
-                                {SECTION_ORDER.map((section) => {
-                                    const cfg = SectionConfig[section];
-                                    return (
-                                        <div key={section} className="monitor-state-item">
-                                            <span className="monitor-state-dot" style={{ backgroundColor: SECTION_DOT_COLOR[section] }} />
-                                            <span>{cfg.title}</span>
-                                            <span className="ml-auto text-[var(--monitor-text)] font-semibold">{getActiveRowCount(resolvedSections, section)}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="monitor-kpi-card monitor-kpi-stack">
-                            <span className="monitor-kpi-label">Carteira Binance</span>
-                            <span className="text-sm text-[var(--monitor-muted)]">
-                                {walletSyncState === 'idle' && 'Não configurada para sincronização'}
-                                {walletSyncState === 'loading' && 'Sincronizando ativos...'}
-                                {walletSyncState === 'ready' && 'Sincronização ativa'}
-                                {walletSyncState === 'empty' && 'Carteira sem ativo elegível'}
-                                {walletSyncState === 'error' && 'Erro na sincronização'}
-                            </span>
-                            {walletSyncMessage ? <p className="monitor-guard-text">{walletSyncMessage}</p> : null}
-                        </div>
-
-                        <div className="monitor-kpi-card monitor-kpi-stack">
-                            <span className="monitor-kpi-label">Ações</span>
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    type="button"
-                                    className={`monitor-filter-chip ${listFilter === 'in_portfolio' ? 'monitor-filter-chip--active' : ''}`}
-                                    onClick={() => setListFilter('in_portfolio')}
-                                    data-testid="monitor-filter-in-portfolio"
-                                >
-                                    In Portfolio
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`monitor-filter-chip ${listFilter === 'all' ? 'monitor-filter-chip--active' : ''}`}
-                                    onClick={() => setListFilter('all')}
-                                    data-testid="monitor-filter-all"
-                                >
-                                    All
-                                </button>
-                            </div>
-
-                            <div className="monitor-control-group">
-                                <label htmlFor="monitor-filter-asset-type" className="monitor-kpi-label">Ativo</label>
-                                <select
-                                    id="monitor-filter-asset-type"
-                                    value={assetTypeFilter}
-                                    onChange={(e) => setAssetTypeFilter(e.target.value as AssetTypeFilter)}
-                                    className="monitor-select"
-                                    data-testid="monitor-filter-asset-type"
-                                >
-                                    <option value="all">Todos</option>
-                                    <option value="crypto">Crypto</option>
-                                    <option value="stocks">Ações</option>
-                                </select>
-                            </div>
-
-                            <div className="monitor-control-group">
-                                <label htmlFor="monitor-tier-filter" className="monitor-kpi-label">Tier</label>
-                                <select
-                                    id="monitor-tier-filter"
-                                    value={tierFilter}
-                                    onChange={(e) => setTierFilter(e.target.value as TierFilter)}
-                                    className="monitor-select"
-                                >
-                                    <option value="all">Todas</option>
-                                    <option value="1">Tier 1</option>
-                                    <option value="2">Tier 2</option>
-                                    <option value="3">Tier 3</option>
-                                    <option value="1_2">1 + 2</option>
-                                    <option value="none">Sem tier</option>
-                                </select>
-                            </div>
-
-                            <div className="monitor-control-group">
-                                <div className="monitor-sort-label">
-                                    <ArrowUpDown className="h-4 w-4" />
-                                    <label htmlFor="monitor-sort-select">Ordenação</label>
+                <section className="page">
+                    <header className="page-head">
+                        <div>
+                            <h1 className="sr-only">Monitor de sinais</h1>
+                            <p className="page-sub">
+                                Operações ativas e contextos em observação. Atualização contínua a cada 30s.
+                            </p>
+                            {lastUpdated ? (
+                                <div className="updated">
+                                    <span>Última leitura</span>
+                                    <span className="mono"> {lastUpdated.toLocaleTimeString('pt-BR')} </span>
+                                    <span>· BRT</span>
                                 </div>
-                                <select
-                                    id="monitor-sort-select"
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                                    className="monitor-select"
-                                >
-                                    <option value="tier_distance">Tier + Distância</option>
-                                    <option value="distance">Distância</option>
-                                    <option value="symbol">Símbolo</option>
-                                </select>
-                            </div>
+                            ) : null}
                         </div>
-                    </aside>
+                    </header>
 
-                    <main className="monitor-main-panel">
-                        {loading && opportunities.length === 0 ? (
-                            <div className="space-y-4">
-                                {SECTION_ORDER.map((sectionKey) => {
-                                    const cfg = SectionConfig[sectionKey];
-                                    return (
-                                        <section key={sectionKey} className="space-y-3 rounded-2xl border border-[var(--monitor-border)] bg-[var(--monitor-surface)] p-4">
-                                            <div className="monitor-section-head">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`monitor-dot ${cfg.dotClass}`} />
-                                                    <div>
-                                                        <p className="monitor-section-title">{cfg.title}</p>
-                                                        <p className="monitor-section-subtitle">{cfg.label}</p>
-                                                    </div>
-                                                </div>
-                                                <span className="monitor-section-count">0</span>
-                                            </div>
-                                            <div className="h-28 animate-pulse rounded-xl bg-white/5" />
-                                        </section>
-                                    );
-                                })}
+                    <div className="kpis">
+                        <div className="kpi">
+                            <div className="kpi-label">
+                                Em posição
+                                <span className="tag">HOLD</span>
                             </div>
+                            <div className="kpi-val">{totalKpi.hold}</div>
+                            <div className="kpi-foot up">média risco {totalKpi.avgHoldRisk}</div>
+                        </div>
+                        <div className="kpi">
+                            <div className="kpi-label">
+                                Em observação
+                                <span className="tag">WAIT</span>
+                            </div>
+                            <div className="kpi-val">{totalKpi.wait}</div>
+                            <div className="kpi-foot">média risco {totalKpi.avgWaitRisk}</div>
+                        </div>
+                        <div className="kpi">
+                            <div className="kpi-label">Total</div>
+                            <div className="kpi-val">{totalKpi.visible}</div>
+                            <div className="kpi-foot">sinais filtrados</div>
+                        </div>
+                        <div className="kpi">
+                            <div className="kpi-label">Em carteira</div>
+                            <div className="kpi-val">{totalKpi.inPortfolio}</div>
+                            <div className="kpi-foot">ativos rastreados</div>
+                        </div>
+                    </div>
+
+                    <section className="filterbar" aria-label="Filtros do monitor">
+                        <div className="seg" data-seg="list">
+                            <button
+                                className={listFilter === 'in_portfolio' ? 'on' : ''}
+                                onClick={() => setListFilter('in_portfolio')}
+                                data-testid="monitor-filter-in-portfolio"
+                            >
+                                Em portfólio
+                            </button>
+                            <button
+                                className={listFilter === 'all' ? 'on' : ''}
+                                onClick={() => setListFilter('all')}
+                                data-testid="monitor-filter-all"
+                            >
+                                Todos
+                            </button>
+                            <button
+                                className={listFilter === 'favorites' ? 'on' : ''}
+                                onClick={() => setListFilter('favorites')}
+                            >
+                                Favoritos
+                            </button>
+                        </div>
+                        <div className="filter-divider" />
+                        <select
+                            className="select"
+                            value={assetTypeFilter}
+                            onChange={(e) => setAssetTypeFilter(e.target.value as AssetTypeFilter)}
+                            data-testid="monitor-filter-asset-type"
+                        >
+                            <option value="all">Tipo: Todos</option>
+                            <option value="crypto">Spot</option>
+                            <option value="stocks">Ações</option>
+                        </select>
+                        <select className="select" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value as TimeframeFilter)}>
+                            <option value="all">Timeframe: Todos</option>
+                            <option value="15m">15m</option>
+                            <option value="1h">1h</option>
+                            <option value="4h">4h</option>
+                            <option value="1d">1d</option>
+                        </select>
+                        <select
+                            className="select"
+                            value={strategyFilter}
+                            onChange={(e) => setStrategyFilter(e.target.value)}
+                        >
+                            {strategyOptions.map((strategy) => (
+                                <option key={strategy} value={strategy}>
+                                    {strategy === 'all' ? 'Estratégia: Todas' : strategy}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="filter-spacer" />
+                        <span className="chip-count">{filteredOpportunities.length} resultados</span>
+                        <div className="seg" data-seg="sort">
+                            <button className={sortBy === 'distance' ? 'on' : ''} onClick={() => setSortBy('distance')}>
+                                Distância
+                            </button>
+                            <button className={sortBy === 'risk' ? 'on' : ''} onClick={() => setSortBy('risk')}>
+                                Risco
+                            </button>
+                            <button className={sortBy === 'symbol' ? 'on' : ''} onClick={() => setSortBy('symbol')}>
+                                Par
+                            </button>
+                        </div>
+                    </section>
+
+                    <main className="monitor-board">
+                        {loading && opportunities.length === 0 ? (
+                            <div className="status-empty">Carregando sinais...</div>
                         ) : opportunities.length === 0 && !loading ? (
-                            <section className="rounded-2xl border border-[var(--monitor-border)] bg-[var(--monitor-surface)] p-8 text-center space-y-4">
-                                <p className="text-[var(--monitor-muted)]">Nenhum ativo favoritado ainda.</p>
-                                <Button variant="secondary" onClick={() => window.location.href = '/' }>
+                            <section className="monitor-empty-card">
+                                <p className="monitor-empty-text">Nenhum ativo disponível no monitor.</p>
+                                <Button variant="secondary" onClick={() => (window.location.href = '/')}>
                                     Ir para Backtester
                                 </Button>
                             </section>
                         ) : noResultsForInPortfolio ? (
-                            <section className="rounded-2xl border border-[var(--monitor-border)] bg-[var(--monitor-surface)] p-8 text-center space-y-4" data-testid="monitor-empty-in-portfolio">
-                                <p className="text-[var(--monitor-muted)]">Nenhum ativo na lista portfolio.</p>
-                                <Button variant="secondary" onClick={() => setListFilter('all')}>Mostrar todos</Button>
+                            <section className="monitor-empty-card" data-testid="monitor-empty-in-portfolio">
+                                                        <p className="monitor-empty-text">{emptyFilterMessage}</p>
+                                <Button variant="secondary" onClick={() => setListFilter('all')}>
+                                    Mostrar todos
+                                </Button>
                             </section>
                         ) : (
-                            <div className="space-y-6">
-                                {SECTION_ORDER.map((sectionKey) => {
-                                    const cfg = SectionConfig[sectionKey];
-                                    const rows = resolvedSections[sectionKey];
+                            SECTION_ORDER.map((sectionKey) => {
+                                const cfg = SectionConfig[sectionKey];
+                                const rows = resolvedSections[sectionKey];
 
-                                    return (
-                                        <section key={sectionKey} className="monitor-table-section">
-                                            <header className="monitor-table-section-head">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`monitor-dot ${cfg.dotClass}`} />
-                                                    <h3 className="text-lg font-semibold">{cfg.title}</h3>
-                                                    <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] ${cfg.badgeClass}`}>
-                                                        {cfg.label}
-                                                    </span>
-                                                </div>
-                                                <div className={`text-sm font-medium ${cfg.countClass}`}>{rows.length}</div>
-                                            </header>
-                                            <p className="text-xs text-[var(--monitor-muted)]">{cfg.description}</p>
+                                return (
+                                    <section key={sectionKey}>
+                                        <div className="status-row">
+                                            <h3>
+                                                <span className={`pip ${sectionKey}`} />
+                                                {cfg.title === 'HOLD' ? 'Em posição · HOLD' : cfg.title === 'WAIT' ? 'Em observação · WAIT' : 'Em saída · EXIT'}
+                                                <span className="meta">({rows.length})</span>
+                                            </h3>
+                            <p className="desc">
+                                {sectionKey === 'hold'
+                                    ? 'Posição ativa com gestão em acompanhamento contínuo.'
+                                    : sectionKey === 'wait'
+                                        ? 'Contexto técnico monitorado, sem recomendação ativa.'
+                                        : 'Saída em observação para nova confirmação.'}
+                            </p>
+                                        </div>
 
-                                            {rows.length === 0 ? (
-                                                <p className="monitor-empty-row">Sem registros nesta seção.</p>
-                                            ) : (
-                                                <div className="monitor-table-wrap">
-                                                    <table className="monitor-table">
-                                                        <thead>
-                                                            <tr>
-                                                                <th scope="col" className="w-[33%]">Sinal</th>
-                                                                <th scope="col">Tier</th>
-                                                                <th scope="col">Distância</th>
-                                                                <th scope="col">Último preço</th>
-                                                                <th scope="col">Status</th>
-                                                                <th scope="col">Portfólio</th>
-                                                                <th scope="col">Timeframe</th>
-                                                                <th scope="col" />
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {rows.map(({ opportunity, resolved }) => {
-                                                                const pref = getPreference(opportunity.symbol);
-                                                                const derived = portfolioStatusBySymbol[opportunity.symbol];
-                                                                const inPortfolio = derived?.inPortfolio ?? pref.in_portfolio;
-                                                                const expanded = expandedRows[opportunity.symbol] ?? true;
+                                        <div className="table-wrap">
+                                            <table className="signals">
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ width: '32px' }} />
+                                                        <th>Par / Estratégia</th>
+                                                        <th>Status</th>
+                                                        <th>Preço</th>
+                                                        <th>Distância</th>
+                                                        <th className="col-spark">7d</th>
+                                                        <th>Risco até stop</th>
+                                                        <th className="col-tags">Tags</th>
+                                                        <th>Saída</th>
+                                                        <th className="actions-cell" />
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                        {rows.map(({ opportunity, resolved }) => {
+                                                            const chartTimeframe = resolveChartTimeframe(opportunity);
+                                                            const pref = getPreference(opportunity.symbol);
+                                                            const derived = portfolioStatusBySymbol[opportunity.symbol];
+                                                            const inPortfolio = derived?.inPortfolio ?? pref.in_portfolio;
+                                                            const expanded = expandedRows[`${sectionKey}-${opportunity.id}`] ?? false;
+                                                            const isFavorite = favoriteSymbols.has(toFavoriteKey(opportunity));
+                                                            const rowKey = `${sectionKey}-${opportunity.id}`;
+                                                            const riskStop = opportunity.distance_to_stop_pct ?? 0;
+                                                            const pairPrefix = getOpportunityBaseAsset(opportunity)
+                                                                .slice(0, 3)
+                                                                .toUpperCase();
+                                                            const sparklineKey = getSparklineKey(opportunity.symbol, chartTimeframe);
+                                                            const sparklinePoints = sparklineByKey[sparklineKey] ?? [];
+                                                            const showSparkline = sparklinePoints.length >= 2;
+                                                            const spark = renderSparkPath(sparklinePoints);
+                                                            const sparkColor = getSparklineColor(sectionKey);
 
-                                                                return (
-                                                                    <React.Fragment key={opportunity.id}>
-                                                                        <tr className="monitor-table-row">
-                                                                            <td>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleToggleRow(opportunity.symbol)}
-                                                                                    className="monitor-row-toggler"
+                                                        return (
+                                                            <React.Fragment key={opportunity.id}>
+                                                                <tr
+                                                                    className={`head-row ${expanded ? 'expanded' : ''}`}
+                                                                    data-idx={rowKey}
+                                                                    onClick={(event) => handleRowClick(event, rowKey)}
+                                                                >
+                                                                    <td>
+                                                                        <button
+                                                                            type="button"
+                                                                            className={`row-toggle ${expanded ? 'open' : ''}`}
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                handleToggleRow(rowKey);
+                                                                            }}
+                                                                            aria-label="Expandir"
+                                                                        >
+                                                                            <ChevronRight className="h-4 w-4" />
+                                                                        </button>
+                                                                    </td>
+                                                                    <td>
+                                                                            <div className="pair-cell">
+                                                                                <div className={`pair-icon ${pairPrefix.toLowerCase()}`}>{pairPrefix}</div>
+                                                                                <div className="pair-meta">
+                                                                                    <div className="pair-name">
+                                                                                        {opportunity.symbol}
+                                                                                        <span className="pair-tf">{chartTimeframe}</span>
+                                                                                    </div>
+                                                                                    <div className="pair-strat">{opportunity.template_name}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span className={`status-pill ${sectionKey}`}>
+                                                                            {cfg.title === 'HOLD' ? 'Hold' : cfg.title === 'WAIT' ? 'Wait' : 'Exit'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="num lg">{formatPrice(opportunity.last_price)}</td>
+                                                                    <td>{formatPercent(opportunity.distance_to_next_status)}</td>
+                                                                    <td className="col-spark">
+                                                                        {showSparkline ? (
+                                                                                <svg
+                                                                                    className="spark"
+                                                                                    viewBox="0 0 80 22"
+                                                                                    preserveAspectRatio="none"
+                                                                                    aria-hidden
                                                                                 >
-                                                                                    <ChevronDown
-                                                                                        className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                                                                                    <path d={spark.area} fill={sparkColor} fillOpacity={0.12} />
+                                                                                    <path
+                                                                                        d={spark.line}
+                                                                                        fill="none"
+                                                                                        stroke={sparkColor}
+                                                                                        strokeWidth={1.4}
+                                                                                        strokeLinejoin="round"
+                                                                                        strokeLinecap="round"
                                                                                     />
-                                                                                    <span className="font-semibold text-[var(--monitor-text)]">{opportunity.symbol}</span>
-                                                                                </button>
-                                                                                <div className="monitor-row-subtitle">{opportunity.name || opportunity.template_name}</div>
-                                                                            </td>
-                                                                            <td>
-                                                                                <span className="monitor-row-badge">
-                                                                                    {opportunity.tier ? `Tier ${opportunity.tier}` : 'Sem tier'}
-                                                                                </span>
-                                                                            </td>
-                                                                            <td>{getDistanceLabel(opportunity.distance_to_next_status)}</td>
-                                                                            <td className="font-mono">{formatPrice(opportunity.last_price)}</td>
-                                                                            <td>
-                                                                                <span className={`monitor-row-badge ${resolved.isUncertain ? 'monitor-row-badge-warning' : 'monitor-row-badge-neutral'}`}>
-                                                                                    {resolved.visual.badgeText}
-                                                                                </span>
-                                                                            </td>
-                                                                            <td>
-                                                                                <span className={`monitor-row-badge ${inPortfolio ? 'monitor-row-badge-success' : 'monitor-row-badge-danger'}`}>
-                                                                                    {inPortfolio ? 'Sim' : 'Não'}
-                                                                                </span>
-                                                                            </td>
-                                                                            <td>{getOpportunityAssetType(opportunity) === 'stock' ? '1d' : pref.price_timeframe}</td>
-                                                                            <td className="text-right">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleOpenChart(opportunity)}
-                                                                                    className="monitor-table-action"
-                                                                                    disabled={openingChartSymbol === opportunity.symbol}
-                                                                                >
-                                                                                    {openingChartSymbol === opportunity.symbol ? 'Abrindo...' : 'Abrir gráfico'}
-                                                                                </button>
-                                                                            </td>
-                                                                        </tr>
-                                                                        {expanded ? (
-                                                                            <tr>
-                                                                                <td colSpan={8} className="monitor-row-expanded-cell">
-                                                                                    <OpportunityCard
-                                                                                        opportunity={opportunity}
-                                                                                        preference={{
-                                                                                            ...pref,
-                                                                                            in_portfolio: inPortfolio,
-                                                                                        }}
-                                                                                        isPortfolioDerived={Boolean(derived?.active)}
-                                                                                        portfolioStatusMessage={derived?.message}
-                                                                                        portfolioStatusTone={derived?.tone}
-                                                                                        isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
-                                                                                        isOpeningChart={openingChartSymbol === opportunity.symbol}
-                                                                                        onToggleInPortfolio={handleToggleInPortfolio}
-                                                                                        onToggleCardMode={handleToggleCardMode}
-                                                                                        onChangePriceTimeframe={handleChangePriceTimeframe}
-                                                                                        onOpenChart={handleOpenChart}
-                                                                                    />
-                                                                                </td>
-                                                                            </tr>
-                                                                        ) : null}
-                                                                    </React.Fragment>
-                                                                );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </section>
-                                    );
-                                })}
-                            </div>
+                                                                                    <circle cx={spark.dot.x} cy={spark.dot.y} r={1.6} fill={sparkColor} />
+                                                                                </svg>
+                                                                        ) : (
+                                                                            '-'
+                                                                        )}
+                                                                    </td>
+                                                                    <td>
+                                                                        <div className="risk-bar">
+                                                                            <div
+                                                                                className="risk-fill"
+                                                                                style={{
+                                                                                    width: `${Math.min(100, Math.max(0, riskStop * 7))}%`,
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        <div className="risk-meta">
+                                                                            <span>{formatPercent(opportunity.distance_to_stop_pct)}</span>
+                                                                            <span>stop</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="col-tags">
+                                                                        <div className="tags">
+                                                                            <span className="tag portfolio">{inPortfolio ? '● Portfolio' : '○ Portfolio'}</span>
+                                                                            <span className="tag strategy">▲ Strategy</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className={`status-pill ${sectionKey === 'hold' ? 'hold' : sectionKey === 'wait' ? 'wait' : 'exit'}`}>
+                                                                        {resolved.visual.badgeText}
+                                                                    </td>
+                                                                    <td className="actions-cell">
+                                                                        <button
+                                                                            type="button"
+                                                                            className="row-action"
+                                                                            title="Abrir gráfico"
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                void handleOpenChart(opportunity);
+                                                                            }}
+                                                                            disabled={openingChartSymbol === opportunity.symbol}
+                                                                        >
+                                                                            <LineChart className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            className={`row-action ${isFavorite ? 'is-favorite' : ''}`}
+                                                                            title={isFavorite ? 'Remover favorito' : 'Favoritar'}
+                                                                            aria-pressed={isFavorite}
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                handleToggleFavorite(opportunity);
+                                                                            }}
+                                                                        >
+                                                                            <Star className="h-4 w-4" fill={isFavorite ? 'currentColor' : 'none'} />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="row-action"
+                                                                            title="Mais"
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                void Promise.resolve();
+                                                                            }}
+                                                                        >
+                                                                            <MoreHorizontal className="h-4 w-4" />
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                                <tr
+                                                                    className="detail-row"
+                                                                    data-detail={rowKey}
+                                                                    style={{ display: expanded ? '' : 'none' }}
+                                                                >
+                                                                    <td colSpan={10}>
+                                                                        <OpportunityCard
+                                                                            opportunity={opportunity}
+                                                                            preference={{
+                                                                                ...pref,
+                                                                                in_portfolio: inPortfolio,
+                                                                            }}
+                                                                            isPortfolioDerived={Boolean(derived?.active)}
+                                                                            portfolioStatusMessage={derived?.message}
+                                                                            portfolioStatusTone={derived?.tone}
+                                                                            isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
+                                                                            isOpeningChart={openingChartSymbol === opportunity.symbol}
+                                                                            onToggleInPortfolio={handleToggleInPortfolio}
+                                                                            onToggleCardMode={handleToggleCardMode}
+                                                                            onOpenChart={handleOpenChart}
+                                                                        />
+                                                                    </td>
+                                                                </tr>
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </section>
+                                );
+                            })
                         )}
                     </main>
                 </section>
-
-                {activeChart ? (
-                    <ChartModal
-                        symbol={activeChart.opportunity.symbol}
-                        opportunity={activeChart.opportunity}
-                        initialCandles={activeChart.initialCandles}
-                        initialTimeframe={activeChart.initialTimeframe}
-                        onClose={() => setActiveChart(null)}
-                    />
-                ) : null}
             </div>
+
+            {activeChart ? (
+                <ChartModal
+                    symbol={activeChart.opportunity.symbol}
+                    opportunity={activeChart.opportunity}
+                    initialCandles={activeChart.initialCandles}
+                    initialTimeframe={activeChart.initialTimeframe}
+                    onClose={() => setActiveChart(null)}
+                />
+            ) : null}
         </div>
     );
 };
