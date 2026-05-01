@@ -29,18 +29,19 @@ type NavItemConfig = {
   to: string
   label: string
   icon: ComponentType<{ className?: string }>
+  adminOnly?: boolean
 }
 
 const mainNavItems: NavItemConfig[] = [
   { to: '/monitor', label: 'Monitor', icon: Activity },
-  { to: '/favorites', label: 'Favoritos', icon: Bookmark },
-  { to: '/signals/history', label: 'Histórico', icon: TrendingUp },
-  { to: '/supply-distribution', label: 'Distribuição', icon: ChartPie },
+  { to: '/favorites', label: 'Favoritos', icon: Bookmark, adminOnly: true },
+  { to: '/signals/history', label: 'Histórico', icon: TrendingUp, adminOnly: true },
+  { to: '/supply-distribution', label: 'Distribuição', icon: ChartPie, adminOnly: true },
 ]
 
 const strategyNavItems: NavItemConfig[] = [
-  { to: '/combo/select', label: 'Combo', icon: Layers },
-  { to: '/signals', label: 'Backtests', icon: TrendingUp },
+  { to: '/combo/select', label: 'Combo', icon: Layers, adminOnly: true },
+  { to: '/signals', label: 'Backtests', icon: TrendingUp, adminOnly: true },
 ]
 
 const accountNavItems: NavItemConfig[] = [
@@ -223,6 +224,9 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
   const pathname = location.pathname
   const pageTitle = resolvePageTitle(pathname)
   const userInitials = getUserInitials(user?.name)
+  const isAdmin = user?.isAdmin === true
+  const visibleMainNavItems = mainNavItems.filter((item) => !item.adminOnly || isAdmin)
+  const visibleStrategyNavItems = strategyNavItems.filter((item) => !item.adminOnly || isAdmin)
   const handleLogout = () => {
     setAccountMenuOpen(false)
     logout()
@@ -350,10 +354,12 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
               </div>
 
               <div className="flex-1 space-y-5 overflow-y-auto pr-1 custom-scrollbar">
-                <NavSection title="Principal" items={mainNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
-                <NavSection title="Estratégias" items={strategyNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+                <NavSection title="Principal" items={visibleMainNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+                {visibleStrategyNavItems.length > 0 ? (
+                  <NavSection title="Estratégias" items={visibleStrategyNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+                ) : null}
                 <NavSection title="Conta" items={accountNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
-                {user?.isAdmin ? <NavSection title="Admin" items={adminNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} /> : null}
+                {isAdmin ? <NavSection title="Admin" items={adminNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} /> : null}
 
                 {user && (
                   <div className="page-card-muted px-4 py-3">
@@ -418,10 +424,12 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
           className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-1 pb-3"
           aria-label="Navegação principal"
         >
-          <NavSection title="Principal" items={mainNavItems} collapsed={collapsed} pathname={pathname} />
-          <NavSection title="Estratégias" items={strategyNavItems} collapsed={collapsed} pathname={pathname} />
+          <NavSection title="Principal" items={visibleMainNavItems} collapsed={collapsed} pathname={pathname} />
+          {visibleStrategyNavItems.length > 0 ? (
+            <NavSection title="Estratégias" items={visibleStrategyNavItems} collapsed={collapsed} pathname={pathname} />
+          ) : null}
           <NavSection title="Conta" items={accountNavItems} collapsed={collapsed} pathname={pathname} />
-          {user?.isAdmin ? <NavSection title="Admin" items={adminNavItems} collapsed={collapsed} pathname={pathname} /> : null}
+          {isAdmin ? <NavSection title="Admin" items={adminNavItems} collapsed={collapsed} pathname={pathname} /> : null}
         </nav>
 
         <div className="mt-3 border-t border-white/6 pt-3">
