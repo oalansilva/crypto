@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/stores/authStore'
 import axios from 'axios'
 import { Eye, EyeOff, TrendingUp } from 'lucide-react'
+import { MonitorDisclaimer } from '@/components/monitor/MonitorDisclaimer'
 
 type Mode = 'login' | 'register'
 
@@ -101,6 +102,8 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-md">
+      <MonitorDisclaimer className="mb-4" />
+
       {/* Card */}
       <div className="rounded-3xl border border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(10,21,33,0.95),rgba(11,23,36,0.95))] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
         {/* Logo */}
