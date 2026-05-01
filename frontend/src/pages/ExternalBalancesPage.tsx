@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Download, Eye, EyeOff, KeyRound, RefreshCw, Search, ShieldCheck, Trash2, WalletCards } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { Button } from '@/components/ui/Button'
@@ -37,6 +38,23 @@ function fmtNum(n: unknown, max = 8) {
   return s.replace(/\.0+$/, '').replace(/(\.[0-9]*?)0+$/, '$1')
 }
 
+function fmtSignedUSD(n: unknown) {
+  if (n === null || n === undefined) return '—'
+  const v = Number(n)
+  if (!Number.isFinite(v)) return '—'
+  const formatted = fmtUSD.format(Math.abs(v))
+  if (v > 0) return `+${formatted}`
+  if (v < 0) return `-${formatted}`
+  return formatted
+}
+
+function fmtPct(n: unknown) {
+  if (n === null || n === undefined) return '—'
+  const v = Number(n)
+  if (!Number.isFinite(v)) return '—'
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
+}
+
 function formatAsOf(asOf: string | null) {
   if (!asOf) return null
   const d = new Date(asOf)
@@ -45,6 +63,31 @@ function formatAsOf(asOf: string | null) {
     .toISOString()
     .replace('T', ' ')
     .replace(/\.\d{3}Z$/, ' UTC')
+}
+
+function assetName(asset: string) {
+  const names: Record<string, string> = {
+    BTC: 'Bitcoin',
+    ETH: 'Ethereum',
+    USDT: 'Tether USD',
+    SOL: 'Solana',
+    BNB: 'BNB',
+    ADA: 'Cardano',
+  }
+  return names[asset.toUpperCase()] || 'Spot balance'
+}
+
+function assetTileStyle(asset: string): React.CSSProperties {
+  const symbol = asset.toUpperCase()
+  const gradients: Record<string, string> = {
+    BTC: 'linear-gradient(135deg, #f7931a 0%, #8b5108 100%)',
+    ETH: 'linear-gradient(135deg, #627eea 0%, #2a3d8b 100%)',
+    USDT: 'linear-gradient(135deg, #26a17b 0%, #0f4a37 100%)',
+    SOL: 'linear-gradient(135deg, #9945ff 0%, #14f195 100%)',
+    BNB: 'linear-gradient(135deg, #f3ba2f 0%, #7b5d14 100%)',
+    ADA: 'linear-gradient(135deg, #2f66ff 0%, #092776 100%)',
+  }
+  return { background: gradients[symbol] || 'linear-gradient(135deg, #38bdf8 0%, #145374 100%)' }
 }
 
 function parseSort(v: string): SortSpec {
@@ -103,8 +146,8 @@ export default function ExternalBalancesPage() {
   const [maskedApiKey, setMaskedApiKey] = useState<string | null>(null)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [apiSecretInput, setApiSecretInput] = useState('')
+  const [showApiSecret, setShowApiSecret] = useState(false)
   const [savingCredentials, setSavingCredentials] = useState(false)
-  const [isDesktopRowsView, setIsDesktopRowsView] = useState(true)
 
   const [q, setQ] = useState('')
   const [minUsd, setMinUsd] = useState<string>('0.02')
@@ -162,28 +205,8 @@ export default function ExternalBalancesPage() {
   }, [minUsd])
 
   useEffect(() => {
-    const onRefresh = () => {
-      void load()
-    }
-    const onExport = () => {
-      const headers = ['asset', 'total', 'free', 'locked', 'value_usd', 'price_usdt', 'pnl_usd', 'pnl_pct']
-      const csv = [
-        headers.join(','),
-        ...view.items.map((row) =>
-          [row.asset, row.total, row.free, row.locked, row.value_usd ?? '', row.price_usdt ?? '', row.pnl_usd ?? '', row.pnl_pct ?? '']
-            .map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`)
-            .join(','),
-        ),
-      ].join('\n')
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'wallet-balances.csv'
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-
+    const onRefresh = () => void load()
+    const onExport = () => exportCsv()
     window.addEventListener('wallet:refresh', onRefresh)
     window.addEventListener('wallet:export', onExport)
     return () => {
@@ -215,12 +238,21 @@ export default function ExternalBalancesPage() {
     const totalUsd = view.items.reduce((acc, it) => acc + (Number(it.value_usd) || 0), 0)
     const pnlItems = view.items.filter((it) => typeof it.pnl_usd === 'number')
     const pnlSum = pnlItems.reduce((acc, it) => acc + (Number(it.pnl_usd) || 0), 0)
+    const weightedPct =
+      totalUsd > 0
+        ? view.items.reduce((acc, it) => {
+            const value = Number(it.value_usd) || 0
+            const pct = typeof it.pnl_pct === 'number' ? Number(it.pnl_pct) : 0
+            return acc + pct * (value / totalUsd)
+          }, 0)
+        : null
 
     return {
       totalUsd,
       pnlSum,
       pnlCount: pnlItems.length,
       count: view.items.length,
+      weightedPct,
     }
   }, [view.items])
 
@@ -236,6 +268,35 @@ export default function ExternalBalancesPage() {
     setSortValue('value_desc')
     setSortOverride(null)
     void load()
+  }
+
+  const exportCsv = () => {
+    const headers = ['asset', 'total', 'free', 'locked', 'value_usd', 'price_usdt', 'avg_cost_usdt', 'pnl_usd', 'pnl_pct']
+    const csv = [
+      headers.join(','),
+      ...view.items.map((row) =>
+        [
+          row.asset,
+          row.total,
+          row.free,
+          row.locked,
+          row.value_usd ?? '',
+          row.price_usdt ?? '',
+          row.avg_cost_usdt ?? '',
+          row.pnl_usd ?? '',
+          row.pnl_pct ?? '',
+        ]
+          .map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`)
+          .join(','),
+      ),
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'wallet-balances.csv'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const saveCredentials = async () => {
@@ -295,283 +356,352 @@ export default function ExternalBalancesPage() {
 
   const asOfLabel = formatAsOf(asOf)
 
-  useEffect(() => {
-    const updateRowsView = () => setIsDesktopRowsView(window.innerWidth >= 768)
-    updateRowsView()
-    window.addEventListener('resize', updateRowsView)
-    return () => window.removeEventListener('resize', updateRowsView)
-  }, [])
+  const rows: BalanceRow[] = loading
+    ? Array.from({ length: 6 }).map((_, i) => ({ asset: `loading-${i}`, free: 0, locked: 0, total: 0 }))
+    : view.items
 
   return (
-    <main className="app-page balances-page w-full">
-      <div
-        className="pb-10 pt-[18px] sm:pb-12"
-        style={{ width: 'min(1120px, calc(100% - 28px))', marginInline: 'auto' }}
-      >
-        <section className="flex flex-col gap-[14px] border-b border-transparent px-0 pb-[10px] pt-4 sm:flex-row sm:items-end sm:justify-between">
+    <main className="app-page balances-page w-full bg-[#07111a] text-slate-100">
+      <div className="mx-auto w-[min(1180px,calc(100%-28px))] pb-10 pt-5 sm:pb-12">
+        <section className="mb-4 flex flex-col gap-3 border-b border-white/5 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-[28px] font-bold tracking-[-0.4px] text-zinc-900 lg:text-[32px]">Carteira</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2.5 text-sm text-zinc-500">
-              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-xs text-zinc-800">
-                Binance Spot
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <span>Workspace</span>
+              <span className="text-slate-600">/</span>
+              <span>Conta</span>
+              <span className="text-slate-600">/</span>
+              <span className="font-semibold text-slate-200">Carteira</span>
+            </div>
+            <h1 className="text-[30px] font-bold tracking-normal text-slate-50 lg:text-[34px]">Carteira</h1>
+            <div className="mt-2 max-w-3xl text-sm text-slate-400">
+              Saldos lidos da Binance Spot via API key vinculada à sua conta. Atualização sob demanda.
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <span className="inline-flex items-center gap-2 rounded-md border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 font-mono text-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.75)]" />
+                Binance · read-only
               </span>
-              <span className="text-zinc-400">·</span>
-              <span>read-only</span>
-              {asOfLabel && (
-                <>
-                  <span className="text-zinc-400">·</span>
-                  <span>as of {asOfLabel}</span>
-                </>
-              )}
+              <span>Última sincronização</span>
+              <span className="font-mono text-slate-200">{asOfLabel || '—'}</span>
             </div>
           </div>
 
-          <div className="text-left sm:min-w-[180px] sm:text-right">
-            <div className="text-xs text-zinc-500">Total</div>
-            <div className="mt-1 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900 lg:text-[24px]">
-              {loading ? '—' : fmtUSD.format(summary.totalUsd)}
-            </div>
-            <div className="mt-0.5 text-xs text-zinc-500">
-              {loading ? '—' : `${summary.count} ativos · filtro min USD ${Number(minUsd).toFixed(2)}`}
-            </div>
-          </div>
+          <Button
+            className="h-10 gap-2 rounded-md border border-sky-300/20 bg-sky-300 px-4 text-sm font-semibold text-slate-950 hover:bg-sky-200"
+            onClick={() => void load()}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Sincronizar
+          </Button>
         </section>
 
-        <section className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <article className="page-card p-4 sm:p-5">
-            <div className="text-xs text-zinc-500">Total USD</div>
-            <div className="mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] text-zinc-900">
-              {loading ? '—' : `${summary.count} ativos`}
+        <section className="mb-4 grid overflow-hidden rounded-lg border border-white/10 bg-white/10 md:grid-cols-4">
+          <article className="border-b border-white/10 p-5 md:col-span-1 md:border-b-0 md:border-r">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Total da carteira <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-300">USD</span>
             </div>
-            <div className="mt-1.5 text-xs text-zinc-500">Soma do valor (USD) das linhas visíveis</div>
+            <div className="mt-2 text-[30px] font-bold tracking-normal text-slate-50">{loading ? '—' : fmtUSD.format(summary.totalUsd)}</div>
+            <div className="mt-1 text-xs text-slate-500">{loading ? '—' : `${summary.count} ativos · filtro min USD ${Number(minUsd).toFixed(2)}`}</div>
           </article>
-          <article className="page-card p-4 sm:p-5">
-            <div className="text-xs text-zinc-500">PnL (parcial)</div>
-            <div className={`mt-1.5 text-[22px] font-extrabold tracking-[-0.2px] ${summary.pnlSum >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-              {loading ? '—' : summary.pnlCount ? `${summary.pnlCount} símbolos` : '—'}
+          <article className="border-b border-white/10 p-5 md:border-b-0 md:border-r">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total USD</div>
+            <div className="mt-2 text-[24px] font-bold tracking-normal text-slate-50">{loading ? '—' : summary.count}</div>
+            <div className="mt-1 text-xs text-slate-500">ativos visíveis</div>
+          </article>
+          <article className="border-b border-white/10 p-5 md:border-b-0 md:border-r">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">PnL parcial</div>
+            <div className={`mt-2 text-[24px] font-bold tracking-normal ${summary.pnlSum >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+              {loading ? '—' : summary.pnlCount ? fmtSignedUSD(summary.pnlSum) : '—'}
             </div>
-            <div className="mt-1.5 text-xs text-zinc-500">Apenas para ativos com avg cost / pnl calculados</div>
+            <div className="mt-1 text-xs text-slate-500">{summary.pnlCount} símbolos · com avg cost</div>
+          </article>
+          <article className="p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Performance</div>
+            <div className={`mt-2 text-[24px] font-bold tracking-normal ${(summary.weightedPct ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+              {loading ? '—' : summary.weightedPct == null ? '—' : fmtPct(summary.weightedPct)}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">média ponderada</div>
           </article>
         </section>
 
-        <section className="mt-4">
-          <div className="mb-4 rounded-[14px] border border-zinc-200 bg-zinc-50 p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <div className="text-sm font-bold text-zinc-900">Credencial Binance por usuário</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  A Home e a carteira usam a API key vinculada ao usuário logado. Sem isso, os dados não são carregados.
-                </div>
-                <div className="mt-2 text-xs text-zinc-500">
-                  Status: {credentialsConfigured ? `configurada (${maskedApiKey || 'oculta'})` : 'não configurada'}
-                </div>
+        <section className="mb-4 rounded-lg border border-white/10 bg-[#101c2a] p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-50">
+                <KeyRound className="h-4 w-4 text-slate-400" />
+                Credenciais Binance
               </div>
-              {credentialsConfigured ? (
-                <Button variant="secondary" onClick={deleteCredentials} disabled={savingCredentials}>
-                  Remover credenciais
-                </Button>
-              ) : null}
+              <div className="mt-2 max-w-3xl text-sm text-slate-400">
+                A Home e a carteira usam uma API key vinculada ao usuário logado. Use chave read-only e mantenha IP whitelist habilitado na Binance.
+              </div>
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_auto]">
+            <div className="inline-flex w-fit items-center gap-2 rounded-md border border-white/10 bg-slate-950/40 px-3 py-1.5 font-mono text-xs text-slate-300">
+              <span className={`h-1.5 w-1.5 rounded-full ${credentialsConfigured ? 'bg-emerald-300' : 'bg-amber-300'}`} />
+              {credentialsConfigured ? 'Configurada' : 'Não configurada'}
+              {maskedApiKey ? <span className="text-slate-500">· {maskedApiKey}</span> : null}
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_auto_auto]">
+            <label className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-slate-950/35 px-3 text-sm text-slate-200 focus-within:border-sky-300/50">
+              <ShieldCheck className="h-4 w-4 text-slate-500" />
               <input
-                className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 text-zinc-900 outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
+                className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
                 placeholder="Binance API Key"
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
               />
+            </label>
+            <label className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-slate-950/35 px-3 text-sm text-slate-200 focus-within:border-sky-300/50">
+              <KeyRound className="h-4 w-4 text-slate-500" />
               <input
-                className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 text-zinc-900 outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
+                type={showApiSecret ? 'text' : 'password'}
+                className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
                 placeholder="Binance API Secret"
                 value={apiSecretInput}
                 onChange={(e) => setApiSecretInput(e.target.value)}
               />
-              <Button onClick={saveCredentials} disabled={savingCredentials || !apiKeyInput.trim() || !apiSecretInput.trim()}>
-                Salvar credenciais
+              <button type="button" className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-slate-200" onClick={() => setShowApiSecret((v) => !v)} aria-label="Mostrar ou ocultar secret">
+                {showApiSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </label>
+            {credentialsConfigured ? (
+              <Button
+                variant="secondary"
+                className="h-10 gap-2 rounded-md border border-rose-300/25 bg-rose-400/10 px-4 text-xs font-semibold text-rose-100 hover:bg-rose-400/20"
+                onClick={deleteCredentials}
+                disabled={savingCredentials}
+              >
+                <Trash2 className="h-4 w-4" />
+                Remover credenciais
               </Button>
-            </div>
+            ) : null}
+            <Button
+              className="h-10 gap-2 rounded-md border border-sky-300/20 bg-sky-300 px-4 text-xs font-semibold text-slate-950 hover:bg-sky-200"
+              onClick={saveCredentials}
+              disabled={savingCredentials || !apiKeyInput.trim() || !apiSecretInput.trim()}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Salvar credenciais
+            </Button>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 items-end gap-3 lg:grid-cols-[1.25fr_0.75fr_0.9fr_0.9fr]">
-            <label className="grid gap-1.5">
-              <span className="text-xs text-zinc-500">Buscar</span>
+        <section className="mb-4 grid grid-cols-1 items-end gap-3 rounded-lg border border-white/10 bg-[#101c2a] p-4 lg:grid-cols-[1.4fr_0.7fr_0.85fr_auto]">
+          <label className="grid gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Buscar</span>
+            <span className="flex h-9 items-center gap-2 rounded-md border border-white/10 bg-slate-950/35 px-3 text-sm text-slate-200 focus-within:border-sky-300/50">
+              <Search className="h-4 w-4 text-slate-500" />
               <input
-                className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 text-zinc-900 outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
+                className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 text-sm text-slate-100 outline-none placeholder:text-slate-600"
                 placeholder="BTC, ETH, SOL..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
-            </label>
+            </span>
+          </label>
 
-            <label className="grid gap-1.5">
-              <span className="text-xs text-zinc-500">Dust threshold</span>
-              <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-                <input
-                  inputMode="decimal"
-                  className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 font-mono text-zinc-900 outline-none transition focus:border-[rgba(138,166,255,0.65)] focus:ring-4 focus:ring-[rgba(138,166,255,0.14)]"
-                  value={minUsd}
-                  onChange={(e) => setMinUsd(e.target.value)}
-                />
-                <span className="text-xs text-zinc-500">USD</span>
-              </div>
-            </label>
+          <label className="grid gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Dust threshold</span>
+            <span className="flex h-9 items-center gap-2 rounded-md border border-white/10 bg-slate-950/35 px-3 focus-within:border-sky-300/50">
+              <input
+                inputMode="decimal"
+                className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 font-mono text-sm text-slate-100 outline-none"
+                value={minUsd}
+                onChange={(e) => setMinUsd(e.target.value)}
+              />
+              <span className="font-mono text-[11px] text-slate-500">USD</span>
+            </span>
+          </label>
 
-            <label className="grid gap-1.5">
-              <span className="text-xs text-zinc-500">Ordenar</span>
-              <select
-                className="h-11 rounded-[10px] border border-zinc-200 bg-zinc-900 px-3 text-zinc-900 outline-none"
-                value={sortValue}
-                onChange={(e) => {
-                  setSortValue(e.target.value)
-                  setSortOverride(null)
-                }}
-              >
-                <option value="value_desc">Maior valor</option>
-                <option value="value_asc">Menor valor</option>
-                <option value="asset_asc">Ativo (A–Z)</option>
-                <option value="asset_desc">Ativo (Z–A)</option>
-                <option value="pnl_desc">PnL (maior)</option>
-                <option value="pnl_asc">PnL (menor)</option>
-              </select>
-            </label>
+          <label className="grid gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ordenar</span>
+            <select
+              className="h-9 appearance-none rounded-md border border-white/10 bg-slate-950/35 px-3 text-sm text-slate-100 outline-none"
+              value={sortValue}
+              onChange={(e) => {
+                setSortValue(e.target.value)
+                setSortOverride(null)
+              }}
+            >
+              <option value="value_desc">Maior valor</option>
+              <option value="value_asc">Menor valor</option>
+              <option value="asset_asc">Ativo (A-Z)</option>
+              <option value="asset_desc">Ativo (Z-A)</option>
+              <option value="pnl_desc">PnL (maior)</option>
+              <option value="pnl_asc">PnL (menor)</option>
+            </select>
+          </label>
 
-            <div className="flex min-h-11 items-center rounded-[10px] border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
-              {metaLine}
-            </div>
-          </div>
-
-        </section>
-
-        <section className="mt-4 overflow-hidden rounded-[14px] border border-zinc-200 bg-zinc-50 shadow-md lg:min-h-[642px]">
-          <div className="flex items-start justify-between gap-[14px] border-b border-zinc-200 bg-zinc-50 px-[14px] py-[14px]">
-            <div>
-              <h2 className="text-base font-bold text-zinc-900">Balances</h2>
-              <div className="mt-1 text-xs text-zinc-500">Layout responsivo: tabela (desktop) / cards (mobile)</div>
-            </div>
-            <Button variant="ghost" size="sm" className="rounded-[10px] border border-zinc-200 bg-zinc-50 px-[10px] text-xs font-semibold text-zinc-900/90 hover:bg-zinc-100" onClick={reset}>
+          <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+            <Button variant="secondary" className="h-9 rounded-md border border-white/10 bg-slate-950/35 px-3 text-xs text-slate-200 hover:bg-white/10" onClick={reset}>
               Reset filtros
             </Button>
+            <Button variant="secondary" className="h-9 gap-2 rounded-md border border-white/10 bg-slate-950/35 px-3 text-xs text-slate-200 hover:bg-white/10" onClick={exportCsv}>
+              <Download className="h-4 w-4" />
+              Exportar CSV
+            </Button>
+            <div className="basis-full font-mono text-[10px] text-slate-500 lg:text-right">{metaLine}</div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-lg border border-white/10 bg-[#101c2a]">
+          <div className="flex flex-col gap-3 border-b border-white/10 px-4 py-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+                Balances <span className="font-normal normal-case tracking-normal text-slate-500">({summary.count} ativos)</span>
+              </h2>
+              <div className="mt-1 text-xs text-slate-500">Layout responsivo: tabela no desktop e cards no mobile.</div>
+            </div>
+            <div className="text-xs text-slate-500">{serverTotalUsd != null ? 'total_usd do servidor disponível' : 'total calculado das linhas visíveis'}</div>
           </div>
 
           {error && !loading ? (
             <div className="p-4">
-              <div className="rounded-[14px] border border-rose-400/30 bg-rose-400/10 p-4">
-                <div className="font-bold text-zinc-900">Erro ao carregar</div>
-                <div className="mt-1 text-sm text-zinc-600">{error}</div>
-                <div className="mt-3">
-                  <Button variant="secondary" onClick={() => void load()}>
-                    Tentar novamente
-                  </Button>
-                </div>
+              <div className="rounded-lg border border-rose-300/25 bg-rose-400/10 p-4">
+                <div className="font-semibold text-rose-100">Erro ao carregar</div>
+                <div className="mt-1 text-sm text-rose-100/75">{error}</div>
+                <Button className="mt-3 h-9 rounded-md" variant="secondary" onClick={() => void load()}>
+                  Tentar novamente
+                </Button>
               </div>
             </div>
           ) : view.items.length === 0 && !loading ? (
             <div className="p-4">
-              <div className="rounded-[14px] border border-zinc-200 bg-zinc-50 p-4">
-                <div className="font-bold text-zinc-900">Nada para mostrar</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  Pode ser que todos os ativos tenham ficado abaixo do min USD, ou que a busca não encontrou nenhum símbolo.
+              <div className="rounded-lg border border-white/10 bg-slate-950/30 p-4">
+                <div className="font-semibold text-slate-100">Nada para mostrar</div>
+                <div className="mt-1 text-sm text-slate-400">
+                  Pode ser que todos os ativos estejam abaixo do min USD, ou que a busca não encontrou nenhum símbolo.
                 </div>
               </div>
             </div>
           ) : (
             <>
-              {isDesktopRowsView ? (
-              <div className="lg:min-h-[392px]">
-                <div className="grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr_1fr] gap-[10px] border-b border-zinc-200 bg-zinc-100 px-[14px] py-[10px] text-xs text-zinc-500 backdrop-blur-xl">
-                  <button className="text-left hover:text-zinc-900/90" onClick={() => onHeaderSort('asset')}>Ativo</button>
-                  <div className="text-right">Total</div>
-                  <div className="text-right">Free</div>
-                  <button className="text-right hover:text-zinc-900/90" onClick={() => onHeaderSort('value')}>Valor (USD)</button>
-                  <div className="text-right">Preço</div>
-                  <div className="text-right">Avg cost</div>
-                  <button className="text-right hover:text-zinc-900/90" onClick={() => onHeaderSort('pnl')}>PnL</button>
-                </div>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full border-collapse text-sm">
+                  <thead className="sticky top-0 bg-[#101c2a]">
+                    <tr className="border-b border-white/10 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="px-4 py-3 text-left">
+                        <button className="hover:text-slate-200" onClick={() => onHeaderSort('asset')}>Ativo</button>
+                      </th>
+                      <th className="px-4 py-3 text-right">Total</th>
+                      <th className="px-4 py-3 text-right">Free</th>
+                      <th className="px-4 py-3 text-right">
+                        <button className="hover:text-slate-200" onClick={() => onHeaderSort('value')}>Valor USD</button>
+                      </th>
+                      <th className="px-4 py-3 text-right">Preço</th>
+                      <th className="px-4 py-3 text-right">Avg cost</th>
+                      <th className="px-4 py-3 text-right">
+                        <button className="hover:text-slate-200" onClick={() => onHeaderSort('pnl')}>PnL</button>
+                      </th>
+                      <th className="px-4 py-3 text-right">Participação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => {
+                      const value = Number(row.value_usd) || 0
+                      const share = summary.totalUsd > 0 ? (value / summary.totalUsd) * 100 : 0
+                      const pnlUsd = row.pnl_usd
+                      const pnlColor = typeof pnlUsd === 'number' ? (pnlUsd >= 0 ? 'text-emerald-300' : 'text-rose-300') : 'text-slate-400'
+                      const dust = !loading && value < 1
 
-                {(loading ? Array.from({ length: 8 }).map((_, i) => ({ asset: `loading-${i}`, free: 0, locked: 0, total: 0 })) : view.items).map((row: any) => {
-                  const locked = Number(row.locked || 0)
-                  const value = row.value_usd
-                  const price = row.price_usdt
-                  const pnlUsd = row.pnl_usd
-                  const pnlPct = row.pnl_pct
-                  const pnlColor = typeof pnlUsd === 'number' ? (pnlUsd >= 0 ? 'text-emerald-700' : 'text-rose-700') : 'text-zinc-600'
-
-                  return (
-                    <div key={row.asset} className="grid grid-cols-[140px_1fr_1fr_1fr_1fr_1fr] gap-[10px] border-b border-zinc-100 px-[14px] py-[10px] text-[13px] leading-[1.2]" style={{ opacity: loading ? 0.7 : 1 }}>
-                      <div className="flex items-center gap-[10px]">
-                        <div className="grid h-[26px] w-[26px] place-items-center rounded-[9px] border border-zinc-200 bg-zinc-50 text-[13px] font-black tracking-[0.4px] text-zinc-900">{String(row.asset || '—').slice(0, 1)}</div>
-                        <div className="min-w-0">
-                          <div className="truncate font-extrabold tracking-[0.2px] text-zinc-900">{loading ? '—' : row.asset}</div>
-                        </div>
-                      </div>
-                      <div className="text-right font-mono text-zinc-900/85">{loading ? '—' : fmtNum(row.total, 8)}</div>
-                      <div className="text-right font-mono text-zinc-600">{loading ? '—' : fmtNum(row.free, 8)}</div>
-                      <div className="text-right font-mono font-extrabold text-zinc-900">{loading ? '—' : typeof value === 'number' ? fmtUSD.format(value) : '—'}</div>
-                      <div className="text-right font-mono text-zinc-600">{loading ? '—' : typeof price === 'number' ? `$${fmtNum(price, 6)}` : '—'}</div>
-                      <div className="text-right font-mono text-zinc-600">
-                        {loading ? '—' : typeof row.avg_cost_usdt === 'number' ? `$${fmtNum(row.avg_cost_usdt, 6)}` : '—'}
-                      </div>
-                      <div className={`text-right font-mono ${pnlColor}`}>
-                        {loading ? '—' : typeof pnlUsd === 'number' && typeof pnlPct === 'number'
-                            ? `${fmtUSD.format(pnlUsd)} (${Number(pnlPct).toFixed(2)}%)`
-                            : '—'}
-                      </div>
-                    </div>
-                  )
-                })}
+                      return (
+                        <tr key={row.asset} className="border-b border-white/10 last:border-b-0 hover:bg-white/[0.03]" style={{ opacity: loading ? 0.65 : 1 }}>
+                          <td className="px-4 py-3 text-left">
+                            <div className="flex min-w-[160px] items-center gap-3">
+                              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md font-mono text-xs font-semibold text-white" style={assetTileStyle(row.asset)}>
+                                {String(row.asset || '—').slice(0, 3)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate font-semibold text-slate-100">
+                                  {loading ? '—' : row.asset}
+                                  {dust ? <><span> </span><span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">DUST</span></> : null}
+                                </div>
+                                <div className="truncate text-xs text-slate-500">{loading ? 'Carregando' : assetName(row.asset)}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-mono text-slate-300">{loading ? '—' : fmtNum(row.total, 8)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-slate-400">{loading ? '—' : fmtNum(row.free, 8)}</td>
+                          <td className="px-4 py-3 text-right font-mono font-semibold text-slate-100">{loading ? '—' : typeof row.value_usd === 'number' ? fmtUSD.format(row.value_usd) : '—'}</td>
+                          <td className="px-4 py-3 text-right font-mono text-slate-400">{loading ? '—' : typeof row.price_usdt === 'number' ? `$${fmtNum(row.price_usdt, 6)}` : '—'}</td>
+                          <td className="px-4 py-3 text-right font-mono text-slate-400">{loading ? '—' : typeof row.avg_cost_usdt === 'number' ? `$${fmtNum(row.avg_cost_usdt, 6)}` : '—'}</td>
+                          <td className={`px-4 py-3 text-right font-mono ${pnlColor}`}>
+                            {loading ? '—' : typeof row.pnl_usd === 'number' && typeof row.pnl_pct === 'number' ? (
+                              <span className="inline-flex flex-col items-end">
+                                <span>{fmtSignedUSD(row.pnl_usd)}</span>
+                                <span className="text-[11px]">{fmtPct(row.pnl_pct)}</span>
+                              </span>
+                            ) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="font-mono text-xs text-slate-400">{loading ? '—' : `${share.toFixed(2)}%`}</div>
+                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                              <div className="h-full rounded-full bg-gradient-to-r from-sky-300 to-emerald-300" style={{ width: `${Math.min(share, 100)}%` }} />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-              ) : (
-              <div>
-                {(loading ? Array.from({ length: 6 }).map((_, i) => ({ asset: `loading-${i}`, free: 0, locked: 0, total: 0 })) : view.items).map((row: any) => {
-                  const value = row.value_usd
-                  const price = row.price_usdt
-                  const pnlUsd = row.pnl_usd
-                  const pnlPct = row.pnl_pct
-                  const pnlColor = typeof pnlUsd === 'number' ? (pnlUsd >= 0 ? 'text-emerald-700' : 'text-rose-700') : 'text-zinc-600'
+
+              <div className="md:hidden">
+                {rows.map((row) => {
+                  const value = Number(row.value_usd) || 0
+                  const share = summary.totalUsd > 0 ? (value / summary.totalUsd) * 100 : 0
+                  const pnlColor = typeof row.pnl_usd === 'number' ? (row.pnl_usd >= 0 ? 'text-emerald-300' : 'text-rose-300') : 'text-slate-400'
 
                   return (
-                    <div key={row.asset} className="border-b border-zinc-100 px-[14px] py-3" style={{ opacity: loading ? 0.7 : 1 }}>
-                      <div className="flex items-center justify-between gap-[10px]">
-                        <div className="flex items-center gap-[10px]">
-                          <div className="grid h-[26px] w-[26px] place-items-center rounded-[9px] border border-zinc-200 bg-zinc-50 text-[13px] font-black tracking-[0.4px] text-zinc-900">{String(row.asset || '—').slice(0, 1)}</div>
-                          <div>
-                            <div className="font-extrabold tracking-[0.2px] text-zinc-900">{loading ? '—' : row.asset}</div>
+                    <article key={row.asset} className="border-b border-white/10 p-4 last:border-b-0" style={{ opacity: loading ? 0.65 : 1 }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md font-mono text-xs font-semibold text-white" style={assetTileStyle(row.asset)}>
+                            {String(row.asset || '—').slice(0, 3)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-semibold text-slate-100">{loading ? '—' : row.asset}</div>
+                            <div className="truncate text-xs text-slate-500">{loading ? 'Carregando' : assetName(row.asset)}</div>
                           </div>
                         </div>
-
                         <div className="text-right">
-                          <div className="font-mono text-[15px] font-extrabold text-zinc-900">{loading ? '—' : typeof value === 'number' ? fmtUSD.format(value) : '—'}</div>
-                          <div className="mt-[2px] text-xs text-zinc-500">Total: {loading ? '—' : fmtNum(row.total, 8)}</div>
+                          <div className="font-mono text-base font-semibold text-slate-100">{loading ? '—' : typeof row.value_usd === 'number' ? fmtUSD.format(row.value_usd) : '—'}</div>
+                          <div className="mt-0.5 font-mono text-xs text-slate-500">{loading ? '—' : `${share.toFixed(2)}%`}</div>
                         </div>
                       </div>
 
-                      <div className="mt-[10px] grid grid-cols-2 gap-[10px]">
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
-                          <div className="text-[11px] text-zinc-500">Preço</div>
-                          <div className="mt-1 font-mono text-xs text-zinc-900">{loading ? '—' : typeof price === 'number' ? `$${fmtNum(price, 6)}` : '—'}</div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-md border border-white/10 bg-slate-950/30 p-3">
+                          <div className="text-[11px] text-slate-500">Total</div>
+                          <div className="mt-1 font-mono text-xs text-slate-200">{loading ? '—' : fmtNum(row.total, 8)}</div>
                         </div>
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
-                          <div className="text-[11px] text-zinc-500">PnL</div>
+                        <div className="rounded-md border border-white/10 bg-slate-950/30 p-3">
+                          <div className="text-[11px] text-slate-500">Free</div>
+                          <div className="mt-1 font-mono text-xs text-slate-200">{loading ? '—' : fmtNum(row.free, 8)}</div>
+                        </div>
+                        <div className="rounded-md border border-white/10 bg-slate-950/30 p-3">
+                          <div className="text-[11px] text-slate-500">Preço</div>
+                          <div className="mt-1 font-mono text-xs text-slate-200">{loading ? '—' : typeof row.price_usdt === 'number' ? `$${fmtNum(row.price_usdt, 6)}` : '—'}</div>
+                        </div>
+                        <div className="rounded-md border border-white/10 bg-slate-950/30 p-3">
+                          <div className="text-[11px] text-slate-500">PnL</div>
                           <div className={`mt-1 font-mono text-xs ${pnlColor}`}>
-                            {loading
-                              ? '—'
-                              : typeof pnlUsd === 'number' && typeof pnlPct === 'number'
-                                ? `${fmtUSD.format(pnlUsd)} (${Number(pnlPct).toFixed(2)}%)`
-                                : '—'}
+                            {loading ? '—' : typeof row.pnl_usd === 'number' && typeof row.pnl_pct === 'number' ? `${fmtSignedUSD(row.pnl_usd)} (${fmtPct(row.pnl_pct)})` : '—'}
                           </div>
                         </div>
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-[10px]">
-                          <div className="text-[11px] text-zinc-500">Free</div>
-                          <div className="mt-1 font-mono text-xs text-zinc-900">{loading ? '—' : fmtNum(row.free, 8)}</div>
-                        </div>
                       </div>
-                    </div>
+                    </article>
                   )
                 })}
               </div>
-              )}
 
-              <div className="flex items-center justify-between gap-3 bg-zinc-50 p-4 text-xs text-zinc-500">
-                <div>{serverTotalUsd != null ? 'total_usd (server): disponível' : `Carteira · ${summary.count} rows visíveis`}</div>
+              <div className="flex flex-col gap-1 border-t border-white/10 bg-slate-950/25 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                <div className="inline-flex items-center gap-2">
+                  <WalletCards className="h-4 w-4" />
+                  Carteira · {summary.count} linhas visíveis
+                </div>
                 <div>{asOfLabel ? `as_of ${asOfLabel}` : ''}</div>
               </div>
             </>
