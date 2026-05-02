@@ -19,17 +19,17 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
 export const ToastViewport = React.forwardRef<
     HTMLOListElement,
     React.HTMLAttributes<HTMLOListElement>
->(({ className, ...props }, ref) => (
-    <div
-        className="fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]"
-    >
-        {/* Placeholder for where toasts render */}
-    </div>
+>(({ className = "", ...props }, ref) => (
+    <ol
+        ref={ref}
+        className={`fixed left-1/2 top-4 z-[100] flex max-h-screen w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 p-0 sm:top-5 md:max-w-[420px] ${className}`}
+        {...props}
+    />
 ))
 ToastViewport.displayName = "ToastViewport"
 
 export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
-    ({ className, variant, open, onOpenChange, ...props }, ref) => {
+    ({ className = "", variant, open, onOpenChange, ...props }, ref) => {
         // Simple visibility handling. 
         // In real radix, this handles animations/portaling. 
         // Here we just render normally or use CSS classes.
@@ -39,10 +39,12 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
         return (
             <div
                 ref={ref}
-                className={`group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full 
+                role={variant === "destructive" ? "alert" : "status"}
+                aria-live={variant === "destructive" ? "assertive" : "polite"}
+                className={`group pointer-events-auto relative flex w-full items-start justify-between gap-4 overflow-hidden rounded-lg border p-4 pr-10 shadow-[0_20px_60px_rgba(0,0,0,0.38)] backdrop-blur transition-all
                 ${variant === 'destructive'
-                        ? 'destructive group border-destructive bg-destructive text-destructive-foreground'
-                        : 'border bg-background text-foreground'} 
+                        ? 'destructive border-red-400/35 bg-[rgba(54,20,24,0.96)] text-red-50'
+                        : 'border-emerald-300/30 bg-[rgba(12,22,34,0.98)] text-[var(--text-primary)]'}
                 ${className}`}
                 {...props}
             />
@@ -69,7 +71,9 @@ export const ToastClose = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <button
         ref={ref}
-        className={`absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600 ${className}`}
+        type="button"
+        aria-label="Fechar notificação"
+        className={`absolute right-2 top-2 rounded-md p-1 text-[var(--text-secondary)] opacity-80 transition hover:text-[var(--text-primary)] hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-emerald-300/50 group-[.destructive]:text-red-200 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 ${className}`}
         toast-close=""
         {...props}
     >
