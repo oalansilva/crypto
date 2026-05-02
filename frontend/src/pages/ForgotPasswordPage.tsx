@@ -29,11 +29,11 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="rounded-3xl border border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(10,21,33,0.95),rgba(11,23,36,0.95))] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-8 shadow-[var(--shadow-xl)] backdrop-blur-xl">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/20 bg-[linear-gradient(135deg,rgba(38,194,129,0.95),rgba(56,189,248,0.95))] shadow-[0_12px_24px_rgba(18,154,125,0.24)]">
-            <TrendingUp className="h-7 w-7 text-white" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-[rgba(252,213,53,0.26)] bg-[var(--accent-primary)] shadow-[var(--shadow-md)]">
+            <TrendingUp className="h-7 w-7 text-[var(--text-on-primary)]" />
           </div>
           <h1 className="text-xl font-bold text-[var(--text-primary)]">Recuperar Senha</h1>
           <p className="text-center text-sm text-[var(--text-muted)]">
@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               to="/login"
-              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[var(--accent-primary)] px-6 py-3 text-sm font-bold text-white transition hover:brightness-110"
+              className="mt-2 inline-flex items-center gap-2 rounded-md bg-[var(--accent-primary)] px-6 py-3 text-sm font-bold text-[var(--text-on-primary)] transition hover:bg-[var(--accent-primary-hover)]"
             >
               Voltar ao Login
             </Link>
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
-                  className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] py-3 pl-11 pr-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
+                  className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] py-3 pl-11 pr-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
                 />
               </div>
             </div>
@@ -90,7 +90,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isLoading || !email}
-              className="w-full rounded-xl bg-[linear-gradient(135deg,rgba(38,194,129,0.95),rgba(56,189,248,0.95))] py-3.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-md bg-[var(--accent-primary)] py-3.5 text-sm font-bold text-[var(--text-on-primary)] shadow-lg transition hover:bg-[var(--accent-primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--accent-primary-disabled)] disabled:text-[var(--text-muted)]"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">

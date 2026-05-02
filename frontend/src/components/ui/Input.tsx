@@ -17,13 +17,13 @@ export function Input({
     return (
         <div className="w-full">
             {label && (
-                <label className="block text-xs text-zinc-400 mb-2 uppercase font-semibold tracking-wide">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
                     {label}
                 </label>
             )}
             <div className="relative">
                 {icon && (
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
                         {icon}
                     </div>
                 )}

@@ -66,10 +66,10 @@ const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
     card_mode: 'price',
     price_timeframe: '1d',
-    theme: 'black',
+    theme: 'dark-green',
 };
 
-const DEFAULT_THEME: MonitorTheme = 'black';
+const DEFAULT_THEME: MonitorTheme = 'dark-green';
 const BINANCE_MONITOR_PORTFOLIO_MIN_USD = 1;
 const FAVORITES_STORAGE_KEY = 'crypto-monitor-favorites-v1';
 const SPARKLINE_LIMIT = 14;
@@ -78,6 +78,8 @@ const toFavoriteKey = (opportunity: Opportunity): string => String(opportunity.i
 const normalizeFavoriteKey = (value: string | null | undefined): string => String(value || '').trim();
 
 const getSparklineKey = (symbol: string, timeframe: ChartTimeframe): string => `${symbol}|${timeframe}`;
+
+const normalizeTheme = (value: unknown): MonitorTheme => (value === 'black' ? 'black' : DEFAULT_THEME);
 
 const renderSparkPath = (values: number[]): { line: string; area: string; dot: { x: number; y: number } } => {
     if (values.length === 0) {
@@ -299,7 +301,7 @@ export const MonitorStatusTab: React.FC = () => {
                             || raw?.price_timeframe === '1d'
                             ? raw.price_timeframe
                             : '1d',
-                        theme: 'black',
+                        theme: normalizeTheme(raw?.theme),
                     };
                 }
                 setPreferences(normalized);
@@ -408,7 +410,7 @@ export const MonitorStatusTab: React.FC = () => {
                         || payload?.price_timeframe === '1d'
                         ? payload.price_timeframe
                         : '1d',
-                    theme: 'black',
+                    theme: normalizeTheme(payload?.theme),
                 },
             }));
         } catch (error) {
@@ -429,6 +431,13 @@ export const MonitorStatusTab: React.FC = () => {
 
     const handleToggleCardMode = (symbol: string, nextMode: MonitorCardMode) => {
         void persistPreference(symbol, { card_mode: nextMode });
+    };
+
+    const handleToggleTimeframe = (symbol: string, nextTimeframe: MonitorPriceTimeframe) => {
+        void persistPreference(symbol, { price_timeframe: nextTimeframe });
+        void fetchMarketCandles(symbol, toChartTimeframe(nextTimeframe), undefined, SPARKLINE_LIMIT).catch((error) => {
+            console.error(`Failed to prefetch candles for ${symbol} (${nextTimeframe})`, error);
+        });
     };
 
     const handleToggleFavorite = (opportunity: Opportunity) => {
@@ -766,6 +775,11 @@ export const MonitorStatusTab: React.FC = () => {
     }), [resolvedSections]);
 
     useEffect(() => {
+        const shouldLoadSparklines = false;
+        if (!shouldLoadSparklines) {
+            return;
+        }
+
         const rowsToFetch = new Map<string, { symbol: string; timeframe: ChartTimeframe }>();
         for (const section of SECTION_ORDER) {
             for (const { opportunity } of resolvedSections[section]) {
@@ -865,6 +879,9 @@ export const MonitorStatusTab: React.FC = () => {
 
     const theme: MonitorTheme = preferences['__global__']?.theme ?? DEFAULT_THEME;
     const effectiveSearchPlaceholder = 'Buscar par, estratégia, tag...';
+    const toggleTheme = () => {
+        void persistPreference('__global__', { theme: theme === 'dark-green' ? 'black' : 'dark-green' });
+    };
 
     return (
         <div className={`monitor-page-shell monitor-theme monitor-theme--${theme}`} data-testid="monitor-status-tab">
@@ -892,6 +909,14 @@ export const MonitorStatusTab: React.FC = () => {
                         />
                         Binance · live
                     </span>
+                    <Button
+                        variant="secondary"
+                        className="topbar-btn"
+                        data-testid="monitor-theme-toggle"
+                        onClick={toggleTheme}
+                    >
+                        Tema
+                    </Button>
                     <Button
                         variant="secondary"
                         className="topbar-btn primary"
@@ -1043,6 +1068,7 @@ export const MonitorStatusTab: React.FC = () => {
                                 return (
                                     <section key={sectionKey}>
                                         <div className="status-row">
+                                            <span className="status-section-label">Estado {cfg.title}</span>
                                             <h3>
                                                 <span className={`pip ${sectionKey}`} />
                                                 {cfg.title === 'HOLD' ? 'Em posição · HOLD' : cfg.title === 'WAIT' ? 'Em observação · WAIT' : 'Em saída · EXIT'}
@@ -1079,7 +1105,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                             const pref = getPreference(opportunity.symbol);
                                                             const derived = portfolioStatusBySymbol[opportunity.symbol];
                                                             const inPortfolio = derived?.inPortfolio ?? pref.in_portfolio;
-                                                            const expanded = expandedRows[`${sectionKey}-${opportunity.id}`] ?? false;
+                                                            const expanded = expandedRows[`${sectionKey}-${opportunity.id}`] ?? true;
                                                             const isFavorite = favoriteSymbols.has(toFavoriteKey(opportunity));
                                                             const rowKey = `${sectionKey}-${opportunity.id}`;
                                                             const riskStop = opportunity.distance_to_stop_pct ?? 0;
@@ -1235,6 +1261,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                             isOpeningChart={openingChartSymbol === opportunity.symbol}
                                                                             onToggleInPortfolio={handleToggleInPortfolio}
                                                                             onToggleCardMode={handleToggleCardMode}
+                                                                            onToggleTimeframe={handleToggleTimeframe}
                                                                             onOpenChart={handleOpenChart}
                                                                         />
                                                                     </td>

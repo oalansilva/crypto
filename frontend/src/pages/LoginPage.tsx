@@ -105,11 +105,11 @@ export default function LoginPage() {
       <MonitorDisclaimer className="mb-4" />
 
       {/* Card */}
-      <div className="rounded-3xl border border-[var(--border-default)] bg-[linear-gradient(135deg,rgba(10,21,33,0.95),rgba(11,23,36,0.95))] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-8 shadow-[var(--shadow-xl)] backdrop-blur-xl">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/20 bg-[linear-gradient(135deg,rgba(38,194,129,0.95),rgba(56,189,248,0.95))] shadow-[0_12px_24px_rgba(18,154,125,0.24)]">
-            <TrendingUp className="h-7 w-7 text-white" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-[rgba(252,213,53,0.26)] bg-[var(--accent-primary)] shadow-[var(--shadow-md)]">
+            <TrendingUp className="h-7 w-7 text-[var(--text-on-primary)]" />
           </div>
           <h1 className="text-xl font-bold text-[var(--text-primary)]">
             {mode === 'login' ? 'Bem-vindo de volta' : 'Criar conta'}
@@ -122,13 +122,13 @@ export default function LoginPage() {
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 flex rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-1">
+        <div className="mb-6 flex rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-1">
           <button
             type="button"
             onClick={() => toggleMode('login')}
-            className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+            className={`flex-1 rounded-md px-4 py-2.5 text-sm font-semibold transition-all ${
               mode === 'login'
-                ? 'bg-[var(--accent-primary)] text-white shadow-lg'
+                ? 'bg-[var(--accent-primary)] text-[var(--text-on-primary)] shadow-lg'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
@@ -137,9 +137,9 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => toggleMode('register')}
-            className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+            className={`flex-1 rounded-md px-4 py-2.5 text-sm font-semibold transition-all ${
               mode === 'register'
-                ? 'bg-[var(--accent-primary)] text-white shadow-lg'
+                ? 'bg-[var(--accent-primary)] text-[var(--text-on-primary)] shadow-lg'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
@@ -166,7 +166,7 @@ export default function LoginPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Seu nome completo"
-                className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
+                className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
               />
               {errors.name && <p className="text-xs text-red-400">{errors.name}</p>}
             </div>
@@ -182,7 +182,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seu@email.com"
               autoComplete="email"
-              className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
+              className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
             />
             {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
           </div>
@@ -198,7 +198,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 pr-11 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
+                className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 pr-11 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
               />
               <button
                 type="button"
@@ -223,7 +223,7 @@ export default function LoginPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="new-password"
-                  className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 pr-11 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
+                  className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 pr-11 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
                 />
                 <button
                   type="button"
@@ -250,7 +250,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full rounded-xl bg-[linear-gradient(135deg,rgba(38,194,129,0.95),rgba(56,189,248,0.95))] py-3.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-md bg-[var(--accent-primary)] py-3.5 text-sm font-bold text-[var(--text-on-primary)] shadow-lg transition hover:bg-[var(--accent-primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--accent-primary-disabled)] disabled:text-[var(--text-muted)]"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">

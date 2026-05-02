@@ -92,7 +92,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         <div
           ref={ref}
           className={cn(
-            'absolute z-50 min-w-[180px] rounded-lg border border-white/10 bg-[rgba(20,28,45,0.95)] p-1 shadow-xl backdrop-blur-xl',
+            'absolute z-50 min-w-[180px] rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1 shadow-xl backdrop-blur-xl',
             alignClasses[align],
             'top-full',
             className
@@ -193,7 +193,7 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         <div
           ref={ref}
           className={cn(
-            'absolute z-50 min-w-[180px] rounded-lg border border-white/10 bg-[rgba(20,28,45,0.95)] p-1 shadow-xl backdrop-blur-xl',
+            'absolute z-50 min-w-[180px] rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1 shadow-xl backdrop-blur-xl',
             alignClasses[align],
             'top-full',
             className
@@ -222,9 +222,9 @@ const DropdownMenuItem = React.forwardRef<HTMLButtonElement, DropdownMenuItemPro
         type="button"
         ref={ref}
         className={cn(
-          'flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-sm text-white/80 transition-colors',
-          'hover:bg-white/10 hover:text-white',
-          'focus:bg-white/10 focus:text-white focus:outline-none',
+          'flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-sm text-[var(--text-secondary)] transition-colors',
+          'hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]',
+          'focus:bg-[var(--bg-input)] focus:text-[var(--text-primary)] focus:outline-none',
           inset && 'pl-8',
           className
         )}
@@ -245,7 +245,7 @@ const DropdownMenuSeparator = React.forwardRef<HTMLDivElement, DropdownMenuSepar
     return (
       <div
         ref={ref}
-        className={cn('-mx-1 my-1 h-px bg-white/10', className)}
+        className={cn('-mx-1 my-1 h-px bg-[var(--border-subtle)]', className)}
         {...props}
       />
     )
@@ -264,7 +264,7 @@ const DropdownMenuLabel = React.forwardRef<HTMLDivElement, DropdownMenuLabelProp
       <div
         ref={ref}
         className={cn(
-          'px-3 py-2 text-xs font-semibold text-white/50 uppercase tracking-wider',
+          'px-3 py-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider',
           inset && 'pl-8',
           className
         )}
@@ -314,14 +314,14 @@ function Dropdown({ options, value, onChange, placeholder = 'Selecionar...', dis
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
-          'flex h-9 min-w-[140px] items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-3 text-sm transition-colors',
-          'hover:bg-white/10 hover:border-white/20',
-          'focus:outline-none focus:ring-2 focus:ring-cyan-400/30',
+          'flex h-9 min-w-[140px] items-center justify-between gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 text-sm transition-colors',
+          'hover:bg-[var(--bg-input)] hover:border-[rgba(252,213,53,0.28)]',
+          'focus:outline-none focus:ring-2 focus:ring-[rgba(59,130,246,0.24)]',
           'disabled:opacity-50 disabled:cursor-not-allowed',
-          isOpen && 'border-cyan-400/50 ring-2 ring-cyan-400/20'
+          isOpen && 'border-[rgba(252,213,53,0.4)] ring-2 ring-[rgba(252,213,53,0.14)]'
         )}
       >
-        <span className={cn('truncate', selectedOption ? 'text-gray-100' : 'text-gray-400')}>
+        <span className={cn('truncate', selectedOption ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]')}>
           {selectedOption ? (
             <span className="flex items-center gap-2">
               {selectedOption.icon}
@@ -331,13 +331,13 @@ function Dropdown({ options, value, onChange, placeholder = 'Selecionar...', dis
             placeholder
           )}
         </span>
-        <ChevronDown className={cn('h-4 w-4 text-gray-400 transition-transform', isOpen && 'rotate-180')} />
+        <ChevronDown className={cn('h-4 w-4 text-[var(--text-muted)] transition-transform', isOpen && 'rotate-180')} />
       </button>
 
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute z-50 mt-1 min-w-full rounded-lg border border-white/10 bg-[rgba(20,28,45,0.95)] p-1 shadow-xl backdrop-blur-xl">
+          <div className="absolute z-50 mt-1 min-w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1 shadow-xl backdrop-blur-xl">
             {options.map((option) => (
               <button
                 key={option.value}
@@ -348,9 +348,9 @@ function Dropdown({ options, value, onChange, placeholder = 'Selecionar...', dis
                 }}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
-                  'hover:bg-white/10 hover:text-white',
-                  'focus:bg-white/10 focus:text-white focus:outline-none',
-                  option.value === value ? 'bg-white/10 text-white' : 'text-gray-300'
+                  'hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]',
+                  'focus:bg-[var(--bg-input)] focus:text-[var(--text-primary)] focus:outline-none',
+                  option.value === value ? 'bg-[rgba(252,213,53,0.1)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 )}
               >
                 {option.icon}

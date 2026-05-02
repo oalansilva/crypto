@@ -24,7 +24,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'relative flex flex-col border-white/10 bg-[rgba(10,15,30,0.5)] backdrop-blur-sm transition-all duration-300',
+        'relative flex flex-col border-[var(--border-subtle)] bg-[rgba(24,26,32,0.92)] backdrop-blur-sm transition-all duration-300',
         side === 'left' ? 'border-r' : 'border-l'
       )}
       style={{ width, minWidth: width }}
@@ -34,7 +34,7 @@ export function Sidebar({
         type="button"
         onClick={() => setIsCollapsed(!isCollapsed)}
         className={cn(
-          'absolute top-4 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-[rgba(20,28,45,0.9)] text-white/70 transition-colors hover:bg-white/10 hover:text-white',
+          'absolute top-4 z-10 flex h-6 w-6 items-center justify-center rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]',
           side === 'left' ? '-right-3' : '-left-3'
         )}
         aria-label={isCollapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
@@ -54,7 +54,7 @@ export function Sidebar({
       {/* Collapsed state indicator */}
       {isCollapsed && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="vertical-text text-xs text-white/30 font-medium">
+          <div className="vertical-text text-xs font-medium text-[var(--text-muted)]">
             {side === 'left' ? '→' : '←'}
           </div>
         </div>
@@ -74,7 +74,7 @@ export function SidebarSection({ title, children, className }: SidebarSectionPro
   return (
     <div className={cn('p-3', className)}>
       {title && (
-        <h3 className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+        <h3 className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
           {title}
         </h3>
       )}
@@ -100,16 +100,16 @@ export function SidebarItem({ icon, label, active, collapsed, onClick, badge }: 
       onClick={onClick}
       className={cn(
         'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-        'hover:bg-white/5',
+        'hover:bg-[var(--bg-elevated)]',
         active
-          ? 'bg-[rgba(138,166,255,0.15)] text-white border border-[rgba(138,166,255,0.3)]'
-          : 'text-white/60 hover:text-white'
+          ? 'border border-[rgba(252,213,53,0.3)] bg-[rgba(252,213,53,0.1)] text-[var(--text-primary)]'
+          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
       )}
     >
       {icon && <span className="flex-shrink-0">{icon}</span>}
       {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
       {!collapsed && badge !== undefined && (
-        <span className="flex-shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs">
+        <span className="flex-shrink-0 rounded-md bg-[rgba(252,213,53,0.1)] px-2 py-0.5 text-xs text-[var(--accent-primary)]">
           {badge}
         </span>
       )}
@@ -133,7 +133,7 @@ export function SidebarGroup({ label, icon, children, defaultOpen = true }: Side
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white/40 hover:text-white/60 transition-colors"
+        className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
       >
         {icon}
         <span className="flex-1 text-left">{label}</span>
