@@ -110,7 +110,7 @@ export default function SignalsHistoryPage() {
   }
 
   return (
-    <div className="app-page space-y-6 pb-20">
+    <div className="app-page signals-history-page space-y-6 pb-20">
       {/* Header */}
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>

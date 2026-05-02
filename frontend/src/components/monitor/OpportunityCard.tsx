@@ -15,6 +15,7 @@ interface OpportunityCardProps {
     isOpeningChart: boolean;
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
+    onToggleTimeframe: (symbol: string, nextTimeframe: MonitorPriceTimeframe) => void;
     onOpenChart: (opportunity: Opportunity) => void;
 }
 
@@ -57,6 +58,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     isOpeningChart,
     onToggleInPortfolio,
     onToggleCardMode,
+    onToggleTimeframe,
     onOpenChart,
 }) => {
     const {
@@ -169,9 +171,71 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         }
         onToggleInPortfolio(symbol, true);
     };
+    const nextMode: MonitorCardMode = preference.card_mode === 'price' ? 'strategy' : 'price';
+    const timeframeOptions: MonitorPriceTimeframe[] = ['15m', '1h', '4h', '1d'];
 
     return (
-        <div data-testid={`monitor-card-${symbolTestKey}`} data-portfolio-derived={isPortfolioDerived ? 'true' : 'false'}>
+        <div
+            data-testid={`monitor-card-${symbolTestKey}`}
+            data-portfolio-derived={isPortfolioDerived ? 'true' : 'false'}
+            onClick={(event) => {
+                const target = event.target as HTMLElement;
+                if (target.closest('button, a, input, textarea, select')) {
+                    return;
+                }
+                onOpenChart(opportunity);
+            }}
+        >
+            <div className="detail-control-strip">
+                <div className="detail-pair-summary">
+                    <span className="detail-symbol">{symbol}</span>
+                    <span className={`status-pill ${resolvedSignal.section}`}>{resolvedSignal.visual.badgeText}</span>
+                    <span title="Strategy timeframe" className="detail-timeframe">{timeframe || '-'}</span>
+                    <span title="Price chart timeframe" className="detail-timeframe">chart {effectiveTimeframe}</span>
+                </div>
+                <div className="detail-controls">
+                    <button
+                        type="button"
+                        className="btn ghost"
+                        data-testid={`portfolio-toggle-${symbolTestKey}`}
+                        aria-pressed={preference.in_portfolio}
+                        disabled={isPortfolioDerived || isSavingPreference}
+                        onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
+                    >
+                        {preference.in_portfolio ? 'In Portfolio' : 'Out Portfolio'}
+                    </button>
+                    <button
+                        type="button"
+                        className="btn ghost"
+                        data-testid={`mode-toggle-${symbolTestKey}`}
+                        onClick={() => onToggleCardMode(symbol, nextMode)}
+                        disabled={isSavingPreference}
+                    >
+                        <span data-testid={`mode-label-${symbolTestKey}`}>
+                            {preference.card_mode === 'price' ? 'Price' : 'Strategy'}
+                        </span>
+                    </button>
+                    <div className="timeframe-toggle-group" aria-label={`Timeframe ${symbol}`}>
+                        {timeframeOptions.map((option) => {
+                            const disabled = isStock && option !== '1d';
+                            const active = effectiveTimeframe === option;
+                            return (
+                                <button
+                                    key={option}
+                                    type="button"
+                                    className={`btn ghost ${active ? 'active' : ''}`}
+                                    data-testid={`timeframe-toggle-${symbolTestKey}-${option}`}
+                                    aria-pressed={active}
+                                    disabled={disabled || isSavingPreference}
+                                    onClick={() => onToggleTimeframe(symbol, option)}
+                                >
+                                    {option}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
             <div className="detail">
                 <div>
                     <h5 className="h5-exit">
@@ -323,9 +387,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <button
                         type="button"
                         className="btn"
-                        onClick={() => onToggleCardMode(symbol, isStock ? 'strategy' : 'price')}
-                        data-testid={`mode-toggle-${symbolTestKey}`}
-                        title={isStock ? 'Alternar para modo strategy' : 'Alternar para modo price'}
+                        onClick={() => onToggleCardMode(symbol, nextMode)}
+                        title={`Alternar para modo ${nextMode}`}
                     >
                         <RefreshCw className="h-3.5 w-3.5" />
                         Reavaliar
