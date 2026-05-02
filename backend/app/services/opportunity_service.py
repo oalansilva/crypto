@@ -594,7 +594,11 @@ class OpportunityService:
         - entry_logic (buy rule) and exit_logic (sell rule) come from template_data JSON field
         - Each favorite strategy uses its own template's rules from the database
         """
-        favorites = self.get_favorites(user_id=user_id, tier_filter=tier_filter)
+        favorites = [
+            favorite
+            for favorite in self.get_favorites(user_id=user_id, tier_filter=tier_filter)
+            if "/" in str(favorite.get("symbol") or "").strip()
+        ]
 
         opportunities = []
 

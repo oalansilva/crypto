@@ -78,7 +78,13 @@ async def _post_backtest(app: FastAPI, payload: dict):
         return await client.post("/api/combos/backtest", json=payload)
 
 
-async def test_backtest_us_ticker_defaults_to_stooq(monkeypatch):
+async def _post_optimize(app: FastAPI, payload: dict):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        return await client.post("/api/combos/optimize", json=payload)
+
+
+async def test_backtest_us_ticker_rejected_for_crypto_only_mvp(monkeypatch):
     provider_calls = _patch_backtest_dependencies(monkeypatch)
     app = _build_app()
 
@@ -94,10 +100,9 @@ async def test_backtest_us_ticker_defaults_to_stooq(monkeypatch):
         },
     )
 
-    assert response.status_code == 200, response.text
-    payload = response.json()
-    assert payload["parameters"]["data_source"] == "stooq"
-    assert provider_calls[-1] == "stooq"
+    assert response.status_code == 400, response.text
+    assert "MVP supports only crypto pairs" in response.json()["detail"]
+    assert provider_calls == []
 
 
 async def test_backtest_crypto_pair_defaults_to_ccxt(monkeypatch):
@@ -122,7 +127,7 @@ async def test_backtest_crypto_pair_defaults_to_ccxt(monkeypatch):
     assert provider_calls[-1] == "ccxt"
 
 
-async def test_backtest_explicit_data_source_overrides_default(monkeypatch):
+async def test_backtest_explicit_stock_data_source_rejected(monkeypatch):
     provider_calls = _patch_backtest_dependencies(monkeypatch)
     app = _build_app()
 
@@ -139,7 +144,27 @@ async def test_backtest_explicit_data_source_overrides_default(monkeypatch):
         },
     )
 
-    assert response.status_code == 200, response.text
-    payload = response.json()
-    assert payload["parameters"]["data_source"] == "stooq"
-    assert provider_calls[-1] == "stooq"
+    assert response.status_code == 400, response.text
+    assert "only CCXT crypto market data" in response.json()["detail"]
+    assert provider_calls == []
+
+
+async def test_optimize_us_ticker_returns_400_not_500(monkeypatch):
+    provider_calls = _patch_backtest_dependencies(monkeypatch)
+    app = _build_app()
+
+    response = await _post_optimize(
+        app,
+        {
+            "template_name": "ema_rsi",
+            "symbol": "NVDA",
+            "timeframe": "1d",
+            "data_source": "stooq",
+            "custom_ranges": {},
+            "deep_backtest": True,
+        },
+    )
+
+    assert response.status_code == 400, response.text
+    assert "MVP supports only crypto pairs" in response.json()["detail"]
+    assert provider_calls == []

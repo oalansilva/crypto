@@ -1,8 +1,5 @@
-# us-stocks-universe-nasdaq100 Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change combo-configure-market-selector-nasdaq100. Update Purpose after archive.
-## Requirements
 ### Requirement: Provide NASDAQ-100 ticker universe
 The system MUST NOT expose the NASDAQ-100 ticker universe while the MVP is crypto-only.
 
@@ -16,4 +13,3 @@ The system MUST keep any stored NASDAQ-100 artifact out of operational MVP selec
 #### Scenario: Update NASDAQ-100 list
 - **WHEN** the NASDAQ-100 list needs updating while stocks are disabled
 - **THEN** it MUST NOT be exposed in Combo Configure or trading workflows until a future stocks reactivation change
-

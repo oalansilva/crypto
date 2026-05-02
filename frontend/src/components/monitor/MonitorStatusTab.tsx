@@ -30,7 +30,6 @@ import { resolveOpportunitySignal } from './signalResolution';
 type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
 type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
 type ListFilter = 'in_portfolio' | 'all' | 'favorites';
-type AssetTypeFilter = 'all' | 'crypto' | 'stocks';
 type StrategyFilter = 'all' | string;
 type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
@@ -203,7 +202,6 @@ export const MonitorStatusTab: React.FC = () => {
     const [sortBy, setSortBy] = useState<SortOption>('tier_distance');
     const [tierFilter, setTierFilter] = useState<TierFilter>('all');
     const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
-    const [assetTypeFilter, setAssetTypeFilter] = useState<AssetTypeFilter>('all');
     const [strategyFilter, setStrategyFilter] = useState<StrategyFilter>('all');
     const [timeframeFilter, setTimeframeFilter] = useState<TimeframeFilter>('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -663,10 +661,7 @@ export const MonitorStatusTab: React.FC = () => {
 
         const afterAssetType = sortedOpportunities.filter((opp) => {
             if (!String(opp.symbol || '').trim()) return false;
-            const assetType = getOpportunityAssetType(opp);
-            if (assetTypeFilter === 'crypto') return assetType === 'crypto';
-            if (assetTypeFilter === 'stocks') return assetType === 'stock';
-            return true;
+            return getOpportunityAssetType(opp) === 'crypto';
         });
 
         const afterListFilter =
@@ -703,7 +698,6 @@ export const MonitorStatusTab: React.FC = () => {
             return candidate.includes(normalizedSearch);
         });
     }, [
-        assetTypeFilter,
         favoriteSymbols,
         listFilter,
         portfolioStatusBySymbol,
@@ -1000,16 +994,6 @@ export const MonitorStatusTab: React.FC = () => {
                             </button>
                         </div>
                         <div className="filter-divider" />
-                        <select
-                            className="select"
-                            value={assetTypeFilter}
-                            onChange={(e) => setAssetTypeFilter(e.target.value as AssetTypeFilter)}
-                            data-testid="monitor-filter-asset-type"
-                        >
-                            <option value="all">Tipo: Todos</option>
-                            <option value="crypto">Spot</option>
-                            <option value="stocks">Ações</option>
-                        </select>
                         <select className="select" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value as TimeframeFilter)}>
                             <option value="all">Timeframe: Todos</option>
                             <option value="15m">15m</option>

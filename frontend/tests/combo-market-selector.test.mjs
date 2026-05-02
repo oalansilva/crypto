@@ -8,11 +8,11 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const pagePath = path.resolve(__dirname, '../src/pages/ComboConfigurePage.tsx')
 
-test('Combo Configure includes market selector and NASDAQ-100 source', async () => {
+test('Combo Configure is crypto-only in MVP', async () => {
   const source = await readFile(pagePath, 'utf8')
 
-  assert.match(source, /US Stocks \(NASDAQ-100\)/)
-  assert.match(source, /\/markets\/us\/nasdaq100/)
-  assert.match(source, /data_source:\s*'stooq'/)
-  assert.match(source, /timeframe is fixed to 1D/)
+  assert.doesNotMatch(source, /US Stocks \(NASDAQ-100\)/)
+  assert.doesNotMatch(source, /\/markets\/us\/nasdaq100/)
+  assert.doesNotMatch(source, /data_source:\s*'stooq'/)
+  assert.match(source, /CCXT \(crypto exchange data\)/)
 })

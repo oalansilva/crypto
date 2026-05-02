@@ -19,9 +19,6 @@ interface TemplateMetadata {
     stop_loss: number
 }
 
-type Market = 'crypto' | 'us-stocks'
-const US_STOCKS_TOP_10 = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'GOOGL', 'AVGO', 'TSLA', 'NFLX', 'COST']
-
 export function ComboConfigurePage() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
@@ -34,7 +31,6 @@ export function ComboConfigurePage() {
     // Optimization parameters
     const [params, setParams] = useState<any[]>([])
     const [timeframe, setTimeframe] = useState('1d')
-    const [market, setMarket] = useState<Market>('crypto')
     const [deepBacktest, setDeepBacktest] = useState(true)
     const [direction, setDirection] = useState<'long' | 'short'>('long')
     const [logs, setLogs] = useState<string[]>([])
@@ -88,23 +84,8 @@ export function ComboConfigurePage() {
         staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
     });
 
-    const { data: usStocksSymbolsData } = useQuery({
-        queryKey: ['markets', 'us', 'nasdaq100'],
-        queryFn: async () => {
-            const response = await fetch(`${API_BASE_URL}/markets/us/nasdaq100`)
-            if (!response.ok) {
-                throw new Error('Failed to fetch NASDAQ-100 symbols')
-            }
-            const data = await response.json()
-            return data.symbols as string[]
-        },
-        enabled: market === 'us-stocks',
-        staleTime: 1000 * 60 * 60 * 24,
-    })
-
-    const activeSymbols = market === 'us-stocks' ? (usStocksSymbolsData ?? []) : (cryptoSymbolsData ?? [])
-    const isUsStocksMarket = market === 'us-stocks'
-    const defaultSymbol = isUsStocksMarket ? (activeSymbols[0] ?? 'AAPL') : 'BTC/USDT'
+    const activeSymbols = cryptoSymbolsData ?? []
+    const defaultSymbol = 'BTC/USDT'
 
     useEffect(() => {
         if (templateName) {
@@ -115,12 +96,6 @@ export function ComboConfigurePage() {
             }
         }
     }, [templateName])
-
-    useEffect(() => {
-        if (isUsStocksMarket && timeframe !== '1d') {
-            setTimeframe('1d')
-        }
-    }, [isUsStocksMarket, timeframe])
 
     useEffect(() => {
         if (batchScope === 'all' && activeSymbols.length > 0) {
@@ -138,7 +113,7 @@ export function ComboConfigurePage() {
         setLeftHighlighted([])
         setRightHighlighted([])
         setLeftFilter('')
-    }, [market, defaultSymbol])
+    }, [defaultSymbol])
 
     const fetchMetadata = async () => {
         try {
@@ -275,8 +250,6 @@ export function ComboConfigurePage() {
             custom_ranges[p.name] = { min: p.min, max: p.max, step: p.step ?? 1 }
         })
         const { start_date, end_date } = getPeriodDates()
-        const dataSourcePayload = isUsStocksMarket ? { data_source: 'stooq' as const } : {}
-
         if (symbolsToRun.length === 1) {
             setRunning(true)
             try {
@@ -307,7 +280,6 @@ export function ComboConfigurePage() {
                         deep_backtest: deepBacktest,
                         direction,
                         custom_ranges,
-                        ...dataSourcePayload
                     })
                 })
                 if (!res.ok) {
@@ -317,7 +289,7 @@ export function ComboConfigurePage() {
                 const result = await res.json()
                 const name = `${result.template_name} - ${result.symbol} ${result.timeframe} (${new Date().toLocaleTimeString()})`
                 const baseParams = result.best_parameters ?? result.parameters ?? {}
-                const parameters = { ...baseParams, direction, ...(isUsStocksMarket ? { data_source: 'stooq' } : {}) }
+                const parameters = { ...baseParams, direction }
                 const favRes = await authFetch(`${API_BASE_URL}/favorites/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -368,7 +340,6 @@ export function ComboConfigurePage() {
                     deep_backtest: deepBacktest,
                     direction,
                     custom_ranges,
-                    ...dataSourcePayload
                 })
             })
             if (!res.ok) {
@@ -424,9 +395,7 @@ export function ComboConfigurePage() {
 
     const selectTopSymbols = () => {
         const list = activeSymbols
-        const top = isUsStocksMarket
-            ? list.filter(s => US_STOCKS_TOP_10.includes(s))
-            : list.filter(s => /^(BTC|ETH|BNB|SOL|XRP|ADA|DOGE|AVAX|MATIC|LINK)\/USDT$/i.test(s))
+        const top = list.filter(s => /^(BTC|ETH|BNB|SOL|XRP|ADA|DOGE|AVAX|MATIC|LINK)\/USDT$/i.test(s))
         setSelectedSymbols(prev => {
             const next = new Set(prev)
             top.forEach(x => next.add(x))
@@ -542,20 +511,9 @@ export function ComboConfigurePage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-semibold text-zinc-500 mb-2">Market</label>
-                                <select
-                                    value={market}
-                                    onChange={(e) => setMarket(e.target.value as Market)}
-                                    className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
-                                >
-                                    <option value="crypto" className="bg-zinc-900 text-zinc-900">Crypto</option>
-                                    <option value="us-stocks" className="bg-zinc-900 text-zinc-900">US Stocks (NASDAQ-100)</option>
-                                </select>
-                            </div>
-                            <div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">Market Data</label>
                                 <div className="glass px-4 py-3 rounded-[16px] border border-zinc-200 text-sm text-zinc-600">
-                                    {isUsStocksMarket ? 'Stooq (free EOD 1D)' : 'CCXT (crypto exchange data)'}
+                                    CCXT (crypto exchange data)
                                 </div>
                             </div>
                             <div className="md:col-span-2">
@@ -723,21 +681,15 @@ export function ComboConfigurePage() {
                                 <select
                                     value={timeframe}
                                     onChange={(e) => setTimeframe(e.target.value)}
-                                    disabled={isUsStocksMarket}
                                     className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
                                 >
-                                    {!isUsStocksMarket && <option value="1m" className="bg-zinc-900 text-zinc-900">1 minute</option>}
-                                    {!isUsStocksMarket && <option value="5m" className="bg-zinc-900 text-zinc-900">5 minutes</option>}
-                                    {!isUsStocksMarket && <option value="15m" className="bg-zinc-900 text-zinc-900">15 minutes</option>}
-                                    {!isUsStocksMarket && <option value="1h" className="bg-zinc-900 text-zinc-900">1 hour</option>}
-                                    {!isUsStocksMarket && <option value="4h" className="bg-zinc-900 text-zinc-900">4 hours</option>}
+                                    <option value="1m" className="bg-zinc-900 text-zinc-900">1 minute</option>
+                                    <option value="5m" className="bg-zinc-900 text-zinc-900">5 minutes</option>
+                                    <option value="15m" className="bg-zinc-900 text-zinc-900">15 minutes</option>
+                                    <option value="1h" className="bg-zinc-900 text-zinc-900">1 hour</option>
+                                    <option value="4h" className="bg-zinc-900 text-zinc-900">4 hours</option>
                                     <option value="1d" className="bg-zinc-900 text-zinc-900">1 day</option>
                                 </select>
-                                {isUsStocksMarket && (
-                                    <p className="text-xs text-blue-300 mt-1">
-                                        US Stocks via Stooq supports free EOD candles only, so timeframe is fixed to 1D.
-                                    </p>
-                                )}
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">

@@ -12,15 +12,10 @@ interface FavoriteItem {
 
 interface SymbolCard {
   symbol: string
-  assetType: 'crypto' | 'stock'
   favoritesCount: number
 }
 
 const TIMEFRAMES: Timeframe[] = ['15m', '1h', '4h', '1d']
-
-function classifyAsset(symbol: string): 'crypto' | 'stock' {
-  return symbol.includes('/') ? 'crypto' : 'stock'
-}
 
 export function MonitorDashboardTab() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([])
@@ -42,7 +37,7 @@ export function MonitorDashboardTab() {
 
     for (const fav of tieredFavorites) {
       const key = String((fav as any).symbol || '').trim()
-      if (!key) continue
+      if (!key || !key.includes('/')) continue
       const row = grouped.get(key)
       if (row) {
         row.favoritesCount += 1
@@ -50,7 +45,6 @@ export function MonitorDashboardTab() {
       }
       grouped.set(key, {
         symbol: key,
-        assetType: classifyAsset(key),
         favoritesCount: 1,
       })
     }
@@ -64,13 +58,6 @@ export function MonitorDashboardTab() {
       setSelectedSymbol(symbols[0]?.symbol || '')
     }
   }, [selectedSymbol, symbols])
-
-  useEffect(() => {
-    const selectedMeta = symbols.find((item) => item.symbol === selectedSymbol);
-    if (selectedMeta?.assetType === 'stock' && timeframe !== '1d') {
-      setTimeframe('1d')
-    }
-  }, [selectedSymbol, symbols, timeframe])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -145,8 +132,6 @@ export function MonitorDashboardTab() {
     return () => controller.abort()
   }, [selectedSymbol, timeframe])
 
-  const selectedMeta = symbols.find((s) => s.symbol === selectedSymbol) || null
-  const isStock = (selectedMeta?.assetType ?? classifyAsset(selectedSymbol)) === 'stock'
   const lastClose = candles.length > 0 ? candles[candles.length - 1].close : null
   const previousClose = candles.length > 1 ? candles[candles.length - 2].close : null
   const changePct = lastClose && previousClose ? ((lastClose - previousClose) / previousClose) * 100 : null
@@ -183,7 +168,7 @@ export function MonitorDashboardTab() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold">{item.symbol}</span>
-                  <span className="text-xs uppercase tracking-wide text-gray-300">{item.assetType}</span>
+                  <span className="text-xs uppercase tracking-wide text-gray-300">crypto</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">{item.favoritesCount} favorite strategy{item.favoritesCount > 1 ? 'ies' : ''}</p>
               </button>
@@ -198,7 +183,7 @@ export function MonitorDashboardTab() {
             <div>
               <h3 className="text-lg font-semibold text-white">{selectedSymbol}</h3>
               <p className="text-xs text-gray-400">
-                {selectedMeta?.assetType ?? classifyAsset(selectedSymbol)} • {timeframe} • {candles.length} candles
+                crypto • {timeframe} • {candles.length} candles
               </p>
             </div>
             <div className="text-right">
@@ -218,12 +203,11 @@ export function MonitorDashboardTab() {
                   key={tf}
                   type="button"
                   onClick={() => setTimeframe(tf)}
-                  disabled={isStock && tf !== '1d'}
                   className={`rounded-[12px] border px-3 min-h-11 min-w-11 text-sm font-medium transition-colors ${
                     active
                       ? 'border-blue-400 bg-blue-500/20 text-white'
                       : 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
-                  } ${isStock && tf !== '1d' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  }`}
                   aria-pressed={active}
                   data-testid={`timeframe-${tf}`}
                 >
@@ -235,7 +219,6 @@ export function MonitorDashboardTab() {
 
           {candlesLoading ? <p className="text-sm text-gray-400">Loading candles...</p> : null}
           {candlesError ? <p className="text-sm text-red-400">{candlesError}</p> : null}
-          {isStock ? <p className="text-xs text-gray-400">Stocks: intraday (15m/1h/4h) disabled for now. Use 1d.</p> : null}
           {!candlesLoading && !candlesError && candles.length === 0 ? (
             <p className="text-sm text-gray-400">No candle data available for this symbol/timeframe.</p>
           ) : null}

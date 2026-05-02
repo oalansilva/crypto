@@ -128,21 +128,11 @@ async function setupApiMocks(page: any) {
   )
 }
 
-test('monitor can filter by asset type (crypto vs stocks)', async ({ page }) => {
+test('monitor hides stock opportunities in crypto-only MVP', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
-  // Both visible on All
-  await expect(page.getByText('BTC/USDT', { exact: true })).toBeVisible()
-  await expect(page.getByText('AAPL', { exact: true })).toBeVisible()
-
-  // Crypto only
-  await page.getByTestId('monitor-filter-asset-type').selectOption('crypto')
   await expect(page.getByText('BTC/USDT', { exact: true })).toBeVisible()
   await expect(page.getByText('AAPL', { exact: true })).toHaveCount(0)
-
-  // Stocks only
-  await page.getByTestId('monitor-filter-asset-type').selectOption('stocks')
-  await expect(page.getByText('AAPL', { exact: true })).toBeVisible()
-  await expect(page.getByText('BTC/USDT', { exact: true })).toHaveCount(0)
+  await expect(page.getByTestId('monitor-filter-asset-type')).toHaveCount(0)
 })

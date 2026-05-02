@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from types import SimpleNamespace
-
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pandas as pd
@@ -119,41 +117,22 @@ def test_api_health_presets_metadata_and_indicator_schema(monkeypatch):
     assert missing.status_code == 404
 
 
-def test_api_us_nasdaq100_symbols(monkeypatch, tmp_path):
-    cfg = tmp_path / "nasdaq100.json"
-    cfg.write_text('["aapl", "msft"]', encoding="utf-8")
-    monkeypatch.setattr(api, "NASDAQ100_CONFIG_PATH", cfg)
-
+def test_api_us_nasdaq100_symbols_disabled_for_crypto_only_mvp():
     client = TestClient(_build_api_app())
     response = client.get("/api/markets/us/nasdaq100")
-    assert response.status_code == 200
+    assert response.status_code == 410
     data = response.json()
-    assert data["symbols"] == ["AAPL", "MSFT"]
-    assert data["count"] == 2
-
-    cfg.write_text('["a", 2]', encoding="utf-8")
-    bad_payload = client.get("/api/markets/us/nasdaq100")
-    assert bad_payload.status_code == 500
+    assert "US stocks are disabled" in data["detail"]
 
 
 def test_api_market_candles_crypto_and_stock_paths(monkeypatch):
     crypto_provider = _Provider(_ohlcv_frame())
-    stooq_provider = _Provider(_ohlcv_frame(), keep_full_history_kwarg=False)
-    yahoo_provider = _Provider(_ohlcv_frame(), keep_full_history_kwarg=False)
 
     def provider_factory(source):
-        if source == api.CCXT_SOURCE:
-            return crypto_provider
-        return stooq_provider
+        assert source == api.CCXT_SOURCE
+        return crypto_provider
 
     monkeypatch.setattr(api, "get_market_data_provider", provider_factory)
-
-    yahoo_mod = __import__("app.api", fromlist=["YahooMarketDataProvider"])
-    monkeypatch.setattr(
-        yahoo_mod,
-        "YahooMarketDataProvider",
-        lambda: SimpleNamespace(fetch_ohlcv=yahoo_provider.fetch_ohlcv),
-    )
 
     client = TestClient(_build_api_app())
 
@@ -174,14 +153,14 @@ def test_api_market_candles_crypto_and_stock_paths(monkeypatch):
     stock = client.get(
         "/api/market/candles", params={"symbol": "AAPL", "timeframe": "1d", "limit": 1}
     )
-    assert stock.status_code == 200
-    assert stock.json()["data_source"] == api.STOOQ_SOURCE
-    assert stock.json()["asset_type"] == "stock"
+    assert stock.status_code == 400
+    assert "MVP supports only crypto pairs" in stock.json()["detail"]
 
     bad_timeframe = client.get(
         "/api/market/candles", params={"symbol": "AAPL", "timeframe": "1h", "limit": 1}
     )
     assert bad_timeframe.status_code == 400
+    assert "MVP supports only crypto pairs" in bad_timeframe.json()["detail"]
 
     empty = client.get("/api/market/candles", params={"symbol": "", "timeframe": "1d", "limit": 1})
     assert empty.status_code == 400

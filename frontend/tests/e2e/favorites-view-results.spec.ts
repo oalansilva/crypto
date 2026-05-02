@@ -65,9 +65,9 @@ const FAVORITES_PAYLOAD = [
 
 const BACKTEST_PAYLOAD = {
   template_name: 'ema_rsi',
-  symbol: 'NVDA',
-  timeframe: '1d',
-  parameters: { ema_short: 9, ema_long: 21, direction: 'long', data_source: 'stooq' },
+  symbol: 'BTC/USDT',
+  timeframe: '4h',
+  parameters: { ema_short: 12, ema_long: 26, direction: 'long' },
   metrics: { total_trades: 1, win_rate: 1, total_return: 0.01, avg_profit: 0.01, max_drawdown: 0 },
   trades: [
     {
@@ -147,37 +147,21 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await page.goto('/favorites');
 
   await expect(page.getByRole('heading', { name: 'Strategy Favorites' })).toBeVisible();
-  // Be explicit to avoid matching dropdown <option> elements.
-  await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toHaveCount(0);
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: /ema rsi/i }).first()).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
 
-test('favorites Asset Type dropdown filters crypto and stocks', async ({ page }) => {
+test('favorites hides stocks and removes Asset Type dropdown in crypto-only MVP', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const assetTypeSelect = page.getByLabel('Asset Type');
-  await expect(assetTypeSelect).toHaveValue('all');
-  await expect(assetTypeSelect.locator('option')).toHaveText([
-    'Asset Type: All',
-    'Asset Type: Crypto',
-    'Asset Type: Stocks',
-  ]);
-
   const nvdaRow = page.locator('tbody tr', { hasText: 'NVDA' });
   const btcRow = page.locator('tbody tr', { hasText: 'BTC/USDT' });
-  await expect(nvdaRow).toHaveCount(1);
-  await expect(btcRow).toHaveCount(1);
-
-  await assetTypeSelect.selectOption('crypto');
+  await expect(page.getByLabel('Asset Type')).toHaveCount(0);
   await expect(nvdaRow).toHaveCount(0);
   await expect(btcRow).toHaveCount(1);
-
-  await assetTypeSelect.selectOption('stocks');
-  await expect(nvdaRow).toHaveCount(1);
-  await expect(btcRow).toHaveCount(0);
 });
 
 test('favorites -> View Results navigates to results page', async ({ page }) => {

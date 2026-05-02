@@ -1,8 +1,5 @@
-# favorites-asset-type-filter Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change favorites-asset-type-filter. Update Purpose after archive.
-## Requirements
 ### Requirement: Favorites can be filtered by asset type
 The system MUST keep the Favorites screen crypto-only while the MVP excludes stocks.
 
@@ -24,4 +21,3 @@ The system MUST apply the crypto-only Favorites collection consistently across a
 #### Scenario: Desktop table is crypto-only
 - **WHEN** the Favorites screen is rendered in desktop layout
 - **THEN** the desktop table MUST include only crypto pairs whose symbol contains `/`
-

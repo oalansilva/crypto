@@ -1,10 +1,8 @@
 # file: backend/app/api.py
-import json
 import os
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
@@ -13,8 +11,6 @@ from typing import Any, Dict, List, Tuple
 from app.schemas.backtest import PresetResponse
 from app.services.market_data_providers import (
     CCXT_SOURCE,
-    STOOQ_SOURCE,
-    YahooMarketDataProvider,
     get_market_data_provider,
 )
 from app.services.asset_classification import classify_asset_type
@@ -23,10 +19,6 @@ from app.services.pandas_ta_inspector import get_all_indicators_metadata
 from app.services.ohlcv_storage import MarketOhlcvRepository
 
 router = APIRouter(prefix="/api")
-NASDAQ100_VERSION = "2026-02-23"
-NASDAQ100_CONFIG_PATH = (
-    Path(__file__).resolve().parents[1] / "config" / f"nasdaq100_symbols.v{NASDAQ100_VERSION}.json"
-)
 
 _MARKET_TIMEFRAMES = {"1m", "5m", "15m", "1h", "4h", "1d"}
 _DEFAULT_HISTORY_DAYS = {
@@ -81,26 +73,11 @@ async def get_binance_timeframes():
 
 @router.get("/markets/us/nasdaq100")
 async def get_us_nasdaq100_symbols():
-    """Get versioned NASDAQ-100 ticker universe (plain US tickers)."""
-    try:
-        with NASDAQ100_CONFIG_PATH.open("r", encoding="utf-8") as f:
-            symbols = json.load(f)
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="NASDAQ-100 config not found")
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Invalid NASDAQ-100 config format")
-
-    if not isinstance(symbols, list) or not all(isinstance(s, str) and s.strip() for s in symbols):
-        raise HTTPException(status_code=500, detail="Invalid NASDAQ-100 symbols payload")
-
-    ordered = [str(s).strip().upper() for s in symbols]
-    return {
-        "market": "us-stocks",
-        "universe": "nasdaq-100",
-        "version": NASDAQ100_VERSION,
-        "symbols": ordered,
-        "count": len(ordered),
-    }
+    """Stocks are disabled while the MVP is crypto-only."""
+    raise HTTPException(
+        status_code=410,
+        detail="US stocks are disabled for the crypto-only MVP. Use Binance crypto pairs.",
+    )
 
 
 @router.get("/strategies/metadata")
@@ -285,6 +262,8 @@ async def get_market_candles(
 
     try:
         asset_type = classify_asset_type(raw_symbol)
+        if asset_type != "crypto":
+            raise ValueError("The MVP supports only crypto pairs such as BTC/USDT.")
         tf = _validate_market_timeframe(asset_type, timeframe)
         cached = _read_candles_cache(raw_symbol, tf, limit)
         if cached is not None:
@@ -326,21 +305,6 @@ async def get_market_candles(
                 )
             except TypeError:
                 df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
-        elif tf == "4h":
-            data_source = "yahoo"
-            provider = YahooMarketDataProvider()
-            df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
-        elif tf == "1d":
-            # Prefer free Stooq EOD for stocks; fallback to Yahoo daily when needed.
-            data_source = STOOQ_SOURCE
-            provider = get_market_data_provider(data_source)
-            try:
-                df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
-            except Exception:
-                data_source = "yahoo"
-                df = YahooMarketDataProvider().fetch_ohlcv(
-                    raw_symbol, tf, since_str=since_str, limit=limit
-                )
         candles = _normalize_candles_frame(df, limit=limit)
         payload = {
             "symbol": raw_symbol,

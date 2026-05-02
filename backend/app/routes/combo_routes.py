@@ -30,6 +30,7 @@ from app.schemas.combo_params import (
 from app.services.combo_service import ComboService
 from app.services.combo_optimizer import ComboOptimizer
 from app.services.market_data_providers import (
+    CCXT_SOURCE,
     get_market_data_provider,
     validate_data_source_timeframe,
 )
@@ -44,6 +45,34 @@ from app.middleware.authMiddleware import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
+
+
+def _ensure_crypto_symbol(symbol: str) -> None:
+    if "/" not in str(symbol or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="The MVP supports only crypto pairs such as BTC/USDT.",
+        )
+
+
+def _ensure_crypto_symbols(symbols: List[str]) -> None:
+    blocked = [symbol for symbol in symbols if "/" not in str(symbol or "").strip()]
+    if blocked:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "The MVP supports only crypto pairs such as BTC/USDT. "
+                f"Unsupported symbols: {', '.join(blocked[:5])}"
+            ),
+        )
+
+
+def _ensure_crypto_data_source(data_source: str) -> None:
+    if data_source != CCXT_SOURCE:
+        raise HTTPException(
+            status_code=400,
+            detail="The MVP supports only CCXT crypto market data.",
+        )
 
 
 @router.post("/export-trades")
@@ -330,6 +359,7 @@ async def run_combo_backtest(request: ComboBacktestRequest):
         logger.info(
             f"Starting combo backtest for template: {request.template_name} on {request.symbol} {request.timeframe}"
         )
+        _ensure_crypto_symbol(request.symbol)
 
         # data_source may be omitted by the UI (e.g. Favorites -> View Results).
         # Resolve in this order:
@@ -348,6 +378,7 @@ async def run_combo_backtest(request: ComboBacktestRequest):
             requested_source = resolve_data_source_for_symbol(request.symbol, None)
 
         data_source = validate_data_source_timeframe(requested_source, request.timeframe)
+        _ensure_crypto_data_source(data_source)
 
         # Create strategy instance
         service = ComboService()
@@ -541,7 +572,9 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
         logger.info(
             f"Starting optimization for template: {request.template_name} on {request.symbol} {request.timeframe}"
         )
+        _ensure_crypto_symbol(request.symbol)
         data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
+        _ensure_crypto_data_source(data_source)
 
         # Create optimizer
         optimizer = ComboOptimizer()
@@ -573,6 +606,8 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
 
         return ComboOptimizationResponse(**result)
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Optimization error: {str(e)}")
         import traceback
@@ -594,7 +629,9 @@ async def start_batch_backtest(
     Poll GET /api/combos/backtest/batch/{job_id} for progress.
     """
     try:
-        validate_data_source_timeframe(request.data_source, request.timeframe)
+        _ensure_crypto_symbols(request.symbols)
+        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
+        _ensure_crypto_data_source(data_source)
         job_id = str(uuid.uuid4())
         payload = request.model_dump()
         payload["user_id"] = current_user_id
