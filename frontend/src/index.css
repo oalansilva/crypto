@@ -732,6 +732,10 @@ textarea {
   box-shadow: var(--shadow-sm);
 }
 
+.input.input-with-icon {
+  padding-left: 48px;
+}
+
 .input:focus {
   background: var(--bg-input);
   border-color: var(--accent-primary);
