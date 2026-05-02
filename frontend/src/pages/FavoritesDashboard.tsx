@@ -26,6 +26,8 @@ interface FavoriteStrategy {
     end_date?: string | null;
 }
 
+const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
+
 const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -34,7 +36,6 @@ const FavoritesDashboard: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
     const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | '1_2' | 'none'>('all');
-    const [assetTypeFilter, setAssetTypeFilter] = useState<'all' | 'crypto' | 'stocks'>('all');
 
     // New state for Trades Modal
     const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
@@ -205,7 +206,7 @@ const FavoritesDashboard: React.FC = () => {
     // Get unique symbols for filter
     const uniqueSymbols = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.map(f => f.symbol))).sort();
+        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.symbol))).sort();
     }, [favorites]);
 
     // Get unique indicators (strategies) for filter
@@ -225,15 +226,12 @@ const FavoritesDashboard: React.FC = () => {
             (tierFilter === '1_2' && (fav.tier === 1 || fav.tier === 2)) ||
             (tierFilter === 'none' && fav.tier === null) ||
             (tierFilter !== 'none' && tierFilter !== '1_2' && fav.tier === parseInt(tierFilter));
-        const isCrypto = fav.symbol.includes('/');
-        const matchesAssetType = assetTypeFilter === 'all' ||
-            (assetTypeFilter === 'crypto' && isCrypto) ||
-            (assetTypeFilter === 'stocks' && !isCrypto);
+        const matchesCryptoOnly = isCryptoPair(fav.symbol);
 
         const favDirection = ((fav.parameters?.direction as string) || 'long').toLowerCase();
         const matchesDirection = directionFilter === 'all' || favDirection === directionFilter;
 
-        return matchesSearch && matchesSymbol && matchesIndicator && matchesTier && matchesAssetType && matchesDirection;
+        return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTier && matchesDirection;
     }) || []).sort((a, b) => {
         const tierA = a.tier ?? 999;
         const tierB = b.tier ?? 999;
@@ -420,20 +418,6 @@ const FavoritesDashboard: React.FC = () => {
                                             <option value="2" className="bg-zinc-900">Tier 2 – Bons complementares</option>
                                             <option value="3" className="bg-zinc-900">Tier 3</option>
                                             <option value="none" className="bg-zinc-900">Sem tier</option>
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
-                                    </div>
-
-                                    <div className="relative group">
-                                        <select
-                                            aria-label="Asset Type"
-                                            value={assetTypeFilter}
-                                            onChange={(e) => setAssetTypeFilter(e.target.value as 'all' | 'crypto' | 'stocks')}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
-                                        >
-                                            <option value="all" className="bg-zinc-900">Asset Type: All</option>
-                                            <option value="crypto" className="bg-zinc-900">Asset Type: Crypto</option>
-                                            <option value="stocks" className="bg-zinc-900">Asset Type: Stocks</option>
                                         </select>
                                         <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                                     </div>

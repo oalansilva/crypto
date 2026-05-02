@@ -144,3 +144,29 @@ def test_admin_backfill_create_returns_500_when_job_not_found(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         admin_backfill.start_backfill_job(payload, _admin_user_id="admin")
     assert exc.value.status_code == 500
+
+
+def test_admin_backfill_rejects_stock_symbol_for_crypto_only_mvp(monkeypatch):
+    service = _FakeBackfillService()
+    monkeypatch.setattr(admin_backfill, "get_backfill_service", lambda: service)
+    payload = OhlcvBackfillStartRequest(symbol="AAPL", data_source="stooq")
+
+    with pytest.raises(HTTPException) as exc:
+        admin_backfill.start_backfill_job(payload, _admin_user_id="admin")
+
+    assert exc.value.status_code == 400
+    assert "MVP supports only crypto pairs" in exc.value.detail
+    assert service.start_count == 0
+
+
+def test_admin_backfill_rejects_stock_data_source_for_crypto_only_mvp(monkeypatch):
+    service = _FakeBackfillService()
+    monkeypatch.setattr(admin_backfill, "get_backfill_service", lambda: service)
+    payload = OhlcvBackfillStartRequest(symbol="BTC/USDT", data_source="stooq")
+
+    with pytest.raises(HTTPException) as exc:
+        admin_backfill.start_backfill_job(payload, _admin_user_id="admin")
+
+    assert exc.value.status_code == 400
+    assert "only CCXT crypto backfill" in exc.value.detail
+    assert service.start_count == 0

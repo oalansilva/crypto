@@ -120,45 +120,6 @@ async def test_market_candles_crypto_returns_ordered_and_limited(monkeypatch):
 async def test_market_candles_stock_intraday_rejected(monkeypatch):
     block_external_network(monkeypatch)
 
-    stock_df = _build_df(
-        [
-            {
-                "timestamp_utc": "2025-02-03T14:30:00Z",
-                "open": 210,
-                "high": 212,
-                "low": 209,
-                "close": 211,
-                "volume": 1000,
-            },
-            {
-                "timestamp_utc": "2025-02-03T14:45:00Z",
-                "open": 211,
-                "high": 213,
-                "low": 210,
-                "close": 212,
-                "volume": 1200,
-            },
-        ]
-    )
-
-    class _FakeYahooProvider:
-        def fetch_ohlcv(
-            self,
-            symbol: str,
-            timeframe: str,
-            since_str: str | None = None,
-            until_str: str | None = None,
-            limit: int | None = None,
-        ) -> pd.DataFrame:
-            assert symbol == "NVDA"
-            assert timeframe == "15m"
-            out = stock_df.copy()
-            if isinstance(limit, int) and limit > 0:
-                out = out.tail(limit)
-            return out
-
-    monkeypatch.setattr(app_api, "YahooMarketDataProvider", _FakeYahooProvider)
-
     def _fail_get_market_data_provider(data_source: str | None):
         raise AssertionError(f"Unexpected provider selection: {data_source}")
 
@@ -166,56 +127,11 @@ async def test_market_candles_stock_intraday_rejected(monkeypatch):
 
     response = await _get("/api/market/candles?symbol=NVDA&timeframe=15m&limit=100")
     assert response.status_code == 400, response.text
-    assert "Stocks currently support only timeframe='1d' or '4h'" in response.json()["detail"]
-    payload = response.json()
+    assert "MVP supports only crypto pairs" in response.json()["detail"]
 
 
-async def test_market_candles_stock_four_hour_uses_yahoo(monkeypatch):
+async def test_market_candles_stock_four_hour_rejected(monkeypatch):
     block_external_network(monkeypatch)
-
-    stock_df = _build_df(
-        [
-            {
-                "timestamp_utc": "2025-02-03T00:00:00Z",
-                "open": 210,
-                "high": 212,
-                "low": 209,
-                "close": 211,
-                "volume": 1000,
-            },
-            {
-                "timestamp_utc": "2025-02-03T04:00:00Z",
-                "open": 211,
-                "high": 213,
-                "low": 210,
-                "close": 212,
-                "volume": 1200,
-            },
-        ]
-    )
-
-    yahoo_calls = {"count": 0}
-
-    class _FakeYahooProvider:
-        source = "yahoo"
-
-        def fetch_ohlcv(
-            self,
-            symbol: str,
-            timeframe: str,
-            since_str: str | None = None,
-            until_str: str | None = None,
-            limit: int | None = None,
-        ) -> pd.DataFrame:
-            yahoo_calls["count"] += 1
-            assert symbol == "NVDA"
-            assert timeframe == "4h"
-            out = stock_df.copy()
-            if isinstance(limit, int) and limit > 0:
-                out = out.tail(limit)
-            return out
-
-    monkeypatch.setattr(app_api, "YahooMarketDataProvider", _FakeYahooProvider)
 
     def _fail_get_market_data_provider(data_source: str | None):
         raise AssertionError(f"Unexpected provider selection: {data_source}")
@@ -223,48 +139,21 @@ async def test_market_candles_stock_four_hour_uses_yahoo(monkeypatch):
     monkeypatch.setattr(app_api, "get_market_data_provider", _fail_get_market_data_provider)
 
     response = await _get("/api/market/candles?symbol=NVDA&timeframe=4h&limit=100")
-    assert response.status_code == 200, response.text
-    payload = response.json()
-
-    assert payload["data_source"] == "yahoo"
-    assert payload["asset_type"] == "stock"
-    assert payload["timeframe"] == "4h"
-    assert payload["count"] == 2
-    assert yahoo_calls["count"] == 1
+    assert response.status_code == 400, response.text
+    assert "MVP supports only crypto pairs" in response.json()["detail"]
 
 
-async def test_market_candles_stock_daily_uses_stooq_first(monkeypatch):
+async def test_market_candles_stock_daily_rejected(monkeypatch):
     block_external_network(monkeypatch)
 
-    stock_df = _build_df(
-        [
-            {
-                "timestamp_utc": "2025-02-01T00:00:00Z",
-                "open": 200,
-                "high": 205,
-                "low": 198,
-                "close": 203,
-                "volume": 5000,
-            },
-        ]
-    )
-    fake_stooq = _FakeProvider(source="stooq", df=stock_df)
+    def _fail_get_market_data_provider(data_source: str | None):
+        raise AssertionError(f"Unexpected provider selection: {data_source}")
 
-    def _fake_get_market_data_provider(data_source: str | None):
-        assert data_source == "stooq"
-        return fake_stooq
-
-    monkeypatch.setattr(app_api, "get_market_data_provider", _fake_get_market_data_provider)
-
-    class _FailYahooProvider:
-        def fetch_ohlcv(self, *args, **kwargs):
-            raise AssertionError("Yahoo fallback should not be called when stooq succeeds")
-
-    monkeypatch.setattr(app_api, "YahooMarketDataProvider", _FailYahooProvider)
+    monkeypatch.setattr(app_api, "get_market_data_provider", _fail_get_market_data_provider)
 
     response = await _get("/api/market/candles?symbol=NVDA&timeframe=1d&limit=100")
-    assert response.status_code == 200, response.text
-    payload = response.json()
+    assert response.status_code == 400, response.text
+    assert "MVP supports only crypto pairs" in response.json()["detail"]
 
 
 async def test_market_candles_invalid_timeframe_returns_400(monkeypatch):
@@ -272,7 +161,4 @@ async def test_market_candles_invalid_timeframe_returns_400(monkeypatch):
 
     response = await _get("/api/market/candles?symbol=NVDA&timeframe=5m&limit=100")
     assert response.status_code == 400
-    assert (
-        "Unsupported timeframe" in response.json()["detail"]
-        or "Stocks currently support only timeframe='1d'" in response.json()["detail"]
-    )
+    assert "MVP supports only crypto pairs" in response.json()["detail"]

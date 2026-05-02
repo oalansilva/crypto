@@ -101,13 +101,12 @@ def test_normalize_market_timeframe():
     assert _normalize_market_timeframe("BTC/USDT", "4h", CCXT_SOURCE) == "4h"
 
 
-def test_get_opportunities_stooq_error_fallback_to_yahoo(monkeypatch):
+def test_get_opportunities_ignores_stock_favorites_for_crypto_only_mvp(monkeypatch):
     service = OpportunityService(db_path=":memory:")
     favorite = _sample_favorite("AAPL", "4h", data_source=STOOQ_SOURCE)
     service.get_favorites = lambda *_args, **_kwargs: [favorite]
 
     stooq_provider = _FailingProvider()
-    yahoo_provider = _MockProvider(_sample_ohlcv())
 
     monkeypatch.setattr(
         opportunity_service, "resolve_data_source_for_symbol", lambda *_args: STOOQ_SOURCE
@@ -115,35 +114,11 @@ def test_get_opportunities_stooq_error_fallback_to_yahoo(monkeypatch):
     monkeypatch.setattr(
         opportunity_service, "get_market_data_provider", lambda *_args: stooq_provider
     )
-    monkeypatch.setattr(opportunity_service, "YahooMarketDataProvider", lambda: yahoo_provider)
-    monkeypatch.setattr(
-        service.combo_service,
-        "get_template_metadata",
-        lambda template_name: {
-            "indicators": [],
-            "entry_logic": "close > open",
-            "exit_logic": "close < open",
-            "stop_loss": 0.1,
-        },
-    )
-    monkeypatch.setattr(opportunity_service, "ComboStrategy", _FakeComboStrategy)
-    monkeypatch.setattr(
-        service.analyzer,
-        "analyze",
-        lambda *args, **kwargs: {
-            "status": "HOLD",
-            "badge": "info",
-            "message": "ok",
-            "distance": 0.5,
-        },
-    )
 
     out = service.get_opportunities("user")
 
-    assert len(out) == 1
-    assert stooq_provider.calls == 1
-    assert yahoo_provider.calls == 1
-    assert out[0]["timeframe"] == "1d"
+    assert out == []
+    assert stooq_provider.calls == 0
 
 
 def test_get_opportunities_fetch_error_for_ccxt_is_skipped(monkeypatch):

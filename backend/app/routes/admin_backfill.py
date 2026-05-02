@@ -15,6 +15,21 @@ from app.services.ohlcv_backfill_service import get_backfill_service
 router = APIRouter(prefix="/api/admin/backfill", tags=["admin-backfill"])
 
 
+def _ensure_crypto_backfill(symbol: str, data_source: str | None) -> None:
+    if "/" not in str(symbol or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The MVP supports only crypto pairs such as BTC/USDT.",
+        )
+
+    normalized_source = str(data_source or "").strip().lower()
+    if normalized_source and normalized_source not in {"ccxt", "default", "binance"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The MVP supports only CCXT crypto backfill jobs.",
+        )
+
+
 def _serialize_job(job: dict[str, Any]) -> OhlcvBackfillJobResponse:
     return OhlcvBackfillJobResponse(
         job_id=job.get("job_id"),
@@ -84,6 +99,7 @@ def start_backfill_job(
     _admin_user_id: str = Depends(get_current_admin),
 ):
     _ = _admin_user_id
+    _ensure_crypto_backfill(payload.symbol, payload.data_source)
     service = get_backfill_service()
     job_id = service.start_job(
         symbol=payload.symbol,
