@@ -75,6 +75,20 @@ test('common user does not see admin-only navigation entries', async ({ page }) 
   }
 })
 
+test('common user direct admin route redirects to monitor', async ({ page }) => {
+  await setupAuthenticatedUser(page, {
+    id: 'common-user',
+    email: 'common@example.com',
+    name: 'Common User',
+    isAdmin: false,
+  })
+
+  await page.goto('/combo/select')
+
+  await expect(page).toHaveURL(/\/monitor$/)
+  await expect(page.getByTestId('monitor-status-tab')).toBeVisible()
+})
+
 test('admin user sees admin-only navigation entries', async ({ page }) => {
   await setupAuthenticatedUser(page, {
     id: 'admin-user',

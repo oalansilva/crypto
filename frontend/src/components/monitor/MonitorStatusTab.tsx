@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
     getOpportunityAssetType,
     getOpportunityBaseAsset,
+    getStrategyDisplayName,
     isDerivedPortfolioRuleActive,
     type Opportunity,
     type MonitorCardMode,
@@ -23,6 +24,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
+import { useAuth } from '@/stores/authStore';
 import type { MarketCandle } from './MiniCandlesChart';
 import { fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { resolveOpportunitySignal } from './signalResolution';
@@ -32,6 +34,7 @@ type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
 type ListFilter = 'in_portfolio' | 'all' | 'favorites';
 type StrategyFilter = 'all' | string;
 type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
+type StarFilter = 'all' | '3' | '2' | '1';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 type SectionKey = 'hold' | 'wait' | 'exit';
 
@@ -39,6 +42,8 @@ type BinanceBalanceRow = {
     asset?: string;
     total?: number | string | null;
 };
+
+type StrategyPreferencePayload = Record<string, { liked?: boolean }>;
 
 type DerivedPortfolioStatus = {
     active: boolean;
@@ -184,6 +189,13 @@ const formatPrice = (value: number | null | undefined): string => {
 
 const toStringSearch = (value: string | null | undefined): string => String(value || '').toLowerCase().trim();
 
+const getTierStars = (tier: number | null | undefined): string => {
+    if (tier === 1) return '★★★';
+    if (tier === 2) return '★★';
+    if (tier === 3) return '★';
+    return '';
+};
+
 const averageDistance = (values: Array<number | null | undefined>): number | null => {
     const filtered = values.filter((value) => Number.isFinite(value ?? NaN));
     if (filtered.length === 0) return null;
@@ -191,6 +203,7 @@ const averageDistance = (values: Array<number | null | undefined>): number | nul
 };
 
 export const MonitorStatusTab: React.FC = () => {
+    const { user } = useAuth();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
     const [openingChartSymbol, setOpeningChartSymbol] = useState<string | null>(null);
@@ -204,6 +217,7 @@ export const MonitorStatusTab: React.FC = () => {
     const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
     const [strategyFilter, setStrategyFilter] = useState<StrategyFilter>('all');
     const [timeframeFilter, setTimeframeFilter] = useState<TimeframeFilter>('all');
+    const [starFilter, setStarFilter] = useState<StarFilter>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [preferences, setPreferences] = useState<Record<string, MonitorPreference>>({});
@@ -220,6 +234,8 @@ export const MonitorStatusTab: React.FC = () => {
         {}
     );
     const { toast } = useToast();
+    const showTechnicalColumns = user?.isAdmin === true;
+    const detailColSpan = showTechnicalColumns ? 10 : 8;
 
     const getPreference = (symbol: string): MonitorPreference => {
         return preferences[symbol] ?? DEFAULT_PREFERENCE;
@@ -313,6 +329,27 @@ export const MonitorStatusTab: React.FC = () => {
                 description: 'Não foi possível carregar preferências do monitor.',
                 variant: 'destructive',
             });
+        }
+
+        try {
+            const strategyPreferencesResponse = await authFetch(`${API_BASE_URL}/monitor/strategy-preferences`);
+            if (!strategyPreferencesResponse.ok) {
+                throw new Error(`Failed to load monitor strategy preferences (${strategyPreferencesResponse.status})`);
+            }
+
+            const payload = await strategyPreferencesResponse.json() as StrategyPreferencePayload;
+            const liked = new Set<string>();
+            for (const [favoriteId, preference] of Object.entries(payload || {})) {
+                if (preference?.liked) {
+                    liked.add(normalizeFavoriteKey(favoriteId));
+                }
+            }
+            setFavoriteSymbols(liked);
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(liked)));
+            }
+        } catch (error) {
+            console.error(error);
         }
 
         let configured = false;
@@ -442,12 +479,13 @@ export const MonitorStatusTab: React.FC = () => {
         const key = toFavoriteKey(opportunity);
         if (!key) return;
 
+        const nextLiked = !favoriteSymbols.has(key);
         setFavoriteSymbols((current) => {
             const next = new Set(current);
-            if (next.has(key)) {
-                next.delete(key);
-            } else {
+            if (nextLiked) {
                 next.add(key);
+            } else {
+                next.delete(key);
             }
 
             if (typeof window !== 'undefined') {
@@ -456,6 +494,38 @@ export const MonitorStatusTab: React.FC = () => {
 
             return next;
         });
+
+        void (async () => {
+            try {
+                const response = await authFetch(`${API_BASE_URL}/monitor/strategy-preferences/${encodeURIComponent(key)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ liked: nextLiked }),
+                });
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(String(payload?.detail || `Failed to save strategy preference (${response.status})`));
+                }
+            } catch (error) {
+                setFavoriteSymbols((current) => {
+                    const rollback = new Set(current);
+                    if (nextLiked) {
+                        rollback.delete(key);
+                    } else {
+                        rollback.add(key);
+                    }
+                    if (typeof window !== 'undefined') {
+                        window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(rollback)));
+                    }
+                    return rollback;
+                });
+                toast({
+                    title: 'Erro',
+                    description: error instanceof Error ? error.message : 'Falha ao salvar preferência da estratégia.',
+                    variant: 'destructive',
+                });
+            }
+        })();
     };
 
     const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
@@ -648,9 +718,10 @@ export const MonitorStatusTab: React.FC = () => {
     const strategyOptions = useMemo(() => {
         const next = new Set<string>();
         for (const opp of sortedOpportunities) {
-            const strategy = toStringSearch(opp.template_name);
+            const strategyName = getStrategyDisplayName(opp);
+            const strategy = toStringSearch(strategyName);
             if (strategy) {
-                next.add(opp.template_name.trim());
+                next.add(strategyName.trim());
             }
         }
         return ['all', ...Array.from(next).sort((a, b) => a.localeCompare(b))];
@@ -674,24 +745,32 @@ export const MonitorStatusTab: React.FC = () => {
         const afterStrategyFilter =
             strategyFilter === 'all'
                 ? afterListFilter
-                : afterListFilter.filter((opp) => toStringSearch(opp.template_name) === toStringSearch(strategyFilter));
+                : afterListFilter.filter((opp) => toStringSearch(getStrategyDisplayName(opp)) === toStringSearch(strategyFilter));
 
         const afterTimeframeFilter =
             timeframeFilter === 'all'
                 ? afterStrategyFilter
                 : afterStrategyFilter.filter((opp) => opp.timeframe === timeframeFilter);
 
+        const afterStarFilter =
+            starFilter === 'all'
+                ? afterTimeframeFilter
+                : afterTimeframeFilter.filter((opp) => String(getTierStars(opp.tier).length) === starFilter);
+
         if (!normalizedSearch) {
-            return afterTimeframeFilter;
+            return afterStarFilter;
         }
 
-            return afterTimeframeFilter.filter((opp) => {
-                const candidate = [
-                    opp.symbol,
-                    opp.name,
-                    opp.template_name,
+        return afterStarFilter.filter((opp) => {
+            const tierStars = getTierStars(opp.tier);
+            const candidate = [
+                opp.symbol,
+                opp.name,
+                getStrategyDisplayName(opp),
                 getOpportunityAssetType(opp),
                 toStringSearch(opp.next_status_label),
+                tierStars,
+                tierStars ? `${tierStars.length} estrelas` : '',
                 opp.tier ? `tier ${opp.tier}` : '',
             ].map((value) => toStringSearch(String(value))).join(' ');
 
@@ -702,6 +781,7 @@ export const MonitorStatusTab: React.FC = () => {
         listFilter,
         portfolioStatusBySymbol,
         searchTerm,
+        starFilter,
         strategyFilter,
         timeframeFilter,
         sortedOpportunities,
@@ -989,6 +1069,7 @@ export const MonitorStatusTab: React.FC = () => {
                             <button
                                 className={listFilter === 'favorites' ? 'on' : ''}
                                 onClick={() => setListFilter('favorites')}
+                                data-testid="monitor-filter-favorites"
                             >
                                 Favoritos
                             </button>
@@ -1003,6 +1084,17 @@ export const MonitorStatusTab: React.FC = () => {
                         </select>
                         <select
                             className="select"
+                            value={starFilter}
+                            onChange={(e) => setStarFilter(e.target.value as StarFilter)}
+                            data-testid="monitor-filter-stars"
+                        >
+                            <option value="all">Estrelas: Todas</option>
+                            <option value="3">★★★ 3 estrelas</option>
+                            <option value="2">★★ 2 estrelas</option>
+                            <option value="1">★ 1 estrela</option>
+                        </select>
+                        <select
+                            className="select"
                             value={strategyFilter}
                             onChange={(e) => setStrategyFilter(e.target.value)}
                         >
@@ -1013,11 +1105,13 @@ export const MonitorStatusTab: React.FC = () => {
                             ))}
                         </select>
                         <div className="filter-spacer" />
-                        <span className="chip-count">{filteredOpportunities.length} resultados</span>
+                        <span className="chip-count">{filteredOpportunities.length} resultados · {favoriteSymbols.size} favoritos</span>
                         <div className="seg" data-seg="sort">
-                            <button className={sortBy === 'distance' ? 'on' : ''} onClick={() => setSortBy('distance')}>
-                                Distância
-                            </button>
+                            {showTechnicalColumns ? (
+                                <button className={sortBy === 'distance' ? 'on' : ''} onClick={() => setSortBy('distance')}>
+                                    Distância
+                                </button>
+                            ) : null}
                             <button className={sortBy === 'risk' ? 'on' : ''} onClick={() => setSortBy('risk')}>
                                 Risco
                             </button>
@@ -1075,11 +1169,11 @@ export const MonitorStatusTab: React.FC = () => {
                                                         <th>Par / Estratégia</th>
                                                         <th>Status</th>
                                                         <th>Preço</th>
-                                                        <th>Distância</th>
-                                                        <th className="col-spark">7d</th>
+                                                        {showTechnicalColumns ? <th>Distância</th> : null}
+                                                        {showTechnicalColumns ? <th className="col-spark">7d</th> : null}
                                                         <th>Risco até stop</th>
                                                         <th className="col-tags">Tags</th>
-                                                        <th>Saída</th>
+                                                        <th>Status</th>
                                                         <th className="actions-cell" />
                                                     </tr>
                                                 </thead>
@@ -1089,7 +1183,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                             const pref = getPreference(opportunity.symbol);
                                                             const derived = portfolioStatusBySymbol[opportunity.symbol];
                                                             const inPortfolio = derived?.inPortfolio ?? pref.in_portfolio;
-                                                            const expanded = expandedRows[`${sectionKey}-${opportunity.id}`] ?? true;
+                                                            const expanded = expandedRows[`${sectionKey}-${opportunity.id}`] ?? false;
                                                             const isFavorite = favoriteSymbols.has(toFavoriteKey(opportunity));
                                                             const rowKey = `${sectionKey}-${opportunity.id}`;
                                                             const riskStop = opportunity.distance_to_stop_pct ?? 0;
@@ -1131,7 +1225,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                         {opportunity.symbol}
                                                                                         <span className="pair-tf">{chartTimeframe}</span>
                                                                                     </div>
-                                                                                    <div className="pair-strat">{opportunity.template_name}</div>
+                                                                                    <div className="pair-strat">{getStrategyDisplayName(opportunity)}</div>
                                                                                 </div>
                                                                             </div>
                                                                     </td>
@@ -1141,30 +1235,32 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         </span>
                                                                     </td>
                                                                     <td className="num lg">{formatPrice(opportunity.last_price)}</td>
-                                                                    <td>{formatPercent(opportunity.distance_to_next_status)}</td>
-                                                                    <td className="col-spark">
-                                                                        {showSparkline ? (
-                                                                                <svg
-                                                                                    className="spark"
-                                                                                    viewBox="0 0 80 22"
-                                                                                    preserveAspectRatio="none"
-                                                                                    aria-hidden
-                                                                                >
-                                                                                    <path d={spark.area} fill={sparkColor} fillOpacity={0.12} />
-                                                                                    <path
-                                                                                        d={spark.line}
-                                                                                        fill="none"
-                                                                                        stroke={sparkColor}
-                                                                                        strokeWidth={1.4}
-                                                                                        strokeLinejoin="round"
-                                                                                        strokeLinecap="round"
-                                                                                    />
-                                                                                    <circle cx={spark.dot.x} cy={spark.dot.y} r={1.6} fill={sparkColor} />
-                                                                                </svg>
-                                                                        ) : (
-                                                                            '-'
-                                                                        )}
-                                                                    </td>
+                                                                    {showTechnicalColumns ? <td>{formatPercent(opportunity.distance_to_next_status)}</td> : null}
+                                                                    {showTechnicalColumns ? (
+                                                                        <td className="col-spark">
+                                                                            {showSparkline ? (
+                                                                                    <svg
+                                                                                        className="spark"
+                                                                                        viewBox="0 0 80 22"
+                                                                                        preserveAspectRatio="none"
+                                                                                        aria-hidden
+                                                                                    >
+                                                                                        <path d={spark.area} fill={sparkColor} fillOpacity={0.12} />
+                                                                                        <path
+                                                                                            d={spark.line}
+                                                                                            fill="none"
+                                                                                            stroke={sparkColor}
+                                                                                            strokeWidth={1.4}
+                                                                                            strokeLinejoin="round"
+                                                                                            strokeLinecap="round"
+                                                                                        />
+                                                                                        <circle cx={spark.dot.x} cy={spark.dot.y} r={1.6} fill={sparkColor} />
+                                                                                    </svg>
+                                                                            ) : (
+                                                                                '-'
+                                                                            )}
+                                                                        </td>
+                                                                    ) : null}
                                                                     <td>
                                                                         <div className="risk-bar">
                                                                             <div
@@ -1181,8 +1277,13 @@ export const MonitorStatusTab: React.FC = () => {
                                                                     </td>
                                                                     <td className="col-tags">
                                                                         <div className="tags">
-                                                                            <span className="tag portfolio">{inPortfolio ? '● Portfolio' : '○ Portfolio'}</span>
-                                                                            <span className="tag strategy">▲ Strategy</span>
+                                                                            <span className="tag portfolio">{inPortfolio ? '● Carteira' : '○ Carteira'}</span>
+                                                                            {getTierStars(opportunity.tier) ? (
+                                                                                <span className="tag strategy" data-testid={`tier-stars-${symbolTestKey(opportunity.symbol)}`}>
+                                                                                    {getTierStars(opportunity.tier)}
+                                                                                </span>
+                                                                            ) : null}
+                                                                            {showTechnicalColumns ? <span className="tag strategy">▲ Strategy</span> : null}
                                                                         </div>
                                                                     </td>
                                                                     <td className={`status-pill ${sectionKey === 'hold' ? 'hold' : sectionKey === 'wait' ? 'wait' : 'exit'}`}>
@@ -1204,6 +1305,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         <button
                                                                             type="button"
                                                                             className={`row-action ${isFavorite ? 'is-favorite' : ''}`}
+                                                                            data-testid={`strategy-favorite-toggle-${symbolTestKey(opportunity.symbol)}`}
                                                                             title={isFavorite ? 'Remover favorito' : 'Favoritar'}
                                                                             aria-pressed={isFavorite}
                                                                             onClick={(event) => {
@@ -1231,7 +1333,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                     data-detail={rowKey}
                                                                     style={{ display: expanded ? '' : 'none' }}
                                                                 >
-                                                                    <td colSpan={10}>
+                                                                    <td colSpan={detailColSpan}>
                                                                         <OpportunityCard
                                                                             opportunity={opportunity}
                                                                             preference={{

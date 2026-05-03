@@ -10,7 +10,7 @@ from app.services.batch_backtest_store import get_batch_backtest_store
 def _build_app() -> FastAPI:
     app = FastAPI()
     app.include_router(combo_routes.router)
-    app.dependency_overrides[combo_routes.get_current_user] = lambda: "user-123"
+    app.dependency_overrides[combo_routes.get_current_admin] = lambda: "user-123"
     return app
 
 

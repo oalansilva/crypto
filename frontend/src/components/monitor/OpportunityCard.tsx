@@ -3,7 +3,15 @@ import { Download, LineChart, RefreshCw, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { resolveOpportunitySignal } from './signalResolution';
-import { getOpportunityAssetType, type Opportunity, type MonitorCardMode, type MonitorPreference, type MonitorPriceTimeframe } from './types';
+import {
+    getOpportunityAssetType,
+    getStrategyDisplayName,
+    isProtectedStrategy,
+    type Opportunity,
+    type MonitorCardMode,
+    type MonitorPreference,
+    type MonitorPriceTimeframe,
+} from './types';
 
 interface OpportunityCardProps {
     opportunity: Opportunity;
@@ -48,6 +56,8 @@ const renderKeyValueRows = (values?: Record<string, unknown>): Array<[string, st
     return Object.entries(values).map(([label, value]) => [label, toDisplayValue(value)]);
 };
 
+const protectedRows = (): Array<[string, string]> => [['Protegido', 'Oculto']];
+
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     opportunity,
     preference,
@@ -71,6 +81,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         last_price,
     } = opportunity;
 
+    const strategyProtected = isProtectedStrategy(opportunity);
+    const strategyDisplayName = getStrategyDisplayName(opportunity);
     const isStock = getOpportunityAssetType(opportunity) === 'stock';
     const effectiveTimeframe: MonitorPriceTimeframe = isStock ? '1d' : preference.price_timeframe;
     const distance = distance_to_next_status;
@@ -105,12 +117,12 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             ? 'text-amber-300'
             : 'text-slate-300';
 
-    const parameterRows = renderKeyValueRows(
-        opportunity.parameters as Record<string, unknown> | undefined,
-    );
-    const indicatorRows = renderKeyValueRows(
-        opportunity.indicator_values as Record<string, unknown> | undefined,
-    );
+    const parameterRows = strategyProtected
+        ? protectedRows()
+        : renderKeyValueRows(opportunity.parameters as Record<string, unknown> | undefined);
+    const indicatorRows = strategyProtected
+        ? protectedRows()
+        : renderKeyValueRows(opportunity.indicator_values as Record<string, unknown> | undefined);
 
     const priceString = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -142,15 +154,18 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const exportSummary = async () => {
         const payload = {
             symbol,
-            template_name,
+            template_name: strategyProtected ? strategyDisplayName : template_name,
             timeframe,
             last_price,
             distance_to_next_status,
             is_holding,
             status: resolvedSignal.visual.badgeText,
             message: statusMessage,
-            parameters: opportunity.parameters ?? {},
-            indicator_values: opportunity.indicator_values ?? {},
+            is_strategy_protected: strategyProtected,
+            ...(strategyProtected ? {} : {
+                parameters: opportunity.parameters ?? {},
+                indicator_values: opportunity.indicator_values ?? {},
+            }),
             notes: notesValue,
         };
 
@@ -248,7 +263,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     </div>
                     <div className="candle-meta">
                         <span>
-                            estratégia <b>{template_name || name || symbol}</b>
+                            estratégia <b>{strategyDisplayName || name || symbol}</b>
                         </span>
                         <span>
                             tf <b>{effectiveTimeframe}</b>

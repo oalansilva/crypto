@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pandas as pd
 import time
+from uuid import uuid4
 
+from app.database import SessionLocal
+from app.models import FavoriteStrategy, User
 from app.services.market_data_providers import CCXT_SOURCE, STOOQ_SOURCE
 from app.services.opportunity_service import OpportunityService, _normalize_market_timeframe
 from app.services import opportunity_service
@@ -95,10 +98,210 @@ def _sample_favorite(
     }
 
 
+def _db_user(email: str) -> User:
+    return User(
+        id=uuid4(),
+        email=email,
+        password_hash="hash",
+        name=email.split("@", 1)[0],
+        status="active",
+    )
+
+
+def _db_favorite(
+    user_id: str, symbol: str, name: str, tier: int | None = 1, notes: str | None = None
+) -> FavoriteStrategy:
+    return FavoriteStrategy(
+        user_id=user_id,
+        name=name,
+        symbol=symbol,
+        timeframe="1d",
+        strategy_name="multi_ma_crossover",
+        parameters={"data_source": CCXT_SOURCE, "ema_short": 9},
+        metrics={},
+        tier=tier,
+        notes=notes,
+    )
+
+
 def test_normalize_market_timeframe():
     assert _normalize_market_timeframe("AAPL", "15m", STOOQ_SOURCE) == "1d"
     assert _normalize_market_timeframe("AAPL", "1d", STOOQ_SOURCE) == "1d"
     assert _normalize_market_timeframe("BTC/USDT", "4h", CCXT_SOURCE) == "4h"
+
+
+def test_get_favorites_falls_back_to_admin_curated_rows(monkeypatch):
+    monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
+    admin = _db_user("admin@example.com")
+    common = _db_user("common@example.com")
+
+    with SessionLocal() as db:
+        db.add_all([admin, common])
+        db.flush()
+        admin_id = str(admin.id)
+        common_id = str(common.id)
+        db.add(_db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1))
+        db.commit()
+
+    service = OpportunityService()
+    favorites = service.get_favorites(common_id, tier_filter="1")
+
+    assert len(favorites) == 1
+    assert favorites[0]["name"] == "Admin curated"
+    assert favorites[0]["symbol"] == "BTC/USDT"
+
+
+def test_get_favorites_keeps_user_rows_authoritative(monkeypatch):
+    monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
+    admin = _db_user("admin@example.com")
+    common = _db_user("common@example.com")
+
+    with SessionLocal() as db:
+        db.add_all([admin, common])
+        db.flush()
+        admin_id = str(admin.id)
+        common_id = str(common.id)
+        db.add_all(
+            [
+                _db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1),
+                _db_favorite(common_id, "ETH/USDT", "Common own", tier=1),
+            ]
+        )
+        db.commit()
+
+    service = OpportunityService()
+    favorites = service.get_favorites(common_id, tier_filter="1")
+
+    assert len(favorites) == 1
+    assert favorites[0]["name"] == "Common own"
+    assert favorites[0]["symbol"] == "ETH/USDT"
+
+
+def test_get_favorites_fallback_respects_tier_filter(monkeypatch):
+    monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
+    admin = _db_user("admin@example.com")
+    common = _db_user("common@example.com")
+
+    with SessionLocal() as db:
+        db.add_all([admin, common])
+        db.flush()
+        admin_id = str(admin.id)
+        common_id = str(common.id)
+        db.add_all(
+            [
+                _db_favorite(admin_id, "BTC/USDT", "Tier one", tier=1),
+                _db_favorite(admin_id, "ETH/USDT", "Tier two", tier=2),
+            ]
+        )
+        db.commit()
+
+    service = OpportunityService()
+    favorites = service.get_favorites(common_id, tier_filter="2")
+
+    assert len(favorites) == 1
+    assert favorites[0]["name"] == "Tier two"
+
+
+def test_get_favorites_falls_back_when_user_rows_are_not_monitor_candidates(monkeypatch):
+    monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
+    admin = _db_user("admin@example.com")
+    common = _db_user("common@example.com")
+
+    with SessionLocal() as db:
+        db.add_all([admin, common])
+        db.flush()
+        admin_id = str(admin.id)
+        common_id = str(common.id)
+        db.add_all(
+            [
+                _db_favorite(common_id, "AAPL", "Common stock", tier=1),
+                _db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1),
+            ]
+        )
+        db.commit()
+
+    service = OpportunityService()
+    favorites = service.get_favorites(common_id, tier_filter="1")
+
+    assert len(favorites) == 1
+    assert favorites[0]["name"] == "Admin curated"
+    assert favorites[0]["is_curated_fallback"] is True
+
+
+def test_get_favorites_uses_configured_admin_email_order(monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", "second@example.com,first@example.com")
+    first = _db_user("first@example.com")
+    second = _db_user("second@example.com")
+    common = _db_user("common@example.com")
+
+    with SessionLocal() as db:
+        db.add_all([first, second, common])
+        db.flush()
+        first_id = str(first.id)
+        second_id = str(second.id)
+        common_id = str(common.id)
+        db.add_all(
+            [
+                _db_favorite(first_id, "BTC/USDT", "First admin", tier=1),
+                _db_favorite(second_id, "ETH/USDT", "Second admin", tier=1),
+            ]
+        )
+        db.commit()
+
+    service = OpportunityService()
+    favorites = service.get_favorites(common_id, tier_filter="1")
+
+    assert len(favorites) == 1
+    assert favorites[0]["name"] == "Second admin"
+    assert favorites[0]["symbol"] == "ETH/USDT"
+
+
+def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
+    admin = _db_user("admin@example.com")
+    common = _db_user("common@example.com")
+
+    with SessionLocal() as db:
+        db.add_all([admin, common])
+        db.flush()
+        admin_id = str(admin.id)
+        common_id = str(common.id)
+        db.add(_db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1))
+        db.commit()
+
+    service = OpportunityService()
+    provider = _MockProvider(_sample_ohlcv())
+    monkeypatch.setattr(
+        opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE
+    )
+    monkeypatch.setattr(opportunity_service, "_is_unsupported_symbol", lambda *_args: False)
+    monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_args: provider)
+    monkeypatch.setattr(
+        service.combo_service,
+        "get_template_metadata",
+        lambda template_name: {
+            "indicators": [],
+            "entry_logic": "close > open",
+            "exit_logic": "close < open",
+            "stop_loss": 0.1,
+        },
+    )
+    monkeypatch.setattr(opportunity_service, "ComboStrategy", _FakeComboStrategy)
+    monkeypatch.setattr(
+        service.analyzer,
+        "analyze",
+        lambda *args, **kwargs: {
+            "status": "WAIT",
+            "badge": "neutral",
+            "message": "ok",
+            "distance": 0.5,
+        },
+    )
+
+    out = service.get_opportunities(common_id, tier_filter="1")
+
+    assert len(out) == 1
+    assert out[0]["is_curated_fallback"] is True
 
 
 def test_get_opportunities_ignores_stock_favorites_for_crypto_only_mvp(monkeypatch):

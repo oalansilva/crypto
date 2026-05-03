@@ -46,6 +46,27 @@ def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
 
     assert [item.name for item in listed_b] == ["B favorite"]
     assert [item.name for item in listed_a] == ["A favorite"]
+    assert listed_a[0].strategy_name == "Estratégia protegida"
+    assert listed_a[0].parameters == {}
+    assert listed_a[0].is_strategy_protected is True
+
+
+def test_favorites_list_keeps_strategy_details_for_admin(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+
+    with SessionLocal() as db:
+        favorites.create_favorite(_favorite_payload("A favorite"), current_user_id="admin-user", db=db)
+        listed = favorites.list_favorites(current_user_id="admin-user", db=db)
+
+    assert listed[0].strategy_name == "multi_ma_crossover"
+    assert listed[0].parameters == {
+        "ema_short": 9,
+        "sma_medium": 21,
+        "sma_long": 50,
+        "direction": "long",
+    }
+    assert listed[0].is_strategy_protected is False
 
 
 def test_favorites_exists_and_mutations_are_scoped_per_user(tmp_path: Path):

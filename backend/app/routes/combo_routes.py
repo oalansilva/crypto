@@ -41,7 +41,7 @@ from app.services.batch_backtest_service import (
     request_cancel_batch,
 )
 from app.services.batch_backtest_queue import enqueue_batch_backtest
-from app.middleware.authMiddleware import get_current_user
+from app.middleware.authMiddleware import get_current_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
@@ -76,7 +76,10 @@ def _ensure_crypto_data_source(data_source: str) -> None:
 
 
 @router.post("/export-trades")
-async def export_trades_to_excel(request: Dict[str, Any]):
+async def export_trades_to_excel(
+    request: Dict[str, Any],
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """
     Export trades to Excel file.
 
@@ -191,7 +194,7 @@ async def export_trades_to_excel(request: Dict[str, Any]):
 
 
 @router.get("/templates", response_model=TemplateListResponse)
-async def list_combo_templates():
+async def list_combo_templates(_admin_user_id: str = Depends(get_current_admin)):
     """List all available combo templates."""
     try:
         service = ComboService()
@@ -203,7 +206,10 @@ async def list_combo_templates():
 
 
 @router.get("/meta/{template_name}", response_model=ComboTemplateMetadata)
-async def get_template_metadata(template_name: str):
+async def get_template_metadata(
+    template_name: str,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """Get metadata for a specific template."""
     service = ComboService()
     metadata = service.get_template_metadata(template_name)
@@ -216,7 +222,11 @@ async def get_template_metadata(template_name: str):
 
 
 @router.put("/meta/{template_name}", response_model=ComboTemplateMetadata)
-async def update_template(template_name: str, request: UpdateTemplateRequest):
+async def update_template(
+    template_name: str,
+    request: UpdateTemplateRequest,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """
     Update a combo template's metadata and optimization schema.
 
@@ -270,7 +280,11 @@ async def update_template(template_name: str, request: UpdateTemplateRequest):
 
 
 @router.post("/meta/{template_name}/clone", response_model=ComboTemplateMetadata)
-async def clone_template(template_name: str, request: CloneTemplateRequest):
+async def clone_template(
+    template_name: str,
+    request: CloneTemplateRequest,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """
     Clone an existing template with a new name.
 
@@ -313,7 +327,10 @@ async def clone_template(template_name: str, request: CloneTemplateRequest):
 
 
 @router.delete("/meta/{template_name}")
-async def delete_template(template_name: str):
+async def delete_template(
+    template_name: str,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """
     Delete a custom combo template.
 
@@ -345,7 +362,10 @@ async def delete_template(template_name: str):
 
 
 @router.post("/backtest", response_model=ComboBacktestResponse)
-async def run_combo_backtest(request: ComboBacktestRequest):
+async def run_combo_backtest(
+    request: ComboBacktestRequest,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """
     Execute a combo strategy backtest.
 
@@ -558,7 +578,10 @@ async def run_combo_backtest(request: ComboBacktestRequest):
 
 
 @router.post("/optimize", response_model=ComboOptimizationResponse)
-async def optimize_combo_strategy(request: ComboOptimizationRequest):
+async def optimize_combo_strategy(
+    request: ComboOptimizationRequest,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """
     Run parameter optimization for a combo strategy.
 
@@ -619,7 +642,7 @@ async def optimize_combo_strategy(request: ComboOptimizationRequest):
 @router.post("/backtest/batch", response_model=ComboBatchBacktestResponse)
 async def start_batch_backtest(
     request: ComboBatchBacktestRequest,
-    current_user_id: str = Depends(get_current_user),
+    current_user_id: str = Depends(get_current_admin),
 ):
     """
     Start a batch backtest job for multiple symbols.
@@ -651,7 +674,10 @@ async def start_batch_backtest(
 
 
 @router.get("/backtest/batch/{job_id}", response_model=ComboBatchProgressResponse)
-async def get_batch_backtest_progress(job_id: str):
+async def get_batch_backtest_progress(
+    job_id: str,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """Get progress and result of a batch backtest job."""
     progress = get_batch_progress(job_id)
     if not progress:
@@ -660,7 +686,10 @@ async def get_batch_backtest_progress(job_id: str):
 
 
 @router.post("/backtest/batch/{job_id}/pause")
-async def pause_batch_backtest(job_id: str):
+async def pause_batch_backtest(
+    job_id: str,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """Request batch job to pause after the current symbol."""
     if not request_pause_batch(job_id):
         raise HTTPException(status_code=404, detail="Batch job not found or not running")
@@ -668,7 +697,10 @@ async def pause_batch_backtest(job_id: str):
 
 
 @router.post("/backtest/batch/{job_id}/cancel")
-async def cancel_batch_backtest(job_id: str):
+async def cancel_batch_backtest(
+    job_id: str,
+    _admin_user_id: str = Depends(get_current_admin),
+):
     """Request batch job to cancel after the current symbol."""
     if not request_cancel_batch(job_id):
         raise HTTPException(status_code=404, detail="Batch job not found or not running")

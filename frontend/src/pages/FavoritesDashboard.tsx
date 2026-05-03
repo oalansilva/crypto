@@ -24,6 +24,8 @@ interface FavoriteStrategy {
     tier: number | null;  // 1=Core obrigatório, 2=Bons complementares, 3=Outros, null=Sem tier
     start_date?: string | null;
     end_date?: string | null;
+    is_strategy_protected?: boolean;
+    strategy_display_name?: string | null;
 }
 
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
@@ -113,7 +115,19 @@ const FavoritesDashboard: React.FC = () => {
         }
     };
 
+    const getFavoriteStrategyLabel = (fav: FavoriteStrategy): string => {
+        return fav.is_strategy_protected
+            ? (fav.strategy_display_name || 'Estratégia protegida')
+            : fav.strategy_name.replace(/_/g, ' ');
+    };
+
+    const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
+
     const handleViewResults = async (fav: FavoriteStrategy) => {
+        if (isFavoriteProtected(fav)) {
+            alert('Resultados detalhados disponíveis apenas para admin.');
+            return;
+        }
         setLoadingBacktestId(fav.id);
         try {
             // Executar backtest com os parâmetros do favorito
@@ -171,15 +185,24 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const handleViewTrades = (fav: FavoriteStrategy) => {
+        if (isFavoriteProtected(fav)) {
+            setSelectedTrades([]);
+            setSelectedTradesTitle(`${getFavoriteStrategyLabel(fav)} - ${fav.symbol} ${fav.timeframe}`);
+            setSelectedTradesSymbol(fav.symbol);
+            setSelectedTradesTemplate(getFavoriteStrategyLabel(fav));
+            setSelectedTradesTimeframe(fav.timeframe);
+            setIsTradesModalOpen(true);
+            return;
+        }
         const trades = fav.metrics?.trades || [];
         if (!trades || trades.length === 0) {
             alert('No trades saved for this strategy.');
             return;
         }
         setSelectedTrades(trades);
-        setSelectedTradesTitle(`${fav.strategy_name} - ${fav.symbol} ${fav.timeframe}`);
+        setSelectedTradesTitle(`${getFavoriteStrategyLabel(fav)} - ${fav.symbol} ${fav.timeframe}`);
         setSelectedTradesSymbol(fav.symbol);
-        setSelectedTradesTemplate(fav.strategy_name);
+        setSelectedTradesTemplate(getFavoriteStrategyLabel(fav));
         setSelectedTradesTimeframe(fav.timeframe);
         setIsTradesModalOpen(true);
     };
@@ -212,16 +235,16 @@ const FavoritesDashboard: React.FC = () => {
     // Get unique indicators (strategies) for filter
     const uniqueIndicators = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.map(f => f.strategy_name))).sort();
+        return Array.from(new Set(favorites.map(getFavoriteStrategyLabel))).sort();
     }, [favorites]);
 
     const filteredFavorites = (favorites?.filter(fav => {
         const matchesSearch = fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            fav.strategy_name.toLowerCase().includes(searchTerm.toLowerCase());
+            getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
-        const matchesIndicator = selectedIndicator === 'ALL' || fav.strategy_name === selectedIndicator;
+        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
         const matchesTier = tierFilter === 'all' ||
             (tierFilter === '1_2' && (fav.tier === 1 || fav.tier === 2)) ||
             (tierFilter === 'none' && fav.tier === null) ||
@@ -298,11 +321,11 @@ const FavoritesDashboard: React.FC = () => {
             return {
                 Name: fav.name,
                 Symbol: fav.symbol,
-                Strategy: fav.strategy_name,
+                Strategy: getFavoriteStrategyLabel(fav),
                 Direção: direction === 'short' ? 'Short' : 'Long',
                 Timeframe: fav.timeframe,
                 Período: formatPeriod(fav),
-                Parameters: formatParams(fav.parameters),
+                Parameters: formatParams(fav.parameters, isFavoriteProtected(fav)),
                 "Stop Loss": formatPct(stopLoss),
                 Sharpe: formatNum(m.sharpe_ratio),
                 Trades: getTradesCount(fav),
@@ -336,7 +359,9 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     // Formatters
-    const formatParams = (params: Record<string, any>) => {
+    const formatParams = (params: Record<string, any>, protectedStrategy = false) => {
+        if (protectedStrategy) return 'Protegido';
+        if (!params || Object.keys(params).length === 0) return 'Sem parametros';
         return Object.entries(params)
             .map(([k, v]) => `${k}=${v}`)
             .join('&');
@@ -542,7 +567,7 @@ const FavoritesDashboard: React.FC = () => {
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
                                                     <p className="text-base font-bold tracking-wide break-words">{fav.symbol}</p>
-                                                    <p className="text-sm text-blue-300 break-words">{fav.strategy_name.replace(/_/g, ' ')}</p>
+                                                    <p className="text-sm text-blue-300 break-words">{getFavoriteStrategyLabel(fav)}</p>
                                                 </div>
                                                 <span className={`px-2 py-1 rounded-md text-xs font-semibold border ${statusLabel === 'HOLD' ? 'text-emerald-700 border-emerald-600/50 bg-emerald-500/10' : 'text-zinc-500 border-zinc-300 bg-zinc-100'}`}>
                                                     {statusLabel}
@@ -648,7 +673,7 @@ const FavoritesDashboard: React.FC = () => {
                                                     </div>
                                                     <div>
                                                         <p className="text-zinc-500 mb-1">Params</p>
-                                                        <p className="font-mono break-words">{formatParams(fav.parameters).split('&').join(' ')}</p>
+                                                        <p className="font-mono break-words">{formatParams(fav.parameters, isFavoriteProtected(fav)).split('&').join(' ')}</p>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div>
@@ -774,7 +799,7 @@ const FavoritesDashboard: React.FC = () => {
                                                         </select>
                                                     </td>
                                                     <td className="p-2 border-r border-zinc-100 font-bold text-zinc-900 tracking-wide">{fav.symbol}</td>
-                                                    <td className="p-2 border-r border-zinc-100 text-blue-300 font-medium">{fav.strategy_name.replace(/_/g, ' ')}</td>
+                                                    <td className="p-2 border-r border-zinc-100 text-blue-300 font-medium">{getFavoriteStrategyLabel(fav)}</td>
                                                     <td className="p-2 border-r border-zinc-100 text-center" title="Long = compra na entrada / Short = venda na entrada">
                                                         {((fav.parameters?.direction as string) || 'long').toLowerCase() === 'short' ? (
                                                             <span className="px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/40">Short</span>
@@ -788,8 +813,8 @@ const FavoritesDashboard: React.FC = () => {
                                                     <td className="p-2 border-r border-zinc-100 text-center text-zinc-500 text-xs whitespace-nowrap" title="Período em que a estratégia foi testada">
                                                         {formatPeriod(fav)}
                                                     </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-zinc-400 truncate max-w-xs text-xs font-mono" title={formatParams(fav.parameters)}>
-                                                        {formatParams(fav.parameters).split('&').join(' ')}
+                                                    <td className="p-2 border-r border-zinc-100 text-zinc-400 truncate max-w-xs text-xs font-mono" title={formatParams(fav.parameters, isFavoriteProtected(fav))}>
+                                                        {formatParams(fav.parameters, isFavoriteProtected(fav)).split('&').join(' ')}
                                                     </td>
                                                     <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
                                                         {formatPct(stopLoss)}
@@ -1052,7 +1077,7 @@ const FavoritesDashboard: React.FC = () => {
                         name: selectedAgentFavorite.name,
                         symbol: selectedAgentFavorite.symbol,
                         timeframe: selectedAgentFavorite.timeframe,
-                        strategy_name: selectedAgentFavorite.strategy_name,
+                        strategy_name: getFavoriteStrategyLabel(selectedAgentFavorite),
                     } : null}
                 />
             </div>

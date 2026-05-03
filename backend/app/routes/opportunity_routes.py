@@ -5,15 +5,22 @@ from pydantic import BaseModel
 import logging
 import threading
 import time
+from sqlalchemy.orm import Session
 
+from app.database import get_db
 from app.services.opportunity_service import OpportunityService
 from app.middleware.authMiddleware import get_current_user
+from app.services.strategy_secret_visibility import (
+    can_view_strategy_secrets,
+    redact_opportunity_payload,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/opportunities", tags=["opportunities"])
 _CACHE_TTL_SECONDS = 30.0
 _CACHE_LOCK = threading.Lock()
 _OPPORTUNITIES_CACHE: dict[tuple[str, str | None], dict[str, Any]] = {}
+COMMON_USER_TIER_FILTER = "1,2,3"
 
 
 class OpportunityResponse(BaseModel):
@@ -38,6 +45,8 @@ class OpportunityResponse(BaseModel):
         None  # ISO datetime do candle usado (para conferir com TradingView)
     )
     signal_history: Optional[List[Dict[str, Any]]] = None
+    is_strategy_protected: bool = False
+    strategy_display_name: Optional[str] = None
 
     # Risk / stop-loss (optional)
     entry_price: Optional[float] = None
@@ -79,6 +88,21 @@ def _write_cached_opportunities(
         }
 
 
+def _common_user_tier_filter(tier: str | None) -> str:
+    normalized = str(tier or "").strip().lower()
+    if not normalized or normalized == "all":
+        return COMMON_USER_TIER_FILTER
+    if normalized == "none":
+        return "999"
+
+    allowed = [
+        item
+        for item in (part.strip() for part in normalized.split(","))
+        if item in {"1", "2", "3"}
+    ]
+    return ",".join(allowed) if allowed else "999"
+
+
 @router.get("/", response_model=List[OpportunityResponse])
 async def get_opportunities(
     tier: Optional[str] = Query(
@@ -89,6 +113,7 @@ async def get_opportunities(
         False, description="Bypass short-lived cache and recompute opportunities."
     ),
     current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Get current opportunities (proximity analysis) for favorite strategies.
@@ -99,14 +124,22 @@ async def get_opportunities(
     Returns opportunities sorted by Signal Priority (SIGNAL > NEAR > NEUTRAL).
     """
     try:
+        include_secrets = can_view_strategy_secrets(db, current_user_id)
+        effective_tier = tier if include_secrets else _common_user_tier_filter(tier)
         if not refresh:
-            cached = _read_cached_opportunities(current_user_id, tier)
+            cached = _read_cached_opportunities(current_user_id, effective_tier)
             if cached is not None:
-                return cached
+                return [
+                    redact_opportunity_payload(dict(item), include_secrets=include_secrets)
+                    for item in cached
+                ]
         service = OpportunityService()
-        payload = service.get_opportunities(user_id=current_user_id, tier_filter=tier)
-        _write_cached_opportunities(current_user_id, tier, payload)
-        return payload
+        payload = service.get_opportunities(user_id=current_user_id, tier_filter=effective_tier)
+        _write_cached_opportunities(current_user_id, effective_tier, payload)
+        return [
+            redact_opportunity_payload(dict(item), include_secrets=include_secrets)
+            for item in payload
+        ]
     except Exception as e:
         logger.error(f"Error getting opportunities: {e}")
         raise HTTPException(status_code=500, detail=str(e))

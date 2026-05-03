@@ -12,6 +12,10 @@ from app.schemas.favorite import (
     FavoriteStrategyResponse,
     FavoriteStrategyUpdate,
 )
+from app.services.strategy_secret_visibility import (
+    can_view_strategy_secrets,
+    redact_favorite_strategy_payload,
+)
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -40,6 +44,14 @@ def _normalize_favorite_json_fields(row: FavoriteStrategy) -> FavoriteStrategy:
     row.parameters = _decode_jsonish(row.parameters)
     row.metrics = _decode_jsonish(row.metrics)
     return row
+
+
+def _favorite_response(row: FavoriteStrategy, *, include_secrets: bool) -> FavoriteStrategyResponse:
+    normalized = _normalize_favorite_json_fields(row)
+    payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
+    return FavoriteStrategyResponse(
+        **redact_favorite_strategy_payload(payload, include_secrets=include_secrets)
+    )
 
 
 @router.get("/exists", response_model=ExistsResponse)
@@ -87,7 +99,8 @@ def list_favorites(
 ):
     """List all favorited strategies"""
     rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
-    return [_normalize_favorite_json_fields(row) for row in rows]
+    include_secrets = can_view_strategy_secrets(db, current_user_id)
+    return [_favorite_response(row, include_secrets=include_secrets) for row in rows]
 
 
 @router.post("/", response_model=FavoriteStrategyResponse)
@@ -102,7 +115,8 @@ def create_favorite(
         db.add(db_favorite)
         db.commit()
         db.refresh(db_favorite)
-        return _normalize_favorite_json_fields(db_favorite)
+        include_secrets = can_view_strategy_secrets(db, current_user_id)
+        return _favorite_response(db_favorite, include_secrets=include_secrets)
     except Exception as e:
         import traceback
         import logging
@@ -146,7 +160,8 @@ def update_favorite(
 
     db.commit()
     db.refresh(favorite)
-    return _normalize_favorite_json_fields(favorite)
+    include_secrets = can_view_strategy_secrets(db, current_user_id)
+    return _favorite_response(favorite, include_secrets=include_secrets)
 
 
 @router.delete("/{favorite_id}")

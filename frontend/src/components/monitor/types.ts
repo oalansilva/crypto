@@ -35,12 +35,29 @@ export interface Opportunity {
     indicator_values_candle_time?: string | null;
     /** Histórico recente de sinais confirmados da estratégia */
     signal_history?: OpportunitySignalHistoryItem[];
+    is_strategy_protected?: boolean;
+    strategy_display_name?: string | null;
 
     /** Optional risk info */
     entry_price?: number | null;
     stop_price?: number | null;
     distance_to_stop_pct?: number | null;
 }
+
+export const PROTECTED_STRATEGY_LABEL = 'Estratégia protegida';
+
+export const isProtectedStrategy = (
+    value: Pick<Opportunity, 'is_strategy_protected'> | { is_strategy_protected?: boolean } | null | undefined,
+): boolean => Boolean(value?.is_strategy_protected);
+
+export const getStrategyDisplayName = (
+    opportunity: Pick<Opportunity, 'is_strategy_protected' | 'strategy_display_name' | 'template_name' | 'name' | 'symbol'>,
+): string => {
+    if (isProtectedStrategy(opportunity)) {
+        return opportunity.strategy_display_name || PROTECTED_STRATEGY_LABEL;
+    }
+    return opportunity.strategy_display_name || opportunity.template_name || opportunity.name || opportunity.symbol;
+};
 
 export type MonitorCardMode = 'price' | 'strategy';
 export type MonitorPriceTimeframe = '15m' | '1h' | '4h' | '1d';

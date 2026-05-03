@@ -13,7 +13,13 @@ import {
 } from 'lightweight-charts';
 
 import type { MarketCandle } from './MiniCandlesChart';
-import { getOpportunityAssetType, type Opportunity, type OpportunitySignalHistoryItem } from './types';
+import {
+    getOpportunityAssetType,
+    getStrategyDisplayName,
+    isProtectedStrategy,
+    type Opportunity,
+    type OpportunitySignalHistoryItem,
+} from './types';
 import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { resolveOpportunitySignal } from './signalResolution';
 
@@ -319,6 +325,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     ]));
     const mainChartRef = React.useRef<HTMLDivElement>(null);
     const mainChartApiRef = React.useRef<IChartApi | null>(null);
+    const strategyProtected = isProtectedStrategy(opportunity);
+    const strategyDisplayName = getStrategyDisplayName(opportunity);
 
     React.useEffect(() => {
         if (!supportedTimeframes.includes(timeframe)) {
@@ -637,7 +645,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         const emaShortSeries = mainChart.addLineSeries({
             color: maColors.emaShort,
             lineWidth: 2,
-            visible: visibleIndicators.emaShort,
+            visible: !strategyProtected && visibleIndicators.emaShort,
             priceLineVisible: false,
             lastValueVisible: false,
         });
@@ -645,7 +653,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         const smaMediumSeries = mainChart.addLineSeries({
             color: maColors.smaMedium,
             lineWidth: 2,
-            visible: visibleIndicators.smaMedium,
+            visible: !strategyProtected && visibleIndicators.smaMedium,
             priceLineVisible: false,
             lastValueVisible: false,
         });
@@ -653,7 +661,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         const smaLongSeries = mainChart.addLineSeries({
             color: maColors.smaLong,
             lineWidth: 2,
-            visible: visibleIndicators.smaLong,
+            visible: !strategyProtected && visibleIndicators.smaLong,
             priceLineVisible: false,
             lastValueVisible: false,
         });
@@ -673,9 +681,9 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 ],
         );
         volumeSeries.setData(volumeData);
-        emaShortSeries.setData(emaShortData);
-        smaMediumSeries.setData(smaMediumData);
-        smaLongSeries.setData(smaLongData);
+        emaShortSeries.setData(strategyProtected ? [] : emaShortData);
+        smaMediumSeries.setData(strategyProtected ? [] : smaMediumData);
+        smaLongSeries.setData(strategyProtected ? [] : smaLongData);
 
         if (opportunity.entry_price !== null && opportunity.entry_price !== undefined) {
             candleSeries.createPriceLine({
@@ -746,6 +754,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         signalLabel,
         smaLongData,
         smaMediumData,
+        strategyProtected,
         tooltipData,
         visibleIndicators.emaShort,
         visibleIndicators.smaLong,
@@ -810,7 +819,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     <div className="min-w-0">
                         <h2 id="chart-modal-title" className="text-xl font-bold text-[#e6edf3]">{symbol}</h2>
                         <p className="text-xs text-[#8b949e]">
-                            {opportunity.name || opportunity.template_name} • candle ref {formatTimestamp(opportunity.indicator_values_candle_time)}
+                            {strategyDisplayName} • candle ref {formatTimestamp(opportunity.indicator_values_candle_time)}
                         </p>
                     </div>
                     <span className="rounded-md bg-[#388bfd]/20 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-[#58a6ff]">
@@ -943,6 +952,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                     Algorítmica
                                 </button>
                             </div>
+                            {!strategyProtected && (
                             <div className="ml-auto flex flex-wrap items-center gap-2" role="group" aria-label="Chart indicators">
                                 {[
                                     { key: 'emaShort', label: indicatorLabels.emaShort },
@@ -972,6 +982,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                     );
                                 })}
                             </div>
+                            )}
                         </div>
 
                         <div className={`relative flex min-h-0 flex-1 flex-col gap-3 p-4 ${isAlgorithmicChartMode ? 'pb-5' : ''}`}>
@@ -1149,7 +1160,9 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                             <section>
                                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Parameters</p>
                                                 <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    {opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
+                                                    {strategyProtected ? (
+                                                        <p className="text-[#8b949e]">Parametros protegidos.</p>
+                                                    ) : opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
                                                         Object.entries(opportunity.parameters).map(([key, value]) => (
                                                             <div key={key} className="flex justify-between gap-3">
                                                                 <span className="text-[#8b949e]">{key}</span>
@@ -1165,7 +1178,9 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                             <section>
                                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Indicators</p>
                                                 <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    {sidebarIndicators.map((item) => (
+                                                    {strategyProtected ? (
+                                                        <p className="text-[#8b949e]">Indicadores protegidos.</p>
+                                                    ) : sidebarIndicators.map((item) => (
                                                         <div key={item.label} className="flex items-center justify-between gap-3">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
@@ -1195,9 +1210,13 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             <div className="flex flex-wrap items-center gap-3 text-xs text-[#8b949e]">
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#388bfd]" /> Entry</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Stop</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.emaShort }} /> {indicatorLabels.emaShort}</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaMedium }} /> {indicatorLabels.smaMedium}</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaLong }} /> {indicatorLabels.smaLong}</span>
+                                {!strategyProtected && (
+                                    <>
+                                        <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.emaShort }} /> {indicatorLabels.emaShort}</span>
+                                        <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaMedium }} /> {indicatorLabels.smaMedium}</span>
+                                        <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaLong }} /> {indicatorLabels.smaLong}</span>
+                                    </>
+                                )}
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#3fb950]" /> Buy</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Sell</span>
                             </div>

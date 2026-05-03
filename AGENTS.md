@@ -26,7 +26,10 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
   6. Só então mover o card para `Homologado`.
 - **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `In Progress` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste durante a homologação, corrija e reteste mantendo o card em `Done`; ele só deve mudar de `Done` diretamente para `Homologado` no último passo.
 - **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
+- **Regra de validação OpenSpec global:** `openspec validate --all` verde é critério padrão de fechamento. Se falhar por changes antigas fora do card, valide os specs afetados pelo card como evidência parcial, mas resolva a sujeira global antes do encerramento: corrija ou arquive as changes antigas, inclusive por archive manual quando a CLI/skill não conseguir concluir.
+- **Regra de checks em execução:** teste, build ou CI iniciado precisa ser acompanhado até terminar. Status como "build está rodando" é atualização intermediária, não evidência final para `Done`, `Homologado`, commit, PR ou merge.
 - **Regra de commit único por entrega:** o único commit da entrega é o de encerramento, feito após a sua confirmação de homologação. Se CI/checks falharem depois do push, corrija preservando um commit final sempre que tecnicamente possível (ex.: amend + push seguro); se isso não for possível sem risco, registre a exceção e o motivo.
+- **Regra de worktree limpo no fechamento:** antes de commit, PR, merge, `Done` ou `Homologado`, rode `git status --short` e não deixe nenhum arquivo modificado solto. Arquivos da entrega entram no commit único; alterações alheias/preexistentes ficam fora do commit do card, mas devem ser preservadas com stash nomeado ou registro equivalente e reportadas com caminho e motivo. Nunca descarte alteração alheia sem pedido explícito.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
 - **Não usar SQLite** como banco de operação. Em runtime/QA/Homologação, use apenas PostgreSQL (`DATABASE_URL` e `WORKFLOW_DATABASE_URL`).
 - **Funcionalidades novas:** siga OpenSpec por padrão antes de implementar (`openspec/changes/<change>/` com proposal/spec/design/tasks quando aplicável).
@@ -97,6 +100,13 @@ Fechamento após homologação:
 
 Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover arquivos para `archive/` sem declarar a skill OpenSpec usada, considere o fluxo incompleto e corrija antes de avançar para DEV, QA, homologação ou merge.
 
+### Falhas antigas em `openspec validate --all`
+
+- Primeiro confirme a change atual: `openspec status --change "<change>" --json` precisa estar completo e os specs afetados pelo card precisam validar individualmente.
+- Se `openspec validate --all` falhar por changes antigas, trate como bloqueio de higiene do repo, não como exceção permanente. Investigue cada change quebrada, corrija artifacts quando ela ainda estiver ativa ou arquive quando estiver concluída/obsoleta.
+- Use primeiro a skill OpenSpec adequada, normalmente `$openspec-archive-change`. Se a CLI/skill falhar por estado antigo ou inconsistente, o archive manual é permitido como exceção operacional: mover para `openspec/changes/archive/YYYY-MM-DD-<change>/`, sincronizar specs quando aplicável, preservar evidência no handoff e registrar por que o caminho manual foi usado.
+- Depois do saneamento, rode novamente `openspec validate --all`. Validação parcial serve apenas como evidência intermediária para o escopo do card, não como fechamento final.
+
 ## Fluxo Git operacional (sempre)
 
 - Trabalhe sempre em `develop`; não crie `feature/*`, `bugfix/*` ou outras branches para tarefas isoladas.
@@ -109,6 +119,7 @@ Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover ar
 - Se o merge for bloqueado por checks, conflitos ou políticas resolvíveis por alteração no repo, o agente deve investigar, corrigir, revalidar e preservar a regra de commit único sempre que tecnicamente seguro.
 - Se o bloqueio depender de permissão/admin/review humano/configuração externa não editável pelo repo, o agente deve registrar o motivo exato no PR e na resposta final, sem mascarar o bloqueio como concluído.
 - Após merge em `main`, atualize `develop` para refletir o estado da produção.
+- Antes de preparar o commit único, classifique todo `git status --short`: entrega atual, alteração alheia/preexistente, artifact gerado ou lixo descartável. A entrega atual entra no commit; alteração alheia não entra no commit do card e não pode ficar perdida no worktree. Preserve com `git stash push -m "preserve unrelated before <card/change>: <paths>" -- <paths>` ou mecanismo equivalente e reporte o identificador.
 
 Exemplo mínimo:
 ```bash
@@ -133,13 +144,14 @@ Checklist de rotina (diária/por mudança):
 2. `git pull`
 3. aplicar alteração
 4. validar localmente e preparar evidências
-5. após homologação confirmada: `git add .`
-6. após homologação confirmada: `git commit -m "tipo: mensagem"`
-7. `git push`
-8. `gh pr create --base main --head develop --title "<titulo>" --body "descricao breve"`
-9. Se houver pontos de falha antes do fechamento, investigue e corrija antes do commit de encerramento; evite novo ciclo de commit em lote para não quebrar a regra de commit único.
-10. Faça o merge manualmente em `main` em seguida: `gh pr merge --merge --delete-branch=false`.
-11. Após merge: `git pull`
+5. antes do commit: revisar `git status --short` e resolver todo arquivo solto sem incluir alteração alheia no card
+6. após homologação confirmada: `git add .`
+7. após homologação confirmada: `git commit -m "tipo: mensagem"`
+8. `git push`
+9. `gh pr create --base main --head develop --title "<titulo>" --body "descricao breve"`
+10. Se houver pontos de falha antes do fechamento, investigue e corrija antes do commit de encerramento; evite novo ciclo de commit em lote para não quebrar a regra de commit único.
+11. Faça o merge manualmente em `main` em seguida: `gh pr merge --merge --delete-branch=false`.
+12. Após merge: `git pull`
 
 Em entrega de código por card, use subagents por padrão para acelerar descoberta, implementação e validação, respeitando escopo e evitando trabalho duplicado.
 
@@ -189,6 +201,9 @@ nohup npm run dev -- --host 0.0.0.0 --port 5173 > /tmp/vite-5173.log 2>&1 &
 ```
 
 ## Testes / checks
+
+- Todo teste, build, lint, `openspec validate` ou CI iniciado precisa terminar antes de virar evidência. Se ainda estiver rodando, informe como status parcial e continue acompanhando até sucesso, falha corrigida ou bloqueio real.
+- Em fechamento de card, rode validação OpenSpec da change e validação global. Se a global falhar por changes antigas, saneie/arquive essas changes antes de concluir; não deixe a falha global herdada para Alan.
 
 - Backend:
 ```bash

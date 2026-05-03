@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.middleware.authMiddleware import get_current_user
-from app.models import MonitorPreference
+from app.models import MonitorPreference, MonitorStrategyPreference
 from app.services.asset_classification import classify_asset_type
 from app.services.user_exchange_credentials import BINANCE_PROVIDER, get_user_exchange_credential
 
@@ -32,6 +32,14 @@ class MonitorPreferenceUpdate(BaseModel):
     card_mode: Optional[CardMode] = None
     price_timeframe: Optional[PriceTimeframe] = None
     theme: Optional[ThemeName] = None
+
+
+class MonitorStrategyPreferencePayload(BaseModel):
+    liked: bool
+
+
+class MonitorStrategyPreferenceUpdate(BaseModel):
+    liked: bool
 
 
 def _normalize_symbol(symbol: str) -> str:
@@ -77,6 +85,56 @@ def list_monitor_preferences(
         }
         for row in rows
     }
+
+
+@router.get("/strategy-preferences", response_model=Dict[str, MonitorStrategyPreferencePayload])
+def list_monitor_strategy_preferences(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(MonitorStrategyPreference)
+        .filter(
+            MonitorStrategyPreference.user_id == current_user_id,
+            MonitorStrategyPreference.liked.is_(True),
+        )
+        .all()
+    )
+    return {str(row.favorite_id): {"liked": bool(row.liked)} for row in rows}
+
+
+@router.put(
+    "/strategy-preferences/{favorite_id}",
+    response_model=MonitorStrategyPreferencePayload,
+)
+def update_monitor_strategy_preferences(
+    payload: MonitorStrategyPreferenceUpdate,
+    favorite_id: int = Path(..., ge=1, description="Favorite strategy row ID from Monitor opportunity id"),
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    existing = (
+        db.query(MonitorStrategyPreference)
+        .filter(
+            MonitorStrategyPreference.user_id == current_user_id,
+            MonitorStrategyPreference.favorite_id == favorite_id,
+        )
+        .first()
+    )
+    if not existing:
+        existing = MonitorStrategyPreference(
+            user_id=current_user_id,
+            favorite_id=favorite_id,
+            liked=payload.liked,
+        )
+        db.add(existing)
+    else:
+        existing.liked = payload.liked
+
+    existing.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(existing)
+    return {"liked": bool(existing.liked)}
 
 
 @router.put("/preferences/{symbol:path}", response_model=MonitorPreferencePayload)

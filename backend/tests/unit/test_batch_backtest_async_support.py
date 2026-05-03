@@ -215,7 +215,7 @@ async def test_start_batch_backtest_returns_503_when_enqueue_fails(monkeypatch):
 
     test_app = FastAPI()
     test_app.include_router(combo_routes.router)
-    test_app.dependency_overrides[combo_routes.get_current_user] = lambda: "user-123"
+    test_app.dependency_overrides[combo_routes.get_current_admin] = lambda: "user-123"
 
     def explode(*_args, **_kwargs):
         raise RuntimeError("queue unavailable")
