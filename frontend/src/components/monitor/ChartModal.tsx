@@ -21,7 +21,7 @@ import {
     type OpportunitySignalHistoryItem,
 } from './types';
 import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
-import { resolveOpportunitySignal } from './signalResolution';
+import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
 
 interface ChartModalProps {
     symbol: string;
@@ -436,6 +436,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         }),
         [latestCandle?.timestamp_utc, opportunity, timeframe],
     );
+    const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
     const signalLabel = resolvedSignal.visual.markerLabel;
     const canRenderSignalHistoryMarkers = React.useMemo(
         () => String(opportunity.timeframe || '').trim().toLowerCase() === timeframe,
@@ -685,7 +686,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         smaMediumSeries.setData(strategyProtected ? [] : smaMediumData);
         smaLongSeries.setData(strategyProtected ? [] : smaLongData);
 
-        if (opportunity.entry_price !== null && opportunity.entry_price !== undefined) {
+        if (
+            showEntryStopRows
+            && opportunity.entry_price !== null
+            && opportunity.entry_price !== undefined
+        ) {
             candleSeries.createPriceLine({
                 price: opportunity.entry_price,
                 color: '#388bfd',
@@ -695,7 +700,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 title: 'ENTRY',
             });
         }
-        if (opportunity.stop_price !== null && opportunity.stop_price !== undefined) {
+        if (
+            showEntryStopRows
+            && opportunity.stop_price !== null
+            && opportunity.stop_price !== undefined
+        ) {
             candleSeries.createPriceLine({
                 price: opportunity.stop_price,
                 color: '#f85149',
@@ -756,6 +765,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         smaMediumData,
         strategyProtected,
         tooltipData,
+        showEntryStopRows,
         visibleIndicators.emaShort,
         visibleIndicators.smaLong,
         visibleIndicators.smaMedium,
@@ -1103,14 +1113,18 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                             <section>
                                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Risk / Stop</p>
                                                 <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Entry</span>
-                                                        <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.entry_price)}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Stop</span>
-                                                        <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.stop_price)}</span>
-                                                    </div>
+                                                    {showEntryStopRows ? (
+                                                        <>
+                                                            <div className="flex justify-between gap-3">
+                                                                <span className="text-[#8b949e]">Entry</span>
+                                                                <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.entry_price)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between gap-3">
+                                                                <span className="text-[#8b949e]">Stop</span>
+                                                                <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.stop_price)}</span>
+                                                            </div>
+                                                        </>
+                                                    ) : null}
                                                     <div className="flex justify-between gap-3">
                                                         <span className="text-[#8b949e]">Risk</span>
                                                         <span className="font-mono text-[#f85149]">{formatPercent(opportunity.distance_to_stop_pct)}</span>

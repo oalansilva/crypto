@@ -5,14 +5,19 @@ TBD - created by syncing delta from change improve-opportunity-monitor. Dashboar
 ## Requirements
 ### Requirement: Simplified Hold Status Display
 **Description:** The system SHALL display a clear binary indicator: HOLD (active position) or WAIT (no position). When holding, show distance to exit; when not holding, show distance to entry.
+When the resolved state is EXIT, the monitor SHALL hide entry/stop operational lines from both card and chart views, because those values are no longer actionable.
 
-#### Scenario: HOLD distance shown
+#### Scenario: Opportunity in HOLD state
 - **WHEN** the strategy is in HOLD status
 - **THEN** the UI displays distance to exit
 
-#### Scenario: WAIT distance shown
+#### Scenario: Opportunity in WAIT state
 - **WHEN** the strategy is in WAIT status
 - **THEN** the UI displays distance to entry
+
+#### Scenario: Opportunity in EXIT state
+- **WHEN** an opportunity resolves to EXIT
+- **THEN** card and chart entries for Entry/Stop are hidden and no new entry/stop price guidance is shown.
 
 ### Requirement: Distance to Next Status
 **Description:** The system SHALL always display percentage distance to the next relevant status change, with progress bar and color coding (Green < 0.5%, Yellow 0.5–1%, Gray > 1%). When the status is WAIT (no position), the system SHALL compute the distance to entry using the entry rule: entry is valid only when (crossover(short, long) OR crossover(short, medium)) AND trend up (short > long). If trend up is false, the system SHALL measure distance using the short-to-long pair (red → blue). If trend up is true, the system SHALL measure distance using the short-to-medium pair (red → orange).
@@ -94,3 +99,4 @@ The opportunity monitor SHALL use a configured admin-curated favorite set as a f
 - **WHEN** the opportunity monitor loads favorites for a requesting user
 - **AND** the requesting user's filtered favorite set has at least one crypto Monitor candidate
 - **THEN** the monitor computes opportunities only from the requesting user's favorites
+

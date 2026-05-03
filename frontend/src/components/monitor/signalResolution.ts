@@ -198,3 +198,13 @@ export const resolveOpportunitySignal = (
         },
     };
 };
+
+export const hasExitedOpportunity = (opportunity: Opportunity): boolean => {
+    const rawStatus = asStatus(opportunity.status);
+    const isHolding = Boolean(opportunity.is_holding);
+
+    return (
+        !isHolding
+        && (rawStatus === 'EXITED' || rawStatus === 'STOPPED_OUT' || rawStatus === 'MISSED_ENTRY' || rawStatus === 'MISSED')
+    );
+};
