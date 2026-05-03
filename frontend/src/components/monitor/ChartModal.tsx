@@ -176,6 +176,23 @@ function getSignalHistoryMarker(item: OpportunitySignalHistoryItem) {
     } as const;
 }
 
+function getActiveEntrySignal(history?: OpportunitySignalHistoryItem[]): OpportunitySignalHistoryItem | null {
+    const sortedHistory = [...(history || [])].sort(
+        (left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp),
+    );
+    let activeEntry: OpportunitySignalHistoryItem | null = null;
+
+    sortedHistory.forEach((item) => {
+        if (item.type === 'entry') {
+            activeEntry = item;
+        } else if (item.type === 'exit') {
+            activeEntry = null;
+        }
+    });
+
+    return activeEntry;
+}
+
 function getNumericParameter(parameters: Record<string, unknown> | undefined, keys: string[], fallback: number) {
     for (const key of keys) {
         const raw = parameters?.[key];
@@ -428,26 +445,43 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const isAlgorithmicChartMode = chartMode === 'algorithmic';
 
     const displaySnapshot = tooltip ?? latestSnapshot;
+    const candleTimes = React.useMemo(
+        () => new Set(candlestickData.map((point) => point.time)),
+        [candlestickData],
+    );
+    const canRenderSignalHistoryMarkers = React.useMemo(
+        () => String(opportunity.timeframe || '').trim().toLowerCase() === timeframe,
+        [opportunity.timeframe, timeframe],
+    );
+    const activeEntrySignal = React.useMemo(
+        () => getActiveEntrySignal(opportunity.signal_history),
+        [opportunity.signal_history],
+    );
+    const hasVisibleActiveEntry = React.useMemo(() => {
+        if (!activeEntrySignal) {
+            return false;
+        }
+        if (!canRenderSignalHistoryMarkers) {
+            return false;
+        }
+        return candleTimes.has(toUtcTimestamp(activeEntrySignal.timestamp));
+    }, [activeEntrySignal, canRenderSignalHistoryMarkers, candleTimes]);
     const resolvedSignal = React.useMemo(
         () => resolveOpportunitySignal(opportunity, {
             selectedTimeframe: timeframe,
             latestCandleTime: latestCandle?.timestamp_utc ?? null,
             requireCurrentCandleMatch: true,
+            hasVisibleActiveEntry,
         }),
-        [latestCandle?.timestamp_utc, opportunity, timeframe],
+        [hasVisibleActiveEntry, latestCandle?.timestamp_utc, opportunity, timeframe],
     );
     const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
     const signalLabel = resolvedSignal.visual.markerLabel;
-    const canRenderSignalHistoryMarkers = React.useMemo(
-        () => String(opportunity.timeframe || '').trim().toLowerCase() === timeframe,
-        [opportunity.timeframe, timeframe],
-    );
     const historicalSignalMarkers = React.useMemo(() => {
         if (!canRenderSignalHistoryMarkers || sortedCandles.length === 0) {
             return [];
         }
 
-        const candleTimes = new Set(candlestickData.map((point) => point.time));
         return (opportunity.signal_history || [])
             .map((item) => {
                 const time = toUtcTimestamp(item.timestamp);

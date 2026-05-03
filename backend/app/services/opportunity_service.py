@@ -443,22 +443,24 @@ def _resolve_position_state(
     last_price: float | None,
     stop_price: float | None,
 ) -> tuple[bool, bool, bool]:
+    has_exit_after_entry = last_sell_pos is not None and (
+        last_buy_pos is None or last_sell_pos > last_buy_pos
+    )
+    has_active_entry = last_buy_pos is not None and not has_exit_after_entry
+
     stop_breached_now = False
-    if stop_price is not None and last_price is not None:
+    if has_active_entry and stop_price is not None and last_price is not None:
         if direction == "short":
             stop_breached_now = last_price >= stop_price
         else:
             stop_breached_now = last_price <= stop_price
 
-    has_exit_after_entry = last_sell_pos is not None and (
-        last_buy_pos is None or last_sell_pos > last_buy_pos
-    )
     exited_by_stop = has_exit_after_entry and str(last_sell_reason or "").lower() == "stop_loss"
     if stop_breached_now or exited_by_stop:
         return False, True, stop_breached_now
     if has_exit_after_entry:
         return False, False, False
-    return bool(short_above_long), False, False
+    return bool(has_active_entry and short_above_long), False, False
 
 
 class OpportunityService:
@@ -1200,37 +1202,15 @@ class OpportunityService:
                             sl = sl / 100.0
 
                     if sl is not None and sl > 0:
-                        # Use last confirmed BUY signal as entry
+                        # Use last confirmed BUY signal as entry. Do not infer active
+                        # entries from bullish trend alone; the chart must be able to
+                        # prove HOLD with a matching entry signal.
                         if last_buy_idx is not None and last_buy_idx in df_closed.index:
                             entry_price = _signal_execution_price(
                                 df_closed,
                                 last_buy_idx,
                                 direction="entry",
                             )
-                        elif short_above_long and not df_closed.empty:
-                            # Fallback: infer entry from last bullish crossover on closed candles.
-                            # This is useful when the signal generator doesn't emit explicit BUYs,
-                            # but we still mark HOLD via trend condition.
-                            try:
-                                s = df_closed["short"]
-                                m = df_closed["medium"] if "medium" in df_closed.columns else None
-                                l = df_closed["long"] if "long" in df_closed.columns else None
-
-                                inferred_idx = None
-                                if l is not None:
-                                    cross_long = (s.shift(1) <= l.shift(1)) & (s > l)
-                                    if cross_long.any():
-                                        inferred_idx = cross_long[cross_long].index[-1]
-
-                                if inferred_idx is None and m is not None:
-                                    cross_med = (s.shift(1) <= m.shift(1)) & (s > m)
-                                    if cross_med.any():
-                                        inferred_idx = cross_med[cross_med].index[-1]
-
-                                if inferred_idx is not None and inferred_idx in df_closed.index:
-                                    entry_price = float(df_closed.loc[inferred_idx, "close"])
-                            except Exception:
-                                pass
 
                         if entry_price and last_price and last_price > 0:
                             if direction == "short":

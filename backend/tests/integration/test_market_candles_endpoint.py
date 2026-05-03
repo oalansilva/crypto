@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
 import httpx
@@ -115,6 +116,91 @@ async def test_market_candles_crypto_returns_ordered_and_limited(monkeypatch):
         "2025-01-01T01:00:00+00:00",
         "2025-01-01T02:00:00+00:00",
     ]
+
+
+async def test_market_candles_refreshes_when_persisted_crypto_candles_are_stale(monkeypatch):
+    block_external_network(monkeypatch)
+
+    stale_candles = [
+        {
+            "timestamp_utc": "2026-04-24T00:00:00+00:00",
+            "open": 0.2499,
+            "high": 0.2519,
+            "low": 0.2499,
+            "close": 0.2516,
+            "volume": 8827222.3,
+            "source": "ccxt",
+        }
+    ]
+
+    class _StaleOhlcvRepository:
+        enabled = True
+
+        def read_recent_candles(self, *_args, **_kwargs):
+            return stale_candles
+
+        def write_candles(self, *_args, **_kwargs):
+            return 1
+
+    fresh_df = _build_df(
+        [
+            {
+                "timestamp_utc": "2026-05-02T00:00:00Z",
+                "open": 0.2483,
+                "high": 0.251,
+                "low": 0.247,
+                "close": 0.2503,
+                "volume": 10,
+            }
+        ]
+    )
+    fake_ccxt = _FakeProvider(source="ccxt", df=fresh_df)
+
+    monkeypatch.setattr(app_api, "_OHLCV_REPO", _StaleOhlcvRepository())
+    monkeypatch.setattr(app_api, "get_market_data_provider", lambda *_args: fake_ccxt)
+
+    response = await _get("/api/market/candles?symbol=ADA/USDT&timeframe=1d&limit=200")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+
+    assert payload["data_source"] == "ccxt"
+    assert payload["candles"][-1]["timestamp_utc"] == "2026-05-02T00:00:00+00:00"
+
+
+async def test_market_candles_uses_fresh_persisted_crypto_candles(monkeypatch):
+    block_external_network(monkeypatch)
+
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    persisted = [
+        {
+            "timestamp_utc": (now - timedelta(hours=1)).isoformat(),
+            "open": 1,
+            "high": 2,
+            "low": 1,
+            "close": 2,
+            "volume": 10,
+            "source": "ccxt",
+        }
+    ]
+
+    class _FreshOhlcvRepository:
+        enabled = True
+
+        def read_recent_candles(self, *_args, **_kwargs):
+            return persisted
+
+    def _fail_get_market_data_provider(data_source: str | None):
+        raise AssertionError(f"Unexpected provider selection: {data_source}")
+
+    monkeypatch.setattr(app_api, "_OHLCV_REPO", _FreshOhlcvRepository())
+    monkeypatch.setattr(app_api, "get_market_data_provider", _fail_get_market_data_provider)
+
+    response = await _get("/api/market/candles?symbol=ADA/USDT&timeframe=1d&limit=200")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+
+    assert payload["data_source"] == "timescaledb"
+    assert payload["candles"] == persisted
 
 
 async def test_market_candles_stock_intraday_rejected(monkeypatch):

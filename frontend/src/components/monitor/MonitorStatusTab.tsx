@@ -527,8 +527,7 @@ export const MonitorStatusTab: React.FC = () => {
     };
 
     const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
-        const preference = getPreference(opportunity.symbol);
-        const requested = toChartTimeframe(preference.price_timeframe || opportunity.timeframe);
+        const requested = toChartTimeframe(opportunity.timeframe);
         return getOpportunityAssetType(opportunity) === 'stock' ? '1d' : requested;
     };
 
@@ -1307,6 +1306,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 portfolioStatusTone={derived?.tone}
                                                                                 isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
                                                                                 isOpeningChart={openingChartSymbol === opportunity.symbol}
+                                                                                isAdmin={showTechnicalColumns}
                                                                                 onToggleInPortfolio={handleToggleInPortfolio}
                                                                                 onToggleCardMode={handleToggleCardMode}
                                                                                 onToggleTimeframe={handleToggleTimeframe}

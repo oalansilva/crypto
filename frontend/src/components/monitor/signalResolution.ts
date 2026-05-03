@@ -34,6 +34,7 @@ export interface ResolveOpportunitySignalContext {
     readonly selectedTimeframe?: string | null;
     readonly latestCandleTime?: string | null;
     readonly requireCurrentCandleMatch?: boolean;
+    readonly hasVisibleActiveEntry?: boolean | null;
 }
 
 const TIMEFRAME_TO_MS: Record<string, number> = {
@@ -133,9 +134,10 @@ export const resolveOpportunitySignal = (
         opportunity.indicator_values_candle_time,
         context.latestCandleTime,
     );
+    const activeEntryMissingFromChart = Boolean(isHolding) && context.hasVisibleActiveEntry === false;
 
     let section: MonitorSignalKind = 'wait';
-    let isUncertain = uncertainty || timeframeMismatch || candleMismatch;
+    let isUncertain = uncertainty || timeframeMismatch || candleMismatch || activeEntryMissingFromChart;
     const reasons: string[] = [];
     if (uncertainty) {
         reasons.push('Sem candle válido/atual para esta resolução.');
@@ -145,6 +147,9 @@ export const resolveOpportunitySignal = (
     }
     if (candleMismatch) {
         reasons.push('EXIT bloqueado: candle de referência não corresponde ao último candle exibido.');
+    }
+    if (activeEntryMissingFromChart) {
+        reasons.push('HOLD bloqueado: entrada ativa não aparece nos candles exibidos.');
     }
 
     if (rawStatus === 'HOLDING' || rawStatus === 'HOLD' || rawStatus === 'EXIT_NEAR' || rawStatus === 'EXIT_SIGNAL') {

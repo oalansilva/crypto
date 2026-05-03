@@ -35,7 +35,7 @@ def test_resolve_position_state_marks_stopped_out_when_price_is_below_stop():
     assert stop_breached_now is True
 
 
-def test_resolve_position_state_keeps_holding_when_no_exit_or_stop():
+def test_resolve_position_state_keeps_holding_when_active_entry_has_no_later_exit_or_stop():
     is_holding, is_stopped_out, stop_breached_now = _resolve_position_state(
         short_above_long=True,
         last_buy_pos=10,
@@ -47,6 +47,38 @@ def test_resolve_position_state_keeps_holding_when_no_exit_or_stop():
     )
 
     assert is_holding is True
+    assert is_stopped_out is False
+    assert stop_breached_now is False
+
+
+def test_resolve_position_state_does_not_hold_without_confirmed_entry():
+    is_holding, is_stopped_out, stop_breached_now = _resolve_position_state(
+        short_above_long=True,
+        last_buy_pos=None,
+        last_sell_pos=None,
+        last_sell_reason=None,
+        direction="long",
+        last_price=0.74,
+        stop_price=None,
+    )
+
+    assert is_holding is False
+    assert is_stopped_out is False
+    assert stop_breached_now is False
+
+
+def test_resolve_position_state_waits_when_entry_exists_but_trend_is_not_active():
+    is_holding, is_stopped_out, stop_breached_now = _resolve_position_state(
+        short_above_long=False,
+        last_buy_pos=10,
+        last_sell_pos=8,
+        last_sell_reason="exit_logic",
+        direction="long",
+        last_price=2078.75,
+        stop_price=2049.78,
+    )
+
+    assert is_holding is False
     assert is_stopped_out is False
     assert stop_breached_now is False
 

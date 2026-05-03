@@ -21,6 +21,7 @@ interface OpportunityCardProps {
     portfolioStatusTone?: 'neutral' | 'success' | 'warning';
     isSavingPreference: boolean;
     isOpeningChart: boolean;
+    isAdmin?: boolean;
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
     onToggleTimeframe: (symbol: string, nextTimeframe: MonitorPriceTimeframe) => void;
@@ -58,6 +59,13 @@ const renderKeyValueRows = (values?: Record<string, unknown>): Array<[string, st
 
 const protectedRows = (): Array<[string, string]> => [['Protegido', 'Oculto']];
 
+const toMonitorPriceTimeframe = (value: string | null | undefined): MonitorPriceTimeframe | null => {
+    if (value === '15m' || value === '1h' || value === '4h' || value === '1d') {
+        return value;
+    }
+    return null;
+};
+
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     opportunity,
     preference,
@@ -66,6 +74,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     portfolioStatusTone = 'neutral',
     isSavingPreference,
     isOpeningChart,
+    isAdmin = false,
     onToggleInPortfolio,
     onToggleCardMode,
     onToggleTimeframe,
@@ -84,7 +93,13 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
     const isStock = getOpportunityAssetType(opportunity) === 'stock';
-    const effectiveTimeframe: MonitorPriceTimeframe = isStock ? '1d' : preference.price_timeframe;
+    const showTechnicalDetails = isAdmin || !strategyProtected;
+    const strategyTimeframe = toMonitorPriceTimeframe(timeframe);
+    const effectiveTimeframe: MonitorPriceTimeframe = !showTechnicalDetails && strategyTimeframe
+        ? strategyTimeframe
+        : isStock
+            ? '1d'
+            : preference.price_timeframe;
     const distance = distance_to_next_status;
     const distanceStr = distance !== null && distance !== undefined ? `${distance.toFixed(2)}%` : '-';
 
@@ -209,48 +224,50 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <span title="Strategy timeframe" className="detail-timeframe">{timeframe || '-'}</span>
                     <span title="Price chart timeframe" className="detail-timeframe">chart {effectiveTimeframe}</span>
                 </div>
-                <div className="detail-controls">
-                    <button
-                        type="button"
-                        className="btn ghost"
-                        data-testid={`portfolio-toggle-${symbolTestKey}`}
-                        aria-pressed={preference.in_portfolio}
-                        disabled={isPortfolioDerived || isSavingPreference}
-                        onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
-                    >
-                        {preference.in_portfolio ? 'In Portfolio' : 'Out Portfolio'}
-                    </button>
-                    <button
-                        type="button"
-                        className="btn ghost"
-                        data-testid={`mode-toggle-${symbolTestKey}`}
-                        onClick={() => onToggleCardMode(symbol, nextMode)}
-                        disabled={isSavingPreference}
-                    >
-                        <span data-testid={`mode-label-${symbolTestKey}`}>
-                            {preference.card_mode === 'price' ? 'Price' : 'Strategy'}
-                        </span>
-                    </button>
-                    <div className="timeframe-toggle-group" aria-label={`Timeframe ${symbol}`}>
-                        {timeframeOptions.map((option) => {
-                            const disabled = isStock && option !== '1d';
-                            const active = effectiveTimeframe === option;
-                            return (
-                                <button
-                                    key={option}
-                                    type="button"
-                                    className={`btn ghost ${active ? 'active' : ''}`}
-                                    data-testid={`timeframe-toggle-${symbolTestKey}-${option}`}
-                                    aria-pressed={active}
-                                    disabled={disabled || isSavingPreference}
-                                    onClick={() => onToggleTimeframe(symbol, option)}
-                                >
-                                    {option}
-                                </button>
-                            );
-                        })}
+                {showTechnicalDetails ? (
+                    <div className="detail-controls">
+                        <button
+                            type="button"
+                            className="btn ghost"
+                            data-testid={`portfolio-toggle-${symbolTestKey}`}
+                            aria-pressed={preference.in_portfolio}
+                            disabled={isPortfolioDerived || isSavingPreference}
+                            onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
+                        >
+                            {preference.in_portfolio ? 'In Portfolio' : 'Out Portfolio'}
+                        </button>
+                        <button
+                            type="button"
+                            className="btn ghost"
+                            data-testid={`mode-toggle-${symbolTestKey}`}
+                            onClick={() => onToggleCardMode(symbol, nextMode)}
+                            disabled={isSavingPreference}
+                        >
+                            <span data-testid={`mode-label-${symbolTestKey}`}>
+                                {preference.card_mode === 'price' ? 'Price' : 'Strategy'}
+                            </span>
+                        </button>
+                        <div className="timeframe-toggle-group" aria-label={`Timeframe ${symbol}`}>
+                            {timeframeOptions.map((option) => {
+                                const disabled = isStock && option !== '1d';
+                                const active = effectiveTimeframe === option;
+                                return (
+                                    <button
+                                        key={option}
+                                        type="button"
+                                        className={`btn ghost ${active ? 'active' : ''}`}
+                                        data-testid={`timeframe-toggle-${symbolTestKey}-${option}`}
+                                        aria-pressed={active}
+                                        disabled={disabled || isSavingPreference}
+                                        onClick={() => onToggleTimeframe(symbol, option)}
+                                    >
+                                        {option}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                ) : null}
             </div>
             <div className="detail">
                 <div>
@@ -288,33 +305,35 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     ) : null}
                 </div>
 
-                <div>
-                    <h5 className="h5-params">
-                        <span className="swatch" />
-                        Parâmetros
-                    </h5>
-                    <dl className="kv">
-                        {parameterRows.map(([label, value]) => (
-                            <React.Fragment key={`param-${label}`}>
-                                <dt>{label}</dt>
-                                <dd>{value}</dd>
-                            </React.Fragment>
-                        ))}
-                    </dl>
-                    <div style={{ height: '14px' }} />
-                    <h5 className="h5-indicators">
-                        <span className="swatch" />
-                        Indicadores
-                    </h5>
-                    <dl className="kv">
-                        {indicatorRows.map(([label, value]) => (
-                            <React.Fragment key={`indicator-${label}`}>
-                                <dt>{label}</dt>
-                                <dd>{value}</dd>
-                            </React.Fragment>
-                        ))}
-                    </dl>
-                </div>
+                {showTechnicalDetails ? (
+                    <div>
+                        <h5 className="h5-params">
+                            <span className="swatch" />
+                            Parâmetros
+                        </h5>
+                        <dl className="kv">
+                            {parameterRows.map(([label, value]) => (
+                                <React.Fragment key={`param-${label}`}>
+                                    <dt>{label}</dt>
+                                    <dd>{value}</dd>
+                                </React.Fragment>
+                            ))}
+                        </dl>
+                        <div style={{ height: '14px' }} />
+                        <h5 className="h5-indicators">
+                            <span className="swatch" />
+                            Indicadores
+                        </h5>
+                        <dl className="kv">
+                            {indicatorRows.map(([label, value]) => (
+                                <React.Fragment key={`indicator-${label}`}>
+                                    <dt>{label}</dt>
+                                    <dd>{value}</dd>
+                                </React.Fragment>
+                            ))}
+                        </dl>
+                    </div>
+                ) : null}
 
                 <div>
                     <h5 className="h5-notes">
@@ -399,34 +418,36 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
             <div className="detail-foot">
                 <div className="hint">Lote {batchInfo} · ref {batchReference}</div>
-                <div className="actions">
-                    <button type="button" className="btn ghost" onClick={exportSummary}>
-                        <Download className="h-3.5 w-3.5" />
-                        Exportar
-                    </button>
-                    <button
-                        type="button"
-                        className="btn"
-                        onClick={() => onToggleCardMode(symbol, nextMode)}
-                        title={`Alternar para modo ${nextMode}`}
-                    >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        Reavaliar
-                    </button>
-                    <button type="button" className="btn" onClick={() => onOpenChart(opportunity)}>
-                        <LineChart className="h-3.5 w-3.5" />
-                        Ver gráfico
-                    </button>
-                    <button
-                        type="button"
-                        className="btn primary"
-                        onClick={confirmManagement}
-                        disabled={isSavingPreference}
-                    >
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Confirmar gestão
-                    </button>
-                </div>
+                {showTechnicalDetails ? (
+                    <div className="actions">
+                        <button type="button" className="btn ghost" onClick={exportSummary}>
+                            <Download className="h-3.5 w-3.5" />
+                            Exportar
+                        </button>
+                        <button
+                            type="button"
+                            className="btn"
+                            onClick={() => onToggleCardMode(symbol, nextMode)}
+                            title={`Alternar para modo ${nextMode}`}
+                        >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Reavaliar
+                        </button>
+                        <button type="button" className="btn" onClick={() => onOpenChart(opportunity)}>
+                            <LineChart className="h-3.5 w-3.5" />
+                            Ver gráfico
+                        </button>
+                        <button
+                            type="button"
+                            className="btn primary"
+                            onClick={confirmManagement}
+                            disabled={isSavingPreference}
+                        >
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Confirmar gestão
+                        </button>
+                    </div>
+                ) : null}
             </div>
 
         </div>
