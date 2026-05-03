@@ -132,10 +132,10 @@ The UI MUST remain responsive on mobile when fetching candles after timeframe ch
 - **THEN** the user can still scroll the Monitor list
 
 ### Requirement: Monitor uses dark-green palette
-The UI MUST apply a dark-green palette to the Monitor screen (`/monitor`).
+The UI MUST apply a dark-green palette to the Monitor screen (`/monitor`) by default.
 
 #### Scenario: Background is dark-green (not black)
-- **WHEN** the user opens Monitor
+- **WHEN** the user opens Monitor without a valid explicit global theme preference
 - **THEN** the primary background is dark-green (not pure black)
 
 #### Scenario: Readability is preserved
@@ -204,3 +204,23 @@ The frontend UI SHALL render success feedback from form submissions in a visible
 #### Scenario: User dismisses a toast
 - **WHEN** a notification is visible and the user clicks the close button
 - **THEN** the notification SHALL close visually
+
+### Requirement: Navigation exposes stable ASCII accessible labels for tested routes
+The primary navigation SHALL expose stable ASCII accessible names for route links covered by role-based E2E tests while preserving the visible Portuguese labels.
+
+#### Scenario: Supply Distribution link is found by ASCII accessible name
+- **WHEN** an admin user opens the primary navigation
+- **THEN** the Supply Distribution link is available by role with accessible name `Distribuicao`
+- **AND** the visible menu text remains `Distribuição`
+
+### Requirement: Monitor E2E validates expanded detail cards
+The Monitor E2E suite SHALL validate card-only controls only after the corresponding table row has been expanded.
+
+#### Scenario: Collapsed Monitor row has no detail card in DOM
+- **WHEN** the Monitor renders a collapsed opportunity row
+- **THEN** the corresponding `monitor-card-*` detail element is not present
+
+#### Scenario: Expanded Monitor row exposes detail card controls
+- **WHEN** the E2E test expands a Monitor table row
+- **THEN** the corresponding `monitor-card-*` detail element is visible and its controls can be asserted
+

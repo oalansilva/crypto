@@ -63,6 +63,16 @@ export type MonitorCardMode = 'price' | 'strategy';
 export type MonitorPriceTimeframe = '15m' | '1h' | '4h' | '1d';
 
 export type MonitorTheme = 'dark-green' | 'black';
+export const DEFAULT_MONITOR_THEME: MonitorTheme = 'dark-green';
+export const GLOBAL_MONITOR_PREFERENCE_KEY = '__global__';
+
+export const isValidMonitorTheme = (value: unknown): value is MonitorTheme => (
+    value === 'dark-green' || value === 'black'
+);
+
+export const normalizeMonitorTheme = (value: unknown): MonitorTheme => (
+    isValidMonitorTheme(value) ? value : DEFAULT_MONITOR_THEME
+);
 
 export interface MonitorPreference {
     in_portfolio: boolean;

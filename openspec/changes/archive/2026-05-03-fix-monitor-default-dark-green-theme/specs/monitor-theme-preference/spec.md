@@ -1,8 +1,5 @@
-# monitor-theme-preference Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change monitor-dark-green-theme. Update Purpose after archive.
-## Requirements
 ### Requirement: Monitor theme preference is persisted in backend
 The system MUST persist a Monitor theme preference in the backend.
 
@@ -17,4 +14,3 @@ The system MUST persist a Monitor theme preference in the backend.
 #### Scenario: Preference persists across devices
 - **WHEN** the user sets a theme on one device
 - **THEN** another device sees the same theme after fetching preferences
-

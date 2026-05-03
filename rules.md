@@ -24,9 +24,11 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 
 4. Quando Alan disser que um card esta homologado, mover somente de `Done` para `Homologado`.
    - Nao abrir PR, nao mergear em `main`, nao arquivar OpenSpec e nao fazer commit por esse evento.
+   - Termos como `homologado`, `homologuei`, `aprovado em develop` ou `cards homologados` nunca autorizam release, commit, PR ou merge.
 
 5. Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, executar o fechamento de producao dos cards `Homologado`: revisar pendencias locais, rodar validacao final, arquivar OpenSpec, fazer commit unico do lote em `develop`, subir para GitHub, abrir/reusar PR para `main`, fazer merge manual e so depois mover os cards incluidos para `Pronto`.
    - Nao usar auto-merge.
+   - So comandos explicitos de lote/release autorizam qualquer acao em `main`.
 
 6. O unico commit da entrega deve acontecer no fechamento de lote/release, nao durante implementacao nem ao mover card para `Homologado`.
    - Se CI/checks falharem depois do push, corrija preservando um commit final sempre que tecnicamente seguro; se nao for seguro, registre a excecao e o motivo.
