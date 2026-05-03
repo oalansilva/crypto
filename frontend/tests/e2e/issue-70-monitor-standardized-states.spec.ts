@@ -58,10 +58,10 @@ const OPPORTUNITIES_PAYLOAD = [
   },
   {
     id: 3,
-    symbol: 'AAPL',
+    symbol: 'XRP/USDT',
     timeframe: '1d',
     template_name: 'ema_rsi',
-    name: 'AAPL Exit',
+    name: 'XRP Exit',
     notes: '',
     tier: 2,
     parameters: { ema_short: 9, ema_long: 21 },
@@ -116,15 +116,15 @@ async function setupApiMocks(page: any) {
     })
   )
 
-    await page.route('**/api/monitor/preferences', (route: any) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          __global__: { in_portfolio: false, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
         'BTC/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
         'ETH/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
-        'AAPL': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
+        'XRP/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
       }),
     })
   )
@@ -161,7 +161,11 @@ test('issue 70: monitor standardizes states to HOLD, WAIT and EXIT', async ({ pa
 
   const holdCard = page.getByTestId('monitor-card-btc-usdt')
   const waitCard = page.getByTestId('monitor-card-eth-usdt')
-  const exitCard = page.getByTestId('monitor-card-aapl')
+  const exitCard = page.getByTestId('monitor-card-xrp-usdt')
+
+  await page.getByTestId('monitor-row-btc-usdt').click()
+  await page.getByTestId('monitor-row-eth-usdt').click()
+  await page.getByTestId('monitor-row-xrp-usdt').click()
 
   await expect(holdCard.getByText(/^HOLD$/)).toBeVisible()
   await expect(waitCard.getByText(/^WAIT$/)).toBeVisible()

@@ -5,6 +5,9 @@ import {
     getStrategyDisplayName,
     isDerivedPortfolioRuleActive,
     type Opportunity,
+    DEFAULT_MONITOR_THEME,
+    normalizeMonitorTheme,
+    GLOBAL_MONITOR_PREFERENCE_KEY,
     type MonitorCardMode,
     type MonitorPreference,
     type MonitorPriceTimeframe,
@@ -69,10 +72,8 @@ const DEFAULT_PREFERENCE: MonitorPreference = {
     in_portfolio: false,
     card_mode: 'price',
     price_timeframe: '1d',
-    theme: 'dark-green',
+    theme: DEFAULT_MONITOR_THEME,
 };
-
-const DEFAULT_THEME: MonitorTheme = 'dark-green';
 const BINANCE_MONITOR_PORTFOLIO_MIN_USD = 1;
 const FAVORITES_STORAGE_KEY = 'crypto-monitor-favorites-v1';
 const SPARKLINE_LIMIT = 14;
@@ -81,8 +82,6 @@ const toFavoriteKey = (opportunity: Opportunity): string => String(opportunity.i
 const normalizeFavoriteKey = (value: string | null | undefined): string => String(value || '').trim();
 
 const getSparklineKey = (symbol: string, timeframe: ChartTimeframe): string => `${symbol}|${timeframe}`;
-
-const normalizeTheme = (value: unknown): MonitorTheme => (value === 'black' ? 'black' : DEFAULT_THEME);
 
 const renderSparkPath = (values: number[]): { line: string; area: string; dot: { x: number; y: number } } => {
     if (values.length === 0) {
@@ -314,7 +313,7 @@ export const MonitorStatusTab: React.FC = () => {
                             || raw?.price_timeframe === '1d'
                             ? raw.price_timeframe
                             : '1d',
-                        theme: normalizeTheme(raw?.theme),
+                        theme: normalizeMonitorTheme(raw?.theme),
                     };
                 }
                 setPreferences(normalized);
@@ -415,7 +414,7 @@ export const MonitorStatusTab: React.FC = () => {
             in_portfolio: patch.in_portfolio ?? prev.in_portfolio,
             card_mode: patch.card_mode ?? prev.card_mode,
             price_timeframe: patch.price_timeframe ?? prev.price_timeframe,
-            theme: patch.theme ?? prev.theme ?? DEFAULT_THEME,
+            theme: patch.theme ?? prev.theme ?? DEFAULT_MONITOR_THEME,
         };
 
         setPreferences((current) => ({ ...current, [symbol]: next }));
@@ -444,7 +443,7 @@ export const MonitorStatusTab: React.FC = () => {
                         || payload?.price_timeframe === '1d'
                         ? payload.price_timeframe
                         : '1d',
-                    theme: normalizeTheme(payload?.theme),
+                    theme: normalizeMonitorTheme(payload?.theme),
                 },
             }));
         } catch (error) {
@@ -950,10 +949,10 @@ export const MonitorStatusTab: React.FC = () => {
         avgWaitRisk: formatPercent(sectionAverageRisk.wait),
     };
 
-    const theme: MonitorTheme = preferences['__global__']?.theme ?? DEFAULT_THEME;
+    const theme: MonitorTheme = normalizeMonitorTheme(preferences[GLOBAL_MONITOR_PREFERENCE_KEY]?.theme);
     const effectiveSearchPlaceholder = 'Buscar par, estratégia, tag...';
     const toggleTheme = () => {
-        void persistPreference('__global__', { theme: theme === 'dark-green' ? 'black' : 'dark-green' });
+        void persistPreference(GLOBAL_MONITOR_PREFERENCE_KEY, { theme: theme === DEFAULT_MONITOR_THEME ? 'black' : DEFAULT_MONITOR_THEME });
     };
 
     return (
@@ -1174,6 +1173,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                 <tr
                                                                     className={`head-row ${expanded ? 'expanded' : ''}`}
                                                                     data-idx={rowKey}
+                                                                    aria-expanded={expanded}
                                                                     data-testid={`monitor-row-${symbolTestKey(opportunity.symbol)}`}
                                                                     onClick={(event) => handleRowClick(event, rowKey)}
                                                                 >
@@ -1181,6 +1181,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         <button
                                                                             type="button"
                                                                             className={`row-toggle ${expanded ? 'open' : ''}`}
+                                                                            aria-expanded={expanded}
                                                                             onClick={(event) => {
                                                                                 event.stopPropagation();
                                                                                 handleToggleRow(rowKey);
@@ -1287,30 +1288,33 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         </button>
                                                                     </td>
                                                                 </tr>
-                                                                <tr
-                                                                    className="detail-row"
-                                                                    data-detail={rowKey}
-                                                                    style={{ display: expanded ? '' : 'none' }}
-                                                                >
-                                                                    <td colSpan={detailColSpan}>
-                                                                        <OpportunityCard
-                                                                            opportunity={opportunity}
-                                                                            preference={{
-                                                                                ...pref,
-                                                                                in_portfolio: inPortfolio,
-                                                                            }}
-                                                                            isPortfolioDerived={Boolean(derived?.active)}
-                                                                            portfolioStatusMessage={derived?.message}
-                                                                            portfolioStatusTone={derived?.tone}
-                                                                            isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
-                                                                            isOpeningChart={openingChartSymbol === opportunity.symbol}
-                                                                            onToggleInPortfolio={handleToggleInPortfolio}
-                                                                            onToggleCardMode={handleToggleCardMode}
-                                                                            onToggleTimeframe={handleToggleTimeframe}
-                                                                            onOpenChart={handleOpenChart}
-                                                                        />
-                                                                    </td>
-                                                                </tr>
+                                                                {expanded ? (
+                                                                    <tr
+                                                                        className="detail-row"
+                                                                        data-detail={rowKey}
+                                                                        data-expanded={expanded}
+                                                                        aria-hidden={false}
+                                                                    >
+                                                                        <td colSpan={detailColSpan}>
+                                                                            <OpportunityCard
+                                                                                opportunity={opportunity}
+                                                                                preference={{
+                                                                                    ...pref,
+                                                                                    in_portfolio: inPortfolio,
+                                                                                }}
+                                                                                isPortfolioDerived={Boolean(derived?.active)}
+                                                                                portfolioStatusMessage={derived?.message}
+                                                                                portfolioStatusTone={derived?.tone}
+                                                                                isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
+                                                                                isOpeningChart={openingChartSymbol === opportunity.symbol}
+                                                                                onToggleInPortfolio={handleToggleInPortfolio}
+                                                                                onToggleCardMode={handleToggleCardMode}
+                                                                                onToggleTimeframe={handleToggleTimeframe}
+                                                                                onOpenChart={handleOpenChart}
+                                                                            />
+                                                                        </td>
+                                                                    </tr>
+                                                                ) : null}
                                                             </React.Fragment>
                                                         );
                                                     })}

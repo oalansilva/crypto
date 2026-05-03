@@ -68,6 +68,11 @@ def _normalize_price_timeframe(symbol: str, timeframe: Optional[str]) -> str:
     return normalized
 
 
+def _normalize_theme(value: Optional[str]) -> str:
+    normalized = str(value or "").strip()
+    return normalized if normalized in THEMES else "dark-green"
+
+
 @router.get("/preferences", response_model=Dict[str, MonitorPreferencePayload])
 def list_monitor_preferences(
     current_user_id: str = Depends(get_current_user),
@@ -81,7 +86,7 @@ def list_monitor_preferences(
             "price_timeframe": _normalize_price_timeframe(
                 row.symbol, getattr(row, "price_timeframe", None)
             ),
-            "theme": row.theme if getattr(row, "theme", None) in THEMES else "dark-green",
+            "theme": _normalize_theme(getattr(row, "theme", None)),
         }
         for row in rows
     }
@@ -191,8 +196,8 @@ def update_monitor_preferences(
 
     if payload.theme is not None:
         existing.theme = payload.theme
-    elif not getattr(existing, "theme", None):
-        existing.theme = "dark-green"
+    elif _normalize_theme(getattr(existing, "theme", None)) != getattr(existing, "theme", None):
+        existing.theme = _normalize_theme(getattr(existing, "theme", None))
 
     existing.updated_at = datetime.utcnow()
     db.commit()
@@ -204,5 +209,5 @@ def update_monitor_preferences(
         "price_timeframe": _normalize_price_timeframe(
             normalized_symbol, getattr(existing, "price_timeframe", None)
         ),
-        "theme": existing.theme if getattr(existing, "theme", None) in THEMES else "dark-green",
+        "theme": _normalize_theme(getattr(existing, "theme", None)),
     }

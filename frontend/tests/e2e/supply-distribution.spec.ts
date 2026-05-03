@@ -68,7 +68,34 @@ async function setupApiMocks(page: any) {
 }
 
 test('Supply distribution dashboard renders cohorts, bands, window filter, and whale alert', async ({ page }) => {
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'admin-user',
+        email: 'admin@example.com',
+        name: 'Admin User',
+        isAdmin: true,
+      }),
+    })
+  )
+
   await setupApiMocks(page)
+
+  await page.addInitScript(() => {
+    window.localStorage.setItem('auth_access_token', 'test-access-token')
+    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token')
+    window.localStorage.setItem(
+      'auth_user',
+      JSON.stringify({
+        id: 'admin-user',
+        email: 'admin@example.com',
+        name: 'Admin User',
+        isAdmin: true,
+      })
+    )
+  })
 
   await page.goto('/supply-distribution')
 
@@ -87,8 +114,8 @@ test('Supply distribution dashboard renders cohorts, bands, window filter, and w
   await expect(page.getByText('40.000 BTC')).toBeVisible()
 
   await page
-    .getByRole('navigation', { name: 'Navegação principal' })
-    .getByRole('link', { name: 'Distribuição', exact: true })
+    .getByRole('navigation', { name: 'Navegacao principal' })
+    .getByRole('link', { name: 'Distribuicao', exact: true })
     .click()
   await expect(page).toHaveURL(/\/supply-distribution/)
 })

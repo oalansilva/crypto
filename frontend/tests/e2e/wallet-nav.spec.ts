@@ -55,12 +55,12 @@ test('menu: Carteira -> loads and shows balances (with screenshots)', async ({ p
   fs.mkdirSync(evidenceDir, { recursive: true })
 
   await page.goto('/')
-  await expect(page.getByRole('navigation', { name: 'Navegação principal' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Navegacao principal' })).toBeVisible()
 
   await page.screenshot({ path: path.join(evidenceDir, '01-home.png'), fullPage: true })
 
   await page
-    .getByRole('navigation', { name: 'Navegação principal' })
+    .getByRole('navigation', { name: 'Navegacao principal' })
     .getByRole('link', { name: 'Carteira', exact: true })
     .click()
   await expect(page).toHaveURL(/\/external\/balances/)

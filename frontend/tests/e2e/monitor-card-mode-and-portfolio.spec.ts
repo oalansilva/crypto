@@ -291,7 +291,7 @@ test('defaults to In Portfolio and hides symbols without preference', async ({ p
   await page.goto('/monitor')
 
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
-  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeHidden()
+  await expect(page.getByTestId('monitor-card-btc-usdt')).toHaveCount(0)
   await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-card-nvda')).toHaveCount(0)

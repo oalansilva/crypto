@@ -28,6 +28,7 @@ interface AppNavProps {
 type NavItemConfig = {
   to: string
   label: string
+  accessibilityLabel?: string
   icon: ComponentType<{ className?: string }>
   adminOnly?: boolean
 }
@@ -36,7 +37,13 @@ const mainNavItems: NavItemConfig[] = [
   { to: '/monitor', label: 'Monitor', icon: Activity },
   { to: '/favorites', label: 'Favoritos', icon: Bookmark, adminOnly: true },
   { to: '/signals/history', label: 'Histórico', icon: TrendingUp, adminOnly: true },
-  { to: '/supply-distribution', label: 'Distribuição', icon: ChartPie, adminOnly: true },
+  {
+    to: '/supply-distribution',
+    label: 'Distribuição',
+    accessibilityLabel: 'Distribuicao',
+    icon: ChartPie,
+    adminOnly: true,
+  },
 ]
 
 const strategyNavItems: NavItemConfig[] = [
@@ -125,7 +132,7 @@ function NavSection({
         </div>
       )}
       <div className="space-y-1">
-        {items.map(({ to, label, icon: Icon }) => {
+        {items.map(({ to, label, accessibilityLabel, icon: Icon }) => {
           const isActive =
             to === '/monitor'
               ? pathname === '/monitor' || pathname === '/'
@@ -138,6 +145,7 @@ function NavSection({
               key={to}
               to={to}
               onClick={onNavigate}
+              aria-label={accessibilityLabel ?? label}
               className={[
                 'group relative flex items-center gap-2.5 overflow-hidden rounded-lg border px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
                 collapsed ? 'justify-center px-0' : '',
@@ -429,7 +437,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
 
         <nav
           className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-1 pb-3"
-          aria-label="Navegação principal"
+          aria-label="Navegacao principal"
         >
           <NavSection title="Principal" items={visibleMainNavItems} collapsed={collapsed} pathname={pathname} />
           {visibleStrategyNavItems.length > 0 ? (
