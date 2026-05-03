@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/Button';
 import {
     ChevronRight,
     LineChart,
-    MoreHorizontal,
     RefreshCw,
     Search,
     Star,
@@ -212,7 +211,7 @@ export const MonitorStatusTab: React.FC = () => {
         initialCandles: MarketCandle[];
         initialTimeframe: ChartTimeframe;
     } | null>(null);
-    const [sortBy, setSortBy] = useState<SortOption>('tier_distance');
+    const sortBy: SortOption = 'tier_distance';
     const [tierFilter, setTierFilter] = useState<TierFilter>('all');
     const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
     const [strategyFilter, setStrategyFilter] = useState<StrategyFilter>('all');
@@ -235,7 +234,7 @@ export const MonitorStatusTab: React.FC = () => {
     );
     const { toast } = useToast();
     const showTechnicalColumns = user?.isAdmin === true;
-    const detailColSpan = showTechnicalColumns ? 10 : 8;
+    const detailColSpan = showTechnicalColumns ? 9 : 7;
 
     const getPreference = (symbol: string): MonitorPreference => {
         return preferences[symbol] ?? DEFAULT_PREFERENCE;
@@ -971,18 +970,6 @@ export const MonitorStatusTab: React.FC = () => {
                         />
                         <span className="kbd">⌘K</span>
                     </label>
-                    <span className="conn-pill">
-                        <span
-                            className={`dot ${
-                                walletSyncState === 'ready'
-                                    ? 'green'
-                                    : walletSyncState === 'loading'
-                                        ? 'amber'
-                                        : 'muted'
-                            }`}
-                        />
-                        Binance · live
-                    </span>
                     <Button
                         variant="secondary"
                         className="topbar-btn"
@@ -1106,19 +1093,6 @@ export const MonitorStatusTab: React.FC = () => {
                         </select>
                         <div className="filter-spacer" />
                         <span className="chip-count">{filteredOpportunities.length} resultados · {favoriteSymbols.size} favoritos</span>
-                        <div className="seg" data-seg="sort">
-                            {showTechnicalColumns ? (
-                                <button className={sortBy === 'distance' ? 'on' : ''} onClick={() => setSortBy('distance')}>
-                                    Distância
-                                </button>
-                            ) : null}
-                            <button className={sortBy === 'risk' ? 'on' : ''} onClick={() => setSortBy('risk')}>
-                                Risco
-                            </button>
-                            <button className={sortBy === 'symbol' ? 'on' : ''} onClick={() => setSortBy('symbol')}>
-                                Par
-                            </button>
-                        </div>
                     </section>
 
                     <main className="monitor-board">
@@ -1173,12 +1147,11 @@ export const MonitorStatusTab: React.FC = () => {
                                                         {showTechnicalColumns ? <th className="col-spark">7d</th> : null}
                                                         <th>Risco até stop</th>
                                                         <th className="col-tags">Tags</th>
-                                                        <th>Status</th>
                                                         <th className="actions-cell" />
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                        {rows.map(({ opportunity, resolved }) => {
+                                                        {rows.map(({ opportunity }) => {
                                                             const chartTimeframe = resolveChartTimeframe(opportunity);
                                                             const pref = getPreference(opportunity.symbol);
                                                             const derived = portfolioStatusBySymbol[opportunity.symbol];
@@ -1286,9 +1259,6 @@ export const MonitorStatusTab: React.FC = () => {
                                                                             {showTechnicalColumns ? <span className="tag strategy">▲ Strategy</span> : null}
                                                                         </div>
                                                                     </td>
-                                                                    <td className={`status-pill ${sectionKey === 'hold' ? 'hold' : sectionKey === 'wait' ? 'wait' : 'exit'}`}>
-                                                                        {resolved.visual.badgeText}
-                                                                    </td>
                                                                     <td className="actions-cell">
                                                                         <button
                                                                             type="button"
@@ -1314,17 +1284,6 @@ export const MonitorStatusTab: React.FC = () => {
                                                                             }}
                                                                         >
                                                                             <Star className="h-4 w-4" fill={isFavorite ? 'currentColor' : 'none'} />
-                                                                        </button>
-                                                                        <button
-                                                                            type="button"
-                                                                            className="row-action"
-                                                                            title="Mais"
-                                                                            onClick={(event) => {
-                                                                                event.stopPropagation();
-                                                                                void Promise.resolve();
-                                                                            }}
-                                                                        >
-                                                                            <MoreHorizontal className="h-4 w-4" />
                                                                         </button>
                                                                     </td>
                                                                 </tr>
