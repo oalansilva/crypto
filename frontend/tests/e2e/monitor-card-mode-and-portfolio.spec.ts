@@ -29,14 +29,14 @@ const FAVORITES_PAYLOAD = [
   },
   {
     id: 2,
-    name: 'NVDA Trend',
-    symbol: 'NVDA',
+    name: 'ETH Trend',
+    symbol: 'ETH/USDT',
     timeframe: '1d',
     strategy_name: 'ema_rsi',
     parameters: {},
     metrics: {},
     created_at: '2025-01-01T00:00:00Z',
-    tier: 1,
+    tier: 2,
   },
 ]
 
@@ -62,20 +62,20 @@ const OPPORTUNITIES_PAYLOAD = [
   },
   {
     id: 2,
-    symbol: 'NVDA',
-    asset_type: 'stock',
+    symbol: 'ETH/USDT',
+    asset_type: 'cryptomoeda',
     timeframe: '1d',
     template_name: 'ema_rsi',
-    name: 'NVDA Trend',
+    name: 'ETH Trend',
     notes: '',
-    tier: 1,
+    tier: 2,
     parameters: { ema_short: 9, ema_long: 21 },
     is_holding: false,
     distance_to_next_status: 0.5,
     next_status_label: 'entry',
     status: 'WAIT',
     message: 'Waiting for entry',
-    last_price: 1000,
+    last_price: 3000,
     timestamp: '2025-01-01T00:00:00Z',
     details: {},
   },
@@ -98,6 +98,8 @@ async function setupApiMocks(
     candlesDelayMs?: number
     preferencePatchDelayMs?: number
     balances?: Array<{ asset: string; total: number }>
+    opportunitiesPayload?: Array<Record<string, unknown>>
+    initialStrategyPreferences?: Record<string, { liked: boolean }>
     initialPreferences?: Record<
       string,
       { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
@@ -111,6 +113,10 @@ async function setupApiMocks(
   const requestedTimeframes: string[] = []
   const requestedBalanceMinUsd: string[] = []
   const preferencePatches: Array<{ symbol: string; patch: any }> = []
+  const strategyPreferencePatches: Array<{ favoriteId: string; patch: any }> = []
+  const strategyPreferences: Record<string, { liked: boolean }> = {
+    ...(options?.initialStrategyPreferences ?? {}),
+  }
   const preferences: Record<
     string,
     { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
@@ -148,7 +154,7 @@ async function setupApiMocks(
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(OPPORTUNITIES_PAYLOAD),
+      body: JSON.stringify(options?.opportunitiesPayload ?? OPPORTUNITIES_PAYLOAD),
     })
   )
 
@@ -180,6 +186,31 @@ async function setupApiMocks(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(next),
+    })
+  })
+
+  await page.route('**/api/monitor/strategy-preferences**', async (route: any) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    const favoriteId = decodeURIComponent(url.pathname.split('/').pop() || '').trim()
+
+    if (request.method() === 'PUT' && favoriteId && favoriteId !== 'strategy-preferences') {
+      const patch = request.postDataJSON() || {}
+      strategyPreferencePatches.push({ favoriteId, patch })
+      strategyPreferences[favoriteId] = { liked: Boolean(patch.liked) }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(strategyPreferences[favoriteId]),
+      })
+      return
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(strategyPreferences),
     })
   })
 
@@ -242,15 +273,126 @@ async function setupApiMocks(
     requestedBalanceMinUsd,
     requestedTimeframes,
     preferencePatches,
+    strategyPreferencePatches,
   }
+}
+
+async function expandMonitorRow(page: any, symbolKey: string) {
+  const card = page.getByTestId(`monitor-card-${symbolKey}`)
+  if (await card.isVisible().catch(() => false)) {
+    return
+  }
+  await page.getByTestId(`monitor-row-${symbolKey}`).click()
+  await expect(card).toBeVisible()
 }
 
 test('defaults to In Portfolio and hides symbols without preference', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
+  await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeHidden()
+  await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-card-nvda')).toHaveCount(0)
+})
+
+test('monitor hides protected strategy details for common user', async ({ page }) => {
+  await setupApiMocks(page, {
+    opportunitiesPayload: [
+      {
+        ...OPPORTUNITIES_PAYLOAD[0],
+        template_name: 'Estratégia protegida',
+        strategy_display_name: 'EMA RSI',
+        is_strategy_protected: true,
+        parameters: {},
+        indicator_values: null,
+        details: {},
+        message: 'Aguardando confirmacao do sistema para a proxima decisao.',
+      },
+    ],
+  })
+  await page.goto('/monitor')
+
+  await expandMonitorRow(page, 'btc-usdt')
+  const card = page.getByTestId('monitor-card-btc-usdt')
+  await expect(card).toBeVisible()
+  await expect(card.getByText('EMA RSI')).toBeVisible()
+  await expect(card.getByText('Protegido')).toHaveCount(2)
+  await expect(card.getByText('Oculto')).toHaveCount(2)
+  await expect(card.getByText('ema_rsi')).toHaveCount(0)
+  await expect(card.getByText('ema_short')).toHaveCount(0)
+})
+
+test('favorite strategy filter uses persisted monitor strategy preferences', async ({ page }) => {
+  const mocks = await setupApiMocks(page, {
+    initialStrategyPreferences: { '1': { liked: true } },
+  })
+  await page.goto('/monitor')
+
+  await page.getByTestId('monitor-filter-all').click()
+  await page.getByTestId('monitor-filter-favorites').click()
+  await expandMonitorRow(page, 'btc-usdt')
+  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-card-eth-usdt')).toHaveCount(0)
+
+  await page.getByTestId('monitor-filter-all').click()
+  await page.getByTestId('strategy-favorite-toggle-eth-usdt').click()
+
+  await expect
+    .poll(() => mocks.strategyPreferencePatches.some((entry) => entry.favoriteId === '2' && entry.patch?.liked === true))
+    .toBe(true)
+})
+
+test('monitor shows tier as star classification', async ({ page }) => {
+  await setupApiMocks(page)
+  await page.goto('/monitor')
+
+  await page.getByTestId('monitor-filter-all').click()
+  await expect(page.getByTestId('tier-stars-btc-usdt')).toHaveText('★★★')
+  await expect(page.getByTestId('tier-stars-eth-usdt')).toHaveText('★★')
+})
+
+test('monitor filters opportunities by star classification', async ({ page }) => {
+  await setupApiMocks(page)
+  await page.goto('/monitor')
+
+  await page.getByTestId('monitor-filter-all').click()
+  await page.getByTestId('monitor-filter-stars').selectOption('3')
+  await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-row-eth-usdt')).toHaveCount(0)
+
+  await page.getByTestId('monitor-filter-stars').selectOption('2')
+  await expect(page.getByTestId('monitor-row-eth-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-row-btc-usdt')).toHaveCount(0)
+
+  await page.getByTestId('monitor-filter-stars').selectOption('all')
+  await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-row-eth-usdt')).toBeVisible()
+})
+
+test('monitor simplifies table columns for common user', async ({ page }) => {
+  await setupApiMocks(page)
+  await page.goto('/monitor')
+
+  const header = page.locator('table.signals thead tr').first()
+  await expect(header.getByRole('columnheader', { name: 'Distância' })).toHaveCount(0)
+  await expect(header.getByRole('columnheader', { name: '7d' })).toHaveCount(0)
+  await expect(header.getByRole('columnheader', { name: 'Saída' })).toHaveCount(0)
+  await expect(header.getByRole('columnheader', { name: 'Status' })).toHaveCount(2)
+  await expect(page.locator('.filterbar').getByRole('button', { name: 'Distância' })).toHaveCount(0)
+})
+
+test('monitor uses concise common-user row tags', async ({ page }) => {
+  await setupApiMocks(page)
+  await page.goto('/monitor')
+
+  await page.getByTestId('monitor-filter-all').click()
+  const row = page.getByTestId('monitor-row-btc-usdt')
+  await expect(row.getByText('● Carteira')).toHaveText('● Carteira')
+  await expect(row.getByText('Portfolio')).toHaveCount(0)
+  await expect(row.getByText('▲ Strategy')).toHaveCount(0)
+  await expect(row.getByTestId('tier-stars-btc-usdt')).toHaveText('★★★')
 })
 
 test('flags only crypto cards as portfolio-derived when Binance credentials are configured', async ({ page }) => {
@@ -258,11 +400,14 @@ test('flags only crypto cards as portfolio-derived when Binance credentials are 
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
+  await expandMonitorRow(page, 'btc-usdt')
+  await expandMonitorRow(page, 'eth-usdt')
   await expect(page.getByTestId('monitor-card-btc-usdt')).toHaveAttribute('data-portfolio-derived', 'true')
-  await expect(page.getByTestId('monitor-card-nvda')).toHaveAttribute('data-portfolio-derived', 'false')
+  await expect(page.getByTestId('monitor-card-eth-usdt')).toHaveAttribute('data-portfolio-derived', 'true')
   await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
   await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('portfolio-toggle-nvda')).toBeEnabled()
+  await expect(page.getByTestId('portfolio-toggle-eth-usdt')).toBeDisabled()
+  await expect(page.getByTestId('portfolio-toggle-eth-usdt')).toHaveAttribute('aria-pressed', 'false')
 })
 
 test('uses Binance wallet holdings as the portfolio source for crypto cards', async ({ page }) => {
@@ -275,6 +420,7 @@ test('uses Binance wallet holdings as the portfolio source for crypto cards', as
   })
   await page.goto('/monitor')
 
+  await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByTestId('portfolio-sync-status-btc-usdt')).toContainText('Sincronizado com a Carteira Binance')
@@ -286,25 +432,29 @@ test('toggle in_portfolio persists across reload', async ({ page }) => {
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
-  await expect(page.getByTestId('monitor-card-nvda')).toBeVisible()
+  await expandMonitorRow(page, 'eth-usdt')
+  await expect(page.getByTestId('monitor-card-eth-usdt')).toBeVisible()
 
-  await page.getByTestId('portfolio-toggle-nvda').click()
+  await page.getByTestId('portfolio-toggle-eth-usdt').click()
   await page.getByTestId('monitor-filter-in-portfolio').click()
-  await expect(page.getByTestId('monitor-card-nvda')).toBeVisible()
+  await expect(page.getByTestId('monitor-card-eth-usdt')).toBeVisible()
 
   await page.reload()
-  await expect(page.getByTestId('monitor-card-nvda')).toBeVisible()
+  await expandMonitorRow(page, 'eth-usdt')
+  await expect(page.getByTestId('monitor-card-eth-usdt')).toBeVisible()
 })
 
 test('per-card mode toggle persists across reload', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
+  await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('mode-label-btc-usdt')).toHaveText('Price')
   await page.getByTestId('mode-toggle-btc-usdt').click()
   await expect(page.getByTestId('mode-label-btc-usdt')).toHaveText('Strategy')
 
   await page.reload()
+  await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('mode-label-btc-usdt')).toHaveText('Strategy')
 })
 
@@ -312,12 +462,14 @@ test('per-card timeframe selection persists across reload', async ({ page }) => 
   const mocks = await setupApiMocks(page)
   await page.goto('/monitor')
 
+  await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
   await page.getByTestId('timeframe-toggle-btc-usdt-4h').click()
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(() => mocks.requestedTimeframes.includes('4h')).toBe(true)
 
   await page.reload()
+  await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
 })
 
@@ -325,6 +477,7 @@ test('timeframe switch keeps non-chart controls interactive and shows localized 
   const mocks = await setupApiMocks(page, { candlesDelayMs: 600, preferencePatchDelayMs: 500 })
   await page.goto('/monitor')
 
+  await expandMonitorRow(page, 'btc-usdt')
   await page.getByTestId('timeframe-toggle-btc-usdt-4h').click()
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveAttribute('aria-pressed', 'true')
   // UI should remain interactive even while candles are fetching.
@@ -348,9 +501,12 @@ test('derived crypto portfolio toggle stays read-only and does not persist manua
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
+  await expandMonitorRow(page, 'btc-usdt')
+  await expandMonitorRow(page, 'eth-usdt')
   await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
   await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('portfolio-toggle-nvda')).toBeEnabled()
+  await expect(page.getByTestId('portfolio-toggle-eth-usdt')).toBeDisabled()
+  await expect(page.getByTestId('portfolio-toggle-eth-usdt')).toHaveAttribute('aria-pressed', 'false')
   await expect(mocks.preferencePatches).toHaveLength(0)
 })
 
@@ -363,6 +519,7 @@ test('shows fallback feedback when Binance wallet is unavailable', async ({ page
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
+  await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toBeDisabled()
   await expect(page.getByTestId('portfolio-toggle-btc-usdt')).toHaveAttribute('aria-pressed', 'false')
   await expect(page.getByTestId('portfolio-sync-status-btc-usdt')).toContainText('Binance credentials not configured')

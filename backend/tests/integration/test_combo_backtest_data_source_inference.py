@@ -69,6 +69,13 @@ def _patch_backtest_dependencies(monkeypatch):
 def _build_app() -> FastAPI:
     test_app = FastAPI()
     test_app.include_router(combo_routes.router)
+    test_app.dependency_overrides[combo_routes.get_current_admin] = lambda: "admin-user"
+    return test_app
+
+
+def _build_public_app() -> FastAPI:
+    test_app = FastAPI()
+    test_app.include_router(combo_routes.router)
     return test_app
 
 
@@ -82,6 +89,20 @@ async def _post_optimize(app: FastAPI, payload: dict):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         return await client.post("/api/combos/optimize", json=payload)
+
+
+async def test_combo_strategy_tooling_requires_admin():
+    app = _build_public_app()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        templates_response = await client.get("/api/combos/templates")
+        backtest_response = await client.post(
+            "/api/combos/backtest",
+            json={"template_name": "ema_rsi", "symbol": "BTC/USDT", "timeframe": "1d"},
+        )
+
+    assert templates_response.status_code == 401
+    assert backtest_response.status_code == 401
 
 
 async def test_backtest_us_ticker_rejected_for_crypto_only_mvp(monkeypatch):

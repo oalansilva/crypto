@@ -65,19 +65,19 @@ function App() {
         <Route element={<ProtectedLayout />}>
           <Route index element={<Navigate to="/monitor" replace />} />
           <Route path="/home" element={<HomePage />} />
-          <Route path="/favorites" element={<FavoritesDashboard />} />
+          <Route path="/favorites" element={<ProtectedRoute requireAdmin><FavoritesDashboard /></ProtectedRoute>} />
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/kanban" element={<KanbanPage />} />
-          <Route path="/signals" element={<SignalsPage />} />
-          <Route path="/signals/history" element={<SignalsHistoryPage />} />
-          <Route path="/supply-distribution" element={<SupplyDistributionPage />} />
-          <Route path="/combo/select" element={<ComboSelectPage />} />
+          <Route path="/signals" element={<ProtectedRoute requireAdmin><SignalsPage /></ProtectedRoute>} />
+          <Route path="/signals/history" element={<ProtectedRoute requireAdmin><SignalsHistoryPage /></ProtectedRoute>} />
+          <Route path="/supply-distribution" element={<ProtectedRoute requireAdmin><SupplyDistributionPage /></ProtectedRoute>} />
+          <Route path="/combo/select" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />
           {/* Backward-compat route (old link/bookmark) */}
-          <Route path="/combo/selectCrypto" element={<ComboSelectPage />} />
-          <Route path="/combo/edit/:templateName" element={<ComboEditPage />} />
-          <Route path="/combo/configure" element={<ComboConfigurePage />} />
-          <Route path="/combo/optimize" element={<ComboOptimizePage />} />
-          <Route path="/combo/results" element={<ComboResultsPage />} />
+          <Route path="/combo/selectCrypto" element={<ProtectedRoute requireAdmin><ComboSelectPage /></ProtectedRoute>} />
+          <Route path="/combo/edit/:templateName" element={<ProtectedRoute requireAdmin><ComboEditPage /></ProtectedRoute>} />
+          <Route path="/combo/configure" element={<ProtectedRoute requireAdmin><ComboConfigurePage /></ProtectedRoute>} />
+          <Route path="/combo/optimize" element={<ProtectedRoute requireAdmin><ComboOptimizePage /></ProtectedRoute>} />
+          <Route path="/combo/results" element={<ProtectedRoute requireAdmin><ComboResultsPage /></ProtectedRoute>} />
           <Route path="/openspec" element={<OpenSpecListPage />} />
           {/* Catch-all to support nested specs like /openspec/backend/spec */}
           <Route path="/openspec/*" element={<OpenSpecDetailPage />} />

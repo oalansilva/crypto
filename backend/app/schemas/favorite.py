@@ -24,6 +24,8 @@ class FavoriteStrategyCreate(FavoriteStrategyBase):
 class FavoriteStrategyResponse(FavoriteStrategyBase):
     id: int
     created_at: datetime
+    is_strategy_protected: bool = False
+    strategy_display_name: Optional[str] = None
 
     class Config:
         from_attributes = True

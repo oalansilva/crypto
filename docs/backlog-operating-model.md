@@ -47,8 +47,15 @@ Exemplos de evidencia:
 - `Prioridade`: `P0`, `P1`, `P2`.
 - `Frente`: `Produto`, `Monitor`, `Dados`, `Backtest`, `Grafico`, `Acesso`, `Risco`, `QA`, `Comercial`, `Operacao`, `Seguranca`, `Metricas`.
 - `Tipo`: `Produto`, `Codigo`, `QA`, `Comercial`, `Operacao`, `Seguranca`, `Metrica`.
+- `Owner`: somente `Codex`, `Alan` ou `Clara`.
 - `Semana`: semana de execucao ou revisao.
 - `Evidencia`: link ou descricao curta da prova de conclusao.
+
+Regra de owner:
+
+- `Codex`: execucao tecnica, codigo, infra, QA tecnico e seguranca.
+- `Clara`: produto, operacao, copy, validacao, metricas e evidencia executiva.
+- `Alan`: decisao, aprovacao, input pessoal, canal, lista de pessoas ou escolha final.
 
 ## WIP
 

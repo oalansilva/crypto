@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
+from app.models import MonitorStrategyPreference
 from app.routes import monitor_preferences
 from app.services.user_exchange_credentials import BINANCE_PROVIDER, upsert_user_exchange_credential
 
@@ -21,6 +22,9 @@ def _session_factory(tmp_path: Path):
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE TABLE monitor_preferences RESTART IDENTITY CASCADE"))
+        connection.execute(
+            text("TRUNCATE TABLE monitor_strategy_preferences RESTART IDENTITY CASCADE")
+        )
         connection.execute(
             text("TRUNCATE TABLE user_exchange_credentials RESTART IDENTITY CASCADE")
         )
@@ -63,6 +67,61 @@ def test_monitor_preferences_put_and_get_roundtrip(tmp_path: Path):
             "theme": "dark-green",
         },
     }
+
+
+def test_monitor_strategy_preferences_put_and_get_roundtrip(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        first = monitor_preferences.update_monitor_strategy_preferences(
+            payload=monitor_preferences.MonitorStrategyPreferenceUpdate(liked=True),
+            favorite_id=42,
+            current_user_id="user-a",
+            db=db,
+        )
+        listed = monitor_preferences.list_monitor_strategy_preferences(
+            current_user_id="user-a",
+            db=db,
+        )
+        second = monitor_preferences.update_monitor_strategy_preferences(
+            payload=monitor_preferences.MonitorStrategyPreferenceUpdate(liked=False),
+            favorite_id=42,
+            current_user_id="user-a",
+            db=db,
+        )
+        listed_after_unlike = monitor_preferences.list_monitor_strategy_preferences(
+            current_user_id="user-a",
+            db=db,
+        )
+
+    assert first == {"liked": True}
+    assert listed == {"42": {"liked": True}}
+    assert second == {"liked": False}
+    assert listed_after_unlike == {}
+
+
+def test_monitor_strategy_preferences_are_scoped_per_user(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+    with SessionLocal() as db:
+        monitor_preferences.update_monitor_strategy_preferences(
+            payload=monitor_preferences.MonitorStrategyPreferenceUpdate(liked=True),
+            favorite_id=7,
+            current_user_id="user-a",
+            db=db,
+        )
+        db.add(MonitorStrategyPreference(user_id="user-b", favorite_id=8, liked=True))
+        db.commit()
+
+        first_user = monitor_preferences.list_monitor_strategy_preferences(
+            current_user_id="user-a",
+            db=db,
+        )
+        second_user = monitor_preferences.list_monitor_strategy_preferences(
+            current_user_id="user-b",
+            db=db,
+        )
+
+    assert first_user == {"7": {"liked": True}}
+    assert second_user == {"8": {"liked": True}}
 
 
 def test_monitor_preferences_put_partial_update_keeps_defaults(tmp_path: Path):

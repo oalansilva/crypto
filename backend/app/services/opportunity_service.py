@@ -8,6 +8,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
+from sqlalchemy import func
+
 from app.strategies.combos.proximity_analyzer import ProximityAnalyzer
 from app.strategies.combos.combo_strategy import ComboStrategy
 from app.services.combo_service import ComboService
@@ -22,7 +24,8 @@ from app.services.market_data_providers import (
 )
 from app.symbols_config import get_excluded_symbols, is_excluded_symbol
 from app.database import SessionLocal
-from app.models import FavoriteStrategy
+from app.middleware.authMiddleware import ADMIN_EMAILS
+from app.models import FavoriteStrategy, User
 
 logger = logging.getLogger(__name__)
 _OHLCV_CACHE_TTL_SECONDS = 300.0
@@ -497,22 +500,13 @@ class OpportunityService:
     ) -> List[Dict[str, Any]]:
         """List relevant favorites for one user from existing table."""
         with self._session_factory() as db:
-            query = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == user_id)
-
-            normalized_tier_filter = str(tier_filter or "").strip().lower()
-            if not normalized_tier_filter or normalized_tier_filter == "all":
-                # Keep behavior consistent with API docs: "all"/empty = sem filtro por tier.
-                pass
-            elif normalized_tier_filter == "none":
-                query = query.filter(FavoriteStrategy.tier.is_(None))
-            else:
-                allowed_tiers = [
-                    int(t.strip()) for t in normalized_tier_filter.split(",") if t.strip().isdigit()
-                ]
-                if allowed_tiers:
-                    query = query.filter(FavoriteStrategy.tier.in_(allowed_tiers))
-
-            rows = query.all()
+            rows = self._favorite_rows_for_user(db, user_id, tier_filter)
+            source_user_id = user_id
+            if not self._has_monitor_candidate(rows):
+                fallback = self._favorite_rows_for_first_admin(db, user_id, tier_filter)
+                if fallback is not None:
+                    source_user_id, rows = fallback
+            is_curated_fallback = source_user_id != user_id
 
         favorites = []
         for row in rows:
@@ -525,6 +519,7 @@ class OpportunityService:
                 "parameters": row.parameters,
                 "notes": row.notes,
                 "tier": row.tier,
+                "is_curated_fallback": is_curated_fallback,
             }
             # Parse parameters JSON if string
             if isinstance(r["parameters"], str):
@@ -537,13 +532,87 @@ class OpportunityService:
                     r["parameters"] = {}
             favorites.append(r)
 
-        logger.info(f"Loaded {len(favorites)} favorite strategies from database")
+        if source_user_id != user_id:
+            logger.info(
+                "Loaded %d curated favorite strategies for user %s from admin source %s",
+                len(favorites),
+                user_id,
+                source_user_id,
+            )
+        else:
+            logger.info(f"Loaded {len(favorites)} favorite strategies from database")
         for fav in favorites:
             logger.debug(
                 f"  - ID {fav['id']}: {fav['symbol']} {fav['timeframe']} - {fav['strategy_name']}"
             )
 
         return favorites
+
+    def _favorite_rows_for_user(
+        self,
+        db,
+        user_id: str,
+        tier_filter: Optional[str] = None,
+    ) -> list[FavoriteStrategy]:
+        query = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == user_id)
+        return self._apply_tier_filter(query, tier_filter).all()
+
+    def _favorite_rows_for_first_admin(
+        self,
+        db,
+        requesting_user_id: str,
+        tier_filter: Optional[str] = None,
+    ) -> tuple[str, list[FavoriteStrategy]] | None:
+        admin_emails = self._configured_admin_emails()
+        if not admin_emails:
+            return None
+
+        admins = (
+            db.query(User)
+            .filter(func.lower(User.email).in_(admin_emails))
+            .order_by(User.email.asc())
+            .all()
+        )
+        admins_by_email = {str(admin.email).strip().lower(): admin for admin in admins}
+        for admin_email in admin_emails:
+            admin = admins_by_email.get(admin_email)
+            if not admin:
+                continue
+            admin_user_id = str(admin.id)
+            if admin_user_id == str(requesting_user_id):
+                continue
+            rows = self._favorite_rows_for_user(db, admin_user_id, tier_filter)
+            if self._has_monitor_candidate(rows):
+                return admin_user_id, rows
+        return None
+
+    def _configured_admin_emails(self) -> list[str]:
+        raw = os.getenv("ADMIN_EMAILS", "")
+        ordered = [email.strip().lower() for email in raw.split(",") if email.strip()]
+        if ordered:
+            return list(dict.fromkeys(ordered))
+        return sorted(email for email in ADMIN_EMAILS if email)
+
+    def _has_monitor_candidate(self, rows: list[FavoriteStrategy]) -> bool:
+        for row in rows:
+            symbol = str(getattr(row, "symbol", "") or "").strip()
+            if "/" in symbol and not _is_unsupported_symbol(symbol):
+                return True
+        return False
+
+    def _apply_tier_filter(self, query, tier_filter: Optional[str]):
+        normalized_tier_filter = str(tier_filter or "").strip().lower()
+        if not normalized_tier_filter or normalized_tier_filter == "all":
+            return query
+        if normalized_tier_filter == "none":
+            return query.filter(FavoriteStrategy.tier.is_(None))
+
+        allowed_tiers = [
+            int(t.strip()) for t in normalized_tier_filter.split(",") if t.strip().isdigit()
+        ]
+        if allowed_tiers:
+            return query.filter(FavoriteStrategy.tier.in_(allowed_tiers))
+        return query
 
     def _filter_by_tier(
         self, favorites: List[Dict[str, Any]], tier_filter: Optional[str]
@@ -1525,6 +1594,7 @@ class OpportunityService:
                         "template_name": template_name,
                         "name": fav["name"],  # User custom name
                         "notes": fav.get("notes"),
+                        "is_curated_fallback": bool(fav.get("is_curated_fallback")),
                         "tier": fav.get("tier"),
                         "parameters": fav.get("parameters") or {},
                         "is_holding": is_holding,
