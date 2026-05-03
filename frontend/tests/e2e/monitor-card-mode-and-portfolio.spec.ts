@@ -376,11 +376,18 @@ test('monitor simplifies table columns for common user', async ({ page }) => {
   await page.goto('/monitor')
 
   const header = page.locator('table.signals thead tr').first()
+  await expect(page.getByText('Binance system')).toHaveCount(0)
+  await expect(page.getByText('Binance · live')).toHaveCount(0)
   await expect(header.getByRole('columnheader', { name: 'Distância' })).toHaveCount(0)
   await expect(header.getByRole('columnheader', { name: '7d' })).toHaveCount(0)
   await expect(header.getByRole('columnheader', { name: 'Saída' })).toHaveCount(0)
-  await expect(header.getByRole('columnheader', { name: 'Status' })).toHaveCount(2)
+  await expect(header.getByRole('columnheader', { name: 'Status' })).toHaveCount(1)
   await expect(page.locator('.filterbar').getByRole('button', { name: 'Distância' })).toHaveCount(0)
+  await expect(page.locator('.filterbar').getByRole('button', { name: 'Risco' })).toHaveCount(0)
+  await expect(page.locator('.filterbar').getByRole('button', { name: 'Par' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Mais' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Abrir gráfico' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Favoritar' }).first()).toBeVisible()
 })
 
 test('monitor uses concise common-user row tags', async ({ page }) => {

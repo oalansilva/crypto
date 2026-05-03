@@ -465,9 +465,6 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="rounded-md border border-[rgba(252,213,53,0.24)] bg-[rgba(252,213,53,0.08)] px-3 py-1 text-[11px] font-semibold text-[var(--accent-primary)]">
-              Binance system
-            </div>
             {!isLoading && (
               user ? (
                 <div className="relative" ref={accountMenuRef}>
