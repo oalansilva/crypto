@@ -10,23 +10,23 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 
 ## TL;DR
 
-- **Branch padrão:** trabalhe em `develop` para trabalho diário de implementação e validações.
+- **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
 - **Comunicação padrão com Alan:** usar sempre a skill `caveman` em modo `lite`: curto, direto, sem filler, mantendo clareza técnica. Só desligar se Alan pedir explicitamente `stop caveman` ou `normal mode`.
 - **Fluxo de status:** `In Progress` = em execução; `Done` = codificado e validado tecnicamente em `develop`; `Homologado` = Alan testou e aprovou em `develop`; `Pronto` = já subiu para `main`/produção.
-- **Fluxo de produção:** implemente e valide diretamente em `develop`; acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main`, resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
-- **Regra de fluxo:** use somente `develop` e `main`; sem criação de branches por tasks usuais.
-- **Regra de merge de release/lote:** após abrir um PR de `develop -> main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
+- **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
+- **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
+- **Regra de merge de release/lote:** após abrir um PR para `main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
 - **Regra de autonomia operacional:** dentro de fechamento de lote/release solicitado por Alan, após validação e evidência, o agente tem autonomia para repetir tentativas manuais de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
-- **Regra de implementação por card:** ao receber pedido com número de card (ex.: `#99`), localizar o card no board `github.com/users/oalansilva/projects/1`, mover para `In Progress`, executar usando OpenSpec e subagents conforme o escopo, rodar `/opsx:verify`, executar `./restart`, e só então mover o card para `Done`. Não arquivar nem commitar nesta etapa.
+- **Regra de implementação por card:** ao receber pedido com número de card (ex.: `#99`), localizar o card no board `github.com/users/oalansilva/projects/1`, criar/usar branch própria da change a partir de `develop`, mover para `In Progress`, executar usando OpenSpec e subagents conforme o escopo, rodar `/opsx:verify`, integrar em `develop`, executar `./restart`, e só então mover o card para `Done`. Não arquivar nem publicar em `main` nesta etapa.
 - **Regra de homologação direta por card (solicitação do cliente):** quando Alan disser que um card está homologado, mova o card de `Done` para `Homologado` sem abrir PR, sem merge em `main` e sem arquivar OpenSpec automaticamente. Homologação aqui significa aprovação funcional em `develop`.
 - **Guardrail anti-release acidental:** as frases `card homologado`, `cards homologados`, `está homologado`, `homologuei`, `aprovado em develop` ou equivalentes significam somente atualizar status para `Homologado`. Elas **não autorizam** commit, PR, merge, archive, release ou qualquer ação em `main`.
-- **Regra de release/lote:** quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, selecione os cards `Homologado`, rode validação final, arquive as changes OpenSpec correspondentes, faça commit único do lote em `develop`, push, PR `develop -> main`, merge manual, atualize `develop` e mova os cards incluídos para `Pronto`.
+- **Regra de release/lote:** quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, selecione os cards `Homologado`, confirme commits/branches incluídos, rode validação final completa, arquive as changes OpenSpec correspondentes, push, PR para `main`, merge manual, atualize `develop` e mova os cards incluídos para `Pronto`.
 - **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `In Progress` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste, corrija e reteste mantendo o status atual. O card só avança: `Done` -> `Homologado` -> `Pronto`.
 - **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
 - **Regra de validação OpenSpec global:** `openspec validate --all` verde é critério padrão de fechamento. Se falhar por changes antigas fora do card, valide os specs afetados pelo card como evidência parcial, mas resolva a sujeira global antes do encerramento: corrija ou arquive as changes antigas, inclusive por archive manual quando a CLI/skill não conseguir concluir.
 - **Regra de checks em execução:** teste, build ou CI iniciado precisa ser acompanhado até terminar. Status como "build está rodando" é atualização intermediária, não evidência final para `Done`, release/lote, commit, PR ou merge.
-- **Regra de commit único por lote/release:** não faça commit durante implementação nem ao mover card para `Homologado`. O commit ocorre no fechamento do lote/release, após homologação funcional dos cards incluídos. Se CI/checks falharem depois do push, corrija preservando um commit final sempre que tecnicamente possível (ex.: amend + push seguro); se isso não for possível sem risco, registre a exceção e o motivo.
-- **Regra de worktree limpo no fechamento:** antes de `Done`, release/lote, commit, PR ou merge, rode `git status --short` e não deixe nenhum arquivo modificado solto sem classificação. Arquivos da entrega entram no commit único do lote; alterações alheias/preexistentes ficam fora do commit e devem ser preservadas com stash nomeado ou registro equivalente e reportadas com caminho e motivo. Nunca descarte alteração alheia sem pedido explícito.
+- **Regra de commits e testes:** commits locais na branch da change são permitidos e não exigem suíte completa a cada commit. Durante o card, rode testes proporcionais/focados; testes completos ficam para fechamento de lote/release.
+- **Regra de worktree limpo no fechamento:** antes de iniciar nova change, antes de `Done`, release/lote, commit, PR ou merge, rode `git status --short` e não deixe nenhum arquivo modificado solto sem classificação. Trabalho de outra change deve ir para branch/worktree própria. Stash é só proteção temporária, sempre nomeado com hash, arquivos, motivo e comando de recuperação.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
 - **Não usar SQLite** como banco de operação. Em runtime/QA/Homologação, use apenas PostgreSQL (`DATABASE_URL` e `WORKFLOW_DATABASE_URL`).
 - **Funcionalidades novas:** siga OpenSpec por padrão antes de implementar (`openspec/changes/<change>/` com proposal/spec/design/tasks quando aplicável).
@@ -104,55 +104,143 @@ Se o agente criar `proposal.md`, `design.md`, `tasks.md`, `specs/**` ou mover ar
 - Use primeiro a skill OpenSpec adequada, normalmente `$openspec-archive-change`. Se a CLI/skill falhar por estado antigo ou inconsistente, o archive manual é permitido como exceção operacional: mover para `openspec/changes/archive/YYYY-MM-DD-<change>/`, sincronizar specs quando aplicável, preservar evidência no handoff e registrar por que o caminho manual foi usado.
 - Depois do saneamento, rode novamente `openspec validate --all`. Validação parcial serve apenas como evidência intermediária para o escopo do card, não como fechamento final.
 
-## Fluxo Git operacional (sempre)
+## Git/Kanban Workflow
 
-- Trabalhe sempre em `develop`; não crie `feature/*`, `bugfix/*` ou outras branches para tarefas isoladas.
-- Não faça commit durante a implementação (nem por subetapas) nem ao mover card para `Homologado`. O único commit ocorre no fechamento de lote/release.
-- Abra PR de `develop` para `main` para liberar produção somente quando Alan pedir explicitamente `subir lote`, `subir release`, `fechar lote`, `fechar release` ou equivalente claro. Homologação de card não é pedido de release.
-- O merge em `main` é o passo final de produção. Após merge, os cards incluídos no lote avançam de `Homologado` para `Pronto`.
-- **Regra mandatória nova (independente do tamanho):** antes de qualquer alteração de código, iniciar sempre com OpenSpec em `openspec/changes/<change>/` (proposta, escopo, critérios e evidência) e só então codar.
-- **Regra de autonomia operacional:** dentro de fechamento de lote/release solicitado por Alan, após validação e evidência, o agente deve executar ações de merge e retentativas manuais previstas no fluxo sem solicitar autorização adicional do usuário.
-- Sempre que houver PR aberto de lote/release e o bloqueio for apenas de checks ainda pendentes, o agente deve repetir a tentativa manual de merge até completar (ou até novo bloqueio de política/conflito que exija revisão humana).
-- Se o merge for bloqueado por checks, conflitos ou políticas resolvíveis por alteração no repo, o agente deve investigar, corrigir, revalidar e preservar a regra de commit único sempre que tecnicamente seguro.
-- Se o bloqueio depender de permissão/admin/review humano/configuração externa não editável pelo repo, o agente deve registrar o motivo exato no PR e na resposta final, sem mascarar o bloqueio como concluído.
-- Após merge em `main`, atualize `develop` para refletir o estado da produção.
-- Antes de preparar o commit único do lote/release, classifique todo `git status --short`: entrega atual, alteração alheia/preexistente, artifact gerado ou lixo descartável. A entrega atual entra no commit; alteração alheia não entra no commit do lote e não pode ficar perdida no worktree. Preserve com `git stash push -m "preserve unrelated before <release/change>: <paths>" -- <paths>` ou mecanismo equivalente e reporte o identificador.
+Este projeto usa branches por change para isolar trabalho, `develop` para integração/homologação e `main` para produção.
 
-Exemplo mínimo:
-```bash
-git switch develop
-git pull
-# ...alterações locais...
-# ...validações locais e evidências...
-# quando Alan pedir subir lote/release:
-git add .
-git commit -m "feat: fechar lote homologado"
-git push
-gh pr create --base main --head develop --title "..."
-gh pr merge --merge --delete-branch=false
+### Branches principais
 
-# após merge:
-git pull
-# mover cards incluídos para Pronto
+- `main`: branch estável/final. Representa o que já foi publicado ou está pronto para produção.
+- `develop`: branch de integração e homologação. Alan testa aqui antes de aprovar.
+- `change-<id>-<slug>` ou `card-<id>-<slug>`: branch temporária da entrega de um card/change.
+- `release-*`: branch opcional para congelar pacote quando `develop` contiver mudanças ainda não homologadas.
+
+### Regras de branch
+
+- Nunca implementar diretamente em `main`.
+- Branch por card/change é o padrão.
+- Evitar implementar diretamente em `develop`; exceção só para ajuste mínimo e autorizado por Alan.
+- Antes de qualquer alteração de código, iniciar sempre com OpenSpec em `openspec/changes/<change>/` (proposta, escopo, critérios e evidência) e só então codar.
+- Antes de iniciar segunda change, rode `git status --short`. Se houver alteração solta, classifique e isole antes de continuar.
+- Se a worktree atual estiver suja com outra change, prefira `git worktree add` com branch nova em vez de stash.
+- Stash é permitido só como proteção temporária. Sempre registre nome, hash, arquivos, motivo e comando de recuperação; use `git stash apply`, não `pop`, quando recuperar.
+
+### Fluxo de card/change
+
+1. Atualizar `develop`.
+2. Criar branch `change-<id>-<slug>` ou `card-<id>-<slug>`.
+3. Mover card para `In Progress`.
+4. Executar OpenSpec (`/opsx:new`, `/opsx:ff`, `/opsx:apply`, `/opsx:verify`) e implementar.
+5. Fazer commits locais na branch quando útil. Não rodar suíte completa a cada commit.
+6. Rodar testes proporcionais/focados e validação OpenSpec da change.
+7. Integrar em `develop` quando pronto para teste integrado, preferencialmente com squash/commit único por card referenciando o card.
+8. Executar `./restart`.
+9. Mover para `Done` com comentário de evidência.
+
+### Colunas Kanban
+
+- `Done`: implementação técnica concluída, validada proporcionalmente e integrada em `develop`.
+- `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
+- `Pronto`: conteúdo do card entrou em `main`/produção.
+
+Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main`.
+
+### Comentários obrigatórios no Kanban
+
+Ao mover para `Done`, comentar:
+```text
+Implementação concluída.
+Branch: change-<id>-<slug>
+Integrado em: develop
+Commit/merge: <referência, se disponível>
+Resumo:
+- ...
+Testes executados:
+- ...
+Próximo passo: Alan testar/homologar na develop.
 ```
 
-Checklist de rotina (diária/por mudança):
+Ao mover para `Homologado`, comentar:
+```text
+Homologado por Alan na develop.
+Apto para próximo pacote de release.
+```
 
-1. `git switch develop`
-2. `git pull`
-3. aplicar alteração
-4. validar localmente e preparar evidências
-5. antes do commit: revisar `git status --short` e resolver todo arquivo solto sem incluir alteração alheia no card
-6. se Alan homologar em `develop`, mover card de `Done` para `Homologado`, sem commit e sem PR
-7. quando Alan pedir subir lote/release: arquivar OpenSpec das changes homologadas e rodar validação final
-8. `git add .`
-9. `git commit -m "tipo: mensagem do lote"`
-10. `git push`
-11. `gh pr create --base main --head develop --title "<titulo>" --body "descricao breve"`
-12. Se houver pontos de falha antes do fechamento, investigue e corrija antes do commit de encerramento; evite novo ciclo de commit em lote para não quebrar a regra de commit único.
-13. Faça o merge manualmente em `main` em seguida: `gh pr merge --merge --delete-branch=false`.
-14. Após merge: `git pull`
-15. Mover cards incluídos no lote para `Pronto`
+Ao mover para `Pronto`, comentar:
+```text
+Publicado em main.
+Pacote/release: <nome>
+Cards incluídos: <lista>
+Commit/merge: <referência, se disponível>
+Branches limpas: <lista ou pendência>
+Status final: pronto.
+```
+
+### Release em lote
+
+- Vários cards podem ficar em `Homologado` aguardando publicação conjunta.
+- Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, liste cards homologados e commits/branches que entram no pacote.
+- Se `develop` contiver só conteúdo homologado do pacote, use PR `develop -> main`.
+- Se `develop` contiver mudança não homologada, não faça merge direto `develop -> main`; crie `release-*` a partir de `main` e inclua somente commits/branches aprovados, ou peça decisão de Alan.
+- Antes de mover cards para `Pronto`, confirme que cada card realmente entrou no merge para `main`.
+
+### Testes
+
+- Durante implementação: testes focados/proporcionais ao card, validação OpenSpec da change e evidência no handoff.
+- Antes de `Done`: checks iniciados precisam terminar; status "rodando" não vale como evidência final.
+- No fechamento de lote/release: `openspec validate --all`, testes completos proporcionais ao pacote, build e CI até resultado final.
+- Se teste local ou CI falhar, corrija, revalide e só então siga para próximo status.
+
+### Comandos esperados
+
+Criar branch em worktree limpa:
+```bash
+git switch develop
+git pull origin develop
+git switch -c change-<id>-<slug>
+```
+
+Criar branch sem tocar worktree suja:
+```bash
+git worktree add ../crypto-worktrees/change-<id>-<slug> -b change-<id>-<slug> develop
+```
+
+Integrar card em `develop` quando pronto:
+```bash
+git switch develop
+git pull origin develop
+git merge --squash change-<id>-<slug>
+git commit -m "feat: concluir card #<id> <resumo>"
+git push origin develop
+```
+
+Publicar lote direto de `develop` quando seguro:
+```bash
+git switch develop
+git pull origin develop
+openspec validate --all
+gh pr create --base main --head develop --title "<titulo>" --body "<resumo>"
+gh pr merge --merge --delete-branch=false
+```
+
+Publicar com branch de release quando `develop` tiver conteúdo não homologado:
+```bash
+git switch main
+git pull origin main
+git switch -c release-YYYY-MM-DD
+# incluir apenas commits/branches homologados
+git cherry-pick <commit-homologado>
+git push origin release-YYYY-MM-DD
+gh pr create --base main --head release-YYYY-MM-DD --title "<titulo>" --body "<resumo>"
+gh pr merge --merge --delete-branch=false
+```
+
+Limpar branches após publicação/Pronto:
+```bash
+git worktree remove ../crypto-worktrees/change-<id>-<slug> # se usada
+git branch -d change-<id>-<slug>
+git push origin --delete change-<id>-<slug> # se publicada
+```
 
 Em entrega de código por card, use subagents por padrão para acelerar descoberta, implementação e validação, respeitando escopo e evitando trabalho duplicado.
 
@@ -174,7 +262,7 @@ Padrão de commit recomendado:
   - status atual
   - decisões de escopo
   - evidências de teste/PR
-- Para promover produção, trabalhe em `develop` (sem branch extra), junte os cards `Homologado` no lote/release pedido por Alan, abra PR de `develop -> main`, resolva checks/políticas bloqueantes quando forem corrigíveis por código/configuração do repo, realize o merge manual do PR e então mova os cards incluídos para `Pronto`.
+- Para promover produção, junte os cards `Homologado` no lote/release pedido por Alan, confirme commits/branches incluídos, abra PR para `main`, resolva checks/políticas bloqueantes quando forem corrigíveis por código/configuração do repo, realize o merge manual do PR e então mova os cards incluídos para `Pronto`.
 - Política adicional: quando houver falha recorrente de unit tests de DB, aplique isolamento por teste (reset de tabelas/fixtures) antes de alterar regras de negócio.
 - Ao registrar bloqueios de CI, incluir evidência e impacto de `Unit tests` e `Backend format` no comentário do PR, e manter esta orientação em `AGENTS.md` para repetição.
 - Em workflows com `push` e `pull_request`, a `concurrency.group` deve diferenciar `github.event_name`; caso contrário, o run de `pull_request` pode cancelar o run de `push` do mesmo SHA em `develop`, deixando checks obrigatórios como `cancelled` e bloqueando o merge em `main`.

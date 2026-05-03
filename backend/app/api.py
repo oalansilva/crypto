@@ -34,6 +34,14 @@ _CANDLES_CACHE_TTL_SECONDS = 120.0
 _CANDLES_CACHE_LOCK = threading.Lock()
 _CANDLES_CACHE: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
 _OHLCV_REPO = MarketOhlcvRepository()
+_PERSISTED_CANDLES_MAX_LAG_SECONDS = {
+    "1m": 10 * 60,
+    "5m": 30 * 60,
+    "15m": 2 * 60 * 60,
+    "1h": 6 * 60 * 60,
+    "4h": 24 * 60 * 60,
+    "1d": 3 * 24 * 60 * 60,
+}
 
 
 @router.get("/health")
@@ -228,6 +236,44 @@ def _normalize_candles_frame(df, limit: int):
     return candles
 
 
+def _is_persisted_candles_fresh(candles: list[dict[str, Any]], timeframe: str) -> bool:
+    if not candles:
+        return False
+
+    raw_timestamp = candles[-1].get("timestamp_utc")
+    parsed = pd.to_datetime(raw_timestamp, utc=True, errors="coerce")
+    if pd.isna(parsed):
+        return False
+
+    now = pd.Timestamp.now(tz=timezone.utc)
+    lag_seconds = max(0.0, (now - parsed).total_seconds())
+    max_lag_seconds = _PERSISTED_CANDLES_MAX_LAG_SECONDS.get(
+        str(timeframe or "").strip().lower(),
+        24 * 60 * 60,
+    )
+    return lag_seconds <= max_lag_seconds
+
+
+def _persisted_candles_payload(
+    *,
+    raw_symbol: str,
+    asset_type: str,
+    timeframe: str,
+    limit: int,
+    candles: list[dict[str, Any]],
+    data_source: str,
+) -> dict[str, Any]:
+    return {
+        "symbol": raw_symbol,
+        "asset_type": asset_type,
+        "timeframe": timeframe,
+        "data_source": data_source,
+        "limit": limit,
+        "count": len(candles),
+        "candles": candles,
+    }
+
+
 def _read_candles_cache(symbol: str, timeframe: str, limit: int) -> Dict[str, Any] | None:
     now = time.time()
     key = (symbol, timeframe, limit)
@@ -269,27 +315,29 @@ async def get_market_candles(
         if cached is not None:
             return cached
 
+        stale_persisted: list[dict[str, Any]] = []
         if _OHLCV_REPO.enabled:
             try:
                 persisted = _OHLCV_REPO.read_recent_candles(raw_symbol, tf, limit)
             except Exception:
                 persisted = []
-            if persisted:
-                payload = {
-                    "symbol": raw_symbol,
-                    "asset_type": asset_type,
-                    "timeframe": tf,
-                    "data_source": "timescaledb",
-                    "limit": limit,
-                    "count": len(persisted),
-                    "candles": persisted,
-                }
+            if persisted and _is_persisted_candles_fresh(persisted, tf):
+                payload = _persisted_candles_payload(
+                    raw_symbol=raw_symbol,
+                    asset_type=asset_type,
+                    timeframe=tf,
+                    limit=limit,
+                    candles=persisted,
+                    data_source="timescaledb",
+                )
                 _write_candles_cache(raw_symbol, tf, limit, payload)
                 return payload
+            stale_persisted = persisted
 
         since_str = _ui_default_since_str(tf, limit=limit)
 
         data_source = ""
+        df = None
         if asset_type == "crypto":
             data_source = CCXT_SOURCE
             provider = get_market_data_provider(data_source)
@@ -305,7 +353,31 @@ async def get_market_candles(
                 )
             except TypeError:
                 df = provider.fetch_ohlcv(raw_symbol, tf, since_str=since_str, limit=limit)
+            except Exception:
+                if stale_persisted:
+                    payload = _persisted_candles_payload(
+                        raw_symbol=raw_symbol,
+                        asset_type=asset_type,
+                        timeframe=tf,
+                        limit=limit,
+                        candles=stale_persisted,
+                        data_source="timescaledb-stale",
+                    )
+                    _write_candles_cache(raw_symbol, tf, limit, payload)
+                    return payload
+                raise
         candles = _normalize_candles_frame(df, limit=limit)
+        if not candles and stale_persisted:
+            payload = _persisted_candles_payload(
+                raw_symbol=raw_symbol,
+                asset_type=asset_type,
+                timeframe=tf,
+                limit=limit,
+                candles=stale_persisted,
+                data_source="timescaledb-stale",
+            )
+            _write_candles_cache(raw_symbol, tf, limit, payload)
+            return payload
         payload = {
             "symbol": raw_symbol,
             "asset_type": asset_type,
