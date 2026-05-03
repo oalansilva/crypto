@@ -2,7 +2,7 @@ import React from 'react';
 import { Download, LineChart, RefreshCw, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
-import { resolveOpportunitySignal } from './signalResolution';
+import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
 import {
     getOpportunityAssetType,
     getStrategyDisplayName,
@@ -111,6 +111,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         : '-';
     const batchInfo = opportunity.timestamp ? new Date(opportunity.timestamp).toLocaleString('en-US') : '-';
     const symbolTestKey = symbolKey(symbol);
+    const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
     const portfolioStatusClass = portfolioStatusTone === 'success'
         ? 'text-emerald-300'
         : portfolioStatusTone === 'warning'
@@ -363,21 +364,25 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <div style={{ height: '14px' }} />
                     <h5 className="h5-notes">
                         <span className="swatch" />
-                        Entry / Stop
+                        {showEntryStopRows ? 'Entry / Stop' : 'Execução'}
                     </h5>
                     <dl className="kv">
-                        <dt>entry</dt>
-                        <dd>
-                            {opportunity.entry_price !== null && opportunity.entry_price !== undefined
-                                ? `$${toDisplayValue(opportunity.entry_price, 8)}`
-                                : '-'}
-                        </dd>
-                        <dt>stop</dt>
-                        <dd>
-                            {opportunity.stop_price !== null && opportunity.stop_price !== undefined
-                                ? `$${toDisplayValue(opportunity.stop_price, 8)}`
-                                : '-'}
-                        </dd>
+                        {showEntryStopRows ? (
+                            <React.Fragment>
+                                <dt>entry</dt>
+                                <dd>
+                                    {opportunity.entry_price !== null && opportunity.entry_price !== undefined
+                                        ? `$${toDisplayValue(opportunity.entry_price, 8)}`
+                                        : '-'}
+                                </dd>
+                                <dt>stop</dt>
+                                <dd>
+                                    {opportunity.stop_price !== null && opportunity.stop_price !== undefined
+                                        ? `$${toDisplayValue(opportunity.stop_price, 8)}`
+                                        : '-'}
+                                </dd>
+                            </React.Fragment>
+                        ) : null}
                         <dt>preço atual</dt>
                         <dd>{priceString}</dd>
                         <dt>distância stop</dt>
