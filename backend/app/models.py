@@ -225,9 +225,7 @@ class MonitorStrategyPreference(Base):
     liked = Column(Boolean, nullable=False, default=True)
     updated_at = Column(DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    __table_args__ = (
-        Index("ix_monitor_strategy_preferences_user_liked", "user_id", "liked"),
-    )
+    __table_args__ = (Index("ix_monitor_strategy_preferences_user_liked", "user_id", "liked"),)
 
 
 class User(Base):

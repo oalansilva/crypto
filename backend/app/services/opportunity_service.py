@@ -573,10 +573,7 @@ class OpportunityService:
             .order_by(User.email.asc())
             .all()
         )
-        admins_by_email = {
-            str(admin.email).strip().lower(): admin
-            for admin in admins
-        }
+        admins_by_email = {str(admin.email).strip().lower(): admin for admin in admins}
         for admin_email in admin_emails:
             admin = admins_by_email.get(admin_email)
             if not admin:
@@ -591,11 +588,7 @@ class OpportunityService:
 
     def _configured_admin_emails(self) -> list[str]:
         raw = os.getenv("ADMIN_EMAILS", "")
-        ordered = [
-            email.strip().lower()
-            for email in raw.split(",")
-            if email.strip()
-        ]
+        ordered = [email.strip().lower() for email in raw.split(",") if email.strip()]
         if ordered:
             return list(dict.fromkeys(ordered))
         return sorted(email for email in ADMIN_EMAILS if email)

@@ -39,7 +39,9 @@ async def test_opportunities_route_preserves_admin_tier_all(monkeypatch):
             return []
 
     monkeypatch.setattr(opportunity_routes, "OpportunityService", _FakeOpportunityService)
-    monkeypatch.setattr(opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: True
+    )
 
     response = await opportunity_routes.get_opportunities(tier="all", current_user_id="admin-user")
 
@@ -56,9 +58,13 @@ async def test_opportunities_route_blocks_common_user_untiered_filter(monkeypatc
             return []
 
     monkeypatch.setattr(opportunity_routes, "OpportunityService", _FakeOpportunityService)
-    monkeypatch.setattr(opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: False
+    )
 
-    response = await opportunity_routes.get_opportunities(tier="none", current_user_id="common-user")
+    response = await opportunity_routes.get_opportunities(
+        tier="none", current_user_id="common-user"
+    )
 
     assert response == []
     assert captured["tier"] == "999"
@@ -147,7 +153,15 @@ async def test_opportunities_route_keeps_admin_strategy_details(monkeypatch):
             "next_status_label": "exit",
             "indicator_values": {"short": 71346.57},
             "indicator_values_candle_time": "2026-04-15T00:00:00+00:00",
-            "signal_history": [{"timestamp": "2026-04-10T00:00:00+00:00", "signal": 1, "type": "entry", "reason": "entry", "price": 70210.15}],
+            "signal_history": [
+                {
+                    "timestamp": "2026-04-10T00:00:00+00:00",
+                    "signal": 1,
+                    "type": "entry",
+                    "reason": "entry",
+                    "price": 70210.15,
+                }
+            ],
             "entry_price": 73980.37,
             "stop_price": 70873.19,
             "distance_to_stop_pct": 5.07,
@@ -165,7 +179,9 @@ async def test_opportunities_route_keeps_admin_strategy_details(monkeypatch):
             return sample_payload
 
     monkeypatch.setattr(opportunity_routes, "OpportunityService", _FakeOpportunityService)
-    monkeypatch.setattr(opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        opportunity_routes, "can_view_strategy_secrets", lambda *_args, **_kwargs: True
+    )
 
     response = await opportunity_routes.get_opportunities(tier="all", current_user_id="admin-user")
 

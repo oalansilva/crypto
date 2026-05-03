@@ -109,7 +109,9 @@ def list_monitor_strategy_preferences(
 )
 def update_monitor_strategy_preferences(
     payload: MonitorStrategyPreferenceUpdate,
-    favorite_id: int = Path(..., ge=1, description="Favorite strategy row ID from Monitor opportunity id"),
+    favorite_id: int = Path(
+        ..., ge=1, description="Favorite strategy row ID from Monitor opportunity id"
+    ),
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

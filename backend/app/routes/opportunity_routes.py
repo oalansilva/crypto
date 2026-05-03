@@ -96,9 +96,7 @@ def _common_user_tier_filter(tier: str | None) -> str:
         return "999"
 
     allowed = [
-        item
-        for item in (part.strip() for part in normalized.split(","))
-        if item in {"1", "2", "3"}
+        item for item in (part.strip() for part in normalized.split(",")) if item in {"1", "2", "3"}
     ]
     return ",".join(allowed) if allowed else "999"
 

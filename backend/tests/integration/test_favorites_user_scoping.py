@@ -56,7 +56,9 @@ def test_favorites_list_keeps_strategy_details_for_admin(tmp_path: Path, monkeyp
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
 
     with SessionLocal() as db:
-        favorites.create_favorite(_favorite_payload("A favorite"), current_user_id="admin-user", db=db)
+        favorites.create_favorite(
+            _favorite_payload("A favorite"), current_user_id="admin-user", db=db
+        )
         listed = favorites.list_favorites(current_user_id="admin-user", db=db)
 
     assert listed[0].strategy_name == "multi_ma_crossover"
