@@ -9,4 +9,12 @@
 
 - [x] Run OpenSpec status/validation for the change.
 - [x] Run focused frontend build or tests.
-- [ ] Record evidence for card #126.
+- [x] Record evidence for card #126.
+
+## Evidence
+
+- `openspec validate card-126-favorites-tiers-monitor --strict` passed.
+- `openspec validate --all` passed: 94 items, 0 failed.
+- `npm --prefix frontend run build` passed.
+- `npm --prefix frontend run test:e2e -- admin-menu-visibility.spec.ts favorites-view-results.spec.ts` passed: 6 tests.
+- Integrated in `develop`: commit `65fd996`.
