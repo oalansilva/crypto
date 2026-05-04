@@ -157,7 +157,7 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  await expect(page.getByRole('heading', { name: 'Strategy Favorites' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'NVDA' }).first()).toHaveCount(0);
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: /ema rsi/i }).first()).toBeVisible();
@@ -179,7 +179,7 @@ test('favorites -> View Results navigates to results page', async ({ page }) => 
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const viewResults = page.locator('button[title="View Results"]').first();
+  const viewResults = page.locator('.fav-table-shell button[title="View Results"]').first();
   await expect(viewResults).toBeVisible();
   await viewResults.click();
 

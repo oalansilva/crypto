@@ -11,6 +11,7 @@
 - [x] Run focused frontend build or tests.
 - [x] Record evidence for card #126.
 - [x] Fix common-user admin catalog visibility and per-user star tiers.
+- [x] Align Favorites UI with the provided `crypto.2.zip` reference.
 
 ## Evidence
 
@@ -21,3 +22,5 @@
 - Integrated in `develop`: commit `65fd996`.
 - Follow-up fix: common-user Favorites now lists admin catalog and stores star tiers in `monitor_strategy_preferences.tier`.
 - Follow-up tests: `./backend/.venv/bin/python -m pytest backend/tests/integration/test_favorites_user_scoping.py backend/tests/integration/test_monitor_preferences_endpoints.py -q` passed: 17 tests.
+- UI reference follow-up: Favorites now uses operational header, tier cards, tier chips, compact filters/search, desktop table, and mobile cards based on `crypto.2.zip`.
+- UI visual check: Playwright screenshots passed for desktop 1440x960 and mobile 390x844 with no horizontal overflow on mobile (`bodyWidth=390`, `viewportWidth=390`).
