@@ -10,6 +10,7 @@
 - [x] Run OpenSpec status/validation for the change.
 - [x] Run focused frontend build or tests.
 - [x] Record evidence for card #126.
+- [x] Fix common-user admin catalog visibility and per-user star tiers.
 
 ## Evidence
 
@@ -18,3 +19,5 @@
 - `npm --prefix frontend run build` passed.
 - `npm --prefix frontend run test:e2e -- admin-menu-visibility.spec.ts favorites-view-results.spec.ts` passed: 6 tests.
 - Integrated in `develop`: commit `65fd996`.
+- Follow-up fix: common-user Favorites now lists admin catalog and stores star tiers in `monitor_strategy_preferences.tier`.
+- Follow-up tests: `./backend/.venv/bin/python -m pytest backend/tests/integration/test_favorites_user_scoping.py backend/tests/integration/test_monitor_preferences_endpoints.py -q` passed: 17 tests.

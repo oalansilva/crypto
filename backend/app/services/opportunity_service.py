@@ -25,12 +25,13 @@ from app.services.market_data_providers import (
 from app.symbols_config import get_excluded_symbols, is_excluded_symbol
 from app.database import SessionLocal
 from app.middleware.authMiddleware import ADMIN_EMAILS
-from app.models import FavoriteStrategy, User
+from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 
 logger = logging.getLogger(__name__)
 _OHLCV_CACHE_TTL_SECONDS = 300.0
 _OHLCV_CACHE_LOCK = threading.Lock()
 _OHLCV_CACHE: dict[str, dict[str, Any]] = {}
+_TIER_UNSET = object()
 
 # Lista carregada de backend/config/excluded_symbols.json (compatibilidade com código que usa o nome)
 UNSUPPORTED_SYMBOLS = get_excluded_symbols()
@@ -502,6 +503,36 @@ class OpportunityService:
     ) -> List[Dict[str, Any]]:
         """List relevant favorites for one user from existing table."""
         with self._session_factory() as db:
+            if self._known_non_admin_user(db, user_id):
+                admin_user_ids = self._admin_catalog_user_ids(db, exclude_user_id=user_id)
+                if admin_user_ids:
+                    tier_by_favorite_id = self._strategy_tier_preferences(db, user_id)
+                    rows = (
+                        db.query(FavoriteStrategy)
+                        .filter(FavoriteStrategy.user_id.in_(admin_user_ids))
+                        .order_by(
+                            FavoriteStrategy.symbol.asc(),
+                            FavoriteStrategy.timeframe.asc(),
+                            FavoriteStrategy.id.asc(),
+                        )
+                        .all()
+                    )
+                    favorites = [
+                        self._favorite_row_to_dict(
+                            row,
+                            tier_override=tier_by_favorite_id.get(int(row.id)),
+                            is_curated_fallback=True,
+                        )
+                        for row in rows
+                    ]
+                    favorites = self._filter_by_tier(favorites, tier_filter)
+                    logger.info(
+                        "Loaded %d user-selected admin favorite strategies for user %s",
+                        len(favorites),
+                        user_id,
+                    )
+                    return favorites
+
             rows = self._favorite_rows_for_user(db, user_id, tier_filter)
             source_user_id = user_id
             if not self._has_monitor_candidate(rows):
@@ -510,29 +541,10 @@ class OpportunityService:
                     source_user_id, rows = fallback
             is_curated_fallback = source_user_id != user_id
 
-        favorites = []
-        for row in rows:
-            r = {
-                "id": row.id,
-                "name": row.name,
-                "symbol": row.symbol,
-                "timeframe": row.timeframe,
-                "strategy_name": row.strategy_name,
-                "parameters": row.parameters,
-                "notes": row.notes,
-                "tier": row.tier,
-                "is_curated_fallback": is_curated_fallback,
-            }
-            # Parse parameters JSON if string
-            if isinstance(r["parameters"], str):
-                try:
-                    r["parameters"] = json.loads(r["parameters"])
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to parse parameters JSON for favorite {r.get('id')}: {e}"
-                    )
-                    r["parameters"] = {}
-            favorites.append(r)
+        favorites = [
+            self._favorite_row_to_dict(row, is_curated_fallback=is_curated_fallback)
+            for row in rows
+        ]
 
         if source_user_id != user_id:
             logger.info(
@@ -549,6 +561,65 @@ class OpportunityService:
             )
 
         return favorites
+
+    def _favorite_row_to_dict(
+        self,
+        row: FavoriteStrategy,
+        *,
+        tier_override: int | None | object = _TIER_UNSET,
+        is_curated_fallback: bool = False,
+    ) -> dict[str, Any]:
+        tier = row.tier if tier_override is _TIER_UNSET else tier_override
+        r = {
+            "id": row.id,
+            "name": row.name,
+            "symbol": row.symbol,
+            "timeframe": row.timeframe,
+            "strategy_name": row.strategy_name,
+            "parameters": row.parameters,
+            "notes": row.notes,
+            "tier": tier,
+            "is_curated_fallback": is_curated_fallback,
+        }
+        if isinstance(r["parameters"], str):
+            try:
+                r["parameters"] = json.loads(r["parameters"])
+            except Exception as e:
+                logger.warning(f"Failed to parse parameters JSON for favorite {r.get('id')}: {e}")
+                r["parameters"] = {}
+        return r
+
+    def _is_admin_user(self, db, user_id: str) -> bool:
+        user = db.query(User).filter(User.id == user_id).first()
+        return bool(user and str(user.email).strip().lower() in self._configured_admin_emails())
+
+    def _known_non_admin_user(self, db, user_id: str) -> bool:
+        user = db.query(User).filter(User.id == user_id).first()
+        return bool(user and str(user.email).strip().lower() not in self._configured_admin_emails())
+
+    def _admin_catalog_user_ids(self, db, *, exclude_user_id: str | None = None) -> list[str]:
+        admin_emails = self._configured_admin_emails()
+        if not admin_emails:
+            return []
+        admins = (
+            db.query(User)
+            .filter(func.lower(User.email).in_(admin_emails))
+            .order_by(User.email.asc())
+            .all()
+        )
+        return [
+            str(admin.id)
+            for admin in admins
+            if str(admin.id) != str(exclude_user_id or "")
+        ]
+
+    def _strategy_tier_preferences(self, db, user_id: str) -> dict[int, int | None]:
+        rows = (
+            db.query(MonitorStrategyPreference)
+            .filter(MonitorStrategyPreference.user_id == user_id)
+            .all()
+        )
+        return {int(row.favorite_id): getattr(row, "tier", None) for row in rows}
 
     def _favorite_rows_for_user(
         self,

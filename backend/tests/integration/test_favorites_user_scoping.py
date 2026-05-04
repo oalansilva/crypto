@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import uuid
 
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
+from app.models import MonitorStrategyPreference, User
 from app.routes import favorites
+from app.services.opportunity_service import OpportunityService
 
 
 def _session_factory(tmp_path: Path):
@@ -18,7 +21,15 @@ def _session_factory(tmp_path: Path):
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE favorite_strategies RESTART IDENTITY CASCADE"))
+        connection.execute(
+            text("ALTER TABLE monitor_strategy_preferences ADD COLUMN IF NOT EXISTS tier INTEGER NULL")
+        )
+        connection.execute(
+            text("DELETE FROM monitor_strategy_preferences WHERE user_id IN ('user-a', 'user-b')")
+        )
+        connection.execute(
+            text("DELETE FROM favorite_strategies WHERE user_id IN ('user-a', 'user-b')")
+        )
     return TestingSessionLocal
 
 
@@ -126,3 +137,120 @@ def test_favorites_exists_and_mutations_are_scoped_per_user(tmp_path: Path):
     assert exists_b.exists is False
     assert updated.tier == 2
     assert final_a[0].tier == 2
+
+
+def test_common_user_lists_admin_catalog_and_saves_own_star_tier(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    admin_id = str(uuid.uuid4())
+    common_id = str(uuid.uuid4())
+    admin_email = f"admin-{uuid.uuid4()}@example.com"
+    common_email = f"common-{uuid.uuid4()}@example.com"
+    monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
+    monkeypatch.setattr(favorites, "is_admin_email", lambda email: str(email).lower() == admin_email)
+
+    with SessionLocal() as db:
+        db.add(
+            User(
+                id=admin_id,
+                email=admin_email,
+                password_hash="x",
+                name="Alan Admin",
+            )
+        )
+        db.add(
+            User(
+                id=common_id,
+                email=common_email,
+                password_hash="x",
+                name="Alan Common",
+            )
+        )
+        db.commit()
+
+        admin_favorite = favorites.create_favorite(
+            _favorite_payload("Admin generated", symbol="BTC/USDT"),
+            current_user_id=admin_id,
+            db=db,
+        )
+
+        common_list = favorites.list_favorites(current_user_id=common_id, db=db)
+        updated = favorites.update_favorite(
+            admin_favorite.id,
+            favorites.FavoriteStrategyUpdate(tier=1),
+            current_user_id=common_id,
+            db=db,
+        )
+        common_list_after = favorites.list_favorites(current_user_id=common_id, db=db)
+
+        admin_row = db.query(favorites.FavoriteStrategy).filter_by(id=admin_favorite.id).one()
+        common_pref = (
+            db.query(MonitorStrategyPreference)
+            .filter_by(user_id=common_id, favorite_id=admin_favorite.id)
+            .one()
+        )
+
+    assert [item.id for item in common_list] == [admin_favorite.id]
+    assert common_list[0].tier is None
+    assert common_list[0].strategy_name == "Estratégia protegida"
+    assert updated.tier == 1
+    assert common_list_after[0].tier == 1
+    assert admin_row.tier is None
+    assert common_pref.tier == 1
+    assert common_pref.liked is True
+
+
+def test_common_user_monitor_favorites_use_own_star_tier(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    admin_id = str(uuid.uuid4())
+    common_id = str(uuid.uuid4())
+    admin_email = f"admin-{uuid.uuid4()}@example.com"
+    common_email = f"common-{uuid.uuid4()}@example.com"
+
+    from app.services import opportunity_service
+
+    monkeypatch.setenv("ADMIN_EMAILS", admin_email)
+    monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
+    monkeypatch.setattr(favorites, "is_admin_email", lambda email: str(email).lower() == admin_email)
+    monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {admin_email})
+
+    with SessionLocal() as db:
+        db.add(
+            User(
+                id=admin_id,
+                email=admin_email,
+                password_hash="x",
+                name="Alan Admin",
+            )
+        )
+        db.add(
+            User(
+                id=common_id,
+                email=common_email,
+                password_hash="x",
+                name="Alan Common",
+            )
+        )
+        db.commit()
+
+        admin_favorite = favorites.create_favorite(
+            _favorite_payload("Admin generated", symbol="BTC/USDT"),
+            current_user_id=admin_id,
+            db=db,
+        )
+        db.add(
+            MonitorStrategyPreference(
+                user_id=common_id,
+                favorite_id=admin_favorite.id,
+                liked=True,
+                tier=2,
+            )
+        )
+        db.commit()
+
+    service = OpportunityService()
+    selected = service.get_favorites(user_id=common_id, tier_filter="1,2,3")
+    unselected = service.get_favorites(user_id=common_id, tier_filter="1")
+
+    assert [item["id"] for item in selected] == [admin_favorite.id]
+    assert selected[0]["tier"] == 2
+    assert unselected == []

@@ -5,6 +5,7 @@ Reuse the existing `FavoriteStrategy.tier` field and `/api/favorites/{id}` PATCH
 ## Decisions
 
 - Keep the persisted model unchanged: `tier = 1 | 2 | 3 | null`.
+- Treat admin favorites as the common-user strategy catalog. Common-user star selections are stored per user in `monitor_strategy_preferences.tier`, not in the admin's `favorite_strategies.tier`.
 - Present tier as stars in Favorites:
   - `tier=1` renders `★★★`
   - `tier=2` renders `★★`
@@ -12,7 +13,7 @@ Reuse the existing `FavoriteStrategy.tier` field and `/api/favorites/{id}` PATCH
   - `null` renders empty stars and excludes the strategy from common-user Monitor.
 - Keep admin workflow available, including strategy details and existing operational actions.
 - For common users, hide controls that lead to admin-only strategy workflows or protected details, including export, find-new, compare, delete, raw config, detailed backtest results, and Trader chat from Favorites.
-- In Monitor, common users use the API-filtered tiered list directly. The local Monitor favorite preference remains admin/operator-only UI.
+- In Monitor, common users use the API-filtered tiered list directly, with tiers overlaid from their own `monitor_strategy_preferences.tier`. The local Monitor favorite preference remains admin/operator-only UI.
 
 ## Risks
 
