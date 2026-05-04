@@ -22,7 +22,9 @@ def _session_factory(tmp_path: Path):
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
         connection.execute(
-            text("ALTER TABLE monitor_strategy_preferences ADD COLUMN IF NOT EXISTS tier INTEGER NULL")
+            text(
+                "ALTER TABLE monitor_strategy_preferences ADD COLUMN IF NOT EXISTS tier INTEGER NULL"
+            )
         )
         connection.execute(
             text("DELETE FROM monitor_strategy_preferences WHERE user_id IN ('user-a', 'user-b')")
@@ -146,7 +148,9 @@ def test_common_user_lists_admin_catalog_and_saves_own_star_tier(tmp_path: Path,
     admin_email = f"admin-{uuid.uuid4()}@example.com"
     common_email = f"common-{uuid.uuid4()}@example.com"
     monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
-    monkeypatch.setattr(favorites, "is_admin_email", lambda email: str(email).lower() == admin_email)
+    monkeypatch.setattr(
+        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+    )
 
     with SessionLocal() as db:
         db.add(
@@ -210,7 +214,9 @@ def test_common_user_monitor_favorites_use_own_star_tier(tmp_path: Path, monkeyp
 
     monkeypatch.setenv("ADMIN_EMAILS", admin_email)
     monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
-    monkeypatch.setattr(favorites, "is_admin_email", lambda email: str(email).lower() == admin_email)
+    monkeypatch.setattr(
+        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+    )
     monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {admin_email})
 
     with SessionLocal() as db:

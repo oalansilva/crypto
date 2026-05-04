@@ -193,7 +193,11 @@ def list_favorites(
     rows = (
         db.query(FavoriteStrategy)
         .filter(FavoriteStrategy.user_id.in_(admin_user_ids))
-        .order_by(FavoriteStrategy.symbol.asc(), FavoriteStrategy.timeframe.asc(), FavoriteStrategy.id.asc())
+        .order_by(
+            FavoriteStrategy.symbol.asc(),
+            FavoriteStrategy.timeframe.asc(),
+            FavoriteStrategy.id.asc(),
+        )
         .all()
     )
     return [

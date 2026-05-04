@@ -542,8 +542,7 @@ class OpportunityService:
             is_curated_fallback = source_user_id != user_id
 
         favorites = [
-            self._favorite_row_to_dict(row, is_curated_fallback=is_curated_fallback)
-            for row in rows
+            self._favorite_row_to_dict(row, is_curated_fallback=is_curated_fallback) for row in rows
         ]
 
         if source_user_id != user_id:
@@ -607,11 +606,7 @@ class OpportunityService:
             .order_by(User.email.asc())
             .all()
         )
-        return [
-            str(admin.id)
-            for admin in admins
-            if str(admin.id) != str(exclude_user_id or "")
-        ]
+        return [str(admin.id) for admin in admins if str(admin.id) != str(exclude_user_id or "")]
 
     def _strategy_tier_preferences(self, db, user_id: str) -> dict[int, int | None]:
         rows = (
