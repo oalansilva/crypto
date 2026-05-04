@@ -15,6 +15,7 @@ Reuse the existing `FavoriteStrategy.tier` field and `/api/favorites/{id}` PATCH
 - For common users, hide controls that lead to admin-only strategy workflows or protected details, including export, find-new, compare, delete, raw config, detailed backtest results, and Trader chat from Favorites.
 - In Monitor, common users use the API-filtered tiered list directly, with tiers overlaid from their own `monitor_strategy_preferences.tier`. The local Monitor favorite preference remains admin/operator-only UI.
 - Align the Favorites visual surface with the provided `crypto.2.zip` reference: operational header, three star summary cards, segmented tier chips, compact filters/search, dense strategy table on desktop, and scannable strategy cards on mobile.
+- Use `DESIGN.md` as the visual source of truth for Favorites: Binance yellow primary action/chips, documented dark surfaces, hairline borders, 6-8px radii, modest typography weights, and trading green/red semantics.
 
 ## Risks
 

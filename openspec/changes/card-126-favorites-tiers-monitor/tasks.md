@@ -12,6 +12,7 @@
 - [x] Record evidence for card #126.
 - [x] Fix common-user admin catalog visibility and per-user star tiers.
 - [x] Align Favorites UI with the provided `crypto.2.zip` reference.
+- [x] Realign Favorites UI with `DESIGN.md` tokens and component rules.
 
 ## Evidence
 
@@ -24,3 +25,5 @@
 - Follow-up tests: `./backend/.venv/bin/python -m pytest backend/tests/integration/test_favorites_user_scoping.py backend/tests/integration/test_monitor_preferences_endpoints.py -q` passed: 17 tests.
 - UI reference follow-up: Favorites now uses operational header, tier cards, tier chips, compact filters/search, desktop table, and mobile cards based on `crypto.2.zip`.
 - UI visual check: Playwright screenshots passed for desktop 1440x960 and mobile 390x844 with no horizontal overflow on mobile (`bodyWidth=390`, `viewportWidth=390`).
+- DESIGN.md follow-up: Favorites visual tokens realigned to `DESIGN.md` colors, surfaces, button states, typography weights, and compact card/table styling.
+- DESIGN.md validation: `npm --prefix frontend run build`, `npm --prefix frontend run test:e2e -- favorites-view-results.spec.ts --reporter=line`, and Playwright desktop/mobile visual check passed; active tier chip rendered `rgb(252, 213, 53)`, header rendered `rgb(30, 35, 41)`, and mobile had no horizontal overflow (`bodyWidth=390`, `viewportWidth=390`).
