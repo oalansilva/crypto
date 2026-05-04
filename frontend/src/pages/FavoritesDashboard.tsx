@@ -611,6 +611,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
+                                                <span className="fav-strategy-name">{fav.name}</span>
                                                 <span>{getFavoriteStrategyLabel(fav)}</span>
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
@@ -699,7 +700,10 @@ const FavoritesDashboard: React.FC = () => {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="strategy-cell" aria-label={getFavoriteStrategyLabel(fav)}>{getFavoriteStrategyLabel(fav)}</td>
+                                                <td className="strategy-cell" aria-label={`${fav.name} ${getFavoriteStrategyLabel(fav)}`}>
+                                                    <strong>{fav.name}</strong>
+                                                    <span>{getFavoriteStrategyLabel(fav)}</span>
+                                                </td>
                                                 <td>
                                                     <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                         {direction === 'short' ? 'Short' : 'Long'}
