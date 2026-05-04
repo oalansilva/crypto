@@ -359,6 +359,11 @@ def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_ses
     monkeypatch.setattr(auth_routes, "JWT_ACCESS_EXPIRE_MINUTES", 15)
     monkeypatch.setattr(auth_routes, "JWT_REFRESH_EXPIRE_DAYS", 7)
     monkeypatch.setattr(
+        auth_routes,
+        "PASSWORDLESS_LOGIN_EMAILS",
+        {"o.alan.silva@gmail.com", "o2.alan.silva@gmail.com"},
+    )
+    monkeypatch.setattr(
         auth_routes, "_verify_password", lambda password, hashed: password == hashed
     )
 
@@ -394,7 +399,16 @@ def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_ses
         status="suspended",
         suspended_until=datetime.utcnow() + timedelta(minutes=5),
     )
-    auth_db_session.add_all([active_user, banned_user, expired_user, suspended_user])
+    passwordless_user = User(
+        id=uuid.uuid4(),
+        email="o2.alan.silva@gmail.com",
+        password_hash="valid-pass",
+        name="Alan 2",
+        status="active",
+    )
+    auth_db_session.add_all(
+        [active_user, banned_user, expired_user, suspended_user, passwordless_user]
+    )
     auth_db_session.commit()
 
     with pytest.raises(HTTPException, match="banned"):
@@ -426,6 +440,14 @@ def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_ses
     assert login_response.email == "user@example.com"
     assert login_response.accessToken
     assert login_response.refreshToken
+
+    passwordless_response = auth_routes.login(
+        auth_routes.LoginRequest(email="o2.alan.silva@gmail.com", password=""),
+        auth_db_session,
+    )
+    assert passwordless_response.email == "o2.alan.silva@gmail.com"
+    assert passwordless_response.accessToken
+    assert passwordless_response.isAdmin is False
 
     access_token = auth_routes._generate_access_token(active_user)
     me_response = auth_routes.me(authorization=f"Bearer {access_token}", db=auth_db_session)

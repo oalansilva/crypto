@@ -21,6 +21,14 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
 JWT_ACCESS_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRE_MINUTES", "15"))
 JWT_REFRESH_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_EXPIRE_DAYS", "7"))
+PASSWORDLESS_LOGIN_EMAILS = {
+    email.strip().lower()
+    for email in os.getenv(
+        "PASSWORDLESS_LOGIN_EMAILS",
+        "o.alan.silva@gmail.com,o2.alan.silva@gmail.com",
+    ).split(",")
+    if email.strip()
+}
 
 
 # --- Pydantic Schemas ---
@@ -167,8 +175,8 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # DEV BYPASS: alan.silva@gmail.com pode entrar sem senha
-    if normalized_email != "o.alan.silva@gmail.com":
+    # DEV BYPASS: emails permitidos podem entrar sem senha no ambiente operacional.
+    if normalized_email not in PASSWORDLESS_LOGIN_EMAILS:
         if not _verify_password(body.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid credentials")
     else:

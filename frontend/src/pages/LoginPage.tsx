@@ -7,6 +7,11 @@ import { MonitorDisclaimer } from '@/components/monitor/MonitorDisclaimer'
 
 type Mode = 'login' | 'register'
 
+const PASSWORDLESS_LOGIN_EMAILS = new Set([
+  'o.alan.silva@gmail.com',
+  'o2.alan.silva@gmail.com',
+])
+
 interface FormErrors {
   email?: string
   password?: string
@@ -45,10 +50,10 @@ export default function LoginPage() {
 
   const validate = (): boolean => {
     const errs: FormErrors = {}
+    const normalizedEmail = email.trim().toLowerCase()
     if (!email) errs.email = 'Email é obrigatório'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Email inválido'
-    // DEV BYPASS: alan.silva@gmail.com não precisa de senha
-    const bypassPassword = email.toLowerCase() === 'o.alan.silva@gmail.com'
+    const bypassPassword = mode === 'login' && PASSWORDLESS_LOGIN_EMAILS.has(normalizedEmail)
     if (!bypassPassword) {
       if (!password) errs.password = 'Senha é obrigatória'
       else if (password.length < 8) errs.password = 'Senha deve ter pelo menos 8 caracteres'
