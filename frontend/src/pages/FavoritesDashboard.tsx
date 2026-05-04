@@ -158,6 +158,15 @@ const FavoritesDashboard: React.FC = () => {
             : fav.strategy_name.replace(/_/g, ' ');
     };
 
+    const getFavoriteName = (fav: FavoriteStrategy): string => fav.name || fav.symbol || 'Estratégia';
+
+    const getGridStrategyDetail = (fav: FavoriteStrategy): string | null => {
+        const label = getFavoriteStrategyLabel(fav).trim();
+        if (!label || label.toLowerCase() === getFavoriteName(fav).trim().toLowerCase()) return null;
+        if (fav.is_strategy_protected && label.toLowerCase() === 'estratégia protegida') return null;
+        return label;
+    };
+
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
 
     const handleViewResults = async (fav: FavoriteStrategy) => {
@@ -269,10 +278,10 @@ const FavoritesDashboard: React.FC = () => {
         return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.symbol))).sort();
     }, [favorites]);
 
-    // Get unique indicators (strategies) for filter
+    // Get unique favorite strategy names for filter
     const uniqueIndicators = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.map(getFavoriteStrategyLabel))).sort();
+        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(getFavoriteName))).sort();
     }, [favorites]);
 
     const filteredFavorites = (favorites?.filter(fav => {
@@ -281,7 +290,7 @@ const FavoritesDashboard: React.FC = () => {
             getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
-        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
+        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteName(fav) === selectedIndicator;
         const matchesTier = tierFilter === 'all' ||
             (tierFilter === 'none' && fav.tier === null) ||
             (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
@@ -606,13 +615,14 @@ const FavoritesDashboard: React.FC = () => {
                                 const tier = getTierDisplay(fav.tier);
                                 const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
                                 const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
+                                const strategyDetail = getGridStrategyDetail(fav);
                                 return (
                                     <article key={fav.id} className={`fav-mobile-card ${tier.className}`}>
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
-                                                <span className="fav-strategy-name">{fav.name}</span>
-                                                <span>{getFavoriteStrategyLabel(fav)}</span>
+                                                <span className="fav-strategy-name">{getFavoriteName(fav)}</span>
+                                                {strategyDetail ? <span>{strategyDetail}</span> : null}
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                 {direction === 'short' ? 'Short' : 'Long'}
@@ -677,6 +687,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
                                         const symbol = splitSymbol(fav.symbol);
                                         const stopLoss = fav.parameters?.stop_loss ?? null;
+                                        const strategyDetail = getGridStrategyDetail(fav);
 
                                         return (
                                             <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`}>
@@ -700,9 +711,9 @@ const FavoritesDashboard: React.FC = () => {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="strategy-cell" aria-label={`${fav.name} ${getFavoriteStrategyLabel(fav)}`}>
-                                                    <strong>{fav.name}</strong>
-                                                    <span>{getFavoriteStrategyLabel(fav)}</span>
+                                                <td className="strategy-cell" aria-label={`${getFavoriteName(fav)} ${strategyDetail || ''}`}>
+                                                    <strong>{getFavoriteName(fav)}</strong>
+                                                    {strategyDetail ? <span>{strategyDetail}</span> : null}
                                                 </td>
                                                 <td>
                                                     <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
