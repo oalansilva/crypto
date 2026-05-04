@@ -27,3 +27,17 @@ The Monitor API and UI MUST hide strategy implementation details from non-admin 
 #### Scenario: Non-admin exports opportunity summary
 - **WHEN** a non-admin user exports or copies an opportunity summary
 - **THEN** the exported payload MUST NOT include original strategy/template names, parameter values, indicator values, or analyzer details
+
+### Requirement: Common-user Monitor follows Favorites star tiers
+The Monitor page MUST show common users only strategies that they marked with stars in Favorites.
+
+#### Scenario: Common user opens Monitor
+- **WHEN** a non-admin user opens `/monitor`
+- **THEN** the Monitor request MUST use the backend common-user tier policy
+- **AND** the visible list MUST be based on the current user's tier preferences for admin Favorites (`tier=1`, `tier=2`, or `tier=3`)
+- **AND** unstarred favorites (`tier=null`) MUST NOT be shown
+- **AND** the UI MUST NOT require the strategy to be in portfolio or in local Monitor favorites to appear
+
+#### Scenario: Admin opens Monitor
+- **WHEN** an admin user opens `/monitor`
+- **THEN** the existing operator filters and Monitor favorite preference controls MAY remain available

@@ -55,3 +55,8 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
 11. Usar a skill `caveman` em modo `lite` como padrao de comunicacao com Alan.
    - Manter respostas curtas, diretas e sem filler, preservando clareza tecnica, seguranca e ordem correta em instrucoes criticas.
    - Desativar somente quando Alan pedir explicitamente `stop caveman` ou `normal mode`.
+
+12. Toda tela, componente visual ou funcionalidade com impacto de UI/UX deve seguir obrigatoriamente o `DESIGN.md`.
+   - Vale para telas novas e antigas, ajustes pequenos, refactors visuais, cards de produto e correcoes de interface.
+   - Antes de implementar, consultar `DESIGN.md` e registrar no OpenSpec/hand-off quais tokens, componentes, padroes e excecoes foram aplicados.
+   - Validacao visual e tecnica deve confirmar aderencia ao `DESIGN.md`; se houver desvio necessario, registrar justificativa antes de fechar a entrega.

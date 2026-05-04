@@ -21,6 +21,11 @@ def _session_factory(tmp_path: Path):
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE monitor_strategy_preferences ADD COLUMN IF NOT EXISTS tier INTEGER NULL"
+            )
+        )
         connection.execute(text("TRUNCATE TABLE monitor_preferences RESTART IDENTITY CASCADE"))
         connection.execute(
             text("TRUNCATE TABLE monitor_strategy_preferences RESTART IDENTITY CASCADE")
@@ -73,7 +78,7 @@ def test_monitor_strategy_preferences_put_and_get_roundtrip(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     with SessionLocal() as db:
         first = monitor_preferences.update_monitor_strategy_preferences(
-            payload=monitor_preferences.MonitorStrategyPreferenceUpdate(liked=True),
+            payload=monitor_preferences.MonitorStrategyPreferenceUpdate(liked=True, tier=2),
             favorite_id=42,
             current_user_id="user-a",
             db=db,
@@ -93,9 +98,9 @@ def test_monitor_strategy_preferences_put_and_get_roundtrip(tmp_path: Path):
             db=db,
         )
 
-    assert first == {"liked": True}
-    assert listed == {"42": {"liked": True}}
-    assert second == {"liked": False}
+    assert first == {"liked": True, "tier": 2}
+    assert listed == {"42": {"liked": True, "tier": 2}}
+    assert second == {"liked": False, "tier": None}
     assert listed_after_unlike == {}
 
 
@@ -108,7 +113,7 @@ def test_monitor_strategy_preferences_are_scoped_per_user(tmp_path: Path):
             current_user_id="user-a",
             db=db,
         )
-        db.add(MonitorStrategyPreference(user_id="user-b", favorite_id=8, liked=True))
+        db.add(MonitorStrategyPreference(user_id="user-b", favorite_id=8, liked=True, tier=1))
         db.commit()
 
         first_user = monitor_preferences.list_monitor_strategy_preferences(
@@ -120,8 +125,8 @@ def test_monitor_strategy_preferences_are_scoped_per_user(tmp_path: Path):
             db=db,
         )
 
-    assert first_user == {"7": {"liked": True}}
-    assert second_user == {"8": {"liked": True}}
+    assert first_user == {"7": {"liked": True, "tier": None}}
+    assert second_user == {"8": {"liked": True, "tier": 1}}
 
 
 def test_monitor_preferences_put_partial_update_keeps_defaults(tmp_path: Path):

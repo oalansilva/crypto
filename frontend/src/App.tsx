@@ -65,7 +65,7 @@ function App() {
         <Route element={<ProtectedLayout />}>
           <Route index element={<Navigate to="/monitor" replace />} />
           <Route path="/home" element={<HomePage />} />
-          <Route path="/favorites" element={<ProtectedRoute requireAdmin><FavoritesDashboard /></ProtectedRoute>} />
+          <Route path="/favorites" element={<FavoritesDashboard />} />
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/kanban" element={<KanbanPage />} />
           <Route path="/signals" element={<ProtectedRoute requireAdmin><SignalsPage /></ProtectedRoute>} />

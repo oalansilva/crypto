@@ -5,7 +5,7 @@ import time
 from uuid import uuid4
 
 from app.database import SessionLocal
-from app.models import FavoriteStrategy, User
+from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 from app.services.market_data_providers import CCXT_SOURCE, STOOQ_SOURCE
 from app.services.opportunity_service import OpportunityService, _normalize_market_timeframe
 from app.services import opportunity_service
@@ -124,6 +124,17 @@ def _db_favorite(
     )
 
 
+def _db_strategy_preference(
+    user_id: str, favorite_id: int, tier: int | None = 1
+) -> MonitorStrategyPreference:
+    return MonitorStrategyPreference(
+        user_id=user_id,
+        favorite_id=favorite_id,
+        liked=tier is not None,
+        tier=tier,
+    )
+
+
 def test_normalize_market_timeframe():
     assert _normalize_market_timeframe("AAPL", "15m", STOOQ_SOURCE) == "1d"
     assert _normalize_market_timeframe("AAPL", "1d", STOOQ_SOURCE) == "1d"
@@ -140,7 +151,10 @@ def test_get_favorites_falls_back_to_admin_curated_rows(monkeypatch):
         db.flush()
         admin_id = str(admin.id)
         common_id = str(common.id)
-        db.add(_db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1))
+        favorite = _db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1)
+        db.add(favorite)
+        db.flush()
+        db.add(_db_strategy_preference(common_id, int(favorite.id), tier=1))
         db.commit()
 
     service = OpportunityService()
@@ -151,7 +165,7 @@ def test_get_favorites_falls_back_to_admin_curated_rows(monkeypatch):
     assert favorites[0]["symbol"] == "BTC/USDT"
 
 
-def test_get_favorites_keeps_user_rows_authoritative(monkeypatch):
+def test_get_favorites_uses_user_tier_preferences_for_admin_catalog(monkeypatch):
     monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
     admin = _db_user("admin@example.com")
     common = _db_user("common@example.com")
@@ -161,20 +175,20 @@ def test_get_favorites_keeps_user_rows_authoritative(monkeypatch):
         db.flush()
         admin_id = str(admin.id)
         common_id = str(common.id)
-        db.add_all(
-            [
-                _db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1),
-                _db_favorite(common_id, "ETH/USDT", "Common own", tier=1),
-            ]
-        )
+        db.add_all([_db_favorite(common_id, "ETH/USDT", "Common own", tier=1)])
+        favorite = _db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=None)
+        db.add(favorite)
+        db.flush()
+        db.add(_db_strategy_preference(common_id, int(favorite.id), tier=1))
         db.commit()
 
     service = OpportunityService()
     favorites = service.get_favorites(common_id, tier_filter="1")
 
     assert len(favorites) == 1
-    assert favorites[0]["name"] == "Common own"
-    assert favorites[0]["symbol"] == "ETH/USDT"
+    assert favorites[0]["name"] == "Admin curated"
+    assert favorites[0]["symbol"] == "BTC/USDT"
+    assert favorites[0]["tier"] == 1
 
 
 def test_get_favorites_fallback_respects_tier_filter(monkeypatch):
@@ -187,10 +201,14 @@ def test_get_favorites_fallback_respects_tier_filter(monkeypatch):
         db.flush()
         admin_id = str(admin.id)
         common_id = str(common.id)
+        favorite_one = _db_favorite(admin_id, "BTC/USDT", "Tier one", tier=1)
+        favorite_two = _db_favorite(admin_id, "ETH/USDT", "Tier two", tier=2)
+        db.add_all([favorite_one, favorite_two])
+        db.flush()
         db.add_all(
             [
-                _db_favorite(admin_id, "BTC/USDT", "Tier one", tier=1),
-                _db_favorite(admin_id, "ETH/USDT", "Tier two", tier=2),
+                _db_strategy_preference(common_id, int(favorite_one.id), tier=1),
+                _db_strategy_preference(common_id, int(favorite_two.id), tier=2),
             ]
         )
         db.commit()
@@ -212,12 +230,10 @@ def test_get_favorites_falls_back_when_user_rows_are_not_monitor_candidates(monk
         db.flush()
         admin_id = str(admin.id)
         common_id = str(common.id)
-        db.add_all(
-            [
-                _db_favorite(common_id, "AAPL", "Common stock", tier=1),
-                _db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1),
-            ]
-        )
+        favorite = _db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1)
+        db.add_all([_db_favorite(common_id, "AAPL", "Common stock", tier=1), favorite])
+        db.flush()
+        db.add(_db_strategy_preference(common_id, int(favorite.id), tier=1))
         db.commit()
 
     service = OpportunityService()
@@ -228,7 +244,7 @@ def test_get_favorites_falls_back_when_user_rows_are_not_monitor_candidates(monk
     assert favorites[0]["is_curated_fallback"] is True
 
 
-def test_get_favorites_uses_configured_admin_email_order(monkeypatch):
+def test_get_favorites_loads_configured_admin_catalog(monkeypatch):
     monkeypatch.setenv("ADMIN_EMAILS", "second@example.com,first@example.com")
     first = _db_user("first@example.com")
     second = _db_user("second@example.com")
@@ -240,10 +256,14 @@ def test_get_favorites_uses_configured_admin_email_order(monkeypatch):
         first_id = str(first.id)
         second_id = str(second.id)
         common_id = str(common.id)
+        first_favorite = _db_favorite(first_id, "BTC/USDT", "First admin", tier=1)
+        second_favorite = _db_favorite(second_id, "ETH/USDT", "Second admin", tier=1)
+        db.add_all([first_favorite, second_favorite])
+        db.flush()
         db.add_all(
             [
-                _db_favorite(first_id, "BTC/USDT", "First admin", tier=1),
-                _db_favorite(second_id, "ETH/USDT", "Second admin", tier=1),
+                _db_strategy_preference(common_id, int(first_favorite.id), tier=1),
+                _db_strategy_preference(common_id, int(second_favorite.id), tier=1),
             ]
         )
         db.commit()
@@ -251,9 +271,8 @@ def test_get_favorites_uses_configured_admin_email_order(monkeypatch):
     service = OpportunityService()
     favorites = service.get_favorites(common_id, tier_filter="1")
 
-    assert len(favorites) == 1
-    assert favorites[0]["name"] == "Second admin"
-    assert favorites[0]["symbol"] == "ETH/USDT"
+    assert {favorite["name"] for favorite in favorites} == {"First admin", "Second admin"}
+    assert {favorite["symbol"] for favorite in favorites} == {"BTC/USDT", "ETH/USDT"}
 
 
 def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
@@ -266,7 +285,10 @@ def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
         db.flush()
         admin_id = str(admin.id)
         common_id = str(common.id)
-        db.add(_db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1))
+        favorite = _db_favorite(admin_id, "BTC/USDT", "Admin curated", tier=1)
+        db.add(favorite)
+        db.flush()
+        db.add(_db_strategy_preference(common_id, int(favorite.id), tier=1))
         db.commit()
 
     service = OpportunityService()

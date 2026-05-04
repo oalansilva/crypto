@@ -34,8 +34,8 @@ type NavItemConfig = {
 }
 
 const mainNavItems: NavItemConfig[] = [
+  { to: '/favorites', label: 'Favoritos', icon: Bookmark },
   { to: '/monitor', label: 'Monitor', icon: Activity },
-  { to: '/favorites', label: 'Favoritos', icon: Bookmark, adminOnly: true },
   { to: '/signals/history', label: 'Histórico', icon: TrendingUp, adminOnly: true },
   {
     to: '/supply-distribution',

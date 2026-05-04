@@ -138,6 +138,10 @@ def ensure_runtime_schema_migrations() -> None:
                 ON admin_action_logs (created_at)
                 """))
         conn.execute(text("""
+                ALTER TABLE monitor_strategy_preferences
+                ADD COLUMN IF NOT EXISTS tier INTEGER NULL
+                """))
+        conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS market_indicator (
                     id BIGSERIAL PRIMARY KEY,
                     symbol TEXT NOT NULL,

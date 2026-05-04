@@ -732,10 +732,11 @@ export const MonitorStatusTab: React.FC = () => {
             return getOpportunityAssetType(opp) === 'crypto';
         });
 
+        const effectiveListFilter = showTechnicalColumns ? listFilter : 'all';
         const afterListFilter =
-            listFilter === 'favorites'
+            effectiveListFilter === 'favorites'
                 ? afterAssetType.filter((opp) => favoriteSymbols.has(toFavoriteKey(opp)))
-                : listFilter === 'in_portfolio'
+                : effectiveListFilter === 'in_portfolio'
                     ? afterAssetType.filter((opp) => portfolioStatusBySymbol[opp.symbol]?.inPortfolio === true)
                     : afterAssetType;
 
@@ -833,6 +834,7 @@ export const MonitorStatusTab: React.FC = () => {
         !loading &&
         opportunities.length > 0 &&
         filteredOpportunities.length === 0 &&
+        showTechnicalColumns &&
         (listFilter === 'in_portfolio' || listFilter === 'favorites');
     const emptyFilterMessage =
         listFilter === 'favorites'
@@ -1036,7 +1038,7 @@ export const MonitorStatusTab: React.FC = () => {
                     </div>
 
                     <section className="filterbar" aria-label="Filtros do monitor">
-                        <div className="seg" data-seg="list">
+                        {showTechnicalColumns ? <div className="seg" data-seg="list">
                             <button
                                 className={listFilter === 'in_portfolio' ? 'on' : ''}
                                 onClick={() => setListFilter('in_portfolio')}
@@ -1058,8 +1060,8 @@ export const MonitorStatusTab: React.FC = () => {
                             >
                                 Favoritos
                             </button>
-                        </div>
-                        <div className="filter-divider" />
+                        </div> : null}
+                        {showTechnicalColumns ? <div className="filter-divider" /> : null}
                         <select className="select" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value as TimeframeFilter)}>
                             <option value="all">Timeframe: Todos</option>
                             <option value="15m">15m</option>
@@ -1090,7 +1092,10 @@ export const MonitorStatusTab: React.FC = () => {
                             ))}
                         </select>
                         <div className="filter-spacer" />
-                        <span className="chip-count">{filteredOpportunities.length} resultados · {favoriteSymbols.size} favoritos</span>
+                        <span className="chip-count">
+                            {filteredOpportunities.length} resultados
+                            {showTechnicalColumns ? ` · ${favoriteSymbols.size} favoritos` : ''}
+                        </span>
                     </section>
 
                     <main className="monitor-board">
@@ -1272,7 +1277,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         >
                                                                             <LineChart className="h-4 w-4" />
                                                                         </button>
-                                                                        <button
+                                                                        {showTechnicalColumns ? <button
                                                                             type="button"
                                                                             className={`row-action ${isFavorite ? 'is-favorite' : ''}`}
                                                                             data-testid={`strategy-favorite-toggle-${symbolTestKey(opportunity.symbol)}`}
@@ -1284,7 +1289,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                             }}
                                                                         >
                                                                             <Star className="h-4 w-4" fill={isFavorite ? 'currentColor' : 'none'} />
-                                                                        </button>
+                                                                        </button> : null}
                                                                     </td>
                                                                 </tr>
                                                                 {expanded ? (

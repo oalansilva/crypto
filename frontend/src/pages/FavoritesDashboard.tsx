@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, ChevronDown, Activity, BarChart3, MessageCircle } from 'lucide-react';
+import { Trash2, Search, List, Activity, BarChart3, MessageCircle, Star } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
 import { AgentChatModal } from '../components/AgentChatModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -34,10 +34,11 @@ const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const isAdmin = user?.isAdmin === true;
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
-    const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | '1_2' | 'none'>('all');
+    const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
 
     // New state for Trades Modal
     const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
@@ -101,24 +102,83 @@ const FavoritesDashboard: React.FC = () => {
         updateTierMutation.mutate({ id: fav.id, tier });
     };
 
-    // Helper function to get tier color and label
-    const getTierInfo = (tier: number | null) => {
-        switch (tier) {
-            case 1:
-                return { color: 'bg-green-500', textColor: 'text-green-400', label: 'Tier 1 – Core obrigatório', borderColor: 'border-green-500' };
-            case 2:
-                return { color: 'bg-yellow-500', textColor: 'text-yellow-400', label: 'Tier 2 – Bons complementares', borderColor: 'border-yellow-500' };
-            case 3:
-                return { color: 'bg-red-500', textColor: 'text-red-400', label: 'Tier 3', borderColor: 'border-red-500' };
-            default:
-                return { color: 'bg-zinc-400', textColor: 'text-zinc-400', label: 'Sem tier', borderColor: 'border-zinc-500' };
-        }
+    const getStarCount = (tier: number | null): number => {
+        if (tier === 1) return 3;
+        if (tier === 2) return 2;
+        if (tier === 3) return 1;
+        return 0;
+    };
+
+    const getTierFromStars = (stars: number): number | null => {
+        if (stars === 3) return 1;
+        if (stars === 2) return 2;
+        if (stars === 1) return 3;
+        return null;
+    };
+
+    const renderStarTierControl = (fav: FavoriteStrategy, compact = false) => {
+        const selectedStars = getStarCount(fav.tier);
+        const isSaving = updateTierMutation.isPending;
+
+        return (
+            <div className="flex items-center justify-center gap-1" aria-label="Prioridade por estrelas">
+                {[1, 2, 3].map((stars) => {
+                    const active = stars <= selectedStars;
+                    return (
+                        <button
+                            key={stars}
+                            type="button"
+                            disabled={isSaving}
+                            aria-pressed={active}
+                            title={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                handleUpdateTier(fav, selectedStars === stars ? null : getTierFromStars(stars));
+                            }}
+                            className={[
+                                'inline-flex items-center justify-center rounded-md border transition-colors',
+                                compact ? 'h-9 w-9' : 'h-8 w-8',
+                                active
+                                    ? 'border-amber-400 bg-amber-400/15 text-amber-500'
+                                    : 'border-zinc-200 bg-zinc-50 text-zinc-400 hover:text-amber-500',
+                                isSaving ? 'opacity-60 cursor-wait' : '',
+                            ].join(' ')}
+                        >
+                            <Star className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill={active ? 'currentColor' : 'none'} />
+                        </button>
+                    );
+                })}
+            </div>
+        );
     };
 
     const getFavoriteStrategyLabel = (fav: FavoriteStrategy): string => {
         return fav.is_strategy_protected
             ? (fav.strategy_display_name || 'Estratégia protegida')
             : fav.strategy_name.replace(/_/g, ' ');
+    };
+
+    const getFavoriteName = (fav: FavoriteStrategy): string => fav.name || fav.symbol || 'Estratégia';
+
+    const getFavoriteStrategyName = (fav: FavoriteStrategy): string => {
+        let name = getFavoriteName(fav).trim();
+        const symbolPattern = fav.symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const timeframePattern = fav.timeframe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        name = name
+            .replace(new RegExp(`\\b${symbolPattern}\\b`, 'gi'), ' ')
+            .replace(new RegExp(`\\b${timeframePattern}\\b`, 'gi'), ' ')
+            .replace(/\s*[-–—|/]\s*$/g, ' ')
+            .replace(/^\s*[-–—|/]\s*/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+        return name || getFavoriteStrategyLabel(fav);
+    };
+
+    const getGridStrategyDetail = (fav: FavoriteStrategy): string | null => {
+        const label = getFavoriteStrategyLabel(fav).trim();
+        if (!label || label.toLowerCase() === getFavoriteStrategyName(fav).trim().toLowerCase()) return null;
+        if (fav.is_strategy_protected && label.toLowerCase() === 'estratégia protegida') return null;
+        return label;
     };
 
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
@@ -214,6 +274,7 @@ const FavoritesDashboard: React.FC = () => {
 
     const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
     const [selectedIndicator, setSelectedIndicator] = useState<string>('ALL');
+    const [selectedTimeframe, setSelectedTimeframe] = useState<string>('ALL');
     const [directionFilter, setDirectionFilter] = useState<'all' | 'long' | 'short'>('all');
     type SortByOption = 'return' | 'sharpe' | 'trades' | 'returnPerTrade';
     const [sortBy, setSortBy] = useState<SortByOption>('returnPerTrade');
@@ -232,10 +293,15 @@ const FavoritesDashboard: React.FC = () => {
         return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.symbol))).sort();
     }, [favorites]);
 
-    // Get unique indicators (strategies) for filter
+    // Get unique strategy names for filter
     const uniqueIndicators = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.map(getFavoriteStrategyLabel))).sort();
+        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(getFavoriteStrategyName))).sort();
+    }, [favorites]);
+
+    const uniqueTimeframes = React.useMemo(() => {
+        if (!favorites) return [];
+        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.timeframe))).sort();
     }, [favorites]);
 
     const filteredFavorites = (favorites?.filter(fav => {
@@ -244,17 +310,17 @@ const FavoritesDashboard: React.FC = () => {
             getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
-        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
+        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyName(fav) === selectedIndicator;
+        const matchesTimeframe = selectedTimeframe === 'ALL' || fav.timeframe === selectedTimeframe;
         const matchesTier = tierFilter === 'all' ||
-            (tierFilter === '1_2' && (fav.tier === 1 || fav.tier === 2)) ||
             (tierFilter === 'none' && fav.tier === null) ||
-            (tierFilter !== 'none' && tierFilter !== '1_2' && fav.tier === parseInt(tierFilter));
+            (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
         const matchesCryptoOnly = isCryptoPair(fav.symbol);
 
         const favDirection = ((fav.parameters?.direction as string) || 'long').toLowerCase();
         const matchesDirection = directionFilter === 'all' || favDirection === directionFilter;
 
-        return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTier && matchesDirection;
+        return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTimeframe && matchesTier && matchesDirection;
     }) || []).sort((a, b) => {
         const tierA = a.tier ?? 999;
         const tierB = b.tier ?? 999;
@@ -391,545 +457,357 @@ const FavoritesDashboard: React.FC = () => {
         return `≤ ${e!}`;
     };
 
-    const getFavoriteStatus = (fav: FavoriteStrategy): string => {
-        const metricStatus = String(fav.metrics?.status || '').toUpperCase();
-        if (metricStatus.includes('HOLD')) return 'HOLD';
-        if (fav.metrics?.is_holding === true) return 'HOLD';
-        if (metricStatus === '') return 'WAITING';
-        return metricStatus.replaceAll('_', ' ');
+    const cryptoFavorites = React.useMemo(
+        () => (favorites || []).filter((fav) => isCryptoPair(fav.symbol)),
+        [favorites]
+    );
+
+    const tierCounts = React.useMemo(() => {
+        return cryptoFavorites.reduce(
+            (acc, fav) => {
+                if (fav.tier === 1) acc.top += 1;
+                else if (fav.tier === 2) acc.high += 1;
+                else if (fav.tier === 3) acc.watch += 1;
+                else acc.none += 1;
+                return acc;
+            },
+            { top: 0, high: 0, watch: 0, none: 0 }
+        );
+    }, [cryptoFavorites]);
+
+    const getTierDisplay = (tier: number | null) => {
+        if (tier === 1) return { label: 'Top picks', stars: 3, className: 'tier-top' };
+        if (tier === 2) return { label: 'Interesse alto', stars: 2, className: 'tier-high' };
+        if (tier === 3) return { label: 'Acompanhar', stars: 1, className: 'tier-watch' };
+        return { label: 'Sem estrela', stars: 0, className: 'tier-none' };
+    };
+
+    const splitSymbol = (symbol: string) => {
+        const [base, quote] = String(symbol || '').split('/');
+        return { base: base || symbol || '-', quote: quote || '' };
+    };
+
+    const formatSignedPct = (val?: number) => {
+        if (val === undefined || val === null) return { text: '-', positive: true };
+        const normalized = val > 1 || val < -1 ? val : val * 100;
+        return { text: `${normalized >= 0 ? '+' : ''}${normalized.toFixed(2)}%`, positive: normalized >= 0 };
     };
 
     return (
-        <div className="app-page favorites-page relative overflow-hidden text-zinc-900 font-sans selection:bg-blue-500/30">
+        <div className="app-page favorites-page favorites-workbench">
             <div className="max-w-[1920px] mx-auto page-stack">
-                <section className="page-card p-5 sm:p-6 lg:p-7">
-                    <div className="flex flex-col gap-6">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="relative">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-75 animate-pulse"></div>
-                                    <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-xl shadow-glow-blue">
-                                        <Activity className="w-7 h-7 text-zinc-900" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <h1 className="text-3xl font-bold gradient-text">Strategy Favorites</h1>
-                                    <p className="text-sm text-zinc-400 mt-0.5 flex items-center gap-2">
-                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                        System Operational
-                                    </p>
-                                </div>
+                <section className="fav-header">
+                    <div className="fav-title-row">
+                        <div className="fav-title-block">
+                            <div className="fav-title-icon">
+                                <Activity className="h-5 w-5" />
                             </div>
-                            <div className="page-card-muted px-4 py-3 text-xs sm:text-sm text-zinc-400 flex flex-wrap items-center gap-2 sm:gap-3">
-                                <span className="eyebrow">Workspace</span>
-                                <span>{filteredFavorites.length} strategies after filters</span>
-                                <span className="hidden sm:inline text-zinc-500">|</span>
-                                <span>{selectedIds.length} selected for compare</span>
+                            <div>
+                                <h1>Estratégias favoritas</h1>
+                                <p>Catálogo operacional para escolher quais setups entram no Monitor por estrelas.</p>
                             </div>
                         </div>
-
-                        <div className="page-card-muted p-4 sm:p-5">
-                            <div className="flex flex-col gap-3 lg:gap-4">
-                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                                    <div className="relative group">
-                                        <select
-                                            value={tierFilter}
-                                            onChange={(e) => setTierFilter(e.target.value as 'all' | '1' | '2' | '3' | '1_2' | 'none')}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
-                                        >
-                                            <option value="all" className="bg-zinc-900">Tier: All</option>
-                                            <option value="1_2" className="bg-zinc-900">Tier 1 + Tier 2</option>
-                                            <option value="1" className="bg-zinc-900">Tier 1 – Core obrigatório</option>
-                                            <option value="2" className="bg-zinc-900">Tier 2 – Bons complementares</option>
-                                            <option value="3" className="bg-zinc-900">Tier 3</option>
-                                            <option value="none" className="bg-zinc-900">Sem tier</option>
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
-                                    </div>
-
-                                    <div className="relative group">
-                                        <select
-                                            value={selectedSymbol}
-                                            onChange={(e) => setSelectedSymbol(e.target.value)}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
-                                        >
-                                            <option value="ALL" className="bg-zinc-900">Symbol: All</option>
-                                            {uniqueSymbols.map(sym => (
-                                                <option key={sym} value={sym} className="bg-zinc-900">{sym}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
-                                    </div>
-
-                                    <div className="relative group">
-                                        <select
-                                            value={selectedIndicator}
-                                            onChange={(e) => setSelectedIndicator(e.target.value)}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
-                                        >
-                                            <option value="ALL" className="bg-zinc-900">Strategy: All</option>
-                                            {uniqueIndicators.map(ind => (
-                                                <option key={ind} value={ind} className="bg-zinc-900">{ind}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
-                                    </div>
-
-                                    <div className="relative group">
-                                        <select
-                                            value={directionFilter}
-                                            onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'long' | 'short')}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
-                                        >
-                                            <option value="all" className="bg-zinc-900">Direção: All</option>
-                                            <option value="long" className="bg-zinc-900">Long</option>
-                                            <option value="short" className="bg-zinc-900">Short</option>
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
-                                    </div>
-
-                                    <div className="relative group">
-                                        <select
-                                            value={sortBy}
-                                            onChange={(e) => setSortBy(e.target.value as SortByOption)}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-9 py-3 text-sm text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-colors hover:bg-zinc-100 min-h-12"
-                                        >
-                                            <option value="returnPerTrade" className="bg-zinc-900">Ordenar: Ret/T %</option>
-                                            <option value="return" className="bg-zinc-900">Ordenar: Return</option>
-                                            <option value="sharpe" className="bg-zinc-900">Ordenar: Sharpe</option>
-                                            <option value="trades" className="bg-zinc-900">Ordenar: Trades</option>
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                    <div className="relative w-full lg:max-w-md">
-                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500 w-4 h-4" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search strategies..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-sm text-zinc-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none w-full min-h-12 placeholder-gray-600 transition-colors hover:bg-zinc-100"
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full lg:w-auto">
-                                        <button
-                                            onClick={handleExportExcel}
-                                            className="bg-zinc-50 hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 px-4 py-3 text-sm font-medium rounded-xl border border-zinc-200 hover:border-zinc-300 transition-all flex items-center justify-center gap-2 min-h-12"
-                                        >
-                                            <List className="w-4 h-4" /> Export
-                                        </button>
-                                        <button
-                                            onClick={() => navigate('/combo/select')}
-                                            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-zinc-900 text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5 min-h-12"
-                                        >
-                                            Find New
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="fav-meta">
+                            <span className="fav-live-dot" />
+                            <span>System Operational</span>
+                            <span className="fav-meta-separator" />
+                            <span>{filteredFavorites.length} filtradas</span>
+                            {isAdmin ? <span>{selectedIds.length} comparadas</span> : null}
                         </div>
+                    </div>
+
+                    <div className="tier-cards" aria-label="Resumo por estrelas">
+                        {[
+                            { key: 'watch', label: 'Acompanhar', value: tierCounts.watch, stars: 1, helper: 'Monitorar quando fizer sentido', tone: 'watch' },
+                            { key: 'high', label: 'Interesse alto', value: tierCounts.high, stars: 2, helper: 'Prioridade intermediária', tone: 'high' },
+                            { key: 'top', label: 'Top picks', value: tierCounts.top, stars: 3, helper: 'Fila principal do Monitor', tone: 'top' },
+                        ].map((card) => (
+                            <button
+                                key={card.key}
+                                type="button"
+                                className={`tier-card tier-card-${card.tone}`}
+                                onClick={() => setTierFilter(card.key === 'top' ? '1' : card.key === 'high' ? '2' : '3')}
+                            >
+                                <span className="tier-card-label">{card.label}</span>
+                                <span className="tier-card-count">{card.value}</span>
+                                <span className="tier-card-stars">
+                                    {Array.from({ length: 3 }).map((_, index) => (
+                                        <Star key={index} className="h-4 w-4" fill={index < card.stars ? 'currentColor' : 'none'} />
+                                    ))}
+                                </span>
+                                <span className="tier-card-helper">{card.helper}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="tier-filter" aria-label="Filtro por tier">
+                        {[
+                            { value: 'all', label: `Todas ${cryptoFavorites.length}` },
+                            { value: '1', label: `Top picks ${tierCounts.top}` },
+                            { value: '2', label: `Alto ${tierCounts.high}` },
+                            { value: '3', label: `Acompanhar ${tierCounts.watch}` },
+                            { value: 'none', label: `Sem estrela ${tierCounts.none}` },
+                        ].map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                className={tierFilter === option.value ? 'active' : ''}
+                                aria-pressed={tierFilter === option.value}
+                                onClick={() => setTierFilter(option.value as 'all' | '1' | '2' | '3' | 'none')}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
                     </div>
                 </section>
 
-                <main className="container mx-auto px-3 sm:px-6 pb-12">
-                    {/* Table Container */}
-                    <div className="glass-strong rounded-[28px] border border-zinc-200 overflow-hidden shadow-2xl">
+                <section className="fav-controls" aria-label="Filtros de favoritos">
+                    <div className="fav-filters">
+                        <label>
+                            <span>Symbol</span>
+                            <select value={selectedSymbol} onChange={(e) => setSelectedSymbol(e.target.value)}>
+                                <option value="ALL">Todos</option>
+                                {uniqueSymbols.map(sym => (
+                                    <option key={sym} value={sym}>{sym}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
+                            <span>Strategy</span>
+                            <select value={selectedIndicator} onChange={(e) => setSelectedIndicator(e.target.value)}>
+                                <option value="ALL">Todas</option>
+                                {uniqueIndicators.map(ind => (
+                                    <option key={ind} value={ind}>{ind}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
+                            <span>Time</span>
+                            <select value={selectedTimeframe} onChange={(e) => setSelectedTimeframe(e.target.value)}>
+                                <option value="ALL">Todos</option>
+                                {uniqueTimeframes.map(tf => (
+                                    <option key={tf} value={tf}>{tf}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
+                            <span>Direção</span>
+                            <select value={directionFilter} onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'long' | 'short')}>
+                                <option value="all">Todas</option>
+                                <option value="long">Long</option>
+                                <option value="short">Short</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Ordenar</span>
+                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortByOption)}>
+                                <option value="returnPerTrade">Ret/T %</option>
+                                <option value="return">Return</option>
+                                <option value="sharpe">Sharpe</option>
+                                <option value="trades">Trades</option>
+                            </select>
+                        </label>
+                    </div>
 
-                        <div className="lg:hidden p-3 sm:p-4 space-y-3">
-                            {isLoading ? (
-                                <div className="p-8 text-center text-zinc-500 animate-pulse">Scanning database...</div>
-                            ) : filteredFavorites.length === 0 ? (
-                                <div className="p-8 text-center text-zinc-500">No favorite strategies found.</div>
-                            ) : (
-                                visibleFavorites.map((fav: FavoriteStrategy) => {
-                                    const isSelected = selectedIds.includes(fav.id);
-                                    const m = fav.metrics || {};
-                                    const totalReturn = m.total_return_pct ?? m.total_return;
-                                    const tierInfo = getTierInfo(fav.tier);
-                                    const statusLabel = getFavoriteStatus(fav);
-                                    return (
-                                        <article
-                                            key={fav.id}
-                                            className={`rounded-xl border bg-zinc-50 p-3 space-y-3 ${
-                                                fav.tier === 1
-                                                    ? 'border-green-500/40'
-                                                    : fav.tier === 2
-                                                        ? 'border-yellow-500/40'
-                                                        : fav.tier === 3
-                                                            ? 'border-red-500/40'
-                                                            : 'border-zinc-200'
-                                            } ${isSelected ? 'ring-1 ring-blue-500/60' : ''}`}
-                                        >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="text-base font-bold tracking-wide break-words">{fav.symbol}</p>
-                                                    <p className="text-sm text-blue-300 break-words">{getFavoriteStrategyLabel(fav)}</p>
-                                                </div>
-                                                <span className={`px-2 py-1 rounded-md text-xs font-semibold border ${statusLabel === 'HOLD' ? 'text-emerald-700 border-emerald-600/50 bg-emerald-500/10' : 'text-zinc-500 border-zinc-300 bg-zinc-100'}`}>
-                                                    {statusLabel}
-                                                </span>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                                <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-2">
-                                                    <p className="text-zinc-500">Tier</p>
-                                                    <p className={`font-medium ${tierInfo.textColor}`}>{tierInfo.label}</p>
-                                                </div>
-                                                <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-2">
-                                                    <p className="text-zinc-500">Return</p>
-                                                    <p className={`font-semibold ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatPct(totalReturn)}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                <select
-                                                    value={fav.tier ?? ''}
-                                                    onChange={(e) => {
-                                                        const tierValue = e.target.value === '' ? null : parseInt(e.target.value);
-                                                        handleUpdateTier(fav, tierValue);
-                                                    }}
-                                                    className={`w-full min-h-11 text-xs font-medium px-3 py-2 rounded-lg border transition-all ${
-                                                        fav.tier === 1
-                                                            ? 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30'
-                                                            : fav.tier === 2
-                                                                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
-                                                                : fav.tier === 3
-                                                                    ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30'
-                                                                    : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'
-                                                    }`}
-                                                >
-                                                    <option value="">Sem tier</option>
-                                                    <option value="1">Tier 1</option>
-                                                    <option value="2">Tier 2</option>
-                                                    <option value="3">Tier 3</option>
-                                                </select>
-                                                <button
-                                                    onClick={() => toggleSelection(fav.id)}
-                                                    className={`min-h-11 rounded-lg border text-sm font-medium transition-colors ${
-                                                        isSelected
-                                                            ? 'border-blue-500/60 bg-blue-500/15 text-blue-300'
-                                                            : 'border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100'
-                                                    }`}
-                                                >
-                                                    {isSelected ? 'Selected for compare' : 'Select to compare'}
-                                                </button>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                    onClick={() => handleViewTrades(fav)}
-                                                    className="min-h-11 rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-600 text-sm font-medium flex items-center justify-center gap-2 hover:bg-zinc-100 transition-colors"
-                                                >
-                                                    <List className="w-4 h-4" />
-                                                    Trades
-                                                </button>
-                                                <button
-                                                    onClick={() => handleViewResults(fav)}
-                                                    disabled={loadingBacktestId === fav.id}
-                                                    className="min-h-11 rounded-lg border border-green-500/30 bg-green-500/10 text-green-300 text-sm font-medium flex items-center justify-center gap-2 hover:bg-green-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {loadingBacktestId === fav.id ? (
-                                                        <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
-                                                    ) : (
-                                                        <BarChart3 className="w-4 h-4" />
-                                                    )}
-                                                    Results
-                                                </button>
-                                                <button
-                                                    onClick={() => handleOpenAgent(fav)}
-                                                    className="min-h-11 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium flex items-center justify-center gap-2 hover:bg-purple-500/20 transition-colors"
-                                                >
-                                                    <MessageCircle className="w-4 h-4" />
-                                                    Trader
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(fav.id)}
-                                                    className="min-h-11 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-sm font-medium flex items-center justify-center gap-2 hover:bg-red-500/20 transition-colors"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                    Delete
-                                                </button>
-                                            </div>
-
-                                            <details className="rounded-lg border border-zinc-200 bg-white0">
-                                                <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-zinc-600 flex items-center justify-between min-h-11">
-                                                    <span>More details</span>
-                                                    <ChevronDown className="w-4 h-4 text-zinc-400" />
-                                                </summary>
-                                                <div className="px-3 pb-3 space-y-3 text-xs text-zinc-500">
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <p className="text-zinc-500">Timeframe</p>
-                                                            <p className="font-mono">{fav.timeframe}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-zinc-500">Período</p>
-                                                            <p>{formatPeriod(fav)}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-zinc-500 mb-1">Params</p>
-                                                        <p className="font-mono break-words">{formatParams(fav.parameters, isFavoriteProtected(fav)).split('&').join(' ')}</p>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <p className="text-zinc-500">Sharpe</p>
-                                                            <p>{formatNum(m.sharpe_ratio)}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-zinc-500">Trades</p>
-                                                            <p>{getTradesCount(fav)}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-zinc-500 mb-1">Notes</p>
-                                                        <p className="break-words italic">{fav.notes || '-'}</p>
-                                                    </div>
-                                                </div>
-                                            </details>
-                                        </article>
-                                    );
-                                })
-                            )}
-                            {!isLoading && filteredFavorites.length > 0 && hasMore && (
-                                <div className="p-4 text-center text-zinc-500 text-sm">
-                                    <div ref={sentinelRef} />
-                                    <span className="animate-pulse">Carregando mais…</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="hidden lg:block overflow-x-auto">
-                            <table className="w-full text-left border-collapse text-sm">
-                                <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-400 font-semibold uppercase tracking-wider text-xs">
-                                    <tr>
-                                        <th className="p-4 w-10 text-center">
-                                            <div className="w-4 h-4 rounded border border-zinc-300"></div>
-                                        </th>
-                                        <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 w-32">Tier</th>
-                                        <th className="p-4 border-r border-zinc-100 font-medium text-zinc-900">Symbol</th>
-                                        <th className="p-4 border-r border-zinc-100 font-medium text-zinc-900">Strategy</th>
-                                        <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 whitespace-nowrap">Direção</th>
-                                        <th className="p-4 border-r border-zinc-100 text-center text-zinc-400">Timeframe</th>
-                                        <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 whitespace-nowrap">Período</th>
-                                        <th className="p-4 border-r border-zinc-100 text-zinc-400 w-96">Config</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Stop</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-blue-400">Sharpe</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Trades</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Win%</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-900">Return</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-red-400">Max DD</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">PF</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Sort</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-red-400">Max L</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">ATR</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-green-400">Bull</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-red-400">Bear</th>
-                                        <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">ADX</th>
-                                        <th className="p-4 border-r border-zinc-100 text-left text-zinc-500">Notes</th>
-                                        <th className="p-4 text-center text-zinc-400">Actions</th>
-                                    </tr>
-                                </thead>
-                                        <tbody className="divide-y divide-zinc-200">
-                                    {isLoading ? (
-                                        <tr><td colSpan={21} className="p-12 text-center text-zinc-500 animate-pulse">Scanning database...</td></tr>
-                                    ) : filteredFavorites.length === 0 ? (
-                                        <tr><td colSpan={21} className="p-12 text-center text-zinc-500">No favorite strategies found.</td></tr>
-                                    ) : (
-                                        visibleFavorites.map((fav: FavoriteStrategy) => {
-                                            const isSelected = selectedIds.includes(fav.id);
-                                            const m = fav.metrics || {};
-                                            // Try to find derived metrics, fallback to N/A
-                                            const totalReturn = m.total_return_pct ?? m.total_return;
-                                            const totalReturnPct = m.total_return_pct ?? (m.total_return != null ? m.total_return * 100 : null);
-                                            const tradesN = Math.max(1, getTradesCount(fav));
-                                            const returnPerTradePct = totalReturnPct != null ? totalReturnPct / tradesN : null;
-                                            const expectancy = m.expectancy ?? (m.total_pnl && tradesN ? m.total_pnl / tradesN : null);
-                                            // Stop loss usually in parameters
-                                            const stopLoss = fav.parameters.stop_loss ? fav.parameters.stop_loss : null;
-
-                                            return (
-
-                                                <tr
-                                                    key={fav.id}
-                                                    className={`
-                                                    group transition-all duration-200 border-b border-zinc-100 hover:bg-zinc-50
-                                                    ${isSelected ? 'bg-blue-500/10 border-blue-500/30' : ''}
-                                                    ${fav.tier === 1 ? 'bg-green-500/5 border-l-2 border-l-green-500' : ''}
-                                                    ${fav.tier === 2 ? 'bg-yellow-500/5 border-l-2 border-l-yellow-500' : ''}
-                                                    ${fav.tier === 3 ? 'bg-red-500/5 border-l-2 border-l-red-500' : ''}
-                                                `}
-                                                >
-                                                    <td className="p-4 border-r border-zinc-100 text-center">
-                                                        <div
-                                                            onClick={() => toggleSelection(fav.id)}
-                                                            className={`w-5 h-5 rounded-md border mx-auto cursor-pointer flex items-center justify-center transition-all
-                                                            ${isSelected ? 'bg-blue-500 border-blue-500 shadow-glow-blue' : 'bg-transparent border-gray-600 group-hover:border-blue-400'}
-                                                        `}
-                                                        >
-                                                            {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-4 border-r border-zinc-100 text-center">
-                                                        <select
-                                                            value={fav.tier ?? ''}
-                                                            onChange={(e) => {
-                                                                const tierValue = e.target.value === '' ? null : parseInt(e.target.value);
-                                                                handleUpdateTier(fav, tierValue);
-                                                            }}
-                                                            className={`text-xs font-medium px-2 py-1 rounded border transition-all ${
-                                                                fav.tier === 1 
-                                                                    ? 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30' 
-                                                                    : fav.tier === 2
-                                                                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
-                                                                    : fav.tier === 3
-                                                                    ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30'
-                                                                    : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'
-                                                            }`}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            <option value="">Sem tier</option>
-                                                            <option value="1">Tier 1</option>
-                                                            <option value="2">Tier 2</option>
-                                                            <option value="3">Tier 3</option>
-                                                        </select>
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 font-bold text-zinc-900 tracking-wide">{fav.symbol}</td>
-                                                    <td className="p-2 border-r border-zinc-100 text-blue-300 font-medium">{getFavoriteStrategyLabel(fav)}</td>
-                                                    <td className="p-2 border-r border-zinc-100 text-center" title="Long = compra na entrada / Short = venda na entrada">
-                                                        {((fav.parameters?.direction as string) || 'long').toLowerCase() === 'short' ? (
-                                                            <span className="px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/40">Short</span>
-                                                        ) : (
-                                                            <span className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-600/40">Long</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-center text-zinc-900/90" title="Timeframe rodado">
-                                                        <span className="px-2 py-1 rounded bg-zinc-50 text-xs font-mono">{fav.timeframe}</span>
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-center text-zinc-500 text-xs whitespace-nowrap" title="Período em que a estratégia foi testada">
-                                                        {formatPeriod(fav)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-zinc-400 truncate max-w-xs text-xs font-mono" title={formatParams(fav.parameters, isFavoriteProtected(fav))}>
-                                                        {formatParams(fav.parameters, isFavoriteProtected(fav)).split('&').join(' ')}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
-                                                        {formatPct(stopLoss)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-blue-400 font-bold text-sm font-mono bg-blue-500/5">
-                                                        {formatNum(m.sharpe_ratio)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
-                                                        {getTradesCount(fav)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
-                                                        {formatPct(m.win_rate)}
-                                                    </td>
-                                                    <td className={`p-2 border-r border-zinc-100 text-right font-bold font-mono ${(totalReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {formatPct(totalReturn)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-red-400 font-mono">
-                                                        {formatPct(m.max_drawdown)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
-                                                        {formatNum(m.profit_factor)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
-                                                        {formatNum(m.sortino_ratio ?? m.sortino)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-red-400 font-bold font-mono">
-                                                        {formatPct(m.max_loss)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-400 font-mono">
-                                                        {formatNum(m.avg_atr)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-green-500/80 font-mono">
-                                                        {formatPct(m.win_rate_bull)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-red-500/80 font-mono">
-                                                        {formatPct(m.win_rate_bear)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
-                                                        {formatNum(m.avg_adx)}
-                                                    </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-left text-zinc-500 text-xs italic max-w-[150px] truncate" title={fav.notes || ''}>
-                                                        {fav.notes || '-'}
-                                                    </td>
-                                                    <td className="p-2 text-center flex items-center justify-center gap-2">
-                                                        <button
-                                                            onClick={() => handleViewTrades(fav)}
-                                                            className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors"
-                                                            title="View Trades"
-                                                        >
-                                                            <List className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleViewResults(fav)}
-                                                            disabled={loadingBacktestId === fav.id}
-                                                            className="p-1.5 hover:bg-green-500/20 rounded-lg text-green-400 hover:text-green-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            title="View Results"
-                                                        >
-                                                            {loadingBacktestId === fav.id ? (
-                                                                <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
-                                                            ) : (
-                                                                <BarChart3 className="w-4 h-4" />
-                                                            )}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleOpenAgent(fav)}
-                                                            className="p-1.5 hover:bg-purple-500/20 rounded-lg text-zinc-400 hover:text-purple-300 transition-colors"
-                                                            title="Chat com o agente"
-                                                        >
-                                                            <MessageCircle className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(fav.id)}
-                                                            className="p-1.5 hover:bg-red-500/20 rounded-lg text-zinc-400 hover:text-red-400 transition-colors"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                    {!isLoading && filteredFavorites.length > 0 && hasMore && (
-                                        <tr>
-                                            <td colSpan={21} className="p-6 text-center text-zinc-500 text-sm">
-                                                <div ref={sentinelRef} />
-                                                <span className="animate-pulse">Carregando mais…</span>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Footer / Status Bar - Replaces System Status */}
-                        <div className="p-4 sm:p-5 bg-zinc-50 border-t border-zinc-200 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center text-sm">
-                            <div className="flex items-center gap-2 text-zinc-400">
-                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                {hasMore
-                                    ? `Mostrando ${visibleFavorites.length} de ${filteredFavorites.length} estratégias — role para carregar mais`
-                                    : `${filteredFavorites.length} estratégias carregadas`}
+                    <div className="fav-search-row">
+                        <label className="fav-search">
+                            <Search className="h-4 w-4" />
+                            <input
+                                type="text"
+                                placeholder="Buscar por símbolo ou estratégia"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </label>
+                        {isAdmin ? (
+                            <div className="fav-actions">
+                                <button type="button" onClick={handleExportExcel} className="fav-secondary-action">
+                                    <List className="h-4 w-4" />
+                                    Exportar
+                                </button>
+                                <button type="button" onClick={() => navigate('/combo/select')} className="fav-primary-action">
+                                    Nova estratégia
+                                </button>
                             </div>
-                            {selectedIds.length > 0 && (
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 animate-in fade-in slide-in-from-right-4 w-full lg:w-auto">
-                                    <span className="text-blue-400 font-medium">{selectedIds.length} selected</span>
-                                    <button
-                                        onClick={() => setIsCompareOpen(true)}
-                                        disabled={selectedIds.length < 2}
-                                        className="px-4 py-2.5 lg:py-1.5 bg-blue-600 hover:bg-blue-500 text-zinc-900 text-sm font-semibold rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-11 lg:min-h-0 w-full sm:w-auto"
-                                    >
-                                        Compare Strategies
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                        ) : null}
+                    </div>
+                </section>
+
+                <main className="fav-main">
+                    <div className="fav-mobile-list">
+                        {isLoading ? (
+                            <div className="fav-empty">Carregando estratégias...</div>
+                        ) : filteredFavorites.length === 0 ? (
+                            <div className="fav-empty">Nenhuma estratégia favorita encontrada.</div>
+                        ) : (
+                            visibleFavorites.map((fav: FavoriteStrategy) => {
+                                const m = fav.metrics || {};
+                                const tier = getTierDisplay(fav.tier);
+                                const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
+                                const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
+                                const strategyDetail = getGridStrategyDetail(fav);
+                                return (
+                                    <article key={fav.id} className={`fav-mobile-card ${tier.className}`}>
+                                        <div className="fav-mobile-card-head">
+                                            <div>
+                                                <strong>{fav.symbol}</strong>
+                                                <span className="fav-strategy-name">{getFavoriteStrategyName(fav)}</span>
+                                                {strategyDetail ? <span>{strategyDetail}</span> : null}
+                                            </div>
+                                            <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
+                                                {direction === 'short' ? 'Short' : 'Long'}
+                                            </span>
+                                        </div>
+                                        <div className="fav-mobile-stars">{renderStarTierControl(fav, true)}</div>
+                                        <div className="fav-mobile-metrics">
+                                            <span><b>TF</b>{fav.timeframe}</span>
+                                            <span><b>Sharpe</b>{formatNum(m.sharpe_ratio)}</span>
+                                            <span><b>Trades</b>{getTradesCount(fav)}</span>
+                                            <span className={totalReturn.positive ? 'positive' : 'negative'}><b>Return</b>{totalReturn.text}</span>
+                                        </div>
+                                        {isAdmin ? (
+                                            <div className="fav-mobile-actions">
+                                                <button type="button" onClick={() => handleViewTrades(fav)} title="View Trades"><List className="h-4 w-4" />Trades</button>
+                                                <button type="button" onClick={() => handleViewResults(fav)} disabled={loadingBacktestId === fav.id} title="View Results"><BarChart3 className="h-4 w-4" />Results</button>
+                                                <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" />Trader</button>
+                                                <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
+                                            </div>
+                                        ) : null}
+                                    </article>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    <div className="fav-table-shell">
+                        <table className="fav-strategies">
+                            <thead>
+                                <tr>
+                                    {isAdmin ? <th className="select-col">Sel</th> : null}
+                                    <th>Tier</th>
+                                    <th>Symbol</th>
+                                    <th>Estratégia</th>
+                                    <th>Direção</th>
+                                    <th>TF</th>
+                                    <th>Período</th>
+                                    <th>Stop</th>
+                                    <th>Sharpe</th>
+                                    <th>Trades</th>
+                                    <th>Win%</th>
+                                    <th>Return</th>
+                                    <th>Max DD</th>
+                                    <th>PF</th>
+                                    <th>SQN</th>
+                                    <th>Max L</th>
+                                    <th>ATR</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {isLoading ? (
+                                    <tr><td colSpan={isAdmin ? 18 : 17} className="fav-empty-cell">Carregando estratégias...</td></tr>
+                                ) : filteredFavorites.length === 0 ? (
+                                    <tr><td colSpan={isAdmin ? 18 : 17} className="fav-empty-cell">Nenhuma estratégia favorita encontrada.</td></tr>
+                                ) : (
+                                    visibleFavorites.map((fav: FavoriteStrategy) => {
+                                        const isSelected = selectedIds.includes(fav.id);
+                                        const m = fav.metrics || {};
+                                        const tier = getTierDisplay(fav.tier);
+                                        const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
+                                        const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
+                                        const symbol = splitSymbol(fav.symbol);
+                                        const stopLoss = fav.parameters?.stop_loss ?? null;
+                                        const strategyDetail = getGridStrategyDetail(fav);
+
+                                        return (
+                                            <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`}>
+                                                {isAdmin ? (
+                                                    <td className="select-col">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleSelection(fav.id)}
+                                                            className={`fav-select-row ${isSelected ? 'selected' : ''}`}
+                                                            aria-label={isSelected ? 'Remover da comparação' : 'Selecionar para comparar'}
+                                                        />
+                                                    </td>
+                                                ) : null}
+                                                <td className="stars-cell">{renderStarTierControl(fav)}</td>
+                                                <td aria-label={fav.symbol}>
+                                                    <div className="sym-cell">
+                                                        <span className="sym-tile">{symbol.base.slice(0, 3)}</span>
+                                                        <span>
+                                                            <strong>{fav.symbol}</strong>
+                                                            {symbol.quote ? <small>{symbol.quote}</small> : null}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="strategy-cell" aria-label={`${getFavoriteStrategyName(fav)} ${strategyDetail || ''}`}>
+                                                    <strong>{getFavoriteStrategyName(fav)}</strong>
+                                                    {strategyDetail ? <span>{strategyDetail}</span> : null}
+                                                </td>
+                                                <td>
+                                                    <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
+                                                        {direction === 'short' ? 'Short' : 'Long'}
+                                                    </span>
+                                                </td>
+                                                <td><span className="tf-pill">{fav.timeframe}</span></td>
+                                                <td className="muted-cell">{formatPeriod(fav)}</td>
+                                                <td className="metric-cell">{formatPct(stopLoss)}</td>
+                                                <td className="metric-cell accent">{formatNum(m.sharpe_ratio)}</td>
+                                                <td className="metric-cell">{getTradesCount(fav)}</td>
+                                                <td className="metric-cell">{formatPct(m.win_rate)}</td>
+                                                <td className={`metric-cell strong ${totalReturn.positive ? 'positive' : 'negative'}`}>{totalReturn.text}</td>
+                                                <td className="metric-cell negative">{formatPct(m.max_drawdown)}</td>
+                                                <td className="metric-cell">{formatNum(m.profit_factor)}</td>
+                                                <td className="metric-cell">{formatNum(m.sqn ?? m.sortino_ratio ?? m.sortino)}</td>
+                                                <td className="metric-cell negative">{formatPct(m.max_loss)}</td>
+                                                <td className="metric-cell">{formatNum(m.avg_atr)}</td>
+                                                <td>
+                                                    {isAdmin ? (
+                                                        <div className="fav-row-actions">
+                                                            <button type="button" onClick={() => handleViewTrades(fav)} title="View Trades"><List className="h-4 w-4" /></button>
+                                                            <button type="button" onClick={() => handleViewResults(fav)} disabled={loadingBacktestId === fav.id} title="View Results">
+                                                                {loadingBacktestId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
+                                                            </button>
+                                                            <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" /></button>
+                                                            <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="muted-cell">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                                {!isLoading && filteredFavorites.length > 0 && hasMore && (
+                                    <tr>
+                                        <td colSpan={isAdmin ? 18 : 17} className="fav-empty-cell">
+                                            <div ref={sentinelRef} />
+                                            Carregando mais...
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="fav-footer">
+                        <span>
+                            {hasMore
+                                ? `Mostrando ${visibleFavorites.length} de ${filteredFavorites.length}`
+                                : `${filteredFavorites.length} estratégias carregadas`}
+                        </span>
+                        {isAdmin && selectedIds.length > 0 ? (
+                            <button
+                                type="button"
+                                onClick={() => setIsCompareOpen(true)}
+                                disabled={selectedIds.length < 2}
+                                className="fav-primary-action"
+                            >
+                                Comparar {selectedIds.length}
+                            </button>
+                        ) : null}
                     </div>
                 </main>
 

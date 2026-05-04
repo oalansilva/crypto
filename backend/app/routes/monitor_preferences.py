@@ -36,10 +36,12 @@ class MonitorPreferenceUpdate(BaseModel):
 
 class MonitorStrategyPreferencePayload(BaseModel):
     liked: bool
+    tier: Optional[int] = None
 
 
 class MonitorStrategyPreferenceUpdate(BaseModel):
     liked: bool
+    tier: Optional[int] = None
 
 
 def _normalize_symbol(symbol: str) -> str:
@@ -105,7 +107,10 @@ def list_monitor_strategy_preferences(
         )
         .all()
     )
-    return {str(row.favorite_id): {"liked": bool(row.liked)} for row in rows}
+    return {
+        str(row.favorite_id): {"liked": bool(row.liked), "tier": getattr(row, "tier", None)}
+        for row in rows
+    }
 
 
 @router.put(
@@ -120,6 +125,9 @@ def update_monitor_strategy_preferences(
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if payload.tier is not None and payload.tier not in (1, 2, 3):
+        raise HTTPException(status_code=400, detail="Tier must be 1, 2, 3 or null")
+
     existing = (
         db.query(MonitorStrategyPreference)
         .filter(
@@ -133,15 +141,17 @@ def update_monitor_strategy_preferences(
             user_id=current_user_id,
             favorite_id=favorite_id,
             liked=payload.liked,
+            tier=payload.tier,
         )
         db.add(existing)
     else:
         existing.liked = payload.liked
+        existing.tier = payload.tier
 
     existing.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(existing)
-    return {"liked": bool(existing.liked)}
+    return {"liked": bool(existing.liked), "tier": getattr(existing, "tier", None)}
 
 
 @router.put("/preferences/{symbol:path}", response_model=MonitorPreferencePayload)
