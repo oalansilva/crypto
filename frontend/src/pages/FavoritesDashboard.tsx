@@ -160,9 +160,23 @@ const FavoritesDashboard: React.FC = () => {
 
     const getFavoriteName = (fav: FavoriteStrategy): string => fav.name || fav.symbol || 'Estratégia';
 
+    const getFavoriteStrategyName = (fav: FavoriteStrategy): string => {
+        let name = getFavoriteName(fav).trim();
+        const symbolPattern = fav.symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const timeframePattern = fav.timeframe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        name = name
+            .replace(new RegExp(`\\b${symbolPattern}\\b`, 'gi'), ' ')
+            .replace(new RegExp(`\\b${timeframePattern}\\b`, 'gi'), ' ')
+            .replace(/\s*[-–—|/]\s*$/g, ' ')
+            .replace(/^\s*[-–—|/]\s*/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+        return name || getFavoriteStrategyLabel(fav);
+    };
+
     const getGridStrategyDetail = (fav: FavoriteStrategy): string | null => {
         const label = getFavoriteStrategyLabel(fav).trim();
-        if (!label || label.toLowerCase() === getFavoriteName(fav).trim().toLowerCase()) return null;
+        if (!label || label.toLowerCase() === getFavoriteStrategyName(fav).trim().toLowerCase()) return null;
         if (fav.is_strategy_protected && label.toLowerCase() === 'estratégia protegida') return null;
         return label;
     };
@@ -260,6 +274,7 @@ const FavoritesDashboard: React.FC = () => {
 
     const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
     const [selectedIndicator, setSelectedIndicator] = useState<string>('ALL');
+    const [selectedTimeframe, setSelectedTimeframe] = useState<string>('ALL');
     const [directionFilter, setDirectionFilter] = useState<'all' | 'long' | 'short'>('all');
     type SortByOption = 'return' | 'sharpe' | 'trades' | 'returnPerTrade';
     const [sortBy, setSortBy] = useState<SortByOption>('returnPerTrade');
@@ -278,10 +293,15 @@ const FavoritesDashboard: React.FC = () => {
         return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.symbol))).sort();
     }, [favorites]);
 
-    // Get unique favorite strategy names for filter
+    // Get unique strategy names for filter
     const uniqueIndicators = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(getFavoriteName))).sort();
+        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(getFavoriteStrategyName))).sort();
+    }, [favorites]);
+
+    const uniqueTimeframes = React.useMemo(() => {
+        if (!favorites) return [];
+        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.timeframe))).sort();
     }, [favorites]);
 
     const filteredFavorites = (favorites?.filter(fav => {
@@ -290,7 +310,8 @@ const FavoritesDashboard: React.FC = () => {
             getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
-        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteName(fav) === selectedIndicator;
+        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyName(fav) === selectedIndicator;
+        const matchesTimeframe = selectedTimeframe === 'ALL' || fav.timeframe === selectedTimeframe;
         const matchesTier = tierFilter === 'all' ||
             (tierFilter === 'none' && fav.tier === null) ||
             (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
@@ -299,7 +320,7 @@ const FavoritesDashboard: React.FC = () => {
         const favDirection = ((fav.parameters?.direction as string) || 'long').toLowerCase();
         const matchesDirection = directionFilter === 'all' || favDirection === directionFilter;
 
-        return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTier && matchesDirection;
+        return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTimeframe && matchesTier && matchesDirection;
     }) || []).sort((a, b) => {
         const tierA = a.tier ?? 999;
         const tierB = b.tier ?? 999;
@@ -561,6 +582,15 @@ const FavoritesDashboard: React.FC = () => {
                             </select>
                         </label>
                         <label>
+                            <span>Time</span>
+                            <select value={selectedTimeframe} onChange={(e) => setSelectedTimeframe(e.target.value)}>
+                                <option value="ALL">Todos</option>
+                                {uniqueTimeframes.map(tf => (
+                                    <option key={tf} value={tf}>{tf}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
                             <span>Direção</span>
                             <select value={directionFilter} onChange={(e) => setDirectionFilter(e.target.value as 'all' | 'long' | 'short')}>
                                 <option value="all">Todas</option>
@@ -621,7 +651,7 @@ const FavoritesDashboard: React.FC = () => {
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
-                                                <span className="fav-strategy-name">{getFavoriteName(fav)}</span>
+                                                <span className="fav-strategy-name">{getFavoriteStrategyName(fav)}</span>
                                                 {strategyDetail ? <span>{strategyDetail}</span> : null}
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
@@ -711,8 +741,8 @@ const FavoritesDashboard: React.FC = () => {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="strategy-cell" aria-label={`${getFavoriteName(fav)} ${strategyDetail || ''}`}>
-                                                    <strong>{getFavoriteName(fav)}</strong>
+                                                <td className="strategy-cell" aria-label={`${getFavoriteStrategyName(fav)} ${strategyDetail || ''}`}>
+                                                    <strong>{getFavoriteStrategyName(fav)}</strong>
                                                     {strategyDetail ? <span>{strategyDetail}</span> : null}
                                                 </td>
                                                 <td>

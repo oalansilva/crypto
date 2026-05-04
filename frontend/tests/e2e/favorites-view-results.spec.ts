@@ -33,7 +33,7 @@ const FAVORITES_PAYLOAD = [
   },
   {
     id: 2,
-    name: 'BTC Swing',
+    name: 'BTC Swing BTC/USDT 4h',
     symbol: 'BTC/USDT',
     timeframe: '4h',
     strategy_name: 'ema_rsi',
@@ -63,7 +63,7 @@ const FAVORITES_PAYLOAD = [
   },
   {
     id: 3,
-    name: 'Protected BTC Setup',
+    name: 'Protected BTC Setup ETH/USDT 1h',
     symbol: 'ETH/USDT',
     timeframe: '1h',
     strategy_name: 'Estratégia protegida',
@@ -186,6 +186,7 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: /ema rsi/i }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: /Protected BTC Setup/i }).first()).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Protected BTC Setup ETH/USDT 1h' }).first()).toHaveCount(0);
   await expect(page.getByRole('cell', { name: /Estratégia protegida/i }).first()).toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
@@ -201,18 +202,31 @@ test('favorites hides stocks and removes Asset Type dropdown in crypto-only MVP'
   await expect(btcRow).toHaveCount(1);
 });
 
-test('favorites filters by favorite strategy name instead of protected label', async ({ page }) => {
+test('favorites filters by strategy name and timeframe separately', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
   const strategyFilter = page.locator('.fav-filters label', { hasText: 'Strategy' }).locator('select');
+  const timeFilter = page.locator('.fav-filters label', { hasText: 'Time' }).locator('select');
+
   await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup' })).toHaveCount(1);
+  await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup ETH/USDT 1h' })).toHaveCount(0);
+  await expect(strategyFilter.locator('option', { hasText: 'ETH/USDT' })).toHaveCount(0);
+  await expect(strategyFilter.locator('option', { hasText: '1h' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: 'Estratégia protegida' })).toHaveCount(0);
+  await expect(timeFilter.locator('option', { hasText: '1h' })).toHaveCount(1);
+  await expect(timeFilter.locator('option', { hasText: '4h' })).toHaveCount(1);
 
   await strategyFilter.selectOption({ label: 'Protected BTC Setup' });
 
   await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(1);
   await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(0);
+
+  await strategyFilter.selectOption('ALL');
+  await timeFilter.selectOption('4h');
+
+  await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(1);
+  await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
 });
 
 test('favorites -> View Results navigates to results page', async ({ page }) => {
