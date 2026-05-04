@@ -314,6 +314,10 @@ npm --prefix frontend run build
 ## Convenções de UI/UX (Lab)
 
 - Para qualquer tarefa em `frontend/`, use a skill local `$crypto-frontend` como padrão inicial de qualidade e validação visual.
+- Para qualquer tela, componente visual ou funcionalidade com impacto de UI/UX, nova ou antiga, consulte e siga obrigatoriamente o `DESIGN.md` antes de implementar.
+  - Registre no OpenSpec/hand-off quais tokens, componentes e padrões do `DESIGN.md` foram aplicados.
+  - Não feche implementação visual sem validar aderência ao `DESIGN.md` em desktop/mobile quando aplicável.
+  - Se houver desvio necessário do `DESIGN.md`, registre a exceção e a justificativa antes de codar ou fechar a entrega.
 - **Upstream** deve ser uma conversa fluida (Humano ↔ Trader) para clarificar inputs/constraints/risco.
 - O label "validator" na UI/copy deve aparecer como **Trader**.
 
