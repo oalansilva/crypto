@@ -103,6 +103,17 @@ const BACKTEST_PAYLOAD = {
 };
 
 async function setupDeterministicApiMocks(page: any) {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('auth_access_token', 'test-access-token');
+    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token');
+    window.localStorage.setItem('auth_user', JSON.stringify({
+      id: 'admin-user',
+      email: 'admin@example.com',
+      name: 'Admin User',
+      isAdmin: true,
+    }));
+  });
+
   await page.route('**/*', (route: any) => {
     const url = new URL(route.request().url());
     if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {

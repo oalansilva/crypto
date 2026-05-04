@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, ChevronDown, Activity, BarChart3, MessageCircle } from 'lucide-react';
+import { Trash2, Search, List, ChevronDown, Activity, BarChart3, MessageCircle, Star } from 'lucide-react';
 import TradesViewModal from '../components/TradesViewModal';
 import { AgentChatModal } from '../components/AgentChatModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -34,6 +34,7 @@ const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const isAdmin = user?.isAdmin === true;
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isCompareOpen, setIsCompareOpen] = useState(false);
@@ -99,6 +100,56 @@ const FavoritesDashboard: React.FC = () => {
 
     const handleUpdateTier = (fav: FavoriteStrategy, tier: number | null) => {
         updateTierMutation.mutate({ id: fav.id, tier });
+    };
+
+    const getStarCount = (tier: number | null): number => {
+        if (tier === 1) return 3;
+        if (tier === 2) return 2;
+        if (tier === 3) return 1;
+        return 0;
+    };
+
+    const getTierFromStars = (stars: number): number | null => {
+        if (stars === 3) return 1;
+        if (stars === 2) return 2;
+        if (stars === 1) return 3;
+        return null;
+    };
+
+    const renderStarTierControl = (fav: FavoriteStrategy, compact = false) => {
+        const selectedStars = getStarCount(fav.tier);
+        const isSaving = updateTierMutation.isPending;
+
+        return (
+            <div className="flex items-center justify-center gap-1" aria-label="Prioridade por estrelas">
+                {[1, 2, 3].map((stars) => {
+                    const active = stars <= selectedStars;
+                    return (
+                        <button
+                            key={stars}
+                            type="button"
+                            disabled={isSaving}
+                            aria-pressed={active}
+                            title={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                handleUpdateTier(fav, selectedStars === stars ? null : getTierFromStars(stars));
+                            }}
+                            className={[
+                                'inline-flex items-center justify-center rounded-md border transition-colors',
+                                compact ? 'h-9 w-9' : 'h-8 w-8',
+                                active
+                                    ? 'border-amber-400 bg-amber-400/15 text-amber-500'
+                                    : 'border-zinc-200 bg-zinc-50 text-zinc-400 hover:text-amber-500',
+                                isSaving ? 'opacity-60 cursor-wait' : '',
+                            ].join(' ')}
+                        >
+                            <Star className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill={active ? 'currentColor' : 'none'} />
+                        </button>
+                    );
+                })}
+            </div>
+        );
     };
 
     // Helper function to get tier color and label
@@ -424,7 +475,7 @@ const FavoritesDashboard: React.FC = () => {
                                 <span className="eyebrow">Workspace</span>
                                 <span>{filteredFavorites.length} strategies after filters</span>
                                 <span className="hidden sm:inline text-zinc-500">|</span>
-                                <span>{selectedIds.length} selected for compare</span>
+                                {isAdmin ? <span>{selectedIds.length} selected for compare</span> : null}
                             </div>
                         </div>
 
@@ -515,6 +566,7 @@ const FavoritesDashboard: React.FC = () => {
                                         />
                                     </div>
 
+                                    {isAdmin ? (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full lg:w-auto">
                                         <button
                                             onClick={handleExportExcel}
@@ -529,6 +581,7 @@ const FavoritesDashboard: React.FC = () => {
                                             Find New
                                         </button>
                                     </div>
+                                    ) : null}
                                 </div>
                             </div>
                         </div>
@@ -586,27 +639,10 @@ const FavoritesDashboard: React.FC = () => {
                                             </div>
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                <select
-                                                    value={fav.tier ?? ''}
-                                                    onChange={(e) => {
-                                                        const tierValue = e.target.value === '' ? null : parseInt(e.target.value);
-                                                        handleUpdateTier(fav, tierValue);
-                                                    }}
-                                                    className={`w-full min-h-11 text-xs font-medium px-3 py-2 rounded-lg border transition-all ${
-                                                        fav.tier === 1
-                                                            ? 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30'
-                                                            : fav.tier === 2
-                                                                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
-                                                                : fav.tier === 3
-                                                                    ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30'
-                                                                    : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'
-                                                    }`}
-                                                >
-                                                    <option value="">Sem tier</option>
-                                                    <option value="1">Tier 1</option>
-                                                    <option value="2">Tier 2</option>
-                                                    <option value="3">Tier 3</option>
-                                                </select>
+                                                <div className="min-h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 flex items-center justify-center">
+                                                    {renderStarTierControl(fav, true)}
+                                                </div>
+                                                {isAdmin ? (
                                                 <button
                                                     onClick={() => toggleSelection(fav.id)}
                                                     className={`min-h-11 rounded-lg border text-sm font-medium transition-colors ${
@@ -617,8 +653,10 @@ const FavoritesDashboard: React.FC = () => {
                                                 >
                                                     {isSelected ? 'Selected for compare' : 'Select to compare'}
                                                 </button>
+                                                ) : null}
                                             </div>
 
+                                            {isAdmin ? (
                                             <div className="grid grid-cols-2 gap-2">
                                                 <button
                                                     onClick={() => handleViewTrades(fav)}
@@ -654,6 +692,7 @@ const FavoritesDashboard: React.FC = () => {
                                                     Delete
                                                 </button>
                                             </div>
+                                            ) : null}
 
                                             <details className="rounded-lg border border-zinc-200 bg-white0">
                                                 <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-zinc-600 flex items-center justify-between min-h-11">
@@ -671,10 +710,12 @@ const FavoritesDashboard: React.FC = () => {
                                                             <p>{formatPeriod(fav)}</p>
                                                         </div>
                                                     </div>
+                                                    {isAdmin ? (
                                                     <div>
                                                         <p className="text-zinc-500 mb-1">Params</p>
                                                         <p className="font-mono break-words">{formatParams(fav.parameters, isFavoriteProtected(fav)).split('&').join(' ')}</p>
                                                     </div>
+                                                    ) : null}
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div>
                                                             <p className="text-zinc-500">Sharpe</p>
@@ -707,16 +748,16 @@ const FavoritesDashboard: React.FC = () => {
                             <table className="w-full text-left border-collapse text-sm">
                                 <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-400 font-semibold uppercase tracking-wider text-xs">
                                     <tr>
-                                        <th className="p-4 w-10 text-center">
+                                        {isAdmin ? <th className="p-4 w-10 text-center">
                                             <div className="w-4 h-4 rounded border border-zinc-300"></div>
-                                        </th>
+                                        </th> : null}
                                         <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 w-32">Tier</th>
                                         <th className="p-4 border-r border-zinc-100 font-medium text-zinc-900">Symbol</th>
                                         <th className="p-4 border-r border-zinc-100 font-medium text-zinc-900">Strategy</th>
                                         <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 whitespace-nowrap">Direção</th>
                                         <th className="p-4 border-r border-zinc-100 text-center text-zinc-400">Timeframe</th>
                                         <th className="p-4 border-r border-zinc-100 text-center text-zinc-400 whitespace-nowrap">Período</th>
-                                        <th className="p-4 border-r border-zinc-100 text-zinc-400 w-96">Config</th>
+                                        {isAdmin ? <th className="p-4 border-r border-zinc-100 text-zinc-400 w-96">Config</th> : null}
                                         <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Stop</th>
                                         <th className="p-4 border-r border-zinc-100 text-right text-blue-400">Sharpe</th>
                                         <th className="p-4 border-r border-zinc-100 text-right text-zinc-400">Trades</th>
@@ -764,7 +805,7 @@ const FavoritesDashboard: React.FC = () => {
                                                     ${fav.tier === 3 ? 'bg-red-500/5 border-l-2 border-l-red-500' : ''}
                                                 `}
                                                 >
-                                                    <td className="p-4 border-r border-zinc-100 text-center">
+                                                    {isAdmin ? <td className="p-4 border-r border-zinc-100 text-center">
                                                         <div
                                                             onClick={() => toggleSelection(fav.id)}
                                                             className={`w-5 h-5 rounded-md border mx-auto cursor-pointer flex items-center justify-center transition-all
@@ -773,30 +814,9 @@ const FavoritesDashboard: React.FC = () => {
                                                         >
                                                             {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                                         </div>
-                                                    </td>
+                                                    </td> : null}
                                                     <td className="p-4 border-r border-zinc-100 text-center">
-                                                        <select
-                                                            value={fav.tier ?? ''}
-                                                            onChange={(e) => {
-                                                                const tierValue = e.target.value === '' ? null : parseInt(e.target.value);
-                                                                handleUpdateTier(fav, tierValue);
-                                                            }}
-                                                            className={`text-xs font-medium px-2 py-1 rounded border transition-all ${
-                                                                fav.tier === 1 
-                                                                    ? 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30' 
-                                                                    : fav.tier === 2
-                                                                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 hover:bg-yellow-500/30'
-                                                                    : fav.tier === 3
-                                                                    ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30'
-                                                                    : 'bg-zinc-50 text-zinc-400 border-zinc-200 hover:bg-zinc-100'
-                                                            }`}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            <option value="">Sem tier</option>
-                                                            <option value="1">Tier 1</option>
-                                                            <option value="2">Tier 2</option>
-                                                            <option value="3">Tier 3</option>
-                                                        </select>
+                                                        {renderStarTierControl(fav)}
                                                     </td>
                                                     <td className="p-2 border-r border-zinc-100 font-bold text-zinc-900 tracking-wide">{fav.symbol}</td>
                                                     <td className="p-2 border-r border-zinc-100 text-blue-300 font-medium">{getFavoriteStrategyLabel(fav)}</td>
@@ -813,9 +833,9 @@ const FavoritesDashboard: React.FC = () => {
                                                     <td className="p-2 border-r border-zinc-100 text-center text-zinc-500 text-xs whitespace-nowrap" title="Período em que a estratégia foi testada">
                                                         {formatPeriod(fav)}
                                                     </td>
-                                                    <td className="p-2 border-r border-zinc-100 text-zinc-400 truncate max-w-xs text-xs font-mono" title={formatParams(fav.parameters, isFavoriteProtected(fav))}>
+                                                    {isAdmin ? <td className="p-2 border-r border-zinc-100 text-zinc-400 truncate max-w-xs text-xs font-mono" title={formatParams(fav.parameters, isFavoriteProtected(fav))}>
                                                         {formatParams(fav.parameters, isFavoriteProtected(fav)).split('&').join(' ')}
-                                                    </td>
+                                                    </td> : null}
                                                     <td className="p-2 border-r border-zinc-100 text-right text-zinc-500 font-mono">
                                                         {formatPct(stopLoss)}
                                                     </td>
@@ -858,7 +878,7 @@ const FavoritesDashboard: React.FC = () => {
                                                     <td className="p-2 border-r border-zinc-100 text-left text-zinc-500 text-xs italic max-w-[150px] truncate" title={fav.notes || ''}>
                                                         {fav.notes || '-'}
                                                     </td>
-                                                    <td className="p-2 text-center flex items-center justify-center gap-2">
+                                                    {isAdmin ? <td className="p-2 text-center flex items-center justify-center gap-2">
                                                         <button
                                                             onClick={() => handleViewTrades(fav)}
                                                             className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors"
@@ -892,7 +912,7 @@ const FavoritesDashboard: React.FC = () => {
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
-                                                    </td>
+                                                    </td> : <td className="p-2 text-center text-zinc-400 text-xs">-</td>}
                                                 </tr>
                                             );
                                         })
@@ -917,7 +937,7 @@ const FavoritesDashboard: React.FC = () => {
                                     ? `Mostrando ${visibleFavorites.length} de ${filteredFavorites.length} estratégias — role para carregar mais`
                                     : `${filteredFavorites.length} estratégias carregadas`}
                             </div>
-                            {selectedIds.length > 0 && (
+                            {isAdmin && selectedIds.length > 0 && (
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 animate-in fade-in slide-in-from-right-4 w-full lg:w-auto">
                                     <span className="text-blue-400 font-medium">{selectedIds.length} selected</span>
                                     <button

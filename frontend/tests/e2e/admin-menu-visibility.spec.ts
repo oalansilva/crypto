@@ -7,7 +7,7 @@ type TestUser = {
   isAdmin: boolean
 }
 
-const adminOnlyLabels = ['Favoritos', 'Combo', 'Backtests', 'Histórico', 'Distribuicao', 'Backfill']
+const adminOnlyLabels = ['Combo', 'Backtests', 'Histórico', 'Distribuicao', 'Backfill']
 
 async function setupAuthenticatedUser(page: any, user: TestUser) {
   await page.addInitScript((authUser: TestUser) => {
@@ -69,6 +69,7 @@ test('common user does not see admin-only navigation entries', async ({ page }) 
 
   const navigation = page.getByRole('navigation', { name: 'Navegacao principal' })
   await expect(navigation.getByRole('link', { name: 'Monitor', exact: true })).toBeVisible()
+  await expect(navigation.getByRole('link', { name: 'Favoritos', exact: true })).toBeVisible()
 
   for (const label of adminOnlyLabels) {
     await expect(navigation.getByRole('link', { name: label, exact: true })).toHaveCount(0)
