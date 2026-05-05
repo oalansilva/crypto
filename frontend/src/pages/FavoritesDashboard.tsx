@@ -293,10 +293,10 @@ const FavoritesDashboard: React.FC = () => {
         return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.symbol))).sort();
     }, [favorites]);
 
-    // Get unique strategy names for filter
+    // Get unique strategy labels for filter
     const uniqueIndicators = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(getFavoriteStrategyName))).sort();
+        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(getFavoriteStrategyLabel))).sort();
     }, [favorites]);
 
     const uniqueTimeframes = React.useMemo(() => {
@@ -310,7 +310,7 @@ const FavoritesDashboard: React.FC = () => {
             getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
-        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyName(fav) === selectedIndicator;
+        const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
         const matchesTimeframe = selectedTimeframe === 'ALL' || fav.timeframe === selectedTimeframe;
         const matchesTier = tierFilter === 'all' ||
             (tierFilter === 'none' && fav.tier === null) ||
