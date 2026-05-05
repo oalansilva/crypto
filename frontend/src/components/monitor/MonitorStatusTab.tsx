@@ -797,10 +797,7 @@ export const MonitorStatusTab: React.FC = () => {
         };
 
         for (const opportunity of filteredOpportunities) {
-            const preference = preferences[opportunity.symbol] ?? DEFAULT_PREFERENCE;
-            const effectiveTimeframe: MonitorPriceTimeframe =
-                getOpportunityAssetType(opportunity) === 'crypto' ? preference.price_timeframe : '1d';
-            const resolved = resolveOpportunitySignal(opportunity, { selectedTimeframe: effectiveTimeframe });
+            const resolved = resolveOpportunitySignal(opportunity);
             groups[resolved.section].push({ opportunity, resolved });
         }
 

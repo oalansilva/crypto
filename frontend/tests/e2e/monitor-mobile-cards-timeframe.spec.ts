@@ -328,7 +328,7 @@ test('monitor renders exited strategies separately from stopped out ones', async
   await expect(page.getByTestId('monitor-card-btc-usdt').getByText(/^EXIT$/)).toBeVisible()
 })
 
-test('monitor keeps mismatched exit signals in WAIT state with explicit context', async ({ page }) => {
+test('monitor keeps backend exit in list and shows mismatched chart context', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -440,7 +440,7 @@ test('monitor keeps mismatched exit signals in WAIT state with explicit context'
 
   const row = page.getByTestId('monitor-row-btc-usdt')
   await expect(row).toBeVisible()
-  await expect(row.getByText('Wait', { exact: true })).toBeVisible()
+  await expect(row.getByText('Exit', { exact: true })).toBeVisible()
   await row.getByRole('button', { name: 'Abrir gráfico' }).click()
 
   const dialog = page.getByRole('dialog')

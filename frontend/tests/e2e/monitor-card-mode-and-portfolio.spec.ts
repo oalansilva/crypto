@@ -418,6 +418,31 @@ test('monitor defaults to rated strategies and hides unstarred opportunities', a
   await expect(page.getByText('Em posição · HOLD')).toBeVisible()
 })
 
+test('monitor list keeps HOLD when price timeframe preference differs from strategy timeframe', async ({ page }) => {
+  await setupApiMocks(page, {
+    opportunitiesPayload: [
+      {
+        ...OPPORTUNITIES_PAYLOAD[1],
+        is_holding: true,
+        status: 'EXIT_NEAR',
+        next_status_label: 'exit',
+        distance_to_next_status: 0.27,
+        message: 'EXIT: Approaching exit',
+      },
+    ],
+    initialPreferences: {
+      'ETH/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '4h' },
+    },
+  })
+  await page.goto('/monitor')
+
+  const row = page.getByTestId('monitor-row-eth-usdt')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('Hold')).toBeVisible()
+  await expect(page.getByText('Em posição · HOLD')).toContainText('(1)')
+  await expect(page.getByText('Em observação · WAIT')).toContainText('(0)')
+})
+
 test('monitor simplifies table columns for common user', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
