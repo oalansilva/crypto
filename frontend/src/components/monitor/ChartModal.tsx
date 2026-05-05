@@ -193,6 +193,13 @@ function getActiveEntrySignal(history?: OpportunitySignalHistoryItem[]): Opportu
     return activeEntry;
 }
 
+function getLatestSignal(history?: OpportunitySignalHistoryItem[]): OpportunitySignalHistoryItem | null {
+    const sortedHistory = [...(history || [])].sort(
+        (left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp),
+    );
+    return sortedHistory.length > 0 ? sortedHistory[sortedHistory.length - 1] : null;
+}
+
 function getNumericParameter(parameters: Record<string, unknown> | undefined, keys: string[], fallback: number) {
     for (const key of keys) {
         const raw = parameters?.[key];
@@ -457,6 +464,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => getActiveEntrySignal(opportunity.signal_history),
         [opportunity.signal_history],
     );
+    const latestSignal = React.useMemo(
+        () => getLatestSignal(opportunity.signal_history),
+        [opportunity.signal_history],
+    );
     const hasVisibleActiveEntry = React.useMemo(() => {
         if (!activeEntrySignal) {
             return false;
@@ -470,10 +481,19 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => resolveOpportunitySignal(opportunity, {
             selectedTimeframe: timeframe,
             latestCandleTime: latestCandle?.timestamp_utc ?? null,
+            latestSignalTime: latestSignal?.timestamp ?? null,
+            latestSignalType: latestSignal?.type ?? null,
             requireCurrentCandleMatch: true,
             hasVisibleActiveEntry,
         }),
-        [hasVisibleActiveEntry, latestCandle?.timestamp_utc, opportunity, timeframe],
+        [
+            hasVisibleActiveEntry,
+            latestCandle?.timestamp_utc,
+            latestSignal?.timestamp,
+            latestSignal?.type,
+            opportunity,
+            timeframe,
+        ],
     );
     const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
     const signalLabel = resolvedSignal.visual.markerLabel;
@@ -1042,6 +1062,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                         className={`relative rounded-2xl border border-[#30363d] bg-[#0b1118] p-2 ${isAlgorithmicChartMode ? 'min-h-0 flex-1' : ''}`}
                                         onWheel={handleChartWheel}
                                         data-testid="chart-modal-main-chart-shell"
+                                        data-current-marker={signalLabel}
                                     >
                                         <div
                                             ref={mainChartRef}
@@ -1135,7 +1156,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                             <section>
                                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Distance</p>
                                                 <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {resolvedSignal.visual.markerLabel.toLowerCase()}</p>
+                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {resolvedSignal.visual.distanceLabel}</p>
                                                     <p className={`font-mono text-lg font-semibold ${
                                                         (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'text-[#3fb950]' : 'text-[#e6edf3]'
                                                     }`}>

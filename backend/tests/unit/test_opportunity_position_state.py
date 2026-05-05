@@ -1,6 +1,11 @@
 import pandas as pd
 
-from app.services.opportunity_service import _resolve_position_state, _signal_execution_price
+from app.services.opportunity_service import (
+    _build_signal_history,
+    _last_signal_index_and_position,
+    _resolve_position_state,
+    _signal_execution_price,
+)
 
 
 def test_resolve_position_state_marks_stopped_out_when_exit_happened_after_buy():
@@ -111,3 +116,38 @@ def test_resolve_position_state_treats_exit_logic_as_normal_exit_not_stop():
     assert is_holding is False
     assert is_stopped_out is False
     assert stop_breached_now is False
+
+
+def test_signal_positions_use_generated_signal_frame_for_next_candle_exit():
+    df_signals = pd.DataFrame(
+        [
+            {"open": 0.09081, "close": 0.09093, "signal": 1, "signal_reason": "entry"},
+            {"open": 0.08774, "close": 0.09068, "signal": -1, "signal_reason": "exit_logic"},
+        ],
+        index=pd.to_datetime(["2026-04-24T00:00:00Z", "2026-05-05T00:00:00Z"], utc=True),
+    )
+
+    last_buy_idx, last_buy_pos = _last_signal_index_and_position(df_signals, 1)
+    last_sell_idx, last_sell_pos = _last_signal_index_and_position(df_signals, -1)
+
+    assert str(last_buy_idx) == "2026-04-24 00:00:00+00:00"
+    assert str(last_sell_idx) == "2026-05-05 00:00:00+00:00"
+    assert last_buy_pos == 0
+    assert last_sell_pos == 1
+
+    is_holding, is_stopped_out, stop_breached_now = _resolve_position_state(
+        short_above_long=True,
+        last_buy_pos=last_buy_pos,
+        last_sell_pos=last_sell_pos,
+        last_sell_reason="exit_logic",
+        direction="long",
+        last_price=0.09068,
+        stop_price=0.08627,
+    )
+    signal_history = _build_signal_history(df_signals, df_signals)
+
+    assert is_holding is False
+    assert is_stopped_out is False
+    assert stop_breached_now is False
+    assert signal_history[-1]["type"] == "exit"
+    assert signal_history[-1]["price"] == 0.08774

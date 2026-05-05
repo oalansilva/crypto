@@ -366,6 +366,21 @@ def _index_position(index: pd.Index, value: Any) -> int | None:
     return int(loc)
 
 
+def _last_signal_index_and_position(
+    df_signals: pd.DataFrame,
+    signal_value: int,
+) -> tuple[Any | None, int | None]:
+    if df_signals.empty or "signal" not in df_signals.columns:
+        return None, None
+
+    signal_rows = df_signals[df_signals["signal"] == signal_value]
+    if signal_rows.empty:
+        return None, None
+
+    signal_idx = signal_rows.last_valid_index()
+    return signal_idx, _index_position(df_signals.index, signal_idx)
+
+
 def _signal_execution_price(
     df: pd.DataFrame,
     signal_idx: Any,
@@ -1236,14 +1251,15 @@ class OpportunityService:
                                     entry_distance_override = 0
                         except (TypeError, ValueError):
                             entry_distance_override = None
-                # Run backtest logic on closed candles for reference (but don't use for HOLD determination)
-                df_signals = strategy.generate_signals(df_closed)
+                # Generate execution signals on the same frame used for signal history.
+                # ComboStrategy delays confirmed rules to the next candle open, so the
+                # execution frame may include the current candle while df_for_distance
+                # still uses the last closed candle.
+                df_signals = strategy.generate_signals(df_with_inds.copy())
 
-                last_buy_idx = df_signals[df_signals["signal"] == 1].last_valid_index()
-                last_sell_idx = df_signals[df_signals["signal"] == -1].last_valid_index()
-                last_buy_pos = _index_position(df_closed.index, last_buy_idx)
-                last_sell_pos = _index_position(df_closed.index, last_sell_idx)
-                signal_history = _build_signal_history(df_closed, df_signals)
+                last_buy_idx, last_buy_pos = _last_signal_index_and_position(df_signals, 1)
+                last_sell_idx, last_sell_pos = _last_signal_index_and_position(df_signals, -1)
+                signal_history = _build_signal_history(df_signals, df_signals)
                 last_sell_reason = None
                 if (
                     last_sell_idx is not None
@@ -1271,9 +1287,9 @@ class OpportunityService:
                         # Use last confirmed BUY signal as entry. Do not infer active
                         # entries from bullish trend alone; the chart must be able to
                         # prove HOLD with a matching entry signal.
-                        if last_buy_idx is not None and last_buy_idx in df_closed.index:
+                        if last_buy_idx is not None and last_buy_idx in df_signals.index:
                             entry_price = _signal_execution_price(
-                                df_closed,
+                                df_signals,
                                 last_buy_idx,
                                 direction="entry",
                             )

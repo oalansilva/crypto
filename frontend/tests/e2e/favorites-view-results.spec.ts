@@ -209,18 +209,22 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
   const strategyFilter = page.locator('.fav-filters label', { hasText: 'Strategy' }).locator('select');
   const timeFilter = page.locator('.fav-filters label', { hasText: 'Time' }).locator('select');
 
-  await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup' })).toHaveCount(1);
+  await expect(strategyFilter.locator('option', { hasText: 'ema rsi' })).toHaveCount(1);
+  await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup ETH/USDT 1h' })).toHaveCount(0);
+  await expect(strategyFilter.locator('option', { hasText: 'BTC Swing BTC/USDT 4h' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: 'ETH/USDT' })).toHaveCount(0);
+  await expect(strategyFilter.locator('option', { hasText: 'BTC/USDT' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: '1h' })).toHaveCount(0);
-  await expect(strategyFilter.locator('option', { hasText: 'Estratégia protegida' })).toHaveCount(0);
+  await expect(strategyFilter.locator('option', { hasText: '4h' })).toHaveCount(0);
+  await expect(strategyFilter.locator('option', { hasText: 'Estratégia protegida' })).toHaveCount(1);
   await expect(timeFilter.locator('option', { hasText: '1h' })).toHaveCount(1);
   await expect(timeFilter.locator('option', { hasText: '4h' })).toHaveCount(1);
 
-  await strategyFilter.selectOption({ label: 'Protected BTC Setup' });
+  await strategyFilter.selectOption({ label: 'ema rsi' });
 
-  await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(1);
-  await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(0);
+  await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(1);
+  await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
 
   await strategyFilter.selectOption('ALL');
   await timeFilter.selectOption('4h');

@@ -11,7 +11,8 @@ export interface MonitorSignalVisual {
     readonly borderClass: string;
     readonly cardBgClass: string;
     readonly titleClass: string;
-    readonly markerLabel: 'ENTRY' | 'EXIT' | 'WAIT';
+    readonly markerLabel: 'ENTRY' | 'EXIT' | 'WAIT' | 'LONG';
+    readonly distanceLabel: 'entry' | 'exit' | 'wait';
     readonly markerPosition: MarkerDirection;
     readonly markerShape: MarkerShape;
     readonly markerColor: string;
@@ -33,6 +34,8 @@ export interface ResolvedMonitorSignal {
 export interface ResolveOpportunitySignalContext {
     readonly selectedTimeframe?: string | null;
     readonly latestCandleTime?: string | null;
+    readonly latestSignalTime?: string | null;
+    readonly latestSignalType?: 'entry' | 'exit' | null;
     readonly requireCurrentCandleMatch?: boolean;
     readonly hasVisibleActiveEntry?: boolean | null;
 }
@@ -51,10 +54,11 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
         borderClass: 'border-l-green-600 border-l-4',
         cardBgClass: 'bg-green-50 dark:bg-green-900/40 border-green-400 dark:border-green-600',
         titleClass: 'text-green-700 dark:text-green-300',
-        markerLabel: 'EXIT',
-        markerPosition: 'aboveBar',
-        markerShape: 'arrowDown',
-        markerColor: '#0ea5e9',
+        markerLabel: 'LONG',
+        distanceLabel: 'exit',
+        markerPosition: 'belowBar',
+        markerShape: 'arrowUp',
+        markerColor: '#3fb950',
         statusClass: 'info',
     },
     exit: {
@@ -64,6 +68,7 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
         cardBgClass: 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700',
         titleClass: 'text-sky-700 dark:text-sky-300',
         markerLabel: 'ENTRY',
+        distanceLabel: 'entry',
         markerPosition: 'aboveBar',
         markerShape: 'arrowDown',
         markerColor: '#0284c7',
@@ -76,6 +81,7 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
         cardBgClass: 'bg-[var(--monitor-card)] border-[var(--monitor-border)]',
         titleClass: 'text-[var(--monitor-text)]',
         markerLabel: 'WAIT',
+        distanceLabel: 'wait',
         markerPosition: 'belowBar',
         markerShape: 'arrowUp',
         markerColor: '#2dd4bf',
@@ -130,11 +136,20 @@ export const resolveOpportunitySignal = (
     const selectedTimeframe = normalizeTimeframe(context.selectedTimeframe);
     const strategyTimeframe = normalizeTimeframe(opportunity.timeframe);
     const timeframeMismatch = Boolean(selectedTimeframe) && selectedTimeframe !== strategyTimeframe;
+    const decisionReferenceTime = (
+        rawStatus === 'EXIT_SIGNAL'
+        && context.latestSignalType === 'exit'
+        && context.latestSignalTime
+    )
+        ? context.latestSignalTime
+        : opportunity.indicator_values_candle_time;
     const candleMismatch = Boolean(context.requireCurrentCandleMatch) && !hasSameCandleReference(
-        opportunity.indicator_values_candle_time,
+        decisionReferenceTime,
         context.latestCandleTime,
     );
-    const activeEntryMissingFromChart = Boolean(isHolding) && context.hasVisibleActiveEntry === false;
+    const activeEntryMissingFromChart = Boolean(isHolding)
+        && rawStatus !== 'EXIT_SIGNAL'
+        && context.hasVisibleActiveEntry === false;
 
     let section: MonitorSignalKind = 'wait';
     let isUncertain = uncertainty || timeframeMismatch || candleMismatch || activeEntryMissingFromChart;
@@ -152,7 +167,9 @@ export const resolveOpportunitySignal = (
         reasons.push('HOLD bloqueado: entrada ativa não aparece nos candles exibidos.');
     }
 
-    if (rawStatus === 'HOLDING' || rawStatus === 'HOLD' || rawStatus === 'EXIT_NEAR' || rawStatus === 'EXIT_SIGNAL') {
+    if (rawStatus === 'EXIT_SIGNAL') {
+        section = 'exit';
+    } else if (rawStatus === 'HOLDING' || rawStatus === 'HOLD' || rawStatus === 'EXIT_NEAR') {
         section = isHolding ? 'hold' : 'wait';
         if (!isHolding) {
             isUncertain = true;
@@ -192,11 +209,12 @@ export const resolveOpportunitySignal = (
         freshnessReason,
         strategyTimeframe: strategyTimeframe || null,
         displayTimeframe: selectedTimeframe || strategyTimeframe || null,
-        referenceCandleTime: opportunity.indicator_values_candle_time ?? null,
+        referenceCandleTime: decisionReferenceTime ?? null,
         latestCandleTime: context.latestCandleTime ?? null,
         visual: {
             ...sectionVisual,
             markerLabel,
+            distanceLabel: isUncertain ? 'wait' : sectionVisual.distanceLabel,
             markerColor: isUncertain ? '#8b949e' : sectionVisual.markerColor,
             markerShape: isUncertain ? 'arrowUp' : sectionVisual.markerShape,
             markerPosition: isUncertain ? 'belowBar' : sectionVisual.markerPosition,
@@ -209,7 +227,15 @@ export const hasExitedOpportunity = (opportunity: Opportunity): boolean => {
     const isHolding = Boolean(opportunity.is_holding);
 
     return (
-        !isHolding
-        && (rawStatus === 'EXITED' || rawStatus === 'STOPPED_OUT' || rawStatus === 'MISSED_ENTRY' || rawStatus === 'MISSED')
+        rawStatus === 'EXIT_SIGNAL'
+        || (
+            !isHolding
+            && (
+                rawStatus === 'EXITED'
+                || rawStatus === 'STOPPED_OUT'
+                || rawStatus === 'MISSED_ENTRY'
+                || rawStatus === 'MISSED'
+            )
+        )
     );
 };
