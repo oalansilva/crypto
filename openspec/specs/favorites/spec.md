@@ -84,3 +84,18 @@ The Favorites page MUST allow users to set the existing favorite tier through a 
 - **WHEN** the user clears the star selection for a favorite
 - **THEN** the frontend MUST PATCH that favorite with `tier=null`
 - **AND** the backend MUST clear that tier for the current user's preference when the favorite belongs to an admin
+
+### Requirement: Favorites Strategy filter uses only strategy labels
+The Favorites page Strategy filter MUST list and match only strategy labels, not symbols, timeframes, hours, or free-form favorite names.
+
+#### Scenario: Favorites page builds Strategy options
+- **WHEN** the Favorites page loads crypto favorites
+- **THEN** the Strategy filter options MUST be derived from the favorite strategy label
+- **AND** Strategy options MUST NOT include symbol text such as `BTC/USDT` or `ETH/USDT`
+- **AND** Strategy options MUST NOT include timeframe text such as `1h` or `4h`
+- **AND** timeframe values MUST remain available only in the Time filter
+
+#### Scenario: User filters by strategy label
+- **WHEN** the user selects a Strategy option
+- **THEN** the page MUST show favorites whose strategy label matches that option
+- **AND** the filter MUST not depend on the favorite nickname

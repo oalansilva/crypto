@@ -7,12 +7,17 @@ const AUTH_USER = {
   isAdmin: false,
 }
 
-async function mockAuthenticatedSession(page: any) {
+const ADMIN_USER = {
+  ...AUTH_USER,
+  isAdmin: true,
+}
+
+async function mockAuthenticatedSession(page: any, user = AUTH_USER) {
   await page.addInitScript((user) => {
     window.localStorage.setItem('auth_access_token', 'test-access-token')
     window.localStorage.setItem('auth_refresh_token', 'test-refresh-token')
     window.localStorage.setItem('auth_user', JSON.stringify(user))
-  }, AUTH_USER)
+  }, user)
 }
 
 const FAVORITES_PAYLOAD = [
@@ -100,6 +105,7 @@ async function setupApiMocks(
     balances?: Array<{ asset: string; total: number }>
     opportunitiesPayload?: Array<Record<string, unknown>>
     initialStrategyPreferences?: Record<string, { liked: boolean }>
+    user?: typeof AUTH_USER
     initialPreferences?: Record<
       string,
       { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
@@ -108,7 +114,8 @@ async function setupApiMocks(
     balancesDetail?: string
   }
 ) {
-  await mockAuthenticatedSession(page)
+  const sessionUser = options?.user ?? AUTH_USER
+  await mockAuthenticatedSession(page, sessionUser)
 
   const requestedTimeframes: string[] = []
   const requestedOpportunityTiers: string[] = []
@@ -147,7 +154,7 @@ async function setupApiMocks(
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(AUTH_USER),
+      body: JSON.stringify(sessionUser),
     })
   )
 
@@ -342,6 +349,7 @@ test('monitor hides protected strategy details for common user', async ({ page }
 test('favorite strategy filter uses persisted monitor strategy preferences', async ({ page }) => {
   const mocks = await setupApiMocks(page, {
     initialStrategyPreferences: { '1': { liked: true } },
+    user: ADMIN_USER,
   })
   await page.goto('/monitor')
 
@@ -363,7 +371,6 @@ test('monitor shows tier as star classification', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
-  await page.getByTestId('monitor-filter-all').click()
   await expect(page.getByTestId('tier-stars-btc-usdt')).toHaveText('★★★')
   await expect(page.getByTestId('tier-stars-eth-usdt')).toHaveText('★★')
 })
@@ -372,7 +379,6 @@ test('monitor filters opportunities by star classification', async ({ page }) =>
   await setupApiMocks(page)
   await page.goto('/monitor')
 
-  await page.getByTestId('monitor-filter-all').click()
   await page.getByTestId('monitor-filter-stars').selectOption('3')
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-row-eth-usdt')).toHaveCount(0)
@@ -428,14 +434,13 @@ test('monitor simplifies table columns for common user', async ({ page }) => {
   await expect(page.locator('.filterbar').getByRole('button', { name: 'Par' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Mais' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Abrir gráfico' }).first()).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Favoritar' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Favoritar' })).toHaveCount(0)
 })
 
 test('monitor uses concise common-user row tags', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
-  await page.getByTestId('monitor-filter-all').click()
   const row = page.getByTestId('monitor-row-btc-usdt')
   await expect(row.getByText('● Carteira')).toHaveText('● Carteira')
   await expect(row.getByText('Portfolio')).toHaveCount(0)
@@ -444,7 +449,7 @@ test('monitor uses concise common-user row tags', async ({ page }) => {
 })
 
 test('flags only crypto cards as portfolio-derived when Binance credentials are configured', async ({ page }) => {
-  await setupApiMocks(page, { binanceConfigured: true })
+  await setupApiMocks(page, { binanceConfigured: true, user: ADMIN_USER })
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
@@ -476,7 +481,7 @@ test('uses Binance wallet holdings as the portfolio source for crypto cards', as
 })
 
 test('toggle in_portfolio persists across reload', async ({ page }) => {
-  await setupApiMocks(page)
+  await setupApiMocks(page, { user: ADMIN_USER })
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
@@ -493,7 +498,7 @@ test('toggle in_portfolio persists across reload', async ({ page }) => {
 })
 
 test('per-card mode toggle persists across reload', async ({ page }) => {
-  await setupApiMocks(page)
+  await setupApiMocks(page, { user: ADMIN_USER })
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
@@ -507,7 +512,7 @@ test('per-card mode toggle persists across reload', async ({ page }) => {
 })
 
 test('per-card timeframe selection persists across reload', async ({ page }) => {
-  const mocks = await setupApiMocks(page)
+  const mocks = await setupApiMocks(page, { user: ADMIN_USER })
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
@@ -522,7 +527,7 @@ test('per-card timeframe selection persists across reload', async ({ page }) => 
 })
 
 test('timeframe switch keeps non-chart controls interactive and shows localized chart loading', async ({ page }) => {
-  const mocks = await setupApiMocks(page, { candlesDelayMs: 600, preferencePatchDelayMs: 500 })
+  const mocks = await setupApiMocks(page, { candlesDelayMs: 600, preferencePatchDelayMs: 500, user: ADMIN_USER })
   await page.goto('/monitor')
 
   await expandMonitorRow(page, 'btc-usdt')
@@ -545,7 +550,7 @@ test('timeframe switch keeps non-chart controls interactive and shows localized 
 })
 
 test('derived crypto portfolio toggle stays read-only and does not persist manual changes', async ({ page }) => {
-  const mocks = await setupApiMocks(page, { binanceConfigured: true })
+  const mocks = await setupApiMocks(page, { binanceConfigured: true, user: ADMIN_USER })
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
@@ -561,6 +566,7 @@ test('derived crypto portfolio toggle stays read-only and does not persist manua
 test('shows fallback feedback when Binance wallet is unavailable', async ({ page }) => {
   await setupApiMocks(page, {
     binanceConfigured: true,
+    user: ADMIN_USER,
     balancesStatus: 503,
     balancesDetail: 'Binance credentials not configured for this user',
   })
