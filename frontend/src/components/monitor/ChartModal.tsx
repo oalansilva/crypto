@@ -1042,6 +1042,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                         className={`relative rounded-2xl border border-[#30363d] bg-[#0b1118] p-2 ${isAlgorithmicChartMode ? 'min-h-0 flex-1' : ''}`}
                                         onWheel={handleChartWheel}
                                         data-testid="chart-modal-main-chart-shell"
+                                        data-current-marker={signalLabel}
                                     >
                                         <div
                                             ref={mainChartRef}
@@ -1135,7 +1136,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                             <section>
                                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Distance</p>
                                                 <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {resolvedSignal.visual.markerLabel.toLowerCase()}</p>
+                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {resolvedSignal.visual.distanceLabel}</p>
                                                     <p className={`font-mono text-lg font-semibold ${
                                                         (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'text-[#3fb950]' : 'text-[#e6edf3]'
                                                     }`}>

@@ -11,7 +11,8 @@ export interface MonitorSignalVisual {
     readonly borderClass: string;
     readonly cardBgClass: string;
     readonly titleClass: string;
-    readonly markerLabel: 'ENTRY' | 'EXIT' | 'WAIT';
+    readonly markerLabel: 'ENTRY' | 'EXIT' | 'WAIT' | 'LONG';
+    readonly distanceLabel: 'entry' | 'exit' | 'wait';
     readonly markerPosition: MarkerDirection;
     readonly markerShape: MarkerShape;
     readonly markerColor: string;
@@ -51,10 +52,11 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
         borderClass: 'border-l-green-600 border-l-4',
         cardBgClass: 'bg-green-50 dark:bg-green-900/40 border-green-400 dark:border-green-600',
         titleClass: 'text-green-700 dark:text-green-300',
-        markerLabel: 'EXIT',
-        markerPosition: 'aboveBar',
-        markerShape: 'arrowDown',
-        markerColor: '#0ea5e9',
+        markerLabel: 'LONG',
+        distanceLabel: 'exit',
+        markerPosition: 'belowBar',
+        markerShape: 'arrowUp',
+        markerColor: '#3fb950',
         statusClass: 'info',
     },
     exit: {
@@ -64,6 +66,7 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
         cardBgClass: 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700',
         titleClass: 'text-sky-700 dark:text-sky-300',
         markerLabel: 'ENTRY',
+        distanceLabel: 'entry',
         markerPosition: 'aboveBar',
         markerShape: 'arrowDown',
         markerColor: '#0284c7',
@@ -76,6 +79,7 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
         cardBgClass: 'bg-[var(--monitor-card)] border-[var(--monitor-border)]',
         titleClass: 'text-[var(--monitor-text)]',
         markerLabel: 'WAIT',
+        distanceLabel: 'wait',
         markerPosition: 'belowBar',
         markerShape: 'arrowUp',
         markerColor: '#2dd4bf',
@@ -197,6 +201,7 @@ export const resolveOpportunitySignal = (
         visual: {
             ...sectionVisual,
             markerLabel,
+            distanceLabel: isUncertain ? 'wait' : sectionVisual.distanceLabel,
             markerColor: isUncertain ? '#8b949e' : sectionVisual.markerColor,
             markerShape: isUncertain ? 'arrowUp' : sectionVisual.markerShape,
             markerPosition: isUncertain ? 'belowBar' : sectionVisual.markerPosition,

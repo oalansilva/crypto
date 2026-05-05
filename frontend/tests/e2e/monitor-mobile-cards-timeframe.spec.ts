@@ -388,7 +388,7 @@ test('monitor keeps mismatched exit signals in WAIT state with explicit context'
             open: 74131.55,
             close: 74809.99,
           },
-          indicator_values_candle_time: '2026-04-15T00:00:00+00:00',
+          indicator_values_candle_time: '2099-04-15T00:00:00+00:00',
           is_holding: false,
           distance_to_next_status: 2.22,
           next_status_label: 'entry',
@@ -515,18 +515,18 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
             open: 74131.55,
             close: 74809.99,
           },
-          indicator_values_candle_time: '2026-04-15T00:00:00+00:00',
+          indicator_values_candle_time: '2099-04-15T00:00:00+00:00',
           is_holding: true,
           distance_to_next_status: 0.88,
           next_status_label: 'exit',
           status: 'HOLDING',
           message: 'Em Hold. Distância para saída: 0.88%',
           last_price: 74924,
-          timestamp: '2026-04-16T00:00:00Z',
+          timestamp: '2099-04-16T00:00:00Z',
           signal_history: [
-            { timestamp: '2026-04-10T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 70210.15 },
-            { timestamp: '2026-04-13T00:00:00+00:00', signal: -1, type: 'exit', reason: 'exit_logic', price: 72150.42 },
-            { timestamp: '2026-04-15T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 73980.37 },
+            { timestamp: '2099-04-10T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 70210.15 },
+            { timestamp: '2099-04-13T00:00:00+00:00', signal: -1, type: 'exit', reason: 'exit_logic', price: 72150.42 },
+            { timestamp: '2099-04-15T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 73980.37 },
           ],
           details: {},
         },
@@ -559,13 +559,13 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
       contentType: 'application/json',
       body: JSON.stringify({
         candles: [
-          { timestamp_utc: '2026-04-09T00:00:00Z', open: 69500, high: 70400, low: 69000, close: 70100, volume: 82.413 },
-          { timestamp_utc: '2026-04-10T00:00:00Z', open: 70210.15, high: 71000, low: 70050, close: 70880, volume: 91.127 },
-          { timestamp_utc: '2026-04-11T00:00:00Z', open: 70880, high: 71510, low: 70520, close: 71210, volume: 94.321 },
-          { timestamp_utc: '2026-04-12T00:00:00Z', open: 71210, high: 72300, low: 71050, close: 72020, volume: 99.654 },
-          { timestamp_utc: '2026-04-13T00:00:00Z', open: 72150.42, high: 72440, low: 71500, close: 71720, volume: 103.552 },
-          { timestamp_utc: '2026-04-14T00:00:00Z', open: 71720, high: 74120, low: 71610, close: 73910, volume: 108.117 },
-          { timestamp_utc: '2026-04-15T00:00:00Z', open: 73980.37, high: 74980, low: 73800, close: 74809.99, volume: 112.613 },
+          { timestamp_utc: '2099-04-09T00:00:00Z', open: 69500, high: 70400, low: 69000, close: 70100, volume: 82.413 },
+          { timestamp_utc: '2099-04-10T00:00:00Z', open: 70210.15, high: 71000, low: 70050, close: 70880, volume: 91.127 },
+          { timestamp_utc: '2099-04-11T00:00:00Z', open: 70880, high: 71510, low: 70520, close: 71210, volume: 94.321 },
+          { timestamp_utc: '2099-04-12T00:00:00Z', open: 71210, high: 72300, low: 71050, close: 72020, volume: 99.654 },
+          { timestamp_utc: '2099-04-13T00:00:00Z', open: 72150.42, high: 72440, low: 71500, close: 71720, volume: 103.552 },
+          { timestamp_utc: '2099-04-14T00:00:00Z', open: 71720, high: 74120, low: 71610, close: 73910, volume: 108.117 },
+          { timestamp_utc: '2099-04-15T00:00:00Z', open: 73980.37, high: 74980, low: 73800, close: 74809.99, volume: 112.613 },
         ],
       }),
     })
@@ -580,6 +580,9 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Compacto' }).click()
+  await expect(dialog.getByTestId('chart-modal-signal-badge')).toHaveText('HOLD')
+  await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'LONG')
+  await expect(dialog.getByText('To exit')).toBeVisible()
   await expect(dialog.getByText('Signal History')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-history-item-0')).toContainText('ENTRY')
