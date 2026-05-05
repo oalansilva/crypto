@@ -813,7 +813,7 @@ export const MonitorStatusTab: React.FC = () => {
         }
 
         return groups;
-    }, [filteredOpportunities, preferences]);
+    }, [filteredOpportunities]);
 
     const sectionCountByType = useMemo(() => ({
         hold: resolvedSections.hold.length,
