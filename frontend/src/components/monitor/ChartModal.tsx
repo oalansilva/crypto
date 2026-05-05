@@ -193,6 +193,13 @@ function getActiveEntrySignal(history?: OpportunitySignalHistoryItem[]): Opportu
     return activeEntry;
 }
 
+function getLatestSignal(history?: OpportunitySignalHistoryItem[]): OpportunitySignalHistoryItem | null {
+    const sortedHistory = [...(history || [])].sort(
+        (left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp),
+    );
+    return sortedHistory.length > 0 ? sortedHistory[sortedHistory.length - 1] : null;
+}
+
 function getNumericParameter(parameters: Record<string, unknown> | undefined, keys: string[], fallback: number) {
     for (const key of keys) {
         const raw = parameters?.[key];
@@ -457,6 +464,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => getActiveEntrySignal(opportunity.signal_history),
         [opportunity.signal_history],
     );
+    const latestSignal = React.useMemo(
+        () => getLatestSignal(opportunity.signal_history),
+        [opportunity.signal_history],
+    );
     const hasVisibleActiveEntry = React.useMemo(() => {
         if (!activeEntrySignal) {
             return false;
@@ -470,10 +481,19 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => resolveOpportunitySignal(opportunity, {
             selectedTimeframe: timeframe,
             latestCandleTime: latestCandle?.timestamp_utc ?? null,
+            latestSignalTime: latestSignal?.timestamp ?? null,
+            latestSignalType: latestSignal?.type ?? null,
             requireCurrentCandleMatch: true,
             hasVisibleActiveEntry,
         }),
-        [hasVisibleActiveEntry, latestCandle?.timestamp_utc, opportunity, timeframe],
+        [
+            hasVisibleActiveEntry,
+            latestCandle?.timestamp_utc,
+            latestSignal?.timestamp,
+            latestSignal?.type,
+            opportunity,
+            timeframe,
+        ],
     );
     const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
     const signalLabel = resolvedSignal.visual.markerLabel;

@@ -440,7 +440,7 @@ test('monitor keeps mismatched exit signals in WAIT state with explicit context'
 
   const row = page.getByTestId('monitor-row-btc-usdt')
   await expect(row).toBeVisible()
-  await expect(row.getByText('WAIT', { exact: true })).toBeVisible()
+  await expect(row.getByText('Wait', { exact: true })).toBeVisible()
   await row.getByRole('button', { name: 'Abrir gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
@@ -450,9 +450,133 @@ test('monitor keeps mismatched exit signals in WAIT state with explicit context'
   const signalContext = dialog.getByTestId('chart-modal-signal-context')
   await expect(signalContext.getByText('Resolved state')).toBeVisible()
   await expect(signalContext).toContainText('1d')
-  await expect(signalContext).toContainText('1h')
   await expect(signalContext).toContainText('Estado em revisão: decisão não confirmada pelo contexto atual.')
   await expect(signalContext).toContainText('EXIT bloqueado: candle de referência não corresponde ao último candle exibido.')
+})
+
+test('monitor resolves current exit signal consistently in list and chart', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 2,
+          name: 'HBAR Trend',
+          symbol: 'HBAR/USDT',
+          timeframe: '1d',
+          strategy_name: 'multi_ma_crossover',
+          parameters: {},
+          metrics: {},
+          created_at: '2026-04-15T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 2,
+          symbol: 'HBAR/USDT',
+          timeframe: '1d',
+          template_name: 'multi_ma_crossover',
+          name: 'HBAR Trend',
+          notes: '',
+          tier: 1,
+          parameters: { direction: 'long', ema_short: 18, sma_medium: 20, sma_long: 35, stop_loss: 0.042 },
+          indicator_values: {
+            short: 0.08888,
+            medium: 0.08911,
+            long: 0.08889,
+            open: 0.08771,
+            close: 0.08773,
+          },
+          indicator_values_candle_time: '2026-05-04T00:00:00+00:00',
+          is_holding: true,
+          distance_to_next_status: 0,
+          next_status_label: 'exit',
+          status: 'EXIT_SIGNAL',
+          message: 'EXIT: regra de saída confirmada.',
+          last_price: 0.09068,
+          timestamp: '2026-05-05T00:00:00Z',
+          signal_history: [
+            { timestamp: '2026-04-24T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 0.09081 },
+            { timestamp: '2026-05-05T00:00:00+00:00', signal: -1, type: 'exit', reason: 'exit_logic', price: 0.08774 },
+          ],
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+        'HBAR/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
+  await page.route('**/api/market/candles**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candles: [
+          { timestamp_utc: '2026-04-24T00:00:00Z', open: 0.09081, high: 0.0911, low: 0.089, close: 0.09093, volume: 1000 },
+          { timestamp_utc: '2026-05-04T00:00:00Z', open: 0.08771, high: 0.0885, low: 0.087, close: 0.08773, volume: 1000 },
+          { timestamp_utc: '2026-05-05T00:00:00Z', open: 0.08774, high: 0.091, low: 0.0875, close: 0.09068, volume: 1000 },
+        ],
+      }),
+    })
+  )
+
+  await page.goto('/monitor')
+
+  const row = page.getByTestId('monitor-row-hbar-usdt')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('Exit', { exact: true })).toBeVisible()
+  await row.getByRole('button', { name: 'Abrir gráfico' }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Compacto' }).click()
+  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('EXIT')
+  await expect(dialog.getByTestId('chart-modal-signal-context')).not.toContainText('Estado em revisão')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {

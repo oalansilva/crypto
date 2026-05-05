@@ -34,6 +34,8 @@ export interface ResolvedMonitorSignal {
 export interface ResolveOpportunitySignalContext {
     readonly selectedTimeframe?: string | null;
     readonly latestCandleTime?: string | null;
+    readonly latestSignalTime?: string | null;
+    readonly latestSignalType?: 'entry' | 'exit' | null;
     readonly requireCurrentCandleMatch?: boolean;
     readonly hasVisibleActiveEntry?: boolean | null;
 }
@@ -134,11 +136,20 @@ export const resolveOpportunitySignal = (
     const selectedTimeframe = normalizeTimeframe(context.selectedTimeframe);
     const strategyTimeframe = normalizeTimeframe(opportunity.timeframe);
     const timeframeMismatch = Boolean(selectedTimeframe) && selectedTimeframe !== strategyTimeframe;
+    const decisionReferenceTime = (
+        rawStatus === 'EXIT_SIGNAL'
+        && context.latestSignalType === 'exit'
+        && context.latestSignalTime
+    )
+        ? context.latestSignalTime
+        : opportunity.indicator_values_candle_time;
     const candleMismatch = Boolean(context.requireCurrentCandleMatch) && !hasSameCandleReference(
-        opportunity.indicator_values_candle_time,
+        decisionReferenceTime,
         context.latestCandleTime,
     );
-    const activeEntryMissingFromChart = Boolean(isHolding) && context.hasVisibleActiveEntry === false;
+    const activeEntryMissingFromChart = Boolean(isHolding)
+        && rawStatus !== 'EXIT_SIGNAL'
+        && context.hasVisibleActiveEntry === false;
 
     let section: MonitorSignalKind = 'wait';
     let isUncertain = uncertainty || timeframeMismatch || candleMismatch || activeEntryMissingFromChart;
@@ -156,7 +167,9 @@ export const resolveOpportunitySignal = (
         reasons.push('HOLD bloqueado: entrada ativa não aparece nos candles exibidos.');
     }
 
-    if (rawStatus === 'HOLDING' || rawStatus === 'HOLD' || rawStatus === 'EXIT_NEAR' || rawStatus === 'EXIT_SIGNAL') {
+    if (rawStatus === 'EXIT_SIGNAL') {
+        section = 'exit';
+    } else if (rawStatus === 'HOLDING' || rawStatus === 'HOLD' || rawStatus === 'EXIT_NEAR') {
         section = isHolding ? 'hold' : 'wait';
         if (!isHolding) {
             isUncertain = true;
@@ -196,7 +209,7 @@ export const resolveOpportunitySignal = (
         freshnessReason,
         strategyTimeframe: strategyTimeframe || null,
         displayTimeframe: selectedTimeframe || strategyTimeframe || null,
-        referenceCandleTime: opportunity.indicator_values_candle_time ?? null,
+        referenceCandleTime: decisionReferenceTime ?? null,
         latestCandleTime: context.latestCandleTime ?? null,
         visual: {
             ...sectionVisual,
@@ -214,7 +227,15 @@ export const hasExitedOpportunity = (opportunity: Opportunity): boolean => {
     const isHolding = Boolean(opportunity.is_holding);
 
     return (
-        !isHolding
-        && (rawStatus === 'EXITED' || rawStatus === 'STOPPED_OUT' || rawStatus === 'MISSED_ENTRY' || rawStatus === 'MISSED')
+        rawStatus === 'EXIT_SIGNAL'
+        || (
+            !isHolding
+            && (
+                rawStatus === 'EXITED'
+                || rawStatus === 'STOPPED_OUT'
+                || rawStatus === 'MISSED_ENTRY'
+                || rawStatus === 'MISSED'
+            )
+        )
     );
 };
