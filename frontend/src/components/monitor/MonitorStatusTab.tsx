@@ -32,7 +32,7 @@ import { fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './cha
 import { resolveOpportunitySignal } from './signalResolution';
 
 type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
-type TierFilter = 'all' | '1_2' | '1' | '2' | '3' | 'none';
+type TierFilter = 'rated' | 'all' | '1_2' | '1' | '2' | '3' | 'none';
 type ListFilter = 'in_portfolio' | 'all' | 'favorites';
 type StrategyFilter = 'all' | string;
 type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
@@ -194,6 +194,8 @@ const getTierStars = (tier: number | null | undefined): string => {
     return '';
 };
 
+const isRatedOpportunity = (opportunity: Opportunity): boolean => getTierStars(opportunity.tier).length > 0;
+
 const averageDistance = (values: Array<number | null | undefined>): number | null => {
     const filtered = values.filter((value) => Number.isFinite(value ?? NaN));
     if (filtered.length === 0) return null;
@@ -211,7 +213,7 @@ export const MonitorStatusTab: React.FC = () => {
         initialTimeframe: ChartTimeframe;
     } | null>(null);
     const sortBy: SortOption = 'tier_distance';
-    const [tierFilter, setTierFilter] = useState<TierFilter>('all');
+    const [tierFilter, setTierFilter] = useState<TierFilter>('rated');
     const [listFilter, setListFilter] = useState<ListFilter>('in_portfolio');
     const [strategyFilter, setStrategyFilter] = useState<StrategyFilter>('all');
     const [timeframeFilter, setTimeframeFilter] = useState<TimeframeFilter>('all');
@@ -373,7 +375,9 @@ export const MonitorStatusTab: React.FC = () => {
         try {
             const tierParam = tier || tierFilter;
             let apiTier: string;
-            if (tierParam === 'all') {
+            if (tierParam === 'rated') {
+                apiTier = '1,2,3';
+            } else if (tierParam === 'all') {
                 apiTier = 'all';
             } else if (tierParam === '1_2') {
                 apiTier = '1,2';
@@ -729,7 +733,7 @@ export const MonitorStatusTab: React.FC = () => {
 
         const afterAssetType = sortedOpportunities.filter((opp) => {
             if (!String(opp.symbol || '').trim()) return false;
-            return getOpportunityAssetType(opp) === 'crypto';
+            return getOpportunityAssetType(opp) === 'crypto' && isRatedOpportunity(opp);
         });
 
         const effectiveListFilter = showTechnicalColumns ? listFilter : 'all';

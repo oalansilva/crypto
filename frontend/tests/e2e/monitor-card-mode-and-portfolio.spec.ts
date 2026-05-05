@@ -111,6 +111,7 @@ async function setupApiMocks(
   await mockAuthenticatedSession(page)
 
   const requestedTimeframes: string[] = []
+  const requestedOpportunityTiers: string[] = []
   const requestedBalanceMinUsd: string[] = []
   const preferencePatches: Array<{ symbol: string; patch: any }> = []
   const strategyPreferencePatches: Array<{ favoriteId: string; patch: any }> = []
@@ -150,13 +151,15 @@ async function setupApiMocks(
     })
   )
 
-  await page.route('**/api/opportunities/**', (route: any) =>
-    route.fulfill({
+  await page.route('**/api/opportunities/**', (route: any) => {
+    const url = new URL(route.request().url())
+    requestedOpportunityTiers.push(url.searchParams.get('tier') || '')
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(options?.opportunitiesPayload ?? OPPORTUNITIES_PAYLOAD),
     })
-  )
+  })
 
   await page.route('**/api/monitor/preferences', (route: any) =>
     route.fulfill({
@@ -271,6 +274,7 @@ async function setupApiMocks(
 
   return {
     requestedBalanceMinUsd,
+    requestedOpportunityTiers,
     requestedTimeframes,
     preferencePatches,
     strategyPreferencePatches,
@@ -380,6 +384,32 @@ test('monitor filters opportunities by star classification', async ({ page }) =>
   await page.getByTestId('monitor-filter-stars').selectOption('all')
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-row-eth-usdt')).toBeVisible()
+})
+
+test('monitor defaults to rated strategies and hides unstarred opportunities', async ({ page }) => {
+  const mocks = await setupApiMocks(page, {
+    opportunitiesPayload: [
+      {
+        ...OPPORTUNITIES_PAYLOAD[0],
+        is_holding: true,
+        status: 'HOLD',
+        message: 'Holding position',
+      },
+      {
+        ...OPPORTUNITIES_PAYLOAD[1],
+        id: 3,
+        symbol: 'SOL/USDT',
+        name: 'SOL Unstarred',
+        tier: null,
+      },
+    ],
+  })
+  await page.goto('/monitor')
+
+  await expect.poll(() => mocks.requestedOpportunityTiers[0]).toBe('1,2,3')
+  await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-row-sol-usdt')).toHaveCount(0)
+  await expect(page.getByText('Em posição · HOLD')).toBeVisible()
 })
 
 test('monitor simplifies table columns for common user', async ({ page }) => {
