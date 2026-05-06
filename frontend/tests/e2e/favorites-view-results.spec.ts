@@ -349,6 +349,12 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
   await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
   await expect(page.getByText('List of trades')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('result-main-chart')).toBeVisible();
+  await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
+  await expect(page.getByTestId('result-chart-zoom-out')).toBeVisible();
+  await expect(page.getByTestId('result-chart-zoom-reset')).toBeVisible();
+  await expect(page.getByTestId('result-chart-visible-bars')).toContainText('candles');
   await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Date and time' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Signal' })).toBeVisible();
@@ -391,6 +397,8 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
   await expect(page.getByText('Chart data not available for this run.')).toHaveCount(0);
   await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
 
   await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
   await expect(page).toHaveURL(/\/favorites$/);

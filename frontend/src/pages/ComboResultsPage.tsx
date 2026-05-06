@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
 import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Download, ArrowLeft } from 'lucide-react'
-import { CandlestickChart } from '../components/CandlestickChart'
+import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
@@ -273,29 +273,6 @@ export function ComboResultsPage() {
         return list
     })
 
-    // Prepare Indicators
-    const indicators = Object.entries(result.indicator_data).map(([name, values], index) => {
-        // Filter out None values and create data points
-        const data = values.map((val, i) => {
-            if (val === null || val === undefined) return null
-            // Check if we have a matching candle timestamp
-            if (!result.candles || !result.candles[i]) return null
-
-            return {
-                time: result.candles[i].timestamp_utc,
-                value: val
-            }
-        }).filter(d => d !== null) as { time: string; value: number }[]
-
-        const colors = ['#fbbf24', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316']
-
-        return {
-            name: name,
-            data: data,
-            color: colors[index % colors.length]
-        }
-    })
-
     return (
         <div className="app-page combo-page relative overflow-hidden">
             {/* Main Content */}
@@ -352,12 +329,13 @@ export function ComboResultsPage() {
 
                     {/* CHART VISUALIZATION */}
                     {(result.candles && result.candles.length > 0) ? (
-                        <CandlestickChart
+                        <MonitorAlignedCandlestickChart
                             candles={result.candles}
                             markers={markers as any}
-                            indicators={indicators}
+                            parameters={result.parameters}
                             strategyName={result.template_name}
-                            color="#3b82f6"
+                            symbol={result.symbol}
+                            timeframe={result.timeframe}
                         />
                     ) : (
                         <div className="glass-strong rounded-[28px] p-8 text-center border border-zinc-200 mb-8">
