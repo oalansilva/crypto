@@ -173,13 +173,6 @@ const FavoritesDashboard: React.FC = () => {
 
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
 
-    const buildFavoriteAnalysisWarning = (metrics: Record<string, any> | null | undefined, metricsMatch?: boolean) => {
-        if (metricsMatch === false || metrics?.trades_metrics_match === false) {
-            return 'Histórico reconstruído pode divergir do resumo salvo.';
-        }
-        return '';
-    };
-
     const getSavedTrades = (fav: FavoriteStrategy): any[] | null => {
         const savedTrades = fav.metrics?.trades;
         return Array.isArray(savedTrades) ? savedTrades : null;
@@ -203,7 +196,6 @@ const FavoritesDashboard: React.FC = () => {
             return {
                 trades: savedTrades,
                 metrics: fav.metrics || {},
-                warning: buildFavoriteAnalysisWarning(fav.metrics),
                 candles: Array.isArray(fav.metrics?.analysis_candles) ? fav.metrics.analysis_candles : [],
                 indicatorData: fav.metrics?.analysis_indicator_data && typeof fav.metrics.analysis_indicator_data === 'object'
                     ? fav.metrics.analysis_indicator_data
@@ -218,7 +210,6 @@ const FavoritesDashboard: React.FC = () => {
             return {
                 trades: [],
                 metrics: fav.metrics || {},
-                warning: '',
                 candles: [],
                 indicatorData: {},
                 executionMode: 'favorite_cache',
@@ -241,7 +232,6 @@ const FavoritesDashboard: React.FC = () => {
                 trades_metrics_match: payload.metrics_match !== false,
                 trades_metrics_deltas: payload.metrics_deltas || {},
             };
-        const warning = buildFavoriteAnalysisWarning(nextMetrics, payload.metrics_match);
 
         queryClient.setQueryData<FavoriteStrategy[]>(
             ['favorites', user?.id ?? 'anonymous'],
@@ -255,7 +245,6 @@ const FavoritesDashboard: React.FC = () => {
         return {
             trades: regeneratedTrades,
             metrics: nextMetrics,
-            warning,
             candles: Array.isArray(payload.candles) ? payload.candles : [],
             indicatorData: payload.indicator_data && typeof payload.indicator_data === 'object'
                 ? payload.indicator_data
@@ -315,7 +304,6 @@ const FavoritesDashboard: React.FC = () => {
                 state: {
                     result: analysisResult,
                     isOptimization: false,
-                    favoriteAnalysisWarning: recovered.warning,
                     returnTo: '/favorites',
                 }
             });

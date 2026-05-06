@@ -46,7 +46,6 @@ export function ComboResultsPage() {
     const location = useLocation()
     const navigate = useNavigate()
     const result = location.state?.result as BacktestResult
-    const favoriteAnalysisWarning = location.state?.favoriteAnalysisWarning as string | undefined
     const returnTo = location.state?.returnTo as string | undefined
     const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -312,12 +311,6 @@ export function ComboResultsPage() {
                             {returnTo === '/favorites' ? 'Voltar aos favoritos' : 'Voltar'}
                         </button>
                     </div>
-
-                    {favoriteAnalysisWarning ? (
-                        <div role="status" className="rounded-[16px] border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-                            {favoriteAnalysisWarning}
-                        </div>
-                    ) : null}
 
                     {/* Configuration Info */}
                     <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">

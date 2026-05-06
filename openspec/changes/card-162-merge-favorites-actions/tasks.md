@@ -2,7 +2,7 @@
 
 - [x] 1.1 Replace separate `View Trades` and `View Results` actions with one analysis CTA in desktop and mobile Favorites layouts.
 - [x] 1.2 Combine backtest execution with favorite trade recovery so the result page receives consolidated metrics, chart data, and recovered trades.
-- [x] 1.3 Add a non-blocking result-page warning for regenerated trade metric mismatch.
+- [x] 1.3 Keep regenerated trade metric mismatch metadata internal and avoid showing mismatch warnings to the user.
 
 ## 2. Validation
 
@@ -34,6 +34,11 @@
 - [x] 6.2 Preserve previous metrics and deltas as investigation metadata.
 - [x] 6.3 Stop showing the reconstructed-history mismatch warning after automatic reconciliation.
 - [x] 6.4 Extend backend and E2E coverage for accepted reconstructed metrics.
+
+## 7. Homologation Fixes - Remove User Mismatch Warning
+
+- [x] 7.1 Remove the Favorites result-page mismatch warning source so legacy `metrics_match=false` payloads do not show `Histórico reconstruído pode divergir do resumo salvo.` to users.
+- [x] 7.2 Keep mismatch deltas available only in favorite metrics metadata for investigation.
 
 ## Notes
 

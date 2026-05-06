@@ -201,12 +201,13 @@ async function setupDeterministicApiMocks(page: any) {
     favoriteTradesTriggeredCount += 1;
     const url = new URL(route.request().url());
     const favoriteId = Number(url.pathname.match(/\/favorites\/(\d+)\/trades$/)?.[1] ?? 2);
+    const simulatesLegacyMismatch = favoriteId === 2;
     const cachedMetrics = {
       ...BACKTEST_PAYLOAD.metrics,
       trades: BACKTEST_PAYLOAD.trades,
       trades_history_cached: true,
-      trades_metrics_match: true,
-      trades_metrics_deltas: {},
+      trades_metrics_match: !simulatesLegacyMismatch,
+      trades_metrics_deltas: simulatesLegacyMismatch ? { total_return_pct: { saved: 20, regenerated: 1 } } : {},
       analysis_candles: BACKTEST_PAYLOAD.candles,
       analysis_indicator_data: BACKTEST_PAYLOAD.indicator_data,
       analysis_execution_mode: BACKTEST_PAYLOAD.execution_mode,
@@ -221,8 +222,8 @@ async function setupDeterministicApiMocks(page: any) {
         favorite_id: favoriteId,
         trades: BACKTEST_PAYLOAD.trades,
         metrics: cachedMetrics,
-        metrics_match: true,
-        metrics_deltas: {},
+        metrics_match: !simulatesLegacyMismatch,
+        metrics_deltas: cachedMetrics.trades_metrics_deltas,
         regenerated: true,
         candles: BACKTEST_PAYLOAD.candles,
         indicator_data: BACKTEST_PAYLOAD.indicator_data,

@@ -121,9 +121,9 @@ The Favorites page SHALL recover missing trade history for visible admin favorit
 
 #### Scenario: Regenerated trades have metric mismatch
 - **WHEN** the Favorites API reports `metrics_match=false`
-- **THEN** the UI SHALL open the trades modal with a non-blocking warning that regenerated trades do not fully match the saved summary metrics
+- **THEN** the API SHALL keep mismatch deltas available in favorite metrics metadata for investigation
+- **AND** the UI SHALL NOT show a reconstructed-history mismatch warning to the user
 
 #### Scenario: Protected favorite remains redacted
 - **WHEN** a protected favorite is shown to a non-admin user
 - **THEN** the UI SHALL NOT request regenerated protected trades
-
