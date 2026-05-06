@@ -27,6 +27,23 @@ interface FavoriteStrategy {
     strategy_display_name?: string | null;
 }
 
+interface MonitorSignalHistoryItem {
+    timestamp?: string | null;
+    signal?: number | null;
+    type?: string | null;
+    reason?: string | null;
+    price?: number | null;
+}
+
+interface MonitorOpportunity {
+    id?: number;
+    symbol?: string;
+    timeframe?: string;
+    template_name?: string;
+    name?: string;
+    signal_history?: MonitorSignalHistoryItem[] | null;
+}
+
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
 
 const CURRENT_CHART_CANDLE_LIMIT = 300;
@@ -34,6 +51,71 @@ const CURRENT_CHART_CANDLE_LIMIT = 300;
 const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
     const candles = fav.metrics?.analysis_candles;
     return Array.isArray(candles) ? candles : [];
+};
+
+const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
+
+const calculateSignalProfit = (
+    entryPrice: number | null | undefined,
+    exitPrice: number | null | undefined,
+    direction: string,
+): number | undefined => {
+    const entry = Number(entryPrice);
+    const exit = Number(exitPrice);
+    if (!Number.isFinite(entry) || !Number.isFinite(exit) || entry <= 0) return undefined;
+    return direction === 'short' ? (entry - exit) / entry : (exit - entry) / entry;
+};
+
+const buildTradesFromSignalHistory = (
+    history: MonitorSignalHistoryItem[] | null | undefined,
+    direction: string,
+): any[] | null => {
+    if (!Array.isArray(history) || history.length === 0) return null;
+
+    const sortedHistory = history
+        .filter((item) => item && item.timestamp && (item.type === 'entry' || item.type === 'exit'))
+        .sort((left, right) => Date.parse(String(left.timestamp)) - Date.parse(String(right.timestamp)));
+
+    const trades: any[] = [];
+    let activeEntry: MonitorSignalHistoryItem | null = null;
+
+    sortedHistory.forEach((item) => {
+        if (item.type === 'entry') {
+            activeEntry = item;
+            return;
+        }
+
+        if (item.type === 'exit' && activeEntry) {
+            const entryPrice = Number(activeEntry.price);
+            const exitPrice = Number(item.price);
+            trades.push({
+                entry_time: activeEntry.timestamp,
+                entry_price: Number.isFinite(entryPrice) ? entryPrice : 0,
+                exit_time: item.timestamp,
+                exit_price: Number.isFinite(exitPrice) ? exitPrice : undefined,
+                profit: calculateSignalProfit(entryPrice, exitPrice, direction),
+                type: direction === 'short' ? 'short' : 'long',
+                signal_type: item.reason === 'stop_loss' ? 'Stop' : 'Monitor',
+                entry_signal_type: direction === 'short' ? 'Vender' : 'Comprar',
+                exit_reason: item.reason || 'monitor_signal',
+                source: 'monitor_signal_history',
+            });
+            activeEntry = null;
+        }
+    });
+
+    if (activeEntry) {
+        const entryPrice = Number(activeEntry.price);
+        trades.push({
+            entry_time: activeEntry.timestamp,
+            entry_price: Number.isFinite(entryPrice) ? entryPrice : 0,
+            type: direction === 'short' ? 'short' : 'long',
+            entry_signal_type: direction === 'short' ? 'Vender' : 'Comprar',
+            source: 'monitor_signal_history',
+        });
+    }
+
+    return trades.length > 0 ? trades : null;
 };
 
 const FavoritesDashboard: React.FC = () => {
@@ -212,6 +294,48 @@ const FavoritesDashboard: React.FC = () => {
         }
     };
 
+    const findMatchingOpportunity = (
+        fav: FavoriteStrategy,
+        opportunities: MonitorOpportunity[],
+    ): MonitorOpportunity | null => {
+        const byId = opportunities.find((item) => Number(item.id) === Number(fav.id));
+        if (byId) return byId;
+
+        const favoriteSymbol = normalizeText(fav.symbol);
+        const favoriteTimeframe = normalizeText(fav.timeframe);
+        const favoriteStrategy = normalizeText(fav.strategy_name);
+        return opportunities.find((item) => (
+            normalizeText(item.symbol) === favoriteSymbol
+            && normalizeText(item.timeframe) === favoriteTimeframe
+            && (
+                normalizeText(item.template_name) === favoriteStrategy
+                || normalizeText(item.name).includes(favoriteSymbol)
+                || isFavoriteProtected(fav)
+            )
+        )) || null;
+    };
+
+    const loadMonitorSyncedTrades = async (fav: FavoriteStrategy): Promise<any[] | null> => {
+        const url = new URL(`${API_BASE_URL}/opportunities/`, window.location.origin);
+        url.searchParams.set('refresh', 'true');
+        url.searchParams.set('tier', 'all');
+
+        try {
+            const response = await authFetch(url.toString());
+            const payload = await response.json().catch(() => []);
+            if (!response.ok || !Array.isArray(payload)) {
+                throw new Error(`Failed to sync monitor signals (${response.status})`);
+            }
+
+            const opportunity = findMatchingOpportunity(fav, payload);
+            const direction = String(fav.parameters?.direction || 'long').toLowerCase();
+            return buildTradesFromSignalHistory(opportunity?.signal_history, direction);
+        } catch (error) {
+            console.warn(`Falling back to saved favorite trades for ${fav.symbol} ${fav.timeframe}`, error);
+            return null;
+        }
+    };
+
     const loadTradesForAnalysis = async (fav: FavoriteStrategy) => {
         const savedTrades = getSavedTrades(fav);
         const summaryTradeCount = getSummaryTradeCount(fav);
@@ -332,13 +456,18 @@ const FavoritesDashboard: React.FC = () => {
     const handleViewAnalysis = async (fav: FavoriteStrategy) => {
         setLoadingAnalysisId(fav.id);
         try {
-            const [recovered, currentCandles] = await Promise.all([
+            const [recovered, currentCandles, monitorSyncedTrades] = await Promise.all([
                 loadTradesForAnalysis(fav),
                 loadCurrentChartCandles(fav),
+                loadMonitorSyncedTrades(fav),
             ]);
             const chartCandles = currentCandles.length > 0 ? currentCandles : recovered.candles;
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
             analysisResult.candles = chartCandles || [];
+            if (monitorSyncedTrades && monitorSyncedTrades.length > 0) {
+                analysisResult.trades = monitorSyncedTrades;
+                analysisResult.execution_mode = 'favorite_monitor_sync';
+            }
 
             navigate('/combo/results', {
                 state: {
