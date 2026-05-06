@@ -16,12 +16,13 @@ The system SHALL expose a paginated admin endpoint that returns users for operat
 - **THEN** the system SHALL return users matching all active filters
 
 ### Requirement: Admin can create support-managed users
-The system SHALL allow admins to create a new user record when requested by support.
+The system SHALL allow admins to create a new user record when requested by support, and this SHALL be the primary invite/access path during closed beta.
 
 #### Scenario: Admin creates a valid user
 - **WHEN** an admin posts valid user data to `POST /api/admin/users`
 - **THEN** the system SHALL create the user and return the created user record
 - **AND THEN** the system SHALL record an audit entry with action `user_created`
+- **AND** the created active user SHALL be eligible to log in during closed beta
 
 #### Scenario: Email conflict
 - **WHEN** an admin tries to create a user using an existing email
@@ -70,4 +71,12 @@ The system SHALL deny non-admin access to all admin user-management operations.
 #### Scenario: Admin request without reason
 - **WHEN** an admin action endpoint is called without a `reason` for destructive or risk-sensitive changes
 - **THEN** the system SHALL reject the request with a validation error
+
+### Requirement: Closed beta unauthorized users can be audit-safely disabled
+The system SHALL support disabling unauthorized beta users without physically deleting their historical records.
+
+#### Scenario: Admin-safe user cleanup
+- **WHEN** an operational cleanup disables an unauthorized user
+- **THEN** the user SHALL be blocked from authentication
+- **AND** existing user-owned records SHALL remain available for audit or future migration
 

@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by syncing delta from change save-combo-favorites. Save combo strategy from results to favorites.
-
 ## Requirements
-
 ### Requirement: Salvar Estratégia dos Resultados do Combo
 O sistema SHALL fornecer um mecanismo para salvar uma configuração específica de estratégia (incluindo parâmetros e métricas) da página de Resultados do Backtest de Combo para a lista de Favoritos. O fluxo inclui um botão "Salvar nos Favoritos" e um modal para nome e notas; o sistema SHALL evitar duplicatas, apresentando aviso para sobrescrever ou salvar como novo.
 
@@ -99,3 +97,33 @@ The Favorites page Strategy filter MUST list and match only strategy labels, not
 - **WHEN** the user selects a Strategy option
 - **THEN** the page MUST show favorites whose strategy label matches that option
 - **AND** the filter MUST not depend on the favorite nickname
+
+### Requirement: Favorites owns strategy curation for Monitor
+The Favorites screen SHALL be the canonical UI for choosing, removing, and ranking strategies that feed the Monitor. The Monitor SHALL consume Favorites ranking as read-only tier/star classification and SHALL NOT duplicate favorite curation controls.
+
+#### Scenario: User changes strategy ranking
+- **WHEN** the user wants to change a strategy star/tier ranking
+- **THEN** the user MUST do that on the Favorites screen
+- **AND** the Monitor reflects that ranking as read-only classification
+
+#### Scenario: User removes a strategy from curation
+- **WHEN** the user wants to remove a strategy from the monitored favorite catalog
+- **THEN** the user MUST do that on the Favorites screen
+- **AND** the Monitor MUST NOT expose a separate remove-favorite action
+
+### Requirement: Favorites View Trades recovers missing history
+The Favorites page SHALL recover missing trade history for visible admin favorites instead of treating a missing `metrics.trades` array as no trades when summary metrics indicate trades exist.
+
+#### Scenario: User clicks View Trades for favorite without saved trades
+- **WHEN** an admin user clicks `View Trades` for a favorite with `total_trades` greater than zero and no saved `metrics.trades`
+- **THEN** the UI SHALL request regenerated trades from the Favorites API
+- **AND** the trade modal SHALL render the returned trades
+
+#### Scenario: Regenerated trades have metric mismatch
+- **WHEN** the Favorites API reports `metrics_match=false`
+- **THEN** the UI SHALL open the trades modal with a non-blocking warning that regenerated trades do not fully match the saved summary metrics
+
+#### Scenario: Protected favorite remains redacted
+- **WHEN** a protected favorite is shown to a non-admin user
+- **THEN** the UI SHALL NOT request regenerated protected trades
+
