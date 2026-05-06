@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Search, List, Activity, BarChart3, MessageCircle, Star } from 'lucide-react';
-import TradesViewModal from '../components/TradesViewModal';
 import { AgentChatModal } from '../components/AgentChatModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
@@ -40,18 +39,7 @@ const FavoritesDashboard: React.FC = () => {
     const [isCompareOpen, setIsCompareOpen] = useState(false);
     const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
 
-    // New state for Trades Modal
-    const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
-    const [selectedTrades, setSelectedTrades] = useState<any[]>([]);
-    const [selectedTradesTitle, setSelectedTradesTitle] = useState('');
-    const [selectedTradesSymbol, setSelectedTradesSymbol] = useState('');
-    const [selectedTradesTemplate, setSelectedTradesTemplate] = useState('');
-    const [selectedTradesTimeframe, setSelectedTradesTimeframe] = useState('');
-    const [selectedTradesWarning, setSelectedTradesWarning] = useState('');
-    
-    // State for loading backtest
-    const [loadingBacktestId, setLoadingBacktestId] = useState<number | null>(null);
-    const [loadingTradesId, setLoadingTradesId] = useState<number | null>(null);
+    const [loadingAnalysisId, setLoadingAnalysisId] = useState<number | null>(null);
 
     // Agent chat modal
     const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
@@ -185,15 +173,59 @@ const FavoritesDashboard: React.FC = () => {
 
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
 
-    const handleViewResults = async (fav: FavoriteStrategy) => {
+    const loadTradesForAnalysis = async (fav: FavoriteStrategy) => {
+        const savedTrades = fav.metrics?.trades;
+        if (Array.isArray(savedTrades) && savedTrades.length > 0) {
+            return { trades: savedTrades, warning: '' };
+        }
+
+        const summaryTradeCount = Number(
+            fav.metrics?.total_trades ?? (typeof fav.metrics?.trades === 'number' ? fav.metrics.trades : 0)
+        );
+        if (summaryTradeCount <= 0) {
+            return { trades: null, warning: '' };
+        }
+
+        const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}/trades`);
+        if (!res.ok) {
+            throw new Error(`Failed to load trades (${res.status})`);
+        }
+
+        const payload = await res.json();
+        const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
+        const warning = payload.metrics_match === false
+            ? 'Histórico reconstruído pode divergir do resumo salvo.'
+            : '';
+
+        queryClient.setQueryData<FavoriteStrategy[]>(
+            ['favorites', user?.id ?? 'anonymous'],
+            (current) => current?.map((item) => (
+                item.id === fav.id
+                    ? { ...item, metrics: { ...(item.metrics || {}), trades: regeneratedTrades } }
+                    : item
+            ))
+        );
+
+        return {
+            trades: regeneratedTrades,
+            metrics: payload.metrics && typeof payload.metrics === 'object' ? payload.metrics : null,
+            warning,
+        };
+    };
+
+    const handleViewAnalysis = async (fav: FavoriteStrategy) => {
         if (isFavoriteProtected(fav)) {
-            alert('Resultados detalhados disponíveis apenas para admin.');
+            alert('Análise detalhada disponível apenas para admin.');
             return;
         }
-        setLoadingBacktestId(fav.id);
+        setLoadingAnalysisId(fav.id);
         try {
-            // Executar backtest com os parâmetros do favorito
-            const response = await authFetch(`${API_BASE_URL}/combos/backtest`, {
+            let recovered: { trades: any[] | null; metrics?: Record<string, any> | null; warning: string } = {
+                trades: null,
+                warning: '',
+            };
+
+            const responsePromise = authFetch(`${API_BASE_URL}/combos/backtest`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -210,6 +242,17 @@ const FavoritesDashboard: React.FC = () => {
                 })
             });
 
+            try {
+                recovered = await loadTradesForAnalysis(fav);
+            } catch (tradeError) {
+                console.warn('Erro ao recuperar trades do favorito:', tradeError);
+                recovered = {
+                    trades: null,
+                    warning: 'Não foi possível recuperar o histórico salvo; exibindo trades do backtest atual.',
+                };
+            }
+
+            const response = await responsePromise;
             if (!response.ok) {
                 const error = await response.json();
                 alert(`Erro ao executar backtest: ${error.detail || 'Erro desconhecido'}`);
@@ -217,14 +260,29 @@ const FavoritesDashboard: React.FC = () => {
             }
 
             const result = await response.json();
-            
-            // Navegar para a tela de resultados com os dados
-            navigate('/combo/results', { state: { result, isOptimization: false } });
+            const analysisResult = Array.isArray(recovered.trades) && recovered.trades.length > 0
+                ? {
+                    ...result,
+                    trades: recovered.trades,
+                    metrics: {
+                        ...(result.metrics || {}),
+                        ...(recovered.metrics || {}),
+                    },
+                }
+                : result;
+
+            navigate('/combo/results', {
+                state: {
+                    result: analysisResult,
+                    isOptimization: false,
+                    favoriteAnalysisWarning: recovered.warning,
+                }
+            });
         } catch (error) {
             console.error('Erro ao executar backtest:', error);
             alert('Erro ao executar backtest. Verifique o console para mais detalhes.');
         } finally {
-            setLoadingBacktestId(null);
+            setLoadingAnalysisId(null);
         }
     };
 
@@ -243,59 +301,6 @@ const FavoritesDashboard: React.FC = () => {
                 return;
             }
             setSelectedIds([...selectedIds, id]);
-        }
-    };
-
-    const openTradesModal = (fav: FavoriteStrategy, trades: any[], warning = '') => {
-        setSelectedTrades(trades);
-        setSelectedTradesTitle(`${getFavoriteStrategyLabel(fav)} - ${fav.symbol} ${fav.timeframe}`);
-        setSelectedTradesSymbol(fav.symbol);
-        setSelectedTradesTemplate(getFavoriteStrategyLabel(fav));
-        setSelectedTradesTimeframe(fav.timeframe);
-        setSelectedTradesWarning(warning);
-        setIsTradesModalOpen(true);
-    };
-
-    const handleViewTrades = async (fav: FavoriteStrategy) => {
-        if (isFavoriteProtected(fav)) {
-            openTradesModal(fav, []);
-            return;
-        }
-        const trades = fav.metrics?.trades || [];
-        if (Array.isArray(trades) && trades.length > 0) {
-            openTradesModal(fav, trades);
-            return;
-        }
-        if (getTradesCount(fav) <= 0) {
-            alert('No trades saved for this strategy.');
-            return;
-        }
-
-        setLoadingTradesId(fav.id);
-        try {
-            const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}/trades`);
-            if (!res.ok) {
-                throw new Error(`Failed to load trades (${res.status})`);
-            }
-            const payload = await res.json();
-            const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
-            const warning = payload.metrics_match === false
-                ? 'Histórico reconstruído pode divergir do resumo salvo.'
-                : '';
-            queryClient.setQueryData<FavoriteStrategy[]>(
-                ['favorites', user?.id ?? 'anonymous'],
-                (current) => current?.map((item) => (
-                    item.id === fav.id
-                        ? { ...item, metrics: { ...(item.metrics || {}), trades: regeneratedTrades } }
-                        : item
-                ))
-            );
-            openTradesModal(fav, regeneratedTrades, warning);
-        } catch (error) {
-            console.error('Erro ao carregar trades:', error);
-            alert('Erro ao carregar trades da estratégia.');
-        } finally {
-            setLoadingTradesId(null);
         }
     };
 
@@ -699,11 +704,10 @@ const FavoritesDashboard: React.FC = () => {
                                         </div>
                                         {isAdmin ? (
                                             <div className="fav-mobile-actions">
-                                                <button type="button" onClick={() => handleViewTrades(fav)} disabled={loadingTradesId === fav.id} title="View Trades">
-                                                    {loadingTradesId === fav.id ? <span className="fav-spinner" /> : <List className="h-4 w-4" />}
-                                                    Trades
+                                                <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa">
+                                                    {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
+                                                    Analisar
                                                 </button>
-                                                <button type="button" onClick={() => handleViewResults(fav)} disabled={loadingBacktestId === fav.id} title="View Results"><BarChart3 className="h-4 w-4" />Results</button>
                                                 <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" />Trader</button>
                                                 <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
                                             </div>
@@ -800,11 +804,8 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td>
                                                     {isAdmin ? (
                                                         <div className="fav-row-actions">
-                                                            <button type="button" onClick={() => handleViewTrades(fav)} disabled={loadingTradesId === fav.id} title="View Trades">
-                                                                {loadingTradesId === fav.id ? <span className="fav-spinner" /> : <List className="h-4 w-4" />}
-                                                            </button>
-                                                            <button type="button" onClick={() => handleViewResults(fav)} disabled={loadingBacktestId === fav.id} title="View Results">
-                                                                {loadingBacktestId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
+                                                            <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa">
+                                                                {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
                                                             </button>
                                                             <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" /></button>
                                                             <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
@@ -972,17 +973,6 @@ const FavoritesDashboard: React.FC = () => {
                             </div>
                         </div>
                     )}
-
-                <TradesViewModal
-                    isOpen={isTradesModalOpen}
-                    onClose={() => setIsTradesModalOpen(false)}
-                    trades={selectedTrades}
-                    title={selectedTradesTitle}
-                    subtitle={`Total Trades: ${selectedTrades.length}${selectedTradesWarning ? ` · ${selectedTradesWarning}` : ''}`}
-                    symbol={selectedTradesSymbol}
-                    templateName={selectedTradesTemplate}
-                    timeframe={selectedTradesTimeframe}
-                />
 
                 <AgentChatModal
                     open={isAgentModalOpen}

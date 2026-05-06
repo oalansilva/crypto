@@ -46,6 +46,7 @@ export function ComboResultsPage() {
     const location = useLocation()
     const navigate = useNavigate()
     const result = location.state?.result as BacktestResult
+    const favoriteAnalysisWarning = location.state?.favoriteAnalysisWarning as string | undefined
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [saveSuccess, setSaveSuccess] = useState(false)
 
@@ -292,6 +293,11 @@ export function ComboResultsPage() {
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-7xl mx-auto space-y-8">
+                    {favoriteAnalysisWarning ? (
+                        <div role="status" className="rounded-[16px] border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                            {favoriteAnalysisWarning}
+                        </div>
+                    ) : null}
 
                     {/* Configuration Info */}
                     <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">

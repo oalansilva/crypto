@@ -42,6 +42,7 @@ const FAVORITES_PAYLOAD = [
       total_return: 0.2,
       total_return_pct: 20,
       total_trades: 4,
+      trades: [],
       win_rate: 0.5,
       sharpe_ratio: 1.2,
       max_drawdown: 0.08,
@@ -242,32 +243,50 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
   await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
 });
 
-test('favorites -> View Results navigates to results page', async ({ page }) => {
+test('favorites exposes one analysis CTA instead of separate trades/results actions', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const viewResults = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
-    .locator('button[title="View Results"]');
-  await expect(viewResults).toBeVisible();
-  await viewResults.click();
+  const btcRow = page.locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' });
+  await expect(btcRow.locator('button[title="View Trades"]')).toHaveCount(0);
+  await expect(btcRow.locator('button[title="View Results"]')).toHaveCount(0);
+
+  const analysis = btcRow.locator('button[title="Ver análise completa"]');
+  await expect(analysis).toHaveCount(1);
+  await analysis.click();
 
   expect(api.wasBacktestTriggered()).toBe(true);
+  expect(api.wasFavoriteTradesTriggered()).toBe(true);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('No results found')).toHaveCount(0);
+  await expect(page.getByText('List of trades')).toBeVisible();
 });
 
-test('favorites -> View Trades regenerates missing trades', async ({ page }) => {
+test('favorites mobile card exposes one analysis CTA', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const btcCard = page.locator('.fav-mobile-card', { hasText: 'BTC/USDT' });
+  await expect(btcCard).toBeVisible();
+  await expect(btcCard.locator('button[title="View Trades"]')).toHaveCount(0);
+  await expect(btcCard.locator('button[title="View Results"]')).toHaveCount(0);
+  await expect(btcCard.locator('button[title="Ver análise completa"]')).toHaveCount(1);
+  await expect(btcCard.getByRole('button', { name: /Analisar/i })).toBeVisible();
+});
+
+test('favorites analysis regenerates missing trades into result view', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const viewTrades = page
+  const analysis = page
     .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
-    .locator('button[title="View Trades"]');
-  await expect(viewTrades).toBeVisible();
-  await viewTrades.click();
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
 
   expect(api.wasFavoriteTradesTriggered()).toBe(true);
-  await expect(page.getByRole('heading', { name: /ema rsi - BTC\/USDT 4h/i })).toBeVisible();
-  await expect(page.getByText('01/01/2025, 00:00:00')).toBeVisible();
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByText('List of trades')).toBeVisible();
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
 });
