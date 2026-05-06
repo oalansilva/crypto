@@ -22,6 +22,12 @@
 - [x] 4.3 Restyle the result trade table using `DESIGN.md` dark Binance surfaces and readable contrast.
 - [x] 4.4 Extend backend and E2E coverage for cache reuse, one-time regeneration, and design-token contrast.
 
+## 5. Homologation Fixes - Legacy Chart Cache
+
+- [x] 5.1 Treat saved trades without `analysis_candles` as incomplete analysis cache.
+- [x] 5.2 Backfill and persist chart context for legacy favorites on first analysis open.
+- [x] 5.3 Extend backend/E2E coverage for BTC/USDT-style saved trades with missing chart context.
+
 ## Notes
 
 - Use project skills when applicable: `crypto-frontend` for UI, OpenSpec skills for artifacts/apply/verify, and focused Playwright coverage for visible workflow changes.

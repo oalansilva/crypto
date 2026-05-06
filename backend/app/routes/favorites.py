@@ -342,8 +342,9 @@ async def get_favorite_trades(
     saved_trades = metrics.get("trades")
     saved_trade_count = _numeric_metric(metrics.get("total_trades"))
     history_cached = metrics.get("trades_history_cached") is True
+    has_chart_context = len(_analysis_candles_from_metrics(metrics)) > 0
     if isinstance(saved_trades, list) and (
-        saved_trades or history_cached or int(saved_trade_count or 0) <= 0
+        has_chart_context or history_cached or int(saved_trade_count or 0) <= 0
     ):
         saved_metrics_match = metrics.get("trades_metrics_match")
         return FavoriteTradesResponse(

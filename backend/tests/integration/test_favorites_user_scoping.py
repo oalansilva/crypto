@@ -275,6 +275,9 @@ def test_favorite_trades_returns_saved_trades_without_regeneration(tmp_path: Pat
                     "metrics": {
                         "total_trades": 1,
                         "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+                        "analysis_candles": [
+                            {"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}
+                        ],
                     },
                 }
             ),
@@ -289,6 +292,68 @@ def test_favorite_trades_returns_saved_trades_without_regeneration(tmp_path: Pat
     assert response.regenerated is False
     assert response.metrics_match is True
     assert response.trades == [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}]
+
+
+def test_favorite_trades_backfills_legacy_saved_trades_without_chart_context(
+    tmp_path: Path, monkeypatch
+):
+    SessionLocal = _session_factory(tmp_path)
+    monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+    calls = {"count": 0}
+
+    async def fake_run_favorite_optimization(_favorite):
+        calls["count"] += 1
+        return {
+            "best_metrics": {
+                "total_trades": 1,
+                "win_rate": 1,
+                "total_return": 0.01,
+                "total_return_pct": 1,
+                "max_drawdown": 0,
+                "profit_factor": 999,
+            },
+            "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+            "candles": [{"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}],
+            "indicator_data": {"sma_medium": [99]},
+            "execution_mode": "fast_1d",
+        }
+
+    monkeypatch.setattr(favorites, "_run_favorite_optimization", fake_run_favorite_optimization)
+
+    with SessionLocal() as db:
+        created = favorites.create_favorite(
+            favorites.FavoriteStrategyCreate(
+                **{
+                    **_favorite_payload("Legacy saved trades").model_dump(),
+                    "metrics": {
+                        "total_trades": 1,
+                        "win_rate": 1,
+                        "total_return": 0.01,
+                        "total_return_pct": 1,
+                        "max_drawdown": 0,
+                        "profit_factor": 999,
+                        "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+                    },
+                }
+            ),
+            current_user_id="user-a",
+            db=db,
+        )
+
+        response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id="user-a", db=db)
+        )
+        cached_response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id="user-a", db=db)
+        )
+        stored = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one().metrics
+
+    assert response.regenerated is True
+    assert cached_response.regenerated is False
+    assert calls["count"] == 1
+    assert response.candles == [{"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}]
+    assert cached_response.candles == response.candles
+    assert stored["analysis_candles"] == response.candles
 
 
 def test_favorite_trades_regenerates_and_persists_missing_trades(tmp_path: Path, monkeypatch):

@@ -16,10 +16,16 @@ The Favorites page SHALL expose a single analysis action per favorite for users 
 - **AND** the result view SHALL provide a visible action to return to Favorites
 
 #### Scenario: Admin reopens saved combined analysis
-- **WHEN** an admin user activates the favorite analysis action for a favorite that already has `metrics.trades`
+- **WHEN** an admin user activates the favorite analysis action for a favorite that already has `metrics.trades` and saved chart context
 - **THEN** the UI SHALL open the result view using the saved favorite history
 - **AND** the UI SHALL NOT request a new combo backtest
 - **AND** the UI SHALL NOT regenerate favorite trades
+
+#### Scenario: Admin opens legacy saved trades without chart context
+- **WHEN** an admin user activates the favorite analysis action for a favorite with `metrics.trades` but without saved chart context
+- **THEN** the UI SHALL request the Favorites API to backfill the analysis cache
+- **AND** the result view SHALL include candles for the chart when regeneration returns candles
+- **AND** the Favorites API SHALL persist the backfilled chart context so later opens use saved history
 
 #### Scenario: Admin reads combined analysis trades
 - **WHEN** the result view renders the favorite trade list

@@ -77,6 +77,37 @@ const FAVORITES_PAYLOAD = [
     start_date: null,
     end_date: null,
   },
+  {
+    id: 4,
+    name: 'BTC Legacy BTC/USDT 4h',
+    symbol: 'BTC/USDT',
+    timeframe: '4h',
+    strategy_name: 'multi_ma_crossover',
+    parameters: { ema_short: 9, sma_medium: 21, sma_long: 50, direction: 'long' },
+    metrics: {
+      total_return: 0.2,
+      total_return_pct: 20,
+      total_trades: 1,
+      trades: [
+        {
+          entry_time: '2025-01-01T00:00:00Z',
+          entry_price: 100,
+          exit_time: '2025-01-02T00:00:00Z',
+          exit_price: 101,
+          profit: 0.01,
+          type: 'long',
+        },
+      ],
+      win_rate: 1,
+      sharpe_ratio: 1.2,
+      max_drawdown: 0.08,
+    },
+    notes: 'legacy cached trades without chart context',
+    created_at: '2025-01-13T00:00:00Z',
+    tier: 2,
+    start_date: null,
+    end_date: null,
+  },
 ];
 
 const BACKTEST_PAYLOAD = {
@@ -166,8 +197,10 @@ async function setupDeterministicApiMocks(page: any) {
     });
   });
 
-  await page.route('**/api/favorites/2/trades', (route: any) => {
+  await page.route(/.*\/api\/favorites\/(2|4)\/trades$/, (route: any) => {
     favoriteTradesTriggeredCount += 1;
+    const url = new URL(route.request().url());
+    const favoriteId = Number(url.pathname.match(/\/favorites\/(\d+)\/trades$/)?.[1] ?? 2);
     const cachedMetrics = {
       ...BACKTEST_PAYLOAD.metrics,
       trades: BACKTEST_PAYLOAD.trades,
@@ -179,13 +212,13 @@ async function setupDeterministicApiMocks(page: any) {
       analysis_execution_mode: BACKTEST_PAYLOAD.execution_mode,
     };
     serverFavoritesPayload = serverFavoritesPayload.map((fav: any) => (
-      fav.id === 2 ? { ...fav, metrics: cachedMetrics } : fav
+      fav.id === favoriteId ? { ...fav, metrics: cachedMetrics } : fav
     ));
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        favorite_id: 2,
+        favorite_id: favoriteId,
         trades: BACKTEST_PAYLOAD.trades,
         metrics: cachedMetrics,
         metrics_match: true,
@@ -230,7 +263,7 @@ test('favorites hides stocks and removes Asset Type dropdown in crypto-only MVP'
   await page.goto('/favorites');
 
   const nvdaRow = page.locator('tbody tr', { hasText: 'NVDA' });
-  const btcRow = page.locator('tbody tr', { hasText: 'BTC/USDT' });
+  const btcRow = page.locator('tbody tr', { hasText: 'BTC Swing' });
   await expect(page.getByLabel('Asset Type')).toHaveCount(0);
   await expect(nvdaRow).toHaveCount(0);
   await expect(btcRow).toHaveCount(1);
@@ -292,7 +325,7 @@ test('favorites mobile card exposes one analysis CTA', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const btcCard = page.locator('.fav-mobile-card', { hasText: 'BTC/USDT' });
+  const btcCard = page.locator('.fav-mobile-card', { hasText: 'BTC Swing' });
   await expect(btcCard).toBeVisible();
   await expect(btcCard.locator('button[title="View Trades"]')).toHaveCount(0);
   await expect(btcCard.locator('button[title="View Results"]')).toHaveCount(0);
@@ -338,4 +371,33 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   expect(api.favoriteTradesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+});
+
+test('favorites analysis backfills chart context for legacy saved BTC multi MA trades', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const analysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Legacy' })
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  expect(api.backtestTriggeredCount()).toBe(0);
+  expect(api.favoriteTradesTriggeredCount()).toBe(1);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByText('Chart data not available for this run.')).toHaveCount(0);
+  await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
+
+  await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
+  await expect(page).toHaveURL(/\/favorites$/);
+
+  const cachedAnalysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Legacy' })
+    .locator('button[title="Ver análise completa"]');
+  await cachedAnalysis.click();
+
+  expect(api.backtestTriggeredCount()).toBe(0);
+  expect(api.favoriteTradesTriggeredCount()).toBe(1);
+  await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
 });

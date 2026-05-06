@@ -196,8 +196,10 @@ const FavoritesDashboard: React.FC = () => {
         const savedTrades = getSavedTrades(fav);
         const summaryTradeCount = getSummaryTradeCount(fav);
         const hasCachedHistory = fav.metrics?.trades_history_cached === true;
+        const hasChartContext = Array.isArray(fav.metrics?.analysis_candles)
+            && fav.metrics.analysis_candles.length > 0;
 
-        if (savedTrades && (savedTrades.length > 0 || hasCachedHistory || summaryTradeCount <= 0)) {
+        if (savedTrades && (hasChartContext || hasCachedHistory || summaryTradeCount <= 0)) {
             return {
                 trades: savedTrades,
                 metrics: fav.metrics || {},
