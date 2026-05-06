@@ -104,7 +104,6 @@ async function setupApiMocks(
     preferencePatchDelayMs?: number
     balances?: Array<{ asset: string; total: number }>
     opportunitiesPayload?: Array<Record<string, unknown>>
-    initialStrategyPreferences?: Record<string, { liked: boolean }>
     user?: typeof AUTH_USER
     initialPreferences?: Record<
       string,
@@ -121,10 +120,6 @@ async function setupApiMocks(
   const requestedOpportunityTiers: string[] = []
   const requestedBalanceMinUsd: string[] = []
   const preferencePatches: Array<{ symbol: string; patch: any }> = []
-  const strategyPreferencePatches: Array<{ favoriteId: string; patch: any }> = []
-  const strategyPreferences: Record<string, { liked: boolean }> = {
-    ...(options?.initialStrategyPreferences ?? {}),
-  }
   const preferences: Record<
     string,
     { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
@@ -199,31 +194,6 @@ async function setupApiMocks(
     })
   })
 
-  await page.route('**/api/monitor/strategy-preferences**', async (route: any) => {
-    const request = route.request()
-    const url = new URL(request.url())
-    const favoriteId = decodeURIComponent(url.pathname.split('/').pop() || '').trim()
-
-    if (request.method() === 'PUT' && favoriteId && favoriteId !== 'strategy-preferences') {
-      const patch = request.postDataJSON() || {}
-      strategyPreferencePatches.push({ favoriteId, patch })
-      strategyPreferences[favoriteId] = { liked: Boolean(patch.liked) }
-
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(strategyPreferences[favoriteId]),
-      })
-      return
-    }
-
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(strategyPreferences),
-    })
-  })
-
   await page.route('**/api/user/binance-credentials', (route: any) =>
     route.fulfill({
       status: 200,
@@ -284,7 +254,6 @@ async function setupApiMocks(
     requestedOpportunityTiers,
     requestedTimeframes,
     preferencePatches,
-    strategyPreferencePatches,
   }
 }
 
@@ -346,25 +315,27 @@ test('monitor hides protected strategy details for common user', async ({ page }
   await expect(card.getByText('ema_short')).toHaveCount(0)
 })
 
-test('favorite strategy filter uses persisted monitor strategy preferences', async ({ page }) => {
-  const mocks = await setupApiMocks(page, {
-    initialStrategyPreferences: { '1': { liked: true } },
-    user: ADMIN_USER,
+test('monitor does not expose local favorite controls and keeps tier stars readable', async ({ page }) => {
+  const strategyPreferenceRequests: string[] = []
+  await setupApiMocks(page, { user: ADMIN_USER })
+  await page.route('**/api/monitor/strategy-preferences**', (route: any) => {
+    strategyPreferenceRequests.push(route.request().url())
+    return route.abort('blockedbyclient')
   })
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
-  await page.getByTestId('monitor-filter-favorites').click()
   await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
-  await expect(page.getByTestId('monitor-card-eth-usdt')).toHaveCount(0)
-
-  await page.getByTestId('monitor-filter-all').click()
-  await page.getByTestId('strategy-favorite-toggle-eth-usdt').click()
-
-  await expect
-    .poll(() => mocks.strategyPreferencePatches.some((entry) => entry.favoriteId === '2' && entry.patch?.liked === true))
-    .toBe(true)
+  await expect(page.getByTestId('monitor-row-eth-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-filter-favorites')).toHaveCount(0)
+  await expect(page.getByTestId('strategy-favorite-toggle-btc-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('strategy-favorite-toggle-eth-usdt')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Favoritar' })).toHaveCount(0)
+  await expect(page.locator('.chip-count')).not.toContainText('favoritos')
+  await expect(page.getByTestId('tier-stars-btc-usdt')).toHaveText('★★★')
+  await expect(page.getByTestId('tier-stars-eth-usdt')).toHaveText('★★')
+  expect(strategyPreferenceRequests).toEqual([])
 })
 
 test('monitor shows tier as star classification', async ({ page }) => {

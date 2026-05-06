@@ -21,7 +21,6 @@ import {
     LineChart,
     RefreshCw,
     Search,
-    Star,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { API_BASE_URL } from '@/lib/apiBase';
@@ -33,7 +32,7 @@ import { resolveOpportunitySignal } from './signalResolution';
 
 type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
 type TierFilter = 'rated' | 'all' | '1_2' | '1' | '2' | '3' | 'none';
-type ListFilter = 'in_portfolio' | 'all' | 'favorites';
+type ListFilter = 'in_portfolio' | 'all';
 type StrategyFilter = 'all' | string;
 type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
 type StarFilter = 'all' | '3' | '2' | '1';
@@ -45,8 +44,6 @@ type BinanceBalanceRow = {
     asset?: string;
     total?: number | string | null;
 };
-
-type StrategyPreferencePayload = Record<string, { liked?: boolean }>;
 
 type DerivedPortfolioStatus = {
     active: boolean;
@@ -76,11 +73,8 @@ const DEFAULT_PREFERENCE: MonitorPreference = {
     theme: DEFAULT_MONITOR_THEME,
 };
 const BINANCE_MONITOR_PORTFOLIO_MIN_USD = 1;
-const FAVORITES_STORAGE_KEY = 'crypto-monitor-favorites-v1';
 const SPARKLINE_LIMIT = 14;
 const symbolTestKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
-const toFavoriteKey = (opportunity: Opportunity): string => String(opportunity.id);
-const normalizeFavoriteKey = (value: string | null | undefined): string => String(value || '').trim();
 
 const getSparklineKey = (symbol: string, timeframe: ChartTimeframe): string => `${symbol}|${timeframe}`;
 
@@ -111,28 +105,6 @@ const renderSparkPath = (values: number[]): { line: string; area: string; dot: {
     const area = `${line} L ${last.x.toFixed(2)},${height.toFixed(2)} L ${first.x.toFixed(2)},${height.toFixed(2)} Z`;
 
     return { line, area, dot: { x: last.x, y: last.y } };
-};
-
-const loadFavoriteKeys = (): Set<string> => {
-    if (typeof window === 'undefined') return new Set<string>();
-
-    const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
-    if (!raw) return new Set<string>();
-
-    try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-            return new Set(
-                parsed
-                    .map((item) => normalizeFavoriteKey(String(item)))
-                    .filter((symbol) => symbol.length > 0),
-            );
-        }
-    } catch (error) {
-        console.error('Failed to load monitor favorites from localStorage', error);
-    }
-
-    return new Set<string>();
 };
 
 const SectionConfig: Record<SectionKey, SectionRecord> = {
@@ -227,7 +199,6 @@ export const MonitorStatusTab: React.FC = () => {
     const [walletHoldingsByAsset, setWalletHoldingsByAsset] = useState<Record<string, number>>({});
     const [walletSyncState, setWalletSyncState] = useState<WalletSyncState>('idle');
     const [walletSyncMessage, setWalletSyncMessage] = useState<string | null>(null);
-    const [favoriteSymbols, setFavoriteSymbols] = useState<Set<string>>(new Set<string>());
     const [savingSymbols, setSavingSymbols] = useState<Record<string, boolean>>({});
     const [sparklineByKey, setSparklineByKey] = useState<Record<string, number[]>>({});
     const [sparklineLoadingByKey, setSparklineLoadingByKey] = useState<Record<string, boolean>>({});
@@ -331,27 +302,6 @@ export const MonitorStatusTab: React.FC = () => {
                 description: 'Não foi possível carregar preferências do monitor.',
                 variant: 'destructive',
             });
-        }
-
-        try {
-            const strategyPreferencesResponse = await authFetch(`${API_BASE_URL}/monitor/strategy-preferences`);
-            if (!strategyPreferencesResponse.ok) {
-                throw new Error(`Failed to load monitor strategy preferences (${strategyPreferencesResponse.status})`);
-            }
-
-            const payload = await strategyPreferencesResponse.json() as StrategyPreferencePayload;
-            const liked = new Set<string>();
-            for (const [favoriteId, preference] of Object.entries(payload || {})) {
-                if (preference?.liked) {
-                    liked.add(normalizeFavoriteKey(favoriteId));
-                }
-            }
-            setFavoriteSymbols(liked);
-            if (typeof window !== 'undefined') {
-                window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(liked)));
-            }
-        } catch (error) {
-            console.error(error);
         }
 
         let configured = false;
@@ -479,59 +429,6 @@ export const MonitorStatusTab: React.FC = () => {
         });
     };
 
-    const handleToggleFavorite = (opportunity: Opportunity) => {
-        const key = toFavoriteKey(opportunity);
-        if (!key) return;
-
-        const nextLiked = !favoriteSymbols.has(key);
-        setFavoriteSymbols((current) => {
-            const next = new Set(current);
-            if (nextLiked) {
-                next.add(key);
-            } else {
-                next.delete(key);
-            }
-
-            if (typeof window !== 'undefined') {
-                window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(next)));
-            }
-
-            return next;
-        });
-
-        void (async () => {
-            try {
-                const response = await authFetch(`${API_BASE_URL}/monitor/strategy-preferences/${encodeURIComponent(key)}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ liked: nextLiked }),
-                });
-                const payload = await response.json();
-                if (!response.ok) {
-                    throw new Error(String(payload?.detail || `Failed to save strategy preference (${response.status})`));
-                }
-            } catch (error) {
-                setFavoriteSymbols((current) => {
-                    const rollback = new Set(current);
-                    if (nextLiked) {
-                        rollback.delete(key);
-                    } else {
-                        rollback.add(key);
-                    }
-                    if (typeof window !== 'undefined') {
-                        window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(rollback)));
-                    }
-                    return rollback;
-                });
-                toast({
-                    title: 'Erro',
-                    description: error instanceof Error ? error.message : 'Falha ao salvar preferência da estratégia.',
-                    variant: 'destructive',
-                });
-            }
-        })();
-    };
-
     const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
         const requested = toChartTimeframe(opportunity.timeframe);
         return getOpportunityAssetType(opportunity) === 'stock' ? '1d' : requested;
@@ -592,10 +489,6 @@ export const MonitorStatusTab: React.FC = () => {
 
     useEffect(() => {
         void fetchMonitorContext();
-    }, []);
-
-    useEffect(() => {
-        setFavoriteSymbols(loadFavoriteKeys());
     }, []);
 
     useEffect(() => {
@@ -739,9 +632,7 @@ export const MonitorStatusTab: React.FC = () => {
 
         const effectiveListFilter = showTechnicalColumns ? listFilter : 'all';
         const afterListFilter =
-            effectiveListFilter === 'favorites'
-                ? afterAssetType.filter((opp) => favoriteSymbols.has(toFavoriteKey(opp)))
-                : effectiveListFilter === 'in_portfolio'
+            effectiveListFilter === 'in_portfolio'
                     ? afterAssetType.filter((opp) => portfolioStatusBySymbol[opp.symbol]?.inPortfolio === true)
                     : afterAssetType;
 
@@ -780,7 +671,6 @@ export const MonitorStatusTab: React.FC = () => {
             return candidate.includes(normalizedSearch);
         });
     }, [
-        favoriteSymbols,
         listFilter,
         portfolioStatusBySymbol,
         searchTerm,
@@ -832,16 +722,13 @@ export const MonitorStatusTab: React.FC = () => {
         opportunities.length > 0 &&
         filteredOpportunities.length === 0 &&
         showTechnicalColumns &&
-        (listFilter === 'in_portfolio' || listFilter === 'favorites');
+        listFilter === 'in_portfolio';
     const noActionableResults =
         !loading &&
         opportunities.length > 0 &&
         filteredOpportunities.length > 0 &&
         visibleOpportunityCount === 0;
-    const emptyFilterMessage =
-        listFilter === 'favorites'
-            ? 'Nenhum ativo encontrado nos favoritos.'
-            : 'Nenhum ativo encontrado na lista de carteira.';
+    const emptyFilterMessage = 'Nenhum ativo encontrado na lista de carteira.';
 
     const sectionAverageRisk = useMemo(() => ({
         hold: averageDistance(resolvedSections.hold.map(({ opportunity }) => opportunity.distance_to_stop_pct)),
@@ -1053,13 +940,6 @@ export const MonitorStatusTab: React.FC = () => {
                             >
                                 Todos
                             </button>
-                            <button
-                                className={listFilter === 'favorites' ? 'on' : ''}
-                                onClick={() => setListFilter('favorites')}
-                                data-testid="monitor-filter-favorites"
-                            >
-                                Favoritos
-                            </button>
                         </div> : null}
                         {showTechnicalColumns ? <div className="filter-divider" /> : null}
                         <select className="select" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value as TimeframeFilter)}>
@@ -1094,7 +974,6 @@ export const MonitorStatusTab: React.FC = () => {
                         <div className="filter-spacer" />
                         <span className="chip-count">
                             {visibleOpportunityCount} resultados
-                            {showTechnicalColumns ? ` · ${favoriteSymbols.size} favoritos` : ''}
                         </span>
                     </section>
 
@@ -1162,7 +1041,6 @@ export const MonitorStatusTab: React.FC = () => {
                                                             const derived = portfolioStatusBySymbol[opportunity.symbol];
                                                             const inPortfolio = derived?.inPortfolio ?? pref.in_portfolio;
                                                             const expanded = expandedRows[`${sectionKey}-${opportunity.id}`] ?? false;
-                                                            const isFavorite = favoriteSymbols.has(toFavoriteKey(opportunity));
                                                             const rowKey = `${sectionKey}-${opportunity.id}`;
                                                             const riskStop = opportunity.distance_to_stop_pct ?? 0;
                                                             const pairPrefix = getOpportunityBaseAsset(opportunity)
@@ -1279,19 +1157,6 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         >
                                                                             <LineChart className="h-4 w-4" />
                                                                         </button>
-                                                                        {showTechnicalColumns ? <button
-                                                                            type="button"
-                                                                            className={`row-action ${isFavorite ? 'is-favorite' : ''}`}
-                                                                            data-testid={`strategy-favorite-toggle-${symbolTestKey(opportunity.symbol)}`}
-                                                                            title={isFavorite ? 'Remover favorito' : 'Favoritar'}
-                                                                            aria-pressed={isFavorite}
-                                                                            onClick={(event) => {
-                                                                                event.stopPropagation();
-                                                                                handleToggleFavorite(opportunity);
-                                                                            }}
-                                                                        >
-                                                                            <Star className="h-4 w-4" fill={isFavorite ? 'currentColor' : 'none'} />
-                                                                        </button> : null}
                                                                     </td>
                                                                 </tr>
                                                                 {expanded ? (
