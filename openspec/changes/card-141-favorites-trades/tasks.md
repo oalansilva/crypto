@@ -15,4 +15,11 @@
 - [x] 3.1 Run OpenSpec validation for the change.
 - [x] 3.2 Run focused backend and frontend validation for the card.
 
+## 4. Optimize Source Alignment
+
+- [x] 4.1 Save optimize response trades into favorites created from `/combo/select`.
+- [x] 4.2 Save batch optimize response trades into favorite metrics.
+- [x] 4.3 Regenerate legacy missing trades through fixed-parameter optimize instead of simple backtest.
+- [x] 4.4 Add focused tests for optimize-range regeneration helpers and batch trade persistence.
+
 Use project skills when applicable: `$crypto-frontend` for UI changes and `$openspec-apply-change` / `$openspec-verify-change` for implementation and verification.

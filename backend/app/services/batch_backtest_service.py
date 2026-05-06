@@ -31,6 +31,14 @@ def _load_job(job_id: str) -> dict[str, Any] | None:
     return get_batch_backtest_store().get_job(job_id)
 
 
+def _metrics_with_source_trades(
+    best_metrics: dict[str, Any], trades: list[dict[str, Any]] | None
+) -> dict[str, Any]:
+    metrics = dict(best_metrics or {})
+    metrics["trades"] = trades if isinstance(trades, list) else []
+    return metrics
+
+
 def get_batch_progress(job_id: str) -> dict[str, Any] | None:
     """Return current progress for a batch job, or None if not found."""
     return _load_job(job_id)
@@ -231,6 +239,7 @@ def run_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
 
         best_params = result.get("best_parameters") or result.get("parameters") or {}
         best_metrics = result.get("best_metrics") or {}
+        metrics = _metrics_with_source_trades(best_metrics, result.get("trades"))
         params_with_direction = dict(best_params)
         params_with_direction["direction"] = direction
         if effective_data_source:
@@ -248,7 +257,7 @@ def run_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
                 timeframe=timeframe,
                 strategy_name=template_name,
                 parameters=params_with_direction,
-                metrics=best_metrics,
+                metrics=metrics,
                 notes=notes,
                 tier=3,
                 start_date=start_date,

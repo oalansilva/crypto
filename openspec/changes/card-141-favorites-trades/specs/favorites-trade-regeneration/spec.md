@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
 ### Requirement: Favorite trades can be regenerated
-The system SHALL regenerate missing favorite trade history from the favorite's stored strategy parameters when the current user is allowed to view the strategy details.
+The system SHALL regenerate missing favorite trade history from the favorite's stored strategy parameters using the same optimization pipeline that creates favorites from `/combo/select` when the current user is allowed to view the strategy details.
 
 #### Scenario: Favorite has summary metrics but no saved trades
 - **WHEN** an authorized user requests trades for a favorite that has `total_trades` greater than zero and no `metrics.trades`
-- **THEN** the backend SHALL run the combo backtest using the favorite's stored strategy, symbol, timeframe, direction, stop loss, dates, and parameters
+- **THEN** the backend SHALL run combo optimization with the favorite's stored strategy, symbol, timeframe, direction, dates, and fixed parameter ranges derived from the saved best parameters
 - **AND** the backend SHALL return the regenerated trades
 
 #### Scenario: Favorite already has saved trades
@@ -31,3 +31,14 @@ The system MUST NOT expose regenerated protected strategy details to users who c
 #### Scenario: Common user requests protected favorite trades
 - **WHEN** a non-admin user requests trades for an admin catalog favorite whose strategy is protected
 - **THEN** the backend SHALL reject the request without exposing parameters, trades, or regenerated metrics
+
+### Requirement: Optimized favorites retain source trades
+The system SHALL persist the source trades returned by combo optimization into favorite metrics when favorites are created from `/combo/select` or batch optimization.
+
+#### Scenario: Single optimized favorite is saved
+- **WHEN** `/combo/select` optimizes one symbol and saves the resulting favorite
+- **THEN** the favorite metrics SHALL include the optimization response `trades` array
+
+#### Scenario: Batch optimized favorite is saved
+- **WHEN** batch optimization saves a favorite for a symbol
+- **THEN** the favorite metrics SHALL include the optimization result `trades` array

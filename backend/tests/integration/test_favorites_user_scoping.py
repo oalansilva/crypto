@@ -295,12 +295,12 @@ def test_favorite_trades_regenerates_and_persists_missing_trades(tmp_path: Path,
     SessionLocal = _session_factory(tmp_path)
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
 
-    async def fake_execute_combo_backtest(request):
-        assert request.template_name == "multi_ma_crossover"
-        assert request.symbol == "BTC/USDT"
-        assert request.timeframe == "1d"
+    async def fake_run_favorite_optimization(favorite):
+        assert favorite.strategy_name == "multi_ma_crossover"
+        assert favorite.symbol == "BTC/USDT"
+        assert favorite.timeframe == "1d"
         return {
-            "metrics": {
+            "best_metrics": {
                 "total_trades": 1,
                 "win_rate": 1,
                 "total_return": 0.01,
@@ -311,7 +311,7 @@ def test_favorite_trades_regenerates_and_persists_missing_trades(tmp_path: Path,
             "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
         }
 
-    monkeypatch.setattr(favorites, "execute_combo_backtest", fake_execute_combo_backtest)
+    monkeypatch.setattr(favorites, "_run_favorite_optimization", fake_run_favorite_optimization)
 
     with SessionLocal() as db:
         created = favorites.create_favorite(
@@ -348,9 +348,9 @@ def test_favorite_trades_reports_metric_mismatch(tmp_path: Path, monkeypatch):
     SessionLocal = _session_factory(tmp_path)
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
 
-    async def fake_execute_combo_backtest(_request):
+    async def fake_run_favorite_optimization(_favorite):
         return {
-            "metrics": {
+            "best_metrics": {
                 "total_trades": 2,
                 "win_rate": 0.5,
                 "total_return": 0.02,
@@ -361,7 +361,7 @@ def test_favorite_trades_reports_metric_mismatch(tmp_path: Path, monkeypatch):
             "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
         }
 
-    monkeypatch.setattr(favorites, "execute_combo_backtest", fake_execute_combo_backtest)
+    monkeypatch.setattr(favorites, "_run_favorite_optimization", fake_run_favorite_optimization)
 
     with SessionLocal() as db:
         created = favorites.create_favorite(
@@ -375,6 +375,25 @@ def test_favorite_trades_reports_metric_mismatch(tmp_path: Path, monkeypatch):
 
     assert response.metrics_match is False
     assert "total_return_pct" in response.metrics_deltas
+
+
+def test_favorite_trade_regeneration_uses_fixed_optimize_ranges():
+    ranges = favorites._fixed_optimization_ranges(
+        {
+            "ema_short": 9,
+            "sma_medium": 21,
+            "stop_loss": 0.015,
+            "direction": "long",
+            "data_source": "ccxt",
+            "enabled": True,
+        }
+    )
+
+    assert ranges == {
+        "ema_short": {"min": 9, "max": 9, "step": 1},
+        "sma_medium": {"min": 21, "max": 21, "step": 1},
+        "stop_loss": {"min": 0.015, "max": 0.015, "step": 0.0001},
+    }
 
 
 def test_favorite_trades_rejects_protected_access(tmp_path: Path, monkeypatch):

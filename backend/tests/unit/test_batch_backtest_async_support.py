@@ -8,6 +8,7 @@ from redis.exceptions import RedisError
 
 from app.routes import combo_routes
 from app.services import batch_backtest_queue
+from app.services.batch_backtest_service import _metrics_with_source_trades
 from app.services.batch_backtest_store import BatchBacktestStore, get_batch_backtest_store
 from app.services.redis_store import get_redis_client
 from app.tasks import batch_backtest_tasks
@@ -159,6 +160,18 @@ def test_get_redis_client_returns_none_for_empty_url(monkeypatch):
         lambda: SimpleNamespace(redis_url=""),
     )
     assert get_redis_client() is None
+
+
+def test_batch_metrics_include_source_trades():
+    metrics = _metrics_with_source_trades(
+        {"total_trades": 1},
+        [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+    )
+
+    assert metrics == {
+        "total_trades": 1,
+        "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+    }
 
 
 def test_batch_backtest_task_hooks_update_store(monkeypatch):

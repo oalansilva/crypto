@@ -47,6 +47,7 @@ const FavoritesDashboard: React.FC = () => {
     const [selectedTradesSymbol, setSelectedTradesSymbol] = useState('');
     const [selectedTradesTemplate, setSelectedTradesTemplate] = useState('');
     const [selectedTradesTimeframe, setSelectedTradesTimeframe] = useState('');
+    const [selectedTradesWarning, setSelectedTradesWarning] = useState('');
     
     // State for loading backtest
     const [loadingBacktestId, setLoadingBacktestId] = useState<number | null>(null);
@@ -245,12 +246,13 @@ const FavoritesDashboard: React.FC = () => {
         }
     };
 
-    const openTradesModal = (fav: FavoriteStrategy, trades: any[]) => {
+    const openTradesModal = (fav: FavoriteStrategy, trades: any[], warning = '') => {
         setSelectedTrades(trades);
         setSelectedTradesTitle(`${getFavoriteStrategyLabel(fav)} - ${fav.symbol} ${fav.timeframe}`);
         setSelectedTradesSymbol(fav.symbol);
         setSelectedTradesTemplate(getFavoriteStrategyLabel(fav));
         setSelectedTradesTimeframe(fav.timeframe);
+        setSelectedTradesWarning(warning);
         setIsTradesModalOpen(true);
     };
 
@@ -277,9 +279,9 @@ const FavoritesDashboard: React.FC = () => {
             }
             const payload = await res.json();
             const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
-            if (payload.metrics_match === false) {
-                alert('Trades regenerated, but metrics validation differs from the saved summary.');
-            }
+            const warning = payload.metrics_match === false
+                ? 'Histórico reconstruído pode divergir do resumo salvo.'
+                : '';
             queryClient.setQueryData<FavoriteStrategy[]>(
                 ['favorites', user?.id ?? 'anonymous'],
                 (current) => current?.map((item) => (
@@ -288,7 +290,7 @@ const FavoritesDashboard: React.FC = () => {
                         : item
                 ))
             );
-            openTradesModal(fav, regeneratedTrades);
+            openTradesModal(fav, regeneratedTrades, warning);
         } catch (error) {
             console.error('Erro ao carregar trades:', error);
             alert('Erro ao carregar trades da estratégia.');
@@ -976,7 +978,7 @@ const FavoritesDashboard: React.FC = () => {
                     onClose={() => setIsTradesModalOpen(false)}
                     trades={selectedTrades}
                     title={selectedTradesTitle}
-                    subtitle={`Total Trades: ${selectedTrades.length}`}
+                    subtitle={`Total Trades: ${selectedTrades.length}${selectedTradesWarning ? ` · ${selectedTradesWarning}` : ''}`}
                     symbol={selectedTradesSymbol}
                     templateName={selectedTradesTemplate}
                     timeframe={selectedTradesTimeframe}

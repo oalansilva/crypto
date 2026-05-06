@@ -3,18 +3,19 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
+import asyncio
 import json
 
 from app.database import get_db
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 from app.middleware.authMiddleware import ADMIN_EMAILS, get_current_user, is_admin_email
-from app.routes.combo_routes import execute_combo_backtest
-from app.schemas.combo_params import ComboBacktestRequest
 from app.schemas.favorite import (
     FavoriteStrategyCreate,
     FavoriteStrategyResponse,
     FavoriteStrategyUpdate,
 )
+from app.services.combo_optimizer import ComboOptimizer
+from app.services.market_data_providers import resolve_data_source_for_symbol
 from app.services.strategy_secret_visibility import (
     can_view_strategy_secrets,
     redact_favorite_strategy_payload,
@@ -179,22 +180,46 @@ def _compare_favorite_metrics(
     return len(deltas) == 0, deltas
 
 
-def _favorite_backtest_request(favorite: FavoriteStrategy) -> ComboBacktestRequest:
+def _fixed_optimization_ranges(parameters: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    ranges: Dict[str, Dict[str, Any]] = {}
+    for key, value in parameters.items():
+        if key in {"data_source", "direction"} or isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            ranges[key] = {"min": value, "max": value, "step": 1}
+        elif isinstance(value, float):
+            ranges[key] = {"min": value, "max": value, "step": 0.0001}
+    return ranges
+
+
+def _legacy_regeneration_end_date(favorite: FavoriteStrategy) -> str | None:
+    if favorite.end_date:
+        return favorite.end_date
+    if favorite.period_type == "all" and favorite.created_at:
+        return favorite.created_at.date().isoformat()
+    return None
+
+
+async def _run_favorite_optimization(favorite: FavoriteStrategy) -> Dict[str, Any]:
     parameters = favorite.parameters if isinstance(favorite.parameters, dict) else {}
     direction = str(parameters.get("direction") or "long").lower()
     if direction not in ("long", "short"):
         direction = "long"
-    return ComboBacktestRequest(
+    data_source = parameters.get("data_source") or resolve_data_source_for_symbol(
+        favorite.symbol, None
+    )
+    optimizer = ComboOptimizer()
+    return await asyncio.to_thread(
+        optimizer.run_optimization,
         template_name=favorite.strategy_name,
         symbol=favorite.symbol,
         timeframe=favorite.timeframe,
-        parameters=parameters,
-        direction=direction,
-        stop_loss=parameters.get("stop_loss"),
+        data_source=data_source,
         start_date=favorite.start_date,
-        end_date=favorite.end_date,
+        end_date=_legacy_regeneration_end_date(favorite),
+        custom_ranges=_fixed_optimization_ranges(parameters),
         deep_backtest=True,
-        initial_capital=100,
+        direction=direction,
     )
 
 
@@ -307,9 +332,9 @@ async def get_favorite_trades(
             regenerated=False,
         )
 
-    result = await execute_combo_backtest(_favorite_backtest_request(favorite))
+    result = await _run_favorite_optimization(favorite)
     regenerated_trades = result.get("trades") or []
-    regenerated_metrics = result.get("metrics") or {}
+    regenerated_metrics = result.get("best_metrics") or result.get("metrics") or {}
     metrics_match, metrics_deltas = _compare_favorite_metrics(metrics, regenerated_metrics)
 
     if metrics_match:
