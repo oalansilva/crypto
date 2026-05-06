@@ -167,6 +167,19 @@ const BACKTEST_PAYLOAD = {
   direction: 'long',
 };
 
+const CURRENT_MARKET_CANDLES = Array.from({ length: 60 }, (_, index) => {
+  const open = 200 + index * 1.1;
+  const close = open + (index % 2 === 0 ? 1.5 : -0.6);
+  return {
+    timestamp_utc: new Date(Date.UTC(2026, 4, index + 1)).toISOString(),
+    open,
+    high: Math.max(open, close) + 1.25,
+    low: Math.min(open, close) - 1.25,
+    close,
+    volume: 2000 + index * 30,
+  };
+});
+
 function cloneFavoritesPayload() {
   return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
 }
@@ -207,6 +220,7 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
 
   let backtestTriggeredCount = 0;
   let favoriteTradesTriggeredCount = 0;
+  let marketCandlesTriggeredCount = 0;
   await page.route('**/api/combos/backtest', (route: any) => {
     backtestTriggeredCount += 1;
     return route.fulfill({
@@ -251,11 +265,27 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
     });
   });
 
+  await page.route('**/api/market/candles**', (route: any) => {
+    marketCandlesTriggeredCount += 1;
+    const url = new URL(route.request().url());
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        symbol: url.searchParams.get('symbol'),
+        timeframe: url.searchParams.get('timeframe'),
+        count: CURRENT_MARKET_CANDLES.length,
+        candles: CURRENT_MARKET_CANDLES,
+      }),
+    });
+  });
+
   return {
     wasBacktestTriggered: () => backtestTriggeredCount > 0,
     wasFavoriteTradesTriggered: () => favoriteTradesTriggeredCount > 0,
     backtestTriggeredCount: () => backtestTriggeredCount,
     favoriteTradesTriggeredCount: () => favoriteTradesTriggeredCount,
+    marketCandlesTriggeredCount: () => marketCandlesTriggeredCount,
   };
 }
 
@@ -370,6 +400,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByText('List of trades')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 60 candles')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-out')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-reset')).toBeVisible();
@@ -400,6 +431,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
 
   expect(api.backtestTriggeredCount()).toBe(0);
   expect(api.favoriteTradesTriggeredCount()).toBe(1);
+  expect(api.marketCandlesTriggeredCount()).toBeGreaterThanOrEqual(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
 });
@@ -422,6 +454,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 60 candles')).toBeVisible();
 
   await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
   await expect(page).toHaveURL(/\/favorites$/);
@@ -456,6 +489,7 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
   await expect(page.getByTestId('result-chart-overlays')).toHaveCount(0);
   await expect(page.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0);
   await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toBeVisible();
@@ -464,4 +498,21 @@ test('common user opens protected favorite chart without moving averages or MA v
   await page.getByTestId('result-main-chart').hover();
   await page.mouse.wheel(0, -600);
   await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
+});
+
+test('favorites analysis prefers current market candles over stale saved analysis candles', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const analysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'Protected BTC Setup' })
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  expect(api.marketCandlesTriggeredCount()).toBe(1);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 40 candles')).toHaveCount(0);
 });

@@ -29,6 +29,13 @@ interface FavoriteStrategy {
 
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
 
+const CURRENT_CHART_CANDLE_LIMIT = 300;
+
+const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
+    const candles = fav.metrics?.analysis_candles;
+    return Array.isArray(candles) ? candles : [];
+};
+
 const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -185,6 +192,26 @@ const FavoritesDashboard: React.FC = () => {
         return Number.isFinite(summaryTradeCount) ? summaryTradeCount : 0;
     };
 
+    const loadCurrentChartCandles = async (fav: FavoriteStrategy): Promise<any[]> => {
+        const url = new URL(`${API_BASE_URL}/market/candles`, window.location.origin);
+        url.searchParams.set('symbol', fav.symbol);
+        url.searchParams.set('timeframe', fav.timeframe);
+        url.searchParams.set('limit', String(CURRENT_CHART_CANDLE_LIMIT));
+
+        try {
+            const response = await authFetch(url.toString());
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(String(payload?.detail || `Failed to load candles (${response.status})`));
+            }
+            const candles = Array.isArray(payload?.candles) ? payload.candles : [];
+            return candles.length > 0 ? candles : getSavedAnalysisCandles(fav);
+        } catch (error) {
+            console.warn(`Falling back to saved favorite candles for ${fav.symbol} ${fav.timeframe}`, error);
+            return getSavedAnalysisCandles(fav);
+        }
+    };
+
     const loadTradesForAnalysis = async (fav: FavoriteStrategy) => {
         const savedTrades = getSavedTrades(fav);
         const summaryTradeCount = getSummaryTradeCount(fav);
@@ -197,7 +224,7 @@ const FavoritesDashboard: React.FC = () => {
             return {
                 trades: savedTrades,
                 metrics: fav.metrics || {},
-                candles: Array.isArray(fav.metrics?.analysis_candles) ? fav.metrics.analysis_candles : [],
+                candles: getSavedAnalysisCandles(fav),
                 indicatorData: fav.metrics?.analysis_indicator_data && typeof fav.metrics.analysis_indicator_data === 'object'
                     ? fav.metrics.analysis_indicator_data
                     : {},
@@ -211,7 +238,7 @@ const FavoritesDashboard: React.FC = () => {
             return {
                 trades: savedTrades || [],
                 metrics: fav.metrics || {},
-                candles: Array.isArray(fav.metrics?.analysis_candles) ? fav.metrics.analysis_candles : [],
+                candles: getSavedAnalysisCandles(fav),
                 indicatorData: {},
                 executionMode: 'favorite_protected_cache',
             };
@@ -305,8 +332,13 @@ const FavoritesDashboard: React.FC = () => {
     const handleViewAnalysis = async (fav: FavoriteStrategy) => {
         setLoadingAnalysisId(fav.id);
         try {
-            const recovered = await loadTradesForAnalysis(fav);
+            const [recovered, currentCandles] = await Promise.all([
+                loadTradesForAnalysis(fav),
+                loadCurrentChartCandles(fav),
+            ]);
+            const chartCandles = currentCandles.length > 0 ? currentCandles : recovered.candles;
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
+            analysisResult.candles = chartCandles || [];
 
             navigate('/combo/results', {
                 state: {
