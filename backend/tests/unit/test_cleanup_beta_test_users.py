@@ -4,6 +4,7 @@ from backend.scripts.cleanup_beta_test_users import (
     build_summary,
     mask_email,
     parse_allowed_emails,
+    serialize_backup_rows,
 )
 
 
@@ -57,3 +58,11 @@ def test_build_summary_classifies_allowed_and_unauthorized_active_users():
     assert summary["unauthorized_active"] == 1
     assert summary["unauthorized_active_masked"] == ["te***t@example.com"]
     assert summary["allowed_missing"] == ["o2***a@gmail.com"]
+
+
+def test_serialize_backup_rows_converts_uuid_to_string():
+    rows = [{"id": 123, "email": "test@example.com", "status": "banned"}]
+
+    assert serialize_backup_rows(rows) == [
+        {"id": "123", "email": "test@example.com", "status": "banned"}
+    ]

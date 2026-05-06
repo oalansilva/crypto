@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Disable unauthorized users for the closed beta.
+"""Clean up unauthorized users for the closed beta.
 
 Default allowed users:
 - o.alan.silva@gmail.com
 - o2.alan.silva@gmail.com
 
-The script is intentionally conservative: it bans unauthorized users instead of
-deleting rows, preserving historical user-owned data and audit references.
+Default behavior is conservative: ban unauthorized users. Use --delete to
+physically delete unauthorized user rows after reviewing dry-run evidence.
 """
 
 from __future__ import annotations
@@ -144,6 +144,60 @@ def apply_cleanup(conn, *, allowed_emails: set[str], reason: str, actor: str) ->
     return int(result.rowcount or 0)
 
 
+def fetch_unauthorized_users(conn, allowed_emails: set[str]) -> list[dict[str, Any]]:
+    result = conn.execute(
+        text("""
+            SELECT id, email, password_hash, name, status, suspended_until,
+                   suspension_reason, is_banned, notes, created_at, last_login
+            FROM users
+            WHERE lower(email) <> ALL(:allowed_emails)
+            ORDER BY lower(email)
+            """),
+        {"allowed_emails": sorted(allowed_emails)},
+    )
+    return [dict(row._mapping) for row in result]
+
+
+def serialize_backup_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    serialized = []
+    for row in rows:
+        item = {}
+        for key, value in row.items():
+            if isinstance(value, datetime):
+                item[key] = value.isoformat()
+            else:
+                item[key] = str(value) if key == "id" and value is not None else value
+        serialized.append(item)
+    return serialized
+
+
+def write_delete_backup(rows: list[dict[str, Any]], backup_dir: Path) -> Path:
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    path = backup_dir / f"beta-test-users-delete-backup-{timestamp}.json"
+    payload = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "purpose": "Backup before closed-beta unauthorized user deletion",
+        "row_count": len(rows),
+        "rows": serialize_backup_rows(rows),
+    }
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    return path
+
+
+def apply_delete(conn, *, allowed_emails: set[str]) -> int:
+    result = conn.execute(
+        text("""
+            DELETE FROM users
+            WHERE lower(email) <> ALL(:allowed_emails)
+            """),
+        {"allowed_emails": sorted(allowed_emails)},
+    )
+    return int(result.rowcount or 0)
+
+
 def _safe_db_target(url: str) -> str:
     try:
         from sqlalchemy.engine import make_url
@@ -155,7 +209,14 @@ def _safe_db_target(url: str) -> str:
 
 
 def run(
-    *, db_url: str, allowed_emails: set[str], apply: bool, reason: str, actor: str
+    *,
+    db_url: str,
+    allowed_emails: set[str],
+    apply: bool,
+    delete: bool,
+    backup_dir: Path,
+    reason: str,
+    actor: str,
 ) -> dict[str, Any]:
     if not is_postgres_url(db_url):
         raise SystemExit("ERROR: DATABASE_URL must point to PostgreSQL.")
@@ -163,30 +224,55 @@ def run(
     engine = create_engine(db_url, pool_pre_ping=True)
     with engine.begin() as conn:
         before = build_summary(fetch_users(conn), allowed_emails)
+        delete_candidates = fetch_unauthorized_users(conn, allowed_emails) if delete else []
+        backup_path = None
         changed = 0
         if apply:
-            changed = apply_cleanup(conn, allowed_emails=allowed_emails, reason=reason, actor=actor)
+            if delete:
+                backup_path = write_delete_backup(delete_candidates, backup_dir)
+                changed = apply_delete(conn, allowed_emails=allowed_emails)
+            else:
+                changed = apply_cleanup(
+                    conn, allowed_emails=allowed_emails, reason=reason, actor=actor
+                )
         after = build_summary(fetch_users(conn), allowed_emails)
 
     return {
-        "mode": "apply" if apply else "dry-run",
+        "mode": (
+            "apply-delete"
+            if apply and delete
+            else "apply-ban" if apply else "dry-run-delete" if delete else "dry-run-ban"
+        ),
         "db_target": _safe_db_target(db_url),
         "allowed_emails_masked": [mask_email(email) for email in sorted(allowed_emails)],
+        "delete_candidates": len(delete_candidates),
+        "backup_path": str(backup_path) if backup_path else None,
         "changed_users": changed,
         "before": before,
         "after": after,
         "access_hygiene_ok": after["unauthorized_active"] == 0,
+        "only_allowed_users_remain": after["unauthorized_users"] == 0,
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Disable unauthorized closed-beta test users.")
+    parser = argparse.ArgumentParser(description="Clean unauthorized closed-beta test users.")
     parser.add_argument("--apply", action="store_true", help="Apply cleanup. Default is dry-run.")
+    parser.add_argument(
+        "--delete",
+        action="store_true",
+        help="Physically delete unauthorized users instead of banning them. Writes a JSON backup before deletion.",
+    )
     parser.add_argument(
         "--allowed-email",
         action="append",
         default=None,
         help="Allowed email. Can be repeated or comma-separated. Defaults to Alan's two beta accounts.",
+    )
+    parser.add_argument(
+        "--backup-dir",
+        default="/tmp/crypto-beta-user-cleanup",
+        help="Directory for JSON backups when --delete --apply is used.",
     )
     parser.add_argument(
         "--reason",
@@ -202,6 +288,8 @@ def main() -> int:
         db_url=db_url,
         allowed_emails=allowed_emails,
         apply=args.apply,
+        delete=args.delete,
+        backup_dir=Path(args.backup_dir),
         reason=args.reason,
         actor=args.actor,
     )
