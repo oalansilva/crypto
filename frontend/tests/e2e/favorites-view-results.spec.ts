@@ -118,6 +118,10 @@ const BACKTEST_PAYLOAD = {
   direction: 'long',
 };
 
+function cloneFavoritesPayload() {
+  return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
+}
+
 async function setupDeterministicApiMocks(page: any) {
   await page.addInitScript(() => {
     window.localStorage.setItem('auth_access_token', 'test-access-token');
@@ -138,21 +142,23 @@ async function setupDeterministicApiMocks(page: any) {
     return route.abort('blockedbyclient');
   });
 
+  let serverFavoritesPayload = cloneFavoritesPayload();
+
   await page.route('**/api/favorites/', (route: any) => {
     if (route.request().method() === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(FAVORITES_PAYLOAD),
+        body: JSON.stringify(serverFavoritesPayload),
       });
     }
     return route.continue();
   });
 
-  let backtestTriggered = false;
-  let favoriteTradesTriggered = false;
+  let backtestTriggeredCount = 0;
+  let favoriteTradesTriggeredCount = 0;
   await page.route('**/api/combos/backtest', (route: any) => {
-    backtestTriggered = true;
+    backtestTriggeredCount += 1;
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -161,24 +167,42 @@ async function setupDeterministicApiMocks(page: any) {
   });
 
   await page.route('**/api/favorites/2/trades', (route: any) => {
-    favoriteTradesTriggered = true;
+    favoriteTradesTriggeredCount += 1;
+    const cachedMetrics = {
+      ...BACKTEST_PAYLOAD.metrics,
+      trades: BACKTEST_PAYLOAD.trades,
+      trades_history_cached: true,
+      trades_metrics_match: true,
+      trades_metrics_deltas: {},
+      analysis_candles: BACKTEST_PAYLOAD.candles,
+      analysis_indicator_data: BACKTEST_PAYLOAD.indicator_data,
+      analysis_execution_mode: BACKTEST_PAYLOAD.execution_mode,
+    };
+    serverFavoritesPayload = serverFavoritesPayload.map((fav: any) => (
+      fav.id === 2 ? { ...fav, metrics: cachedMetrics } : fav
+    ));
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         favorite_id: 2,
         trades: BACKTEST_PAYLOAD.trades,
-        metrics: BACKTEST_PAYLOAD.metrics,
+        metrics: cachedMetrics,
         metrics_match: true,
         metrics_deltas: {},
         regenerated: true,
+        candles: BACKTEST_PAYLOAD.candles,
+        indicator_data: BACKTEST_PAYLOAD.indicator_data,
+        execution_mode: BACKTEST_PAYLOAD.execution_mode,
       }),
     });
   });
 
   return {
-    wasBacktestTriggered: () => backtestTriggered,
-    wasFavoriteTradesTriggered: () => favoriteTradesTriggered,
+    wasBacktestTriggered: () => backtestTriggeredCount > 0,
+    wasFavoriteTradesTriggered: () => favoriteTradesTriggeredCount > 0,
+    backtestTriggeredCount: () => backtestTriggeredCount,
+    favoriteTradesTriggeredCount: () => favoriteTradesTriggeredCount,
   };
 }
 
@@ -255,7 +279,7 @@ test('favorites exposes one analysis CTA instead of separate trades/results acti
   await expect(analysis).toHaveCount(1);
   await analysis.click();
 
-  expect(api.wasBacktestTriggered()).toBe(true);
+  expect(api.wasBacktestTriggered()).toBe(false);
   expect(api.wasFavoriteTradesTriggered()).toBe(true);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('No results found')).toHaveCount(0);
@@ -298,9 +322,20 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   const tradeTableBodyBackground = await page.locator('table tbody').evaluate((node) => {
     return window.getComputedStyle(node).backgroundColor;
   });
-  expect(tradeTableBodyBackground).toBe('rgb(255, 255, 255)');
+  expect(tradeTableBodyBackground).toBe('rgb(30, 35, 41)');
 
   await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
   await expect(page).toHaveURL(/\/favorites$/);
   await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible();
+
+  const cachedAnalysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
+    .locator('button[title="Ver análise completa"]');
+  await expect(cachedAnalysis).toBeVisible();
+  await cachedAnalysis.click();
+
+  expect(api.backtestTriggeredCount()).toBe(0);
+  expect(api.favoriteTradesTriggeredCount()).toBe(1);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
 });

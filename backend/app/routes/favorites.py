@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import asyncio
 import json
 
@@ -35,6 +35,9 @@ class FavoriteTradesResponse(BaseModel):
     metrics_match: bool
     metrics_deltas: Dict[str, Dict[str, float]]
     regenerated: bool
+    candles: List[Dict[str, Any]] = Field(default_factory=list)
+    indicator_data: Dict[str, Any] = Field(default_factory=dict)
+    execution_mode: Optional[str] = None
 
 
 def _decode_jsonish(value):
@@ -180,6 +183,21 @@ def _compare_favorite_metrics(
     return len(deltas) == 0, deltas
 
 
+def _analysis_candles_from_metrics(metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
+    candles = metrics.get("analysis_candles")
+    return candles if isinstance(candles, list) else []
+
+
+def _analysis_indicators_from_metrics(metrics: Dict[str, Any]) -> Dict[str, Any]:
+    indicator_data = metrics.get("analysis_indicator_data")
+    return indicator_data if isinstance(indicator_data, dict) else {}
+
+
+def _analysis_metrics_deltas_from_metrics(metrics: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
+    deltas = metrics.get("trades_metrics_deltas")
+    return deltas if isinstance(deltas, dict) else {}
+
+
 def _fixed_optimization_ranges(parameters: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     ranges: Dict[str, Dict[str, Any]] = {}
     for key, value in parameters.items():
@@ -322,33 +340,59 @@ async def get_favorite_trades(
     favorite = _normalize_favorite_json_fields(favorite)
     metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     saved_trades = metrics.get("trades")
-    if isinstance(saved_trades, list) and saved_trades:
+    saved_trade_count = _numeric_metric(metrics.get("total_trades"))
+    history_cached = metrics.get("trades_history_cached") is True
+    if isinstance(saved_trades, list) and (
+        saved_trades or history_cached or int(saved_trade_count or 0) <= 0
+    ):
+        saved_metrics_match = metrics.get("trades_metrics_match")
         return FavoriteTradesResponse(
             favorite_id=favorite_id,
             trades=saved_trades,
             metrics=metrics,
-            metrics_match=True,
-            metrics_deltas={},
+            metrics_match=saved_metrics_match if isinstance(saved_metrics_match, bool) else True,
+            metrics_deltas=_analysis_metrics_deltas_from_metrics(metrics),
             regenerated=False,
+            candles=_analysis_candles_from_metrics(metrics),
+            indicator_data=_analysis_indicators_from_metrics(metrics),
+            execution_mode=(
+                metrics.get("analysis_execution_mode")
+                if isinstance(metrics.get("analysis_execution_mode"), str)
+                else None
+            ),
         )
 
     result = await _run_favorite_optimization(favorite)
     regenerated_trades = result.get("trades") or []
     regenerated_metrics = result.get("best_metrics") or result.get("metrics") or {}
     metrics_match, metrics_deltas = _compare_favorite_metrics(metrics, regenerated_metrics)
-
-    if metrics_match:
-        updated_metrics = {**metrics, "trades": regenerated_trades}
-        favorite.metrics = updated_metrics
-        db.commit()
+    analysis_candles = result.get("candles") if isinstance(result.get("candles"), list) else []
+    analysis_indicator_data = (
+        result.get("indicator_data") if isinstance(result.get("indicator_data"), dict) else {}
+    )
+    updated_metrics = {
+        **metrics,
+        "trades": regenerated_trades,
+        "trades_history_cached": True,
+        "trades_metrics_match": metrics_match,
+        "trades_metrics_deltas": metrics_deltas,
+        "analysis_candles": analysis_candles,
+        "analysis_indicator_data": analysis_indicator_data,
+        "analysis_execution_mode": result.get("execution_mode"),
+    }
+    favorite.metrics = updated_metrics
+    db.commit()
 
     return FavoriteTradesResponse(
         favorite_id=favorite_id,
         trades=regenerated_trades,
-        metrics=regenerated_metrics,
+        metrics=updated_metrics,
         metrics_match=metrics_match,
         metrics_deltas=metrics_deltas,
         regenerated=True,
+        candles=analysis_candles,
+        indicator_data=analysis_indicator_data,
+        execution_mode=result.get("execution_mode"),
     )
 
 

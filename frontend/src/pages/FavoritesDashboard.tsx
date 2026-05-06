@@ -173,17 +173,54 @@ const FavoritesDashboard: React.FC = () => {
 
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
 
-    const loadTradesForAnalysis = async (fav: FavoriteStrategy) => {
-        const savedTrades = fav.metrics?.trades;
-        if (Array.isArray(savedTrades) && savedTrades.length > 0) {
-            return { trades: savedTrades, warning: '' };
+    const buildFavoriteAnalysisWarning = (metrics: Record<string, any> | null | undefined, metricsMatch?: boolean) => {
+        if (metricsMatch === false || metrics?.trades_metrics_match === false) {
+            return 'Histórico reconstruído pode divergir do resumo salvo.';
         }
+        return '';
+    };
 
+    const getSavedTrades = (fav: FavoriteStrategy): any[] | null => {
+        const savedTrades = fav.metrics?.trades;
+        return Array.isArray(savedTrades) ? savedTrades : null;
+    };
+
+    const getSummaryTradeCount = (fav: FavoriteStrategy): number => {
         const summaryTradeCount = Number(
             fav.metrics?.total_trades ?? (typeof fav.metrics?.trades === 'number' ? fav.metrics.trades : 0)
         );
+        return Number.isFinite(summaryTradeCount) ? summaryTradeCount : 0;
+    };
+
+    const loadTradesForAnalysis = async (fav: FavoriteStrategy) => {
+        const savedTrades = getSavedTrades(fav);
+        const summaryTradeCount = getSummaryTradeCount(fav);
+        const hasCachedHistory = fav.metrics?.trades_history_cached === true;
+
+        if (savedTrades && (savedTrades.length > 0 || hasCachedHistory || summaryTradeCount <= 0)) {
+            return {
+                trades: savedTrades,
+                metrics: fav.metrics || {},
+                warning: buildFavoriteAnalysisWarning(fav.metrics),
+                candles: Array.isArray(fav.metrics?.analysis_candles) ? fav.metrics.analysis_candles : [],
+                indicatorData: fav.metrics?.analysis_indicator_data && typeof fav.metrics.analysis_indicator_data === 'object'
+                    ? fav.metrics.analysis_indicator_data
+                    : {},
+                executionMode: typeof fav.metrics?.analysis_execution_mode === 'string'
+                    ? fav.metrics.analysis_execution_mode
+                    : 'favorite_cache',
+            };
+        }
+
         if (summaryTradeCount <= 0) {
-            return { trades: null, warning: '' };
+            return {
+                trades: [],
+                metrics: fav.metrics || {},
+                warning: '',
+                candles: [],
+                indicatorData: {},
+                executionMode: 'favorite_cache',
+            };
         }
 
         const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}/trades`);
@@ -193,23 +230,72 @@ const FavoritesDashboard: React.FC = () => {
 
         const payload = await res.json();
         const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
-        const warning = payload.metrics_match === false
-            ? 'Histórico reconstruído pode divergir do resumo salvo.'
-            : '';
+        const nextMetrics = payload.metrics && typeof payload.metrics === 'object'
+            ? payload.metrics
+            : {
+                ...(fav.metrics || {}),
+                trades: regeneratedTrades,
+                trades_history_cached: true,
+                trades_metrics_match: payload.metrics_match !== false,
+                trades_metrics_deltas: payload.metrics_deltas || {},
+            };
+        const warning = buildFavoriteAnalysisWarning(nextMetrics, payload.metrics_match);
 
         queryClient.setQueryData<FavoriteStrategy[]>(
             ['favorites', user?.id ?? 'anonymous'],
             (current) => current?.map((item) => (
                 item.id === fav.id
-                    ? { ...item, metrics: { ...(item.metrics || {}), trades: regeneratedTrades } }
+                    ? { ...item, metrics: nextMetrics }
                     : item
             ))
         );
 
         return {
             trades: regeneratedTrades,
-            metrics: payload.metrics && typeof payload.metrics === 'object' ? payload.metrics : null,
+            metrics: nextMetrics,
             warning,
+            candles: Array.isArray(payload.candles) ? payload.candles : [],
+            indicatorData: payload.indicator_data && typeof payload.indicator_data === 'object'
+                ? payload.indicator_data
+                : {},
+            executionMode: typeof payload.execution_mode === 'string'
+                ? payload.execution_mode
+                : 'favorite_regenerated',
+        };
+    };
+
+    const buildFavoriteAnalysisResult = (
+        fav: FavoriteStrategy,
+        recovered: Awaited<ReturnType<typeof loadTradesForAnalysis>>
+    ) => {
+        const sourceMetrics = recovered.metrics || fav.metrics || {};
+        const trades = Array.isArray(recovered.trades) ? recovered.trades : [];
+        const totalReturn = Number(
+            sourceMetrics.total_return ?? (
+                sourceMetrics.total_return_pct != null ? Number(sourceMetrics.total_return_pct) / 100 : 0
+            )
+        );
+        const totalTrades = Number(sourceMetrics.total_trades ?? trades.length);
+        const metrics = {
+            ...sourceMetrics,
+            total_trades: Number.isFinite(totalTrades) ? totalTrades : trades.length,
+            total_return: Number.isFinite(totalReturn) ? totalReturn : 0,
+            win_rate: Number(sourceMetrics.win_rate ?? 0),
+            avg_profit: Number(sourceMetrics.avg_profit ?? (
+                totalTrades > 0 && Number.isFinite(totalReturn) ? totalReturn / totalTrades : 0
+            )),
+        };
+        return {
+            template_name: fav.strategy_name,
+            symbol: fav.symbol,
+            timeframe: fav.timeframe,
+            parameters: fav.parameters || {},
+            metrics,
+            trades,
+            indicator_data: recovered.indicatorData || {},
+            candles: recovered.candles || [],
+            execution_mode: recovered.executionMode,
+            direction: (fav.parameters?.direction as string) || 'long',
         };
     };
 
@@ -220,56 +306,8 @@ const FavoritesDashboard: React.FC = () => {
         }
         setLoadingAnalysisId(fav.id);
         try {
-            let recovered: { trades: any[] | null; metrics?: Record<string, any> | null; warning: string } = {
-                trades: null,
-                warning: '',
-            };
-
-            const responsePromise = authFetch(`${API_BASE_URL}/combos/backtest`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_name: fav.strategy_name,
-                    symbol: fav.symbol,
-                    timeframe: fav.timeframe,
-                    parameters: fav.parameters,
-                    direction: (fav.parameters?.direction as string) || 'long',
-                    stop_loss: fav.parameters.stop_loss || null,
-                    start_date: null, // Usar todos os dados disponíveis
-                    end_date: null,
-                    deep_backtest: true,
-                    initial_capital: 100
-                })
-            });
-
-            try {
-                recovered = await loadTradesForAnalysis(fav);
-            } catch (tradeError) {
-                console.warn('Erro ao recuperar trades do favorito:', tradeError);
-                recovered = {
-                    trades: null,
-                    warning: 'Não foi possível recuperar o histórico salvo; exibindo trades do backtest atual.',
-                };
-            }
-
-            const response = await responsePromise;
-            if (!response.ok) {
-                const error = await response.json();
-                alert(`Erro ao executar backtest: ${error.detail || 'Erro desconhecido'}`);
-                return;
-            }
-
-            const result = await response.json();
-            const analysisResult = Array.isArray(recovered.trades) && recovered.trades.length > 0
-                ? {
-                    ...result,
-                    trades: recovered.trades,
-                    metrics: {
-                        ...(result.metrics || {}),
-                        ...(recovered.metrics || {}),
-                    },
-                }
-                : result;
+            const recovered = await loadTradesForAnalysis(fav);
+            const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
 
             navigate('/combo/results', {
                 state: {
@@ -280,8 +318,8 @@ const FavoritesDashboard: React.FC = () => {
                 }
             });
         } catch (error) {
-            console.error('Erro ao executar backtest:', error);
-            alert('Erro ao executar backtest. Verifique o console para mais detalhes.');
+            console.error('Erro ao abrir análise do favorito:', error);
+            alert('Erro ao abrir análise do favorito. Verifique o console para mais detalhes.');
         } finally {
             setLoadingAnalysisId(null);
         }

@@ -15,9 +15,15 @@ The Favorites page SHALL expose a single analysis action per favorite for users 
 - **AND** the result view SHALL include the list of trades
 - **AND** the result view SHALL provide a visible action to return to Favorites
 
+#### Scenario: Admin reopens saved combined analysis
+- **WHEN** an admin user activates the favorite analysis action for a favorite that already has `metrics.trades`
+- **THEN** the UI SHALL open the result view using the saved favorite history
+- **AND** the UI SHALL NOT request a new combo backtest
+- **AND** the UI SHALL NOT regenerate favorite trades
+
 #### Scenario: Admin reads combined analysis trades
 - **WHEN** the result view renders the favorite trade list
-- **THEN** trade table headers and cells SHALL use readable contrast
+- **THEN** trade table headers and cells SHALL use readable contrast aligned to `DESIGN.md`
 - **AND** labels such as `Type`, `Date and time`, and `Signal` SHALL remain legible
 
 #### Scenario: Protected favorite remains protected
@@ -33,10 +39,12 @@ The Favorites page SHALL recover missing trade history through the unified favor
 - **WHEN** an admin user opens the unified analysis action for a favorite with `total_trades` greater than zero and no saved `metrics.trades`
 - **THEN** the UI SHALL request regenerated trades from the Favorites API
 - **AND** the result view SHALL render the returned trades
+- **AND** the Favorites API SHALL persist the regenerated trades on the favorite so a later open can use saved history
 
 #### Scenario: Regenerated trades have metric mismatch
 - **WHEN** the Favorites API reports `metrics_match=false`
 - **THEN** the UI SHALL open the result view with a non-blocking warning that regenerated trades do not fully match the saved summary metrics
+- **AND** the Favorites API SHALL still persist the regenerated trade history with mismatch metadata so the same favorite does not regenerate on every open
 
 #### Scenario: Protected favorite remains redacted
 - **WHEN** a protected favorite is shown to a non-admin user

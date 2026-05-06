@@ -15,6 +15,13 @@
 - [x] 3.2 Fix trade table contrast so headers and cells remain readable.
 - [x] 3.3 Extend focused E2E coverage for returning to Favorites and readable trade table rendering.
 
+## 4. Homologation Fixes - Analysis Cache and Design Tokens
+
+- [x] 4.1 Stop rerunning combo backtest from the favorite analysis CTA when saved trade history exists.
+- [x] 4.2 Persist regenerated favorite trade history and mismatch metadata so later opens reuse saved history.
+- [x] 4.3 Restyle the result trade table using `DESIGN.md` dark Binance surfaces and readable contrast.
+- [x] 4.4 Extend backend and E2E coverage for cache reuse, one-time regeneration, and design-token contrast.
+
 ## Notes
 
 - Use project skills when applicable: `crypto-frontend` for UI, OpenSpec skills for artifacts/apply/verify, and focused Playwright coverage for visible workflow changes.
