@@ -18,5 +18,5 @@
 
 ## 4. Delivery
 
-- [ ] 4.1 Commit branch, integrate in `develop`, run `./restart`.
+- [x] 4.1 Commit branch, integrate in `develop`, run `./restart`.
 - [ ] 4.2 Comment evidence on card #135 and move it to `Done`.
