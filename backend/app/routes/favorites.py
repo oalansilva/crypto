@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 import json
 
 from app.database import get_db
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 from app.middleware.authMiddleware import ADMIN_EMAILS, get_current_user, is_admin_email
+from app.routes.combo_routes import execute_combo_backtest
+from app.schemas.combo_params import ComboBacktestRequest
 from app.schemas.favorite import (
     FavoriteStrategyCreate,
     FavoriteStrategyResponse,
@@ -23,6 +25,15 @@ router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
 class ExistsResponse(BaseModel):
     exists: bool
+
+
+class FavoriteTradesResponse(BaseModel):
+    favorite_id: int
+    trades: List[Dict[str, Any]]
+    metrics: Dict[str, Any]
+    metrics_match: bool
+    metrics_deltas: Dict[str, Dict[str, float]]
+    regenerated: bool
 
 
 def _decode_jsonish(value):
@@ -129,6 +140,64 @@ def _upsert_strategy_tier_preference(
     return existing
 
 
+_METRICS_TO_COMPARE = (
+    "total_trades",
+    "win_rate",
+    "total_return",
+    "total_return_pct",
+    "max_drawdown",
+    "profit_factor",
+)
+
+
+def _numeric_metric(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _compare_favorite_metrics(
+    stored_metrics: Dict[str, Any], regenerated_metrics: Dict[str, Any]
+) -> tuple[bool, Dict[str, Dict[str, float]]]:
+    deltas: Dict[str, Dict[str, float]] = {}
+    for key in _METRICS_TO_COMPARE:
+        stored = _numeric_metric(stored_metrics.get(key))
+        regenerated = _numeric_metric(regenerated_metrics.get(key))
+        if stored is None or regenerated is None:
+            continue
+        delta = abs(stored - regenerated)
+        tolerance = max(0.0001, abs(stored) * 0.001)
+        if delta > tolerance:
+            deltas[key] = {
+                "stored": stored,
+                "regenerated": regenerated,
+                "delta": delta,
+            }
+    return len(deltas) == 0, deltas
+
+
+def _favorite_backtest_request(favorite: FavoriteStrategy) -> ComboBacktestRequest:
+    parameters = favorite.parameters if isinstance(favorite.parameters, dict) else {}
+    direction = str(parameters.get("direction") or "long").lower()
+    if direction not in ("long", "short"):
+        direction = "long"
+    return ComboBacktestRequest(
+        template_name=favorite.strategy_name,
+        symbol=favorite.symbol,
+        timeframe=favorite.timeframe,
+        parameters=parameters,
+        direction=direction,
+        stop_loss=parameters.get("stop_loss"),
+        start_date=favorite.start_date,
+        end_date=favorite.end_date,
+        deep_backtest=True,
+        initial_capital=100,
+    )
+
+
 @router.get("/exists", response_model=ExistsResponse)
 def favorite_exists(
     strategy_name: str = Query(..., description="Template name"),
@@ -208,6 +277,54 @@ def list_favorites(
         )
         for row in rows
     ]
+
+
+@router.get("/{favorite_id}/trades", response_model=FavoriteTradesResponse)
+async def get_favorite_trades(
+    favorite_id: int,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    favorite = db.query(FavoriteStrategy).filter(FavoriteStrategy.id == favorite_id).first()
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+
+    include_secrets = can_view_strategy_secrets(db, current_user_id)
+    owns_favorite = str(favorite.user_id) == str(current_user_id)
+    if not owns_favorite or not include_secrets:
+        raise HTTPException(status_code=403, detail="Favorite trades are protected")
+
+    favorite = _normalize_favorite_json_fields(favorite)
+    metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
+    saved_trades = metrics.get("trades")
+    if isinstance(saved_trades, list) and saved_trades:
+        return FavoriteTradesResponse(
+            favorite_id=favorite_id,
+            trades=saved_trades,
+            metrics=metrics,
+            metrics_match=True,
+            metrics_deltas={},
+            regenerated=False,
+        )
+
+    result = await execute_combo_backtest(_favorite_backtest_request(favorite))
+    regenerated_trades = result.get("trades") or []
+    regenerated_metrics = result.get("metrics") or {}
+    metrics_match, metrics_deltas = _compare_favorite_metrics(metrics, regenerated_metrics)
+
+    if metrics_match:
+        updated_metrics = {**metrics, "trades": regenerated_trades}
+        favorite.metrics = updated_metrics
+        db.commit()
+
+    return FavoriteTradesResponse(
+        favorite_id=favorite_id,
+        trades=regenerated_trades,
+        metrics=regenerated_metrics,
+        metrics_match=metrics_match,
+        metrics_deltas=metrics_deltas,
+        regenerated=True,
+    )
 
 
 @router.post("/", response_model=FavoriteStrategyResponse)

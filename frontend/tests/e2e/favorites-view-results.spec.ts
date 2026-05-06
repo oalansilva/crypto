@@ -45,15 +45,6 @@ const FAVORITES_PAYLOAD = [
       win_rate: 0.5,
       sharpe_ratio: 1.2,
       max_drawdown: 0.08,
-      trades: [
-        {
-          entry_time: '2025-01-03T00:00:00Z',
-          entry_price: 100,
-          exit_time: '2025-01-04T00:00:00Z',
-          exit_price: 102,
-          profit: 0.02,
-        },
-      ],
     },
     notes: 'crypto favorite',
     created_at: '2025-01-11T00:00:00Z',
@@ -158,6 +149,7 @@ async function setupDeterministicApiMocks(page: any) {
   });
 
   let backtestTriggered = false;
+  let favoriteTradesTriggered = false;
   await page.route('**/api/combos/backtest', (route: any) => {
     backtestTriggered = true;
     return route.fulfill({
@@ -167,8 +159,25 @@ async function setupDeterministicApiMocks(page: any) {
     });
   });
 
+  await page.route('**/api/favorites/2/trades', (route: any) => {
+    favoriteTradesTriggered = true;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        favorite_id: 2,
+        trades: BACKTEST_PAYLOAD.trades,
+        metrics: BACKTEST_PAYLOAD.metrics,
+        metrics_match: true,
+        metrics_deltas: {},
+        regenerated: true,
+      }),
+    });
+  });
+
   return {
     wasBacktestTriggered: () => backtestTriggered,
+    wasFavoriteTradesTriggered: () => favoriteTradesTriggered,
   };
 }
 
@@ -246,4 +255,19 @@ test('favorites -> View Results navigates to results page', async ({ page }) => 
   expect(api.wasBacktestTriggered()).toBe(true);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('No results found')).toHaveCount(0);
+});
+
+test('favorites -> View Trades regenerates missing trades', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const viewTrades = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
+    .locator('button[title="View Trades"]');
+  await expect(viewTrades).toBeVisible();
+  await viewTrades.click();
+
+  expect(api.wasFavoriteTradesTriggered()).toBe(true);
+  await expect(page.getByRole('heading', { name: /ema rsi - BTC\/USDT 4h/i })).toBeVisible();
+  await expect(page.getByText('01/01/2025, 00:00:00')).toBeVisible();
 });

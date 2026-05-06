@@ -361,11 +361,7 @@ async def delete_template(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/backtest", response_model=ComboBacktestResponse)
-async def run_combo_backtest(
-    request: ComboBacktestRequest,
-    _admin_user_id: str = Depends(get_current_admin),
-):
+async def execute_combo_backtest(request: ComboBacktestRequest):
     """
     Execute a combo strategy backtest.
 
@@ -575,6 +571,15 @@ async def run_combo_backtest(
 
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/backtest", response_model=ComboBacktestResponse)
+async def run_combo_backtest(
+    request: ComboBacktestRequest,
+    _admin_user_id: str = Depends(get_current_admin),
+):
+    """Execute a combo strategy backtest for admin users."""
+    return await execute_combo_backtest(request)
 
 
 @router.post("/optimize", response_model=ComboOptimizationResponse)
