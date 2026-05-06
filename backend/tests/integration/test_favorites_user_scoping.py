@@ -418,7 +418,9 @@ def test_favorite_trades_regenerates_and_persists_missing_trades(tmp_path: Path,
     assert stored["analysis_indicator_data"] == response.indicator_data
 
 
-def test_favorite_trades_reports_metric_mismatch(tmp_path: Path, monkeypatch):
+def test_favorite_trades_accepts_reconstructed_metrics_and_keeps_investigation_deltas(
+    tmp_path: Path, monkeypatch
+):
     SessionLocal = _session_factory(tmp_path)
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
     calls = {"count": 0}
@@ -455,18 +457,24 @@ def test_favorite_trades_reports_metric_mismatch(tmp_path: Path, monkeypatch):
         )
         stored = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one().metrics
 
-    assert response.metrics_match is False
+    assert response.metrics_match is True
     assert "total_return_pct" in response.metrics_deltas
     assert response.regenerated is True
     assert cached_response.regenerated is False
-    assert cached_response.metrics_match is False
+    assert cached_response.metrics_match is True
     assert cached_response.metrics_deltas == response.metrics_deltas
     assert cached_response.trades == response.trades
     assert calls["count"] == 1
     assert stored["trades"] == response.trades
     assert stored["trades_history_cached"] is True
-    assert stored["trades_metrics_match"] is False
+    assert stored["trades_metrics_match"] is True
+    assert stored["trades_reconciled_from_mismatch"] is True
     assert stored["trades_metrics_deltas"] == response.metrics_deltas
+    assert stored["trades_previous_summary"]["total_return_pct"] == 12.3
+    assert stored["trades_reconciled_summary"]["total_return_pct"] == 2
+    assert stored["total_trades"] == 2
+    assert stored["total_return_pct"] == 2
+    assert isinstance(stored["trades_reconciled_at"], str)
 
 
 def test_favorite_trade_regeneration_uses_fixed_optimize_ranges():

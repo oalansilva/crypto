@@ -49,8 +49,10 @@ The Favorites page SHALL recover missing trade history through the unified favor
 
 #### Scenario: Regenerated trades have metric mismatch
 - **WHEN** the Favorites API reports `metrics_match=false`
-- **THEN** the UI SHALL open the result view with a non-blocking warning that regenerated trades do not fully match the saved summary metrics
-- **AND** the Favorites API SHALL still persist the regenerated trade history with mismatch metadata so the same favorite does not regenerate on every open
+- **THEN** the Favorites API SHALL accept the regenerated metrics as the new saved summary for that favorite
+- **AND** the Favorites API SHALL persist the previous summary and metric deltas as investigation metadata
+- **AND** the UI SHALL open the result view without showing the reconstructed-history mismatch warning
+- **AND** the same favorite SHALL NOT regenerate on every open
 
 #### Scenario: Protected favorite remains redacted
 - **WHEN** a protected favorite is shown to a non-admin user

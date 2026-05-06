@@ -346,6 +346,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   expect(api.wasFavoriteTradesTriggered()).toBe(true);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
+  await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
   await expect(page.getByText('List of trades')).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Date and time' })).toBeVisible();
@@ -386,6 +387,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   expect(api.backtestTriggeredCount()).toBe(0);
   expect(api.favoriteTradesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
   await expect(page.getByText('Chart data not available for this run.')).toHaveCount(0);
   await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
 

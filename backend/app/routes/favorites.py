@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 import asyncio
 import json
+from datetime import datetime, timezone
 
 from app.database import get_db
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
@@ -152,6 +153,10 @@ _METRICS_TO_COMPARE = (
     "max_drawdown",
     "profit_factor",
 )
+
+
+def _favorite_metric_summary(metrics: Dict[str, Any]) -> Dict[str, Any]:
+    return {key: metrics.get(key) for key in _METRICS_TO_COMPARE if key in metrics}
 
 
 def _numeric_metric(value: Any) -> float | None:
@@ -373,14 +378,20 @@ async def get_favorite_trades(
     )
     updated_metrics = {
         **metrics,
+        **regenerated_metrics,
         "trades": regenerated_trades,
         "trades_history_cached": True,
-        "trades_metrics_match": metrics_match,
+        "trades_metrics_match": True,
         "trades_metrics_deltas": metrics_deltas,
+        "trades_reconciled_from_mismatch": not metrics_match,
         "analysis_candles": analysis_candles,
         "analysis_indicator_data": analysis_indicator_data,
         "analysis_execution_mode": result.get("execution_mode"),
     }
+    if not metrics_match:
+        updated_metrics["trades_previous_summary"] = _favorite_metric_summary(metrics)
+        updated_metrics["trades_reconciled_summary"] = _favorite_metric_summary(regenerated_metrics)
+        updated_metrics["trades_reconciled_at"] = datetime.now(timezone.utc).isoformat()
     favorite.metrics = updated_metrics
     db.commit()
 
@@ -388,7 +399,7 @@ async def get_favorite_trades(
         favorite_id=favorite_id,
         trades=regenerated_trades,
         metrics=updated_metrics,
-        metrics_match=metrics_match,
+        metrics_match=True,
         metrics_deltas=metrics_deltas,
         regenerated=True,
         candles=analysis_candles,

@@ -28,6 +28,13 @@
 - [x] 5.2 Backfill and persist chart context for legacy favorites on first analysis open.
 - [x] 5.3 Extend backend/E2E coverage for BTC/USDT-style saved trades with missing chart context.
 
+## 6. Homologation Fixes - Accept Reconstructed Metrics
+
+- [x] 6.1 Update favorite persistence so regenerated metrics become the saved summary after mismatch.
+- [x] 6.2 Preserve previous metrics and deltas as investigation metadata.
+- [x] 6.3 Stop showing the reconstructed-history mismatch warning after automatic reconciliation.
+- [x] 6.4 Extend backend and E2E coverage for accepted reconstructed metrics.
+
 ## Notes
 
 - Use project skills when applicable: `crypto-frontend` for UI, OpenSpec skills for artifacts/apply/verify, and focused Playwright coverage for visible workflow changes.
