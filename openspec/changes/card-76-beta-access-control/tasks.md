@@ -20,4 +20,4 @@
 
 - [x] 4.1 Run OpenSpec validation for `card-76-beta-access-control`.
 - [x] 4.2 Run `openspec validate --all`.
-- [ ] 4.3 Integrate in `develop`, run `./restart`, comment evidence, and move card #76 to `Done`.
+- [x] 4.3 Integrate in `develop`, run `./restart`, comment evidence, and move card #76 to `Done`.
