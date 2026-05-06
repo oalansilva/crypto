@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Star, Download } from 'lucide-react'
+import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Download, ArrowLeft } from 'lucide-react'
 import { CandlestickChart } from '../components/CandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { API_BASE_URL } from '../lib/apiBase'
@@ -47,6 +47,7 @@ export function ComboResultsPage() {
     const navigate = useNavigate()
     const result = location.state?.result as BacktestResult
     const favoriteAnalysisWarning = location.state?.favoriteAnalysisWarning as string | undefined
+    const returnTo = location.state?.returnTo as string | undefined
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [saveSuccess, setSaveSuccess] = useState(false)
 
@@ -77,6 +78,18 @@ export function ComboResultsPage() {
             console.error('❌ Erro ao salvar favorito:', err)
             throw err
         }
+    }
+
+    const handleBack = () => {
+        if (returnTo) {
+            navigate(returnTo)
+            return
+        }
+        if (window.history.length > 1) {
+            navigate(-1)
+            return
+        }
+        navigate('/combo/select')
     }
 
     const handleExportTrades = async () => {
@@ -293,6 +306,17 @@ export function ComboResultsPage() {
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-7xl mx-auto space-y-8">
+                    <div className="flex items-center justify-between gap-3">
+                        <button
+                            type="button"
+                            onClick={handleBack}
+                            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            {returnTo === '/favorites' ? 'Voltar aos favoritos' : 'Voltar'}
+                        </button>
+                    </div>
+
                     {favoriteAnalysisWarning ? (
                         <div role="status" className="rounded-[16px] border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
                             {favoriteAnalysisWarning}
@@ -407,10 +431,10 @@ export function ComboResultsPage() {
                     </div>
 
                     {/* Trades Table - TradingView Style */}
-                    <div className="bg-zinc-900 rounded-[24px] overflow-hidden border border-zinc-200 shadow-sm">
+                    <div className="bg-white rounded-[24px] overflow-hidden border border-zinc-200 shadow-sm">
                         <div className="p-4 border-b border-zinc-200 flex items-center justify-between bg-zinc-50">
                             <div className="flex items-center gap-4">
-                                <button className="px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-900 border border-zinc-300 rounded-[12px] hover:bg-zinc-50">
+                                <button className="px-3 py-1.5 text-sm font-medium text-zinc-700 bg-white border border-zinc-300 rounded-[12px] hover:bg-zinc-50">
                                     Metrics
                                 </button>
                                 <button className="px-3 py-1.5 text-sm font-medium text-white bg-zinc-900 border border-zinc-300 rounded-[12px] border-b-2 border-b-blue-600">
@@ -439,25 +463,25 @@ export function ComboResultsPage() {
                                 </button>
                             </div>
                         </div>
-                        <div className="overflow-x-auto bg-zinc-900">
+                        <div className="overflow-x-auto bg-white">
                             <table className="w-full text-sm">
-                                <thead className="bg-zinc-50 border-b border-zinc-200">
+                                <thead className="bg-zinc-100 border-b border-zinc-200">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">
                                             Trade # <span className="text-zinc-400">↓</span>
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Type</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Date and time</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Signal</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Price</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Position size</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Net P&L</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Favorable excursion</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Adverse excursion</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Cumulative P&L</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Type</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Date and time</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Signal</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Price</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Position size</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Net P&L</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Favorable excursion</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Adverse excursion</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">Cumulative P&L</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-zinc-200 bg-white">
                                     {(() => {
                                         // Preparar trades com cálculos
                                         const initialCapital = 100;
@@ -569,15 +593,15 @@ export function ComboResultsPage() {
                                             
                                             return [
                                                 // Linha de Entry
-                                                <tr key={`${trade.tradeNum}-entry`} className="hover:bg-zinc-50">
+                                                <tr key={`${trade.tradeNum}-entry`} className="bg-white hover:bg-zinc-50">
                                                     <td rowSpan={2} className="px-4 py-3 text-center border-r border-zinc-200">
-                                                        <div className="font-medium text-white">{trade.tradeNum}</div>
+                                                        <div className="font-medium text-zinc-900">{trade.tradeNum}</div>
                                                         <div className={`text-xs ${isShort ? 'text-orange-600' : 'text-zinc-500'}`}>{isShort ? 'Short' : 'Long'}</div>
                                                     </td>
                                                     <td className="px-4 py-2 text-zinc-700">Entry</td>
                                                     <td className="px-4 py-2 text-zinc-700">{formatDate(trade.entry_time)}</td>
                                                     <td className="px-4 py-2 text-zinc-700">{isShort ? 'Vender' : 'Comprar'}</td>
-                                                    <td className="px-4 py-2 text-white font-medium">{formatPrice(trade.entry_price)}</td>
+                                                    <td className="px-4 py-2 text-zinc-900 font-medium">{formatPrice(trade.entry_price)}</td>
                                                     <td className="px-4 py-2 text-zinc-700">
                                                         <div>{trade.positionSize.toFixed(2)}</div>
                                                         <div className="text-xs text-zinc-500">{(trade.positionValueUSD / 1000).toFixed(2)} K USD</div>
@@ -585,11 +609,11 @@ export function ComboResultsPage() {
                                                     <td colSpan={4} className="px-4 py-2"></td>
                                                 </tr>,
                                                 // Linha de Exit
-                                                <tr key={`${trade.tradeNum}-exit`} className="hover:bg-zinc-50 border-b border-zinc-200">
+                                                <tr key={`${trade.tradeNum}-exit`} className="bg-white hover:bg-zinc-50 border-b border-zinc-200">
                                                     <td className="px-4 py-2 text-zinc-700">Exit</td>
                                                     <td className="px-4 py-2 text-zinc-700">{formatDate(trade.exit_time!)}</td>
                                                     <td className="px-4 py-2 text-zinc-700">{trade.signalType}</td>
-                                                    <td className="px-4 py-2 text-white font-medium">{formatPrice(trade.exit_price!)}</td>
+                                                    <td className="px-4 py-2 text-zinc-900 font-medium">{formatPrice(trade.exit_price!)}</td>
                                                     <td className="px-4 py-2"></td>
                                                     <td className="px-4 py-2">
                                                         {formatPnl(trade.netPnlUSD, trade.netPnlPct, trade.netPnlUSD >= 0)}

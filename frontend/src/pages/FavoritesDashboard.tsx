@@ -276,6 +276,7 @@ const FavoritesDashboard: React.FC = () => {
                     result: analysisResult,
                     isOptimization: false,
                     favoriteAnalysisWarning: recovered.warning,
+                    returnTo: '/favorites',
                 }
             });
         } catch (error) {

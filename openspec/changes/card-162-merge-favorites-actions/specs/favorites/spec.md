@@ -13,6 +13,12 @@ The Favorites page SHALL expose a single analysis action per favorite for users 
 - **THEN** the system SHALL navigate to the result view for that favorite
 - **AND** the result view SHALL include consolidated metrics
 - **AND** the result view SHALL include the list of trades
+- **AND** the result view SHALL provide a visible action to return to Favorites
+
+#### Scenario: Admin reads combined analysis trades
+- **WHEN** the result view renders the favorite trade list
+- **THEN** trade table headers and cells SHALL use readable contrast
+- **AND** labels such as `Type`, `Date and time`, and `Signal` SHALL remain legible
 
 #### Scenario: Protected favorite remains protected
 - **WHEN** a protected favorite is rendered

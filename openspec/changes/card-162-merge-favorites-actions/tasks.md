@@ -9,6 +9,12 @@
 - [x] 2.1 Update Favorites E2E coverage for the single CTA and recovered trades in the result view.
 - [x] 2.2 Run OpenSpec validation and focused frontend checks.
 
+## 3. Homologation Fixes
+
+- [x] 3.1 Add a visible return action from the favorite analysis result view back to Favorites.
+- [x] 3.2 Fix trade table contrast so headers and cells remain readable.
+- [x] 3.3 Extend focused E2E coverage for returning to Favorites and readable trade table rendering.
+
 ## Notes
 
 - Use project skills when applicable: `crypto-frontend` for UI, OpenSpec skills for artifacts/apply/verify, and focused Playwright coverage for visible workflow changes.

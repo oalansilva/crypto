@@ -260,6 +260,7 @@ test('favorites exposes one analysis CTA instead of separate trades/results acti
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('No results found')).toHaveCount(0);
   await expect(page.getByText('List of trades')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
 });
 
 test('favorites mobile card exposes one analysis CTA', async ({ page }) => {
@@ -287,6 +288,19 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
 
   expect(api.wasFavoriteTradesTriggered()).toBe(true);
   await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
   await expect(page.getByText('List of trades')).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Date and time' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Signal' })).toBeVisible();
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+
+  const tradeTableBodyBackground = await page.locator('table tbody').evaluate((node) => {
+    return window.getComputedStyle(node).backgroundColor;
+  });
+  expect(tradeTableBodyBackground).toBe('rgb(255, 255, 255)');
+
+  await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
+  await expect(page).toHaveURL(/\/favorites$/);
+  await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible();
 });
