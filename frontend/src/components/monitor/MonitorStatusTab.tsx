@@ -39,6 +39,7 @@ type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
 type StarFilter = 'all' | '3' | '2' | '1';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 type SectionKey = 'hold' | 'wait' | 'exit';
+type VisibleSectionKey = Exclude<SectionKey, 'wait'>;
 
 type BinanceBalanceRow = {
     asset?: string;
@@ -162,6 +163,7 @@ const SectionConfig: Record<SectionKey, SectionRecord> = {
 };
 
 const SECTION_ORDER: SectionKey[] = ['hold', 'wait', 'exit'];
+const VISIBLE_SECTION_ORDER: VisibleSectionKey[] = ['hold', 'exit'];
 
 const getDistanceLabel = (distance: number | null | undefined): string => {
     if (distance === null || distance === undefined) return '-';
@@ -574,8 +576,7 @@ export const MonitorStatusTab: React.FC = () => {
         }));
     };
 
-    const getSparklineColor = (sectionKey: SectionKey): string => {
-        if (sectionKey === 'wait') return '#e5b057';
+    const getSparklineColor = (sectionKey: VisibleSectionKey): string => {
         if (sectionKey === 'exit') return '#f26e7e';
         return '#3dd68c';
     };
@@ -815,16 +816,11 @@ export const MonitorStatusTab: React.FC = () => {
         return groups;
     }, [filteredOpportunities]);
 
+    const visibleOpportunityCount = resolvedSections.hold.length + resolvedSections.exit.length;
+
     const sectionCountByType = useMemo(() => ({
         hold: resolvedSections.hold.length,
-        wait: resolvedSections.wait.length,
         exit: resolvedSections.exit.length,
-    }), [resolvedSections]);
-
-    const sectionAverageDistance = useMemo(() => ({
-        hold: averageDistance(resolvedSections.hold.map(({ opportunity }) => opportunity.distance_to_next_status)),
-        wait: averageDistance(resolvedSections.wait.map(({ opportunity }) => opportunity.distance_to_next_status)),
-        exit: averageDistance(resolvedSections.exit.map(({ opportunity }) => opportunity.distance_to_next_status)),
     }), [resolvedSections]);
 
     const inPortfolioCount = useMemo(() => {
@@ -837,6 +833,11 @@ export const MonitorStatusTab: React.FC = () => {
         filteredOpportunities.length === 0 &&
         showTechnicalColumns &&
         (listFilter === 'in_portfolio' || listFilter === 'favorites');
+    const noActionableResults =
+        !loading &&
+        opportunities.length > 0 &&
+        filteredOpportunities.length > 0 &&
+        visibleOpportunityCount === 0;
     const emptyFilterMessage =
         listFilter === 'favorites'
             ? 'Nenhum ativo encontrado nos favoritos.'
@@ -844,7 +845,6 @@ export const MonitorStatusTab: React.FC = () => {
 
     const sectionAverageRisk = useMemo(() => ({
         hold: averageDistance(resolvedSections.hold.map(({ opportunity }) => opportunity.distance_to_stop_pct)),
-        wait: averageDistance(resolvedSections.wait.map(({ opportunity }) => opportunity.distance_to_stop_pct)),
         exit: averageDistance(resolvedSections.exit.map(({ opportunity }) => opportunity.distance_to_stop_pct)),
     }), [resolvedSections]);
 
@@ -855,7 +855,7 @@ export const MonitorStatusTab: React.FC = () => {
         }
 
         const rowsToFetch = new Map<string, { symbol: string; timeframe: ChartTimeframe }>();
-        for (const section of SECTION_ORDER) {
+        for (const section of VISIBLE_SECTION_ORDER) {
             for (const { opportunity } of resolvedSections[section]) {
                 const timeframe = resolveChartTimeframe(opportunity);
                 const key = getSparklineKey(opportunity.symbol, timeframe);
@@ -943,12 +943,11 @@ export const MonitorStatusTab: React.FC = () => {
 
     const totalKpi = {
         hold: sectionCountByType.hold,
-        wait: sectionCountByType.wait,
         exit: sectionCountByType.exit,
-        visible: filteredOpportunities.length,
+        visible: visibleOpportunityCount,
         inPortfolio: inPortfolioCount,
         avgHoldRisk: formatPercent(sectionAverageRisk.hold),
-        avgWaitRisk: formatPercent(sectionAverageRisk.wait),
+        avgExitRisk: formatPercent(sectionAverageRisk.exit),
     };
 
     const theme: MonitorTheme = normalizeMonitorTheme(preferences[GLOBAL_MONITOR_PREFERENCE_KEY]?.theme);
@@ -997,7 +996,7 @@ export const MonitorStatusTab: React.FC = () => {
                         <div>
                             <h1 className="sr-only">Monitor de sinais</h1>
                             <p className="page-sub">
-                                Operações ativas e contextos em observação. Atualização contínua a cada 30s.
+                                Operações ativas e saídas acionáveis. Atualização contínua a cada 30s.
                             </p>
                             {lastUpdated ? (
                                 <div className="updated">
@@ -1020,11 +1019,11 @@ export const MonitorStatusTab: React.FC = () => {
                         </div>
                         <div className="kpi">
                             <div className="kpi-label">
-                                Em observação
-                                <span className="tag">WAIT</span>
+                                Em saída
+                                <span className="tag">EXIT</span>
                             </div>
-                            <div className="kpi-val">{totalKpi.wait}</div>
-                            <div className="kpi-foot">média risco {totalKpi.avgWaitRisk}</div>
+                            <div className="kpi-val">{totalKpi.exit}</div>
+                            <div className="kpi-foot">média risco {totalKpi.avgExitRisk}</div>
                         </div>
                         <div className="kpi">
                             <div className="kpi-label">Total</div>
@@ -1094,7 +1093,7 @@ export const MonitorStatusTab: React.FC = () => {
                         </select>
                         <div className="filter-spacer" />
                         <span className="chip-count">
-                            {filteredOpportunities.length} resultados
+                            {visibleOpportunityCount} resultados
                             {showTechnicalColumns ? ` · ${favoriteSymbols.size} favoritos` : ''}
                         </span>
                     </section>
@@ -1116,8 +1115,12 @@ export const MonitorStatusTab: React.FC = () => {
                                     Mostrar todos
                                 </Button>
                             </section>
+                        ) : noActionableResults ? (
+                            <section className="monitor-empty-card" data-testid="monitor-empty-actionable">
+                                <p className="monitor-empty-text">Nenhum sinal acionável no monitor.</p>
+                            </section>
                         ) : (
-                            SECTION_ORDER.map((sectionKey) => {
+                            VISIBLE_SECTION_ORDER.map((sectionKey) => {
                                 const cfg = SectionConfig[sectionKey];
                                 const rows = resolvedSections[sectionKey];
 
@@ -1127,15 +1130,13 @@ export const MonitorStatusTab: React.FC = () => {
                                             <span className="status-section-label">Estado {cfg.title}</span>
                                             <h3>
                                                 <span className={`pip ${sectionKey}`} />
-                                                {cfg.title === 'HOLD' ? 'Em posição · HOLD' : cfg.title === 'WAIT' ? 'Em observação · WAIT' : 'Em saída · EXIT'}
+                                                {cfg.title === 'HOLD' ? 'Em posição · HOLD' : 'Em saída · EXIT'}
                                                 <span className="meta">({rows.length})</span>
                                             </h3>
                             <p className="desc">
                                 {sectionKey === 'hold'
                                     ? 'Posição ativa com gestão em acompanhamento contínuo.'
-                                    : sectionKey === 'wait'
-                                        ? 'Contexto técnico monitorado, sem recomendação ativa.'
-                                        : 'Saída em observação para nova confirmação.'}
+                                    : 'Saída acionável ou encerrada para nova análise.'}
                             </p>
                                         </div>
 
@@ -1210,7 +1211,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                     </td>
                                                                     <td>
                                                                         <span className={`status-pill ${sectionKey}`}>
-                                                                            {cfg.title === 'HOLD' ? 'Hold' : cfg.title === 'WAIT' ? 'Wait' : 'Exit'}
+                                                                            {cfg.title === 'HOLD' ? 'Hold' : 'Exit'}
                                                                         </span>
                                                                     </td>
                                                                     <td className="num lg">{formatPrice(opportunity.last_price)}</td>
