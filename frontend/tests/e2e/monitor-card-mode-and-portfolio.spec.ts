@@ -464,6 +464,56 @@ test('monitor list keeps Compra when price timeframe preference differs from str
   await expect(page.getByText('Em saída · Venda')).toContainText('(0)')
 })
 
+test('monitor hides non-actionable WAIT and neutral opportunities from main board', async ({ page }) => {
+  await setupApiMocks(page, {
+    opportunitiesPayload: [
+      {
+        ...OPPORTUNITIES_PAYLOAD[0],
+        id: 10,
+        symbol: 'WAIT/USDT',
+        name: 'Wait Setup',
+        is_holding: false,
+        next_status_label: 'entry',
+        status: 'WAIT',
+        message: 'Waiting for entry',
+      },
+      {
+        ...OPPORTUNITIES_PAYLOAD[1],
+        id: 11,
+        symbol: 'NEUTRAL/USDT',
+        name: 'Neutral Setup',
+        is_holding: false,
+        next_status_label: 'entry',
+        status: 'NEUTRAL',
+        message: 'No active signal',
+      },
+      {
+        ...OPPORTUNITIES_PAYLOAD[0],
+        id: 12,
+        symbol: 'BTC/USDT',
+        name: 'BTC Active',
+        is_holding: true,
+        next_status_label: 'exit',
+        status: 'HOLDING',
+        message: 'Holding position',
+      },
+    ],
+    initialPreferences: {
+      'WAIT/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+      'NEUTRAL/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+      'BTC/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+    },
+  })
+  await page.goto('/monitor')
+
+  await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-row-wait-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-row-neutral-usdt')).toHaveCount(0)
+  await expect(page.getByText('Estado WAIT')).toHaveCount(0)
+  await expect(page.getByText('Em observação · WAIT')).toHaveCount(0)
+  await expect(page.locator('.kpis')).not.toContainText('WAIT')
+})
+
 test('monitor list keeps HOLD when price timeframe preference differs from strategy timeframe', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
@@ -486,7 +536,7 @@ test('monitor list keeps HOLD when price timeframe preference differs from strat
   await expect(row).toBeVisible()
   await expect(row.getByText('Hold')).toBeVisible()
   await expect(page.getByText('Em posição · HOLD')).toContainText('(1)')
-  await expect(page.getByText('Em observação · WAIT')).toContainText('(0)')
+  await expect(page.getByText('Em saída · EXIT')).toContainText('(0)')
 })
 
 test('monitor simplifies table columns for common user', async ({ page }) => {
