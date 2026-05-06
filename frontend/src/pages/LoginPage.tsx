@@ -5,8 +5,6 @@ import axios from 'axios'
 import { Eye, EyeOff, TrendingUp } from 'lucide-react'
 import { MonitorDisclaimer } from '@/components/monitor/MonitorDisclaimer'
 
-type Mode = 'login' | 'register'
-
 const PASSWORDLESS_LOGIN_EMAILS = new Set([
   'o.alan.silva@gmail.com',
   'o2.alan.silva@gmail.com',
@@ -15,52 +13,34 @@ const PASSWORDLESS_LOGIN_EMAILS = new Set([
 interface FormErrors {
   email?: string
   password?: string
-  name?: string
   general?: string
 }
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, register } = useAuth()
+  const { login } = useAuth()
 
   const fallbackRoute = '/monitor'
   const destination = ((location.state as { returnTo?: string } | null)?.returnTo || fallbackRoute).trim() || fallbackRoute
 
-  const [mode, setMode] = useState<Mode>('login')
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
 
   // Form fields
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-
-  const toggleMode = (m: Mode) => {
-    setMode(m)
-    setErrors({})
-    setEmail('')
-    setPassword('')
-    setName('')
-    setConfirmPassword('')
-  }
 
   const validate = (): boolean => {
     const errs: FormErrors = {}
     const normalizedEmail = email.trim().toLowerCase()
     if (!email) errs.email = 'Email é obrigatório'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Email inválido'
-    const bypassPassword = mode === 'login' && PASSWORDLESS_LOGIN_EMAILS.has(normalizedEmail)
+    const bypassPassword = PASSWORDLESS_LOGIN_EMAILS.has(normalizedEmail)
     if (!bypassPassword) {
       if (!password) errs.password = 'Senha é obrigatória'
       else if (password.length < 8) errs.password = 'Senha deve ter pelo menos 8 caracteres'
-    }
-    if (mode === 'register') {
-      if (!name.trim()) errs.name = 'Nome é obrigatório'
-      if (password !== confirmPassword) errs.password = 'As senhas não coincidem'
     }
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -74,13 +54,8 @@ export default function LoginPage() {
     setErrors({})
 
     try {
-      if (mode === 'login') {
-        await login(email, password)
-        navigate(destination, { replace: true })
-      } else {
-        await register(name, email, password)
-        navigate(destination, { replace: true })
-      }
+      await login(email, password)
+      navigate(destination, { replace: true })
     } catch (err: unknown) {
       setIsLoading(false)
       if (axios.isAxiosError(err)) {
@@ -117,39 +92,11 @@ export default function LoginPage() {
             <TrendingUp className="h-7 w-7 text-[var(--text-on-primary)]" />
           </div>
           <h1 className="text-xl font-bold text-[var(--text-primary)]">
-            {mode === 'login' ? 'Bem-vindo de volta' : 'Criar conta'}
+            Bem-vindo de volta
           </h1>
           <p className="text-center text-sm text-[var(--text-muted)]">
-            {mode === 'login'
-              ? 'Entre com suas credenciais para continuar'
-              : 'Preencha os dados para criar sua conta'}
+            Entre com suas credenciais para continuar
           </p>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6 flex rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-1">
-          <button
-            type="button"
-            onClick={() => toggleMode('login')}
-            className={`flex-1 rounded-md px-4 py-2.5 text-sm font-semibold transition-all ${
-              mode === 'login'
-                ? 'bg-[var(--accent-primary)] text-[var(--text-on-primary)] shadow-lg'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            Entrar
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleMode('register')}
-            className={`flex-1 rounded-md px-4 py-2.5 text-sm font-semibold transition-all ${
-              mode === 'register'
-                ? 'bg-[var(--accent-primary)] text-[var(--text-on-primary)] shadow-lg'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            Criar Conta
-          </button>
         </div>
 
         {/* General Error */}
@@ -161,22 +108,6 @@ export default function LoginPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          {mode === 'register' && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                Nome
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Seu nome completo"
-                className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
-              />
-              {errors.name && <p className="text-xs text-red-400">{errors.name}</p>}
-            </div>
-          )}
-
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Email
@@ -202,7 +133,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                autoComplete="current-password"
                 className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 pr-11 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
               />
               <button
@@ -216,41 +147,14 @@ export default function LoginPage() {
             {errors.password && <p className="text-xs text-red-400">{errors.password}</p>}
           </div>
 
-          {mode === 'register' && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                Confirmar Senha
-              </label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 pr-11 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition focus:border-[var(--accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {mode === 'login' && (
-            <div className="text-right">
-              <Link
-                to="/forgot-password"
-                className="text-xs font-medium text-[var(--accent-primary)] hover:underline"
-              >
-                Esqueci minha senha
-              </Link>
-            </div>
-          )}
+          <div className="text-right">
+            <Link
+              to="/forgot-password"
+              className="text-xs font-medium text-[var(--accent-primary)] hover:underline"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
 
           <button
             type="submit"
@@ -260,12 +164,10 @@ export default function LoginPage() {
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                {mode === 'login' ? 'Entrando...' : 'Criando conta...'}
+                Entrando...
               </span>
-            ) : mode === 'login' ? (
-              'Entrar'
             ) : (
-              'Criar Conta'
+              'Entrar'
             )}
           </button>
         </form>

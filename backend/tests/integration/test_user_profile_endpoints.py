@@ -42,6 +42,7 @@ def _install_fast_password_helpers():
 
     auth_routes._hash_password = _hash_password
     auth_routes._verify_password = _verify_password
+    auth_routes.BETA_PUBLIC_REGISTRATION_ENABLED = True
     user_profile_routes._hash_password = _hash_password
     user_profile_routes._verify_password = _verify_password
 
