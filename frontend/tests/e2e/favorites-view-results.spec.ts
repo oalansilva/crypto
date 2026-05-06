@@ -195,6 +195,20 @@ const MONITOR_OPPORTUNITIES_PAYLOAD = [
     next_status_label: 'entry',
     signal_history: [
       {
+        timestamp: '2025-01-01T00:00:00.000Z',
+        signal: 1,
+        type: 'entry',
+        reason: 'entry',
+        price: 100,
+      },
+      {
+        timestamp: '2025-01-02T00:00:00.000Z',
+        signal: -1,
+        type: 'exit',
+        reason: 'exit_logic',
+        price: 101,
+      },
+      {
         timestamp: '2026-05-10T00:00:00.000Z',
         signal: 1,
         type: 'entry',
@@ -232,6 +246,20 @@ const MONITOR_OPPORTUNITIES_PAYLOAD = [
     distance_to_next_status: 0.8,
     next_status_label: 'entry',
     signal_history: [
+      {
+        timestamp: '2025-01-01T00:00:00.000Z',
+        signal: 1,
+        type: 'entry',
+        reason: 'entry',
+        price: 100,
+      },
+      {
+        timestamp: '2025-01-02T00:00:00.000Z',
+        signal: -1,
+        type: 'exit',
+        reason: 'exit',
+        price: 101,
+      },
       {
         timestamp: '2026-05-12T00:00:00.000Z',
         signal: 1,
@@ -489,6 +517,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
   await expect(page.getByText('List of trades')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText('BTC/USDT • 4h • 60 candles')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
@@ -504,7 +533,8 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByRole('columnheader', { name: 'Signal' })).toBeVisible();
   await expect(page.getByText('May 10, 2026').first()).toBeVisible();
   await expect(page.getByText('May 20, 2026').first()).toBeVisible();
-  await expect(page.getByText('Jan 1, 2025')).toHaveCount(0);
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+  await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
 
   const tradeTableBodyBackground = await page.locator('table tbody').evaluate((node) => {
     return window.getComputedStyle(node).backgroundColor;
@@ -527,6 +557,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   expect(api.opportunitiesTriggeredCount()).toBeGreaterThanOrEqual(2);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('May 10, 2026').first()).toBeVisible();
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
 });
 
 test('favorites analysis backfills chart context for legacy saved BTC multi MA trades', async ({ page }) => {
@@ -581,10 +612,12 @@ test('common user opens protected favorite chart without moving averages or MA v
   expect(api.favoriteTradesTriggeredCount()).toBe(0);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
   await expect(page.getByText('May 12, 2026').first()).toBeVisible();
-  await expect(page.getByText('Jan 1, 2025')).toHaveCount(0);
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+  await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
   await expect(page.getByTestId('result-chart-overlays')).toHaveCount(0);
   await expect(page.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0);
   await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toBeVisible();
@@ -612,9 +645,10 @@ test('favorites analysis prefers current market candles over stale saved analysi
   await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
   await expect(page.getByText('ETH/USDT • 1h • 40 candles')).toHaveCount(0);
   await expect(page.getByText('May 12, 2026').first()).toBeVisible();
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
 });
 
-test('favorites analysis syncs visible entries and exits from monitor signal history', async ({ page }) => {
+test('favorites analysis preserves saved trades and adds monitor signal history without duplicates', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
@@ -627,7 +661,9 @@ test('favorites analysis syncs visible entries and exits from monitor signal his
   expect(api.wasFavoriteTradesTriggered()).toBe(true);
   expect(api.opportunitiesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
+  await expect(page.getByText('Jan 1, 2025')).toHaveCount(1);
+  await expect(page.getByText('Jan 2, 2025')).toHaveCount(1);
   await expect(page.getByText('May 10, 2026').first()).toBeVisible();
   await expect(page.getByText('May 20, 2026').first()).toBeVisible();
-  await expect(page.getByText('Jan 1, 2025')).toHaveCount(0);
 });

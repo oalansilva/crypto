@@ -118,6 +118,44 @@ const buildTradesFromSignalHistory = (
     return trades.length > 0 ? trades : null;
 };
 
+const normalizeTradeTime = (value: unknown): string => {
+    if (!value) return '';
+    const timestamp = Date.parse(String(value));
+    return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : String(value);
+};
+
+const normalizeTradeNumber = (value: unknown): string => {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue.toFixed(8) : '';
+};
+
+const getTradeDedupeKey = (trade: any): string => [
+    normalizeTradeTime(trade?.entry_time),
+    normalizeTradeTime(trade?.exit_time),
+    normalizeTradeNumber(trade?.entry_price),
+    normalizeTradeNumber(trade?.exit_price),
+    normalizeText(trade?.type),
+].join('|');
+
+const mergeFavoriteAndMonitorTrades = (
+    favoriteTrades: any[],
+    monitorTrades: any[] | null | undefined,
+): any[] => {
+    const merged = Array.isArray(favoriteTrades) ? [...favoriteTrades] : [];
+    if (!Array.isArray(monitorTrades) || monitorTrades.length === 0) return merged;
+
+    const seen = new Set(merged.map(getTradeDedupeKey));
+    monitorTrades.forEach((trade) => {
+        const key = getTradeDedupeKey(trade);
+        if (!seen.has(key)) {
+            merged.push(trade);
+            seen.add(key);
+        }
+    });
+
+    return merged;
+};
+
 const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -465,8 +503,13 @@ const FavoritesDashboard: React.FC = () => {
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
             analysisResult.candles = chartCandles || [];
             if (monitorSyncedTrades && monitorSyncedTrades.length > 0) {
-                analysisResult.trades = monitorSyncedTrades;
-                analysisResult.execution_mode = 'favorite_monitor_sync';
+                const mergedTrades = mergeFavoriteAndMonitorTrades(analysisResult.trades, monitorSyncedTrades);
+                analysisResult.trades = mergedTrades;
+                analysisResult.metrics = {
+                    ...analysisResult.metrics,
+                    total_trades: mergedTrades.filter((trade: any) => trade.exit_time && trade.exit_price).length,
+                };
+                analysisResult.execution_mode = 'favorite_monitor_sync_all_trades';
             }
 
             navigate('/combo/results', {

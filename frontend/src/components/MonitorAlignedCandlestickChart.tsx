@@ -366,7 +366,11 @@ export function MonitorAlignedCandlestickChart({
     }, [candlestickData, emaShortData, hideTechnicalOverlays, markers, smaLongData, smaMediumData, syncVisibleBars, tooltipData, volumeData])
 
     return (
-        <section className="rounded-lg border border-[#2b3139] bg-[#0b0e11] text-[#eaecef]" data-testid="monitor-aligned-result-chart">
+        <section
+            className="rounded-lg border border-[#2b3139] bg-[#0b0e11] text-[#eaecef]"
+            data-testid="monitor-aligned-result-chart"
+            data-marker-count={markers?.length ?? 0}
+        >
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2b3139] px-5 py-4">
                 <div className="flex min-w-0 items-center gap-3">
                     <div className="rounded-md border border-[#fcd535]/35 bg-[#fcd535]/10 p-2">
