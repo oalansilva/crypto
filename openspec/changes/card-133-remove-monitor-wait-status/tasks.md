@@ -13,6 +13,6 @@
 
 - [x] 3.1 Run OpenSpec validation for `card-133-remove-monitor-wait-status`.
 - [x] 3.2 Run focused frontend build/test validation for affected Monitor behavior.
-- [ ] 3.3 Register implementation evidence before moving card #133 to `Done`.
+- [x] 3.3 Register implementation evidence before moving card #133 to `Done`.
 
 Note: use project skills when applicable: OpenSpec skills for this change and `crypto-frontend` for Monitor UI edits and validation.
