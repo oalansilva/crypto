@@ -236,6 +236,41 @@ def _normalize_candles_frame(df, limit: int):
     return candles
 
 
+def _timeframe_period(timeframe: str) -> pd.Timedelta | None:
+    tf = str(timeframe or "").strip().lower()
+    try:
+        if tf.endswith("m"):
+            return pd.Timedelta(minutes=int(tf[:-1] or "1"))
+        if tf.endswith("h"):
+            return pd.Timedelta(hours=int(tf[:-1] or "1"))
+        if tf.endswith("d"):
+            return pd.Timedelta(days=int(tf[:-1] or "1"))
+    except (TypeError, ValueError):
+        return None
+    return None
+
+
+def _current_market_bucket_start(
+    timeframe: str, now: pd.Timestamp | datetime | None = None
+) -> pd.Timestamp | None:
+    period = _timeframe_period(timeframe)
+    if period is None:
+        return None
+
+    current = pd.Timestamp.now(tz=timezone.utc) if now is None else pd.Timestamp(now)
+    if current.tzinfo is None:
+        current = current.tz_localize("UTC")
+    else:
+        current = current.tz_convert("UTC")
+
+    seconds = int(period.total_seconds())
+    if seconds <= 0:
+        return None
+
+    bucket_epoch = int(current.timestamp()) // seconds * seconds
+    return pd.Timestamp(bucket_epoch, unit="s", tz=timezone.utc)
+
+
 def _is_persisted_candles_fresh(candles: list[dict[str, Any]], timeframe: str) -> bool:
     if not candles:
         return False
@@ -243,6 +278,10 @@ def _is_persisted_candles_fresh(candles: list[dict[str, Any]], timeframe: str) -
     raw_timestamp = candles[-1].get("timestamp_utc")
     parsed = pd.to_datetime(raw_timestamp, utc=True, errors="coerce")
     if pd.isna(parsed):
+        return False
+
+    current_bucket = _current_market_bucket_start(timeframe)
+    if current_bucket is not None and parsed < current_bucket:
         return False
 
     now = pd.Timestamp.now(tz=timezone.utc)

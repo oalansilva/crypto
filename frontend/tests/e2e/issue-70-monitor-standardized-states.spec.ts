@@ -151,23 +151,22 @@ async function setupApiMocks(page: any) {
   )
 }
 
-test('issue 70: monitor standardizes states to HOLD, WAIT and EXIT', async ({ page }) => {
+test('monitor shows actionable HOLD and EXIT states while hiding WAIT', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
   await expect(page.getByText('Estado HOLD')).toBeVisible()
-  await expect(page.getByText('Estado WAIT')).toBeVisible()
+  await expect(page.getByText('Estado WAIT')).toHaveCount(0)
   await expect(page.getByText('Estado EXIT')).toBeVisible()
 
   const holdCard = page.getByTestId('monitor-card-btc-usdt')
-  const waitCard = page.getByTestId('monitor-card-eth-usdt')
   const exitCard = page.getByTestId('monitor-card-xrp-usdt')
 
   await page.getByTestId('monitor-row-btc-usdt').click()
-  await page.getByTestId('monitor-row-eth-usdt').click()
   await page.getByTestId('monitor-row-xrp-usdt').click()
 
   await expect(holdCard.getByText(/^HOLD$/)).toBeVisible()
-  await expect(waitCard.getByText(/^WAIT$/)).toBeVisible()
   await expect(exitCard.getByText(/^EXIT$/)).toBeVisible()
+  await expect(page.getByTestId('monitor-row-eth-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-card-eth-usdt')).toHaveCount(0)
 })

@@ -290,6 +290,10 @@ export function ComboConfigurePage() {
                 const name = `${result.template_name} - ${result.symbol} ${result.timeframe} (${new Date().toLocaleTimeString()})`
                 const baseParams = result.best_parameters ?? result.parameters ?? {}
                 const parameters = { ...baseParams, direction }
+                const metrics = {
+                    ...(result.best_metrics ?? {}),
+                    trades: Array.isArray(result.trades) ? result.trades : [],
+                }
                 const favRes = await authFetch(`${API_BASE_URL}/favorites/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -299,7 +303,7 @@ export function ComboConfigurePage() {
                         timeframe: result.timeframe,
                         strategy_name: result.template_name,
                         parameters,
-                        metrics: result.best_metrics ?? {},
+                        metrics,
                         start_date: start_date ?? null,
                         end_date: end_date ?? null,
                         period_type: period

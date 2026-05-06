@@ -469,6 +469,65 @@ def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_ses
         auth_routes.refresh(auth_routes.RefreshRequest(refreshToken=ghost_refresh), auth_db_session)
 
 
+def test_closed_beta_registration_blocks_public_and_allows_invited_or_explicit_public(
+    monkeypatch, auth_db_session
+):
+    invited_email = f"invited-{uuid.uuid4().hex}@example.com"
+    admin_email = f"admin-{uuid.uuid4().hex}@example.com"
+    visitor_email = f"visitor-{uuid.uuid4().hex}@example.com"
+    public_email = f"public-enabled-{uuid.uuid4().hex}@example.com"
+
+    monkeypatch.setattr(auth_routes, "_hash_password", lambda password: f"hash::{password}")
+    monkeypatch.setattr(auth_routes, "BETA_PUBLIC_REGISTRATION_ENABLED", False)
+    monkeypatch.setattr(auth_routes, "BETA_INVITED_EMAILS", {invited_email})
+    monkeypatch.setattr(auth_routes, "PASSWORDLESS_LOGIN_EMAILS", {"alan@example.com"})
+    monkeypatch.setattr(auth_routes, "ADMIN_EMAILS", {admin_email})
+
+    with pytest.raises(HTTPException) as blocked_exc:
+        auth_routes.register(
+            auth_routes.RegisterRequest(
+                email=visitor_email,
+                password="valid-pass",
+                name="Visitor",
+            ),
+            auth_db_session,
+        )
+    assert blocked_exc.value.status_code == 403
+    assert blocked_exc.value.detail == "Closed beta access requires invitation"
+    assert auth_db_session.query(User).filter(User.email == visitor_email).first() is None
+
+    invited = auth_routes.register(
+        auth_routes.RegisterRequest(
+            email=invited_email.upper(),
+            password="valid-pass",
+            name="Invited",
+        ),
+        auth_db_session,
+    )
+    assert invited.email == invited_email
+
+    admin_bootstrap = auth_routes.register(
+        auth_routes.RegisterRequest(
+            email=admin_email,
+            password="valid-pass",
+            name="Admin",
+        ),
+        auth_db_session,
+    )
+    assert admin_bootstrap.email == admin_email
+
+    monkeypatch.setattr(auth_routes, "BETA_PUBLIC_REGISTRATION_ENABLED", True)
+    public = auth_routes.register(
+        auth_routes.RegisterRequest(
+            email=public_email,
+            password="valid-pass",
+            name="Public Enabled",
+        ),
+        auth_db_session,
+    )
+    assert public.email == public_email
+
+
 def test_database_timescale_policy_verification_reports_missing_and_exception_paths(monkeypatch):
     class _Scalar:
         def __init__(self, value):

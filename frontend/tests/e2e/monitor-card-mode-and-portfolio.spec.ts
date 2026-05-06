@@ -56,11 +56,11 @@ const OPPORTUNITIES_PAYLOAD = [
     notes: '',
     tier: 1,
     parameters: { ema_short: 9, ema_long: 21 },
-    is_holding: false,
+    is_holding: true,
     distance_to_next_status: 0.3,
-    next_status_label: 'entry',
-    status: 'WAIT',
-    message: 'Waiting for entry',
+    next_status_label: 'exit',
+    status: 'HOLDING',
+    message: 'Holding position',
     last_price: 50000,
     timestamp: '2025-01-01T00:00:00Z',
     details: {},
@@ -77,9 +77,9 @@ const OPPORTUNITIES_PAYLOAD = [
     parameters: { ema_short: 9, ema_long: 21 },
     is_holding: false,
     distance_to_next_status: 0.5,
-    next_status_label: 'entry',
-    status: 'WAIT',
-    message: 'Waiting for entry',
+    next_status_label: 're-entry',
+    status: 'EXITED',
+    message: 'Exit confirmed',
     last_price: 3000,
     timestamp: '2025-01-01T00:00:00Z',
     details: {},
@@ -104,7 +104,6 @@ async function setupApiMocks(
     preferencePatchDelayMs?: number
     balances?: Array<{ asset: string; total: number }>
     opportunitiesPayload?: Array<Record<string, unknown>>
-    initialStrategyPreferences?: Record<string, { liked: boolean }>
     user?: typeof AUTH_USER
     initialPreferences?: Record<
       string,
@@ -121,10 +120,6 @@ async function setupApiMocks(
   const requestedOpportunityTiers: string[] = []
   const requestedBalanceMinUsd: string[] = []
   const preferencePatches: Array<{ symbol: string; patch: any }> = []
-  const strategyPreferencePatches: Array<{ favoriteId: string; patch: any }> = []
-  const strategyPreferences: Record<string, { liked: boolean }> = {
-    ...(options?.initialStrategyPreferences ?? {}),
-  }
   const preferences: Record<
     string,
     { in_portfolio: boolean; card_mode: 'price' | 'strategy'; price_timeframe: '15m' | '1h' | '4h' | '1d' }
@@ -199,31 +194,6 @@ async function setupApiMocks(
     })
   })
 
-  await page.route('**/api/monitor/strategy-preferences**', async (route: any) => {
-    const request = route.request()
-    const url = new URL(request.url())
-    const favoriteId = decodeURIComponent(url.pathname.split('/').pop() || '').trim()
-
-    if (request.method() === 'PUT' && favoriteId && favoriteId !== 'strategy-preferences') {
-      const patch = request.postDataJSON() || {}
-      strategyPreferencePatches.push({ favoriteId, patch })
-      strategyPreferences[favoriteId] = { liked: Boolean(patch.liked) }
-
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(strategyPreferences[favoriteId]),
-      })
-      return
-    }
-
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(strategyPreferences),
-    })
-  })
-
   await page.route('**/api/user/binance-credentials', (route: any) =>
     route.fulfill({
       status: 200,
@@ -284,7 +254,6 @@ async function setupApiMocks(
     requestedOpportunityTiers,
     requestedTimeframes,
     preferencePatches,
-    strategyPreferencePatches,
   }
 }
 
@@ -346,25 +315,27 @@ test('monitor hides protected strategy details for common user', async ({ page }
   await expect(card.getByText('ema_short')).toHaveCount(0)
 })
 
-test('favorite strategy filter uses persisted monitor strategy preferences', async ({ page }) => {
-  const mocks = await setupApiMocks(page, {
-    initialStrategyPreferences: { '1': { liked: true } },
-    user: ADMIN_USER,
+test('monitor does not expose local favorite controls and keeps tier stars readable', async ({ page }) => {
+  const strategyPreferenceRequests: string[] = []
+  await setupApiMocks(page, { user: ADMIN_USER })
+  await page.route('**/api/monitor/strategy-preferences**', (route: any) => {
+    strategyPreferenceRequests.push(route.request().url())
+    return route.abort('blockedbyclient')
   })
   await page.goto('/monitor')
 
   await page.getByTestId('monitor-filter-all').click()
-  await page.getByTestId('monitor-filter-favorites').click()
   await expandMonitorRow(page, 'btc-usdt')
   await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
-  await expect(page.getByTestId('monitor-card-eth-usdt')).toHaveCount(0)
-
-  await page.getByTestId('monitor-filter-all').click()
-  await page.getByTestId('strategy-favorite-toggle-eth-usdt').click()
-
-  await expect
-    .poll(() => mocks.strategyPreferencePatches.some((entry) => entry.favoriteId === '2' && entry.patch?.liked === true))
-    .toBe(true)
+  await expect(page.getByTestId('monitor-row-eth-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-filter-favorites')).toHaveCount(0)
+  await expect(page.getByTestId('strategy-favorite-toggle-btc-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('strategy-favorite-toggle-eth-usdt')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Favoritar' })).toHaveCount(0)
+  await expect(page.locator('.chip-count')).not.toContainText('favoritos')
+  await expect(page.getByTestId('tier-stars-btc-usdt')).toHaveText('★★★')
+  await expect(page.getByTestId('tier-stars-eth-usdt')).toHaveText('★★')
+  expect(strategyPreferenceRequests).toEqual([])
 })
 
 test('monitor shows tier as star classification', async ({ page }) => {
@@ -416,6 +387,81 @@ test('monitor defaults to rated strategies and hides unstarred opportunities', a
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-row-sol-usdt')).toHaveCount(0)
   await expect(page.getByText('Em posição · HOLD')).toBeVisible()
+})
+
+test('monitor hides non-actionable WAIT and neutral opportunities from main board', async ({ page }) => {
+  await setupApiMocks(page, {
+    opportunitiesPayload: [
+      {
+        ...OPPORTUNITIES_PAYLOAD[0],
+        id: 10,
+        symbol: 'WAIT/USDT',
+        name: 'Wait Setup',
+        is_holding: false,
+        next_status_label: 'entry',
+        status: 'WAIT',
+        message: 'Waiting for entry',
+      },
+      {
+        ...OPPORTUNITIES_PAYLOAD[1],
+        id: 11,
+        symbol: 'NEUTRAL/USDT',
+        name: 'Neutral Setup',
+        is_holding: false,
+        next_status_label: 'entry',
+        status: 'NEUTRAL',
+        message: 'No active signal',
+      },
+      {
+        ...OPPORTUNITIES_PAYLOAD[0],
+        id: 12,
+        symbol: 'BTC/USDT',
+        name: 'BTC Active',
+        is_holding: true,
+        next_status_label: 'exit',
+        status: 'HOLDING',
+        message: 'Holding position',
+      },
+    ],
+    initialPreferences: {
+      'WAIT/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+      'NEUTRAL/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+      'BTC/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d' },
+    },
+  })
+  await page.goto('/monitor')
+
+  await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-row-wait-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-row-neutral-usdt')).toHaveCount(0)
+  await expect(page.getByText('Estado WAIT')).toHaveCount(0)
+  await expect(page.getByText('Em observação · WAIT')).toHaveCount(0)
+  await expect(page.locator('.kpis')).not.toContainText('WAIT')
+})
+
+test('monitor list keeps HOLD when price timeframe preference differs from strategy timeframe', async ({ page }) => {
+  await setupApiMocks(page, {
+    opportunitiesPayload: [
+      {
+        ...OPPORTUNITIES_PAYLOAD[1],
+        is_holding: true,
+        status: 'EXIT_NEAR',
+        next_status_label: 'exit',
+        distance_to_next_status: 0.27,
+        message: 'EXIT: Approaching exit',
+      },
+    ],
+    initialPreferences: {
+      'ETH/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '4h' },
+    },
+  })
+  await page.goto('/monitor')
+
+  const row = page.getByTestId('monitor-row-eth-usdt')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('Hold')).toBeVisible()
+  await expect(page.getByText('Em posição · HOLD')).toContainText('(1)')
+  await expect(page.getByText('Em saída · EXIT')).toContainText('(0)')
 })
 
 test('monitor simplifies table columns for common user', async ({ page }) => {

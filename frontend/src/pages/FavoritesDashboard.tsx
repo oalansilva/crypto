@@ -47,9 +47,11 @@ const FavoritesDashboard: React.FC = () => {
     const [selectedTradesSymbol, setSelectedTradesSymbol] = useState('');
     const [selectedTradesTemplate, setSelectedTradesTemplate] = useState('');
     const [selectedTradesTimeframe, setSelectedTradesTimeframe] = useState('');
+    const [selectedTradesWarning, setSelectedTradesWarning] = useState('');
     
     // State for loading backtest
     const [loadingBacktestId, setLoadingBacktestId] = useState<number | null>(null);
+    const [loadingTradesId, setLoadingTradesId] = useState<number | null>(null);
 
     // Agent chat modal
     const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
@@ -244,27 +246,57 @@ const FavoritesDashboard: React.FC = () => {
         }
     };
 
-    const handleViewTrades = (fav: FavoriteStrategy) => {
-        if (isFavoriteProtected(fav)) {
-            setSelectedTrades([]);
-            setSelectedTradesTitle(`${getFavoriteStrategyLabel(fav)} - ${fav.symbol} ${fav.timeframe}`);
-            setSelectedTradesSymbol(fav.symbol);
-            setSelectedTradesTemplate(getFavoriteStrategyLabel(fav));
-            setSelectedTradesTimeframe(fav.timeframe);
-            setIsTradesModalOpen(true);
-            return;
-        }
-        const trades = fav.metrics?.trades || [];
-        if (!trades || trades.length === 0) {
-            alert('No trades saved for this strategy.');
-            return;
-        }
+    const openTradesModal = (fav: FavoriteStrategy, trades: any[], warning = '') => {
         setSelectedTrades(trades);
         setSelectedTradesTitle(`${getFavoriteStrategyLabel(fav)} - ${fav.symbol} ${fav.timeframe}`);
         setSelectedTradesSymbol(fav.symbol);
         setSelectedTradesTemplate(getFavoriteStrategyLabel(fav));
         setSelectedTradesTimeframe(fav.timeframe);
+        setSelectedTradesWarning(warning);
         setIsTradesModalOpen(true);
+    };
+
+    const handleViewTrades = async (fav: FavoriteStrategy) => {
+        if (isFavoriteProtected(fav)) {
+            openTradesModal(fav, []);
+            return;
+        }
+        const trades = fav.metrics?.trades || [];
+        if (Array.isArray(trades) && trades.length > 0) {
+            openTradesModal(fav, trades);
+            return;
+        }
+        if (getTradesCount(fav) <= 0) {
+            alert('No trades saved for this strategy.');
+            return;
+        }
+
+        setLoadingTradesId(fav.id);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}/trades`);
+            if (!res.ok) {
+                throw new Error(`Failed to load trades (${res.status})`);
+            }
+            const payload = await res.json();
+            const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
+            const warning = payload.metrics_match === false
+                ? 'Histórico reconstruído pode divergir do resumo salvo.'
+                : '';
+            queryClient.setQueryData<FavoriteStrategy[]>(
+                ['favorites', user?.id ?? 'anonymous'],
+                (current) => current?.map((item) => (
+                    item.id === fav.id
+                        ? { ...item, metrics: { ...(item.metrics || {}), trades: regeneratedTrades } }
+                        : item
+                ))
+            );
+            openTradesModal(fav, regeneratedTrades, warning);
+        } catch (error) {
+            console.error('Erro ao carregar trades:', error);
+            alert('Erro ao carregar trades da estratégia.');
+        } finally {
+            setLoadingTradesId(null);
+        }
     };
 
     const handleOpenAgent = (fav: FavoriteStrategy) => {
@@ -667,7 +699,10 @@ const FavoritesDashboard: React.FC = () => {
                                         </div>
                                         {isAdmin ? (
                                             <div className="fav-mobile-actions">
-                                                <button type="button" onClick={() => handleViewTrades(fav)} title="View Trades"><List className="h-4 w-4" />Trades</button>
+                                                <button type="button" onClick={() => handleViewTrades(fav)} disabled={loadingTradesId === fav.id} title="View Trades">
+                                                    {loadingTradesId === fav.id ? <span className="fav-spinner" /> : <List className="h-4 w-4" />}
+                                                    Trades
+                                                </button>
                                                 <button type="button" onClick={() => handleViewResults(fav)} disabled={loadingBacktestId === fav.id} title="View Results"><BarChart3 className="h-4 w-4" />Results</button>
                                                 <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" />Trader</button>
                                                 <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
@@ -765,7 +800,9 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td>
                                                     {isAdmin ? (
                                                         <div className="fav-row-actions">
-                                                            <button type="button" onClick={() => handleViewTrades(fav)} title="View Trades"><List className="h-4 w-4" /></button>
+                                                            <button type="button" onClick={() => handleViewTrades(fav)} disabled={loadingTradesId === fav.id} title="View Trades">
+                                                                {loadingTradesId === fav.id ? <span className="fav-spinner" /> : <List className="h-4 w-4" />}
+                                                            </button>
                                                             <button type="button" onClick={() => handleViewResults(fav)} disabled={loadingBacktestId === fav.id} title="View Results">
                                                                 {loadingBacktestId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
                                                             </button>
@@ -941,7 +978,7 @@ const FavoritesDashboard: React.FC = () => {
                     onClose={() => setIsTradesModalOpen(false)}
                     trades={selectedTrades}
                     title={selectedTradesTitle}
-                    subtitle={`Total Trades: ${selectedTrades.length}`}
+                    subtitle={`Total Trades: ${selectedTrades.length}${selectedTradesWarning ? ` · ${selectedTradesWarning}` : ''}`}
                     symbol={selectedTradesSymbol}
                     templateName={selectedTradesTemplate}
                     timeframe={selectedTradesTimeframe}

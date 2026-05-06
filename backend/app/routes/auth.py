@@ -11,7 +11,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app.models import User
-from app.middleware.authMiddleware import is_admin_email
+from app.middleware.authMiddleware import ADMIN_EMAILS, is_admin_email
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,15 @@ PASSWORDLESS_LOGIN_EMAILS = {
         "PASSWORDLESS_LOGIN_EMAILS",
         "o.alan.silva@gmail.com,o2.alan.silva@gmail.com",
     ).split(",")
+    if email.strip()
+}
+BETA_PUBLIC_REGISTRATION_ENABLED = os.getenv(
+    "BETA_PUBLIC_REGISTRATION_ENABLED",
+    "0",
+).strip().lower() in {"1", "true", "yes", "on"}
+BETA_INVITED_EMAILS = {
+    email.strip().lower()
+    for email in os.getenv("BETA_INVITED_EMAILS", "").split(",")
     if email.strip()
 }
 
@@ -133,17 +142,38 @@ def _decode_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
+def _closed_beta_registration_emails() -> set[str]:
+    return {
+        *BETA_INVITED_EMAILS,
+        *PASSWORDLESS_LOGIN_EMAILS,
+        *ADMIN_EMAILS,
+    }
+
+
+def _is_registration_allowed(normalized_email: str) -> bool:
+    if BETA_PUBLIC_REGISTRATION_ENABLED:
+        return True
+    return normalized_email in _closed_beta_registration_emails()
+
+
 # --- Routes ---
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    normalized_email = body.email.lower()
+    if not _is_registration_allowed(normalized_email):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Closed beta access requires invitation",
+        )
+
     # Check duplicate email
-    existing = db.query(User).filter(User.email == body.email.lower()).first()
+    existing = db.query(User).filter(User.email == normalized_email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     user = User(
         id=uuid.uuid4(),
-        email=body.email.lower(),
+        email=normalized_email,
         password_hash=_hash_password(body.password),
         name=body.name,
     )

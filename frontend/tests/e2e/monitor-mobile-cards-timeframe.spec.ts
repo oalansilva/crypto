@@ -39,11 +39,11 @@ const OPPORTUNITIES_PAYLOAD = [
     notes: '',
     tier: 1,
     parameters: { ema_short: 9, ema_long: 21 },
-    is_holding: false,
+    is_holding: true,
     distance_to_next_status: 0.5,
-    next_status_label: 'entry',
-    status: 'WAIT',
-    message: 'Waiting for entry',
+    next_status_label: 'exit',
+    status: 'HOLDING',
+    message: 'Holding position',
     last_price: 1000,
     timestamp: '2025-01-01T00:00:00Z',
     details: {},
@@ -184,11 +184,11 @@ test('monitor card keeps strategy timeframe visible when chart timeframe differs
           notes: '',
           tier: 1,
           parameters: { ema_short: 18, sma_medium: 20, sma_long: 35 },
-          is_holding: false,
+          is_holding: true,
           distance_to_next_status: 0.5,
-          next_status_label: 'entry',
-          status: 'WAIT',
-          message: 'Waiting for entry',
+          next_status_label: 'exit',
+          status: 'HOLDING',
+          message: 'Holding position',
           last_price: 67915.02,
           timestamp: '2025-01-01T00:00:00Z',
           details: {},
@@ -328,7 +328,7 @@ test('monitor renders exited strategies separately from stopped out ones', async
   await expect(page.getByTestId('monitor-card-btc-usdt').getByText(/^EXIT$/)).toBeVisible()
 })
 
-test('monitor keeps mismatched exit signals in WAIT state with explicit context', async ({ page }) => {
+test('monitor keeps backend exit in list and shows mismatched chart context', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -440,7 +440,7 @@ test('monitor keeps mismatched exit signals in WAIT state with explicit context'
 
   const row = page.getByTestId('monitor-row-btc-usdt')
   await expect(row).toBeVisible()
-  await expect(row.getByText('Wait', { exact: true })).toBeVisible()
+  await expect(row.getByText('Exit', { exact: true })).toBeVisible()
   await row.getByRole('button', { name: 'Abrir gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
@@ -775,11 +775,11 @@ test('monitor modal zoom controls adjust visible range without reloading candles
             close: 73420.2,
           },
           indicator_values_candle_time: '2026-04-20T00:00:00+00:00',
-          is_holding: false,
+          is_holding: true,
           distance_to_next_status: 0.44,
-          next_status_label: 'entry',
-          status: 'WAIT',
-          message: 'Waiting for entry',
+          next_status_label: 'exit',
+          status: 'HOLDING',
+          message: 'Holding position',
           last_price: 73420.2,
           timestamp: '2026-04-20T00:00:00Z',
           details: {},

@@ -311,7 +311,11 @@ WORKFLOW_DB_ENABLED=1
 WORKFLOW_DATABASE_URL=postgresql+psycopg2://workflow_registry:password@127.0.0.1:5432/workflow_registry
 CRYPTO_DATABASE_URL=postgresql+psycopg2://crypto_app:password@127.0.0.1:5432/crypto_app
 CRYPTO_WORKFLOW_DATABASE_URL=postgresql+psycopg2://workflow_crypto:password@127.0.0.1:5432/workflow_crypto
+BETA_PUBLIC_REGISTRATION_ENABLED=0
+BETA_INVITED_EMAILS=
 ```
+
+Closed beta access is controlled by existing users. The default invite flow is admin-created users in `/admin/users`. Keep `BETA_PUBLIC_REGISTRATION_ENABLED=0`; add comma-separated emails to `BETA_INVITED_EMAILS` only when explicit self-registration is approved for those addresses.
 
 ### Legacy Migration
 

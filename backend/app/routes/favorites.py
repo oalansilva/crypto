@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
+import asyncio
 import json
 
 from app.database import get_db
@@ -13,6 +14,8 @@ from app.schemas.favorite import (
     FavoriteStrategyResponse,
     FavoriteStrategyUpdate,
 )
+from app.services.combo_optimizer import ComboOptimizer
+from app.services.market_data_providers import resolve_data_source_for_symbol
 from app.services.strategy_secret_visibility import (
     can_view_strategy_secrets,
     redact_favorite_strategy_payload,
@@ -23,6 +26,15 @@ router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
 class ExistsResponse(BaseModel):
     exists: bool
+
+
+class FavoriteTradesResponse(BaseModel):
+    favorite_id: int
+    trades: List[Dict[str, Any]]
+    metrics: Dict[str, Any]
+    metrics_match: bool
+    metrics_deltas: Dict[str, Dict[str, float]]
+    regenerated: bool
 
 
 def _decode_jsonish(value):
@@ -129,6 +141,88 @@ def _upsert_strategy_tier_preference(
     return existing
 
 
+_METRICS_TO_COMPARE = (
+    "total_trades",
+    "win_rate",
+    "total_return",
+    "total_return_pct",
+    "max_drawdown",
+    "profit_factor",
+)
+
+
+def _numeric_metric(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _compare_favorite_metrics(
+    stored_metrics: Dict[str, Any], regenerated_metrics: Dict[str, Any]
+) -> tuple[bool, Dict[str, Dict[str, float]]]:
+    deltas: Dict[str, Dict[str, float]] = {}
+    for key in _METRICS_TO_COMPARE:
+        stored = _numeric_metric(stored_metrics.get(key))
+        regenerated = _numeric_metric(regenerated_metrics.get(key))
+        if stored is None or regenerated is None:
+            continue
+        delta = abs(stored - regenerated)
+        tolerance = max(0.0001, abs(stored) * 0.001)
+        if delta > tolerance:
+            deltas[key] = {
+                "stored": stored,
+                "regenerated": regenerated,
+                "delta": delta,
+            }
+    return len(deltas) == 0, deltas
+
+
+def _fixed_optimization_ranges(parameters: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    ranges: Dict[str, Dict[str, Any]] = {}
+    for key, value in parameters.items():
+        if key in {"data_source", "direction"} or isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            ranges[key] = {"min": value, "max": value, "step": 1}
+        elif isinstance(value, float):
+            ranges[key] = {"min": value, "max": value, "step": 0.0001}
+    return ranges
+
+
+def _legacy_regeneration_end_date(favorite: FavoriteStrategy) -> str | None:
+    if favorite.end_date:
+        return favorite.end_date
+    if favorite.period_type == "all" and favorite.created_at:
+        return favorite.created_at.date().isoformat()
+    return None
+
+
+async def _run_favorite_optimization(favorite: FavoriteStrategy) -> Dict[str, Any]:
+    parameters = favorite.parameters if isinstance(favorite.parameters, dict) else {}
+    direction = str(parameters.get("direction") or "long").lower()
+    if direction not in ("long", "short"):
+        direction = "long"
+    data_source = parameters.get("data_source") or resolve_data_source_for_symbol(
+        favorite.symbol, None
+    )
+    optimizer = ComboOptimizer()
+    return await asyncio.to_thread(
+        optimizer.run_optimization,
+        template_name=favorite.strategy_name,
+        symbol=favorite.symbol,
+        timeframe=favorite.timeframe,
+        data_source=data_source,
+        start_date=favorite.start_date,
+        end_date=_legacy_regeneration_end_date(favorite),
+        custom_ranges=_fixed_optimization_ranges(parameters),
+        deep_backtest=True,
+        direction=direction,
+    )
+
+
 @router.get("/exists", response_model=ExistsResponse)
 def favorite_exists(
     strategy_name: str = Query(..., description="Template name"),
@@ -208,6 +302,54 @@ def list_favorites(
         )
         for row in rows
     ]
+
+
+@router.get("/{favorite_id}/trades", response_model=FavoriteTradesResponse)
+async def get_favorite_trades(
+    favorite_id: int,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    favorite = db.query(FavoriteStrategy).filter(FavoriteStrategy.id == favorite_id).first()
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+
+    include_secrets = can_view_strategy_secrets(db, current_user_id)
+    owns_favorite = str(favorite.user_id) == str(current_user_id)
+    if not owns_favorite or not include_secrets:
+        raise HTTPException(status_code=403, detail="Favorite trades are protected")
+
+    favorite = _normalize_favorite_json_fields(favorite)
+    metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
+    saved_trades = metrics.get("trades")
+    if isinstance(saved_trades, list) and saved_trades:
+        return FavoriteTradesResponse(
+            favorite_id=favorite_id,
+            trades=saved_trades,
+            metrics=metrics,
+            metrics_match=True,
+            metrics_deltas={},
+            regenerated=False,
+        )
+
+    result = await _run_favorite_optimization(favorite)
+    regenerated_trades = result.get("trades") or []
+    regenerated_metrics = result.get("best_metrics") or result.get("metrics") or {}
+    metrics_match, metrics_deltas = _compare_favorite_metrics(metrics, regenerated_metrics)
+
+    if metrics_match:
+        updated_metrics = {**metrics, "trades": regenerated_trades}
+        favorite.metrics = updated_metrics
+        db.commit()
+
+    return FavoriteTradesResponse(
+        favorite_id=favorite_id,
+        trades=regenerated_trades,
+        metrics=regenerated_metrics,
+        metrics_match=metrics_match,
+        metrics_deltas=metrics_deltas,
+        regenerated=True,
+    )
 
 
 @router.post("/", response_model=FavoriteStrategyResponse)
