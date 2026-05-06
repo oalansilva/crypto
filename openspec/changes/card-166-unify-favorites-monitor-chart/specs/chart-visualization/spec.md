@@ -12,3 +12,8 @@ Result chart surfaces used by Favorites analysis SHALL follow the Monitor chart 
 - **WHEN** a result chart renders candle history
 - **THEN** it SHALL expose explicit zoom in, zoom out, and reset controls
 - **AND** zoom actions SHALL update the visible candle range without fetching new candle data
+
+#### Scenario: Result chart supports wheel zoom
+- **WHEN** the user scrolls over the chart area
+- **THEN** the chart SHALL zoom the visible candle range
+- **AND** the page SHALL NOT scroll instead of zooming the chart

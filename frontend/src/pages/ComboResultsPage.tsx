@@ -11,6 +11,7 @@ interface BacktestResult {
     symbol: string
     timeframe: string
     execution_mode?: string
+    is_strategy_protected?: boolean
     parameters: Record<string, any>
     metrics: {
         total_trades: number
@@ -220,6 +221,7 @@ export function ComboResultsPage() {
 
     const direction = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase()
     const isShort = direction === 'short'
+    const isProtectedResult = Boolean(result.is_strategy_protected)
 
     // Usar métricas derivadas quando há trades; senão fallback para backend
     const baseMetrics = result.metrics || (result as any).best_metrics || {
@@ -301,30 +303,36 @@ export function ComboResultsPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                            {Object.entries(result.parameters).map(([key, value]) => {
-                                // Skip internal keys if any
-                                if (key.startsWith('_')) return null;
+                        {isProtectedResult ? (
+                            <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] px-4 py-3 text-sm text-[#eaecef]">
+                                Parâmetros técnicos protegidos para este perfil.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {Object.entries(result.parameters).map(([key, value]) => {
+                                    // Skip internal keys if any
+                                    if (key.startsWith('_')) return null;
 
-                                const isPercentage = key.includes('stop_loss') || key.includes('take_profit') || key.includes('pct');
-                                const formattedValue = isPercentage && typeof value === 'number'
-                                    ? `${(value * 100).toFixed(2)}%`
-                                    : value;
+                                    const isPercentage = key.includes('stop_loss') || key.includes('take_profit') || key.includes('pct');
+                                    const formattedValue = isPercentage && typeof value === 'number'
+                                        ? `${(value * 100).toFixed(2)}%`
+                                        : value;
 
-                                return (
-                                    <div key={key} className="bg-zinc-50 rounded-[16px] p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
-                                        <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
-                                            {key.replace(/_/g, ' ')}
-                                        </p>
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-xl font-bold text-zinc-900 font-mono">
-                                                {formattedValue}
-                                            </span>
+                                    return (
+                                        <div key={key} className="bg-zinc-50 rounded-[16px] p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
+                                            <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
+                                                {key.replace(/_/g, ' ')}
+                                            </p>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-xl font-bold text-zinc-900 font-mono">
+                                                    {formattedValue}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
                     </div>
 
                     {/* CHART VISUALIZATION */}
@@ -336,6 +344,7 @@ export function ComboResultsPage() {
                             strategyName={result.template_name}
                             symbol={result.symbol}
                             timeframe={result.timeframe}
+                            hideTechnicalOverlays={isProtectedResult}
                         />
                     ) : (
                         <div className="glass-strong rounded-[28px] p-8 text-center border border-zinc-200 mb-8">
@@ -609,16 +618,18 @@ export function ComboResultsPage() {
 
 
                     {/* Indicator Info */}
-                    <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
-                        <h2 className="text-xl font-bold text-zinc-900 mb-4 opacity-80">Indicators Used</h2>
-                        <div className="flex flex-wrap gap-2">
-                            {Object.keys(result.indicator_data).map((indicator) => (
-                                <span key={indicator} className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-sm border border-blue-500/20 opacity-70 hover:opacity-100 transition-opacity">
-                                    {indicator}
-                                </span>
-                            ))}
+                    {!isProtectedResult ? (
+                        <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
+                            <h2 className="text-xl font-bold text-zinc-900 mb-4 opacity-80">Indicators Used</h2>
+                            <div className="flex flex-wrap gap-2">
+                                {Object.keys(result.indicator_data).map((indicator) => (
+                                    <span key={indicator} className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-sm border border-blue-500/20 opacity-70 hover:opacity-100 transition-opacity">
+                                        {indicator}
+                                    </span>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    ) : null}
                 </div>
             </main>
 

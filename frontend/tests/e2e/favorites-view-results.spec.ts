@@ -69,7 +69,31 @@ const FAVORITES_PAYLOAD = [
       win_rate: 0.5,
       sharpe_ratio: 0.8,
       max_drawdown: 0.03,
-      trades: [],
+      trades: [
+        {
+          entry_time: '2025-01-01T00:00:00Z',
+          entry_price: 100,
+          exit_time: '2025-01-02T00:00:00Z',
+          exit_price: 101,
+          profit: 0.01,
+          type: 'long',
+        },
+      ],
+      trades_history_cached: true,
+      analysis_candles: Array.from({ length: 40 }, (_, index) => {
+        const open = 100 + index * 0.4;
+        const close = open + (index % 2 === 0 ? 0.8 : -0.3);
+        return {
+          timestamp_utc: new Date(Date.UTC(2025, 0, index + 1)).toISOString(),
+          open,
+          high: Math.max(open, close) + 1,
+          low: Math.min(open, close) - 1,
+          close,
+          volume: 900 + index * 10,
+        };
+      }),
+      analysis_indicator_data: {},
+      analysis_execution_mode: 'favorite_cache',
     },
     notes: 'protected crypto favorite',
     created_at: '2025-01-12T00:00:00Z',
@@ -127,24 +151,18 @@ const BACKTEST_PAYLOAD = {
     },
   ],
   indicator_data: {},
-  candles: [
-    {
-      timestamp_utc: '2025-01-01T00:00:00Z',
-      open: 100,
-      high: 102,
-      low: 99,
-      close: 101,
-      volume: 1000,
-    },
-    {
-      timestamp_utc: '2025-01-02T00:00:00Z',
-      open: 101,
-      high: 103,
-      low: 100,
-      close: 102,
-      volume: 1100,
-    },
-  ],
+  candles: Array.from({ length: 40 }, (_, index) => {
+    const open = 100 + index * 0.7;
+    const close = open + (index % 2 === 0 ? 1 : -0.4);
+    return {
+      timestamp_utc: new Date(Date.UTC(2025, 0, index + 1)).toISOString(),
+      open,
+      high: Math.max(open, close) + 1,
+      low: Math.min(open, close) - 1,
+      close,
+      volume: 1000 + index * 20,
+    };
+  }),
   execution_mode: 'fast_1d',
   direction: 'long',
 };
@@ -153,17 +171,18 @@ function cloneFavoritesPayload() {
   return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
 }
 
-async function setupDeterministicApiMocks(page: any) {
-  await page.addInitScript(() => {
-    window.localStorage.setItem('auth_access_token', 'test-access-token');
-    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token');
-    window.localStorage.setItem('auth_user', JSON.stringify({
+async function setupDeterministicApiMocks(page: any, options?: { user?: Record<string, any> }) {
+  const authUser = options?.user || {
       id: 'admin-user',
       email: 'admin@example.com',
       name: 'Admin User',
       isAdmin: true,
-    }));
-  });
+    };
+  await page.addInitScript((user: Record<string, any>) => {
+    window.localStorage.setItem('auth_access_token', 'test-access-token');
+    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token');
+    window.localStorage.setItem('auth_user', JSON.stringify(user));
+  }, authUser);
 
   await page.route('**/*', (route: any) => {
     const url = new URL(route.request().url());
@@ -355,6 +374,10 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByTestId('result-chart-zoom-out')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-reset')).toBeVisible();
   await expect(page.getByTestId('result-chart-visible-bars')).toContainText('candles');
+  const visibleBarsBeforeWheel = await page.getByTestId('result-chart-visible-bars').textContent();
+  await page.getByTestId('result-main-chart').hover();
+  await page.mouse.wheel(0, -600);
+  await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
   await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Date and time' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Signal' })).toBeVisible();
@@ -411,4 +434,34 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   expect(api.backtestTriggeredCount()).toBe(0);
   expect(api.favoriteTradesTriggeredCount()).toBe(1);
   await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
+});
+
+test('common user opens protected favorite chart without moving averages or MA values', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page, {
+    user: {
+      id: 'common-user',
+      email: 'user@example.com',
+      name: 'Common User',
+      isAdmin: false,
+    },
+  });
+  await page.goto('/favorites');
+
+  const protectedRow = page.locator('.fav-table-shell tbody tr', { hasText: 'ETH/USDT' });
+  const analysis = protectedRow.locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  expect(api.favoriteTradesTriggeredCount()).toBe(0);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('result-main-chart')).toBeVisible();
+  await expect(page.getByTestId('result-chart-overlays')).toHaveCount(0);
+  await expect(page.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0);
+  await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toBeVisible();
+
+  const visibleBarsBeforeWheel = await page.getByTestId('result-chart-visible-bars').textContent();
+  await page.getByTestId('result-main-chart').hover();
+  await page.mouse.wheel(0, -600);
+  await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
 });

@@ -191,6 +191,7 @@ const FavoritesDashboard: React.FC = () => {
         const hasCachedHistory = fav.metrics?.trades_history_cached === true;
         const hasChartContext = Array.isArray(fav.metrics?.analysis_candles)
             && fav.metrics.analysis_candles.length > 0;
+        const isProtectedForCommonUser = isFavoriteProtected(fav) && !isAdmin;
 
         if (savedTrades && (hasChartContext || hasCachedHistory || summaryTradeCount <= 0)) {
             return {
@@ -203,6 +204,16 @@ const FavoritesDashboard: React.FC = () => {
                 executionMode: typeof fav.metrics?.analysis_execution_mode === 'string'
                     ? fav.metrics.analysis_execution_mode
                     : 'favorite_cache',
+            };
+        }
+
+        if (isProtectedForCommonUser) {
+            return {
+                trades: savedTrades || [],
+                metrics: fav.metrics || {},
+                candles: Array.isArray(fav.metrics?.analysis_candles) ? fav.metrics.analysis_candles : [],
+                indicatorData: {},
+                executionMode: 'favorite_protected_cache',
             };
         }
 
@@ -277,24 +288,21 @@ const FavoritesDashboard: React.FC = () => {
             )),
         };
         return {
-            template_name: fav.strategy_name,
+            template_name: isFavoriteProtected(fav) ? getFavoriteStrategyLabel(fav) : fav.strategy_name,
             symbol: fav.symbol,
             timeframe: fav.timeframe,
-            parameters: fav.parameters || {},
+            parameters: isFavoriteProtected(fav) && !isAdmin ? {} : fav.parameters || {},
             metrics,
             trades,
-            indicator_data: recovered.indicatorData || {},
+            indicator_data: isFavoriteProtected(fav) && !isAdmin ? {} : recovered.indicatorData || {},
             candles: recovered.candles || [],
             execution_mode: recovered.executionMode,
             direction: (fav.parameters?.direction as string) || 'long',
+            is_strategy_protected: isFavoriteProtected(fav) && !isAdmin,
         };
     };
 
     const handleViewAnalysis = async (fav: FavoriteStrategy) => {
-        if (isFavoriteProtected(fav)) {
-            alert('Análise detalhada disponível apenas para admin.');
-            return;
-        }
         setLoadingAnalysisId(fav.id);
         try {
             const recovered = await loadTradesForAnalysis(fav);
@@ -731,16 +739,18 @@ const FavoritesDashboard: React.FC = () => {
                                             <span><b>Trades</b>{getTradesCount(fav)}</span>
                                             <span className={totalReturn.positive ? 'positive' : 'negative'}><b>Return</b>{totalReturn.text}</span>
                                         </div>
-                                        {isAdmin ? (
-                                            <div className="fav-mobile-actions">
-                                                <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa">
-                                                    {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
-                                                    Analisar
-                                                </button>
-                                                <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" />Trader</button>
-                                                <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
-                                            </div>
-                                        ) : null}
+                                        <div className="fav-mobile-actions">
+                                            <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa">
+                                                {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
+                                                Analisar
+                                            </button>
+                                            {isAdmin ? (
+                                                <>
+                                                    <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" />Trader</button>
+                                                    <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
+                                                </>
+                                            ) : null}
+                                        </div>
                                     </article>
                                 );
                             })
@@ -831,17 +841,17 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td className="metric-cell negative">{formatPct(m.max_loss)}</td>
                                                 <td className="metric-cell">{formatNum(m.avg_atr)}</td>
                                                 <td>
-                                                    {isAdmin ? (
-                                                        <div className="fav-row-actions">
-                                                            <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa">
-                                                                {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
-                                                            </button>
-                                                            <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" /></button>
-                                                            <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="muted-cell">-</span>
-                                                    )}
+                                                    <div className="fav-row-actions">
+                                                        <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa">
+                                                            {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
+                                                        </button>
+                                                        {isAdmin ? (
+                                                            <>
+                                                                <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" /></button>
+                                                                <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
+                                                            </>
+                                                        ) : null}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

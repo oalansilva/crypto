@@ -13,3 +13,9 @@ The Favorites analysis result view SHALL use the same operational chart presenta
 - **WHEN** an admin user opens favorite analysis and no candles are available
 - **THEN** the result view SHALL keep an empty chart state
 - **AND** the rest of the analysis summary and trades SHALL remain accessible
+
+#### Scenario: Common user opens protected favorite analysis
+- **WHEN** a common user opens analysis for a protected favorite with candle history
+- **THEN** the result view SHALL render the chart/map
+- **AND** the chart SHALL NOT draw moving average overlays
+- **AND** the result view SHALL NOT show moving average values or protected strategy parameters

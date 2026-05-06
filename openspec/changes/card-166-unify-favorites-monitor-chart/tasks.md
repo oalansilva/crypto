@@ -15,6 +15,13 @@
 - [x] 3.1 Extend Favorites E2E coverage for Monitor-aligned chart controls and BTC/multi MA chart visibility.
 - [x] 3.2 Run OpenSpec validation, frontend build, lint, and focused E2E.
 
+## 4. Homologation Fixes - Wheel Zoom and Common User Chart
+
+- [x] 4.1 Make mouse-wheel scrolling zoom the result chart reliably.
+- [x] 4.2 Allow common users to open protected favorite analysis when saved chart history is available.
+- [x] 4.3 Hide moving average lines, moving average values, indicator list, and protected parameters from common users.
+- [x] 4.4 Extend E2E coverage for wheel zoom and protected common-user chart redaction.
+
 ## Notes
 
 - Use project skills when applicable: `crypto-frontend` for UI and Playwright validation, OpenSpec skills for artifacts/apply/verify.

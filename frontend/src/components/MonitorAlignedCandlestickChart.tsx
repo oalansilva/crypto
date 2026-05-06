@@ -42,6 +42,7 @@ interface MonitorAlignedCandlestickChartProps {
     strategyName: string
     symbol?: string
     timeframe?: string
+    hideTechnicalOverlays?: boolean
 }
 
 const LOGICAL_RANGE_PADDING = 8
@@ -140,7 +141,9 @@ export function MonitorAlignedCandlestickChart({
     strategyName,
     symbol,
     timeframe,
+    hideTechnicalOverlays = false,
 }: MonitorAlignedCandlestickChartProps) {
+    const shellRef = React.useRef<HTMLDivElement>(null)
     const chartRef = React.useRef<HTMLDivElement>(null)
     const chartApiRef = React.useRef<IChartApi | null>(null)
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null)
@@ -225,11 +228,32 @@ export function MonitorAlignedCandlestickChart({
         syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
     }, [syncVisibleBars])
 
+    const handleWheelZoom = React.useCallback((deltaY: number) => {
+        if (candlestickData.length === 0 || Math.abs(deltaY) < 3) return
+        applyZoom(deltaY < 0 ? 'in' : 'out')
+    }, [applyZoom, candlestickData.length])
+
     const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
         if (candlestickData.length === 0 || Math.abs(event.deltaY) < 3) return
         event.preventDefault()
-        applyZoom(event.deltaY < 0 ? 'in' : 'out')
+        event.stopPropagation()
+        handleWheelZoom(event.deltaY)
     }
+
+    React.useEffect(() => {
+        const shell = shellRef.current
+        if (!shell) return undefined
+
+        const onWheel = (event: WheelEvent) => {
+            if (candlestickData.length === 0 || Math.abs(event.deltaY) < 3) return
+            event.preventDefault()
+            event.stopPropagation()
+            handleWheelZoom(event.deltaY)
+        }
+
+        shell.addEventListener('wheel', onWheel, { passive: false, capture: true })
+        return () => shell.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions)
+    }, [candlestickData.length, handleWheelZoom])
 
     React.useEffect(() => {
         if (!chartRef.current || candlestickData.length === 0) return undefined
@@ -315,9 +339,9 @@ export function MonitorAlignedCandlestickChart({
             time: toUtcTimestamp(marker.time),
         })) as any)
         volumeSeries.setData(volumeData)
-        emaShortSeries.setData(emaShortData)
-        smaMediumSeries.setData(smaMediumData)
-        smaLongSeries.setData(smaLongData)
+        emaShortSeries.setData(hideTechnicalOverlays ? [] : emaShortData)
+        smaMediumSeries.setData(hideTechnicalOverlays ? [] : smaMediumData)
+        smaLongSeries.setData(hideTechnicalOverlays ? [] : smaLongData)
 
         chart.timeScale().fitContent()
         const onVisibleRangeChange = (range: LogicalRange | null) => syncVisibleBars(range)
@@ -339,7 +363,7 @@ export function MonitorAlignedCandlestickChart({
             if (chartApiRef.current === chart) chartApiRef.current = null
             chart.remove()
         }
-    }, [candlestickData, emaShortData, markers, smaLongData, smaMediumData, syncVisibleBars, tooltipData, volumeData])
+    }, [candlestickData, emaShortData, hideTechnicalOverlays, markers, smaLongData, smaMediumData, syncVisibleBars, tooltipData, volumeData])
 
     return (
         <section className="rounded-lg border border-[#2b3139] bg-[#0b0e11] text-[#eaecef]" data-testid="monitor-aligned-result-chart">
@@ -400,6 +424,7 @@ export function MonitorAlignedCandlestickChart({
 
             <div className="grid gap-3 p-3 xl:grid-cols-[minmax(0,1fr)_260px]">
                 <div
+                    ref={shellRef}
                     className="relative min-h-[420px] rounded-lg border border-[#2b3139] bg-[#0b0e11] p-2"
                     onWheel={handleWheel}
                     data-testid="result-chart-shell"
@@ -429,21 +454,23 @@ export function MonitorAlignedCandlestickChart({
                         </div>
                     </dl>
 
-                    <div className="mt-5 space-y-2 text-sm">
-                        <p className="text-xs font-semibold uppercase text-[#929aa5]">Overlays</p>
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-[#fcd535]">EMA {periods.emaShort}</span>
-                            <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.emaShort)}</span>
+                    {!hideTechnicalOverlays ? (
+                        <div className="mt-5 space-y-2 text-sm" data-testid="result-chart-overlays">
+                            <p className="text-xs font-semibold uppercase text-[#929aa5]">Overlays</p>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[#fcd535]">EMA {periods.emaShort}</span>
+                                <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.emaShort)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[#2dbdb6]">SMA {periods.smaMedium}</span>
+                                <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.smaMedium)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[#3b82f6]">SMA {periods.smaLong}</span>
+                                <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.smaLong)}</span>
+                            </div>
                         </div>
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-[#2dbdb6]">SMA {periods.smaMedium}</span>
-                            <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.smaMedium)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-[#3b82f6]">SMA {periods.smaLong}</span>
-                            <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.smaLong)}</span>
-                        </div>
-                    </div>
+                    ) : null}
                 </aside>
             </div>
         </section>
