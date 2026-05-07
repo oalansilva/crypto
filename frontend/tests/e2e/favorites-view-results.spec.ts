@@ -42,6 +42,7 @@ const FAVORITES_PAYLOAD = [
       total_return: 0.2,
       total_return_pct: 20,
       total_trades: 4,
+      trades: [],
       win_rate: 0.5,
       sharpe_ratio: 1.2,
       max_drawdown: 0.08,
@@ -68,11 +69,66 @@ const FAVORITES_PAYLOAD = [
       win_rate: 0.5,
       sharpe_ratio: 0.8,
       max_drawdown: 0.03,
-      trades: [],
+      trades: [
+        {
+          entry_time: '2025-01-01T00:00:00Z',
+          entry_price: 100,
+          exit_time: '2025-01-02T00:00:00Z',
+          exit_price: 101,
+          profit: 0.01,
+          type: 'long',
+        },
+      ],
+      trades_history_cached: true,
+      analysis_candles: Array.from({ length: 40 }, (_, index) => {
+        const open = 100 + index * 0.4;
+        const close = open + (index % 2 === 0 ? 0.8 : -0.3);
+        return {
+          timestamp_utc: new Date(Date.UTC(2025, 0, index + 1)).toISOString(),
+          open,
+          high: Math.max(open, close) + 1,
+          low: Math.min(open, close) - 1,
+          close,
+          volume: 900 + index * 10,
+        };
+      }),
+      analysis_indicator_data: {},
+      analysis_execution_mode: 'favorite_cache',
     },
     notes: 'protected crypto favorite',
     created_at: '2025-01-12T00:00:00Z',
     tier: 3,
+    start_date: null,
+    end_date: null,
+  },
+  {
+    id: 4,
+    name: 'BTC Legacy BTC/USDT 4h',
+    symbol: 'BTC/USDT',
+    timeframe: '4h',
+    strategy_name: 'multi_ma_crossover',
+    parameters: { ema_short: 9, sma_medium: 21, sma_long: 50, direction: 'long' },
+    metrics: {
+      total_return: 0.2,
+      total_return_pct: 20,
+      total_trades: 1,
+      trades: [
+        {
+          entry_time: '2025-01-01T00:00:00Z',
+          entry_price: 100,
+          exit_time: '2025-01-02T00:00:00Z',
+          exit_price: 101,
+          profit: 0.01,
+          type: 'long',
+        },
+      ],
+      win_rate: 1,
+      sharpe_ratio: 1.2,
+      max_drawdown: 0.08,
+    },
+    notes: 'legacy cached trades without chart context',
+    created_at: '2025-01-13T00:00:00Z',
+    tier: 2,
     start_date: null,
     end_date: null,
   },
@@ -95,39 +151,158 @@ const BACKTEST_PAYLOAD = {
     },
   ],
   indicator_data: {},
-  candles: [
-    {
-      timestamp_utc: '2025-01-01T00:00:00Z',
-      open: 100,
-      high: 102,
-      low: 99,
-      close: 101,
-      volume: 1000,
-    },
-    {
-      timestamp_utc: '2025-01-02T00:00:00Z',
-      open: 101,
-      high: 103,
-      low: 100,
-      close: 102,
-      volume: 1100,
-    },
-  ],
+  candles: Array.from({ length: 40 }, (_, index) => {
+    const open = 100 + index * 0.7;
+    const close = open + (index % 2 === 0 ? 1 : -0.4);
+    return {
+      timestamp_utc: new Date(Date.UTC(2025, 0, index + 1)).toISOString(),
+      open,
+      high: Math.max(open, close) + 1,
+      low: Math.min(open, close) - 1,
+      close,
+      volume: 1000 + index * 20,
+    };
+  }),
   execution_mode: 'fast_1d',
   direction: 'long',
 };
 
-async function setupDeterministicApiMocks(page: any) {
-  await page.addInitScript(() => {
-    window.localStorage.setItem('auth_access_token', 'test-access-token');
-    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token');
-    window.localStorage.setItem('auth_user', JSON.stringify({
+const CURRENT_MARKET_CANDLES = Array.from({ length: 60 }, (_, index) => {
+  const open = 200 + index * 1.1;
+  const close = open + (index % 2 === 0 ? 1.5 : -0.6);
+  return {
+    timestamp_utc: new Date(Date.UTC(2026, 4, index + 1)).toISOString(),
+    open,
+    high: Math.max(open, close) + 1.25,
+    low: Math.min(open, close) - 1.25,
+    close,
+    volume: 2000 + index * 30,
+  };
+});
+
+const MONITOR_OPPORTUNITIES_PAYLOAD = [
+  {
+    id: 2,
+    symbol: 'BTC/USDT',
+    asset_type: 'crypto',
+    timeframe: '4h',
+    template_name: 'ema_rsi',
+    name: 'BTC Swing BTC/USDT 4h',
+    tier: 2,
+    parameters: { ema_short: 12, ema_long: 26, direction: 'long' },
+    is_holding: false,
+    distance_to_next_status: 1.2,
+    next_status_label: 'entry',
+    signal_history: [
+      {
+        timestamp: '2025-01-01T00:00:00.000Z',
+        signal: 1,
+        type: 'entry',
+        reason: 'entry',
+        price: 100,
+      },
+      {
+        timestamp: '2025-01-02T00:00:00.000Z',
+        signal: -1,
+        type: 'exit',
+        reason: 'exit_logic',
+        price: 101,
+      },
+      {
+        timestamp: '2026-05-10T00:00:00.000Z',
+        signal: 1,
+        type: 'entry',
+        reason: 'entry',
+        price: 210,
+      },
+      {
+        timestamp: '2026-05-20T00:00:00.000Z',
+        signal: -1,
+        type: 'exit',
+        reason: 'exit_logic',
+        price: 225,
+      },
+    ],
+    entry_price: null,
+    stop_price: null,
+    distance_to_stop_pct: null,
+    status: 'WAIT',
+    badge: 'neutral',
+    message: 'Waiting',
+    last_price: 230,
+    timestamp: '2026-05-29T00:00:00.000Z',
+    details: {},
+  },
+  {
+    id: 3,
+    symbol: 'ETH/USDT',
+    asset_type: 'crypto',
+    timeframe: '1h',
+    template_name: 'Estratégia protegida',
+    name: 'Protected BTC Setup ETH/USDT 1h',
+    tier: 3,
+    parameters: {},
+    is_holding: false,
+    distance_to_next_status: 0.8,
+    next_status_label: 'entry',
+    signal_history: [
+      {
+        timestamp: '2025-01-01T00:00:00.000Z',
+        signal: 1,
+        type: 'entry',
+        reason: 'entry',
+        price: 100,
+      },
+      {
+        timestamp: '2025-01-02T00:00:00.000Z',
+        signal: -1,
+        type: 'exit',
+        reason: 'exit',
+        price: 101,
+      },
+      {
+        timestamp: '2026-05-12T00:00:00.000Z',
+        signal: 1,
+        type: 'entry',
+        reason: 'entry',
+        price: 214,
+      },
+      {
+        timestamp: '2026-05-22T00:00:00.000Z',
+        signal: -1,
+        type: 'exit',
+        reason: 'exit',
+        price: 228,
+      },
+    ],
+    entry_price: null,
+    stop_price: null,
+    distance_to_stop_pct: null,
+    status: 'WAIT',
+    badge: 'neutral',
+    message: 'Waiting',
+    last_price: 230,
+    timestamp: '2026-05-29T00:00:00.000Z',
+    details: {},
+  },
+];
+
+function cloneFavoritesPayload() {
+  return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
+}
+
+async function setupDeterministicApiMocks(page: any, options?: { user?: Record<string, any> }) {
+  const authUser = options?.user || {
       id: 'admin-user',
       email: 'admin@example.com',
       name: 'Admin User',
       isAdmin: true,
-    }));
-  });
+    };
+  await page.addInitScript((user: Record<string, any>) => {
+    window.localStorage.setItem('auth_access_token', 'test-access-token');
+    window.localStorage.setItem('auth_refresh_token', 'test-refresh-token');
+    window.localStorage.setItem('auth_user', JSON.stringify(user));
+  }, authUser);
 
   await page.route('**/*', (route: any) => {
     const url = new URL(route.request().url());
@@ -137,21 +312,25 @@ async function setupDeterministicApiMocks(page: any) {
     return route.abort('blockedbyclient');
   });
 
+  let serverFavoritesPayload = cloneFavoritesPayload();
+
   await page.route('**/api/favorites/', (route: any) => {
     if (route.request().method() === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(FAVORITES_PAYLOAD),
+        body: JSON.stringify(serverFavoritesPayload),
       });
     }
     return route.continue();
   });
 
-  let backtestTriggered = false;
-  let favoriteTradesTriggered = false;
+  let backtestTriggeredCount = 0;
+  let favoriteTradesTriggeredCount = 0;
+  let marketCandlesTriggeredCount = 0;
+  let opportunitiesTriggeredCount = 0;
   await page.route('**/api/combos/backtest', (route: any) => {
-    backtestTriggered = true;
+    backtestTriggeredCount += 1;
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -159,25 +338,72 @@ async function setupDeterministicApiMocks(page: any) {
     });
   });
 
-  await page.route('**/api/favorites/2/trades', (route: any) => {
-    favoriteTradesTriggered = true;
+  await page.route(/.*\/api\/favorites\/(2|4)\/trades$/, (route: any) => {
+    favoriteTradesTriggeredCount += 1;
+    const url = new URL(route.request().url());
+    const favoriteId = Number(url.pathname.match(/\/favorites\/(\d+)\/trades$/)?.[1] ?? 2);
+    const simulatesLegacyMismatch = favoriteId === 2;
+    const cachedMetrics = {
+      ...BACKTEST_PAYLOAD.metrics,
+      trades: BACKTEST_PAYLOAD.trades,
+      trades_history_cached: true,
+      trades_metrics_match: !simulatesLegacyMismatch,
+      trades_metrics_deltas: simulatesLegacyMismatch ? { total_return_pct: { saved: 20, regenerated: 1 } } : {},
+      analysis_candles: BACKTEST_PAYLOAD.candles,
+      analysis_indicator_data: BACKTEST_PAYLOAD.indicator_data,
+      analysis_execution_mode: BACKTEST_PAYLOAD.execution_mode,
+    };
+    serverFavoritesPayload = serverFavoritesPayload.map((fav: any) => (
+      fav.id === favoriteId ? { ...fav, metrics: cachedMetrics } : fav
+    ));
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        favorite_id: 2,
+        favorite_id: favoriteId,
         trades: BACKTEST_PAYLOAD.trades,
-        metrics: BACKTEST_PAYLOAD.metrics,
-        metrics_match: true,
-        metrics_deltas: {},
+        metrics: cachedMetrics,
+        metrics_match: !simulatesLegacyMismatch,
+        metrics_deltas: cachedMetrics.trades_metrics_deltas,
         regenerated: true,
+        candles: BACKTEST_PAYLOAD.candles,
+        indicator_data: BACKTEST_PAYLOAD.indicator_data,
+        execution_mode: BACKTEST_PAYLOAD.execution_mode,
       }),
     });
   });
 
+  await page.route('**/api/market/candles**', (route: any) => {
+    marketCandlesTriggeredCount += 1;
+    const url = new URL(route.request().url());
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        symbol: url.searchParams.get('symbol'),
+        timeframe: url.searchParams.get('timeframe'),
+        count: CURRENT_MARKET_CANDLES.length,
+        candles: CURRENT_MARKET_CANDLES,
+      }),
+    });
+  });
+
+  await page.route('**/api/opportunities/**', (route: any) => {
+    opportunitiesTriggeredCount += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MONITOR_OPPORTUNITIES_PAYLOAD),
+    });
+  });
+
   return {
-    wasBacktestTriggered: () => backtestTriggered,
-    wasFavoriteTradesTriggered: () => favoriteTradesTriggered,
+    wasBacktestTriggered: () => backtestTriggeredCount > 0,
+    wasFavoriteTradesTriggered: () => favoriteTradesTriggeredCount > 0,
+    backtestTriggeredCount: () => backtestTriggeredCount,
+    favoriteTradesTriggeredCount: () => favoriteTradesTriggeredCount,
+    marketCandlesTriggeredCount: () => marketCandlesTriggeredCount,
+    opportunitiesTriggeredCount: () => opportunitiesTriggeredCount,
   };
 }
 
@@ -205,7 +431,7 @@ test('favorites hides stocks and removes Asset Type dropdown in crypto-only MVP'
   await page.goto('/favorites');
 
   const nvdaRow = page.locator('tbody tr', { hasText: 'NVDA' });
-  const btcRow = page.locator('tbody tr', { hasText: 'BTC/USDT' });
+  const btcRow = page.locator('tbody tr', { hasText: 'BTC Swing' });
   await expect(page.getByLabel('Asset Type')).toHaveCount(0);
   await expect(nvdaRow).toHaveCount(0);
   await expect(btcRow).toHaveCount(1);
@@ -242,32 +468,202 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
   await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
 });
 
-test('favorites -> View Results navigates to results page', async ({ page }) => {
+test('favorites exposes one analysis CTA instead of separate trades/results actions', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const viewResults = page
-    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
-    .locator('button[title="View Results"]');
-  await expect(viewResults).toBeVisible();
-  await viewResults.click();
+  const btcRow = page.locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' });
+  await expect(btcRow.locator('button[title="View Trades"]')).toHaveCount(0);
+  await expect(btcRow.locator('button[title="View Results"]')).toHaveCount(0);
 
-  expect(api.wasBacktestTriggered()).toBe(true);
+  const analysis = btcRow.locator('button[title="Ver análise completa"]');
+  await expect(analysis).toHaveCount(1);
+  await analysis.click();
+
+  expect(api.wasBacktestTriggered()).toBe(false);
+  expect(api.wasFavoriteTradesTriggered()).toBe(true);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('No results found')).toHaveCount(0);
+  await expect(page.getByText('List of trades')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
 });
 
-test('favorites -> View Trades regenerates missing trades', async ({ page }) => {
+test('favorites mobile card exposes one analysis CTA', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const btcCard = page.locator('.fav-mobile-card', { hasText: 'BTC Swing' });
+  await expect(btcCard).toBeVisible();
+  await expect(btcCard.locator('button[title="View Trades"]')).toHaveCount(0);
+  await expect(btcCard.locator('button[title="View Results"]')).toHaveCount(0);
+  await expect(btcCard.locator('button[title="Ver análise completa"]')).toHaveCount(1);
+  await expect(btcCard.getByRole('button', { name: /Analisar/i })).toBeVisible();
+});
+
+test('favorites analysis regenerates missing trades into result view', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
-  const viewTrades = page
+  const analysis = page
     .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
-    .locator('button[title="View Trades"]');
-  await expect(viewTrades).toBeVisible();
-  await viewTrades.click();
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
 
   expect(api.wasFavoriteTradesTriggered()).toBe(true);
-  await expect(page.getByRole('heading', { name: /ema rsi - BTC\/USDT 4h/i })).toBeVisible();
-  await expect(page.getByText('01/01/2025, 00:00:00')).toBeVisible();
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
+  await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
+  await expect(page.getByText('List of trades')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
+  await expect(page.getByTestId('result-main-chart')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 60 candles')).toBeVisible();
+  await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
+  await expect(page.getByTestId('result-chart-zoom-out')).toBeVisible();
+  await expect(page.getByTestId('result-chart-zoom-reset')).toBeVisible();
+  await expect(page.getByTestId('result-chart-visible-bars')).toContainText('candles');
+  const visibleBarsBeforeWheel = await page.getByTestId('result-chart-visible-bars').textContent();
+  await page.getByTestId('result-main-chart').hover();
+  await page.mouse.wheel(0, -600);
+  await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
+  await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Date and time' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Signal' })).toBeVisible();
+  await expect(page.getByText('May 10, 2026').first()).toBeVisible();
+  await expect(page.getByText('May 20, 2026').first()).toBeVisible();
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+  await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
+
+  const tradeTableBodyBackground = await page.locator('table tbody').evaluate((node) => {
+    return window.getComputedStyle(node).backgroundColor;
+  });
+  expect(tradeTableBodyBackground).toBe('rgb(30, 35, 41)');
+
+  await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
+  await expect(page).toHaveURL(/\/favorites$/);
+  await expect(page.getByRole('heading', { name: 'Estratégias favoritas' })).toBeVisible();
+
+  const cachedAnalysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
+    .locator('button[title="Ver análise completa"]');
+  await expect(cachedAnalysis).toBeVisible();
+  await cachedAnalysis.click();
+
+  expect(api.backtestTriggeredCount()).toBe(0);
+  expect(api.favoriteTradesTriggeredCount()).toBe(1);
+  expect(api.marketCandlesTriggeredCount()).toBeGreaterThanOrEqual(1);
+  expect(api.opportunitiesTriggeredCount()).toBeGreaterThanOrEqual(2);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByText('May 10, 2026').first()).toBeVisible();
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+});
+
+test('favorites analysis backfills chart context for legacy saved BTC multi MA trades', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const analysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Legacy' })
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  expect(api.backtestTriggeredCount()).toBe(0);
+  expect(api.favoriteTradesTriggeredCount()).toBe(1);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
+  await expect(page.getByText('Chart data not available for this run.')).toHaveCount(0);
+  await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 60 candles')).toBeVisible();
+
+  await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
+  await expect(page).toHaveURL(/\/favorites$/);
+
+  const cachedAnalysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Legacy' })
+    .locator('button[title="Ver análise completa"]');
+  await cachedAnalysis.click();
+
+  expect(api.backtestTriggeredCount()).toBe(0);
+  expect(api.favoriteTradesTriggeredCount()).toBe(1);
+  await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
+});
+
+test('common user opens protected favorite chart without moving averages or MA values', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page, {
+    user: {
+      id: 'common-user',
+      email: 'user@example.com',
+      name: 'Common User',
+      isAdmin: false,
+    },
+  });
+  await page.goto('/favorites');
+
+  const protectedRow = page.locator('.fav-table-shell tbody tr', { hasText: 'ETH/USDT' });
+  const analysis = protectedRow.locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  expect(api.favoriteTradesTriggeredCount()).toBe(0);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
+  await expect(page.getByTestId('result-main-chart')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
+  await expect(page.getByText('May 12, 2026').first()).toBeVisible();
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+  await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
+  await expect(page.getByTestId('result-chart-overlays')).toHaveCount(0);
+  await expect(page.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0);
+  await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toBeVisible();
+
+  const visibleBarsBeforeWheel = await page.getByTestId('result-chart-visible-bars').textContent();
+  await page.getByTestId('result-main-chart').hover();
+  await page.mouse.wheel(0, -600);
+  await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
+});
+
+test('favorites analysis prefers current market candles over stale saved analysis candles', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const analysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'Protected BTC Setup' })
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  expect(api.marketCandlesTriggeredCount()).toBe(1);
+  expect(api.opportunitiesTriggeredCount()).toBe(1);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 40 candles')).toHaveCount(0);
+  await expect(page.getByText('May 12, 2026').first()).toBeVisible();
+  await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
+});
+
+test('favorites analysis preserves saved trades and adds monitor signal history without duplicates', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const analysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' })
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  expect(api.wasFavoriteTradesTriggered()).toBe(true);
+  expect(api.opportunitiesTriggeredCount()).toBe(1);
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
+  await expect(page.getByText('Jan 1, 2025')).toHaveCount(1);
+  await expect(page.getByText('Jan 2, 2025')).toHaveCount(1);
+  await expect(page.getByText('May 10, 2026').first()).toBeVisible();
+  await expect(page.getByText('May 20, 2026').first()).toBeVisible();
 });

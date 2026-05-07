@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Search, List, Activity, BarChart3, MessageCircle, Star } from 'lucide-react';
-import TradesViewModal from '../components/TradesViewModal';
 import { AgentChatModal } from '../components/AgentChatModal';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
@@ -28,7 +27,134 @@ interface FavoriteStrategy {
     strategy_display_name?: string | null;
 }
 
+interface MonitorSignalHistoryItem {
+    timestamp?: string | null;
+    signal?: number | null;
+    type?: string | null;
+    reason?: string | null;
+    price?: number | null;
+}
+
+interface MonitorOpportunity {
+    id?: number;
+    symbol?: string;
+    timeframe?: string;
+    template_name?: string;
+    name?: string;
+    signal_history?: MonitorSignalHistoryItem[] | null;
+}
+
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
+
+const CURRENT_CHART_CANDLE_LIMIT = 300;
+
+const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
+    const candles = fav.metrics?.analysis_candles;
+    return Array.isArray(candles) ? candles : [];
+};
+
+const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
+
+const calculateSignalProfit = (
+    entryPrice: number | null | undefined,
+    exitPrice: number | null | undefined,
+    direction: string,
+): number | undefined => {
+    const entry = Number(entryPrice);
+    const exit = Number(exitPrice);
+    if (!Number.isFinite(entry) || !Number.isFinite(exit) || entry <= 0) return undefined;
+    return direction === 'short' ? (entry - exit) / entry : (exit - entry) / entry;
+};
+
+const buildTradesFromSignalHistory = (
+    history: MonitorSignalHistoryItem[] | null | undefined,
+    direction: string,
+): any[] | null => {
+    if (!Array.isArray(history) || history.length === 0) return null;
+
+    const sortedHistory = history
+        .filter((item) => item && item.timestamp && (item.type === 'entry' || item.type === 'exit'))
+        .sort((left, right) => Date.parse(String(left.timestamp)) - Date.parse(String(right.timestamp)));
+
+    const trades: any[] = [];
+    let activeEntry: MonitorSignalHistoryItem | null = null;
+
+    sortedHistory.forEach((item) => {
+        if (item.type === 'entry') {
+            activeEntry = item;
+            return;
+        }
+
+        if (item.type === 'exit' && activeEntry) {
+            const entryPrice = Number(activeEntry.price);
+            const exitPrice = Number(item.price);
+            trades.push({
+                entry_time: activeEntry.timestamp,
+                entry_price: Number.isFinite(entryPrice) ? entryPrice : 0,
+                exit_time: item.timestamp,
+                exit_price: Number.isFinite(exitPrice) ? exitPrice : undefined,
+                profit: calculateSignalProfit(entryPrice, exitPrice, direction),
+                type: direction === 'short' ? 'short' : 'long',
+                signal_type: item.reason === 'stop_loss' ? 'Stop' : 'Monitor',
+                entry_signal_type: direction === 'short' ? 'Vender' : 'Comprar',
+                exit_reason: item.reason || 'monitor_signal',
+                source: 'monitor_signal_history',
+            });
+            activeEntry = null;
+        }
+    });
+
+    if (activeEntry) {
+        const entryPrice = Number(activeEntry.price);
+        trades.push({
+            entry_time: activeEntry.timestamp,
+            entry_price: Number.isFinite(entryPrice) ? entryPrice : 0,
+            type: direction === 'short' ? 'short' : 'long',
+            entry_signal_type: direction === 'short' ? 'Vender' : 'Comprar',
+            source: 'monitor_signal_history',
+        });
+    }
+
+    return trades.length > 0 ? trades : null;
+};
+
+const normalizeTradeTime = (value: unknown): string => {
+    if (!value) return '';
+    const timestamp = Date.parse(String(value));
+    return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : String(value);
+};
+
+const normalizeTradeNumber = (value: unknown): string => {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue.toFixed(8) : '';
+};
+
+const getTradeDedupeKey = (trade: any): string => [
+    normalizeTradeTime(trade?.entry_time),
+    normalizeTradeTime(trade?.exit_time),
+    normalizeTradeNumber(trade?.entry_price),
+    normalizeTradeNumber(trade?.exit_price),
+    normalizeText(trade?.type),
+].join('|');
+
+const mergeFavoriteAndMonitorTrades = (
+    favoriteTrades: any[],
+    monitorTrades: any[] | null | undefined,
+): any[] => {
+    const merged = Array.isArray(favoriteTrades) ? [...favoriteTrades] : [];
+    if (!Array.isArray(monitorTrades) || monitorTrades.length === 0) return merged;
+
+    const seen = new Set(merged.map(getTradeDedupeKey));
+    monitorTrades.forEach((trade) => {
+        const key = getTradeDedupeKey(trade);
+        if (!seen.has(key)) {
+            merged.push(trade);
+            seen.add(key);
+        }
+    });
+
+    return merged;
+};
 
 const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -40,18 +166,7 @@ const FavoritesDashboard: React.FC = () => {
     const [isCompareOpen, setIsCompareOpen] = useState(false);
     const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
 
-    // New state for Trades Modal
-    const [isTradesModalOpen, setIsTradesModalOpen] = useState(false);
-    const [selectedTrades, setSelectedTrades] = useState<any[]>([]);
-    const [selectedTradesTitle, setSelectedTradesTitle] = useState('');
-    const [selectedTradesSymbol, setSelectedTradesSymbol] = useState('');
-    const [selectedTradesTemplate, setSelectedTradesTemplate] = useState('');
-    const [selectedTradesTimeframe, setSelectedTradesTimeframe] = useState('');
-    const [selectedTradesWarning, setSelectedTradesWarning] = useState('');
-    
-    // State for loading backtest
-    const [loadingBacktestId, setLoadingBacktestId] = useState<number | null>(null);
-    const [loadingTradesId, setLoadingTradesId] = useState<number | null>(null);
+    const [loadingAnalysisId, setLoadingAnalysisId] = useState<number | null>(null);
 
     // Agent chat modal
     const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
@@ -185,46 +300,230 @@ const FavoritesDashboard: React.FC = () => {
 
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
 
-    const handleViewResults = async (fav: FavoriteStrategy) => {
-        if (isFavoriteProtected(fav)) {
-            alert('Resultados detalhados disponíveis apenas para admin.');
-            return;
-        }
-        setLoadingBacktestId(fav.id);
-        try {
-            // Executar backtest com os parâmetros do favorito
-            const response = await authFetch(`${API_BASE_URL}/combos/backtest`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_name: fav.strategy_name,
-                    symbol: fav.symbol,
-                    timeframe: fav.timeframe,
-                    parameters: fav.parameters,
-                    direction: (fav.parameters?.direction as string) || 'long',
-                    stop_loss: fav.parameters.stop_loss || null,
-                    start_date: null, // Usar todos os dados disponíveis
-                    end_date: null,
-                    deep_backtest: true,
-                    initial_capital: 100
-                })
-            });
+    const getSavedTrades = (fav: FavoriteStrategy): any[] | null => {
+        const savedTrades = fav.metrics?.trades;
+        return Array.isArray(savedTrades) ? savedTrades : null;
+    };
 
+    const getSummaryTradeCount = (fav: FavoriteStrategy): number => {
+        const summaryTradeCount = Number(
+            fav.metrics?.total_trades ?? (typeof fav.metrics?.trades === 'number' ? fav.metrics.trades : 0)
+        );
+        return Number.isFinite(summaryTradeCount) ? summaryTradeCount : 0;
+    };
+
+    const loadCurrentChartCandles = async (fav: FavoriteStrategy): Promise<any[]> => {
+        const url = new URL(`${API_BASE_URL}/market/candles`, window.location.origin);
+        url.searchParams.set('symbol', fav.symbol);
+        url.searchParams.set('timeframe', fav.timeframe);
+        url.searchParams.set('limit', String(CURRENT_CHART_CANDLE_LIMIT));
+
+        try {
+            const response = await authFetch(url.toString());
+            const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
-                const error = await response.json();
-                alert(`Erro ao executar backtest: ${error.detail || 'Erro desconhecido'}`);
-                return;
+                throw new Error(String(payload?.detail || `Failed to load candles (${response.status})`));
+            }
+            const candles = Array.isArray(payload?.candles) ? payload.candles : [];
+            return candles.length > 0 ? candles : getSavedAnalysisCandles(fav);
+        } catch (error) {
+            console.warn(`Falling back to saved favorite candles for ${fav.symbol} ${fav.timeframe}`, error);
+            return getSavedAnalysisCandles(fav);
+        }
+    };
+
+    const findMatchingOpportunity = (
+        fav: FavoriteStrategy,
+        opportunities: MonitorOpportunity[],
+    ): MonitorOpportunity | null => {
+        const byId = opportunities.find((item) => Number(item.id) === Number(fav.id));
+        if (byId) return byId;
+
+        const favoriteSymbol = normalizeText(fav.symbol);
+        const favoriteTimeframe = normalizeText(fav.timeframe);
+        const favoriteStrategy = normalizeText(fav.strategy_name);
+        return opportunities.find((item) => (
+            normalizeText(item.symbol) === favoriteSymbol
+            && normalizeText(item.timeframe) === favoriteTimeframe
+            && (
+                normalizeText(item.template_name) === favoriteStrategy
+                || normalizeText(item.name).includes(favoriteSymbol)
+                || isFavoriteProtected(fav)
+            )
+        )) || null;
+    };
+
+    const loadMonitorSyncedTrades = async (fav: FavoriteStrategy): Promise<any[] | null> => {
+        const url = new URL(`${API_BASE_URL}/opportunities/`, window.location.origin);
+        url.searchParams.set('refresh', 'true');
+        url.searchParams.set('tier', 'all');
+
+        try {
+            const response = await authFetch(url.toString());
+            const payload = await response.json().catch(() => []);
+            if (!response.ok || !Array.isArray(payload)) {
+                throw new Error(`Failed to sync monitor signals (${response.status})`);
             }
 
-            const result = await response.json();
-            
-            // Navegar para a tela de resultados com os dados
-            navigate('/combo/results', { state: { result, isOptimization: false } });
+            const opportunity = findMatchingOpportunity(fav, payload);
+            const direction = String(fav.parameters?.direction || 'long').toLowerCase();
+            return buildTradesFromSignalHistory(opportunity?.signal_history, direction);
         } catch (error) {
-            console.error('Erro ao executar backtest:', error);
-            alert('Erro ao executar backtest. Verifique o console para mais detalhes.');
+            console.warn(`Falling back to saved favorite trades for ${fav.symbol} ${fav.timeframe}`, error);
+            return null;
+        }
+    };
+
+    const loadTradesForAnalysis = async (fav: FavoriteStrategy) => {
+        const savedTrades = getSavedTrades(fav);
+        const summaryTradeCount = getSummaryTradeCount(fav);
+        const hasCachedHistory = fav.metrics?.trades_history_cached === true;
+        const hasChartContext = Array.isArray(fav.metrics?.analysis_candles)
+            && fav.metrics.analysis_candles.length > 0;
+        const isProtectedForCommonUser = isFavoriteProtected(fav) && !isAdmin;
+
+        if (savedTrades && (hasChartContext || hasCachedHistory || summaryTradeCount <= 0)) {
+            return {
+                trades: savedTrades,
+                metrics: fav.metrics || {},
+                candles: getSavedAnalysisCandles(fav),
+                indicatorData: fav.metrics?.analysis_indicator_data && typeof fav.metrics.analysis_indicator_data === 'object'
+                    ? fav.metrics.analysis_indicator_data
+                    : {},
+                executionMode: typeof fav.metrics?.analysis_execution_mode === 'string'
+                    ? fav.metrics.analysis_execution_mode
+                    : 'favorite_cache',
+            };
+        }
+
+        if (isProtectedForCommonUser) {
+            return {
+                trades: savedTrades || [],
+                metrics: fav.metrics || {},
+                candles: getSavedAnalysisCandles(fav),
+                indicatorData: {},
+                executionMode: 'favorite_protected_cache',
+            };
+        }
+
+        if (summaryTradeCount <= 0) {
+            return {
+                trades: [],
+                metrics: fav.metrics || {},
+                candles: [],
+                indicatorData: {},
+                executionMode: 'favorite_cache',
+            };
+        }
+
+        const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}/trades`);
+        if (!res.ok) {
+            throw new Error(`Failed to load trades (${res.status})`);
+        }
+
+        const payload = await res.json();
+        const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
+        const nextMetrics = payload.metrics && typeof payload.metrics === 'object'
+            ? payload.metrics
+            : {
+                ...(fav.metrics || {}),
+                trades: regeneratedTrades,
+                trades_history_cached: true,
+                trades_metrics_match: payload.metrics_match !== false,
+                trades_metrics_deltas: payload.metrics_deltas || {},
+            };
+
+        queryClient.setQueryData<FavoriteStrategy[]>(
+            ['favorites', user?.id ?? 'anonymous'],
+            (current) => current?.map((item) => (
+                item.id === fav.id
+                    ? { ...item, metrics: nextMetrics }
+                    : item
+            ))
+        );
+
+        return {
+            trades: regeneratedTrades,
+            metrics: nextMetrics,
+            candles: Array.isArray(payload.candles) ? payload.candles : [],
+            indicatorData: payload.indicator_data && typeof payload.indicator_data === 'object'
+                ? payload.indicator_data
+                : {},
+            executionMode: typeof payload.execution_mode === 'string'
+                ? payload.execution_mode
+                : 'favorite_regenerated',
+        };
+    };
+
+    const buildFavoriteAnalysisResult = (
+        fav: FavoriteStrategy,
+        recovered: Awaited<ReturnType<typeof loadTradesForAnalysis>>
+    ) => {
+        const sourceMetrics = recovered.metrics || fav.metrics || {};
+        const trades = Array.isArray(recovered.trades) ? recovered.trades : [];
+        const totalReturn = Number(
+            sourceMetrics.total_return ?? (
+                sourceMetrics.total_return_pct != null ? Number(sourceMetrics.total_return_pct) / 100 : 0
+            )
+        );
+        const totalTrades = Number(sourceMetrics.total_trades ?? trades.length);
+        const metrics = {
+            ...sourceMetrics,
+            total_trades: Number.isFinite(totalTrades) ? totalTrades : trades.length,
+            total_return: Number.isFinite(totalReturn) ? totalReturn : 0,
+            win_rate: Number(sourceMetrics.win_rate ?? 0),
+            avg_profit: Number(sourceMetrics.avg_profit ?? (
+                totalTrades > 0 && Number.isFinite(totalReturn) ? totalReturn / totalTrades : 0
+            )),
+        };
+        return {
+            template_name: isFavoriteProtected(fav) ? getFavoriteStrategyLabel(fav) : fav.strategy_name,
+            symbol: fav.symbol,
+            timeframe: fav.timeframe,
+            parameters: isFavoriteProtected(fav) && !isAdmin ? {} : fav.parameters || {},
+            metrics,
+            trades,
+            indicator_data: isFavoriteProtected(fav) && !isAdmin ? {} : recovered.indicatorData || {},
+            candles: recovered.candles || [],
+            execution_mode: recovered.executionMode,
+            direction: (fav.parameters?.direction as string) || 'long',
+            is_strategy_protected: isFavoriteProtected(fav) && !isAdmin,
+        };
+    };
+
+    const handleViewAnalysis = async (fav: FavoriteStrategy) => {
+        setLoadingAnalysisId(fav.id);
+        try {
+            const [recovered, currentCandles, monitorSyncedTrades] = await Promise.all([
+                loadTradesForAnalysis(fav),
+                loadCurrentChartCandles(fav),
+                loadMonitorSyncedTrades(fav),
+            ]);
+            const chartCandles = currentCandles.length > 0 ? currentCandles : recovered.candles;
+            const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
+            analysisResult.candles = chartCandles || [];
+            if (monitorSyncedTrades && monitorSyncedTrades.length > 0) {
+                const mergedTrades = mergeFavoriteAndMonitorTrades(analysisResult.trades, monitorSyncedTrades);
+                analysisResult.trades = mergedTrades;
+                analysisResult.metrics = {
+                    ...analysisResult.metrics,
+                    total_trades: mergedTrades.filter((trade: any) => trade.exit_time && trade.exit_price).length,
+                };
+                analysisResult.execution_mode = 'favorite_monitor_sync_all_trades';
+            }
+
+            navigate('/combo/results', {
+                state: {
+                    result: analysisResult,
+                    isOptimization: false,
+                    returnTo: '/favorites',
+                }
+            });
+        } catch (error) {
+            console.error('Erro ao abrir análise do favorito:', error);
+            alert('Erro ao abrir análise do favorito. Verifique o console para mais detalhes.');
         } finally {
-            setLoadingBacktestId(null);
+            setLoadingAnalysisId(null);
         }
     };
 
@@ -243,59 +542,6 @@ const FavoritesDashboard: React.FC = () => {
                 return;
             }
             setSelectedIds([...selectedIds, id]);
-        }
-    };
-
-    const openTradesModal = (fav: FavoriteStrategy, trades: any[], warning = '') => {
-        setSelectedTrades(trades);
-        setSelectedTradesTitle(`${getFavoriteStrategyLabel(fav)} - ${fav.symbol} ${fav.timeframe}`);
-        setSelectedTradesSymbol(fav.symbol);
-        setSelectedTradesTemplate(getFavoriteStrategyLabel(fav));
-        setSelectedTradesTimeframe(fav.timeframe);
-        setSelectedTradesWarning(warning);
-        setIsTradesModalOpen(true);
-    };
-
-    const handleViewTrades = async (fav: FavoriteStrategy) => {
-        if (isFavoriteProtected(fav)) {
-            openTradesModal(fav, []);
-            return;
-        }
-        const trades = fav.metrics?.trades || [];
-        if (Array.isArray(trades) && trades.length > 0) {
-            openTradesModal(fav, trades);
-            return;
-        }
-        if (getTradesCount(fav) <= 0) {
-            alert('No trades saved for this strategy.');
-            return;
-        }
-
-        setLoadingTradesId(fav.id);
-        try {
-            const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}/trades`);
-            if (!res.ok) {
-                throw new Error(`Failed to load trades (${res.status})`);
-            }
-            const payload = await res.json();
-            const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
-            const warning = payload.metrics_match === false
-                ? 'Histórico reconstruído pode divergir do resumo salvo.'
-                : '';
-            queryClient.setQueryData<FavoriteStrategy[]>(
-                ['favorites', user?.id ?? 'anonymous'],
-                (current) => current?.map((item) => (
-                    item.id === fav.id
-                        ? { ...item, metrics: { ...(item.metrics || {}), trades: regeneratedTrades } }
-                        : item
-                ))
-            );
-            openTradesModal(fav, regeneratedTrades, warning);
-        } catch (error) {
-            console.error('Erro ao carregar trades:', error);
-            alert('Erro ao carregar trades da estratégia.');
-        } finally {
-            setLoadingTradesId(null);
         }
     };
 
@@ -697,17 +943,18 @@ const FavoritesDashboard: React.FC = () => {
                                             <span><b>Trades</b>{getTradesCount(fav)}</span>
                                             <span className={totalReturn.positive ? 'positive' : 'negative'}><b>Return</b>{totalReturn.text}</span>
                                         </div>
-                                        {isAdmin ? (
-                                            <div className="fav-mobile-actions">
-                                                <button type="button" onClick={() => handleViewTrades(fav)} disabled={loadingTradesId === fav.id} title="View Trades">
-                                                    {loadingTradesId === fav.id ? <span className="fav-spinner" /> : <List className="h-4 w-4" />}
-                                                    Trades
-                                                </button>
-                                                <button type="button" onClick={() => handleViewResults(fav)} disabled={loadingBacktestId === fav.id} title="View Results"><BarChart3 className="h-4 w-4" />Results</button>
-                                                <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" />Trader</button>
-                                                <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
-                                            </div>
-                                        ) : null}
+                                        <div className="fav-mobile-actions">
+                                            <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa">
+                                                {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
+                                                Analisar
+                                            </button>
+                                            {isAdmin ? (
+                                                <>
+                                                    <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" />Trader</button>
+                                                    <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
+                                                </>
+                                            ) : null}
+                                        </div>
                                     </article>
                                 );
                             })
@@ -798,20 +1045,17 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td className="metric-cell negative">{formatPct(m.max_loss)}</td>
                                                 <td className="metric-cell">{formatNum(m.avg_atr)}</td>
                                                 <td>
-                                                    {isAdmin ? (
-                                                        <div className="fav-row-actions">
-                                                            <button type="button" onClick={() => handleViewTrades(fav)} disabled={loadingTradesId === fav.id} title="View Trades">
-                                                                {loadingTradesId === fav.id ? <span className="fav-spinner" /> : <List className="h-4 w-4" />}
-                                                            </button>
-                                                            <button type="button" onClick={() => handleViewResults(fav)} disabled={loadingBacktestId === fav.id} title="View Results">
-                                                                {loadingBacktestId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
-                                                            </button>
-                                                            <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" /></button>
-                                                            <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="muted-cell">-</span>
-                                                    )}
+                                                    <div className="fav-row-actions">
+                                                        <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa">
+                                                            {loadingAnalysisId === fav.id ? <span className="fav-spinner" /> : <BarChart3 className="h-4 w-4" />}
+                                                        </button>
+                                                        {isAdmin ? (
+                                                            <>
+                                                                <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" /></button>
+                                                                <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
+                                                            </>
+                                                        ) : null}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -972,17 +1216,6 @@ const FavoritesDashboard: React.FC = () => {
                             </div>
                         </div>
                     )}
-
-                <TradesViewModal
-                    isOpen={isTradesModalOpen}
-                    onClose={() => setIsTradesModalOpen(false)}
-                    trades={selectedTrades}
-                    title={selectedTradesTitle}
-                    subtitle={`Total Trades: ${selectedTrades.length}${selectedTradesWarning ? ` · ${selectedTradesWarning}` : ''}`}
-                    symbol={selectedTradesSymbol}
-                    templateName={selectedTradesTemplate}
-                    timeframe={selectedTradesTimeframe}
-                />
 
                 <AgentChatModal
                     open={isAgentModalOpen}

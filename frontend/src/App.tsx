@@ -77,7 +77,7 @@ function App() {
           <Route path="/combo/edit/:templateName" element={<ProtectedRoute requireAdmin><ComboEditPage /></ProtectedRoute>} />
           <Route path="/combo/configure" element={<ProtectedRoute requireAdmin><ComboConfigurePage /></ProtectedRoute>} />
           <Route path="/combo/optimize" element={<ProtectedRoute requireAdmin><ComboOptimizePage /></ProtectedRoute>} />
-          <Route path="/combo/results" element={<ProtectedRoute requireAdmin><ComboResultsPage /></ProtectedRoute>} />
+          <Route path="/combo/results" element={<ComboResultsPage />} />
           <Route path="/openspec" element={<OpenSpecListPage />} />
           {/* Catch-all to support nested specs like /openspec/backend/spec */}
           <Route path="/openspec/*" element={<OpenSpecDetailPage />} />

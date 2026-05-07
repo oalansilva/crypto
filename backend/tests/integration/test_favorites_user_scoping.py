@@ -275,6 +275,9 @@ def test_favorite_trades_returns_saved_trades_without_regeneration(tmp_path: Pat
                     "metrics": {
                         "total_trades": 1,
                         "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+                        "analysis_candles": [
+                            {"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}
+                        ],
                     },
                 }
             ),
@@ -289,6 +292,68 @@ def test_favorite_trades_returns_saved_trades_without_regeneration(tmp_path: Pat
     assert response.regenerated is False
     assert response.metrics_match is True
     assert response.trades == [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}]
+
+
+def test_favorite_trades_backfills_legacy_saved_trades_without_chart_context(
+    tmp_path: Path, monkeypatch
+):
+    SessionLocal = _session_factory(tmp_path)
+    monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+    calls = {"count": 0}
+
+    async def fake_run_favorite_optimization(_favorite):
+        calls["count"] += 1
+        return {
+            "best_metrics": {
+                "total_trades": 1,
+                "win_rate": 1,
+                "total_return": 0.01,
+                "total_return_pct": 1,
+                "max_drawdown": 0,
+                "profit_factor": 999,
+            },
+            "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+            "candles": [{"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}],
+            "indicator_data": {"sma_medium": [99]},
+            "execution_mode": "fast_1d",
+        }
+
+    monkeypatch.setattr(favorites, "_run_favorite_optimization", fake_run_favorite_optimization)
+
+    with SessionLocal() as db:
+        created = favorites.create_favorite(
+            favorites.FavoriteStrategyCreate(
+                **{
+                    **_favorite_payload("Legacy saved trades").model_dump(),
+                    "metrics": {
+                        "total_trades": 1,
+                        "win_rate": 1,
+                        "total_return": 0.01,
+                        "total_return_pct": 1,
+                        "max_drawdown": 0,
+                        "profit_factor": 999,
+                        "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+                    },
+                }
+            ),
+            current_user_id="user-a",
+            db=db,
+        )
+
+        response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id="user-a", db=db)
+        )
+        cached_response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id="user-a", db=db)
+        )
+        stored = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one().metrics
+
+    assert response.regenerated is True
+    assert cached_response.regenerated is False
+    assert calls["count"] == 1
+    assert response.candles == [{"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}]
+    assert cached_response.candles == response.candles
+    assert stored["analysis_candles"] == response.candles
 
 
 def test_favorite_trades_regenerates_and_persists_missing_trades(tmp_path: Path, monkeypatch):
@@ -309,6 +374,9 @@ def test_favorite_trades_regenerates_and_persists_missing_trades(tmp_path: Path,
                 "profit_factor": 999,
             },
             "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+            "candles": [{"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}],
+            "indicator_data": {"ema_short": [100]},
+            "execution_mode": "fast_1d",
         }
 
     monkeypatch.setattr(favorites, "_run_favorite_optimization", fake_run_favorite_optimization)
@@ -341,14 +409,24 @@ def test_favorite_trades_regenerates_and_persists_missing_trades(tmp_path: Path,
     assert response.metrics_match is True
     assert response.metrics_deltas == {}
     assert response.trades == [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}]
+    assert response.candles == [{"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}]
+    assert response.indicator_data == {"ema_short": [100]}
     assert stored["trades"] == response.trades
+    assert stored["trades_history_cached"] is True
+    assert stored["trades_metrics_match"] is True
+    assert stored["analysis_candles"] == response.candles
+    assert stored["analysis_indicator_data"] == response.indicator_data
 
 
-def test_favorite_trades_reports_metric_mismatch(tmp_path: Path, monkeypatch):
+def test_favorite_trades_accepts_reconstructed_metrics_and_keeps_investigation_deltas(
+    tmp_path: Path, monkeypatch
+):
     SessionLocal = _session_factory(tmp_path)
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+    calls = {"count": 0}
 
     async def fake_run_favorite_optimization(_favorite):
+        calls["count"] += 1
         return {
             "best_metrics": {
                 "total_trades": 2,
@@ -359,6 +437,8 @@ def test_favorite_trades_reports_metric_mismatch(tmp_path: Path, monkeypatch):
                 "profit_factor": 1,
             },
             "trades": [{"entry_time": "2026-01-01T00:00:00Z", "profit": 0.01}],
+            "candles": [{"timestamp_utc": "2026-01-01T00:00:00Z", "close": 100}],
+            "indicator_data": {"sma_medium": [99]},
         }
 
     monkeypatch.setattr(favorites, "_run_favorite_optimization", fake_run_favorite_optimization)
@@ -372,9 +452,29 @@ def test_favorite_trades_reports_metric_mismatch(tmp_path: Path, monkeypatch):
         response = asyncio.run(
             favorites.get_favorite_trades(created.id, current_user_id="user-a", db=db)
         )
+        cached_response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id="user-a", db=db)
+        )
+        stored = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one().metrics
 
-    assert response.metrics_match is False
+    assert response.metrics_match is True
     assert "total_return_pct" in response.metrics_deltas
+    assert response.regenerated is True
+    assert cached_response.regenerated is False
+    assert cached_response.metrics_match is True
+    assert cached_response.metrics_deltas == response.metrics_deltas
+    assert cached_response.trades == response.trades
+    assert calls["count"] == 1
+    assert stored["trades"] == response.trades
+    assert stored["trades_history_cached"] is True
+    assert stored["trades_metrics_match"] is True
+    assert stored["trades_reconciled_from_mismatch"] is True
+    assert stored["trades_metrics_deltas"] == response.metrics_deltas
+    assert stored["trades_previous_summary"]["total_return_pct"] == 12.3
+    assert stored["trades_reconciled_summary"]["total_return_pct"] == 2
+    assert stored["total_trades"] == 2
+    assert stored["total_return_pct"] == 2
+    assert isinstance(stored["trades_reconciled_at"], str)
 
 
 def test_favorite_trade_regeneration_uses_fixed_optimize_ranges():

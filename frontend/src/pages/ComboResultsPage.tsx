@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Star, Download } from 'lucide-react'
-import { CandlestickChart } from '../components/CandlestickChart'
+import { TrendingUp, TrendingDown, Activity, DollarSign, Target, BarChart3, Download, ArrowLeft } from 'lucide-react'
+import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
 import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
@@ -11,6 +11,7 @@ interface BacktestResult {
     symbol: string
     timeframe: string
     execution_mode?: string
+    is_strategy_protected?: boolean
     parameters: Record<string, any>
     metrics: {
         total_trades: number
@@ -46,8 +47,8 @@ export function ComboResultsPage() {
     const location = useLocation()
     const navigate = useNavigate()
     const result = location.state?.result as BacktestResult
+    const returnTo = location.state?.returnTo as string | undefined
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [saveSuccess, setSaveSuccess] = useState(false)
 
     const handleSaveFavorite = async (data: any) => {
         console.log('📤 handleSaveFavorite chamado com:', data)
@@ -69,13 +70,22 @@ export function ComboResultsPage() {
 
             const result = await response.json()
             console.log('✅ Favorito salvo com sucesso:', result)
-
-            setSaveSuccess(true)
-            setTimeout(() => setSaveSuccess(false), 3000)
         } catch (err) {
             console.error('❌ Erro ao salvar favorito:', err)
             throw err
         }
+    }
+
+    const handleBack = () => {
+        if (returnTo) {
+            navigate(returnTo)
+            return
+        }
+        if (window.history.length > 1) {
+            navigate(-1)
+            return
+        }
+        navigate('/combo/select')
     }
 
     const handleExportTrades = async () => {
@@ -167,7 +177,7 @@ export function ComboResultsPage() {
         }
     }
 
-    const trades = result?.trades ?? []
+    const trades = useMemo(() => result?.trades ?? [], [result?.trades])
 
     // Métricas derivadas dos MESMOS trades exibidos na tabela (fechados, ordenados)
     // Garante que Win Rate e Total Return batam com a List of trades / Cumulative P&L
@@ -211,6 +221,7 @@ export function ComboResultsPage() {
 
     const direction = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase()
     const isShort = direction === 'short'
+    const isProtectedResult = Boolean(result.is_strategy_protected)
 
     // Usar métricas derivadas quando há trades; senão fallback para backend
     const baseMetrics = result.metrics || (result as any).best_metrics || {
@@ -264,34 +275,21 @@ export function ComboResultsPage() {
         return list
     })
 
-    // Prepare Indicators
-    const indicators = Object.entries(result.indicator_data).map(([name, values], index) => {
-        // Filter out None values and create data points
-        const data = values.map((val, i) => {
-            if (val === null || val === undefined) return null
-            // Check if we have a matching candle timestamp
-            if (!result.candles || !result.candles[i]) return null
-
-            return {
-                time: result.candles[i].timestamp_utc,
-                value: val
-            }
-        }).filter(d => d !== null) as { time: string; value: number }[]
-
-        const colors = ['#fbbf24', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316']
-
-        return {
-            name: name,
-            data: data,
-            color: colors[index % colors.length]
-        }
-    })
-
     return (
         <div className="app-page combo-page relative overflow-hidden">
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
                 <div className="max-w-7xl mx-auto space-y-8">
+                    <div className="flex items-center justify-between gap-3">
+                        <button
+                            type="button"
+                            onClick={handleBack}
+                            className="inline-flex items-center gap-2 rounded-md border border-[#2b3139] bg-[#1e2329] px-4 py-2 text-sm font-semibold text-[#eaecef] transition-colors hover:bg-[#2b3139]"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            {returnTo === '/favorites' ? 'Voltar aos favoritos' : 'Voltar'}
+                        </button>
+                    </div>
 
                     {/* Configuration Info */}
                     <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
@@ -305,40 +303,48 @@ export function ComboResultsPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                            {Object.entries(result.parameters).map(([key, value]) => {
-                                // Skip internal keys if any
-                                if (key.startsWith('_')) return null;
+                        {isProtectedResult ? (
+                            <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] px-4 py-3 text-sm text-[#eaecef]">
+                                Parâmetros técnicos protegidos para este perfil.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {Object.entries(result.parameters).map(([key, value]) => {
+                                    // Skip internal keys if any
+                                    if (key.startsWith('_')) return null;
 
-                                const isPercentage = key.includes('stop_loss') || key.includes('take_profit') || key.includes('pct');
-                                const formattedValue = isPercentage && typeof value === 'number'
-                                    ? `${(value * 100).toFixed(2)}%`
-                                    : value;
+                                    const isPercentage = key.includes('stop_loss') || key.includes('take_profit') || key.includes('pct');
+                                    const formattedValue = isPercentage && typeof value === 'number'
+                                        ? `${(value * 100).toFixed(2)}%`
+                                        : value;
 
-                                return (
-                                    <div key={key} className="bg-zinc-50 rounded-[16px] p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
-                                        <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
-                                            {key.replace(/_/g, ' ')}
-                                        </p>
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-xl font-bold text-zinc-900 font-mono">
-                                                {formattedValue}
-                                            </span>
+                                    return (
+                                        <div key={key} className="bg-zinc-50 rounded-[16px] p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
+                                            <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
+                                                {key.replace(/_/g, ' ')}
+                                            </p>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-xl font-bold text-zinc-900 font-mono">
+                                                    {formattedValue}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
                     </div>
 
                     {/* CHART VISUALIZATION */}
                     {(result.candles && result.candles.length > 0) ? (
-                        <CandlestickChart
+                        <MonitorAlignedCandlestickChart
                             candles={result.candles}
                             markers={markers as any}
-                            indicators={indicators}
+                            parameters={result.parameters}
                             strategyName={result.template_name}
-                            color="#3b82f6"
+                            symbol={result.symbol}
+                            timeframe={result.timeframe}
+                            hideTechnicalOverlays={isProtectedResult}
                         />
                     ) : (
                         <div className="glass-strong rounded-[28px] p-8 text-center border border-zinc-200 mb-8">
@@ -401,57 +407,57 @@ export function ComboResultsPage() {
                     </div>
 
                     {/* Trades Table - TradingView Style */}
-                    <div className="bg-zinc-900 rounded-[24px] overflow-hidden border border-zinc-200 shadow-sm">
-                        <div className="p-4 border-b border-zinc-200 flex items-center justify-between bg-zinc-50">
+                    <div className="overflow-hidden rounded-lg border border-[#2b3139] bg-[#1e2329]">
+                        <div className="flex items-center justify-between border-b border-[#2b3139] bg-[#181a20] p-4">
                             <div className="flex items-center gap-4">
-                                <button className="px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-900 border border-zinc-300 rounded-[12px] hover:bg-zinc-50">
+                                <button className="rounded-md border border-[#2b3139] bg-[#1e2329] px-3 py-1.5 text-sm font-medium text-[#929aa5] transition-colors hover:bg-[#2b3139]">
                                     Metrics
                                 </button>
-                                <button className="px-3 py-1.5 text-sm font-medium text-white bg-zinc-900 border border-zinc-300 rounded-[12px] border-b-2 border-b-blue-600">
+                                <button className="rounded-md border border-[#fcd535] bg-[#fcd535] px-3 py-1.5 text-sm font-semibold text-[#181a20]">
                                     List of trades
                                 </button>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-[12px]">
+                                <button className="rounded-md p-2 text-[#929aa5] transition-colors hover:bg-[#2b3139] hover:text-[#eaecef]">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                                     </svg>
                                 </button>
-                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-[12px]">
+                                <button className="rounded-md p-2 text-[#929aa5] transition-colors hover:bg-[#2b3139] hover:text-[#eaecef]">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                     </svg>
                                 </button>
-                                <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-[12px]">
+                                <button className="rounded-md p-2 text-[#929aa5] transition-colors hover:bg-[#2b3139] hover:text-[#eaecef]">
                                     <Download className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={handleExportTrades}
-                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-[12px] text-sm font-medium transition-colors"
+                                    className="rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#181a20] transition-colors hover:bg-[#f0b90b]"
                                 >
                                     Exportar para Excel
                                 </button>
                             </div>
                         </div>
-                        <div className="overflow-x-auto bg-zinc-900">
+                        <div className="overflow-x-auto bg-[#1e2329]">
                             <table className="w-full text-sm">
-                                <thead className="bg-zinc-50 border-b border-zinc-200">
+                                <thead className="border-b border-[#2b3139] bg-[#181a20]">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">
-                                            Trade # <span className="text-zinc-400">↓</span>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">
+                                            Trade # <span className="text-[#707a8a]">↓</span>
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Type</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Date and time</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Signal</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Price</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Position size</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Net P&L</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Favorable excursion</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Adverse excursion</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">Cumulative P&L</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Type</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Date and time</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Signal</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Price</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Position size</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Net P&L</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Favorable excursion</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Adverse excursion</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#929aa5]">Cumulative P&L</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-[#2b3139] bg-[#1e2329]">
                                     {(() => {
                                         // Preparar trades com cálculos
                                         const initialCapital = 100;
@@ -552,7 +558,7 @@ export function ComboResultsPage() {
                                             
                                             // Formatar USD e %
                                             const formatPnl = (usd: number, pct: number, isPositive: boolean) => {
-                                                const color = isPositive ? 'text-green-600' : 'text-red-600';
+                                                const color = isPositive ? 'text-[#0ecb81]' : 'text-[#f6465d]';
                                                 return (
                                                     <div>
                                                         <span className={color}>{isPositive ? '+' : ''}{usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
@@ -563,42 +569,42 @@ export function ComboResultsPage() {
                                             
                                             return [
                                                 // Linha de Entry
-                                                <tr key={`${trade.tradeNum}-entry`} className="hover:bg-zinc-50">
-                                                    <td rowSpan={2} className="px-4 py-3 text-center border-r border-zinc-200">
-                                                        <div className="font-medium text-white">{trade.tradeNum}</div>
-                                                        <div className={`text-xs ${isShort ? 'text-orange-600' : 'text-zinc-500'}`}>{isShort ? 'Short' : 'Long'}</div>
+                                                <tr key={`${trade.tradeNum}-entry`} className="bg-[#1e2329] transition-colors hover:bg-[#2b3139]">
+                                                    <td rowSpan={2} className="border-r border-[#2b3139] px-4 py-3 text-center">
+                                                        <div className="font-medium text-[#eaecef]">{trade.tradeNum}</div>
+                                                        <div className={`text-xs ${isShort ? 'text-[#f0b90b]' : 'text-[#929aa5]'}`}>{isShort ? 'Short' : 'Long'}</div>
                                                     </td>
-                                                    <td className="px-4 py-2 text-zinc-700">Entry</td>
-                                                    <td className="px-4 py-2 text-zinc-700">{formatDate(trade.entry_time)}</td>
-                                                    <td className="px-4 py-2 text-zinc-700">{isShort ? 'Vender' : 'Comprar'}</td>
-                                                    <td className="px-4 py-2 text-white font-medium">{formatPrice(trade.entry_price)}</td>
-                                                    <td className="px-4 py-2 text-zinc-700">
+                                                    <td className="px-4 py-2 text-[#eaecef]">Entry</td>
+                                                    <td className="px-4 py-2 text-[#eaecef]">{formatDate(trade.entry_time)}</td>
+                                                    <td className="px-4 py-2 text-[#eaecef]">{isShort ? 'Vender' : 'Comprar'}</td>
+                                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.entry_price)}</td>
+                                                    <td className="px-4 py-2 text-[#eaecef]">
                                                         <div>{trade.positionSize.toFixed(2)}</div>
-                                                        <div className="text-xs text-zinc-500">{(trade.positionValueUSD / 1000).toFixed(2)} K USD</div>
+                                                        <div className="text-xs text-[#929aa5]">{(trade.positionValueUSD / 1000).toFixed(2)} K USD</div>
                                                     </td>
                                                     <td colSpan={4} className="px-4 py-2"></td>
                                                 </tr>,
                                                 // Linha de Exit
-                                                <tr key={`${trade.tradeNum}-exit`} className="hover:bg-zinc-50 border-b border-zinc-200">
-                                                    <td className="px-4 py-2 text-zinc-700">Exit</td>
-                                                    <td className="px-4 py-2 text-zinc-700">{formatDate(trade.exit_time!)}</td>
-                                                    <td className="px-4 py-2 text-zinc-700">{trade.signalType}</td>
-                                                    <td className="px-4 py-2 text-white font-medium">{formatPrice(trade.exit_price!)}</td>
+                                                <tr key={`${trade.tradeNum}-exit`} className="border-b border-[#2b3139] bg-[#1e2329] transition-colors hover:bg-[#2b3139]">
+                                                    <td className="px-4 py-2 text-[#eaecef]">Exit</td>
+                                                    <td className="px-4 py-2 text-[#eaecef]">{formatDate(trade.exit_time!)}</td>
+                                                    <td className="px-4 py-2 text-[#eaecef]">{trade.signalType}</td>
+                                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.exit_price!)}</td>
                                                     <td className="px-4 py-2"></td>
                                                     <td className="px-4 py-2">
                                                         {formatPnl(trade.netPnlUSD, trade.netPnlPct, trade.netPnlUSD >= 0)}
                                                     </td>
-                                                    <td className="px-4 py-2 text-zinc-700">
+                                                    <td className="px-4 py-2 text-[#eaecef]">
                                                         <div>{trade.favorableExcursionUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
-                                                        <div className="text-xs text-zinc-500">, {trade.favorableExcursionPct.toFixed(2)}%</div>
+                                                        <div className="text-xs text-[#929aa5]">, {trade.favorableExcursionPct.toFixed(2)}%</div>
                                                     </td>
-                                                    <td className="px-4 py-2 text-red-600">
+                                                    <td className="px-4 py-2 text-[#f6465d]">
                                                         <div>-{trade.adverseExcursionUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
                                                         <div className="text-xs">, -{trade.adverseExcursionPct.toFixed(2)}%</div>
                                                     </td>
-                                                    <td className="px-4 py-2 text-zinc-700">
+                                                    <td className="px-4 py-2 text-[#eaecef]">
                                                         <div>{trade.cumulativePnlUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
-                                                        <div className="text-xs text-zinc-500">, {trade.cumulativePnlPct.toFixed(2)}%</div>
+                                                        <div className="text-xs text-[#929aa5]">, {trade.cumulativePnlPct.toFixed(2)}%</div>
                                                     </td>
                                                 </tr>
                                             ];
@@ -612,16 +618,18 @@ export function ComboResultsPage() {
 
 
                     {/* Indicator Info */}
-                    <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
-                        <h2 className="text-xl font-bold text-zinc-900 mb-4 opacity-80">Indicators Used</h2>
-                        <div className="flex flex-wrap gap-2">
-                            {Object.keys(result.indicator_data).map((indicator) => (
-                                <span key={indicator} className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-sm border border-blue-500/20 opacity-70 hover:opacity-100 transition-opacity">
-                                    {indicator}
-                                </span>
-                            ))}
+                    {!isProtectedResult ? (
+                        <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
+                            <h2 className="text-xl font-bold text-zinc-900 mb-4 opacity-80">Indicators Used</h2>
+                            <div className="flex flex-wrap gap-2">
+                                {Object.keys(result.indicator_data).map((indicator) => (
+                                    <span key={indicator} className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-sm border border-blue-500/20 opacity-70 hover:opacity-100 transition-opacity">
+                                        {indicator}
+                                    </span>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    ) : null}
                 </div>
             </main>
 

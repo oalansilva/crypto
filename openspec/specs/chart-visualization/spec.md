@@ -93,3 +93,51 @@ When a chart surface uses more than one synchronized panel, the system MUST keep
 - **WHEN** the user moves the cursor after a zoom action
 - **THEN** tooltip and crosshair data continue to map to the currently visible candle positions
 
+### Requirement: Result charts follow Monitor chart style
+Result chart surfaces used by Favorites analysis SHALL follow the Monitor chart visual and interaction pattern.
+
+#### Scenario: Result chart renders operational surface
+- **WHEN** a result chart renders candle history
+- **THEN** it SHALL use a dark operational canvas with readable axes, grid, candle colors, and crosshair styling
+- **AND** it SHALL include volume and moving average overlays where candle data is available
+
+#### Scenario: Result chart supports explicit zoom
+- **WHEN** a result chart renders candle history
+- **THEN** it SHALL expose explicit zoom in, zoom out, and reset controls
+- **AND** zoom actions SHALL update the visible candle range without fetching new candle data
+
+#### Scenario: Result chart supports wheel zoom
+- **WHEN** the user scrolls over the chart area
+- **THEN** the chart SHALL zoom the visible candle range
+- **AND** the page SHALL NOT scroll instead of zooming the chart
+
+### Requirement: Result charts opened from saved items use the shared current candle source
+Result chart surfaces opened from saved favorites SHALL prefer the same current market candle source used by Monitor for UI chart rendering.
+
+#### Scenario: Favorites and Monitor align on latest candle
+- **WHEN** Monitor and Favorites display the same symbol and timeframe
+- **THEN** both chart surfaces use the current market candle source
+- **AND** their newest candle date is aligned when the source has current data
+
+### Requirement: Favorites result chart markers include Monitor-synced signal history
+Result charts opened from Favorites SHALL include Monitor-synchronized entry and exit signals when current Monitor history is available, while preserving the complete favorite trade marker set.
+
+#### Scenario: Marker source includes Monitor and favorite history
+- **WHEN** Favorites opens a result chart for a favorite also present in Monitor
+- **AND** Monitor returns current signal history
+- **THEN** the chart marker source includes non-duplicate Monitor signal-history trades
+- **AND** saved or regenerated favorite trade markers are not dropped only because Monitor history is shorter
+
+### Requirement: Favorites result chart markers match full trade list
+The chart shown after opening full analysis from Favorites SHALL render entry and exit markers for the same complete trade set used by the result trade list.
+
+#### Scenario: Favorite analysis has saved history and Monitor sync
+- **WHEN** the user opens full analysis from Favorites
+- **AND** the result combines saved or regenerated trades with Monitor-synchronized trades
+- **THEN** the chart SHALL receive markers for all trades in the combined result trade set
+- **AND** the table SHALL not show trades missing from the chart marker source
+
+#### Scenario: Protected favorite chart remains redacted
+- **WHEN** a common user opens full analysis for a protected favorite
+- **THEN** the chart SHALL keep protected technical overlays hidden
+- **AND** trade entry and exit markers SHALL still reflect the available protected favorite trades
