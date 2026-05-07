@@ -866,12 +866,14 @@ textarea {
 }
 
 .favorites-workbench .fav-table-shell {
-  overflow-x: auto;
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 .favorites-workbench table.fav-strategies {
   width: 100%;
-  min-width: 1320px;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   background: var(--fav-canvas);
@@ -881,7 +883,7 @@ textarea {
 .favorites-workbench table.fav-strategies td {
   border-right: 1px solid var(--fav-hairline);
   border-bottom: 1px solid var(--fav-hairline);
-  padding: 10px 9px !important;
+  padding: 10px 8px !important;
   vertical-align: middle;
 }
 
@@ -925,6 +927,45 @@ textarea {
   white-space: nowrap;
 }
 
+.favorites-workbench table.fav-strategies th.select-col,
+.favorites-workbench table.fav-strategies td.select-col {
+  width: 42px;
+}
+
+.favorites-workbench table.fav-strategies th.stars-cell,
+.favorites-workbench table.fav-strategies td.stars-cell {
+  width: 96px;
+}
+
+.favorites-workbench table.fav-strategies th.symbol-col {
+  width: 128px;
+}
+
+.favorites-workbench table.fav-strategies th.strategy-col {
+  width: 22%;
+}
+
+.favorites-workbench table.fav-strategies th.direction-col,
+.favorites-workbench table.fav-strategies th.return-col,
+.favorites-workbench table.fav-strategies th.actions-col {
+  width: 86px;
+}
+
+.favorites-workbench table.fav-strategies th.timeframe-col,
+.favorites-workbench table.fav-strategies th.metric-col {
+  width: 70px;
+}
+
+.favorites-workbench table.fav-strategies th.period-col {
+  width: 112px;
+}
+
+.favorites-workbench table.fav-strategies th.risk-col,
+.favorites-workbench table.fav-strategies th.win-col,
+.favorites-workbench table.fav-strategies th.advanced-col {
+  width: 68px;
+}
+
 .favorites-workbench .fav-select-row {
   width: 18px;
   height: 18px;
@@ -961,7 +1002,7 @@ textarea {
 .favorites-workbench .sym-cell {
   display: flex;
   align-items: center;
-  min-width: 130px;
+  min-width: 0;
   gap: 8px;
 }
 
@@ -995,8 +1036,8 @@ textarea {
 .favorites-workbench .strategy-cell {
   display: grid;
   gap: 3px;
-  min-width: 190px;
-  max-width: 260px;
+  min-width: 0;
+  max-width: none;
 }
 
 .favorites-workbench .strategy-cell strong,
@@ -1066,6 +1107,7 @@ textarea {
 
 .favorites-workbench .fav-row-actions {
   justify-content: center;
+  min-width: 0;
 }
 
 .favorites-workbench .fav-row-actions button {
@@ -1075,6 +1117,41 @@ textarea {
   padding: 0;
   color: var(--fav-body);
   background: var(--fav-elevated);
+}
+
+@media (max-width: 1700px) {
+  .favorites-workbench table.fav-strategies .advanced-col {
+    display: none;
+  }
+}
+
+@media (max-width: 1440px) {
+  .favorites-workbench table.fav-strategies .period-col,
+  .favorites-workbench table.fav-strategies .win-col {
+    display: none;
+  }
+
+  .favorites-workbench table.fav-strategies th,
+  .favorites-workbench table.fav-strategies td {
+    padding-inline: 7px !important;
+  }
+
+  .favorites-workbench .stars-cell button {
+    width: 24px;
+    height: 24px;
+    min-height: 24px;
+  }
+
+  .favorites-workbench .sym-tile {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .favorites-workbench table.fav-strategies .risk-col {
+    display: none;
+  }
 }
 
 .favorites-workbench .fav-row-actions button:hover {

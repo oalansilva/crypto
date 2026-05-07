@@ -966,23 +966,23 @@ const FavoritesDashboard: React.FC = () => {
                             <thead>
                                 <tr>
                                     {isAdmin ? <th className="select-col">Sel</th> : null}
-                                    <th>Tier</th>
-                                    <th>Symbol</th>
-                                    <th>Estratégia</th>
-                                    <th>Direção</th>
-                                    <th>TF</th>
-                                    <th>Período</th>
-                                    <th>Stop</th>
-                                    <th>Sharpe</th>
-                                    <th>Trades</th>
-                                    <th>Win%</th>
-                                    <th>Return</th>
-                                    <th>Max DD</th>
-                                    <th>PF</th>
-                                    <th>SQN</th>
-                                    <th>Max L</th>
-                                    <th>ATR</th>
-                                    <th>Ações</th>
+                                    <th className="stars-cell">Tier</th>
+                                    <th className="symbol-col">Symbol</th>
+                                    <th className="strategy-col">Estratégia</th>
+                                    <th className="direction-col">Direção</th>
+                                    <th className="timeframe-col">TF</th>
+                                    <th className="period-col">Período</th>
+                                    <th className="risk-col">Stop</th>
+                                    <th className="metric-col">Sharpe</th>
+                                    <th className="metric-col">Trades</th>
+                                    <th className="win-col">Win%</th>
+                                    <th className="return-col">Return</th>
+                                    <th className="risk-col">Max DD</th>
+                                    <th className="advanced-col">PF</th>
+                                    <th className="advanced-col">SQN</th>
+                                    <th className="advanced-col">Max L</th>
+                                    <th className="advanced-col">ATR</th>
+                                    <th className="actions-col">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1033,17 +1033,17 @@ const FavoritesDashboard: React.FC = () => {
                                                     </span>
                                                 </td>
                                                 <td><span className="tf-pill">{fav.timeframe}</span></td>
-                                                <td className="muted-cell">{formatPeriod(fav)}</td>
-                                                <td className="metric-cell">{formatPct(stopLoss)}</td>
+                                                <td className="muted-cell period-col">{formatPeriod(fav)}</td>
+                                                <td className="metric-cell risk-col">{formatPct(stopLoss)}</td>
                                                 <td className="metric-cell accent">{formatNum(m.sharpe_ratio)}</td>
                                                 <td className="metric-cell">{getTradesCount(fav)}</td>
-                                                <td className="metric-cell">{formatPct(m.win_rate)}</td>
+                                                <td className="metric-cell win-col">{formatPct(m.win_rate)}</td>
                                                 <td className={`metric-cell strong ${totalReturn.positive ? 'positive' : 'negative'}`}>{totalReturn.text}</td>
-                                                <td className="metric-cell negative">{formatPct(m.max_drawdown)}</td>
-                                                <td className="metric-cell">{formatNum(m.profit_factor)}</td>
-                                                <td className="metric-cell">{formatNum(m.sqn ?? m.sortino_ratio ?? m.sortino)}</td>
-                                                <td className="metric-cell negative">{formatPct(m.max_loss)}</td>
-                                                <td className="metric-cell">{formatNum(m.avg_atr)}</td>
+                                                <td className="metric-cell negative risk-col">{formatPct(m.max_drawdown)}</td>
+                                                <td className="metric-cell advanced-col">{formatNum(m.profit_factor)}</td>
+                                                <td className="metric-cell advanced-col">{formatNum(m.sqn ?? m.sortino_ratio ?? m.sortino)}</td>
+                                                <td className="metric-cell negative advanced-col">{formatPct(m.max_loss)}</td>
+                                                <td className="metric-cell advanced-col">{formatNum(m.avg_atr)}</td>
                                                 <td>
                                                     <div className="fav-row-actions">
                                                         <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa">

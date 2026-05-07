@@ -407,6 +407,19 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
   };
 }
 
+async function expectNoHorizontalOverflow(page: any) {
+  const overflow = await page.evaluate(() => {
+    const shell = document.querySelector('.fav-table-shell') as HTMLElement | null;
+    return {
+      documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      shellOverflow: shell ? shell.scrollWidth - shell.clientWidth : 0,
+    };
+  });
+
+  expect(overflow.documentOverflow).toBeLessThanOrEqual(1);
+  expect(overflow.shellOverflow).toBeLessThanOrEqual(1);
+}
+
 test.use({ viewport: { width: 1366, height: 900 } });
 
 test('favorites page renders list from mocked API', async ({ page }) => {
@@ -435,6 +448,27 @@ test('favorites hides stocks and removes Asset Type dropdown in crypto-only MVP'
   await expect(page.getByLabel('Asset Type')).toHaveCount(0);
   await expect(nvdaRow).toHaveCount(0);
   await expect(btcRow).toHaveCount(1);
+});
+
+test('favorites grid fits common desktop without horizontal scrolling', async ({ page }) => {
+  await setupDeterministicApiMocks(page);
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto('/favorites');
+
+  await expect(page.locator('.fav-table-shell')).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
+  await expect(page.locator('.fav-table-shell').locator('.advanced-col').first()).toBeHidden();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('favorites mobile cards fit viewport without horizontal scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  await expect(page.locator('.fav-mobile-list')).toBeVisible();
+  await expect(page.locator('.fav-table-shell')).toBeHidden();
+  await expectNoHorizontalOverflow(page);
 });
 
 test('favorites filters by strategy name and timeframe separately', async ({ page }) => {
