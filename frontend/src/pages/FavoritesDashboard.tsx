@@ -275,6 +275,15 @@ const FavoritesDashboard: React.FC = () => {
             : fav.strategy_name.replace(/_/g, ' ');
     };
 
+    const normalizeStrategyComparison = (value: string): string => {
+        return value
+            .toLowerCase()
+            .replace(/[_-]+/g, ' ')
+            .replace(/\([^)]*\)/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
     const getFavoriteName = (fav: FavoriteStrategy): string => fav.name || fav.symbol || 'Estratégia';
 
     const getFavoriteStrategyName = (fav: FavoriteStrategy): string => {
@@ -288,7 +297,17 @@ const FavoritesDashboard: React.FC = () => {
             .replace(/^\s*[-–—|/]\s*/g, ' ')
             .replace(/\s{2,}/g, ' ')
             .trim();
-        return name || getFavoriteStrategyLabel(fav);
+        const label = getFavoriteStrategyLabel(fav).trim();
+        const readableName = name.replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim();
+        const comparableName = normalizeStrategyComparison(readableName);
+        const comparableLabel = normalizeStrategyComparison(label);
+        if (label && comparableLabel && (
+            comparableName === comparableLabel
+            || comparableName.startsWith(`${comparableLabel} `)
+        )) {
+            return label;
+        }
+        return readableName || label;
     };
 
     const getGridStrategyDetail = (fav: FavoriteStrategy): string | null => {

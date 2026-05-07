@@ -942,7 +942,7 @@ textarea {
 }
 
 .favorites-workbench table.fav-strategies th.strategy-col {
-  width: 22%;
+  width: 24%;
 }
 
 .favorites-workbench table.fav-strategies th.direction-col,
@@ -1042,7 +1042,10 @@ textarea {
 
 .favorites-workbench .strategy-cell strong,
 .favorites-workbench .strategy-cell span {
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .favorites-workbench .strategy-cell span {
