@@ -54,6 +54,23 @@ function toUtcTimestamp(value: string | number): UTCTimestamp {
     return Math.floor(new Date(value).getTime() / 1000) as UTCTimestamp
 }
 
+function normalizeMarkers(markers: Marker[] | undefined) {
+    return (markers || [])
+        .map((marker, index) => ({
+            marker: {
+                ...marker,
+                time: toUtcTimestamp(marker.time),
+            },
+            index,
+        }))
+        .filter(({ marker }) => Number.isFinite(marker.time))
+        .sort((left, right) => {
+            const timeDelta = left.marker.time - right.marker.time
+            return timeDelta === 0 ? left.index - right.index : timeDelta
+        })
+        .map(({ marker }) => marker)
+}
+
 function getVisibleBarCount(range: LogicalRange | null) {
     if (!range) return null
     return Math.max(1, Math.round(range.to - range.from))
@@ -173,6 +190,7 @@ export function MonitorAlignedCandlestickChart({
     const emaShortData = React.useMemo(() => calculateEma(sortedCandles, periods.emaShort), [periods.emaShort, sortedCandles])
     const smaMediumData = React.useMemo(() => calculateSma(sortedCandles, periods.smaMedium), [periods.smaMedium, sortedCandles])
     const smaLongData = React.useMemo(() => calculateSma(sortedCandles, periods.smaLong), [periods.smaLong, sortedCandles])
+    const chartMarkers = React.useMemo(() => normalizeMarkers(markers), [markers])
     const tooltipData = React.useMemo(() => {
         const emaShortMap = new Map<number, number>()
         const smaMediumMap = new Map<number, number>()
@@ -334,10 +352,7 @@ export function MonitorAlignedCandlestickChart({
         })
 
         candleSeries.setData(candlestickData)
-        candleSeries.setMarkers((markers || []).map((marker) => ({
-            ...marker,
-            time: toUtcTimestamp(marker.time),
-        })) as any)
+        candleSeries.setMarkers(chartMarkers as any)
         volumeSeries.setData(volumeData)
         emaShortSeries.setData(hideTechnicalOverlays ? [] : emaShortData)
         smaMediumSeries.setData(hideTechnicalOverlays ? [] : smaMediumData)
@@ -363,7 +378,7 @@ export function MonitorAlignedCandlestickChart({
             if (chartApiRef.current === chart) chartApiRef.current = null
             chart.remove()
         }
-    }, [candlestickData, emaShortData, hideTechnicalOverlays, markers, smaLongData, smaMediumData, syncVisibleBars, tooltipData, volumeData])
+    }, [candlestickData, chartMarkers, emaShortData, hideTechnicalOverlays, smaLongData, smaMediumData, syncVisibleBars, tooltipData, volumeData])
 
     return (
         <section
