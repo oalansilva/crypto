@@ -112,18 +112,141 @@ The Favorites screen SHALL be the canonical UI for choosing, removing, and ranki
 - **AND** the Monitor MUST NOT expose a separate remove-favorite action
 
 ### Requirement: Favorites View Trades recovers missing history
-The Favorites page SHALL recover missing trade history for visible admin favorites instead of treating a missing `metrics.trades` array as no trades when summary metrics indicate trades exist.
+The Favorites page SHALL recover missing trade history through the unified favorite analysis action instead of treating a missing `metrics.trades` array as no trades when summary metrics indicate trades exist.
 
-#### Scenario: User clicks View Trades for favorite without saved trades
-- **WHEN** an admin user clicks `View Trades` for a favorite with `total_trades` greater than zero and no saved `metrics.trades`
+#### Scenario: User opens analysis for favorite without saved trades
+- **WHEN** an admin user opens the unified analysis action for a favorite with `total_trades` greater than zero and no saved `metrics.trades`
 - **THEN** the UI SHALL request regenerated trades from the Favorites API
-- **AND** the trade modal SHALL render the returned trades
+- **AND** the result view SHALL render the returned trades
+- **AND** the Favorites API SHALL persist the regenerated trades on the favorite so a later open can use saved history
 
 #### Scenario: Regenerated trades have metric mismatch
 - **WHEN** the Favorites API reports `metrics_match=false`
-- **THEN** the API SHALL keep mismatch deltas available in favorite metrics metadata for investigation
-- **AND** the UI SHALL NOT show a reconstructed-history mismatch warning to the user
+- **THEN** the Favorites API SHALL accept the regenerated metrics as the new saved summary for that favorite
+- **AND** the Favorites API SHALL persist the previous summary and metric deltas as investigation metadata
+- **AND** the UI SHALL open the result view without showing any reconstructed-history mismatch warning to the user
+- **AND** the same favorite SHALL NOT regenerate on every open
 
 #### Scenario: Protected favorite remains redacted
 - **WHEN** a protected favorite is shown to a non-admin user
 - **THEN** the UI SHALL NOT request regenerated protected trades
+
+### Requirement: Favorites uses one analysis action for results and trades
+The Favorites page SHALL expose a single analysis action per favorite for users allowed to inspect strategy details, and that flow SHALL show consolidated results and the trade list together.
+
+#### Scenario: Admin reviews a favorite
+- **WHEN** an admin user opens the Favorites page
+- **THEN** each visible favorite SHALL expose one primary analysis action
+- **AND** the row SHALL NOT expose separate `View Trades` and `View Results` actions
+
+#### Scenario: Admin opens combined analysis
+- **WHEN** an admin user activates the favorite analysis action
+- **THEN** the system SHALL navigate to the result view for that favorite
+- **AND** the result view SHALL include consolidated metrics
+- **AND** the result view SHALL include the list of trades
+- **AND** the result view SHALL provide a visible action to return to Favorites
+
+#### Scenario: Admin reopens saved combined analysis
+- **WHEN** an admin user activates the favorite analysis action for a favorite that already has `metrics.trades` and saved chart context
+- **THEN** the UI SHALL open the result view using the saved favorite history
+- **AND** the UI SHALL NOT request a new combo backtest
+- **AND** the UI SHALL NOT regenerate favorite trades
+
+#### Scenario: Admin opens legacy saved trades without chart context
+- **WHEN** an admin user activates the favorite analysis action for a favorite with `metrics.trades` but without saved chart context
+- **THEN** the UI SHALL request the Favorites API to backfill the analysis cache
+- **AND** the result view SHALL include candles for the chart when regeneration returns candles
+- **AND** the Favorites API SHALL persist the backfilled chart context so later opens use saved history
+
+#### Scenario: Admin reads combined analysis trades
+- **WHEN** the result view renders the favorite trade list
+- **THEN** trade table headers and cells SHALL use readable contrast aligned to `DESIGN.md`
+- **AND** labels such as `Type`, `Date and time`, and `Signal` SHALL remain legible
+
+#### Scenario: Protected favorite remains protected
+- **WHEN** a protected favorite is rendered
+- **THEN** the unified analysis action SHALL NOT expose protected strategy parameters or trade regeneration to unauthorized users
+
+### Requirement: Favorites analysis uses Monitor-aligned chart
+The Favorites analysis result view SHALL use the same operational chart presentation pattern as the Monitor when candle history is available.
+
+#### Scenario: Favorite analysis opens with candles
+- **WHEN** an admin user clicks `Ver análise completa` for a favorite whose analysis has candle history
+- **THEN** the result view SHALL render a Monitor-aligned candlestick chart
+- **AND** the chart SHALL show readable candles, volume, trade markers, and moving average overlays
+- **AND** the chart SHALL expose explicit zoom controls
+
+#### Scenario: Favorite analysis opens without candles
+- **WHEN** an admin user opens favorite analysis and no candles are available
+- **THEN** the result view SHALL keep an empty chart state
+- **AND** the rest of the analysis summary and trades SHALL remain accessible
+
+#### Scenario: Common user opens protected favorite analysis
+- **WHEN** a common user opens analysis for a protected favorite with candle history
+- **THEN** the result view SHALL render the chart/map
+- **AND** the chart SHALL NOT draw moving average overlays
+- **AND** the result view SHALL NOT show moving average values or protected strategy parameters
+
+### Requirement: Favorites analysis uses current market candles for chart rendering
+The Favorites analysis flow SHALL use the current market candles source as the primary chart candle source when opening a favorite analysis. Saved favorite trades and metrics SHALL remain the source for summary and trade evidence. Saved `metrics.analysis_candles` SHALL be used only as a fallback when current market candles cannot be loaded.
+
+#### Scenario: Stale saved candles are replaced by current market candles
+- **WHEN** a favorite has saved `metrics.analysis_candles` ending before the current market candle window
+- **AND** the user opens full analysis from Favorites
+- **THEN** the result chart receives candles from `/api/market/candles`
+- **AND** the newest chart candle matches the newest candle returned by `/api/market/candles`
+- **AND** saved trades and metrics remain available in the result view
+
+#### Scenario: Current candle request fails
+- **WHEN** current market candles cannot be loaded for the favorite
+- **AND** saved `metrics.analysis_candles` exist
+- **THEN** Favorites analysis can still render the saved candles as fallback
+- **AND** the failure does not trigger favorite metric regeneration by itself
+
+#### Scenario: Protected common user opens favorite analysis
+- **WHEN** a common user opens a protected favorite analysis
+- **THEN** the result chart uses current market candles when available
+- **AND** the view does not show moving average overlays, moving average values, indicators, or protected parameters
+
+### Requirement: Favorites analysis synchronizes entry and exit signals with Monitor
+The Favorites analysis flow SHALL refresh current Monitor opportunity data before rendering entry/exit markers and visible trades. When a matching Monitor opportunity includes signal history, the result chart and trade list SHALL include non-duplicate Monitor-derived entry and exit points without replacing a longer saved or regenerated favorite history.
+
+#### Scenario: Saved trades diverge from Monitor signal history
+- **WHEN** a favorite has saved trades with old entry/exit timestamps
+- **AND** the matching Monitor opportunity has current `signal_history`
+- **AND** the user opens full analysis from Favorites
+- **THEN** the visible result chart includes markers derived from Monitor `signal_history`
+- **AND** the visible trade list includes non-duplicate entries/exits derived from Monitor `signal_history`
+- **AND** saved or regenerated favorite trades remain visible when Monitor history is shorter
+
+#### Scenario: Monitor signal sync unavailable
+- **WHEN** Monitor opportunities cannot be loaded or no matching signal history exists
+- **AND** the user opens full analysis from Favorites
+- **THEN** Favorites falls back to saved/reconstructed trades
+- **AND** the failure does not block opening analysis when fallback data exists
+
+#### Scenario: Protected common user opens synced favorite analysis
+- **WHEN** a common user opens analysis for a protected favorite
+- **AND** Monitor provides redacted signal history
+- **THEN** the chart can show safe entry/exit markers from that history
+- **AND** protected parameters, indicators, moving averages, and moving-average values remain hidden
+
+### Requirement: Favorites analysis preserves all recoverable trades
+The Favorites page SHALL preserve all saved or regenerated trades when opening a full analysis result from a favorite, even when Monitor synchronization returns a shorter `signal_history`.
+
+#### Scenario: Monitor sync has fewer trades than favorite history
+- **WHEN** the user opens full analysis from a favorite with saved or regenerated trades
+- **AND** Monitor synchronization returns fewer trades for the same strategy
+- **THEN** the result trade list SHALL include the saved or regenerated favorite trades
+- **AND** the Monitor synchronization SHALL NOT replace the favorite trade list with the shorter Monitor set
+
+#### Scenario: Monitor sync adds a missing current trade
+- **WHEN** the user opens full analysis from a favorite
+- **AND** Monitor synchronization returns a trade not already present in the saved or regenerated favorite history
+- **THEN** the result trade list SHALL include that additional Monitor trade
+- **AND** duplicate trades from both sources SHALL appear only once
+
+#### Scenario: Protected favorite remains redacted for common user
+- **WHEN** a common user opens full analysis for a protected favorite
+- **THEN** the result SHALL preserve the protected favorite's available trades
+- **AND** the result SHALL NOT expose protected parameters, indicators, moving-average overlays, or moving-average values
