@@ -73,3 +73,9 @@ Protótipo estatico em:
 
 - `frontend/public/prototypes/cripto-farol-landing/index.html`
 - `frontend/public/prototypes/cripto-farol-landing/styles.css`
+
+## Regra Visual dos Prints
+
+Nao usar screenshots que exponham parametros internos, valores de indicadores, medias moveis ou informacoes que o cliente beta nao tera acesso.
+
+A landing deve mostrar uma previa sanitizada da experiencia: status, leitura de contexto, oportunidade e risco, sem detalhes tecnicos internos.

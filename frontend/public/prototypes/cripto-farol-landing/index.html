@@ -107,16 +107,44 @@
           </ul>
         </div>
         <div class="product-showcase">
-          <img
-            class="desktop-shot"
-            src="./assets/screenshots/monitor-desktop.png"
-            alt="Tela desktop do monitor Cripto Farol"
-          />
-          <img
-            class="mobile-shot"
-            src="./assets/screenshots/monitor-mobile.png"
-            alt="Tela mobile do monitor Cripto Farol"
-          />
+          <div class="monitor-preview" aria-label="Previa sanitizada do Monitor Cripto Farol">
+            <div class="preview-topbar">
+              <div>
+                <span class="preview-title">Monitor Cripto Farol</span>
+                <span class="preview-subtitle">Leitura do mercado</span>
+              </div>
+              <span class="preview-pill">Beta</span>
+            </div>
+            <div class="preview-grid">
+              <article class="preview-card hold">
+                <span>BTC/USDT</span>
+                <strong>HOLD</strong>
+                <p>Tendencia favoravel com risco acompanhado.</p>
+              </article>
+              <article class="preview-card wait">
+                <span>ETH/USDT</span>
+                <strong>WAIT</strong>
+                <p>Contexto indefinido. Melhor esperar confirmacao.</p>
+              </article>
+              <article class="preview-card exit">
+                <span>SOL/USDT</span>
+                <strong>EXIT</strong>
+                <p>Sinal de protecao. Revisar exposicao.</p>
+              </article>
+            </div>
+            <div class="preview-chart" aria-hidden="true">
+              <span style="height: 35%"></span>
+              <span style="height: 52%"></span>
+              <span style="height: 46%"></span>
+              <span style="height: 68%"></span>
+              <span style="height: 58%"></span>
+              <span style="height: 74%"></span>
+              <span style="height: 63%"></span>
+              <span style="height: 82%"></span>
+              <span style="height: 78%"></span>
+              <span style="height: 88%"></span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -139,7 +167,21 @@
       </section>
 
       <section class="chart-section">
-        <img src="./assets/screenshots/monitor-chart.png" alt="Grafico detalhado de ativo no Cripto Farol" />
+        <div class="decision-preview" aria-label="Previa de leitura de decisao">
+          <div class="decision-row">
+            <span>Ativo em foco</span>
+            <strong>BTC/USDT</strong>
+          </div>
+          <div class="decision-row">
+            <span>Status atual</span>
+            <strong class="status-hold">HOLD</strong>
+          </div>
+          <div class="decision-row">
+            <span>Leitura</span>
+            <p>Momento ainda favoravel, mas com risco monitorado. Acompanhar confirmacao antes de aumentar exposicao.</p>
+          </div>
+          <div class="decision-line" aria-hidden="true"></div>
+        </div>
         <div>
           <p class="section-kicker">Diferencial</p>
           <h2>Feito para quem quer acompanhar cripto sem viver refém de call.</h2>
