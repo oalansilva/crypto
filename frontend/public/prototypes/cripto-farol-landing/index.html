@@ -216,14 +216,14 @@
             O Cripto Farol é uma ferramenta de apoio à leitura de mercado. As decisões de investimento e os riscos continuam sendo seus.
           </p>
         </div>
-        <form class="signup-form">
+        <form class="signup-form" data-lead-form>
           <label>
             <span>Nome</span>
-            <input type="text" name="name" placeholder="Seu nome" autocomplete="name" />
+            <input type="text" name="name" placeholder="Seu nome" autocomplete="name" required />
           </label>
           <label>
-            <span>Email ou Telegram</span>
-            <input type="text" name="contact" placeholder="@usuario ou email" autocomplete="email" />
+            <span>Email</span>
+            <input type="email" name="email" placeholder="voce@email.com" autocomplete="email" required />
           </label>
           <label>
             <span>Nível com cripto</span>
@@ -237,9 +237,50 @@
             <span>Maior dificuldade hoje</span>
             <textarea name="pain" rows="4" placeholder="Excesso de informação, timing, venda, risco..."></textarea>
           </label>
-          <button class="button button-primary button-full" type="button">Entrar na lista do beta</button>
+          <button class="button button-primary button-full" type="submit">Entrar na lista do beta</button>
+          <p class="form-message" data-form-message role="status" aria-live="polite"></p>
         </form>
       </section>
     </main>
+    <script>
+      const form = document.querySelector("[data-lead-form]");
+      const message = document.querySelector("[data-form-message]");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const submitButton = form.querySelector("button[type='submit']");
+        const formData = new FormData(form);
+        const payload = {
+          name: formData.get("name"),
+          email: formData.get("email"),
+          profile: formData.get("profile"),
+          pain: formData.get("pain"),
+          origin: window.location.href,
+        };
+        const endpoint = `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
+
+        submitButton.disabled = true;
+        message.textContent = "Enviando inscrição...";
+        message.className = "form-message";
+
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) throw new Error("submit_failed");
+          form.reset();
+          message.textContent = "Inscrição recebida. Em breve entraremos em contato.";
+          message.className = "form-message success";
+        } catch (error) {
+          message.textContent = "Não foi possível enviar agora. Tente novamente em alguns minutos.";
+          message.className = "form-message error";
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+    </script>
   </body>
 </html>

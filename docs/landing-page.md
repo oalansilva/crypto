@@ -56,10 +56,16 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 Campos minimos:
 
 - nome;
-- email ou Telegram;
+- email;
 - nivel com cripto;
 - principal dificuldade hoje;
-- disponibilidade para testar e responder feedback.
+
+## Captacao Operacional
+
+- Formulario da landing envia os leads para o endpoint VPS `http://72.60.150.140:5174/api/leads`.
+- Os leads sao gravados em uma planilha `.xlsx` no Google Drive da Clara: `https://docs.google.com/spreadsheets/d/1cWFpAEfbTHcPJ8akzTf-oHRLRS-QmVNf/edit?usp=drivesdk&ouid=109602176178341361243&rtpof=true&sd=true`.
+- A cada inscricao, o endpoint tambem envia aviso no topico Telegram do projeto cripto.
+- Observacao tecnica: a API nativa do Google Sheets esta bloqueada no OAuth atual; por isso a integracao usa arquivo `.xlsx` no Drive, atualizado pela VPS.
 
 ## Disclaimer
 
