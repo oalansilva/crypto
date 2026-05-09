@@ -56,7 +56,7 @@ a {
 }
 
 .brand img {
-  width: min(280px, 62vw);
+  width: min(340px, 72vw);
   height: auto;
 }
 

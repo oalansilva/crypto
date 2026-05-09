@@ -29,17 +29,17 @@ Nao tenta parecer casa de aposta, corretora agressiva ou influencer.
 
 ### Paleta
 
-- `Farol Night`: `#0f172a`
-- `Farol Deep`: `#132238`
-- `Signal Teal`: `#14b8a6`
-- `Signal Mint`: `#99f6e4`
-- `Farol Beam`: `#f4c542`
-- `Cloud Line`: `#d7e3f4`
-- `Slate Copy`: `#8ea0b8`
+- `Farol Night`: `#07121d`
+- `Farol Deep`: `#0b1827`
+- `Signal Teal`: `#13c8ae`
+- `Signal Mint`: `#8df4df`
+- `Farol Beam`: `#f1c84c`
+- `Cloud Line`: `#f7f4ea`
+- `Slate Copy`: `#aab4b9`
 
 ### Tipografia
 
-- Titulos: `Space Grotesk`
+- Titulos: `Inter`
 - Texto corrido: `IBM Plex Sans`
 - Numeros/labels tecnicos: `JetBrains Mono`
 
@@ -48,6 +48,7 @@ Nao tenta parecer casa de aposta, corretora agressiva ou influencer.
 ### Wordmark
 
 - Uso preferencial: wordmark `Cripto Farol` com simbolo de farol simplificado.
+- Revisao 2026-05-09: o simbolo deve parecer uma marca de produto, nao um icone generico em um card. A versao atual combina farol, feixe e leitura de mercado/candle em traco simples, com lockup transparente para funcionar sobre hero escuro.
 - Variantes entregues:
   - horizontal para hero/header;
   - simbolo isolado para avatar, favicon ou destaque.

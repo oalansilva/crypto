@@ -1,11 +1,12 @@
-<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="256" height="256" rx="56" fill="#0F172A"/>
-  <path d="M128 36L157 68V180H99V68L128 36Z" fill="#132238" stroke="#D7E3F4" stroke-width="10"/>
-  <path d="M112 98H144" stroke="#99F6E4" stroke-width="10" stroke-linecap="round"/>
-  <path d="M112 124H144" stroke="#99F6E4" stroke-width="10" stroke-linecap="round"/>
-  <path d="M112 150H144" stroke="#99F6E4" stroke-width="10" stroke-linecap="round"/>
-  <path d="M128 24V54" stroke="#F4C542" stroke-width="10" stroke-linecap="round"/>
-  <path d="M84 86C94 73 109 66 128 66C147 66 162 73 172 86" stroke="#14B8A6" stroke-width="10" stroke-linecap="round"/>
-  <path d="M68 126C82 108 102 99 128 99C154 99 174 108 188 126" stroke="#14B8A6" stroke-width="10" stroke-linecap="round" opacity="0.82"/>
-  <circle cx="128" cy="202" r="14" fill="#F4C542"/>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cripto Farol">
+  <rect width="256" height="256" rx="52" fill="#07121D"/>
+  <path d="M46 130C78 88 124 70 203 54" stroke="#F1C84C" stroke-width="16" stroke-linecap="round" opacity="0.95"/>
+  <path d="M47 151C83 122 123 108 192 104" stroke="#13C8AE" stroke-width="12" stroke-linecap="round" opacity="0.82"/>
+  <path d="M128 42L166 92L152 194H104L90 92L128 42Z" fill="#0B1827" stroke="#F7F4EA" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M110 101H146" stroke="#8DF4DF" stroke-width="10" stroke-linecap="round"/>
+  <path d="M107 131H149" stroke="#8DF4DF" stroke-width="10" stroke-linecap="round"/>
+  <path d="M116 193L102 220" stroke="#F7F4EA" stroke-width="10" stroke-linecap="round"/>
+  <path d="M140 193L154 220" stroke="#F7F4EA" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="128" cy="42" r="9" fill="#F1C84C"/>
+  <circle cx="128" cy="162" r="11" fill="#F1C84C"/>
 </svg>
