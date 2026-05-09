@@ -23,18 +23,18 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 ### Hero
 
 - Headline: **Enxergue melhor antes de decidir em cripto.**
-- Subheadline: Veja quais ativos merecem atencao, quando entrar, quando manter e quando vender com uma leitura simples de sinais, contexto e risco.
+- Subheadline: Veja quais ativos estao em posicao ativa e quais pedem saida com uma leitura simples de contexto e risco.
 - CTA: **Entrar na lista do beta fechado**
 
 ### Problema
 
 - O mercado cripto muda rapido; o dificil e saber o que realmente importa agora.
 - O investidor pula entre moedas, graficos e opinioes sem saber onde concentrar atencao.
-- Falta uma leitura simples para separar entrada, acompanhamento e venda.
+- Falta uma leitura simples para separar posicao ativa de saida acionavel.
 
 ### Como Funciona
 
-- Monitor central com status objetivo por ativo.
+- Monitor central com `HOLD` e `EXIT` como sinais visiveis na tela principal.
 - Leitura visual para entender momento, oportunidade e risco.
 - Fluxo de acompanhamento pensado para investidores que querem rotina, nao call.
 
@@ -42,7 +42,7 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 
 - Investidor iniciante que quer saber onde concentrar atencao.
 - Intermediario que precisa acompanhar oportunidades com mais consistencia.
-- Trader que quer contexto objetivo para entrar, acompanhar ou vender.
+- Trader que quer contexto objetivo para acompanhar posicoes ativas e saidas.
 
 ### O Que Entra no Beta
 
@@ -82,4 +82,4 @@ A landing deve mostrar uma previa sanitizada da experiencia: status, leitura de 
 
 ## Regra de Status
 
-Nao usar `WAIT`/`waiting` na landing. O status neutro foi removido do posicionamento; a comunicacao deve trabalhar com entrada/compra, acompanhamento/manutencao e venda/saida.
+Nao usar `WAIT`/`waiting` na landing. Verificacao no codigo em 2026-05-09 mostrou que o board principal do Monitor exibe `HOLD` e `EXIT`; `WAIT`, `NEUTRAL`, `BUY_SIGNAL` e `BUY_NEAR` ficam ocultos/nao acionaveis na tela principal. A landing deve comunicar dois sinais visiveis: acompanhamento/manutencao (`HOLD`) e saida/venda (`EXIT`).
