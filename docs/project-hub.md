@@ -127,6 +127,6 @@ Atualizar este hub quando houver mudanca em pelo menos um destes pontos:
 
 ## Regra de Release
 
-Quando Alan pedir uma release para cards no nome da Clara, levantar os cards `Homologado` e com `Responsavel=Clara` incluídos no pacote, revisar se as decisões e entregáveis estão refletidos nos Markdown locais e nos Google Docs/Drive correspondentes, publicar/encerrar a release com evidência e então mover esses cards da Clara para `Pronto`.
+Quando Alan pedir uma release para cards no nome da Clara ou do Alan, levantar os cards `Homologado` e com `Responsavel=Clara` ou `Responsavel=Alan` incluídos no pacote, revisar se as decisões e entregáveis estão refletidos nos Markdown locais e nos Google Docs/Drive correspondentes, publicar/encerrar a release com evidência e então mover esses cards para `Pronto`.
 
-Cards de `Codex` ou `Alan` seguem seus fluxos próprios de release técnica ou decisão.
+Cards de `Codex` ficam fora deste fluxo e seguem o fluxo técnico próprio do Codex.
