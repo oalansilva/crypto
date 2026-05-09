@@ -69,7 +69,7 @@
 
 ## 2026-05-09 - Release documental dos cards homologados
 
-**Decisao:** quando Alan pedir uma release de cards no nome da Clara, os cards `Homologado` e com `Responsavel=Clara` incluídos no pacote devem ter suas decisões e entregáveis consolidados na documentação local e no Google Drive antes de serem movidos para `Pronto`.
+**Decisao:** quando Alan pedir uma release de cards no nome da Clara ou do Alan, os cards `Homologado` e com `Responsavel=Clara` ou `Responsavel=Alan` incluídos no pacote devem ter suas decisões e entregáveis consolidados na documentação local e no Google Drive antes de serem movidos para `Pronto`.
 
 **Cards incluídos nesta release documental:** `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159`.
 
@@ -79,4 +79,4 @@
 
 **Resultado:** cards `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` movidos de `Homologado / Validate` para `Pronto / Done`.
 
-**Regra:** release documental concluída com evidência permite avançar os cards da Clara incluídos de `Homologado` para `Pronto`. Cards de `Codex` ou `Alan` seguem seus fluxos próprios.
+**Regra:** release documental concluída com evidência permite avançar os cards da Clara ou do Alan incluídos de `Homologado` para `Pronto`. Cards de `Codex` ficam fora deste fluxo e seguem o fluxo técnico próprio do Codex.
