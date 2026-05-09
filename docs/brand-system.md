@@ -29,13 +29,14 @@ Nao tenta parecer casa de aposta, corretora agressiva ou influencer.
 
 ### Paleta
 
-- `Farol Night`: `#07121d`
-- `Farol Deep`: `#0b1827`
-- `Signal Teal`: `#13c8ae`
-- `Signal Mint`: `#8df4df`
-- `Farol Beam`: `#f1c84c`
+- `Farol Night`: `#03111f`
+- `Farol Deep`: `#062640`
+- `Ocean Blue`: `#083b5d`
+- `Signal Teal`: `#12b7ca`
+- `Signal Mint`: `#9deaff`
+- `Farol Beam`: `#f2c95b`
 - `Cloud Line`: `#f7f4ea`
-- `Slate Copy`: `#aab4b9`
+- `Slate Copy`: `#c3d6df`
 
 ### Tipografia
 
@@ -55,9 +56,10 @@ Nao tenta parecer casa de aposta, corretora agressiva ou influencer.
 
 ### Superficies
 
-- Fundo principal escuro, com profundidade azul petroleo.
+- Fundo principal escuro, com profundidade azul de mar noturno.
 - Destaques em teal para leitura de produto.
 - Acento amarelo reservado para CTA e pontos de orientacao.
+- A landing pode usar um feixe de luz discreto no hero para reforcar a ideia de farol iluminando o mar, sem virar uma peca nautica literal demais.
 
 ### Borda e Forma
 
@@ -68,6 +70,7 @@ Nao tenta parecer casa de aposta, corretora agressiva ou influencer.
 ## Direcao de Conteudo Visual
 
 - Mostrar produto, leitura e criterio.
+- Reforcar a metafora de farol/mar com azul oceano, feixe de luz e profundidade visual.
 - Evitar foguete, cifrao, vela de lucro, lobo de wall street e estetica de cassino.
 - Usar linguagem de painel, monitoramento, mapa, grade e orientacao.
 

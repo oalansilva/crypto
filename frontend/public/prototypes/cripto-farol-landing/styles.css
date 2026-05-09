@@ -1,14 +1,15 @@
 :root {
   --ink: #f7f4ea;
-  --muted: #c4c7c8;
-  --subtle: #88939a;
-  --night: #06111c;
-  --deep: #0b1827;
-  --panel: rgba(7, 18, 30, 0.76);
+  --muted: #c3d6df;
+  --subtle: #7f9dac;
+  --night: #03111f;
+  --deep: #062640;
+  --ocean: #083b5d;
+  --panel: rgba(4, 28, 48, 0.78);
   --line: rgba(236, 244, 242, 0.14);
-  --teal: #13c8ae;
-  --teal-soft: #8df4df;
-  --gold: #f1c84c;
+  --teal: #12b7ca;
+  --teal-soft: #9deaff;
+  --gold: #f2c95b;
   --red: #f36b66;
   --green: #38d98b;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
@@ -27,7 +28,8 @@ html {
 
 body {
   margin: 0;
-  background: var(--night);
+  background:
+    linear-gradient(180deg, #03111f 0%, #062640 52%, #03111f 100%);
   color: var(--ink);
   font-family: var(--font-body);
 }
@@ -52,7 +54,7 @@ a {
   justify-content: space-between;
   gap: 24px;
   padding: 18px clamp(18px, 4vw, 56px);
-  background: linear-gradient(180deg, rgba(5, 13, 22, 0.82), rgba(5, 13, 22, 0));
+  background: linear-gradient(180deg, rgba(3, 17, 31, 0.88), rgba(3, 17, 31, 0));
 }
 
 .brand img {
@@ -67,7 +69,7 @@ a {
   padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
-  background: rgba(5, 13, 22, 0.48);
+  background: rgba(3, 17, 31, 0.58);
   backdrop-filter: blur(14px);
 }
 
@@ -95,6 +97,38 @@ a {
   padding: 124px clamp(20px, 6vw, 78px) 72px;
 }
 
+.hero::before {
+  position: absolute;
+  z-index: 1;
+  top: 12%;
+  right: -16%;
+  width: min(72vw, 960px);
+  height: min(26vw, 330px);
+  content: "";
+  transform: rotate(-14deg);
+  transform-origin: right center;
+  background:
+    linear-gradient(90deg, rgba(242, 201, 91, 0) 0%, rgba(242, 201, 91, 0.28) 42%, rgba(157, 234, 255, 0.12) 74%, rgba(157, 234, 255, 0) 100%);
+  clip-path: polygon(100% 34%, 0 0, 0 100%, 100% 66%);
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+.hero::after {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 30%;
+  content: "";
+  background:
+    radial-gradient(120% 80% at 50% 100%, rgba(18, 183, 202, 0.24), rgba(18, 183, 202, 0) 62%),
+    repeating-linear-gradient(170deg, rgba(157, 234, 255, 0.12) 0 1px, transparent 1px 34px);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
 .hero-image,
 .hero-overlay {
   position: absolute;
@@ -109,13 +143,13 @@ a {
 
 .hero-overlay {
   background:
-    linear-gradient(90deg, rgba(5, 13, 22, 0.96) 0%, rgba(5, 13, 22, 0.74) 34%, rgba(5, 13, 22, 0.22) 74%),
-    linear-gradient(180deg, rgba(5, 13, 22, 0.35) 0%, rgba(5, 13, 22, 0.02) 52%, var(--night) 100%);
+    linear-gradient(90deg, rgba(3, 17, 31, 0.97) 0%, rgba(4, 36, 61, 0.78) 38%, rgba(6, 73, 104, 0.26) 76%),
+    linear-gradient(180deg, rgba(3, 17, 31, 0.22) 0%, rgba(6, 38, 64, 0.18) 50%, var(--night) 100%);
 }
 
 .hero-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: min(720px, 100%);
 }
 
@@ -218,7 +252,7 @@ h3 {
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 8px;
-  background: rgba(7, 18, 30, 0.48);
+  background: rgba(4, 28, 48, 0.58);
   backdrop-filter: blur(14px);
 }
 
@@ -249,7 +283,7 @@ h3 {
   align-items: center;
   justify-content: center;
   padding: 22px;
-  background: #091625;
+  background: #052039;
   color: var(--muted);
   font-family: var(--font-display);
   font-weight: 800;
@@ -299,7 +333,7 @@ section:not(.hero):not(.proof-strip) {
   margin-bottom: 28px;
   border-radius: 50%;
   background: var(--gold);
-  box-shadow: 0 0 0 8px rgba(241, 200, 76, 0.1);
+  box-shadow: 0 0 0 8px rgba(242, 201, 91, 0.1);
 }
 
 .problem-grid p,
@@ -317,7 +351,9 @@ section:not(.hero):not(.proof-strip) {
   grid-template-columns: minmax(280px, 0.78fr) minmax(360px, 1.22fr);
   gap: 42px;
   align-items: center;
-  background: linear-gradient(180deg, #081522, #0b1827);
+  background:
+    linear-gradient(180deg, rgba(3, 17, 31, 0.62), rgba(6, 38, 64, 0.92)),
+    linear-gradient(120deg, rgba(18, 183, 202, 0.12), transparent 46%);
 }
 
 .check-list {
@@ -352,8 +388,8 @@ section:not(.hero):not(.proof-strip) {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(19, 200, 174, 0.12), rgba(241, 200, 76, 0.08)),
-    rgba(5, 13, 22, 0.86);
+    linear-gradient(135deg, rgba(18, 183, 202, 0.16), rgba(242, 201, 91, 0.08)),
+    rgba(3, 17, 31, 0.88);
   box-shadow: var(--shadow);
 }
 
@@ -454,8 +490,8 @@ section:not(.hero):not(.proof-strip) {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(157, 234, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(157, 234, 255, 0.08) 1px, transparent 1px);
   background-size: 100% 34px, 58px 100%;
 }
 
@@ -470,7 +506,7 @@ section:not(.hero):not(.proof-strip) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
-  background: #07121d;
+  background: #041c30;
 }
 
 .status-section strong {
@@ -544,14 +580,14 @@ section:not(.hero):not(.proof-strip) {
   height: 120px;
   border-radius: 8px;
   background:
-    linear-gradient(135deg, transparent 0 18%, rgba(19, 200, 174, 0.22) 18% 19%, transparent 19% 34%, rgba(241, 200, 76, 0.2) 34% 35%, transparent 35%),
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    linear-gradient(135deg, transparent 0 18%, rgba(18, 183, 202, 0.26) 18% 19%, transparent 19% 34%, rgba(242, 201, 91, 0.22) 34% 35%, transparent 35%),
+    linear-gradient(rgba(157, 234, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(157, 234, 255, 0.08) 1px, transparent 1px);
   background-size: 100% 100%, 100% 30px, 52px 100%;
 }
 
 .beta-section {
-  background: linear-gradient(180deg, #0b1827, #07121d);
+  background: linear-gradient(180deg, #062640, #041c30);
 }
 
 .beta-grid span {
@@ -574,7 +610,7 @@ section:not(.hero):not(.proof-strip) {
   gap: 38px;
   align-items: start;
   background:
-    linear-gradient(180deg, rgba(7, 18, 30, 0.9), rgba(7, 18, 30, 0.96)),
+    linear-gradient(180deg, rgba(4, 28, 48, 0.9), rgba(3, 17, 31, 0.96)),
     url("./assets/hero/cripto-farol-hero.png") center / cover;
 }
 
@@ -591,7 +627,7 @@ section:not(.hero):not(.proof-strip) {
   padding: 24px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
-  background: rgba(5, 13, 22, 0.82);
+  background: rgba(3, 17, 31, 0.86);
   box-shadow: var(--shadow);
 }
 
@@ -658,8 +694,16 @@ section:not(.hero):not(.proof-strip) {
 
   .hero-overlay {
     background:
-      linear-gradient(180deg, rgba(5, 13, 22, 0.12) 0%, rgba(5, 13, 22, 0.78) 48%, var(--night) 100%),
-      linear-gradient(90deg, rgba(5, 13, 22, 0.72), rgba(5, 13, 22, 0.2));
+      linear-gradient(180deg, rgba(3, 17, 31, 0.1) 0%, rgba(4, 36, 61, 0.78) 48%, var(--night) 100%),
+      linear-gradient(90deg, rgba(3, 17, 31, 0.76), rgba(6, 73, 104, 0.22));
+  }
+
+  .hero::before {
+    top: 22%;
+    right: -38%;
+    width: 110vw;
+    height: 260px;
+    opacity: 0.72;
   }
 
   .hero-metrics,
