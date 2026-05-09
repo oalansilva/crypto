@@ -6,6 +6,7 @@ Este projeto usa dois artefatos complementares:
 
 - **GitHub Projects + Issues**: fonte operacional de execucao, ligada a issue, PR, commit, teste e evidencia.
 - **SharePoint Excel `crypto_backlog_po.xlsx`**: visao executiva de produto, roadmap, decisao de negocio e evidencia consolidada.
+- **`docs/project-hub.md`**: ponto unico de consulta rapida para objetivo, status atual, bloqueios, decisoes e proximos passos.
 
 Telegram e chat servem para alinhamento rapido. Nao sao fonte da verdade.
 
@@ -41,6 +42,27 @@ Exemplos de evidencia:
 - `Blocked`: depende de decisao, acesso, dado ou correcao anterior.
 - `Validate`: precisa de teste, revisao ou evidencia.
 - `Done`: concluido com evidencia.
+
+## Regra de Revisao da Clara
+
+Quando Clara concluir um entregavel de produto, operacao, validacao, metrica ou copy:
+
+- mover `Status` para `Done`;
+- mover `Fluxo` para `Validate`;
+- registrar evidencia no issue;
+- aguardar revisao/homologacao de Alan.
+
+Clara nao deve usar `Pronto` como estado de revisao. Se ainda faltar execucao real, o card deve ficar em `In progress`.
+
+## Regra de Release
+
+Quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente:
+
+- levantar os cards `Homologado` incluídos no pacote;
+- revisar se decisões, status e entregáveis estão refletidos na documentação do projeto/produto;
+- sincronizar Markdown local e Google Docs/Drive correspondentes;
+- publicar/encerrar a release com evidência;
+- mover os cards incluídos de `Homologado` para `Pronto`.
 
 ## Campos Recomendados
 

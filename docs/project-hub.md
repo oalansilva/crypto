@@ -1,0 +1,130 @@
+# Hub do Projeto Cripto
+
+## Objetivo
+
+Este documento e o ponto unico de consulta rapida do projeto.
+
+Aqui deve ficar:
+
+- o objetivo do produto;
+- o status atual;
+- as decisoes principais;
+- os bloqueios e proximos passos;
+- o mapa para os documentos detalhados.
+
+## Regra de Uso
+
+- GitHub Project continua sendo a fonte operacional de execucao.
+- Este hub e a fonte rapida de contexto e status consolidado.
+- Documentos detalhados ficam nos arquivos tematicos de `docs/`.
+- Telegram e chat nao sao fonte da verdade.
+
+## Produto
+
+- Nome do projeto: **Cripto Farol**.
+- Dominio definido por Alan: `criptofarol.com.br`.
+- Objetivo do produto: ajudar investidores em cripto com clareza, contexto e apoio a decisao.
+- Proposta do MVP: usar o Monitor como tela principal do beta fechado.
+- Guardrail comercial: sem promessa de lucro, sem sinal milagroso, sem hype vazio.
+
+## Status Atual
+
+- Fase atual: fechamento do beta fechado.
+- Fonte operacional: GitHub Project `MVP Cripto - Beta Fechado`.
+- Status consolidado em 2026-05-08: Alan homologou definicoes de marca, beta, metricas, captacao, copy, divulgacao e feedback.
+- Release documental 2026-05-09: cards homologados `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` consolidados neste hub e nos documentos tematicos.
+- Ambiente do beta: VPS atual, frontend como entrada, backend restrito, cadastro publico desabilitado.
+- Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
+- Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
+
+## Gates Atuais
+
+Antes de liberar usuarios beta reais:
+
+1. Alan confirmar registro de `criptofarol.com.br`.
+2. Fechar publicacao controlada da VPS.
+3. Validar fluxo ponta a ponta.
+4. Validar os documentos e definicoes homologadas no Drive.
+
+## Decisoes Ja Tomadas
+
+- GitHub Project = execucao.
+- SharePoint Excel = visao executiva/produto.
+- Monitor = home operacional do MVP.
+- Beta fechado com 3 a 5 usuarios.
+- Acesso manual e controlado no inicio.
+- Feedback inicial via grupo privado de Telegram.
+- Captacao inicial por formulario simples com triagem manual.
+- Posicionamento do Cripto Farol: ferramenta educacional de apoio a decisao, nao recomendacao financeira.
+
+## Definicoes Homologadas em 2026-05-08
+
+Alan homologou os seguintes cards e estas definicoes passam a ser base do produto:
+
+- `#156` direcao visual minima: clareza, criterio e vigilancia tranquila; paleta com azul petroleo/navy, verde/teal e acento amarelo-farol.
+- `#136` ambiente de publicacao: VPS atual, frontend como entrada, backend interno, cadastro publico desabilitado e usuarios beta autorizados manualmente.
+- `#146` estrategia de divulgacao: rede quente e abordagem direta primeiro; LinkedIn controlado depois; Instagram como apoio; grupos/comunidades somente apos validar fluxo e mensagem.
+- `#138` roteiro de feedback: mensagem inicial, perguntas apos primeiro acesso, perguntas apos uso real do Monitor e nota final por tester.
+- `#145` metricas do beta: 10 a 20 interessados, 3 a 5 testers ativos, ativacao do Monitor, minimo de 3 feedbacks completos e pelo menos 2 sinais de valor.
+- `#137` checklist de validacao: 3 a 5 perfis reais, roteiro minimo de uso e registro de travas/valor percebido.
+- `#160` canal de captacao: formulario simples com triagem manual; lista manual como contingencia.
+- `#159` copy/CTA: headline "Enxergue melhor antes de decidir em cripto" e CTA "Entrar na lista do beta fechado".
+
+## Itens em Revisao
+
+Cards com definicoes homologadas/concluidas e consolidadas neste hub:
+
+- `#136` ambiente de publicacao do beta fechado.
+- `#137` checklist de validacao com 3 a 5 usuarios.
+- `#145` metricas de sucesso do beta e divulgacao.
+- `#159` copy e CTA da landing.
+- `#160` formulario ou canal de captacao.
+- `#146` estrategia de divulgacao e canais.
+- `#138` roteiro de feedback no Telegram.
+- `#156` direcao visual minima.
+
+## Itens Ainda em Execucao Real
+
+Estes cards ainda nao sao apenas planejamento:
+
+- `#154` registrar dominio aprovado `criptofarol.com.br`.
+- `#171` configurar publicacao beta na VPS atual com acesso controlado.
+- `#75` validar fluxo ponta a ponta do beta fechado.
+- `#140` criar landing page para captacao de beta testers.
+- `#143` identidade visual minima do beta.
+- `#157` criar logo ou wordmark inicial da marca aprovada.
+- `#158` exportar assets de marca para landing e produto.
+- `#155` preparar DNS inicial do dominio aprovado.
+- `#151` gerar pacote inicial de conteudo.
+
+## Proximos Passos Recomendados
+
+1. Alan concluir o registro de `criptofarol.com.br` no `#154`.
+2. Clara preparar o plano DNS no `#155` apos confirmacao do registro.
+3. Codex executar `#171` para publicacao controlada na VPS atual.
+4. Clara/Codex avancarem landing e identidade com base em `#156`, `#159` e `#160`.
+5. Rodar validacao interna ponta a ponta no `#75`.
+6. Abrir beta controlado com 3 a 5 usuarios usando `#137`, `#138` e `#145`.
+
+## Mapa de Documentos
+
+- Pasta do projeto no Google Drive: `https://drive.google.com/drive/folders/1OE0D_nsb7BAMQ_ntZXUonnsfX9MtXhT9`
+- Escopo do MVP: [mvp-scope.md](/root/.openclaw/workspace/crypto/docs/mvp-scope.md)
+- Validacao do beta: [beta-validation.md](/root/.openclaw/workspace/crypto/docs/beta-validation.md)
+- Modelo operacional do backlog: [backlog-operating-model.md](/root/.openclaw/workspace/crypto/docs/backlog-operating-model.md)
+- Log de decisoes: [decision-log.md](/root/.openclaw/workspace/crypto/docs/decision-log.md)
+
+## Regra de Atualizacao
+
+Atualizar este hub quando houver mudanca em pelo menos um destes pontos:
+
+- decisao de produto;
+- mudanca de status do beta;
+- novo bloqueio relevante;
+- mudanca de ambiente/publicacao;
+- definicao de marca/dominio;
+- alteracao do proximo passo principal.
+
+## Regra de Release
+
+Quando Alan pedir uma release, levantar os cards `Homologado` incluídos no pacote, revisar se as decisões e entregáveis estão refletidos nos Markdown locais e nos Google Docs/Drive correspondentes, publicar/encerrar a release com evidência e então mover os cards incluídos para `Pronto`.
