@@ -32,7 +32,7 @@ Aqui deve ficar:
 - Fase atual: fechamento do beta fechado.
 - Fonte operacional: GitHub Project `MVP Cripto - Beta Fechado`.
 - Status consolidado em 2026-05-08: Alan homologou definicoes de marca, beta, metricas, captacao, copy, divulgacao e feedback.
-- Release documental 2026-05-09: cards homologados `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` consolidados neste hub e nos documentos tematicos.
+- Release documental 2026-05-09 concluida: cards `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` consolidados na documentacao, publicados em `main` pelo PR `#175` e movidos para `Pronto / Done` no GitHub Project.
 - Ambiente do beta: VPS atual, frontend como entrada, backend restrito, cadastro publico desabilitado.
 - Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
 - Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
@@ -70,9 +70,9 @@ Alan homologou os seguintes cards e estas definicoes passam a ser base do produt
 - `#160` canal de captacao: formulario simples com triagem manual; lista manual como contingencia.
 - `#159` copy/CTA: headline "Enxergue melhor antes de decidir em cripto" e CTA "Entrar na lista do beta fechado".
 
-## Itens em Revisao
+## Itens Publicados na Release 2026-05-09
 
-Cards com definicoes homologadas/concluidas e consolidadas neste hub:
+Cards com definicoes homologadas por Alan, consolidadas na documentacao e movidas para `Pronto / Done`:
 
 - `#136` ambiente de publicacao do beta fechado.
 - `#137` checklist de validacao com 3 a 5 usuarios.
