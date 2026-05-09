@@ -23,26 +23,26 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 ### Hero
 
 - Headline: **Enxergue melhor antes de decidir em cripto.**
-- Subheadline: Leitura objetiva de contexto, status e oportunidades para investidores que querem menos ruido e mais criterio.
+- Subheadline: Veja quais ativos merecem atencao, quando esperar e quando proteger posicao com uma leitura simples de sinais, contexto e risco.
 - CTA: **Entrar na lista do beta fechado**
 
 ### Problema
 
-- Excesso de informacao nao ajuda quem precisa decidir.
-- Muita gente enxerga grafico, noticia e opiniao demais, mas continua insegura para agir.
-- O foco do Cripto Farol e reduzir ruido e organizar leitura.
+- O mercado cripto muda rapido; o dificil e saber o que realmente importa agora.
+- O investidor pula entre moedas, graficos e opinioes sem saber onde concentrar atencao.
+- Falta uma leitura simples para separar espera, acompanhamento e protecao.
 
 ### Como Funciona
 
-- Monitor central com leitura de status e contexto.
-- Estrategias favoritas alimentadas por backtest e dados de mercado.
-- Fluxo de acompanhamento pensado para swing trade e validacao beta.
+- Monitor central com status objetivo por ativo.
+- Leitura visual para entender momento, oportunidade e risco.
+- Fluxo de acompanhamento pensado para investidores que querem rotina, nao call.
 
 ### Perfil Ideal
 
-- Investidor iniciante que quer mais clareza.
-- Intermediario que precisa de criterio para acompanhar oportunidades.
-- Trader que quer contexto objetivo, nao ruido.
+- Investidor iniciante que quer saber onde concentrar atencao.
+- Intermediario que precisa acompanhar oportunidades com mais consistencia.
+- Trader que quer contexto objetivo para esperar, acompanhar ou proteger posicao.
 
 ### O Que Entra no Beta
 
@@ -63,9 +63,9 @@ Campos minimos:
 
 ## Disclaimer
 
-Cripto Farol nao e recomendacao financeira.
-Nao promete lucro.
-Nao substitui sua propria decisao.
+O Cripto Farol e uma ferramenta de apoio a leitura de mercado.
+As decisoes de investimento e os riscos continuam sendo do usuario.
+Evitar no topo frases defensivas como "sem lucro garantido"; o guardrail deve aparecer de forma discreta no fim da pagina ou em contexto juridico/regulatorio.
 
 ## Entregavel Tecnico
 
