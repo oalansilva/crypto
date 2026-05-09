@@ -50,6 +50,7 @@ Nao tenta parecer casa de aposta, corretora agressiva ou influencer.
 
 - Uso preferencial: wordmark `Cripto Farol` com simbolo de farol simplificado.
 - Revisao 2026-05-09: o simbolo deve parecer uma marca de produto, nao um icone generico em um card. A versao atual combina farol, feixe e leitura de mercado/candle em traco simples, com lockup transparente para funcionar sobre hero escuro.
+- Revisao 2026-05-09, rodada 2: Alan pediu inspiracao no clima do logo da Netscape, sem copiar. A direcao aprovada para evoluir e um badge circular proprio, com horizonte/onda, azul oceano e feixe de farol, mantendo distancia formal de qualquer marca existente.
 - Variantes entregues:
   - horizontal para hero/header;
   - simbolo isolado para avatar, favicon ou destaque.
@@ -71,6 +72,7 @@ Nao tenta parecer casa de aposta, corretora agressiva ou influencer.
 
 - Mostrar produto, leitura e criterio.
 - Reforcar a metafora de farol/mar com azul oceano, feixe de luz e profundidade visual.
+- Pode usar energia visual de navegacao/horizonte dos anos 90 como referencia emocional, mas sem replicar formas, letras ou composicao de marcas existentes.
 - Evitar foguete, cifrao, vela de lucro, lobo de wall street e estetica de cassino.
 - Usar linguagem de painel, monitoramento, mapa, grade e orientacao.
 

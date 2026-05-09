@@ -1,16 +1,20 @@
 <svg width="420" height="88" viewBox="0 0 420 88" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cripto Farol">
   <g transform="translate(4 6)">
-    <rect width="76" height="76" rx="18" fill="#07121D"/>
-    <path d="M14 41C25 27 39 21 63 17" stroke="#F1C84C" stroke-width="6" stroke-linecap="round"/>
-    <path d="M14 49C26 39 39 35 60 33" stroke="#13C8AE" stroke-width="5" stroke-linecap="round" opacity="0.82"/>
-    <path d="M38 13L50 29L45 61H31L26 29L38 13Z" fill="#0B1827" stroke="#F7F4EA" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M33 33H43" stroke="#8DF4DF" stroke-width="4" stroke-linecap="round"/>
-    <path d="M32 43H44" stroke="#8DF4DF" stroke-width="4" stroke-linecap="round"/>
-    <path d="M34 61L30 71" stroke="#F7F4EA" stroke-width="4" stroke-linecap="round"/>
-    <path d="M42 61L46 71" stroke="#F7F4EA" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="38" cy="13" r="4" fill="#F1C84C"/>
-    <circle cx="38" cy="52" r="5" fill="#F1C84C"/>
+    <rect width="76" height="76" rx="18" fill="#03111F"/>
+    <circle cx="38" cy="38" r="29" fill="#062640"/>
+    <circle cx="38" cy="38" r="29" stroke="#9DEAFF" stroke-width="4"/>
+    <path d="M12 44C22 36 31 36 39 44C48 52 57 53 65 45V63H12V44Z" fill="#083B5D"/>
+    <path d="M12 44C22 36 31 36 39 44C48 52 57 53 65 45" stroke="#9DEAFF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M20 31C29 23 41 18 62 13" stroke="#F2C95B" stroke-width="5" stroke-linecap="round"/>
+    <path d="M24 38C34 31 44 29 61 27" stroke="#12B7CA" stroke-width="4" stroke-linecap="round"/>
+    <path d="M37 12L47 26L44 56H31L28 26L37 12Z" fill="#03111F" stroke="#F7F4EA" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M33 29H42" stroke="#9DEAFF" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M32 38H43" stroke="#9DEAFF" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M34 56L30 66" stroke="#F7F4EA" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M41 56L46 66" stroke="#F7F4EA" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="37" cy="12" r="3.5" fill="#F2C95B"/>
+    <circle cx="38" cy="48" r="4" fill="#F2C95B"/>
   </g>
   <text x="94" y="38" fill="#F7F4EA" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="0">Cripto Farol</text>
-  <text x="96" y="62" fill="#AAB4B9" font-family="IBM Plex Sans, Arial, sans-serif" font-size="13" font-weight="500" letter-spacing="0">Clareza operacional para decidir em cripto</text>
+  <text x="96" y="62" fill="#C3D6DF" font-family="IBM Plex Sans, Arial, sans-serif" font-size="13" font-weight="500" letter-spacing="0">Clareza operacional para decidir em cripto</text>
 </svg>
