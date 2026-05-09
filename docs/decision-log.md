@@ -80,3 +80,19 @@
 **Resultado:** cards `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` movidos de `Homologado / Validate` para `Pronto / Done`.
 
 **Regra:** release documental concluída com evidência permite avançar os cards da Clara ou do Alan incluídos de `Homologado` para `Pronto`. Cards de `Codex` ficam fora deste fluxo e seguem o fluxo técnico próprio do Codex.
+
+## 2026-05-09 - Identidade visual minima do beta
+
+**Decisao:** fechar a identidade minima do Cripto Farol com wordmark, simbolo isolado, paleta, tipografia e criterio de uso suficientes para landing, captacao e tela inicial do beta.
+
+**Arquivos entregues:** `docs/brand-system.md`, `frontend/public/brand/cripto-farol-mark.svg` e `frontend/public/brand/cripto-farol-wordmark.svg`.
+
+**Regra:** a identidade do beta deve comunicar clareza, criterio e vigilancia tranquila, sem estetica de guru, cassino ou hype.
+
+## 2026-05-09 - Landing page de captacao do beta
+
+**Decisao:** fechar uma landing estatica simples para captar interessados do beta fechado, com CTA unico, formulario curto e guardrail etico explicito.
+
+**Arquivos entregues:** `docs/landing-page.md`, `frontend/public/prototypes/cripto-farol-landing/index.html` e `frontend/public/prototypes/cripto-farol-landing/styles.css`.
+
+**Regra:** a landing deve vender clareza e processo, nunca promessa de lucro.
