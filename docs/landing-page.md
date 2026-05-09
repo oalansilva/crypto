@@ -64,7 +64,8 @@ Campos minimos:
 
 - Formulario da landing envia os leads para o endpoint VPS `http://72.60.150.140:5174/api/leads`.
 - Os leads sao gravados em uma planilha `.xlsx` no Google Drive da Clara: `https://docs.google.com/spreadsheets/d/1cWFpAEfbTHcPJ8akzTf-oHRLRS-QmVNf/edit?usp=drivesdk&ouid=109602176178341361243&rtpof=true&sd=true`.
-- A cada inscricao, o endpoint tambem envia aviso no topico Telegram do projeto cripto e e-mail para Alan em `o.alan.silva@gmail.com`.
+- A cada inscricao, o endpoint tambem envia aviso no topico Telegram do projeto cripto, e-mail para Alan em `o.alan.silva@gmail.com` e e-mail de boas-vindas para o lead com link de acesso.
+- Se o e-mail ainda nao existir no sistema, o endpoint cria automaticamente um usuario ativo do beta com senha temporaria aleatoria, salva apenas o hash no banco e envia a senha somente no e-mail de boas-vindas com copia para Alan.
 - Observacao tecnica: a API nativa do Google Sheets esta bloqueada no OAuth atual; por isso a integracao usa arquivo `.xlsx` no Drive, atualizado pela VPS.
 
 ## Disclaimer
