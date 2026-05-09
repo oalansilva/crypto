@@ -75,4 +75,8 @@
 
 **Documentos revisados:** `docs/project-hub.md`, `docs/mvp-scope.md`, `docs/beta-validation.md`, `docs/backlog-operating-model.md` e `docs/decision-log.md`.
 
+**Evidencia:** PR `#175` mergeado em `main` com merge commit `9ecbf88`; Google Docs/Drive sincronizados; `openspec validate --all` passou; CI do PR passou.
+
+**Resultado:** cards `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` movidos de `Homologado / Validate` para `Pronto / Done`.
+
 **Regra:** release documental concluída com evidência permite avançar os cards incluídos de `Homologado` para `Pronto`.
