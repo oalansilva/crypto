@@ -56,13 +56,15 @@ Clara nao deve usar `Pronto` como estado de revisao. Se ainda faltar execucao re
 
 ## Regra de Release
 
-Quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente:
+Quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente para cards no nome da Clara:
 
-- levantar os cards `Homologado` incluídos no pacote;
+- levantar os cards `Homologado` e com `Responsavel=Clara` incluídos no pacote;
 - revisar se decisões, status e entregáveis estão refletidos na documentação do projeto/produto;
 - sincronizar Markdown local e Google Docs/Drive correspondentes;
 - publicar/encerrar a release com evidência;
-- mover os cards incluídos de `Homologado` para `Pronto`.
+- mover esses cards da Clara de `Homologado` para `Pronto`.
+
+Cards de `Codex` ou `Alan` seguem seus fluxos próprios de release técnica ou decisão.
 
 ## Campos Recomendados
 
