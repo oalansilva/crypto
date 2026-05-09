@@ -13,6 +13,7 @@ BACKEND_PORT="${CRYPTO_BACKEND_PORT:-8003}"
 FRONTEND_PORT="${CRYPTO_FRONTEND_PORT:-5173}"
 REDIS_HOST="${CRYPTO_REDIS_HOST:-127.0.0.1}"
 REDIS_PORT="${CRYPTO_REDIS_PORT:-6379}"
+REDIS_BIND_HOST="${CRYPTO_REDIS_BIND_HOST:-127.0.0.1}"
 BACKEND_LOG="/tmp/crypto-uvicorn-${BACKEND_PORT}.log"
 FRONTEND_LOG="/tmp/crypto-vite-${FRONTEND_PORT}.log"
 RUNTIME_WORKER_LOG="/tmp/crypto-runtime-worker.log"
@@ -229,6 +230,22 @@ run_alembic_migrations() {
 
 start_redis_runtime() {
   if wait_for_tcp_open "$REDIS_HOST" "$REDIS_PORT" 2 1; then
+    if command -v docker >/dev/null 2>&1 && docker inspect "$REDIS_CONTAINER_NAME" >/dev/null 2>&1; then
+      local redis_bind
+      redis_bind="$(docker inspect -f '{{range $p, $conf := .NetworkSettings.Ports}}{{if eq $p "6379/tcp"}}{{range $conf}}{{.HostIp}}:{{.HostPort}} {{end}}{{end}}{{end}}' "$REDIS_CONTAINER_NAME" 2>/dev/null || true)"
+      if [[ "$redis_bind" == *"0.0.0.0:${REDIS_PORT}"* || "$redis_bind" == *":::${REDIS_PORT}"* ]]; then
+        echo "Redis runtime is bound publicly (${redis_bind}); recreating with ${REDIS_BIND_HOST}:${REDIS_PORT}."
+        docker stop "$REDIS_CONTAINER_NAME" >/dev/null
+        docker rm "$REDIS_CONTAINER_NAME" >/dev/null
+      else
+        return 0
+      fi
+    else
+      return 0
+    fi
+  fi
+
+  if wait_for_tcp_open "$REDIS_HOST" "$REDIS_PORT" 2 1; then
     return 0
   fi
 
@@ -238,7 +255,7 @@ start_redis_runtime() {
     else
       docker run -d \
         --name "$REDIS_CONTAINER_NAME" \
-        -p "${REDIS_PORT}:6379" \
+        -p "${REDIS_BIND_HOST}:${REDIS_PORT}:6379" \
         -v "${REDIS_VOLUME_NAME}:/data" \
         redis:7-alpine \
         redis-server --appendonly yes --maxmemory-policy noeviction >/dev/null

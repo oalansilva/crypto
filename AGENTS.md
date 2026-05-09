@@ -20,7 +20,8 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de implementação por card:** ao receber pedido com número de card (ex.: `#99`), localizar o card no board `github.com/users/oalansilva/projects/1`, criar/usar branch própria da change a partir de `develop`, mover para `In Progress`, executar usando OpenSpec e subagents conforme o escopo, rodar `/opsx:verify`, integrar em `develop`, executar `./restart`, e só então mover o card para `Done`. Não arquivar nem publicar em `main` nesta etapa.
 - **Regra de homologação direta por card (solicitação do cliente):** quando Alan disser que um card está homologado, mova o card de `Done` para `Homologado` sem abrir PR, sem merge em `main` e sem arquivar OpenSpec automaticamente. Homologação aqui significa aprovação funcional em `develop`.
 - **Guardrail anti-release acidental:** as frases `card homologado`, `cards homologados`, `está homologado`, `homologuei`, `aprovado em develop` ou equivalentes significam somente atualizar status para `Homologado`. Elas **não autorizam** commit, PR, merge, archive, release ou qualquer ação em `main`.
-- **Regra de release/lote:** quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, selecione os cards `Homologado`, confirme commits/branches incluídos, rode validação final completa, arquive as changes OpenSpec correspondentes, push, PR para `main`, merge manual, atualize `develop` e mova os cards incluídos para `Pronto`.
+- **Regra de release/lote:** quando Alan pedir `subir lote`, `fechar lote`, `fechar release`, `criar release`, `gerar release` ou equivalente, selecione apenas os cards `Homologado` cujo responsavel seja `Codex`; ignore cards de outros responsaveis, pois nao sao de codigo. Depois confirme commits/branches incluídos, rode validação final completa, arquive as changes OpenSpec correspondentes, push, PR para `main`, merge manual, atualize `develop` e mova os cards incluídos para `Pronto`.
+- **Regra documental de release:** quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente, antes de publicar/encerrar o pacote, pegue todos os cards `Homologado` por Alan incluídos na release e revise se as decisões, status e entregáveis desses cards estão refletidos na documentação do projeto/produto. A seleção de cards da release continua limitada aos cards com responsavel `Codex`; cards de outros responsaveis ficam fora do pacote. A documentação precisa ficar atualizada tanto nos Markdown locais quanto nos Google Docs/Drive correspondentes. Depois da release publicada/encerrada com evidência, mova os cards incluídos de `Homologado` para `Pronto`.
 - **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `In Progress` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste, corrija e reteste mantendo o status atual. O card só avança: `Done` -> `Homologado` -> `Pronto`.
 - **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
 - **Regra de validação OpenSpec global:** `openspec validate --all` verde é critério padrão de fechamento. Se falhar por changes antigas fora do card, valide os specs afetados pelo card como evidência parcial, mas resolva a sujeira global antes do encerramento: corrija ou arquive as changes antigas, inclusive por archive manual quando a CLI/skill não conseguir concluir.
@@ -36,6 +37,7 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Subagents:** use subagents sempre que houver ganho claro de paralelismo, investigação independente, validação especializada ou aceleração sem duplicar trabalho.
 - OpenSpec é a camada de especificação técnica (artifacts).
 - Workflow DB e OpenSpec são fontes de operação e evidência.
+- **Regra de documentação produto/Drive:** documentos de produto/projeto que existem no Google Drive e em `docs/*.md` devem ser mantidos sincronizados. Drive é a fonte de consulta/revisão para Alan; Markdown local/GitHub é espelho versionado e backup técnico. Não editar manualmente nos dois lugares de forma divergente. Ao atualizar definição aprovada, atualize o `.md` local e sincronize o Google Doc correspondente, ou atualize o Drive e depois espelhe localmente. Para código e documentação técnica de implementação, GitHub continua mandando.
 
 ## De-para OpenSpec/OPSX no Codex
 
@@ -179,7 +181,7 @@ Status final: pronto.
 ### Release em lote
 
 - Vários cards podem ficar em `Homologado` aguardando publicação conjunta.
-- Quando Alan pedir `subir lote`, `fechar lote`, `fechar release` ou equivalente, liste cards homologados e commits/branches que entram no pacote.
+- Quando Alan pedir `subir lote`, `fechar lote`, `fechar release`, `criar release`, `gerar release` ou equivalente, liste apenas cards `Homologado` com responsavel `Codex` e os commits/branches que entram no pacote. Ignore cards de outros responsaveis.
 - Se `develop` contiver só conteúdo homologado do pacote, use PR `develop -> main`.
 - Se `develop` contiver mudança não homologada, não faça merge direto `develop -> main`; crie `release-*` a partir de `main` e inclua somente commits/branches aprovados, ou peça decisão de Alan.
 - Antes de mover cards para `Pronto`, confirme que cada card realmente entrou no merge para `main`.
@@ -262,7 +264,7 @@ Padrão de commit recomendado:
   - status atual
   - decisões de escopo
   - evidências de teste/PR
-- Para promover produção, junte os cards `Homologado` no lote/release pedido por Alan, confirme commits/branches incluídos, abra PR para `main`, resolva checks/políticas bloqueantes quando forem corrigíveis por código/configuração do repo, realize o merge manual do PR e então mova os cards incluídos para `Pronto`.
+- Para promover produção, junte apenas os cards `Homologado` com responsavel `Codex` no lote/release pedido por Alan, ignore cards de outros responsaveis, confirme commits/branches incluídos, abra PR para `main`, resolva checks/políticas bloqueantes quando forem corrigíveis por código/configuração do repo, realize o merge manual do PR e então mova os cards incluídos para `Pronto`.
 - Política adicional: quando houver falha recorrente de unit tests de DB, aplique isolamento por teste (reset de tabelas/fixtures) antes de alterar regras de negócio.
 - Ao registrar bloqueios de CI, incluir evidência e impacto de `Unit tests` e `Backend format` no comentário do PR, e manter esta orientação em `AGENTS.md` para repetição.
 - Em workflows com `push` e `pull_request`, a `concurrency.group` deve diferenciar `github.event_name`; caso contrário, o run de `pull_request` pode cancelar o run de `push` do mesmo SHA em `develop`, deixando checks obrigatórios como `cancelled` e bloqueando o merge em `main`.

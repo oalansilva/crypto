@@ -8,6 +8,22 @@ Se oferecermos um Monitor de estrategias de swing trade, alimentado por backtest
 
 Dar ao investidor uma leitura simples de oportunidade e risco para acompanhar estrategias, sem prometer lucro e sem vender sinal milagroso.
 
+## Marca e Posicionamento
+
+- Nome do produto: **Cripto Farol**.
+- Dominio definido: `criptofarol.com.br`.
+- Promessa de produto: enxergar melhor antes de decidir em cripto.
+- Headline base: **Enxergue melhor antes de decidir em cripto.**
+- CTA base: **Entrar na lista do beta fechado**.
+- Posicionamento: ferramenta educacional de apoio a decisao, nao recomendacao financeira.
+
+## Direcao Visual Minima
+
+- Atributos: clareza, criterio e vigilancia tranquila.
+- Conceito: farol tecnico que orienta, alerta e da referencia sem prometer resultado.
+- Paleta: azul petroleo/navy como base, verde/teal como cor secundaria e amarelo-farol como acento controlado.
+- Tom visual: limpo, tecnico, sobrio e sem estetica de guru, foguete, luxo financeiro ou hype.
+
 ## Must-have para Beta Fechado
 
 1. Login e acesso controlado.
@@ -29,6 +45,7 @@ Dar ao investidor uma leitura simples de oportunidade e risco para acompanhar es
 4. Registro de metricas.
 5. Suporte no Telegram.
 6. Pergunta de disposicao de pagar.
+7. Triagem de interessados via formulario simples ou lista manual.
 
 ## Fora do MVP Agora
 
@@ -66,5 +83,5 @@ Nao liberar beta se:
 - 3 a 5 usuarios beta convidados.
 - Pelo menos 3 usando o fluxo principal.
 - Pelo menos 3 conversas reais de feedback.
-- Pelo menos 1 sinal claro de disposicao de pagar ou indicacao para outro usuario.
+- Pelo menos 2 sinais claros de valor: uso recorrente, disposicao de pagar, indicacao ou vontade de continuar acompanhando.
 - Lista objetiva do que precisa mudar antes de cobrar.
