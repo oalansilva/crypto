@@ -23,14 +23,14 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 ### Hero
 
 - Headline: **Enxergue melhor antes de decidir em cripto.**
-- Subheadline: Veja quais ativos merecem atencao, quando esperar e quando proteger posicao com uma leitura simples de sinais, contexto e risco.
+- Subheadline: Veja quais ativos merecem atencao, quando entrar, quando manter e quando vender com uma leitura simples de sinais, contexto e risco.
 - CTA: **Entrar na lista do beta fechado**
 
 ### Problema
 
 - O mercado cripto muda rapido; o dificil e saber o que realmente importa agora.
 - O investidor pula entre moedas, graficos e opinioes sem saber onde concentrar atencao.
-- Falta uma leitura simples para separar espera, acompanhamento e protecao.
+- Falta uma leitura simples para separar entrada, acompanhamento e venda.
 
 ### Como Funciona
 
@@ -42,7 +42,7 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 
 - Investidor iniciante que quer saber onde concentrar atencao.
 - Intermediario que precisa acompanhar oportunidades com mais consistencia.
-- Trader que quer contexto objetivo para esperar, acompanhar ou proteger posicao.
+- Trader que quer contexto objetivo para entrar, acompanhar ou vender.
 
 ### O Que Entra no Beta
 
@@ -79,3 +79,7 @@ Protótipo estatico em:
 Nao usar screenshots que exponham parametros internos, valores de indicadores, medias moveis ou informacoes que o cliente beta nao tera acesso.
 
 A landing deve mostrar uma previa sanitizada da experiencia: status, leitura de contexto, oportunidade e risco, sem detalhes tecnicos internos.
+
+## Regra de Status
+
+Nao usar `WAIT`/`waiting` na landing. O status neutro foi removido do posicionamento; a comunicacao deve trabalhar com entrada/compra, acompanhamento/manutencao e venda/saida.

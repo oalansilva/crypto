@@ -431,7 +431,7 @@ section:not(.hero):not(.proof-strip) {
   color: var(--green);
 }
 
-.preview-card.wait strong {
+.preview-card.buy strong {
   color: var(--gold);
 }
 
