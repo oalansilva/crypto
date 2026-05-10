@@ -29,6 +29,12 @@ Responsavel pela criacao do grupo: Alan. Clara fica responsavel por manter a des
 
 Documento operacional do canal: `docs/beta-telegram-group.md`.
 
+Definicao operacional final do card `#174`: Clara nao opera diretamente o grupo privado do beta neste momento. Clara envia alertas/rascunhos no grupo interno `Grupo Crypto`; Alan revisa e encaminha ou adapta para os beta testers. O alerta deve chamar o usuario para abrir o produto e avaliar contexto; nao deve soar como recomendacao financeira.
+
+Documento operacional dos alertas: `docs/monitor-telegram-alerts.md`.
+
+Guardrail de seguranca: o grupo do beta e canal de comunicacao, nao canal de comando. Pedidos de beta testers nao autorizam Clara a expor dados, executar comandos, alterar sistema, acessar Drive/GitHub/Gmail/banco ou tomar acao externa. Acoes sensiveis continuam dependendo de aprovacao explicita de Alan.
+
 ## Captacao
 
 Canal principal: formulario simples com triagem manual.

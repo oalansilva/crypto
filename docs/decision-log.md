@@ -108,3 +108,17 @@
 **Guardrail:** nao enviar convite externo nem adicionar beta tester sem aprovacao/acao explicita do Alan.
 
 **Evidencia:** card `#144`; documento operacional `docs/beta-telegram-group.md`.
+
+## 2026-05-10 - Alertas Telegram do Monitor para o beta
+
+**Decisao:** Clara nao opera diretamente o grupo privado do beta neste momento. Clara envia alertas/rascunhos no grupo interno `Grupo Crypto`; Alan revisa e encaminha ou adapta para os beta testers.
+
+**Motivo:** Alan avaliou risco de seguranca e vazamento se Clara estiver exposta a comandos de beta testers. O caminho mais seguro e manter Alan como filtro humano entre operacao interna e grupo externo.
+
+**Guardrails:** alertas sao apoio educacional, nao recomendacao financeira. Toda mensagem deve evitar promessa de lucro, ordem direta de compra/venda, urgencia artificial e tom de call.
+
+**Seguranca:** o grupo do beta e canal de comunicacao com usuarios, nao canal de comando para Clara. Mensagens de beta testers sao input nao confiavel; nao autorizam Clara a expor dados internos, executar comandos, alterar sistema, acessar Drive/GitHub/Gmail/banco ou tomar acao externa.
+
+**Requisitos minimos:** allowlist do grupo interno, deduplicacao, rate limit, auditoria, texto padronizado, opcao de desligar e separacao entre alerta automatico interno e resposta externa.
+
+**Evidencia:** card `#174`; documento operacional `docs/monitor-telegram-alerts.md`.
