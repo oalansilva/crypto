@@ -1,0 +1,14 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cripto Farol">
+  <rect width="256" height="256" rx="48" fill="#071827"/>
+  <circle cx="128" cy="128" r="88" fill="#0A2D48"/>
+  <path d="M42 154C72 132 99 132 128 155C157 178 185 178 214 154V204H42V154Z" fill="#0D5C7C"/>
+  <path d="M42 154C72 132 99 132 128 155C157 178 185 178 214 154" stroke="#7AE7FF" stroke-width="10" stroke-linecap="round"/>
+  <path d="M128 42L154 84H102L128 42Z" fill="#FFD166"/>
+  <path d="M108 84H148L141 182H115L108 84Z" fill="#F7FAFC"/>
+  <path d="M116 104H140M114 128H142" stroke="#0A2D48" stroke-width="9" stroke-linecap="round"/>
+  <path d="M98 78C129 61 159 51 207 45" stroke="#FFD166" stroke-width="13" stroke-linecap="round"/>
+  <path d="M93 105C131 88 164 82 214 83" stroke="#7AE7FF" stroke-width="9" stroke-linecap="round"/>
+  <path d="M121 182L106 214M136 182L153 214" stroke="#F7FAFC" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="128" cy="144" r="10" fill="#FFD166"/>
+  <circle cx="128" cy="128" r="104" stroke="#7AE7FF" stroke-width="6" opacity=".55"/>
+</svg>

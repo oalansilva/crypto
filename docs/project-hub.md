@@ -33,6 +33,7 @@ Aqui deve ficar:
 - Fonte operacional: GitHub Project `MVP Cripto - Beta Fechado`.
 - Status consolidado em 2026-05-08: Alan homologou definicoes de marca, beta, metricas, captacao, copy, divulgacao e feedback.
 - Release documental 2026-05-09 concluida: cards `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` consolidados na documentacao, publicados em `main` pelo PR `#175` e movidos para `Pronto / Done` no GitHub Project.
+- Entregaveis da Clara em 2026-05-09 para revisao: `#143` com brand system, wordmark, mark e ativos minimos; `#140` com landing page estatica para captacao e documento de copy/estrutura.
 - Ambiente do beta: VPS atual, frontend como entrada, backend restrito, cadastro publico desabilitado.
 - Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
 - Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
@@ -83,6 +84,17 @@ Cards com definicoes homologadas por Alan, consolidadas na documentacao e movida
 - `#138` roteiro de feedback no Telegram.
 - `#156` direcao visual minima.
 
+## Itens Entregues e Aguardando Homologacao
+
+- `#143` identidade visual minima do beta:
+  - `docs/brand-system.md`
+  - `frontend/public/brand/cripto-farol-mark.svg`
+  - `frontend/public/brand/cripto-farol-wordmark.svg`
+- `#140` landing page para captacao:
+  - `docs/landing-page.md`
+  - `frontend/public/prototypes/cripto-farol-landing/index.html`
+  - `frontend/public/prototypes/cripto-farol-landing/styles.css`
+
 ## Itens Ainda em Execucao Real
 
 Estes cards ainda nao sao apenas planejamento:
@@ -90,8 +102,6 @@ Estes cards ainda nao sao apenas planejamento:
 - `#154` registrar dominio aprovado `criptofarol.com.br`.
 - `#171` configurar publicacao beta na VPS atual com acesso controlado.
 - `#75` validar fluxo ponta a ponta do beta fechado.
-- `#140` criar landing page para captacao de beta testers.
-- `#143` identidade visual minima do beta.
 - `#157` criar logo ou wordmark inicial da marca aprovada.
 - `#158` exportar assets de marca para landing e produto.
 - `#155` preparar DNS inicial do dominio aprovado.
@@ -113,6 +123,8 @@ Estes cards ainda nao sao apenas planejamento:
 - Validacao do beta: [beta-validation.md](/root/.openclaw/workspace/crypto/docs/beta-validation.md)
 - Modelo operacional do backlog: [backlog-operating-model.md](/root/.openclaw/workspace/crypto/docs/backlog-operating-model.md)
 - Log de decisoes: [decision-log.md](/root/.openclaw/workspace/crypto/docs/decision-log.md)
+- Sistema de marca: [brand-system.md](/root/.openclaw/workspace/crypto/docs/brand-system.md)
+- Estrutura da landing: [landing-page.md](/root/.openclaw/workspace/crypto/docs/landing-page.md)
 
 ## Regra de Atualizacao
 

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/stores/authStore'
 import axios from 'axios'
-import { Eye, EyeOff, TrendingUp } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { MonitorDisclaimer } from '@/components/monitor/MonitorDisclaimer'
 
 const PASSWORDLESS_LOGIN_EMAILS = new Set([
@@ -88,9 +88,11 @@ export default function LoginPage() {
       <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-8 shadow-[var(--shadow-xl)] backdrop-blur-xl">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-[rgba(252,213,53,0.26)] bg-[var(--accent-primary)] shadow-[var(--shadow-md)]">
-            <TrendingUp className="h-7 w-7 text-[var(--text-on-primary)]" />
-          </div>
+          <img
+            src="/brand/cripto-farol-logo-v6-transparent.svg"
+            alt="Cripto Farol"
+            className="h-16 w-[220px] object-contain"
+          />
           <h1 className="text-xl font-bold text-[var(--text-primary)]">
             Bem-vindo de volta
           </h1>
