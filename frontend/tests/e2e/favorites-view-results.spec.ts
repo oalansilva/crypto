@@ -547,6 +547,8 @@ test('favorites exposes one analysis CTA instead of separate trades/results acti
   const btcRow = page.locator('.fav-table-shell tbody tr', { hasText: 'BTC Swing' });
   await expect(btcRow.locator('button[title="View Trades"]')).toHaveCount(0);
   await expect(btcRow.locator('button[title="View Results"]')).toHaveCount(0);
+  await expect(btcRow.locator('button[title="Chat com o agente"]')).toHaveCount(0);
+  await expect(btcRow.getByRole('button', { name: /Trader/i })).toHaveCount(0);
 
   const analysis = btcRow.locator('button[title="Ver análise completa"]');
   await expect(analysis).toHaveCount(1);
@@ -569,6 +571,8 @@ test('favorites mobile card exposes one analysis CTA', async ({ page }) => {
   await expect(btcCard).toBeVisible();
   await expect(btcCard.locator('button[title="View Trades"]')).toHaveCount(0);
   await expect(btcCard.locator('button[title="View Results"]')).toHaveCount(0);
+  await expect(btcCard.locator('button[title="Chat com o agente"]')).toHaveCount(0);
+  await expect(btcCard.getByRole('button', { name: /Trader/i })).toHaveCount(0);
   await expect(btcCard.locator('button[title="Ver análise completa"]')).toHaveCount(1);
   await expect(btcCard.getByRole('button', { name: /Analisar/i })).toBeVisible();
 });
