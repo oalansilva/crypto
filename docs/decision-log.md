@@ -96,3 +96,15 @@
 **Arquivos entregues:** `docs/landing-page.md`, `frontend/public/prototypes/cripto-farol-landing/index.html` e `frontend/public/prototypes/cripto-farol-landing/styles.css`.
 
 **Regra:** a landing deve vender clareza e processo, nunca promessa de lucro.
+
+## 2026-05-10 - Canal Telegram do beta fechado
+
+**Decisao:** o canal operacional de feedback dos beta testers sera um grupo privado separado de Telegram, preferencialmente chamado `Cripto Farol - Beta Fechado`.
+
+**Motivo:** o beta inicial deve ter conversa direta e suporte manual com 3 a 5 usuarios, mas sem misturar usuarios externos com o grupo interno de operacao `Grupo Crypto`.
+
+**Responsavel:** Alan cria o grupo e adiciona beta testers. Clara mantem descricao, mensagem fixada, roteiro de feedback e consolidacao de aprendizados.
+
+**Guardrail:** nao enviar convite externo nem adicionar beta tester sem aprovacao/acao explicita do Alan.
+
+**Evidencia:** card `#144`; documento operacional `docs/beta-telegram-group.md`.

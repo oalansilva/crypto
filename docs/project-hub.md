@@ -35,6 +35,7 @@ Aqui deve ficar:
 - Release documental 2026-05-09 concluida: cards `#156`, `#136`, `#146`, `#138`, `#145`, `#137`, `#160` e `#159` consolidados na documentacao, publicados em `main` pelo PR `#175` e movidos para `Pronto / Done` no GitHub Project.
 - Entregaveis da Clara em 2026-05-09 para revisao: `#143` com brand system, wordmark, mark e ativos minimos; `#140` com landing page estatica para captacao e documento de copy/estrutura.
 - Ambiente do beta: VPS atual, frontend como entrada, backend restrito, cadastro publico desabilitado.
+- Canal de feedback do beta: definido no `#144` como grupo privado separado de Telegram, com Alan responsavel pela criacao e Clara responsavel por descricao, mensagem fixada, roteiro e consolidacao dos feedbacks.
 - Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
 - Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
 
@@ -121,6 +122,7 @@ Estes cards ainda nao sao apenas planejamento:
 - Pasta do projeto no Google Drive: `https://drive.google.com/drive/folders/1OE0D_nsb7BAMQ_ntZXUonnsfX9MtXhT9`
 - Escopo do MVP: [mvp-scope.md](/root/.openclaw/workspace/crypto/docs/mvp-scope.md)
 - Validacao do beta: [beta-validation.md](/root/.openclaw/workspace/crypto/docs/beta-validation.md)
+- Grupo Telegram do beta: [beta-telegram-group.md](/root/.openclaw/workspace/crypto/docs/beta-telegram-group.md) / Drive `https://docs.google.com/document/d/1HFO-cpFeGzGnDvH8pz5JjpekMU6192I93TwEgzJ3tgU/edit?usp=drivesdk`
 - Modelo operacional do backlog: [backlog-operating-model.md](/root/.openclaw/workspace/crypto/docs/backlog-operating-model.md)
 - Log de decisoes: [decision-log.md](/root/.openclaw/workspace/crypto/docs/decision-log.md)
 - Sistema de marca: [brand-system.md](/root/.openclaw/workspace/crypto/docs/brand-system.md)

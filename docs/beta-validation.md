@@ -23,6 +23,12 @@ Usar grupo privado de Telegram como canal manual de feedback no inicio.
 
 Recomendacao homologada: criar/usar um espaco privado para beta testers, com mensagem fixada, disclaimer e controle manual de entrada/saida.
 
+Definicao operacional do card `#144`: usar um **grupo privado separado**, chamado preferencialmente `Cripto Farol - Beta Fechado`. Nao usar o grupo interno `Grupo Crypto` para beta testers externos.
+
+Responsavel pela criacao do grupo: Alan. Clara fica responsavel por manter a descricao, mensagem fixada, roteiro e consolidacao dos feedbacks.
+
+Documento operacional do canal: `docs/beta-telegram-group.md`.
+
 ## Captacao
 
 Canal principal: formulario simples com triagem manual.
