@@ -57,6 +57,7 @@ Campos minimos:
 
 - nome;
 - email;
+- WhatsApp;
 - nivel com cripto;
 - principal dificuldade hoje;
 
@@ -80,6 +81,16 @@ Protótipo estatico em:
 
 - `frontend/public/prototypes/cripto-farol-landing/index.html`
 - `frontend/public/prototypes/cripto-farol-landing/styles.css`
+
+## Opcao Comparativa V4
+
+Quarta opcao de landing criada para comparacao comercial:
+
+- `frontend/public/prototypes/cripto-farol-landing-v4/index.html`
+- `frontend/public/prototypes/cripto-farol-landing-v4/styles.css`
+- `frontend/public/prototypes/cripto-farol-landing-v4/rationale.md`
+
+Direcao: rotina curta de decisao, lista de atencao, menos dispersao e acesso ao beta. A versao comparativa V4 usa `Compra` e `Venda` por decisao explicita do Alan, preserva o endpoint de leads e evita expor parametros internos.
 
 ## Regra Visual dos Prints
 

@@ -96,17 +96,15 @@ function getUserInitials(name?: string) {
 }
 
 function BrandBlock({ compact = false }: { compact?: boolean }) {
+  const logoClasses = compact ? 'h-12 w-12 object-contain' : 'h-12 w-[172px] object-contain object-left'
+
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[rgba(252,213,53,0.26)] bg-[var(--accent-primary)]">
-        <TrendingUp className="h-4.5 w-4.5 text-[var(--text-on-primary)]" />
-      </div>
-      {!compact && (
-        <div className="min-w-0">
-          <span className="block truncate text-[13px] font-semibold text-[var(--text-primary)]">Crypto</span>
-          <span className="block truncate text-xs text-[var(--text-tertiary)]">Operação, estratégia e execução</span>
-        </div>
-      )}
+    <div className={['flex min-w-0 items-center', compact ? 'justify-center' : 'justify-start'].join(' ')}>
+      <img
+        src="/brand/cripto-farol-logo-v6-transparent.svg"
+        alt="Cripto Farol"
+        className={logoClasses}
+      />
     </div>
   )
 }
