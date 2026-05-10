@@ -29,6 +29,7 @@
         <a href="#rotina">Rotina</a>
         <a href="#sinais">Sinais</a>
         <a href="#lista">Beta</a>
+        <a href="/login">Acessar sistema</a>
       </nav>
     </header>
 
@@ -50,6 +51,7 @@
             </p>
             <div class="hero-actions" aria-label="Acoes principais">
               <a class="button button-primary" href="#lista">Receber acesso ao beta</a>
+              <a class="button button-system" href="/login">Já tenho acesso</a>
               <a class="button button-secondary" href="#rotina">Ver a rotina</a>
             </div>
             <div class="trust-row" aria-label="Resumo da proposta">
@@ -241,7 +243,10 @@
           pain: formData.get("pain"),
           origin: window.location.href,
         };
-        const endpoint = `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
+        const isProductionDomain = ["criptofarol.com.br", "www.criptofarol.com.br"].includes(window.location.hostname);
+        const endpoint = isProductionDomain
+          ? "/api/leads"
+          : `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
 
         submitButton.disabled = true;
         message.textContent = "Criando seu acesso...";
