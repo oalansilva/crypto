@@ -1,14 +1,28 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 import time
 from uuid import uuid4
+
+from sqlalchemy import text
 
 from app.database import SessionLocal
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 from app.services.market_data_providers import CCXT_SOURCE, STOOQ_SOURCE
 from app.services.opportunity_service import OpportunityService, _normalize_market_timeframe
 from app.services import opportunity_service
+
+
+@pytest.fixture(autouse=True)
+def _ensure_notify_telegram_column():
+    with SessionLocal() as db:
+        db.execute(
+            text(
+                "ALTER TABLE favorite_strategies ADD COLUMN IF NOT EXISTS notify_telegram BOOLEAN NOT NULL DEFAULT TRUE"
+            )
+        )
+        db.commit()
 
 
 def _sample_ohlcv():
@@ -109,7 +123,12 @@ def _db_user(email: str) -> User:
 
 
 def _db_favorite(
-    user_id: str, symbol: str, name: str, tier: int | None = 1, notes: str | None = None
+    user_id: str,
+    symbol: str,
+    name: str,
+    tier: int | None = 1,
+    notes: str | None = None,
+    notify_telegram: bool = True,
 ) -> FavoriteStrategy:
     return FavoriteStrategy(
         user_id=user_id,
@@ -121,6 +140,7 @@ def _db_favorite(
         metrics={},
         tier=tier,
         notes=notes,
+        notify_telegram=notify_telegram,
     )
 
 
@@ -322,6 +342,28 @@ def test_get_catalog_favorites_respects_tier_filter(monkeypatch):
 
     assert len(favorites) == 1
     assert favorites[0]["name"] == "Tier two"
+
+
+def test_get_catalog_favorites_alerts_only_uses_notify_telegram(monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
+    admin = _db_user("admin@example.com")
+
+    with SessionLocal() as db:
+        db.add(admin)
+        db.flush()
+        admin_id = str(admin.id)
+        db.add_all(
+            [
+                _db_favorite(admin_id, "BTC/USDT", "Notify", notify_telegram=True),
+                _db_favorite(admin_id, "ETH/USDT", "Muted", notify_telegram=False),
+            ]
+        )
+        db.commit()
+
+    service = OpportunityService()
+    favorites = service.get_catalog_favorites(tier_filter="1,2,3", alerts_only=True)
+
+    assert [favorite["name"] for favorite in favorites] == ["Notify"]
 
 
 def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):

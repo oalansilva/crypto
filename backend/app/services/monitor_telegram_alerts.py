@@ -144,7 +144,7 @@ def load_monitor_telegram_alert_settings(db: Session) -> MonitorTelegramAlertSet
     tier_filter = (
         get_system_preference_value(db, MONITOR_TELEGRAM_TIER_FILTER_KEY)
         or os.getenv("MONITOR_TELEGRAM_TIER_FILTER")
-        or "1,2,3"
+        or "all"
     ).strip()
 
     return MonitorTelegramAlertSettings(
@@ -168,7 +168,7 @@ def load_monitor_telegram_alert_settings(db: Session) -> MonitorTelegramAlertSet
             MONITOR_TELEGRAM_RATE_LIMIT_WINDOW_MINUTES_KEY,
             _env_int("MONITOR_TELEGRAM_RATE_LIMIT_WINDOW_MINUTES", 60),
         ),
-        tier_filter=tier_filter or "1,2,3",
+        tier_filter=tier_filter or "all",
     )
 
 
@@ -357,7 +357,10 @@ def run_monitor_telegram_alert_scan(
         summary["results"].append({"status": "disabled"})
         return summary
 
-    opportunities = service.get_catalog_opportunities(tier_filter=settings.tier_filter)
+    opportunities = service.get_catalog_opportunities(
+        tier_filter=settings.tier_filter,
+        alerts_only=True,
+    )
     duplicate_since = datetime.utcnow() - timedelta(minutes=max(settings.min_repeat_minutes, 1))
     rate_limit_since = datetime.utcnow() - timedelta(
         minutes=max(settings.rate_limit_window_minutes, 1)

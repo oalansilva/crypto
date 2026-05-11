@@ -593,6 +593,7 @@ class OpportunityService:
             "parameters": row.parameters,
             "notes": row.notes,
             "tier": tier,
+            "notify_telegram": bool(getattr(row, "notify_telegram", True)),
             "is_curated_fallback": is_curated_fallback,
         }
         if isinstance(r["parameters"], str):
@@ -644,6 +645,7 @@ class OpportunityService:
         self,
         db,
         tier_filter: Optional[str] = None,
+        alerts_only: bool = False,
     ) -> list[FavoriteStrategy]:
         admin_user_ids = self._admin_catalog_user_ids(db)
         if not admin_user_ids:
@@ -658,6 +660,8 @@ class OpportunityService:
                 FavoriteStrategy.id.asc(),
             )
         )
+        if alerts_only:
+            query = query.filter(FavoriteStrategy.notify_telegram.is_(True))
         return self._apply_tier_filter(query, tier_filter).all()
 
     def _favorite_rows_for_first_admin(
@@ -752,16 +756,26 @@ class OpportunityService:
 
         return [f for f in favorites if f.get("tier") in allowed_tiers]
 
-    def get_catalog_favorites(self, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_catalog_favorites(
+        self,
+        tier_filter: Optional[str] = None,
+        *,
+        alerts_only: bool = False,
+    ) -> List[Dict[str, Any]]:
         """List the admin-curated Monitor catalog for group-level workflows."""
         with self._session_factory() as db:
-            rows = self._favorite_rows_for_admin_catalog(db, tier_filter)
+            rows = self._favorite_rows_for_admin_catalog(
+                db,
+                tier_filter,
+                alerts_only=alerts_only,
+            )
 
         favorites = [self._favorite_row_to_dict(row, is_curated_fallback=True) for row in rows]
         logger.info(
-            "Loaded %d admin-curated catalog strategies (tier_filter=%s)",
+            "Loaded %d admin-curated catalog strategies (tier_filter=%s, alerts_only=%s)",
             len(favorites),
             tier_filter,
+            alerts_only,
         )
         return favorites
 
@@ -779,11 +793,19 @@ class OpportunityService:
             source_label="favorite",
         )
 
-    def get_catalog_opportunities(self, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_catalog_opportunities(
+        self,
+        tier_filter: Optional[str] = None,
+        *,
+        alerts_only: bool = False,
+    ) -> List[Dict[str, Any]]:
         """Analyze the general curated Monitor catalog, independent from any user."""
         favorites = [
             favorite
-            for favorite in self.get_catalog_favorites(tier_filter=tier_filter)
+            for favorite in self.get_catalog_favorites(
+                tier_filter=tier_filter,
+                alerts_only=alerts_only,
+            )
             if "/" in str(favorite.get("symbol") or "").strip()
         ]
         return self._calculate_opportunities(

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, Activity, BarChart3, Star } from 'lucide-react';
+import { Trash2, Search, List, Activity, BarChart3, Bell, Star } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
@@ -20,6 +20,7 @@ interface FavoriteStrategy {
     notes?: string;
     created_at: string;
     tier: number | null;  // 1=Core obrigatório, 2=Bons complementares, 3=Outros, null=Sem tier
+    notify_telegram: boolean;
     start_date?: string | null;
     end_date?: string | null;
     is_strategy_protected?: boolean;
@@ -214,6 +215,25 @@ const FavoritesDashboard: React.FC = () => {
         updateTierMutation.mutate({ id: fav.id, tier });
     };
 
+    const updateTelegramMutation = useMutation({
+        mutationFn: async ({ id, notify_telegram }: { id: number; notify_telegram: boolean }) => {
+            const res = await authFetch(`${API_BASE_URL}/favorites/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notify_telegram })
+            });
+            if (!res.ok) throw new Error('Failed to update Telegram notification');
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['favorites', user?.id ?? 'anonymous'] });
+        }
+    });
+
+    const handleToggleTelegram = (fav: FavoriteStrategy) => {
+        updateTelegramMutation.mutate({ id: fav.id, notify_telegram: !fav.notify_telegram });
+    };
+
     const getStarCount = (tier: number | null): number => {
         if (tier === 1) return 3;
         if (tier === 2) return 2;
@@ -261,6 +281,35 @@ const FavoritesDashboard: React.FC = () => {
                     );
                 })}
             </div>
+        );
+    };
+
+    const renderTelegramControl = (fav: FavoriteStrategy, compact = false) => {
+        const active = fav.notify_telegram !== false;
+        const isSaving = updateTelegramMutation.isPending;
+
+        return (
+            <button
+                type="button"
+                disabled={isSaving}
+                aria-pressed={active}
+                title={active ? 'Notificar Telegram ativo' : 'Notificar Telegram desligado'}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    handleToggleTelegram(fav);
+                }}
+                className={[
+                    'telegram-toggle inline-flex items-center justify-center gap-1 rounded-md border transition-colors',
+                    compact ? 'h-9 min-w-[3.5rem] px-2 text-xs' : 'h-8 min-w-[4.5rem] px-2 text-xs',
+                    active
+                        ? 'border-emerald-400 bg-emerald-400/15 text-emerald-600'
+                        : 'border-zinc-200 bg-zinc-50 text-zinc-400 hover:text-emerald-600',
+                    isSaving ? 'opacity-60 cursor-wait' : '',
+                ].join(' ')}
+            >
+                <Bell className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill={active ? 'currentColor' : 'none'} />
+                {compact ? 'TG' : active ? 'On' : 'Off'}
+            </button>
         );
     };
 
@@ -780,6 +829,8 @@ const FavoritesDashboard: React.FC = () => {
         return { text: `${normalized >= 0 ? '+' : ''}${normalized.toFixed(2)}%`, positive: normalized >= 0 };
     };
 
+    const tableColumnCount = isAdmin ? 19 : 17;
+
     return (
         <div className="app-page favorites-page favorites-workbench">
             <div className="max-w-[1920px] mx-auto page-stack">
@@ -945,7 +996,10 @@ const FavoritesDashboard: React.FC = () => {
                                                 {direction === 'short' ? 'Short' : 'Long'}
                                             </span>
                                         </div>
-                                        <div className="fav-mobile-stars">{renderStarTierControl(fav, true)}</div>
+                                        <div className="fav-mobile-stars">
+                                            {renderStarTierControl(fav, true)}
+                                            {isAdmin ? renderTelegramControl(fav, true) : null}
+                                        </div>
                                         <div className="fav-mobile-metrics">
                                             <span><b>TF</b>{fav.timeframe}</span>
                                             <span><b>Sharpe</b>{formatNum(m.sharpe_ratio)}</span>
@@ -975,6 +1029,7 @@ const FavoritesDashboard: React.FC = () => {
                                 <tr>
                                     {isAdmin ? <th className="select-col">Sel</th> : null}
                                     <th className="stars-cell">Tier</th>
+                                    {isAdmin ? <th className="telegram-col">Telegram</th> : null}
                                     <th className="symbol-col">Symbol</th>
                                     <th className="strategy-col">Estratégia</th>
                                     <th className="direction-col">Direção</th>
@@ -995,9 +1050,9 @@ const FavoritesDashboard: React.FC = () => {
                             </thead>
                             <tbody>
                                 {isLoading ? (
-                                    <tr><td colSpan={isAdmin ? 18 : 17} className="fav-empty-cell">Carregando estratégias...</td></tr>
+                                    <tr><td colSpan={tableColumnCount} className="fav-empty-cell">Carregando estratégias...</td></tr>
                                 ) : filteredFavorites.length === 0 ? (
-                                    <tr><td colSpan={isAdmin ? 18 : 17} className="fav-empty-cell">Nenhuma estratégia favorita encontrada.</td></tr>
+                                    <tr><td colSpan={tableColumnCount} className="fav-empty-cell">Nenhuma estratégia favorita encontrada.</td></tr>
                                 ) : (
                                     visibleFavorites.map((fav: FavoriteStrategy) => {
                                         const isSelected = selectedIds.includes(fav.id);
@@ -1022,6 +1077,7 @@ const FavoritesDashboard: React.FC = () => {
                                                     </td>
                                                 ) : null}
                                                 <td className="stars-cell">{renderStarTierControl(fav)}</td>
+                                                {isAdmin ? <td className="telegram-col">{renderTelegramControl(fav)}</td> : null}
                                                 <td aria-label={fav.symbol}>
                                                     <div className="sym-cell">
                                                         <span className="sym-tile">{symbol.base.slice(0, 3)}</span>
@@ -1070,7 +1126,7 @@ const FavoritesDashboard: React.FC = () => {
                                 )}
                                 {!isLoading && filteredFavorites.length > 0 && hasMore && (
                                     <tr>
-                                        <td colSpan={isAdmin ? 18 : 17} className="fav-empty-cell">
+                                        <td colSpan={tableColumnCount} className="fav-empty-cell">
                                             <div ref={sentinelRef} />
                                             Carregando mais...
                                         </td>

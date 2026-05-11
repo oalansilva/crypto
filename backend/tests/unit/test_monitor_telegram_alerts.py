@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
-from app.models import MonitorTelegramAlert
+from app.models import MonitorTelegramAlert, SystemPreference
 from app.routes import monitor_telegram_alerts as monitor_alert_route
 from app.services.monitor_telegram_alerts import (
     MonitorTelegramAlertSettings,
@@ -27,11 +27,17 @@ def monitor_alert_db_session():
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     db.query(MonitorTelegramAlert).delete()
+    db.query(SystemPreference).filter(
+        SystemPreference.key == "monitor_telegram_tier_filter"
+    ).delete()
     db.commit()
     try:
         yield db
     finally:
         db.query(MonitorTelegramAlert).delete()
+        db.query(SystemPreference).filter(
+            SystemPreference.key == "monitor_telegram_tier_filter"
+        ).delete()
         db.commit()
         db.close()
         engine.dispose()
@@ -62,8 +68,10 @@ class _FakeOpportunityService:
         self.calls.append({"user_id": user_id, "tier_filter": tier_filter})
         return list(self.opportunities)
 
-    def get_catalog_opportunities(self, *, tier_filter):
-        self.calls.append({"source": "catalog", "tier_filter": tier_filter})
+    def get_catalog_opportunities(self, *, tier_filter, alerts_only=False):
+        self.calls.append(
+            {"source": "catalog", "tier_filter": tier_filter, "alerts_only": alerts_only}
+        )
         return list(self.opportunities)
 
 
@@ -106,7 +114,7 @@ def test_scan_dry_run_records_audit_when_delivery_config_incomplete(monitor_aler
     assert summary["dry_run"] is True
     assert summary["candidates"] == 1
     assert summary["dry_run_count"] == 1
-    assert service.calls == [{"source": "catalog", "tier_filter": "1,2,3"}]
+    assert service.calls == [{"source": "catalog", "tier_filter": "1,2,3", "alerts_only": True}]
     row = monitor_alert_db_session.query(MonitorTelegramAlert).one()
     assert row.result_status == "dry_run"
     assert row.symbol == "BTC/USDT"
@@ -208,6 +216,14 @@ def test_settings_require_allowlisted_destination(monkeypatch, monitor_alert_db_
     assert settings.enabled is True
     assert settings.destination_allowed is False
     assert settings.can_send is False
+
+
+def test_settings_default_to_all_tiers(monkeypatch, monitor_alert_db_session):
+    monkeypatch.delenv("MONITOR_TELEGRAM_TIER_FILTER", raising=False)
+
+    settings = load_monitor_telegram_alert_settings(monitor_alert_db_session)
+
+    assert settings.tier_filter == "all"
 
 
 def test_admin_route_runs_scan_with_mocked_service(monitor_alert_db_session, monkeypatch):

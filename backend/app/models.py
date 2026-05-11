@@ -151,6 +151,7 @@ class FavoriteStrategy(Base):
 
     # Tier system - para categorizar estratégias (1=Core obrigatório, 2=Bons complementares, 3=Outros)
     tier = Column(Integer, nullable=True)
+    notify_telegram = Column(Boolean, nullable=False, default=True)
 
     # Período do backtest (6m / 2y / todo). Chave de unicidade junto com strategy_name, symbol, timeframe.
     start_date = Column(String, nullable=True)

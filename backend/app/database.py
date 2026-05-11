@@ -192,6 +192,10 @@ def ensure_runtime_schema_migrations() -> None:
                 ADD COLUMN IF NOT EXISTS tier INTEGER NULL
                 """))
         conn.execute(text("""
+                ALTER TABLE favorite_strategies
+                ADD COLUMN IF NOT EXISTS notify_telegram BOOLEAN NOT NULL DEFAULT TRUE
+                """))
+        conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS market_indicator (
                     id BIGSERIAL PRIMARY KEY,
                     symbol TEXT NOT NULL,
