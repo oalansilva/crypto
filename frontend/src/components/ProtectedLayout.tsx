@@ -24,6 +24,10 @@ export function ProtectedLayout() {
     return <Navigate to="/login" replace state={{ returnTo: location.pathname }} />
   }
 
+  if (user.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace state={{ returnTo: location.pathname }} />
+  }
+
   // Autenticado → renderiza o Layout normal
   return <Layout />
 }

@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 import uuid
 
-import bcrypt
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
@@ -11,16 +10,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.middleware.authMiddleware import get_current_user
 from app.models import User
+from app.services.beta_access import hash_password as _hash_password
+from app.services.beta_access import temporary_password_expired
+from app.services.beta_access import verify_password as _verify_password
 
 router = APIRouter(prefix="/api/users", tags=["user-profile"])
-
-
-def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
-
-
-def _verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 
 def _serialize_profile(user: User) -> dict[str, str | None]:
@@ -107,6 +101,9 @@ def update_password(
     db: Session = Depends(get_db),
 ):
     user = _load_user(db, current_user_id)
+    now = datetime.utcnow()
+    if temporary_password_expired(user, now):
+        raise HTTPException(status_code=403, detail="Temporary password expired")
     if not _verify_password(payload.currentPassword, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     if payload.currentPassword == payload.newPassword:
@@ -115,10 +112,15 @@ def update_password(
         )
 
     user.password_hash = _hash_password(payload.newPassword)
+    if user.must_change_password:
+        user.temporary_password_used_at = now
+    user.must_change_password = False
+    user.temporary_password_expires_at = None
+    user.password_changed_at = now
     db.add(user)
     db.commit()
 
     return MessageResponse(
         message="Password updated successfully",
-        updatedAt=datetime.utcnow().isoformat(),
+        updatedAt=now.isoformat(),
     )

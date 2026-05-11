@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, field_validator
 from datetime import datetime, timedelta, timezone
-import bcrypt
 import jwt
 import uuid
 import logging
@@ -12,6 +11,9 @@ from typing import Annotated
 from app.database import get_db
 from app.models import User
 from app.middleware.authMiddleware import ADMIN_EMAILS, is_admin_email
+from app.services.beta_access import hash_password as _hash_password
+from app.services.beta_access import temporary_password_expired
+from app.services.beta_access import verify_password as _verify_password
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +75,7 @@ class TokenResponse(BaseModel):
     email: str
     name: str
     isAdmin: bool
+    mustChangePassword: bool
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -92,15 +95,7 @@ class MeResponse(BaseModel):
     email: str
     name: str
     isAdmin: bool
-
-
-# --- Helpers ---
-def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
-
-
-def _verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    mustChangePassword: bool
 
 
 def _generate_access_token(user: User) -> str:
@@ -201,6 +196,8 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
     now = datetime.utcnow()
     _raise_if_blocked_by_status(user, now)
+    if temporary_password_expired(user, now):
+        raise HTTPException(status_code=403, detail="Temporary password expired")
 
     user.last_login = datetime.utcnow()
     db.add(user)
@@ -219,6 +216,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         email=user.email,
         name=user.name,
         isAdmin=is_admin_email(user.email),
+        mustChangePassword=bool(user.must_change_password),
     )
 
 
@@ -260,9 +258,15 @@ def me(
         raise HTTPException(status_code=401, detail="User not found")
 
     _raise_if_blocked_by_status(user, datetime.utcnow())
+    if temporary_password_expired(user):
+        raise HTTPException(status_code=403, detail="Temporary password expired")
 
     return MeResponse(
-        id=str(user.id), email=user.email, name=user.name, isAdmin=is_admin_email(user.email)
+        id=str(user.id),
+        email=user.email,
+        name=user.name,
+        isAdmin=is_admin_email(user.email),
+        mustChangePassword=bool(user.must_change_password),
     )
 
 
@@ -281,7 +285,10 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
-    _raise_if_blocked_by_status(user, datetime.utcnow())
+    now = datetime.utcnow()
+    _raise_if_blocked_by_status(user, now)
+    if temporary_password_expired(user, now):
+        raise HTTPException(status_code=403, detail="Temporary password expired")
     user.last_login = datetime.utcnow()
     db.add(user)
     db.commit()
@@ -298,4 +305,5 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
         email=user.email,
         name=user.name,
         isAdmin=is_admin_email(user.email),
+        mustChangePassword=bool(user.must_change_password),
     )

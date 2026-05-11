@@ -28,6 +28,10 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/login" replace state={{ returnTo: location.pathname }} />
   }
 
+  if (user.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace state={{ returnTo: location.pathname }} />
+  }
+
   if (requireAdmin && !user.isAdmin) {
     return <Navigate to="/monitor" replace />
   }

@@ -45,8 +45,8 @@ export default function LoginPage() {
     setErrors({})
 
     try {
-      await login(email, password)
-      navigate(destination, { replace: true })
+      const user = await login(email, password)
+      navigate(user.mustChangePassword ? '/change-password' : destination, { replace: true })
     } catch (err: unknown) {
       setIsLoading(false)
       if (axios.isAxiosError(err)) {

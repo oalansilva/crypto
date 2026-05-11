@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string
   name: string
   isAdmin: boolean
+  mustChangePassword: boolean
 }
 
 interface AuthState {
@@ -19,7 +20,7 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<AuthUser>
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
   getAccessToken: () => string | null
@@ -37,6 +38,7 @@ const E2E_AUTH_FALLBACK_USER: AuthUser = {
   email: 'test@example.com',
   name: 'Test User',
   isAdmin: false,
+  mustChangePassword: false,
 }
 
 const E2E_AUTH_FALLBACK_TOKENS = {
@@ -80,6 +82,7 @@ function loadFromStorage() {
           email: String(parsedUser.email || ''),
           name: String(parsedUser.name || ''),
           isAdmin: Boolean(parsedUser.isAdmin),
+          mustChangePassword: Boolean(parsedUser.mustChangePassword),
         } satisfies AuthUser
       : null
     return { accessToken, refreshToken, user }
@@ -146,11 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       `${API_BASE}/auth/login`,
       { email, password }
     )
-    const { accessToken, refreshToken, id, email: uEmail, name, isAdmin } = res.data
-    const user: AuthUser = { id, email: uEmail, name, isAdmin }
+    const { accessToken, refreshToken, id, email: uEmail, name, isAdmin, mustChangePassword } = res.data
+    const user: AuthUser = { id, email: uEmail, name, isAdmin, mustChangePassword: Boolean(mustChangePassword) }
 
     persistAuthState(accessToken, refreshToken, user)
     setState({ user, accessToken, refreshToken, isLoading: false })
+    return user
   }, [])
 
   const register = useCallback(async (name: string, email: string, password: string) => {

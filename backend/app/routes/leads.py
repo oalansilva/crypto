@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, status
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.services.beta_access import create_beta_access_for_lead
+
+router = APIRouter(prefix="/api/leads", tags=["leads"])
+
+
+class LeadAccessRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    email: EmailStr
+    whatsapp: str | None = Field(default=None, max_length=40)
+    profile: str | None = Field(default=None, max_length=80)
+    pain: str | None = Field(default=None, max_length=500)
+    origin: str = Field(default="landing", max_length=80)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Name cannot be empty")
+        return normalized
+
+    @field_validator("origin")
+    @classmethod
+    def validate_origin(cls, value: str) -> str:
+        normalized = value.strip() or "landing"
+        return normalized[:80]
+
+
+class LeadAccessResponse(BaseModel):
+    status: str
+    message: str
+
+
+@router.post("", response_model=LeadAccessResponse, status_code=status.HTTP_202_ACCEPTED)
+def create_lead_access(payload: LeadAccessRequest, db: Session = Depends(get_db)):
+    create_beta_access_for_lead(
+        db,
+        name=payload.name,
+        email=str(payload.email),
+        whatsapp=payload.whatsapp,
+        profile=payload.profile,
+        pain=payload.pain,
+        origin=payload.origin,
+    )
+    return LeadAccessResponse(
+        status="accepted",
+        message="If eligible, beta access instructions will be sent by email.",
+    )

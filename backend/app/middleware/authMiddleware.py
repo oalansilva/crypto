@@ -10,12 +10,13 @@ from typing import Annotated, Optional
 import uuid
 import jwt
 import os
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
+from app.services.beta_access import temporary_password_expired
 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
 JWT_ACCESS_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRE_MINUTES", "15"))
@@ -26,6 +27,12 @@ ADMIN_EMAILS = {
 }
 
 security = HTTPBearer(auto_error=False)
+
+PASSWORD_CHANGE_ALLOWED_ENDPOINTS = {
+    ("GET", "/api/auth/me"),
+    ("POST", "/api/auth/refresh"),
+    ("PUT", "/api/users/password"),
+}
 
 
 def _decode_token(token: str) -> dict:
@@ -62,12 +69,16 @@ async def get_current_user_optional(
         if not user:
             return None
 
+        if temporary_password_expired(user) or user.must_change_password:
+            return None
+
         return user_id
     except Exception:
         return None
 
 
 async def get_current_user(
+    request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
     db: Session = Depends(get_db),
 ) -> str:
@@ -108,6 +119,13 @@ async def get_current_user(
     if _ensure_user_accessible(user, now):
         db.add(user)
         db.commit()
+
+    if temporary_password_expired(user, now):
+        raise HTTPException(status_code=403, detail="Temporary password expired")
+
+    endpoint_key = (request.method.upper(), request.url.path)
+    if user.must_change_password and endpoint_key not in PASSWORD_CHANGE_ALLOWED_ENDPOINTS:
+        raise HTTPException(status_code=403, detail="Password change required")
 
     return user_id
 
