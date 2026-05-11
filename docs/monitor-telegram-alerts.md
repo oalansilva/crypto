@@ -56,13 +56,13 @@ Nao consigo executar esse tipo de acao por aqui. Posso registrar como feedback d
 
 ## Destino dos Alertas
 
-Destino aprovado para o MVP: grupo interno `Grupo Crypto`, no topico operacional do projeto.
+Destino aprovado para o MVP: grupo interno `Grupo Crypto`, topico `Crypto` (`telegram:-1003891182144`, `threadId=5`).
 
 Destino externo: grupo privado do beta, apenas por encaminhamento/manual de Alan.
 
 Regras:
 
-- o chat interno precisa estar cadastrado explicitamente em allowlist;
+- o chat interno precisa estar cadastrado explicitamente em allowlist: `telegram:-1003891182144`, `threadId=5`;
 - Clara nao precisa estar no grupo externo dos beta testers neste momento;
 - mensagens automaticas so podem ir para o grupo interno allowlistado;
 - o envio precisa poder ser desligado;
@@ -197,7 +197,7 @@ Card tecnico criado: `#183` - `P1: Implementar alertas Telegram internos do Moni
 
 Escopo da implementacao:
 
-- configurar allowlist do grupo interno Telegram;
+- configurar allowlist do grupo interno Telegram: `telegram:-1003891182144`, `threadId=5`;
 - criar job/polling dos status do Monitor;
 - persistir historico de alertas enviados;
 - aplicar deduplicacao e rate limit;

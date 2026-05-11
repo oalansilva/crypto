@@ -122,3 +122,11 @@
 **Requisitos minimos:** allowlist do grupo interno, deduplicacao, rate limit, auditoria, texto padronizado, opcao de desligar e separacao entre alerta automatico interno e resposta externa.
 
 **Evidencia:** card `#174`; documento operacional `docs/monitor-telegram-alerts.md`.
+
+## 2026-05-11 - Topico interno dos sinais do Monitor
+
+**Decisao:** Alan pediu que os sinais sejam enviados no topico `Crypto` do grupo interno `Grupo Crypto` (`telegram:-1003891182144`, `threadId=5`).
+
+**Escopo:** vale para sinais/rascunhos internos do Monitor. O grupo externo do beta continua fora do envio direto da Clara sem nova aprovacao explicita.
+
+**Guardrail:** enviar somente evento real derivado do Monitor, sem inventar sinal manual e sem linguagem de recomendacao financeira.
