@@ -394,9 +394,7 @@ def test_auth_route_status_helpers_login_me_and_refresh(monkeypatch, auth_db_ses
         status="suspended",
         suspended_until=datetime.utcnow() + timedelta(minutes=5),
     )
-    auth_db_session.add_all(
-        [active_user, banned_user, expired_user, suspended_user]
-    )
+    auth_db_session.add_all([active_user, banned_user, expired_user, suspended_user])
     auth_db_session.commit()
 
     with pytest.raises(HTTPException, match="banned"):
