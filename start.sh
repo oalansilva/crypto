@@ -392,16 +392,21 @@ if flag_enabled "$BINANCE_REALTIME_WORKER_ENABLED"; then
 fi
 
 if ! wait_for_http_ok "$FRONTEND_URL" 2 1; then
+  echo "Building crypto frontend..."
+  (
+    cd "$FRONTEND_DIR"
+    VITE_API_URL="/api" npm run build
+  )
   if user_systemd_available; then
     start_transient_unit \
       "$FRONTEND_UNIT" \
       "$FRONTEND_DIR" \
       "$FRONTEND_LOG" \
-      "export VITE_API_URL=/api; exec npm run dev -- --host 0.0.0.0 --port $(shell_escape "$FRONTEND_PORT")"
+      "exec npm run preview -- --host 0.0.0.0 --port $(shell_escape "$FRONTEND_PORT")"
   else
     (
       cd "$FRONTEND_DIR"
-      nohup env VITE_API_URL="/api" npm run dev -- --host 0.0.0.0 --port "$FRONTEND_PORT" >"$FRONTEND_LOG" 2>&1 < /dev/null &
+      nohup npm run preview -- --host 0.0.0.0 --port "$FRONTEND_PORT" >"$FRONTEND_LOG" 2>&1 < /dev/null &
       echo "$!" >"$FRONTEND_PID_FILE"
     )
   fi
