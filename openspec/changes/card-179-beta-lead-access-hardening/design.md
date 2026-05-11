@@ -23,7 +23,7 @@ Create `beta_access_audit_logs` with email, optional user id, action, result, so
 
 ### D3: Native `POST /api/leads` creates access but never returns the temporary password
 
-For a new email, the backend generates a random temporary password, stores only the hash, marks `must_change_password=true`, records audit, and attempts optional welcome delivery if SMTP is configured. The API response returns status metadata only.
+For a new email, the backend generates a random temporary password, stores only the hash, marks `must_change_password=true`, records audit, and sends the welcome email through the existing Clara/Gmail `gog gmail send` channel by default. SMTP remains an explicit fallback via `BETA_ACCESS_EMAIL_PROVIDER=smtp`. The API response returns neutral status metadata only.
 
 For an existing email, the backend records audit and does not overwrite password or temporary-access state.
 
@@ -38,7 +38,7 @@ Login still requires valid password. If `must_change_password=true` and the temp
 ## Risks
 
 - The existing VPS lead capture may still be external. This change adds the product-native contract and route, but deployment routing must point `/api/leads` to the FastAPI backend for this implementation to own the live flow.
-- SMTP may not be configured in all environments. The backend must not return or log the temporary password as a fallback.
+- The existing Gmail channel requires the same `gog` environment/keyring used by the landing service. The backend loads `/root/.openclaw/workspace/cripto-farol-landing/.env.leads` by default for that subprocess and must not return or log the temporary password as a fallback.
 
 ## Validation
 
