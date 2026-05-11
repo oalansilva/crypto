@@ -188,6 +188,30 @@ def ensure_runtime_schema_migrations() -> None:
                 ON monitor_telegram_alerts (result_status, created_at)
                 """))
         conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS monitor_observed_statuses (
+                    id SERIAL PRIMARY KEY,
+                    symbol VARCHAR NOT NULL,
+                    timeframe VARCHAR NOT NULL,
+                    status VARCHAR NOT NULL,
+                    observed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    opportunity_id VARCHAR NULL,
+                    payload_json TEXT NULL,
+                    CONSTRAINT uq_monitor_observed_status_pair UNIQUE (symbol, timeframe)
+                )
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_observed_statuses_status
+                ON monitor_observed_statuses (status)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_observed_statuses_pair
+                ON monitor_observed_statuses (symbol, timeframe)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_observed_statuses_observed_at
+                ON monitor_observed_statuses (observed_at)
+                """))
+        conn.execute(text("""
                 ALTER TABLE monitor_strategy_preferences
                 ADD COLUMN IF NOT EXISTS tier INTEGER NULL
                 """))

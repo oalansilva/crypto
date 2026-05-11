@@ -10,7 +10,7 @@ from typing import Any, Callable
 import requests
 from sqlalchemy.orm import Session
 
-from app.models import MonitorTelegramAlert
+from app.models import MonitorObservedStatus, MonitorTelegramAlert
 from app.services.opportunity_service import OpportunityService
 from app.services.system_preferences_service import (
     get_system_preference_bool,
@@ -212,18 +212,53 @@ def load_monitor_telegram_alert_settings(db: Session) -> MonitorTelegramAlertSet
     )
 
 
-def _latest_alert_for_pair(
+def _observed_status_for_pair(
     db: Session, *, symbol: str, timeframe: str
-) -> MonitorTelegramAlert | None:
+) -> MonitorObservedStatus | None:
     return (
-        db.query(MonitorTelegramAlert)
+        db.query(MonitorObservedStatus)
         .filter(
-            MonitorTelegramAlert.symbol == symbol,
-            MonitorTelegramAlert.timeframe == timeframe,
+            MonitorObservedStatus.symbol == symbol,
+            MonitorObservedStatus.timeframe == timeframe,
         )
-        .order_by(MonitorTelegramAlert.created_at.desc(), MonitorTelegramAlert.id.desc())
         .first()
     )
+
+
+def _upsert_observed_status(
+    db: Session, *, opportunity: dict[str, Any], status: str
+) -> MonitorObservedStatus:
+    symbol = str(opportunity.get("symbol") or "").strip().upper()
+    timeframe = str(opportunity.get("timeframe") or "").strip().lower()
+    row = _observed_status_for_pair(db, symbol=symbol, timeframe=timeframe)
+    payload = {
+        "status": status,
+        "opportunity_id": opportunity.get("id"),
+        "entry_price": _entry_value(opportunity),
+        "stop_price": opportunity.get("stop_price") or opportunity.get("stop_loss"),
+        "timestamp": opportunity.get("timestamp"),
+    }
+    if row is None:
+        row = MonitorObservedStatus(
+            symbol=symbol,
+            timeframe=timeframe,
+            status=status,
+            opportunity_id=(
+                str(opportunity.get("id")) if opportunity.get("id") is not None else None
+            ),
+            payload_json=payload,
+        )
+        db.add(row)
+    else:
+        row.status = status
+        row.observed_at = datetime.utcnow()
+        row.opportunity_id = (
+            str(opportunity.get("id")) if opportunity.get("id") is not None else None
+        )
+        row.payload_json = payload
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 def _has_duplicate_recent(
@@ -404,13 +439,26 @@ def run_monitor_telegram_alert_scan(
     )
 
     for opportunity in opportunities:
-        latest = _latest_alert_for_pair(
-            db,
-            symbol=str(opportunity.get("symbol") or "").strip().upper(),
-            timeframe=str(opportunity.get("timeframe") or "").strip().lower(),
-        )
-        previous_status = latest.new_status if latest else None
+        symbol = str(opportunity.get("symbol") or "").strip().upper()
+        timeframe = str(opportunity.get("timeframe") or "").strip().lower()
+        status = str(opportunity.get("status") or "").strip().upper()
+        observed = _observed_status_for_pair(db, symbol=symbol, timeframe=timeframe)
+        previous_status = observed.status if observed else None
+        unchanged = bool(previous_status and previous_status == status)
         candidate = build_monitor_alert_candidate(opportunity, previous_status=previous_status)
+        if symbol and timeframe and status:
+            _upsert_observed_status(db, opportunity=opportunity, status=status)
+        if unchanged:
+            summary["skipped"] += 1
+            summary["results"].append(
+                {
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "status": status,
+                    "result": "unchanged",
+                }
+            )
+            continue
         if candidate is None:
             summary["skipped"] += 1
             continue

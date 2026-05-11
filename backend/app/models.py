@@ -296,6 +296,24 @@ class MonitorTelegramAlert(Base):
     )
 
 
+class MonitorObservedStatus(Base):
+    __tablename__ = "monitor_observed_statuses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, nullable=False)
+    timeframe = Column(String, nullable=False)
+    status = Column(String, nullable=False, index=True)
+    observed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    opportunity_id = Column(String, nullable=True)
+    payload_json = Column(JSONType, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "timeframe", name="uq_monitor_observed_status_pair"),
+        Index("ix_monitor_observed_statuses_pair", "symbol", "timeframe"),
+        Index("ix_monitor_observed_statuses_observed_at", "observed_at"),
+    )
+
+
 class UserExchangeCredential(Base):
     __tablename__ = "user_exchange_credentials"
 

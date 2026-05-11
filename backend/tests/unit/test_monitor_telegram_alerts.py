@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
-from app.models import MonitorTelegramAlert, SystemPreference
+from app.models import MonitorObservedStatus, MonitorTelegramAlert, SystemPreference
 from app.routes import monitor_telegram_alerts as monitor_alert_route
 from app.services.monitor_telegram_alerts import (
     MonitorTelegramAlertSettings,
@@ -27,6 +27,7 @@ def monitor_alert_db_session():
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     db.query(MonitorTelegramAlert).delete()
+    db.query(MonitorObservedStatus).delete()
     db.query(SystemPreference).filter(
         SystemPreference.key == "monitor_telegram_tier_filter"
     ).delete()
@@ -35,6 +36,7 @@ def monitor_alert_db_session():
         yield db
     finally:
         db.query(MonitorTelegramAlert).delete()
+        db.query(MonitorObservedStatus).delete()
         db.query(SystemPreference).filter(
             SystemPreference.key == "monitor_telegram_tier_filter"
         ).delete()
@@ -141,6 +143,92 @@ def test_scan_dry_run_records_audit_when_delivery_config_incomplete(monitor_aler
     assert row.symbol == "BTC/USDT"
     assert row.destination_chat_id == "-1001"
     assert row.destination_thread_id == "45"
+    observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
+    assert observed.symbol == "BTC/USDT"
+    assert observed.timeframe == "1d"
+    assert observed.status == "BUY_SIGNAL"
+
+
+def test_scan_skips_unchanged_observed_status(monitor_alert_db_session):
+    monitor_alert_db_session.add(
+        MonitorObservedStatus(
+            symbol="BTC/USDT",
+            timeframe="1d",
+            status="BUY_SIGNAL",
+            payload_json={},
+        )
+    )
+    monitor_alert_db_session.commit()
+    service = _FakeOpportunityService([_opportunity("BUY_SIGNAL")])
+
+    summary = run_monitor_telegram_alert_scan(
+        monitor_alert_db_session,
+        user_id="user-1",
+        settings=_settings(bot_token="token"),
+        opportunity_service=service,
+        sender=lambda *_args, **_kwargs: {"ok": True},
+    )
+
+    assert summary["sent"] == 0
+    assert summary["skipped"] == 1
+    assert summary["results"] == [
+        {
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "status": "BUY_SIGNAL",
+            "result": "unchanged",
+        }
+    ]
+    assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
+
+
+def test_scan_alerts_when_silent_observed_status_becomes_sendable(monitor_alert_db_session):
+    monitor_alert_db_session.add(
+        MonitorObservedStatus(
+            symbol="BTC/USDT",
+            timeframe="1d",
+            status="WAITING",
+            payload_json={},
+        )
+    )
+    monitor_alert_db_session.commit()
+    service = _FakeOpportunityService([_opportunity("BUY_SIGNAL")])
+    sent_messages = []
+
+    summary = run_monitor_telegram_alert_scan(
+        monitor_alert_db_session,
+        user_id="user-1",
+        settings=_settings(bot_token="token"),
+        opportunity_service=service,
+        sender=lambda _settings, text: sent_messages.append(text) or {"ok": True},
+    )
+
+    assert summary["sent"] == 1
+    assert "Acao: Compra" in sent_messages[0]
+    row = monitor_alert_db_session.query(MonitorTelegramAlert).one()
+    assert row.previous_status == "WAITING"
+    observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
+    assert observed.status == "BUY_SIGNAL"
+
+
+def test_scan_updates_observed_status_for_non_sendable_status(monitor_alert_db_session):
+    service = _FakeOpportunityService([_opportunity("WAITING")])
+
+    summary = run_monitor_telegram_alert_scan(
+        monitor_alert_db_session,
+        user_id="user-1",
+        settings=_settings(bot_token="token"),
+        opportunity_service=service,
+        sender=lambda *_args, **_kwargs: {"ok": True},
+    )
+
+    assert summary["sent"] == 0
+    assert summary["skipped"] == 1
+    assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
+    observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
+    assert observed.symbol == "BTC/USDT"
+    assert observed.timeframe == "1d"
+    assert observed.status == "WAITING"
 
 
 def test_scan_deduplicates_same_symbol_timeframe_status(monitor_alert_db_session):
