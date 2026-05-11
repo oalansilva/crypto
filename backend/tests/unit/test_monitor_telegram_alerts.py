@@ -62,6 +62,10 @@ class _FakeOpportunityService:
         self.calls.append({"user_id": user_id, "tier_filter": tier_filter})
         return list(self.opportunities)
 
+    def get_catalog_opportunities(self, *, tier_filter):
+        self.calls.append({"source": "catalog", "tier_filter": tier_filter})
+        return list(self.opportunities)
+
 
 def _opportunity(status: str = "BUY_SIGNAL") -> dict:
     return {
@@ -102,7 +106,7 @@ def test_scan_dry_run_records_audit_when_delivery_config_incomplete(monitor_aler
     assert summary["dry_run"] is True
     assert summary["candidates"] == 1
     assert summary["dry_run_count"] == 1
-    assert service.calls == [{"user_id": "user-1", "tier_filter": "1,2,3"}]
+    assert service.calls == [{"source": "catalog", "tier_filter": "1,2,3"}]
     row = monitor_alert_db_session.query(MonitorTelegramAlert).one()
     assert row.result_status == "dry_run"
     assert row.symbol == "BTC/USDT"

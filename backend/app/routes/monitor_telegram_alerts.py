@@ -20,7 +20,7 @@ router = APIRouter(
 class MonitorTelegramAlertRunRequest(BaseModel):
     user_id: str | None = Field(
         default=None,
-        description="Optional user id whose Monitor opportunities should be scanned. Defaults to admin caller.",
+        description="Deprecated. Alert scans use the general curated Monitor catalog.",
     )
     dry_run: bool = Field(
         default=False,

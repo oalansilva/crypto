@@ -640,6 +640,26 @@ class OpportunityService:
         query = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == user_id)
         return self._apply_tier_filter(query, tier_filter).all()
 
+    def _favorite_rows_for_admin_catalog(
+        self,
+        db,
+        tier_filter: Optional[str] = None,
+    ) -> list[FavoriteStrategy]:
+        admin_user_ids = self._admin_catalog_user_ids(db)
+        if not admin_user_ids:
+            return []
+
+        query = (
+            db.query(FavoriteStrategy)
+            .filter(FavoriteStrategy.user_id.in_(admin_user_ids))
+            .order_by(
+                FavoriteStrategy.symbol.asc(),
+                FavoriteStrategy.timeframe.asc(),
+                FavoriteStrategy.id.asc(),
+            )
+        )
+        return self._apply_tier_filter(query, tier_filter).all()
+
     def _favorite_rows_for_first_admin(
         self,
         db,
@@ -732,8 +752,52 @@ class OpportunityService:
 
         return [f for f in favorites if f.get("tier") in allowed_tiers]
 
+    def get_catalog_favorites(self, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List the admin-curated Monitor catalog for group-level workflows."""
+        with self._session_factory() as db:
+            rows = self._favorite_rows_for_admin_catalog(db, tier_filter)
+
+        favorites = [self._favorite_row_to_dict(row, is_curated_fallback=True) for row in rows]
+        logger.info(
+            "Loaded %d admin-curated catalog strategies (tier_filter=%s)",
+            len(favorites),
+            tier_filter,
+        )
+        return favorites
+
     def get_opportunities(
         self, user_id: str, tier_filter: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        favorites = [
+            favorite
+            for favorite in self.get_favorites(user_id=user_id, tier_filter=tier_filter)
+            if "/" in str(favorite.get("symbol") or "").strip()
+        ]
+        return self._calculate_opportunities(
+            favorites,
+            tier_filter=tier_filter,
+            source_label="favorite",
+        )
+
+    def get_catalog_opportunities(self, tier_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Analyze the general curated Monitor catalog, independent from any user."""
+        favorites = [
+            favorite
+            for favorite in self.get_catalog_favorites(tier_filter=tier_filter)
+            if "/" in str(favorite.get("symbol") or "").strip()
+        ]
+        return self._calculate_opportunities(
+            favorites,
+            tier_filter=tier_filter,
+            source_label="catalog",
+        )
+
+    def _calculate_opportunities(
+        self,
+        favorites: List[Dict[str, Any]],
+        *,
+        tier_filter: Optional[str] = None,
+        source_label: str = "favorite",
     ) -> List[Dict[str, Any]]:
         """
         Analyze favorites and return their current status (is_holding, distance_to_next_status).
@@ -746,15 +810,14 @@ class OpportunityService:
         - entry_logic (buy rule) and exit_logic (sell rule) come from template_data JSON field
         - Each favorite strategy uses its own template's rules from the database
         """
-        favorites = [
-            favorite
-            for favorite in self.get_favorites(user_id=user_id, tier_filter=tier_filter)
-            if "/" in str(favorite.get("symbol") or "").strip()
-        ]
-
         opportunities = []
 
-        logger.info(f"Processing {len(favorites)} favorite strategies (tier_filter={tier_filter})")
+        logger.info(
+            "Processing %d %s strategies (tier_filter=%s)",
+            len(favorites),
+            source_label,
+            tier_filter,
+        )
 
         # Cache for data to avoid refetching same symbol/timeframe
         data_cache = {}

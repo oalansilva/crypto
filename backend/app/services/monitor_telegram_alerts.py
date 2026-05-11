@@ -357,7 +357,7 @@ def run_monitor_telegram_alert_scan(
         summary["results"].append({"status": "disabled"})
         return summary
 
-    opportunities = service.get_opportunities(user_id=user_id, tier_filter=settings.tier_filter)
+    opportunities = service.get_catalog_opportunities(tier_filter=settings.tier_filter)
     duplicate_since = datetime.utcnow() - timedelta(minutes=max(settings.min_repeat_minutes, 1))
     rate_limit_since = datetime.utcnow() - timedelta(
         minutes=max(settings.rate_limit_window_minutes, 1)

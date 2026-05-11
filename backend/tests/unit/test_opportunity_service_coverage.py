@@ -275,6 +275,55 @@ def test_get_favorites_loads_configured_admin_catalog(monkeypatch):
     assert {favorite["symbol"] for favorite in favorites} == {"BTC/USDT", "ETH/USDT"}
 
 
+def test_get_catalog_favorites_uses_admin_catalog_without_user_preferences(monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
+    admin = _db_user("admin@example.com")
+    common = _db_user("common@example.com")
+
+    with SessionLocal() as db:
+        db.add_all([admin, common])
+        db.flush()
+        admin_id = str(admin.id)
+        common_id = str(common.id)
+        db.add_all(
+            [
+                _db_favorite(admin_id, "BTC/USDT", "Catalog one", tier=1),
+                _db_favorite(admin_id, "ETH/USDT", "Catalog two", tier=2),
+                _db_favorite(common_id, "SOL/USDT", "Common private", tier=1),
+            ]
+        )
+        db.commit()
+
+    service = OpportunityService()
+    favorites = service.get_catalog_favorites(tier_filter="1,2,3")
+
+    assert {favorite["name"] for favorite in favorites} == {"Catalog one", "Catalog two"}
+    assert {favorite["symbol"] for favorite in favorites} == {"BTC/USDT", "ETH/USDT"}
+
+
+def test_get_catalog_favorites_respects_tier_filter(monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
+    admin = _db_user("admin@example.com")
+
+    with SessionLocal() as db:
+        db.add(admin)
+        db.flush()
+        admin_id = str(admin.id)
+        db.add_all(
+            [
+                _db_favorite(admin_id, "BTC/USDT", "Tier one", tier=1),
+                _db_favorite(admin_id, "ETH/USDT", "Tier two", tier=2),
+            ]
+        )
+        db.commit()
+
+    service = OpportunityService()
+    favorites = service.get_catalog_favorites(tier_filter="2")
+
+    assert len(favorites) == 1
+    assert favorites[0]["name"] == "Tier two"
+
+
 def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
     monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
     admin = _db_user("admin@example.com")
