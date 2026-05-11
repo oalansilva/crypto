@@ -103,6 +103,46 @@ def _status_label(status: str | None) -> str:
     return labels.get(str(status or "").strip().upper(), str(status or "Novo").strip())
 
 
+def _action_label(status: str | None) -> str:
+    normalized = str(status or "").strip().upper()
+    if normalized in {"BUY_SIGNAL", "BUY_NEAR"}:
+        return "Compra"
+    if normalized in {"EXIT_SIGNAL", "EXIT_NEAR", "STOPPED_OUT"}:
+        return "Venda"
+    return _status_label(status)
+
+
+def _format_alert_value(value: Any) -> str:
+    if value is None or value == "":
+        return "N/D"
+    if isinstance(value, (int, float)):
+        return f"{float(value):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    try:
+        return f"{float(value):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _alert_date(opportunity: dict[str, Any]) -> str:
+    raw = opportunity.get("timestamp") or opportunity.get("indicator_values_candle_time")
+    if not raw:
+        return datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        return parsed.strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return str(raw)
+
+
+def _entry_value(opportunity: dict[str, Any]) -> Any:
+    return (
+        opportunity.get("entry_price")
+        or opportunity.get("trigger_price")
+        or opportunity.get("last_price")
+        or opportunity.get("current_price")
+    )
+
+
 def _severity_for_status(status: str) -> str:
     normalized = str(status or "").strip().upper()
     if normalized in {"EXIT_SIGNAL", "STOPPED_OUT"}:
@@ -234,31 +274,28 @@ def build_monitor_alert_candidate(
         return None
 
     severity = _severity_for_status(status)
-    new_label = _status_label(status)
-    previous_label = _status_label(previous_status) if previous_status else "Sem alerta anterior"
+    action = _action_label(status)
+    entry_value = _entry_value(opportunity)
+    stop_value = opportunity.get("stop_price") or opportunity.get("stop_loss")
+    alert_date = _alert_date(opportunity)
     message = (
-        "Cripto Farol - rascunho de alerta para beta\n\n"
+        "Cripto Farol - Alerta Monitor\n\n"
         f"Ativo: {symbol}\n"
-        f"Timeframe: {timeframe}\n"
-        f"Leitura anterior: {previous_label}\n"
-        f"Nova leitura: {new_label}\n"
-        f"Severidade: {severity}\n\n"
-        "Contexto:\n"
-        "O Monitor identificou mudanca relevante de status. Abra o produto para ver grafico, "
-        "contexto e risco antes de decidir.\n\n"
-        "Texto pronto para Alan encaminhar:\n"
-        f"Pessoal, o Monitor do Cripto Farol marcou uma mudanca relevante em {symbol} "
-        f"no timeframe {timeframe}. Nova leitura: {new_label}. Abram o produto para ver "
-        "grafico, contexto e risco antes de decidir qualquer coisa.\n\n"
-        "Importante:\n"
-        "Isto nao e recomendacao financeira, promessa de lucro ou ordem de compra/venda. "
-        "Use como apoio educacional para sua propria analise."
+        f"TimeFrame: {timeframe}\n"
+        f"Acao: {action}\n"
+        f"Data: {alert_date}\n"
+        f"Valor Entrada: {_format_alert_value(entry_value)}\n"
+        f"Stop: {_format_alert_value(stop_value)}"
     )
     payload = {
         "symbol": symbol,
         "timeframe": timeframe,
         "previous_status": previous_status,
         "new_status": status,
+        "action": action,
+        "entry_price": entry_value,
+        "stop_price": stop_value,
+        "alert_date": alert_date,
         "severity": severity,
         "message": message,
         "source": "monitor",

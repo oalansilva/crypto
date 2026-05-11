@@ -81,12 +81,15 @@ def _opportunity(status: str = "BUY_SIGNAL") -> dict:
         "symbol": "BTC/USDT",
         "timeframe": "1d",
         "status": status,
+        "timestamp": "2026-05-11T15:30:00",
+        "entry_price": 104250.5,
+        "stop_price": 101900.25,
         "next_status_label": "entry",
         "distance_to_next_status": 0.2,
     }
 
 
-def test_build_monitor_alert_candidate_formats_internal_draft():
+def test_build_monitor_alert_candidate_formats_short_sell_summary():
     candidate = build_monitor_alert_candidate(
         _opportunity("EXIT_SIGNAL"), previous_status="HOLDING"
     )
@@ -95,10 +98,28 @@ def test_build_monitor_alert_candidate_formats_internal_draft():
     assert candidate.symbol == "BTC/USDT"
     assert candidate.new_status == "EXIT_SIGNAL"
     assert candidate.severity == "Acao necessaria"
-    assert "Cripto Farol - rascunho de alerta para beta" in candidate.message
-    assert "Texto pronto para Alan encaminhar" in candidate.message
-    assert "Isto nao e recomendacao financeira" in candidate.message
+    assert candidate.message == (
+        "Cripto Farol - Alerta Monitor\n\n"
+        "Ativo: BTC/USDT\n"
+        "TimeFrame: 1d\n"
+        "Acao: Venda\n"
+        "Data: 2026-05-11 15:30\n"
+        "Valor Entrada: 104.250,50\n"
+        "Stop: 101.900,25"
+    )
+    assert candidate.payload["action"] == "Venda"
+    assert candidate.payload["entry_price"] == 104250.5
+    assert candidate.payload["stop_price"] == 101900.25
     assert candidate.payload_hash
+
+
+def test_build_monitor_alert_candidate_formats_short_buy_summary():
+    candidate = build_monitor_alert_candidate(_opportunity("BUY_SIGNAL"), previous_status=None)
+
+    assert candidate is not None
+    assert "Acao: Compra" in candidate.message
+    assert "Valor Entrada: 104.250,50" in candidate.message
+    assert "Stop: 101.900,25" in candidate.message
 
 
 def test_scan_dry_run_records_audit_when_delivery_config_incomplete(monitor_alert_db_session):
