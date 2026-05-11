@@ -265,6 +265,36 @@ class AdminActionLog(Base):
     )
 
 
+class MonitorTelegramAlert(Base):
+    __tablename__ = "monitor_telegram_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    symbol = Column(String, nullable=False, index=True)
+    timeframe = Column(String, nullable=False, index=True)
+    previous_status = Column(String, nullable=True)
+    new_status = Column(String, nullable=False, index=True)
+    severity = Column(String, nullable=False)
+    destination_chat_id = Column(String, nullable=True, index=True)
+    destination_thread_id = Column(String, nullable=True)
+    result_status = Column(String, nullable=False, index=True)
+    error_text = Column(Text, nullable=True)
+    payload_hash = Column(String, nullable=False, index=True)
+    source = Column(String, nullable=False, default="monitor")
+    payload_json = Column(JSONType, nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_monitor_telegram_alerts_dedupe",
+            "symbol",
+            "timeframe",
+            "new_status",
+            "created_at",
+        ),
+        Index("ix_monitor_telegram_alerts_result_created", "result_status", "created_at"),
+    )
+
+
 class UserExchangeCredential(Base):
     __tablename__ = "user_exchange_credentials"
 

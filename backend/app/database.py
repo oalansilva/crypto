@@ -138,6 +138,56 @@ def ensure_runtime_schema_migrations() -> None:
                 ON admin_action_logs (created_at)
                 """))
         conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS monitor_telegram_alerts (
+                    id SERIAL PRIMARY KEY,
+                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    symbol VARCHAR NOT NULL,
+                    timeframe VARCHAR NOT NULL,
+                    previous_status VARCHAR NULL,
+                    new_status VARCHAR NOT NULL,
+                    severity VARCHAR NOT NULL,
+                    destination_chat_id VARCHAR NULL,
+                    destination_thread_id VARCHAR NULL,
+                    result_status VARCHAR NOT NULL,
+                    error_text TEXT NULL,
+                    payload_hash VARCHAR NOT NULL,
+                    source VARCHAR NOT NULL DEFAULT 'monitor',
+                    payload_json TEXT NULL
+                )
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_symbol
+                ON monitor_telegram_alerts (symbol)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_timeframe
+                ON monitor_telegram_alerts (timeframe)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_new_status
+                ON monitor_telegram_alerts (new_status)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_destination_chat_id
+                ON monitor_telegram_alerts (destination_chat_id)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_result_status
+                ON monitor_telegram_alerts (result_status)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_payload_hash
+                ON monitor_telegram_alerts (payload_hash)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_dedupe
+                ON monitor_telegram_alerts (symbol, timeframe, new_status, created_at)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_monitor_telegram_alerts_result_created
+                ON monitor_telegram_alerts (result_status, created_at)
+                """))
+        conn.execute(text("""
                 ALTER TABLE monitor_strategy_preferences
                 ADD COLUMN IF NOT EXISTS tier INTEGER NULL
                 """))
@@ -377,6 +427,7 @@ def sync_postgres_identity_sequences() -> None:
         "portfolio_snapshots",
         "optimization_results",
         "admin_action_logs",
+        "monitor_telegram_alerts",
     )
 
     with engine.begin() as conn:
