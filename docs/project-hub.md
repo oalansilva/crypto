@@ -36,7 +36,7 @@ Aqui deve ficar:
 - Entregaveis da Clara em 2026-05-09 para revisao: `#143` com brand system, wordmark, mark e ativos minimos; `#140` com landing page estatica para captacao e documento de copy/estrutura.
 - Ambiente do beta: VPS atual, frontend como entrada, backend restrito, cadastro publico desabilitado.
 - Canal de feedback do beta: definido no `#144` como grupo privado separado de Telegram, com Alan responsavel pela criacao e Clara responsavel por descricao, mensagem fixada, roteiro e consolidacao dos feedbacks.
-- Alertas do Monitor no beta: definido no `#174` que Clara envia alertas/rascunhos no grupo interno `Grupo Crypto`; Alan revisa e encaminha/adapta para o grupo privado do beta. Envio direto por Clara ao grupo externo fica fora do MVP atual.
+- Alertas do Monitor no beta: definido no `#174` que Clara envia alertas/rascunhos no grupo interno `Grupo Crypto`, topico `Crypto` (`telegram:-1003891182144`, `threadId=5`); Alan revisa e encaminha/adapta para o grupo privado do beta. Envio direto por Clara ao grupo externo fica fora do MVP atual.
 - Implementacao tecnica dos alertas: criada no card `#183`, com envio apenas ao grupo interno allowlistado, deduplicacao, rate limit, auditoria e opcao de desligar.
 - Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
 - Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
