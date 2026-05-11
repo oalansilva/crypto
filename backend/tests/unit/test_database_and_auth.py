@@ -21,7 +21,8 @@ import app.middleware.authMiddleware as auth_middleware
 import app.routes.auth as auth_routes
 import app.routes.leads as leads_routes
 import app.routes.user_profile as user_profile_routes
-from app.services.beta_access import create_beta_access_for_lead, verify_password
+from app.services.beta_access import create_beta_access_for_lead, send_welcome_email_gog
+from app.services.beta_access import verify_password, WelcomeEmail
 
 
 @pytest.fixture
@@ -667,6 +668,38 @@ def test_beta_lead_does_not_commit_unknown_password_when_email_not_sent(auth_db_
     assert audit.user_id is None
     assert audit.result == "created_email_not_configured"
     assert "TemporaryPass123!" not in str(audit.metadata_json)
+
+
+def test_gog_welcome_email_uses_existing_clara_gmail_channel(monkeypatch, tmp_path):
+    env_file = tmp_path / ".env.leads"
+    env_file.write_text("GOG_KEYRING_PASSWORD=secret-value\n", encoding="utf-8")
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append((args, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("app.services.beta_access.BETA_ACCESS_GOG_ENV_FILE", str(env_file))
+    monkeypatch.setenv("BETA_ACCESS_WELCOME_EMAIL_CC", "alan@example.com")
+    monkeypatch.setattr("app.services.beta_access.subprocess.run", fake_run)
+
+    sent = send_welcome_email_gog(
+        WelcomeEmail(
+            to_email="lead@example.com",
+            name="Lead",
+            login_url="https://criptofarol.com.br/login",
+            temporary_password="TemporaryPass123!",
+            expires_at=datetime(2026, 5, 11, 12, 0, 0),
+        )
+    )
+
+    assert sent is True
+    args, kwargs = calls[0]
+    assert args[:3] == ["gog", "gmail", "send"]
+    assert "--to" in args and "lead@example.com" in args
+    assert "--cc" in args and "alan@example.com" in args
+    assert kwargs["env"]["GOG_KEYRING_PASSWORD"] == "secret-value"
+    assert kwargs["capture_output"] is True
 
 
 def test_temporary_password_login_requires_change_and_expires(monkeypatch, auth_db_session):

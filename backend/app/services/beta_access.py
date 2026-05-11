@@ -4,8 +4,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 import os
+from pathlib import Path
 import secrets
 import smtplib
+import subprocess
 import uuid
 from typing import Callable
 
@@ -16,6 +18,10 @@ from app.models import BetaAccessAuditLog, User
 
 BETA_ACCESS_DEFAULT_EXPIRY_HOURS = int(os.getenv("BETA_ACCESS_EXPIRY_HOURS", "72"))
 BETA_ACCESS_APP_URL = os.getenv("BETA_ACCESS_APP_URL", "http://localhost:5173/login")
+BETA_ACCESS_GOG_ENV_FILE = os.getenv(
+    "BETA_ACCESS_GOG_ENV_FILE",
+    "/root/.openclaw/workspace/cripto-farol-landing/.env.leads",
+)
 
 
 @dataclass
@@ -129,6 +135,79 @@ def send_welcome_email_smtp(message: WelcomeEmail) -> bool:
     return True
 
 
+def _load_env_file(path: str) -> dict[str, str]:
+    env: dict[str, str] = {}
+    env_path = Path(path)
+    if not env_path.exists():
+        return env
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        env[key.strip()] = value.strip().strip('"').strip("'")
+    return env
+
+
+def send_welcome_email_gog(message: WelcomeEmail) -> bool:
+    body = [
+        f"Olá, {message.name}.",
+        "",
+        "Sua inscrição no beta fechado do Cripto Farol foi recebida.",
+        "",
+        "Link de acesso:",
+        message.login_url,
+        "",
+        "Acesso temporário:",
+        f"E-mail: {message.to_email}",
+        f"Senha temporária: {message.temporary_password}",
+        "",
+        "Use essa senha apenas para o primeiro acesso e altere assim que entrar.",
+        f"Validade: {message.expires_at.isoformat()} UTC",
+        "",
+        "O beta ainda é controlado. A ideia é testar o monitor em uso real e coletar feedback direto.",
+        "",
+        "Cripto Farol",
+    ]
+    args = [
+        "gog",
+        "gmail",
+        "send",
+        "--to",
+        message.to_email,
+        "--subject",
+        "Bem-vindo ao beta fechado do Cripto Farol",
+        "--body",
+        "\n".join(body),
+        "--json",
+    ]
+    cc_email = os.getenv("BETA_ACCESS_WELCOME_EMAIL_CC", os.getenv("EMAIL_TO", "")).strip()
+    if cc_email:
+        args.extend(["--cc", cc_email])
+
+    command_env = os.environ.copy()
+    command_env.update(_load_env_file(BETA_ACCESS_GOG_ENV_FILE))
+    completed = subprocess.run(
+        args,
+        env=command_env,
+        timeout=30,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return completed.returncode == 0
+
+
+def send_welcome_email(message: WelcomeEmail) -> bool:
+    provider = os.getenv("BETA_ACCESS_EMAIL_PROVIDER", "gog").strip().lower()
+    if provider == "smtp":
+        return send_welcome_email_smtp(message)
+    if provider == "none":
+        return False
+    return send_welcome_email_gog(message)
+
+
 def create_beta_access_for_lead(
     db: Session,
     *,
@@ -191,7 +270,7 @@ def create_beta_access_for_lead(
     db.flush()
 
     welcome_sent = False
-    sender = email_sender or send_welcome_email_smtp
+    sender = email_sender or send_welcome_email
     try:
         welcome_sent = bool(
             sender(
