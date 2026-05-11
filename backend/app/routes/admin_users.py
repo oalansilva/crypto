@@ -560,7 +560,7 @@ def delete_user(
     if str(user.id) == str(_admin_user_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Admin cannot delete own user",
+            detail="Você não pode excluir o próprio usuário logado.",
         )
 
     reason = _require_reason(payload.reason, ACTION_DELETE)

@@ -309,7 +309,7 @@ def test_admin_user_routes_cover_crud_filters_and_action_logs(admin_db_session, 
         for item in delete_actions.items
     )
 
-    with pytest.raises(Exception, match="Admin cannot delete own user"):
+    with pytest.raises(Exception, match="Você não pode excluir o próprio usuário logado"):
         admin_users.delete_user(
             str(active_user.id),
             admin_users.AdminUserDeleteRequest(reason="self cleanup"),

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/use-toast'
 import { API_BASE_URL } from '@/lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
+import { useAuth } from '@/stores/authStore'
 
 type AdminUser = {
   id: string
@@ -140,11 +141,20 @@ function isActiveUserSuspended(user: AdminUser | null) {
 
 async function readErrorMessage(response: Response, fallback: string) {
   const payload = await response.json().catch(() => null) as
-    | { detail?: string | string[] }
+    | { detail?: string | Array<string | { msg?: string; message?: string; loc?: string[] }> }
     | null
 
   if (Array.isArray(payload?.detail)) {
-    return payload.detail.join(', ')
+    const messages = payload.detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (typeof item?.msg === 'string') return item.msg
+        if (typeof item?.message === 'string') return item.message
+        return null
+      })
+      .filter(Boolean)
+
+    return messages.length ? messages.join(', ') : fallback
   }
 
   if (typeof payload?.detail === 'string' && payload.detail.trim()) {
@@ -156,6 +166,7 @@ async function readErrorMessage(response: Response, fallback: string) {
 
 export default function AdminUsersPage() {
   const { toast } = useToast()
+  const { user: currentUser } = useAuth()
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS)
   const [appliedFilters, setAppliedFilters] = useState<FiltersState>(EMPTY_FILTERS)
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -519,12 +530,21 @@ export default function AdminUsersPage() {
 
   const submitDelete = async () => {
     if (!selectedUser) return
+    if (selectedUser.id === currentUser?.id) {
+      toast({
+        variant: 'destructive',
+        title: 'Exclusão bloqueada',
+        description: 'Você não pode excluir o próprio usuário logado.',
+      })
+      return
+    }
+
     const reason = deleteReason.trim()
-    if (!reason) {
+    if (reason.length < 4) {
       toast({
         variant: 'destructive',
         title: 'Motivo obrigatório',
-        description: 'Informe o motivo da exclusão.',
+        description: 'Informe um motivo com pelo menos 4 caracteres.',
       })
       return
     }
@@ -997,6 +1017,7 @@ export default function AdminUsersPage() {
                 label="Motivo da exclusão"
                 value={deleteReason}
                 onChange={(event) => setDeleteReason(event.target.value)}
+                disabled={selectedUser.id === currentUser?.id}
               />
               <div className="self-end">
                 <Button
@@ -1005,6 +1026,7 @@ export default function AdminUsersPage() {
                   variant="secondary"
                   icon={<Trash2 className="h-4 w-4" />}
                   onClick={submitDelete}
+                  disabled={selectedUser.id === currentUser?.id}
                 >
                   Excluir usuário
                 </Button>
