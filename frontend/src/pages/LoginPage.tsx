@@ -33,7 +33,6 @@ export default function LoginPage() {
     if (!email) errs.email = 'Email é obrigatório'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Email inválido'
     if (!password) errs.password = 'Senha é obrigatória'
-    else if (password.length < 8) errs.password = 'Senha deve ter pelo menos 8 caracteres'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
