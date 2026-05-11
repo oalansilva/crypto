@@ -922,7 +922,8 @@ textarea {
 }
 
 .favorites-workbench .select-col,
-.favorites-workbench .stars-cell {
+.favorites-workbench .stars-cell,
+.favorites-workbench .telegram-col {
   text-align: center;
   white-space: nowrap;
 }
@@ -935,6 +936,11 @@ textarea {
 .favorites-workbench table.fav-strategies th.stars-cell,
 .favorites-workbench table.fav-strategies td.stars-cell {
   width: 96px;
+}
+
+.favorites-workbench table.fav-strategies th.telegram-col,
+.favorites-workbench table.fav-strategies td.telegram-col {
+  width: 86px;
 }
 
 .favorites-workbench table.fav-strategies th.symbol-col {
@@ -997,6 +1003,12 @@ textarea {
 .favorites-workbench .stars-cell button[aria-pressed="true"],
 .favorites-workbench .fav-mobile-stars button[aria-pressed="true"] {
   color: var(--fav-primary);
+}
+
+.favorites-workbench .fav-mobile-stars .telegram-toggle {
+  width: auto;
+  min-width: 3.5rem;
+  padding-inline: 0.5rem;
 }
 
 .favorites-workbench .sym-cell {

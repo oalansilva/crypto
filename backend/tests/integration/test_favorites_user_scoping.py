@@ -28,6 +28,11 @@ def _session_factory(tmp_path: Path):
             )
         )
         connection.execute(
+            text(
+                "ALTER TABLE favorite_strategies ADD COLUMN IF NOT EXISTS notify_telegram BOOLEAN NOT NULL DEFAULT TRUE"
+            )
+        )
+        connection.execute(
             text("DELETE FROM monitor_strategy_preferences WHERE user_id IN ('user-a', 'user-b')")
         )
         connection.execute(
@@ -70,12 +75,20 @@ def test_favorites_list_keeps_strategy_details_for_admin(tmp_path: Path, monkeyp
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
 
     with SessionLocal() as db:
-        favorites.create_favorite(
+        created = favorites.create_favorite(
             _favorite_payload("A favorite"), current_user_id="admin-user", db=db
+        )
+        updated = favorites.update_favorite(
+            created.id,
+            favorites.FavoriteStrategyUpdate(notify_telegram=False),
+            current_user_id="admin-user",
+            db=db,
         )
         listed = favorites.list_favorites(current_user_id="admin-user", db=db)
 
     assert listed[0].strategy_name == "multi_ma_crossover"
+    assert listed[0].notify_telegram is False
+    assert updated.notify_telegram is False
     assert listed[0].parameters == {
         "ema_short": 9,
         "sma_medium": 21,
@@ -140,6 +153,45 @@ def test_favorites_exists_and_mutations_are_scoped_per_user(tmp_path: Path):
     assert exists_b.exists is False
     assert updated.tier == 2
     assert final_a[0].tier == 2
+
+
+def test_common_user_cannot_update_admin_catalog_telegram_notification(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    admin_id = str(uuid.uuid4())
+    common_id = str(uuid.uuid4())
+    admin_email = f"admin-{uuid.uuid4()}@example.com"
+    monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
+    monkeypatch.setattr(
+        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+    )
+
+    with SessionLocal() as db:
+        db.add(User(id=admin_id, email=admin_email, password_hash="x", name="Admin"))
+        db.add(
+            User(
+                id=common_id,
+                email=f"common-{uuid.uuid4()}@example.com",
+                password_hash="x",
+                name="Common",
+            )
+        )
+        db.commit()
+        admin_favorite = favorites.create_favorite(
+            _favorite_payload("Admin generated", symbol="BTC/USDT"),
+            current_user_id=admin_id,
+            db=db,
+        )
+
+        try:
+            favorites.update_favorite(
+                admin_favorite.id,
+                favorites.FavoriteStrategyUpdate(notify_telegram=False),
+                current_user_id=common_id,
+                db=db,
+            )
+            raise AssertionError("common user should not update Telegram notification")
+        except HTTPException as exc:
+            assert exc.status_code == 403
 
 
 def test_common_user_lists_admin_catalog_and_saves_own_star_tier(tmp_path: Path, monkeypatch):

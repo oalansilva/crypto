@@ -459,6 +459,11 @@ def update_favorite(
                 status_code=403,
                 detail="Common users can update only their own star tier for admin favorites",
             )
+    if "notify_telegram" in updates and not include_secrets:
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins can update Telegram notification eligibility",
+        )
 
     if "tier" in updates:
         tier_val = updates["tier"]
@@ -478,6 +483,8 @@ def update_favorite(
         favorite.name = update_data.name
     if update_data.notes is not None:
         favorite.notes = update_data.notes
+    if update_data.notify_telegram is not None:
+        favorite.notify_telegram = bool(update_data.notify_telegram)
 
     db.commit()
     db.refresh(favorite)

@@ -40,6 +40,7 @@ from app.routes.retrospectives import router as retrospectives_router
 from app.routes.admin_users import router as admin_users_router
 from app.routes.admin_backfill import router as admin_backfill_router
 from app.routes.admin_market_indicators import router as admin_market_indicators_router
+from app.routes.monitor_telegram_alerts import router as monitor_telegram_alerts_router
 from app.services.signal_monitor import signal_monitor
 from app.services.binance_service import (
     start_signal_feed_snapshot_worker,
@@ -305,6 +306,7 @@ app.include_router(retrospectives_router)
 app.include_router(admin_users_router)
 app.include_router(admin_backfill_router)
 app.include_router(admin_market_indicators_router)
+app.include_router(monitor_telegram_alerts_router)
 
 
 @app.get("/")

@@ -151,6 +151,7 @@ class FavoriteStrategy(Base):
 
     # Tier system - para categorizar estratégias (1=Core obrigatório, 2=Bons complementares, 3=Outros)
     tier = Column(Integer, nullable=True)
+    notify_telegram = Column(Boolean, nullable=False, default=True)
 
     # Período do backtest (6m / 2y / todo). Chave de unicidade junto com strategy_name, symbol, timeframe.
     start_date = Column(String, nullable=True)
@@ -262,6 +263,54 @@ class AdminActionLog(Base):
         Index("ix_admin_action_logs_target", "target_user_id"),
         Index("ix_admin_action_logs_action", "action"),
         Index("ix_admin_action_logs_created_at", "created_at"),
+    )
+
+
+class MonitorTelegramAlert(Base):
+    __tablename__ = "monitor_telegram_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    symbol = Column(String, nullable=False, index=True)
+    timeframe = Column(String, nullable=False, index=True)
+    previous_status = Column(String, nullable=True)
+    new_status = Column(String, nullable=False, index=True)
+    severity = Column(String, nullable=False)
+    destination_chat_id = Column(String, nullable=True, index=True)
+    destination_thread_id = Column(String, nullable=True)
+    result_status = Column(String, nullable=False, index=True)
+    error_text = Column(Text, nullable=True)
+    payload_hash = Column(String, nullable=False, index=True)
+    source = Column(String, nullable=False, default="monitor")
+    payload_json = Column(JSONType, nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_monitor_telegram_alerts_dedupe",
+            "symbol",
+            "timeframe",
+            "new_status",
+            "created_at",
+        ),
+        Index("ix_monitor_telegram_alerts_result_created", "result_status", "created_at"),
+    )
+
+
+class MonitorObservedStatus(Base):
+    __tablename__ = "monitor_observed_statuses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, nullable=False)
+    timeframe = Column(String, nullable=False)
+    status = Column(String, nullable=False, index=True)
+    observed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    opportunity_id = Column(String, nullable=True)
+    payload_json = Column(JSONType, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("symbol", "timeframe", name="uq_monitor_observed_status_pair"),
+        Index("ix_monitor_observed_statuses_pair", "symbol", "timeframe"),
+        Index("ix_monitor_observed_statuses_observed_at", "observed_at"),
     )
 
 
