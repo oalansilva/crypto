@@ -5,11 +5,6 @@ import axios from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import { MonitorDisclaimer } from '@/components/monitor/MonitorDisclaimer'
 
-const PASSWORDLESS_LOGIN_EMAILS = new Set([
-  'o.alan.silva@gmail.com',
-  'o2.alan.silva@gmail.com',
-])
-
 interface FormErrors {
   email?: string
   password?: string
@@ -37,11 +32,7 @@ export default function LoginPage() {
     const normalizedEmail = email.trim().toLowerCase()
     if (!email) errs.email = 'Email é obrigatório'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Email inválido'
-    const bypassPassword = PASSWORDLESS_LOGIN_EMAILS.has(normalizedEmail)
-    if (!bypassPassword) {
-      if (!password) errs.password = 'Senha é obrigatória'
-      else if (password.length < 8) errs.password = 'Senha deve ter pelo menos 8 caracteres'
-    }
+    if (!password) errs.password = 'Senha é obrigatória'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }

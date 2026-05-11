@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, Activity, BarChart3, MessageCircle, Star } from 'lucide-react';
-import { AgentChatModal } from '../components/AgentChatModal';
+import { Trash2, Search, List, Activity, BarChart3, Star } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
@@ -167,10 +166,6 @@ const FavoritesDashboard: React.FC = () => {
     const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
 
     const [loadingAnalysisId, setLoadingAnalysisId] = useState<number | null>(null);
-
-    // Agent chat modal
-    const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
-    const [selectedAgentFavorite, setSelectedAgentFavorite] = useState<FavoriteStrategy | null>(null);
 
     // Fetch favorites
     const { data: favorites, isLoading } = useQuery({
@@ -562,11 +557,6 @@ const FavoritesDashboard: React.FC = () => {
             }
             setSelectedIds([...selectedIds, id]);
         }
-    };
-
-    const handleOpenAgent = (fav: FavoriteStrategy) => {
-        setSelectedAgentFavorite(fav);
-        setIsAgentModalOpen(true);
     };
 
     const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
@@ -969,7 +959,6 @@ const FavoritesDashboard: React.FC = () => {
                                             </button>
                                             {isAdmin ? (
                                                 <>
-                                                    <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" />Trader</button>
                                                     <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" />Delete</button>
                                                 </>
                                             ) : null}
@@ -1070,7 +1059,6 @@ const FavoritesDashboard: React.FC = () => {
                                                         </button>
                                                         {isAdmin ? (
                                                             <>
-                                                                <button type="button" onClick={() => handleOpenAgent(fav)} title="Chat com o agente"><MessageCircle className="h-4 w-4" /></button>
                                                                 <button type="button" onClick={() => handleDelete(fav.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
                                                             </>
                                                         ) : null}
@@ -1235,18 +1223,6 @@ const FavoritesDashboard: React.FC = () => {
                             </div>
                         </div>
                     )}
-
-                <AgentChatModal
-                    open={isAgentModalOpen}
-                    onClose={() => setIsAgentModalOpen(false)}
-                    favorite={selectedAgentFavorite ? {
-                        id: selectedAgentFavorite.id,
-                        name: selectedAgentFavorite.name,
-                        symbol: selectedAgentFavorite.symbol,
-                        timeframe: selectedAgentFavorite.timeframe,
-                        strategy_name: getFavoriteStrategyLabel(selectedAgentFavorite),
-                    } : null}
-                />
             </div>
         </div>
     );

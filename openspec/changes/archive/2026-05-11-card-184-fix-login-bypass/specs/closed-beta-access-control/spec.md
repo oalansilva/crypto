@@ -1,26 +1,4 @@
-# closed-beta-access-control Specification
-
-## Purpose
-TBD - created by archiving change card-76-beta-access-control. Update Purpose after archive.
-## Requirements
-### Requirement: Closed beta blocks public self-registration
-The system SHALL keep public self-registration disabled by default during closed beta.
-
-#### Scenario: Visitor tries to register without invitation
-- **WHEN** a visitor calls `POST /api/auth/register` and public registration is disabled
-- **AND** the email is not present in configured beta invited emails
-- **THEN** the system SHALL reject the request with HTTP 403
-- **AND** the response SHALL explain that beta access requires invitation
-- **AND** no user SHALL be created
-
-#### Scenario: Invited email registers
-- **WHEN** a visitor calls `POST /api/auth/register` with an email present in configured beta invited emails
-- **THEN** the system SHALL create the user when the payload is otherwise valid
-- **AND** the user SHALL be able to log in with the created password
-
-#### Scenario: Public registration is explicitly enabled
-- **WHEN** `BETA_PUBLIC_REGISTRATION_ENABLED` is enabled
-- **THEN** the system SHALL preserve existing self-registration behavior for valid unique emails
+## MODIFIED Requirements
 
 ### Requirement: Active beta users can authenticate
 The system SHALL allow existing active users to log in and continue to authenticated beta routes. Password verification is mandatory for all users.
@@ -45,3 +23,9 @@ The system SHALL allow existing active users to log in and continue to authentic
 - **WHEN** a banned or actively suspended user submits valid credentials
 - **THEN** the system SHALL reject the request with HTTP 403
 - **AND** no token SHALL be issued
+
+## REMOVED Requirements
+
+### Requirement: Passwordless login bypass for specific emails
+**Reason**: Security vulnerability — allowed specific email addresses to authenticate without password verification, violating the principle that all users must provide valid credentials. Blocked production release of closed beta.
+**Migration**: All users must now provide their password. Accounts relying on the bypass must have valid password hashes set in the database before deploying this change. Use the admin user management interface or a database migration to ensure password hashes exist for affected accounts.
