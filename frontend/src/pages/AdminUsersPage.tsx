@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { AlertTriangle, Ban, RefreshCw, Save, Search, Timer, UserCog, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, Ban, RefreshCw, Save, Search, Timer, Trash2, UserCog, UserPlus, Users, X } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -173,6 +173,7 @@ export default function AdminUsersPage() {
   const [suspendReason, setSuspendReason] = useState('')
   const [banReason, setBanReason] = useState('')
   const [reactivateReason, setReactivateReason] = useState('')
+  const [deleteReason, setDeleteReason] = useState('')
 
   const totalPages = useMemo(() => Math.ceil(total / pageSize), [total, pageSize])
 
@@ -241,6 +242,7 @@ export default function AdminUsersPage() {
     setSuspendReason('')
     setBanReason('')
     setReactivateReason('')
+    setDeleteReason('')
   }
 
   const handleApplyFilters = (event?: FormEvent) => {
@@ -277,6 +279,7 @@ export default function AdminUsersPage() {
     setEditForm(EMPTY_EDIT)
     setLogItems([])
     setIsLogOpen(false)
+    setDeleteReason('')
   }
 
   const submitCreate = async (event: FormEvent) => {
@@ -514,6 +517,45 @@ export default function AdminUsersPage() {
     }
   }
 
+  const submitDelete = async () => {
+    if (!selectedUser) return
+    const reason = deleteReason.trim()
+    if (!reason) {
+      toast({
+        variant: 'destructive',
+        title: 'Motivo obrigatório',
+        description: 'Informe o motivo da exclusão.',
+      })
+      return
+    }
+
+    const confirmed = window.confirm(`Excluir o usuário ${selectedUser.email}? Esta ação não pode ser desfeita.`)
+    if (!confirmed) return
+
+    try {
+      const response = await authFetch(`${API_BASE_URL}/admin/users/${selectedUser.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      })
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, `Falha ao excluir usuário (${response.status})`))
+      }
+      toast({
+        title: 'Usuário excluído',
+        description: `${selectedUser.email} foi removido da base de usuários.`,
+      })
+      clearSelection()
+      await loadUsers()
+    } catch (error: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Falha ao excluir',
+        description: error instanceof Error ? error.message : 'Erro inesperado',
+      })
+    }
+  }
+
   return (
     <div className="app-page space-y-6 pb-20">
       <section className="page-card p-6 sm:p-7 lg:p-8">
@@ -708,7 +750,14 @@ export default function AdminUsersPage() {
                 {isLoading ? 'Carregando...' : `${total} resultado(s)`}
               </p>
             </div>
-            <Button variant="ghost" size="sm" onClick={resetPanels}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                resetPanels()
+                loadUsers()
+              }}
+            >
               Recarregar
             </Button>
           </div>
@@ -759,10 +808,17 @@ export default function AdminUsersPage() {
                               setBanReason('')
                               setSuspendReason('')
                               setReactivateReason('')
+                              setDeleteReason('')
                             }}>
                               <Ban className="h-3.5 w-3.5" />
                             </Button>
                           ) : null}
+                          <Button size="sm" variant="ghost" onClick={() => {
+                            openEdit(user)
+                            setDeleteReason('')
+                          }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -931,6 +987,26 @@ export default function AdminUsersPage() {
                   onClick={submitReactivate}
                 >
                   Reativar
+                </Button>
+              </div>
+              <div />
+            </div>
+
+            <div className="grid gap-3 border-t border-white/10 pt-5 lg:grid-cols-3">
+              <Input
+                label="Motivo da exclusão"
+                value={deleteReason}
+                onChange={(event) => setDeleteReason(event.target.value)}
+              />
+              <div className="self-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  icon={<Trash2 className="h-4 w-4" />}
+                  onClick={submitDelete}
+                >
+                  Excluir usuário
                 </Button>
               </div>
               <div />

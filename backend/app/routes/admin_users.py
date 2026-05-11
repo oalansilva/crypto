@@ -22,6 +22,7 @@ ACTION_UPDATE = "user_updated"
 ACTION_SUSPEND = "user_suspended"
 ACTION_REACTIVATE = "user_reactivated"
 ACTION_BAN = "user_banned"
+ACTION_DELETE = "user_deleted"
 
 
 def _hash_password(password: str) -> str:
@@ -206,6 +207,16 @@ class AdminUserSuspendRequest(BaseModel):
 
 class AdminUserBanRequest(BaseModel):
     reason: str = Field(min_length=4, max_length=2000)
+
+
+class AdminUserDeleteRequest(BaseModel):
+    reason: str = Field(min_length=4, max_length=2000)
+
+
+class AdminUserDeleteResponse(BaseModel):
+    message: str
+    deletedUserId: str
+    deletedEmail: str
 
 
 class AdminActionLogItem(BaseModel):
@@ -536,6 +547,49 @@ def ban_user(
     )
 
     return AdminUserDetailResponse(**_serialize_user(user))
+
+
+@router.delete("/users/{user_id}", response_model=AdminUserDeleteResponse)
+def delete_user(
+    user_id: str,
+    payload: AdminUserDeleteRequest,
+    _admin_user_id: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    user = _load_user(db, user_id)
+    if str(user.id) == str(_admin_user_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin cannot delete own user",
+        )
+
+    reason = _require_reason(payload.reason, ACTION_DELETE)
+    deleted_user_id = str(user.id)
+    deleted_email = user.email
+
+    _append_admin_action(
+        db=db,
+        actor_user_id=_admin_user_id,
+        target_user_id=deleted_user_id,
+        action=ACTION_DELETE,
+        reason=reason,
+        target_subject="user",
+        metadata={
+            "email": user.email,
+            "name": user.name,
+            "status": user.status,
+            "isBanned": bool(user.is_banned),
+        },
+    )
+
+    db.delete(user)
+    db.commit()
+
+    return AdminUserDeleteResponse(
+        message="User deleted successfully",
+        deletedUserId=deleted_user_id,
+        deletedEmail=deleted_email,
+    )
 
 
 @router.get("/user-actions", response_model=AdminActionLogListResponse)
