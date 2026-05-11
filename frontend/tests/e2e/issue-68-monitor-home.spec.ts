@@ -103,45 +103,17 @@ test('login deve redirecionar para /monitor', async ({ page }) => {
   await page.screenshot({ path: path.join(evidenceDir, '02-login-to-monitor.png'), fullPage: true })
 })
 
-test('login passwordless deve aceitar o2 sem senha', async ({ page }) => {
+test('login sem senha deve ser rejeitado com validacao', async ({ page }) => {
   await blockExternalNetwork(page)
   await mockMonitorApi(page)
 
-  let loginPayload: any = null
-  await page.route('**/api/auth/login', async (route: any) => {
-    loginPayload = route.request().postDataJSON()
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        accessToken: 'test-access-token',
-        refreshToken: 'test-refresh-token',
-        id: 'o2-user',
-        email: 'o2.alan.silva@gmail.com',
-        name: 'Alan 2234',
-        isAdmin: false,
-      }),
-    })
-  })
-
-  await page.route('**/api/auth/me', (route: any) => {
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        id: 'o2-user',
-        email: 'o2.alan.silva@gmail.com',
-        name: 'Alan 2234',
-        isAdmin: false,
-      }),
-    })
-  })
-
   await page.goto('/login')
-  await page.getByPlaceholder('seu@email.com').fill('o2.alan.silva@gmail.com')
+  await page.getByPlaceholder('seu@email.com').fill('test@example.com')
+  // Do NOT fill password — leave empty
   await page.locator('form').getByRole('button', { name: 'Entrar' }).click()
 
-  expect(loginPayload).toEqual({ email: 'o2.alan.silva@gmail.com', password: '' })
-  await expect(page).toHaveURL('/monitor')
-  await expect(page.getByTestId('monitor-status-tab')).toBeVisible()
+  // Should show password validation error
+  await expect(page.locator('text=Senha é obrigatória')).toBeVisible()
+  // Should stay on login page
+  await expect(page).toHaveURL('/login')
 })
