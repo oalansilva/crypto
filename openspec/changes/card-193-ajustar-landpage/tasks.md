@@ -3,6 +3,7 @@
 - [x] 1.1 Update hero, CTA microcopy, proof strip, and beta copy to make the 6-month free beta offer clear.
 - [x] 1.2 Add a scannable product-capabilities section covering Binance-history backtests, requested metrics, and Binance wallet tracking.
 - [x] 1.3 Keep lead form behavior unchanged and preserve ethical/risk guardrails.
+- [x] 1.4 Apply the same conversion copy to the published V4 landing served by `https://criptofarol.com.br/`.
 
 ## 2. Documentation And Validation
 

@@ -2,6 +2,8 @@
 
 A landing do Cripto Farol ja tem marca, hero, explicacao do Monitor e formulario funcional de leads. O card #193 pede uma revisao de marketing para deixar mais claras solucoes que o sistema oferece: backtest historico em Binance, gratuidade inicial, metricas de escolha de estrategias e conexao com carteira Binance.
 
+Confirmacao pos-publicacao: o dominio `https://criptofarol.com.br/` serve a variante `cripto-farol-landing-v4/`. Portanto a revisao de conversao precisa estar tanto no prototipo base quanto na V4 publicada.
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -26,6 +28,8 @@ A landing do Cripto Farol ja tem marca, hero, explicacao do Monitor e formulario
   - Rationale: os itens tecnicos precisam parecer produto real, nao jargao solto.
 - D4: Manter linguagem de apoio a decisao e API read-only para a carteira.
   - Rationale: evita promessa de lucro e reduz risco de interpretaçao como robo de trade.
+- D5: Refletir a mesma proposta na variante V4 publicada.
+  - Rationale: o dominio publico aponta para V4; alterar apenas o prototipo base nao muda a experiencia real.
 
 ## Risks / Trade-offs
 

@@ -22,5 +22,7 @@ A landing atual comunica clareza e beta fechado, mas ainda nao deixa evidentes q
 
 - `frontend/public/prototypes/cripto-farol-landing/index.html`
 - `frontend/public/prototypes/cripto-farol-landing/styles.css`
+- `frontend/public/prototypes/cripto-farol-landing-v4/index.html` (variante publicada em `https://criptofarol.com.br/`)
+- `frontend/public/prototypes/cripto-farol-landing-v4/styles.css`
 - `docs/landing-page.md`
 - Sem alteracao de API, banco ou dependencias.

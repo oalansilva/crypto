@@ -9,6 +9,10 @@ The landing page SHALL present the closed-beta value proposition before the sign
 - **AND** it SHALL show that the first beta testers receive 6 months free
 - **AND** it SHALL avoid promises of profit or guaranteed results
 
+#### Scenario: Visitor opens the production domain
+- **WHEN** a visitor opens `https://criptofarol.com.br/`
+- **THEN** the published landing variant SHALL show the same 6-month free beta offer and requested product capabilities
+
 ### Requirement: Landing explains requested product capabilities
 The landing page SHALL explain the product capabilities requested in card #193: Binance-history backtests, backtest metrics, and Binance wallet result tracking.
 

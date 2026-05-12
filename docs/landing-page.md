@@ -128,3 +128,8 @@ Revisao de marketing para aumentar cadastros:
 - Nova secao `Por que entrar agora` com backtest Binance, 6 meses gratis, metricas e carteira Binance.
 - Nova secao de metricas de backtest para tornar o diferencial tangivel.
 - Guardrail mantido: ferramenta de apoio a leitura de mercado, sem promessa de lucro.
+
+## Publicacao Atual
+
+Em producao, `https://criptofarol.com.br/` serve a variante `frontend/public/prototypes/cripto-farol-landing-v4/`.
+Mudancas de conversao que precisam aparecer no dominio publico devem ser refletidas tambem nesta variante, nao apenas no prototipo base `cripto-farol-landing/`.
