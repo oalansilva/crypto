@@ -34,7 +34,7 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 
 ### Como Funciona
 
-- Monitor central com `HOLD` e `EXIT` como sinais visiveis na tela principal.
+- Monitor central com `Compra` e `Venda` como sinais visiveis na tela principal.
 - Leitura visual para entender momento, oportunidade e risco.
 - Fluxo de acompanhamento pensado para investidores que querem rotina, nao call.
 
@@ -104,4 +104,4 @@ A landing deve usar azul oceano como base visual, mantendo o amarelo como feixe/
 
 ## Regra de Status
 
-Nao usar `WAIT`/`waiting` na landing. Verificacao no codigo em 2026-05-09 mostrou que o board principal do Monitor exibe `HOLD` e `EXIT`; `WAIT`, `NEUTRAL`, `BUY_SIGNAL` e `BUY_NEAR` ficam ocultos/nao acionaveis na tela principal. A landing deve comunicar dois sinais visiveis: acompanhamento/manutencao (`HOLD`) e saida/venda (`EXIT`).
+Nao usar `Espera`/`waiting` na landing. Verificacao no codigo em 2026-05-09 mostrou que o board principal do Monitor exibe `Compra` e `Venda`; `Espera`, `NEUTRAL`, `BUY_SIGNAL` e `BUY_NEAR` ficam ocultos/nao acionaveis na tela principal. A landing deve comunicar dois sinais visiveis: acompanhamento/manutencao (`Compra`) e saida/venda (`Venda`).

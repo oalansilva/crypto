@@ -109,15 +109,15 @@ const renderSparkPath = (values: number[]): { line: string; area: string; dot: {
 
 const SectionConfig: Record<SectionKey, SectionRecord> = {
     hold: {
-        title: 'HOLD',
+        title: 'Compra',
         label: 'Posição ativa',
         dotClass: 'monitor-dot--hold',
         badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40',
         countClass: 'text-emerald-300',
-        description: 'Sinais com decisão favorável e gestão ativa.',
+        description: 'Sinais com decisão de compra e gestão ativa.',
     },
     wait: {
-        title: 'WAIT',
+        title: 'Espera',
         label: 'Aguardando',
         dotClass: 'monitor-dot--wait',
         badgeClass: 'bg-slate-400/20 text-slate-200 border border-slate-400/40',
@@ -125,12 +125,12 @@ const SectionConfig: Record<SectionKey, SectionRecord> = {
         description: 'Aguardando confirmação para entrada ou saída.',
     },
     exit: {
-        title: 'EXIT',
+        title: 'Venda',
         label: 'Em observação',
         dotClass: 'monitor-dot--exit',
         badgeClass: 'bg-sky-500/20 text-sky-200 border border-sky-400/40',
         countClass: 'text-sky-300',
-        description: 'Condição de saída detectada para novo monitoramento.',
+        description: 'Condição de venda detectada para novo monitoramento.',
     },
 };
 
@@ -899,7 +899,7 @@ export const MonitorStatusTab: React.FC = () => {
                         <div className="kpi">
                             <div className="kpi-label">
                                 Em posição
-                                <span className="tag">HOLD</span>
+                                <span className="tag">Compra</span>
                             </div>
                             <div className="kpi-val">{totalKpi.hold}</div>
                             <div className="kpi-foot up">média risco {totalKpi.avgHoldRisk}</div>
@@ -907,7 +907,7 @@ export const MonitorStatusTab: React.FC = () => {
                         <div className="kpi">
                             <div className="kpi-label">
                                 Em saída
-                                <span className="tag">EXIT</span>
+                                <span className="tag">Venda</span>
                             </div>
                             <div className="kpi-val">{totalKpi.exit}</div>
                             <div className="kpi-foot">média risco {totalKpi.avgExitRisk}</div>
@@ -1009,7 +1009,7 @@ export const MonitorStatusTab: React.FC = () => {
                                             <span className="status-section-label">Estado {cfg.title}</span>
                                             <h3>
                                                 <span className={`pip ${sectionKey}`} />
-                                                {cfg.title === 'HOLD' ? 'Em posição · HOLD' : 'Em saída · EXIT'}
+                                                {sectionKey === 'hold' ? 'Em posição · Compra' : 'Em saída · Venda'}
                                                 <span className="meta">({rows.length})</span>
                                             </h3>
                             <p className="desc">
@@ -1089,7 +1089,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                     </td>
                                                                     <td>
                                                                         <span className={`status-pill ${sectionKey}`}>
-                                                                            {cfg.title === 'HOLD' ? 'Hold' : 'Exit'}
+                                                                            {sectionKey === 'hold' ? 'Compra' : 'Venda'}
                                                                         </span>
                                                                     </td>
                                                                     <td className="num lg">{formatPrice(opportunity.last_price)}</td>

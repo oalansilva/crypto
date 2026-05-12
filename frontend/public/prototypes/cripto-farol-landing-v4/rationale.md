@@ -22,7 +22,7 @@ Transformar excesso de informacao em uma leitura clara de timing com dois sinais
 
 ## Guardrails preservados
 
-- Nao usa `WAIT`, `BUY` ou `SELL` como status principal.
+- Nao usa `Espera`, `BUY` ou `SELL` como status principal.
 - Usa `Compra` e `Venda` por decisao explicita do Alan para esta opcao comparativa.
 - Nao expõe parametros internos, indicadores, medias moveis ou screenshots reais sensiveis.
 - Nao promete lucro, recomendacao personalizada ou sinal infalivel.
