@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.models import BetaAccessAuditLog, User
 
 BETA_ACCESS_DEFAULT_EXPIRY_HOURS = int(os.getenv("BETA_ACCESS_EXPIRY_HOURS", "72"))
-BETA_ACCESS_APP_URL = os.getenv("BETA_ACCESS_APP_URL", "http://localhost:5173/login")
+BETA_ACCESS_APP_URL = os.getenv("BETA_ACCESS_APP_URL", "https://criptofarol.com.br/login")
 BETA_ACCESS_GOG_ENV_FILE = os.getenv(
     "BETA_ACCESS_GOG_ENV_FILE",
     "/root/.openclaw/workspace/cripto-farol-landing/.env.leads",

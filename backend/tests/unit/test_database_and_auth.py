@@ -583,6 +583,7 @@ def test_beta_lead_access_creates_temp_user_and_audit_without_exposing_password(
     assert user.access_invitation_source == "landing"
     assert user.password_hash != "TemporaryPass123!"
     assert verify_password("TemporaryPass123!", user.password_hash)
+    assert sent_messages[0].login_url == "https://criptofarol.com.br/login"
     assert sent_messages[0].temporary_password == "TemporaryPass123!"
 
     audit = auth_db_session.query(BetaAccessAuditLog).filter_by(email=email).one()
