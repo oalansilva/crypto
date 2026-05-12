@@ -279,6 +279,23 @@ h3 {
   pointer-events: none;
 }
 
+.hero-product-preview {
+  overflow: hidden;
+  padding: 0;
+  background: rgba(3, 17, 31, 0.9);
+}
+
+.hero-product-preview::before {
+  display: none;
+}
+
+.hero-product-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #07111c;
+}
+
 .console-header,
 .asset-row {
   position: relative;
