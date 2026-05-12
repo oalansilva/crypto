@@ -181,8 +181,8 @@ h3 {
 h1 {
   max-width: 860px;
   margin-bottom: 22px;
-  font-size: clamp(3rem, 5.8vw, 6.1rem);
-  line-height: 0.98;
+  font-size: clamp(2.75rem, 4.6vw, 4.8rem);
+  line-height: 1.04;
 }
 
 h2 {
@@ -697,7 +697,7 @@ h3 {
   }
 
   h1 {
-    font-size: clamp(2.8rem, 17vw, 4rem);
+    font-size: clamp(2.35rem, 13vw, 3.25rem);
   }
 
   h2 {
