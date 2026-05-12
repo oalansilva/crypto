@@ -1,14 +1,14 @@
 ## Why
 
-A landing atual comunica clareza e beta fechado, mas ainda nao deixa evidentes quatro valores comerciais que Alan pediu no card #193: backtest no historico Binance, 6 meses gratuitos, metricas de backtest e conexao com carteira Binance. Isso reduz a forca da proposta antes do formulario.
+A landing atual ja recebeu a primeira revisao de marketing do card #193, mas Alan anexou `refazer.txt` no proprio card pedindo uma reimplementacao completa da pagina. A nova versao precisa seguir essa estrutura: hero com oferta de 6 meses, previa dos melhores ativos, rotina de uso, tela do produto, beneficios, dois sinais, confianca, prova social, FAQ e formulario em 2 passos.
 
 ## What Changes
 
-- Reposicionar a landing para aumentar cadastros com promessa comercial concreta, sem prometer lucro.
-- Adicionar copy visivel sobre backtests em todo o periodo disponivel na Binance.
-- Explicitar o beneficio de 6 meses gratuitos para os primeiros beta testers.
-- Mostrar as metricas de backtest citadas no card: Sharpe, Trades, Win%, Return, Max DD, PF, SQN, Max L e ATR.
-- Explicar a conexao read-only com carteira Binance como acompanhamento de resultados, nao como operacao automatica.
+- Reimplementar a variante V4 publicada conforme o conteudo de `refazer.txt` anexado ao card #193.
+- Reposicionar o hero para "Saiba quando faz sentido comprar..." com CTA `Quero meus 6 meses grátis`.
+- Adicionar blocos de previa dos melhores ativos, rotina, print/tela do produto, beneficios, dois sinais, confianca, prova social, FAQ e formulario em 2 passos.
+- Manter copy sobre backtests no historico real da Binance, metricas com explicacao por hover e carteira Binance read-only.
+- Preservar o endpoint de leads existente e o guardrail etico de apoio a decisao.
 - Atualizar a documentacao da landing com as novas mensagens e criterios.
 
 ## Capabilities
@@ -20,8 +20,6 @@ A landing atual comunica clareza e beta fechado, mas ainda nao deixa evidentes q
 
 ## Impact
 
-- `frontend/public/prototypes/cripto-farol-landing/index.html`
-- `frontend/public/prototypes/cripto-farol-landing/styles.css`
 - `frontend/public/prototypes/cripto-farol-landing-v4/index.html` (variante publicada em `https://criptofarol.com.br/`)
 - `frontend/public/prototypes/cripto-farol-landing-v4/styles.css`
 - `docs/landing-page.md`
