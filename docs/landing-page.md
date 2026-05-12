@@ -6,7 +6,9 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 
 ## CTA Principal
 
-**Entrar na lista do beta fechado**
+**Quero 6 meses grátis**
+
+CTA secundario: **Ver benefícios**
 
 ## Estrutura da Pagina
 
@@ -22,9 +24,13 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 
 ### Hero
 
-- Headline: **Enxergue melhor antes de decidir em cripto.**
-- Subheadline: Veja quais ativos estao em posicao ativa e quais pedem saida com uma leitura simples de contexto e risco.
-- CTA: **Entrar na lista do beta fechado**
+- Headline: **Cripto Farol**
+- Subheadline: Backtests no histórico da Binance, métricas para comparar estratégias e acompanhamento da sua carteira em uma rotina simples de decisão.
+- CTA: **Quero 6 meses grátis**
+- Apoio acima da dobra:
+  - 6 meses gratuitos no beta;
+  - histórico de mercado da Binance;
+  - carteira read-only para acompanhamento.
 
 ### Problema
 
@@ -37,6 +43,13 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 - Monitor central com `Compra` e `Venda` como sinais visiveis na tela principal.
 - Leitura visual para entender momento, oportunidade e risco.
 - Fluxo de acompanhamento pensado para investidores que querem rotina, nao call.
+
+### Beneficios Comerciais do Card #193
+
+- Backtest dos ativos usando todo o periodo disponivel na Binance.
+- Beta gratuito nos primeiros 6 meses para os participantes iniciais.
+- Comparacao de estrategias com metricas: Sharpe, Trades, Win%, Return, Max DD, PF, SQN, Max L e ATR.
+- Conexao read-only com carteira Binance para acompanhar saldos e resultados sem ordens ou saques.
 
 ### Perfil Ideal
 
@@ -105,3 +118,13 @@ A landing deve usar azul oceano como base visual, mantendo o amarelo como feixe/
 ## Regra de Status
 
 Nao usar `Espera`/`waiting` na landing. Verificacao no codigo em 2026-05-09 mostrou que o board principal do Monitor exibe `Compra` e `Venda`; `Espera`, `NEUTRAL`, `BUY_SIGNAL` e `BUY_NEAR` ficam ocultos/nao acionaveis na tela principal. A landing deve comunicar dois sinais visiveis: acompanhamento/manutencao (`Compra`) e saida/venda (`Venda`).
+
+## Revisao Card #193
+
+Revisao de marketing para aumentar cadastros:
+
+- CTA principal orientado a beneficio: `Quero 6 meses grátis`.
+- Proposta de valor mais concreta antes da primeira rolagem.
+- Nova secao `Por que entrar agora` com backtest Binance, 6 meses gratis, metricas e carteira Binance.
+- Nova secao de metricas de backtest para tornar o diferencial tangivel.
+- Guardrail mantido: ferramenta de apoio a leitura de mercado, sem promessa de lucro.
