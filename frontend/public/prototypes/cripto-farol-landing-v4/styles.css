@@ -461,97 +461,41 @@ h3 {
     linear-gradient(180deg, #041a2c, var(--night));
 }
 
-.product-shot {
+.product-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  gap: clamp(16px, 3vw, 28px);
+  align-items: start;
+}
+
+.product-frame {
   overflow: hidden;
+  margin: 0;
   border: 1px solid rgba(157, 234, 255, 0.24);
   border-radius: 8px;
   background: rgba(3, 17, 31, 0.78);
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
 }
 
-.product-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 58px;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--line);
-  color: var(--subtle);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+.product-frame img {
+  width: 100%;
+  height: auto;
+  background: #0a111a;
+}
+
+.product-frame-primary {
+  grid-row: span 2;
+}
+
+.product-frame figcaption {
+  border-top: 1px solid var(--line);
+  padding: 13px 16px;
+  color: var(--muted);
+  background: rgba(4, 28, 48, 0.72);
+  font-size: 0.9rem;
   font-weight: 700;
+  line-height: 1.45;
 }
-
-.product-topbar strong {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 1rem;
-}
-
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  padding: 18px;
-}
-
-.product-panel {
-  min-height: 190px;
-  padding: 18px;
-}
-
-.product-panel.wide {
-  grid-column: 1 / -1;
-  min-height: 150px;
-}
-
-.panel-label {
-  display: inline-flex;
-  margin-bottom: 14px;
-  color: var(--teal-soft);
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.product-panel strong {
-  display: block;
-  margin-bottom: 8px;
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-}
-
-.mini-chart {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  align-items: end;
-  gap: 8px;
-  height: 70px;
-  margin-top: 18px;
-}
-
-.mini-chart i {
-  display: block;
-  border-radius: 4px 4px 0 0;
-  background: var(--green);
-}
-
-.mini-chart.down i {
-  background: var(--red);
-}
-
-.mini-chart i:nth-child(1) { height: 34%; }
-.mini-chart i:nth-child(2) { height: 52%; }
-.mini-chart i:nth-child(3) { height: 44%; }
-.mini-chart i:nth-child(4) { height: 70%; }
-.mini-chart i:nth-child(5) { height: 86%; }
-.mini-chart.down i:nth-child(1) { height: 82%; }
-.mini-chart.down i:nth-child(2) { height: 64%; }
-.mini-chart.down i:nth-child(3) { height: 58%; }
-.mini-chart.down i:nth-child(4) { height: 38%; }
-.mini-chart.down i:nth-child(5) { height: 24%; }
 
 .signal-section,
 .social-section {
@@ -806,8 +750,12 @@ h3 {
   .signal-grid,
   .benefits-grid,
   .testimonial-grid,
-  .product-grid {
+  .product-showcase {
     grid-template-columns: 1fr;
+  }
+
+  .product-frame-primary {
+    grid-row: auto;
   }
 }
 
@@ -834,8 +782,7 @@ h3 {
   }
 
   .asset-row,
-  .console-header,
-  .product-topbar {
+  .console-header {
     align-items: flex-start;
     flex-direction: column;
   }
