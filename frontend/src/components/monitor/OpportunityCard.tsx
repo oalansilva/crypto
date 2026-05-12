@@ -273,7 +273,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 <div>
                     <h5 className="h5-exit">
                         <span className="swatch" />
-                        Saída · {resolvedSignal.visual.badgeText}
+                        Sinal · {resolvedSignal.visual.badgeText}
                     </h5>
                     <div className={`exit-msg ${exitClassName}`}>
                         <span className="label">Mensagem</span>
@@ -383,12 +383,12 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <div style={{ height: '14px' }} />
                     <h5 className="h5-notes">
                         <span className="swatch" />
-                        {showEntryStopRows ? 'Entry / Stop' : 'Execução'}
+                        {showEntryStopRows ? 'Compra / Stop' : 'Execução'}
                     </h5>
                     <dl className="kv">
                         {showEntryStopRows ? (
                             <React.Fragment>
-                                <dt>entry</dt>
+                                <dt>compra</dt>
                                 <dd>
                                     {opportunity.entry_price !== null && opportunity.entry_price !== undefined
                                         ? `$${toDisplayValue(opportunity.entry_price, 8)}`

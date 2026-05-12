@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import builtins
 import io
+import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -10,20 +11,52 @@ import jwt
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
-from app.models import User
+from app.models import BetaAccessAuditLog, User
 import app.database as database_module
 import app.middleware.authMiddleware as auth_middleware
 import app.routes.auth as auth_routes
+import app.routes.leads as leads_routes
+import app.routes.user_profile as user_profile_routes
+from app.services.beta_access import create_beta_access_for_lead, send_welcome_email_gog
+from app.services.beta_access import verify_password, WelcomeEmail
 
 
 @pytest.fixture
 def auth_db_session():
     engine = create_engine("postgresql://postgres:postgres@127.0.0.1:5432/postgres")
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+                "must_change_password BOOLEAN NOT NULL DEFAULT FALSE"
+            )
+        )
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS temporary_password_expires_at TIMESTAMP NULL"
+            )
+        )
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS temporary_password_used_at TIMESTAMP NULL"
+            )
+        )
+        conn.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP NULL")
+        )
+        conn.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS access_invitation_source VARCHAR NULL")
+        )
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS access_invitation_created_at TIMESTAMP NULL"
+            )
+        )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     try:
@@ -159,6 +192,10 @@ def test_postgres_runtime_schema_migrations_execute_admin_user_statements(monkey
     assert "ADD COLUMN IF NOT EXISTS suspension_reason" in joined
     assert "ADD COLUMN IF NOT EXISTS is_banned" in joined
     assert "ADD COLUMN IF NOT EXISTS notes" in joined
+    assert "ADD COLUMN IF NOT EXISTS must_change_password" in joined
+    assert "ADD COLUMN IF NOT EXISTS temporary_password_expires_at" in joined
+    assert "CREATE TABLE IF NOT EXISTS beta_access_audit_logs" in joined
+    assert "CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_email_created" in joined
     assert "CREATE TABLE IF NOT EXISTS admin_action_logs" in joined
     assert "CREATE INDEX IF NOT EXISTS ix_admin_action_logs_created_at" in joined
 
@@ -222,6 +259,8 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
         token = jwt.encode(payload, "unit-test-secret", algorithm="HS256")
         return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
+    request = SimpleNamespace(method="GET", url=SimpleNamespace(path="/api/favorites/"))
+
     assert await auth_middleware.get_current_user_optional(None, auth_db_session) is None
     assert (
         await auth_middleware.get_current_user_optional(
@@ -257,11 +296,12 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
     ) == str(user_id)
 
     with pytest.raises(HTTPException) as missing_auth_exc:
-        await auth_middleware.get_current_user(None, auth_db_session)
+        await auth_middleware.get_current_user(request, None, auth_db_session)
     assert missing_auth_exc.value.detail == "Missing authentication"
 
     with pytest.raises(HTTPException) as wrong_type_exc:
         await auth_middleware.get_current_user(
+            request,
             _credentials({"type": "refresh", "sub": str(user_id)}),
             auth_db_session,
         )
@@ -269,6 +309,7 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
 
     with pytest.raises(HTTPException) as bad_payload_exc:
         await auth_middleware.get_current_user(
+            request,
             _credentials({"type": "access"}),
             auth_db_session,
         )
@@ -276,12 +317,14 @@ async def test_auth_dependencies_cover_optional_required_and_admin_paths(
 
     with pytest.raises(HTTPException) as missing_user_exc:
         await auth_middleware.get_current_user(
+            request,
             _credentials({"type": "access", "sub": str(uuid.uuid4())}),
             auth_db_session,
         )
     assert missing_user_exc.value.detail == "User not found"
 
     assert await auth_middleware.get_current_user(
+        request,
         _credentials({"type": "access", "sub": str(user_id)}),
         auth_db_session,
     ) == str(user_id)
@@ -349,7 +392,8 @@ async def test_auth_middleware_handles_banned_suspended_and_expired_users(
         algorithm="HS256",
     )
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
-    assert await auth_middleware.get_current_user(credentials, auth_db_session) == str(
+    request = SimpleNamespace(method="GET", url=SimpleNamespace(path="/api/favorites/"))
+    assert await auth_middleware.get_current_user(request, credentials, auth_db_session) == str(
         expired_user.id
     )
 
@@ -509,6 +553,318 @@ def test_closed_beta_registration_blocks_public_and_allows_invited_or_explicit_p
         auth_db_session,
     )
     assert public.email == public_email
+
+
+def test_beta_lead_access_creates_temp_user_and_audit_without_exposing_password(
+    auth_db_session,
+):
+    email = f"lead-{uuid.uuid4().hex}@example.com"
+    sent_messages = []
+
+    result = create_beta_access_for_lead(
+        auth_db_session,
+        name="Lead User",
+        email=email.upper(),
+        whatsapp="51999999999",
+        profile="iniciante",
+        pain="muito ruido",
+        temporary_password="TemporaryPass123!",
+        email_sender=lambda message: sent_messages.append(message) or True,
+    )
+
+    user = auth_db_session.query(User).filter(User.email == email).one()
+    assert result.email == email
+    assert result.user_created is True
+    assert result.must_change_password is True
+    assert result.welcome_email_sent is True
+    assert result.temporary_password_expires_at is not None
+    assert user.must_change_password is True
+    assert user.temporary_password_expires_at is not None
+    assert user.access_invitation_source == "landing"
+    assert user.password_hash != "TemporaryPass123!"
+    assert verify_password("TemporaryPass123!", user.password_hash)
+    assert sent_messages[0].login_url == "https://criptofarol.com.br/login"
+    assert sent_messages[0].temporary_password == "TemporaryPass123!"
+
+    audit = auth_db_session.query(BetaAccessAuditLog).filter_by(email=email).one()
+    assert audit.user_id == str(user.id)
+    assert audit.action == "lead_access_created"
+    assert audit.result == "created_email_sent"
+    assert "TemporaryPass123!" not in str(audit.metadata_json)
+
+
+def test_beta_lead_existing_user_preserves_password_and_records_audit(auth_db_session):
+    user = User(
+        id=uuid.uuid4(),
+        email=f"existing-lead-{uuid.uuid4().hex}@example.com",
+        password_hash="original-hash",
+        name="Existing",
+        status="active",
+        must_change_password=False,
+    )
+    auth_db_session.add(user)
+    auth_db_session.commit()
+
+    result = create_beta_access_for_lead(
+        auth_db_session,
+        name="Existing Lead",
+        email=user.email,
+        temporary_password="ShouldNotBeUsed123!",
+        email_sender=lambda _message: True,
+    )
+
+    auth_db_session.refresh(user)
+    assert result.user_created is False
+    assert result.result == "existing_user_preserved"
+    assert user.password_hash == "original-hash"
+    assert user.must_change_password is False
+
+    audit = auth_db_session.query(BetaAccessAuditLog).filter_by(email=user.email).one()
+    assert audit.action == "lead_access_requested"
+    assert audit.result == "existing_user_preserved"
+    assert "ShouldNotBeUsed123!" not in str(audit.metadata_json)
+
+
+def test_leads_route_returns_safe_response_without_temporary_password(auth_db_session):
+    email = f"route-lead-{uuid.uuid4().hex}@example.com"
+
+    response = leads_routes.create_lead_access(
+        leads_routes.LeadAccessRequest(
+            name="Route Lead",
+            email=email,
+            whatsapp="51999999999",
+            profile="intermediario",
+            pain="timing",
+            origin="landing-v4",
+        ),
+        auth_db_session,
+    )
+
+    payload = response.model_dump()
+    assert payload["status"] == "accepted"
+    assert payload["message"]
+    assert "userCreated" not in payload
+    assert "mustChangePassword" not in payload
+    assert "temporaryPasswordExpiresAt" not in payload
+    assert "TemporaryPass" not in str(payload)
+    assert "token_urlsafe" not in str(payload)
+
+
+def test_leads_stats_counts_active_users_and_remaining_spots(auth_db_session):
+    initial = leads_routes.get_lead_stats(auth_db_session)
+    base_registered = initial.registered
+    base_spots_left = initial.spotsLeft
+
+    landing_user = User(
+        id=uuid.uuid4(),
+        email=f"landing-stats-{uuid.uuid4().hex}@example.com",
+        password_hash="hash",
+        name="Landing Stats",
+        status="active",
+        is_banned=False,
+        access_invitation_source="landing",
+    )
+    admin_created_user = User(
+        id=uuid.uuid4(),
+        email=f"admin-created-stats-{uuid.uuid4().hex}@example.com",
+        password_hash="hash",
+        name="Admin Created Stats",
+        status="active",
+        is_banned=False,
+        access_invitation_source="admin",
+    )
+    banned_landing_user = User(
+        id=uuid.uuid4(),
+        email=f"banned-landing-stats-{uuid.uuid4().hex}@example.com",
+        password_hash="hash",
+        name="Banned Landing Stats",
+        status="banned",
+        is_banned=True,
+        access_invitation_source="landing",
+    )
+    auth_db_session.add_all([landing_user, admin_created_user, banned_landing_user])
+    auth_db_session.commit()
+
+    stats = leads_routes.get_lead_stats(auth_db_session)
+
+    assert stats.totalSpots == 50
+    assert stats.registered == min(50, base_registered + 2)
+    assert stats.spotsLeft == max(0, base_spots_left - 2)
+
+
+def test_beta_lead_does_not_commit_unknown_password_when_email_not_sent(auth_db_session):
+    email = f"no-email-{uuid.uuid4().hex}@example.com"
+
+    result = create_beta_access_for_lead(
+        auth_db_session,
+        name="No Email",
+        email=email,
+        temporary_password="TemporaryPass123!",
+        email_sender=lambda _message: False,
+    )
+
+    assert result.user_created is False
+    assert result.result == "created_email_not_configured"
+    assert auth_db_session.query(User).filter(User.email == email).first() is None
+
+    audit = auth_db_session.query(BetaAccessAuditLog).filter_by(email=email).one()
+    assert audit.user_id is None
+    assert audit.result == "created_email_not_configured"
+    assert "TemporaryPass123!" not in str(audit.metadata_json)
+
+
+def test_gog_welcome_email_uses_existing_clara_gmail_channel(monkeypatch, tmp_path):
+    env_file = tmp_path / ".env.leads"
+    env_file.write_text("GOG_KEYRING_PASSWORD=secret-value\n", encoding="utf-8")
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append((args, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("app.services.beta_access.BETA_ACCESS_GOG_ENV_FILE", str(env_file))
+    monkeypatch.setenv("BETA_ACCESS_WELCOME_EMAIL_CC", "alan@example.com")
+    monkeypatch.setattr("app.services.beta_access.subprocess.run", fake_run)
+
+    sent = send_welcome_email_gog(
+        WelcomeEmail(
+            to_email="lead@example.com",
+            name="Lead",
+            login_url="https://criptofarol.com.br/login",
+            temporary_password="TemporaryPass123!",
+            expires_at=datetime(2026, 5, 11, 12, 0, 0),
+        )
+    )
+
+    assert sent is True
+    args, kwargs = calls[0]
+    assert args[:3] == ["gog", "gmail", "send"]
+    assert "--to" in args and "lead@example.com" in args
+    assert "--cc" in args and "alan@example.com" in args
+    assert kwargs["env"]["GOG_KEYRING_PASSWORD"] == "secret-value"
+    assert kwargs["capture_output"] is True
+
+
+def test_temporary_password_login_requires_change_and_expires(monkeypatch, auth_db_session):
+    now = datetime.utcnow()
+    email = f"temp-login-{uuid.uuid4().hex}@example.com"
+    result = create_beta_access_for_lead(
+        auth_db_session,
+        name="Temp Login",
+        email=email,
+        now=now,
+        temporary_password="TemporaryPass123!",
+        email_sender=lambda _message: True,
+    )
+    assert result.user_created is True
+
+    login_response = auth_routes.login(
+        auth_routes.LoginRequest(email=email, password="TemporaryPass123!"),
+        auth_db_session,
+    )
+    assert login_response.email == email
+    assert login_response.mustChangePassword is True
+    assert login_response.accessToken
+
+    user = auth_db_session.query(User).filter(User.email == email).one()
+    user.temporary_password_expires_at = now - timedelta(minutes=1)
+    auth_db_session.add(user)
+    auth_db_session.commit()
+
+    with pytest.raises(HTTPException) as expired_exc:
+        auth_routes.login(
+            auth_routes.LoginRequest(email=email, password="TemporaryPass123!"),
+            auth_db_session,
+        )
+    assert expired_exc.value.status_code == 403
+    assert expired_exc.value.detail == "Temporary password expired"
+
+
+def test_temporary_password_token_is_blocked_from_regular_protected_apis(auth_db_session):
+    email = f"temp-gate-{uuid.uuid4().hex}@example.com"
+    create_beta_access_for_lead(
+        auth_db_session,
+        name="Temp Gate",
+        email=email,
+        temporary_password="TemporaryPass123!",
+        email_sender=lambda _message: True,
+    )
+    login_response = auth_routes.login(
+        auth_routes.LoginRequest(email=email, password="TemporaryPass123!"),
+        auth_db_session,
+    )
+    credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer",
+        credentials=login_response.accessToken,
+    )
+
+    blocked_request = SimpleNamespace(
+        method="GET",
+        url=SimpleNamespace(path="/api/favorites/"),
+    )
+    with pytest.raises(HTTPException) as blocked_exc:
+        asyncio.run(
+            auth_middleware.get_current_user(
+                request=blocked_request,
+                credentials=credentials,
+                db=auth_db_session,
+            )
+        )
+    assert blocked_exc.value.status_code == 403
+    assert blocked_exc.value.detail == "Password change required"
+    assert (
+        asyncio.run(
+            auth_middleware.get_current_user_optional(
+                credentials,
+                db=auth_db_session,
+            )
+        )
+        is None
+    )
+
+    allowed_request = SimpleNamespace(
+        method="PUT",
+        url=SimpleNamespace(path="/api/users/password"),
+    )
+    assert (
+        asyncio.run(
+            auth_middleware.get_current_user(
+                request=allowed_request,
+                credentials=credentials,
+                db=auth_db_session,
+            )
+        )
+        == login_response.userId
+    )
+
+
+def test_password_change_clears_temporary_access_state(monkeypatch, auth_db_session):
+    email = f"temp-change-{uuid.uuid4().hex}@example.com"
+    create_beta_access_for_lead(
+        auth_db_session,
+        name="Temp Change",
+        email=email,
+        temporary_password="TemporaryPass123!",
+        email_sender=lambda _message: True,
+    )
+    user = auth_db_session.query(User).filter(User.email == email).one()
+
+    response = user_profile_routes.update_password(
+        user_profile_routes.ChangePasswordRequest(
+            currentPassword="TemporaryPass123!",
+            newPassword="OwnPassword456!",
+        ),
+        current_user_id=str(user.id),
+        db=auth_db_session,
+    )
+
+    auth_db_session.refresh(user)
+    assert response.message == "Password updated successfully"
+    assert user.must_change_password is False
+    assert user.temporary_password_expires_at is None
+    assert user.temporary_password_used_at is not None
+    assert user.password_changed_at is not None
+    assert verify_password("OwnPassword456!", user.password_hash)
 
 
 def test_database_timescale_policy_verification_reports_missing_and_exception_paths(monkeypatch):

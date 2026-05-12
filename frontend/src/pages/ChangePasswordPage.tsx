@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { KeyRound, LockKeyhole } from 'lucide-react'
 
 import { Button } from '@/components/ui/Button'
@@ -7,9 +8,12 @@ import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/use-toast'
 import { API_BASE_URL } from '@/lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
+import { useAuth } from '@/stores/authStore'
 
 export default function ChangePasswordPage() {
   const { toast } = useToast()
+  const navigate = useNavigate()
+  const { user, updateUser } = useAuth()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -51,10 +55,14 @@ export default function ChangePasswordPage() {
       setNewPassword('')
       setConfirmPassword('')
       setErrors({})
+      updateUser({ mustChangePassword: false })
       toast({
         title: 'Senha atualizada',
         description: 'Sua senha foi alterada com sucesso.',
       })
+      if (user?.mustChangePassword) {
+        navigate('/monitor', { replace: true })
+      }
     } catch (error: unknown) {
       toast({
         variant: 'destructive',
@@ -79,7 +87,9 @@ export default function ChangePasswordPage() {
             </div>
             <h1 className="section-title mt-2">Alterar Senha</h1>
             <p className="section-copy mt-2">
-              Confirme sua senha atual e defina uma nova senha com pelo menos 8 caracteres.
+              {user?.mustChangePassword
+                ? 'Defina uma senha própria para continuar usando o beta.'
+                : 'Confirme sua senha atual e defina uma nova senha com pelo menos 8 caracteres.'}
             </p>
           </div>
         </div>

@@ -150,10 +150,13 @@ function formatSignalReason(value?: string | null) {
         return '-';
     }
     if (normalized === 'entry') {
-        return 'Entry';
+        return 'Compra';
+    }
+    if (normalized === 'exit') {
+        return 'Venda';
     }
     if (normalized === 'exit_logic') {
-        return 'Exit rule';
+        return 'Regra de venda';
     }
     if (normalized === 'stop_loss') {
         return 'Stop loss';
@@ -162,7 +165,7 @@ function formatSignalReason(value?: string | null) {
 }
 
 function getSignalHistoryLabel(item: OpportunitySignalHistoryItem) {
-    return item.type === 'entry' ? 'ENTRY' : 'EXIT';
+    return item.type === 'entry' ? 'Compra' : 'Venda';
 }
 
 function getSignalHistoryMarker(item: OpportunitySignalHistoryItem) {
@@ -751,7 +754,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 lineWidth: 2,
                 lineStyle: LineStyle.Dashed,
                 axisLabelVisible: true,
-                title: 'ENTRY',
+                title: 'Compra',
             });
         }
         if (
@@ -1095,7 +1098,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                                     data-testid="chart-modal-signal-context"
                                                 >
                                                     <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Resolved state</span>
+                                                        <span className="text-[#8b949e]">Sinal</span>
                                                         <span className="font-mono text-[#e6edf3]">{resolvedSignal.visual.badgeText}</span>
                                                     </div>
                                                     <div className="flex justify-between gap-3">
@@ -1156,7 +1159,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                             <section>
                                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Distance</p>
                                                 <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">To {resolvedSignal.visual.distanceLabel}</p>
+                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Até {resolvedSignal.visual.distanceLabel}</p>
                                                     <p className={`font-mono text-lg font-semibold ${
                                                         (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'text-[#3fb950]' : 'text-[#e6edf3]'
                                                     }`}>
@@ -1166,12 +1169,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                             </section>
 
                                             <section>
-                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Risk / Stop</p>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Risco / Stop</p>
                                                 <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
                                                     {showEntryStopRows ? (
                                                         <>
                                                             <div className="flex justify-between gap-3">
-                                                                <span className="text-[#8b949e]">Entry</span>
+                                                                <span className="text-[#8b949e]">Compra</span>
                                                                 <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.entry_price)}</span>
                                                             </div>
                                                             <div className="flex justify-between gap-3">
@@ -1181,7 +1184,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                                         </>
                                                     ) : null}
                                                     <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Risk</span>
+                                                        <span className="text-[#8b949e]">Risco</span>
                                                         <span className="font-mono text-[#f85149]">{formatPercent(opportunity.distance_to_stop_pct)}</span>
                                                     </div>
                                                 </div>
@@ -1189,11 +1192,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
                                             <section>
                                                 <div className="flex items-center justify-between gap-3">
-                                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal History</p>
+                                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Histórico de sinais</p>
                                                     <span className="text-[11px] text-[#8b949e]">
                                                         {canRenderSignalHistoryMarkers
-                                                            ? 'Markers aligned with chart timeframe.'
-                                                            : 'Markers hidden: chart timeframe differs from strategy timeframe.'}
+                                                            ? 'Marcadores alinhados ao timeframe do gráfico.'
+                                                            : 'Marcadores ocultos: timeframe do gráfico difere da estratégia.'}
                                                     </span>
                                                 </div>
                                                 <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
@@ -1221,7 +1224,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                                             })}
                                                         </div>
                                                     ) : (
-                                                        <p className="text-[#8b949e]">No confirmed entry/exit history available for this strategy.</p>
+                                                        <p className="text-[#8b949e]">Nenhum histórico confirmado de compra/venda para esta estratégia.</p>
                                                     )}
                                                 </div>
                                             </section>
@@ -1277,7 +1280,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
                         <footer className="border-t border-[#30363d] px-5 py-3">
                             <div className="flex flex-wrap items-center gap-3 text-xs text-[#8b949e]">
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#388bfd]" /> Entry</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#388bfd]" /> Compra</span>
                                 <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Stop</span>
                                 {!strategyProtected && (
                                     <>
@@ -1286,8 +1289,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                         <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: maColors.smaLong }} /> {indicatorLabels.smaLong}</span>
                                     </>
                                 )}
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#3fb950]" /> Buy</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Sell</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#3fb950]" /> Compra</span>
+                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Venda</span>
                             </div>
                         </footer>
                     </div>

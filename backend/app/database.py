@@ -103,11 +103,80 @@ def ensure_runtime_schema_migrations() -> None:
                 ALTER TABLE users
                 ADD COLUMN IF NOT EXISTS notes TEXT NULL
                 """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS temporary_password_expires_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS temporary_password_used_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS access_invitation_source VARCHAR NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS access_invitation_created_at TIMESTAMP NULL
+                """))
 
         conn.execute(text("""
                 UPDATE users
                 SET status = 'active'
                 WHERE status IS NULL OR btrim(status) = ''
+                """))
+        conn.execute(text("""
+                UPDATE users
+                SET must_change_password = FALSE
+                WHERE must_change_password IS NULL
+                """))
+        conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS beta_access_audit_logs (
+                    id SERIAL PRIMARY KEY,
+                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    email VARCHAR NOT NULL,
+                    user_id VARCHAR NULL,
+                    source VARCHAR NOT NULL,
+                    action VARCHAR NOT NULL,
+                    result VARCHAR NOT NULL,
+                    metadata_json TEXT NULL
+                )
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_email
+                ON beta_access_audit_logs (email)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_user_id
+                ON beta_access_audit_logs (user_id)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_source
+                ON beta_access_audit_logs (source)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_action
+                ON beta_access_audit_logs (action)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_result
+                ON beta_access_audit_logs (result)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_created_at
+                ON beta_access_audit_logs (created_at)
+                """))
+        conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_beta_access_audit_logs_email_created
+                ON beta_access_audit_logs (email, created_at)
                 """))
         conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS admin_action_logs (

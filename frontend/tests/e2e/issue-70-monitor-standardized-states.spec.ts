@@ -23,7 +23,7 @@ const OPPORTUNITIES_PAYLOAD = [
     symbol: 'BTC/USDT',
     timeframe: '1d',
     template_name: 'ema_rsi',
-    name: 'BTC Hold',
+    name: 'BTC Compra',
     notes: '',
     tier: 1,
     parameters: { ema_short: 9, ema_long: 21 },
@@ -61,7 +61,7 @@ const OPPORTUNITIES_PAYLOAD = [
     symbol: 'XRP/USDT',
     timeframe: '1d',
     template_name: 'ema_rsi',
-    name: 'XRP Exit',
+    name: 'XRP Venda',
     notes: '',
     tier: 2,
     parameters: { ema_short: 9, ema_long: 21 },
@@ -93,9 +93,9 @@ async function setupApiMocks(page: any) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify([
-        { id: 1, name: 'BTC Hold', symbol: 'BTC/USDT', timeframe: '4h', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 1 },
+        { id: 1, name: 'BTC Compra', symbol: 'BTC/USDT', timeframe: '4h', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 1 },
         { id: 2, name: 'ETH Wait', symbol: 'ETH/USDT', timeframe: '1h', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 1 },
-        { id: 3, name: 'AAPL Exit', symbol: 'AAPL', timeframe: '1d', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 2 },
+        { id: 3, name: 'AAPL Venda', symbol: 'AAPL', timeframe: '1d', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 2 },
       ]),
     })
   )
@@ -151,13 +151,13 @@ async function setupApiMocks(page: any) {
   )
 }
 
-test('monitor shows actionable HOLD and EXIT states while hiding WAIT', async ({ page }) => {
+test('monitor shows actionable Compra and Venda states while hiding Espera', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
-  await expect(page.getByText('Estado HOLD')).toBeVisible()
-  await expect(page.getByText('Estado WAIT')).toHaveCount(0)
-  await expect(page.getByText('Estado EXIT')).toBeVisible()
+  await expect(page.getByText('Estado Compra')).toBeVisible()
+  await expect(page.getByText('Estado Espera')).toHaveCount(0)
+  await expect(page.getByText('Estado Venda')).toBeVisible()
 
   const holdCard = page.getByTestId('monitor-card-btc-usdt')
   const exitCard = page.getByTestId('monitor-card-xrp-usdt')
@@ -165,8 +165,8 @@ test('monitor shows actionable HOLD and EXIT states while hiding WAIT', async ({
   await page.getByTestId('monitor-row-btc-usdt').click()
   await page.getByTestId('monitor-row-xrp-usdt').click()
 
-  await expect(holdCard.getByText(/^HOLD$/)).toBeVisible()
-  await expect(exitCard.getByText(/^EXIT$/)).toBeVisible()
+  await expect(holdCard.getByText(/^Compra$/)).toBeVisible()
+  await expect(exitCard.getByText(/^Venda$/)).toBeVisible()
   await expect(page.getByTestId('monitor-row-eth-usdt')).toHaveCount(0)
   await expect(page.getByTestId('monitor-card-eth-usdt')).toHaveCount(0)
 })

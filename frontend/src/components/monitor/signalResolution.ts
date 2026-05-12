@@ -11,8 +11,8 @@ export interface MonitorSignalVisual {
     readonly borderClass: string;
     readonly cardBgClass: string;
     readonly titleClass: string;
-    readonly markerLabel: 'ENTRY' | 'EXIT' | 'WAIT' | 'LONG';
-    readonly distanceLabel: 'entry' | 'exit' | 'wait';
+    readonly markerLabel: 'Compra' | 'Venda' | 'Espera';
+    readonly distanceLabel: 'compra' | 'venda' | 'espera';
     readonly markerPosition: MarkerDirection;
     readonly markerShape: MarkerShape;
     readonly markerColor: string;
@@ -49,39 +49,39 @@ const TIMEFRAME_TO_MS: Record<string, number> = {
 
 const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
     hold: {
-        badgeText: 'HOLD',
+        badgeText: 'Compra',
         badgeClass: 'bg-green-600 text-white border-green-600 font-bold shadow-md',
         borderClass: 'border-l-green-600 border-l-4',
         cardBgClass: 'bg-green-50 dark:bg-green-900/40 border-green-400 dark:border-green-600',
         titleClass: 'text-green-700 dark:text-green-300',
-        markerLabel: 'LONG',
-        distanceLabel: 'exit',
+        markerLabel: 'Compra',
+        distanceLabel: 'venda',
         markerPosition: 'belowBar',
         markerShape: 'arrowUp',
         markerColor: '#3fb950',
         statusClass: 'info',
     },
     exit: {
-        badgeText: 'EXIT',
+        badgeText: 'Venda',
         badgeClass: 'bg-sky-600 text-white border-sky-600 font-bold shadow-md',
         borderClass: 'border-l-sky-600 border-l-4',
         cardBgClass: 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700',
         titleClass: 'text-sky-700 dark:text-sky-300',
-        markerLabel: 'ENTRY',
-        distanceLabel: 'entry',
+        markerLabel: 'Venda',
+        distanceLabel: 'compra',
         markerPosition: 'aboveBar',
         markerShape: 'arrowDown',
         markerColor: '#0284c7',
         statusClass: 'info',
     },
     wait: {
-        badgeText: 'WAIT',
+        badgeText: 'Espera',
         badgeClass: 'bg-slate-200 text-slate-600 border-slate-300',
         borderClass: 'border-l-slate-300 border-l-4',
         cardBgClass: 'bg-[var(--monitor-card)] border-[var(--monitor-border)]',
         titleClass: 'text-[var(--monitor-text)]',
-        markerLabel: 'WAIT',
-        distanceLabel: 'wait',
+        markerLabel: 'Espera',
+        distanceLabel: 'espera',
         markerPosition: 'belowBar',
         markerShape: 'arrowUp',
         markerColor: '#2dd4bf',
@@ -99,6 +99,17 @@ const normalizeNextStatus = (nextStatusLabel: string | null | undefined): string
     if (normalized === 'exit') return 'saída';
     return 'próxima decisão';
 };
+
+const toPublicSignalMessage = (message: string): string => message
+    .replace(/\bEXIT\b/g, 'Venda')
+    .replace(/\bHOLD\b/g, 'Compra')
+    .replace(/\bWAIT\b/g, 'Espera')
+    .replace(/\bExit\b/g, 'Venda')
+    .replace(/\bHold\b/g, 'Compra')
+    .replace(/\bWait\b/g, 'Espera')
+    .replace(/\bexit\b/g, 'venda')
+    .replace(/\bhold\b/g, 'compra')
+    .replace(/\bwait\b/g, 'espera');
 
 const toMsByTimeframe = (timeframe: string | null | undefined): number => {
     return TIMEFRAME_TO_MS[normalizeTimeframe(timeframe) || '1d'] ?? TIMEFRAME_TO_MS['1d'];
@@ -158,13 +169,13 @@ export const resolveOpportunitySignal = (
         reasons.push('Sem candle válido/atual para esta resolução.');
     }
     if (timeframeMismatch) {
-        reasons.push('EXIT bloqueado: timeframe da estratégia não corresponde ao timeframe exibido.');
+        reasons.push('Venda bloqueada: timeframe da estratégia não corresponde ao timeframe exibido.');
     }
     if (candleMismatch) {
-        reasons.push('EXIT bloqueado: candle de referência não corresponde ao último candle exibido.');
+        reasons.push('Venda bloqueada: candle de referência não corresponde ao último candle exibido.');
     }
     if (activeEntryMissingFromChart) {
-        reasons.push('HOLD bloqueado: entrada ativa não aparece nos candles exibidos.');
+        reasons.push('Compra bloqueada: entrada ativa não aparece nos candles exibidos.');
     }
 
     if (rawStatus === 'EXIT_SIGNAL') {
@@ -173,7 +184,7 @@ export const resolveOpportunitySignal = (
         section = isHolding ? 'hold' : 'wait';
         if (!isHolding) {
             isUncertain = true;
-            reasons.push('Estado de decisão indica posição ativa, mas o sinal não está em hold.');
+            reasons.push('Estado de decisão indica posição ativa, mas o sinal não confirma compra.');
         }
     } else if (rawStatus === 'EXITED' || rawStatus === 'STOPPED_OUT' || rawStatus === 'MISSED_ENTRY' || rawStatus === 'MISSED') {
         section = isHolding ? 'wait' : 'exit';
@@ -196,10 +207,12 @@ export const resolveOpportunitySignal = (
     const freshnessReason = reasons.length > 0 ? reasons.join(' ') : null;
     const fallbackStatusMessage = isUncertain
         ? 'Estado em revisão: decisão não confirmada pelo contexto atual.'
-        : (opportunity.message || `Aguardando condição de ${normalizeNextStatus(opportunity.next_status_label)} para decisão.`);
+        : toPublicSignalMessage(
+            opportunity.message || `Aguardando condição de ${normalizeNextStatus(opportunity.next_status_label)} para decisão.`,
+        );
 
     const markerLabel = isUncertain
-        ? 'WAIT'
+        ? 'Espera'
         : sectionVisual.markerLabel;
 
     return {
@@ -214,7 +227,7 @@ export const resolveOpportunitySignal = (
         visual: {
             ...sectionVisual,
             markerLabel,
-            distanceLabel: isUncertain ? 'wait' : sectionVisual.distanceLabel,
+            distanceLabel: isUncertain ? 'espera' : sectionVisual.distanceLabel,
             markerColor: isUncertain ? '#8b949e' : sectionVisual.markerColor,
             markerShape: isUncertain ? 'arrowUp' : sectionVisual.markerShape,
             markerPosition: isUncertain ? 'belowBar' : sectionVisual.markerPosition,

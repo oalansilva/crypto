@@ -3,10 +3,10 @@
 ## Strategy Snapshot
 
 - Offer: acesso ao beta do Cripto Farol para acompanhar sinais visiveis do sistema.
-- Unique mechanism: reduzir a leitura do investidor a dois estados operacionais, `HOLD` e `EXIT`, com contexto curto e sem expor parametros internos.
+- Unique mechanism: reduzir a leitura do investidor a dois estados operacionais, `Compra` e `Venda`, com contexto curto e sem expor parametros internos.
 - Allowed claims: apoio a decisao, menos ruido, clareza de acompanhamento, acesso beta.
 - Forbidden claims: promessa financeira, call infalivel, recomendacao financeira personalizada.
-- Proof available: sistema atual ja exibe `HOLD` e `EXIT`; landing atual ja captura leads e cria acesso beta automatico.
+- Proof available: sistema atual ja exibe `Compra` e `Venda`; landing atual ja captura leads e cria acesso beta automatico.
 - Priority objections: "isso e so mais um grupo de call?", "vou receber acesso?", "o produto promete lucro?", "vou ver parametros internos?".
 
 ## Logo Directions Considered
@@ -15,7 +15,7 @@
 2. Compass Beam: rosa dos ventos abstrata com feixe lateral. Melhor para direcao, mais fraco em cripto.
 3. Candle Lighthouse: torre formada por candle. Forte para produto, risco de ficar tecnico demais.
 4. Wave Radar: circulos de radar sobre onda. Bom para SaaS, menos distintivo.
-5. Exit Beacon: feixe amarelo apontando saida. Bom para promessa de venda/saida, menos amplo.
+5. Venda Beacon: feixe amarelo apontando saida. Bom para promessa de venda/saida, menos amplo.
 6. Ocean Badge: selo circular premium. Bom para favicon, risco de parecer app nautico generico.
 
 ## Selected Direction
@@ -34,5 +34,5 @@ Motivo: preserva a metafora do farol e mar, mas deixa o produto mais claro para 
 ## CRO Notes
 
 - Uma acao principal: entrar no beta.
-- Prova visual acima da dobra: previa sanitizada do monitor com `HOLD` e `EXIT`.
+- Prova visual acima da dobra: previa sanitizada do monitor com `Compra` e `Venda`.
 - Objecoes tratadas: nao e grupo de call, nao promete lucro, nao mostra parametros internos, acesso inicial e automatico.

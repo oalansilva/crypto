@@ -242,8 +242,32 @@ class User(Base):
     suspension_reason = Column(Text, nullable=True)
     is_banned = Column(Boolean, default=False)
     notes = Column(Text, nullable=True)
+    must_change_password = Column(Boolean, default=False, nullable=False)
+    temporary_password_expires_at = Column(DateTime, nullable=True)
+    temporary_password_used_at = Column(DateTime, nullable=True)
+    password_changed_at = Column(DateTime, nullable=True)
+    access_invitation_source = Column(String, nullable=True)
+    access_invitation_created_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True, default=None)
+
+
+class BetaAccessAuditLog(Base):
+    __tablename__ = "beta_access_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    email = Column(String, nullable=False, index=True)
+    user_id = Column(String, nullable=True, index=True)
+    source = Column(String, nullable=False, index=True)
+    action = Column(String, nullable=False, index=True)
+    result = Column(String, nullable=False, index=True)
+    metadata_json = Column(JSONType, nullable=True)
+
+    __table_args__ = (
+        Index("ix_beta_access_audit_logs_created_at", "created_at"),
+        Index("ix_beta_access_audit_logs_email_created", "email", "created_at"),
+    )
 
 
 class AdminActionLog(Base):

@@ -386,10 +386,10 @@ test('monitor defaults to rated strategies and hides unstarred opportunities', a
   await expect.poll(() => mocks.requestedOpportunityTiers[0]).toBe('1,2,3')
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-row-sol-usdt')).toHaveCount(0)
-  await expect(page.getByText('Em posição · HOLD')).toBeVisible()
+  await expect(page.getByText('Em posição · Compra')).toBeVisible()
 })
 
-test('monitor hides non-actionable WAIT and neutral opportunities from main board', async ({ page }) => {
+test('monitor hides non-actionable Espera and neutral opportunities from main board', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
       {
@@ -434,12 +434,12 @@ test('monitor hides non-actionable WAIT and neutral opportunities from main boar
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-row-wait-usdt')).toHaveCount(0)
   await expect(page.getByTestId('monitor-row-neutral-usdt')).toHaveCount(0)
-  await expect(page.getByText('Estado WAIT')).toHaveCount(0)
-  await expect(page.getByText('Em observação · WAIT')).toHaveCount(0)
-  await expect(page.locator('.kpis')).not.toContainText('WAIT')
+  await expect(page.getByText('Estado Espera')).toHaveCount(0)
+  await expect(page.getByText('Em observação · Espera')).toHaveCount(0)
+  await expect(page.locator('.kpis')).not.toContainText('Espera')
 })
 
-test('monitor list keeps HOLD when price timeframe preference differs from strategy timeframe', async ({ page }) => {
+test('monitor list keeps Compra when price timeframe preference differs from strategy timeframe', async ({ page }) => {
   await setupApiMocks(page, {
     opportunitiesPayload: [
       {
@@ -459,9 +459,9 @@ test('monitor list keeps HOLD when price timeframe preference differs from strat
 
   const row = page.getByTestId('monitor-row-eth-usdt')
   await expect(row).toBeVisible()
-  await expect(row.getByText('Hold')).toBeVisible()
-  await expect(page.getByText('Em posição · HOLD')).toContainText('(1)')
-  await expect(page.getByText('Em saída · EXIT')).toContainText('(0)')
+  await expect(row.getByText('Compra')).toBeVisible()
+  await expect(page.getByText('Em posição · Compra')).toContainText('(1)')
+  await expect(page.getByText('Em saída · Venda')).toContainText('(0)')
 })
 
 test('monitor simplifies table columns for common user', async ({ page }) => {

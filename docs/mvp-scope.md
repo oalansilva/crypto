@@ -29,7 +29,7 @@ Dar ao investidor uma leitura simples de oportunidade e risco para acompanhar es
 1. Login e acesso controlado.
 2. Monitor como tela principal.
 3. Estrategias favoritas vindas do fluxo de backtest ou selecao validada.
-4. Cards com estado claro: `HOLD`, `WAIT`, `EXIT`, ou equivalente.
+4. Cards com estado claro: `Compra` e `Venda` para os sinais visíveis, mantendo estados intermediários apenas como lógica interna quando necessário.
 5. Distancia ate entrada, alvo, stop ou saida quando houver dado confiavel.
 6. Grafico detalhado do ativo/estrategia.
 7. Timeframes principais para swing trade: `4h` e `1d`.

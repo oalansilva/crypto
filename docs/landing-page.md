@@ -6,58 +6,92 @@ Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, 
 
 ## CTA Principal
 
-**Entrar na lista do beta fechado**
+**Quero 6 meses grátis**
+
+CTA secundario: **Já tenho acesso**
+Link ancora: **Como funciona ↓**
 
 ## Estrutura da Pagina
 
 1. Hero
-2. Bloco de problema
-3. Como funciona
-4. Para quem e
-5. O que entra no beta
-6. Formulario de interesse
-7. Guardrail etico
+2. Melhores ativos para olhar hoje
+3. Como funciona a sua rotina
+4. Print/tela do produto
+5. Beneficios do beta
+6. Os dois sinais
+7. Confianca e seguranca
+8. Prova social
+9. FAQ
+10. Formulario de cadastro em 2 passos
+11. Guardrail etico
 
 ## Copy Base
 
 ### Hero
 
-- Headline: **Enxergue melhor antes de decidir em cripto.**
-- Subheadline: Veja quais ativos estao em posicao ativa e quais pedem saida com uma leitura simples de contexto e risco.
-- CTA: **Entrar na lista do beta fechado**
+- Headline: **Saiba quando faz sentido comprar e quando faz sentido vender cripto, sem virar trader.**
+- Subheadline: O Cripto Farol le o historico real da Binance, compara estrategias e acompanha sua carteira em uma tela so. Acesso gratuito por 6 meses para os primeiros do beta.
+- CTA: **Quero meus 6 meses grátis**
+- Apoio acima da dobra:
+  - 6 meses gratuitos no beta;
+  - histórico de mercado da Binance;
+  - carteira read-only para acompanhamento.
 
-### Problema
+### Melhores Ativos Para Olhar Hoje
 
-- O mercado cripto muda rapido; o dificil e saber o que realmente importa agora.
-- O investidor pula entre moedas, graficos e opinioes sem saber onde concentrar atencao.
-- Falta uma leitura simples para separar posicao ativa de saida acionavel.
+- Previa do beta com cards BTC/USDT em `Compra` e ADA/USDT em `Venda`.
+- Outras moedas em monitoramento: ETH, SOL, BNB, LINK, AVAX e MATIC.
+- Microcopy deve explicar que a previa e simplificada e que o painel completo mostra contexto e risco em linguagem clara.
 
 ### Como Funciona
 
-- Monitor central com `HOLD` e `EXIT` como sinais visiveis na tela principal.
-- Leitura visual para entender momento, oportunidade e risco.
-- Fluxo de acompanhamento pensado para investidores que querem rotina, nao call.
+- Veja primeiro quais moedas merecem atencao.
+- Rode backtest no historico real da Binance antes de seguir o sinal atual.
+- Experimente o beta por 6 meses sem pagar.
 
-### Perfil Ideal
+### Print / Tela do Produto
 
-- Investidor iniciante que quer saber onde concentrar atencao.
-- Intermediario que precisa acompanhar oportunidades com mais consistencia.
-- Trader que quer contexto objetivo para acompanhar posicoes ativas e saidas.
+- Mostrar uma previa sanitizada da tela que o usuario vai usar.
+- A previa deve mostrar compra, venda e resultado de estrategia no historico da Binance.
+- Nao expor parametros internos, valores sensiveis ou controles administrativos.
 
-### O Que Entra no Beta
+### Beneficios Comerciais do Card #193
 
-- Acesso controlado.
-- Monitor como tela principal.
-- Feedback direto com grupo pequeno.
-- Evolucao orientada por uso real.
+- Backtest dos ativos usando todo o periodo disponivel na Binance.
+- Beta gratuito nos primeiros 6 meses para os participantes iniciais.
+- Comparacao de estrategias com metricas: Sharpe, Trades, Win%, Return, Max DD, PF, SQN, Max L e ATR.
+- Conexao read-only com carteira Binance para acompanhar saldos e resultados sem ordens ou saques.
+- As metricas devem ter explicacao via hover/tooltips quando exibidas como chips.
+
+### Dois Sinais
+
+- `Compra`: ajuda a avaliar melhor momento de entrar e sugere ponto de saida se o mercado virar.
+- `Venda`: indica quando pode ser hora de sair, reduzir ou proteger o que o usuario ja tem.
+
+### Confianca e Seguranca
+
+- Leitura objetiva em linguagem simples.
+- Menos complexidade para nao depender de interpretacao de grafico ou indicador tecnico.
+- API Binance somente leitura; o Cripto Farol nunca movimenta dinheiro, envia ordem ou faz saque.
+
+### Prova Social E FAQ
+
+- Prova social segue a copy enviada em `refazer.txt` ate haver depoimentos reais definitivos.
+- FAQ deve responder: necessidade de saber operar, se e robo, acesso ao dinheiro, motivo dos 6 meses gratis, pos-beta e exchanges suportadas.
 
 ### Formulario
 
-Campos minimos:
+Fluxo:
+
+- Passo 1 captura nome e email com o botao `Garantir minha vaga`.
+- Passo 2 aparece depois e qualifica o lead.
+- O envio ao endpoint ocorre no submit final do passo 2.
+
+Campos:
 
 - nome;
 - email;
-- WhatsApp;
+- WhatsApp opcional;
 - nivel com cripto;
 - principal dificuldade hoje;
 
@@ -104,4 +138,19 @@ A landing deve usar azul oceano como base visual, mantendo o amarelo como feixe/
 
 ## Regra de Status
 
-Nao usar `WAIT`/`waiting` na landing. Verificacao no codigo em 2026-05-09 mostrou que o board principal do Monitor exibe `HOLD` e `EXIT`; `WAIT`, `NEUTRAL`, `BUY_SIGNAL` e `BUY_NEAR` ficam ocultos/nao acionaveis na tela principal. A landing deve comunicar dois sinais visiveis: acompanhamento/manutencao (`HOLD`) e saida/venda (`EXIT`).
+Nao usar `Espera`/`waiting` na landing. Verificacao no codigo em 2026-05-09 mostrou que o board principal do Monitor exibe `Compra` e `Venda`; `Espera`, `NEUTRAL`, `BUY_SIGNAL` e `BUY_NEAR` ficam ocultos/nao acionaveis na tela principal. A landing deve comunicar dois sinais visiveis: acompanhamento/manutencao (`Compra`) e saida/venda (`Venda`).
+
+## Revisao Card #193
+
+Revisao de marketing para aumentar cadastros:
+
+- CTA principal orientado a beneficio: `Quero 6 meses grátis`.
+- Proposta de valor mais concreta antes da primeira rolagem.
+- Nova secao `Por que entrar agora` com backtest Binance, 6 meses gratis, metricas e carteira Binance.
+- Nova secao de metricas de backtest para tornar o diferencial tangivel.
+- Guardrail mantido: ferramenta de apoio a leitura de mercado, sem promessa de lucro.
+
+## Publicacao Atual
+
+Em producao, `https://criptofarol.com.br/` serve a variante `frontend/public/prototypes/cripto-farol-landing-v4/`.
+Mudancas de conversao que precisam aparecer no dominio publico devem ser refletidas tambem nesta variante, nao apenas no prototipo base `cripto-farol-landing/`.

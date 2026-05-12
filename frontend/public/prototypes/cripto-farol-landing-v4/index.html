@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Cripto Farol ajuda investidores a entender o timing de compra e venda em cripto com contexto, risco e uma lista curta de atencao."
+      content="Cripto Farol mostra quando faz sentido comprar ou vender cripto com historico real da Binance, comparacao de estrategias e carteira em uma tela so."
     />
-    <title>Cripto Farol | Landing v4</title>
+    <title>Cripto Farol | Beta</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -26,10 +26,11 @@
         />
       </a>
       <nav class="nav" aria-label="Navegacao principal">
-        <a href="#rotina">Rotina</a>
-        <a href="#sinais">Sinais</a>
-        <a href="#lista">Beta</a>
-        <a href="/login">Acessar sistema</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#produto">Produto</a>
+        <a href="#beneficios">Benefícios</a>
+        <a href="#faq">FAQ</a>
+        <a href="/login">Já tenho acesso</a>
       </nav>
     </header>
 
@@ -44,143 +45,218 @@
         <div class="hero-grid">
           <div class="hero-copy">
             <p class="eyebrow">Beta fechado para investidores em cripto</p>
-            <h1 id="hero-title">Não compre nem venda cripto no escuro.</h1>
+            <h1 id="hero-title">Comprar ou vender cripto? O Cripto Farol responde.</h1>
             <p class="hero-lead">
-              O Cripto Farol ajuda você a escolher quais ativos olhar primeiro e mostra possíveis
-              pontos de compra, venda e risco em uma leitura simples.
+              Leitura simples do mercado, com base no histórico real da moeda. Acesso gratuito por 6 meses.
             </p>
             <div class="hero-actions" aria-label="Acoes principais">
-              <a class="button button-primary" href="#lista">Receber acesso ao beta</a>
-              <a class="button button-system" href="/login">Já tenho acesso</a>
-              <a class="button button-secondary" href="#rotina">Ver a rotina</a>
+              <a class="button button-primary" href="#lista">Quero meus 6 meses grátis</a>
+              <a class="login-link" href="/login">Já tenho acesso</a>
+              <a class="anchor-link" href="#como-funciona">Como funciona ↓</a>
             </div>
             <div class="trust-row" aria-label="Resumo da proposta">
-              <span>Escolha de ativos</span>
-              <span>Compra e venda</span>
-              <span>Contexto de risco</span>
+              <span>6 meses grátis</span>
+              <span>Histórico real da Binance</span>
+              <span>Integração segura</span>
             </div>
           </div>
 
-          <aside class="signal-console" aria-label="Previa sanitizada do monitor">
-            <div class="console-header">
-              <div>
-                <span class="console-kicker">Melhores ativos para olhar</span>
-                <strong>Hoje</strong>
-              </div>
-              <span class="live-dot">Beta</span>
-            </div>
-            <article class="asset-row hold">
-              <div>
-                <strong>BTC/USDT</strong>
-                <p>Possível entrada com stop de referência para limitar a perda.</p>
-              </div>
-              <span>Compra</span>
-            </article>
-            <article class="asset-row exit">
-              <div>
-                <strong>ADA/USDT</strong>
-                <p>Cenário pede venda ou proteção da posição.</p>
-              </div>
-              <span>Venda</span>
-            </article>
-            <div class="asset-examples" aria-label="Outros ativos acompanhados">
-              <span>ETH</span>
-              <span>SOL</span>
-              <span>BNB</span>
-              <span>LINK</span>
-              <span>AVAX</span>
-            </div>
-            <div class="risk-band" aria-label="Resumo de risco">
-              <span>Contexto</span>
-              <div><i style="width: 72%"></i></div>
-              <span>Risco</span>
-            </div>
-            <p class="console-note">Prévia sem parâmetros internos, indicadores ou médias móveis.</p>
+          <aside class="signal-console hero-product-preview" aria-label="Melhores ativos para olhar hoje no Cripto Farol">
+            <img
+              src="/prototypes/cripto-farol-landing-v4/assets/product/backtest-principal.png"
+              width="847"
+              height="383"
+              alt="Tabela do Cripto Farol com melhores ativos para olhar hoje, status de compra e venda, preço e risco até stop"
+            />
           </aside>
         </div>
       </section>
 
-      <section class="conversion-strip" aria-label="Proposta resumida">
-        <span>Compare ativos e escolha onde focar</span>
-        <span>Veja quando comprar ou vender</span>
-        <span>Acompanhe risco antes de agir</span>
-      </section>
-
-      <section class="section routine-section" id="rotina">
+      <section class="section routine-section" id="como-funciona">
         <div class="section-copy">
-          <p class="section-kicker">Rotina</p>
-          <h2>Escolha melhor o ativo antes de tomar a próxima decisão.</h2>
-          <p>
-            Em poucos minutos, você entende quais ativos merecem atenção primeiro, quais estão em
-            possível compra e quais já mostram sinal de venda.
-          </p>
+          <p class="section-kicker">Como funciona a sua rotina</p>
+          <h2>Em poucos minutos, você sabe o que merece atenção.</h2>
+          <p>Três passos para parar de comprar e vender cripto no chute.</p>
         </div>
         <div class="routine-grid">
           <article>
             <span>01</span>
-            <h3>Compare ativos em foco</h3>
-            <p>O monitor organiza BTC, ETH, SOL, ADA, LINK e outros pares para mostrar onde vale olhar primeiro.</p>
+            <h3>Veja o que merece atenção primeiro</h3>
+            <p>O painel separa BTC, ETH, SOL e outras moedas e mostra quais estão em possível compra e quais já dão sinal de saída.</p>
           </article>
           <article>
             <span>02</span>
-            <h3>Entenda o timing</h3>
-            <p>Separe possíveis compras de possíveis vendas com contexto suficiente para agir com mais critério.</p>
+            <h3>Confira como a estratégia se saiu antes</h3>
+            <p>Rode um teste no histórico real da Binance e descubra se essa estratégia teria funcionado nos últimos meses ou anos antes de seguir o sinal de hoje.</p>
           </article>
           <article>
             <span>03</span>
-            <h3>Teste no beta</h3>
-            <p>Use o produto em cenário real e ajude a melhorar a leitura para a rotina de investidores.</p>
+            <h3>Experimente sem pagar nada</h3>
+            <p>Os primeiros aprovados no beta usam tudo de graça por 6 meses e ajudam a moldar a versão final do produto.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section product-section" id="produto">
+        <div class="section-heading">
+          <p class="section-kicker">Produto real</p>
+          <h2>Veja a principal funcionalidade em ação.</h2>
+          <p>
+            Primeiro você vê os melhores ativos para olhar hoje. Depois abre o gráfico para conferir
+            como a estratégia se saiu antes de decidir.
+          </p>
+        </div>
+        <div class="product-showcase" aria-label="Imagens reais do Monitor Cripto Farol">
+          <figure class="product-frame">
+            <figcaption>
+              <span>01</span>
+              <strong>Melhores ativos para olhar hoje</strong>
+              <em>Lista dos ativos em compra e venda, com preço e risco até stop.</em>
+            </figcaption>
+            <img
+              src="/prototypes/cripto-farol-landing-v4/assets/product/backtest-principal.png"
+              width="847"
+              height="383"
+              alt="Tabela do Monitor Cripto Farol com ativos em compra e venda, preço e risco até stop"
+            />
+          </figure>
+          <figure class="product-frame product-frame-primary">
+            <figcaption>
+              <span>02</span>
+              <strong>Confira como a estratégia se saiu antes</strong>
+              <em>Gráfico com sinais de compra, venda, stop e alvo no histórico.</em>
+            </figcaption>
+            <img
+              src="/prototypes/cripto-farol-landing-v4/assets/product/monitor-principal.png"
+              width="944"
+              height="670"
+              alt="Gráfico BTC/USDT do Cripto Farol com marcações de compra, venda, stop e alvo"
+            />
+          </figure>
+        </div>
+      </section>
+
+      <section class="section benefits-section" id="beneficios">
+        <div class="section-heading">
+          <p class="section-kicker">Benefícios do beta</p>
+          <h2>O que você ganha entrando agora.</h2>
+          <p>Tudo isso liberado durante os 6 meses gratuitos.</p>
+        </div>
+        <div class="benefits-grid">
+          <article>
+            <span>01</span>
+            <h3>Backtest no histórico da Binance</h3>
+            <p>Teste qualquer estratégia no período disponível para a moeda e veja como ela teria se comportado antes de decidir seguir o sinal de hoje.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>6 meses grátis para os primeiros do beta</h3>
+            <p>Acesso completo, sem cartão, sem cobrança automática. Você decide depois se vale assinar.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Métricas claras para comparar estratégias</h3>
+            <p>Veja quanto rendeu, quantas vezes acertou e qual foi a maior queda no caminho.</p>
+            <div class="metric-row">
+              <span title="Retorno ajustado ao risco">Sharpe</span>
+              <span title="Quantidade de operações simuladas">Trades</span>
+              <span title="Percentual de acertos">Win%</span>
+              <span title="Retorno acumulado">Return</span>
+              <span title="Maior queda no período">Max DD</span>
+              <span title="Profit factor da estratégia">PF</span>
+              <span title="Qualidade estatística do sistema">SQN</span>
+              <span title="Maior sequência de perdas">Max L</span>
+              <span title="Volatilidade média do ativo">ATR</span>
+            </div>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>Carteira Binance conectada com segurança</h3>
+            <p>Conecte sua Binance com segurança. O Cripto Farol vê seus saldos e resultados, mas nunca movimenta dinheiro, nunca envia ordem e nunca faz saque.</p>
           </article>
         </div>
       </section>
 
       <section class="section signal-section" id="sinais">
         <div class="section-heading">
-          <p class="section-kicker">Compra e venda</p>
+          <p class="section-kicker">Os dois sinais</p>
           <h2>Dois sinais simples para orientar sua próxima decisão.</h2>
         </div>
         <div class="signal-grid">
-          <article class="signal-card hold">
-            <span>Entrada</span>
+          <article class="signal-card buy">
+            <span>Sinal de Compra</span>
             <strong>Compra</strong>
-            <p>Ajuda a avaliar entrada e escolher um stop de referência antes de abrir posição.</p>
+            <p>Ajuda a avaliar o melhor momento de entrar e já sugere um ponto de saída caso o mercado vire contra você.</p>
           </article>
-          <article class="signal-card exit">
-            <span>Saída</span>
+          <article class="signal-card sell">
+            <span>Sinal de Venda</span>
             <strong>Venda</strong>
-            <p>Indica um ativo que pode pedir saída, proteção ou redução de exposição.</p>
+            <p>Indica quando pode ser hora de sair, reduzir ou proteger o que você já tem.</p>
           </article>
         </div>
       </section>
 
-      <section class="section objection-section">
+      <section class="section trust-section">
         <div>
-          <p class="section-kicker">Confiança</p>
+          <p class="section-kicker">Confiança e segurança</p>
           <h2>Feito para apoiar sua decisão, não para decidir por você.</h2>
         </div>
-        <div class="objection-list">
+        <div class="trust-list">
           <article>
             <strong>Leitura objetiva</strong>
-            <p>Você vê sinal, contexto e risco em linguagem simples, sem depender de opinião solta.</p>
+            <p>Você vê sinal, contexto e risco em linguagem simples, sem depender de opinião solta de influencer ou grupo de Telegram.</p>
           </article>
           <article>
             <strong>Menos complexidade</strong>
-            <p>A experiência simplifica a leitura do mercado e destaca o que importa para decidir, sem exigir que você interprete indicadores técnicos.</p>
+            <p>A tela destaca o que importa para decidir. Você não precisa interpretar gráfico, médias móveis ou indicador técnico para entender o que está acontecendo.</p>
           </article>
           <article>
-            <strong>Acesso inicial ao beta</strong>
-            <p>Após o cadastro, você recebe acesso inicial para testar o Cripto Farol e avaliar se a leitura ajuda sua rotina.</p>
+            <strong>Seu dinheiro nunca sai do lugar</strong>
+            <p>A conexão com a Binance usa uma API apenas para consulta. O Cripto Farol nunca pede sua senha, nunca movimenta seu dinheiro e nunca envia ordem.</p>
           </article>
+        </div>
+      </section>
+
+      <section class="section faq-section" id="faq">
+        <div class="section-heading">
+          <p class="section-kicker">FAQ</p>
+          <h2>Perguntas frequentes.</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>Preciso saber operar como trader?</summary>
+            <p>Não. A leitura é em português claro. Quem nunca comprou cripto consegue entender na primeira tela.</p>
+          </details>
+          <details>
+            <summary>É um robô que opera por mim?</summary>
+            <p>Não. O Cripto Farol consulta dados e mostra a leitura. Quem aperta o botão de compra ou venda é sempre você, na sua Binance.</p>
+          </details>
+          <details>
+            <summary>Vocês têm acesso ao meu dinheiro?</summary>
+            <p>Não. A conexão usa API apenas para consulta. Nunca pedimos senha, nunca movimentamos seu saldo, nunca enviamos ordem.</p>
+          </details>
+          <details>
+            <summary>Por que vocês liberam 6 meses grátis?</summary>
+            <p>Estamos validando o produto com os primeiros usuários. A sua experiência durante esse período ajuda a moldar a versão final.</p>
+          </details>
+          <details>
+            <summary>E depois dos 6 meses?</summary>
+            <p>Você decide se vale assinar. Não tem cobrança automática, não tem cartão cadastrado.</p>
+          </details>
+          <details>
+            <summary>Funciona com outra exchange além da Binance?</summary>
+            <p>Por enquanto só Binance. Estamos avaliando incluir outras com base no que os usuários do beta pedirem.</p>
+          </details>
         </div>
       </section>
 
       <section class="signup-section" id="lista">
         <div class="signup-copy">
-          <p class="section-kicker">Beta fechado</p>
-          <h2>Receba acesso inicial ao Cripto Farol.</h2>
-          <p>
-            Preencha seus dados e conte sua principal dificuldade com cripto. A ideia é validar se a
-            leitura ajuda você a comparar ativos, escolher onde focar e decidir com mais clareza.
+          <p class="section-kicker">Garanta sua vaga no beta</p>
+          <h2>Beta limitado aos primeiros aprovados.</h2>
+          <p>6 meses gratuitos, sem cartão.</p>
+          <p class="scarcity" aria-live="polite">
+            Já são <strong data-lead-count>--</strong> cadastrados. Restam <strong data-spots-left>--</strong> vagas nesta leva.
           </p>
           <div class="signup-assets" aria-label="Exemplos de ativos que podem ser acompanhados">
             <span>BTC</span>
@@ -192,36 +268,43 @@
             <span>AVAX</span>
             <span>MATIC</span>
           </div>
-          <p class="ethics-note">
-            Ferramenta de apoio à leitura de mercado. Investimento envolve risco e a decisão final é sempre do usuário.
+          <p class="risk-note">
+            O Cripto Farol é uma ferramenta de apoio à leitura de mercado. Mostramos, sugerimos e organizamos; quem decide é sempre você. Investir em cripto envolve risco e nenhuma análise garante resultado.
           </p>
         </div>
         <form class="signup-form" data-lead-form>
-          <label>
-            <span>Nome</span>
-            <input type="text" name="name" placeholder="Seu nome" autocomplete="name" required />
-          </label>
-          <label>
-            <span>E-mail</span>
-            <input type="email" name="email" placeholder="voce@email.com" autocomplete="email" required />
-          </label>
-          <label>
-            <span>WhatsApp</span>
-            <input type="tel" name="whatsapp" placeholder="(51) 99999-9999" autocomplete="tel" required />
-          </label>
-          <label>
-            <span>Nível com cripto</span>
-            <select name="profile">
-              <option>Iniciante</option>
-              <option>Intermediário</option>
-              <option>Trader</option>
-            </select>
-          </label>
-          <label>
-            <span>Maior dificuldade hoje</span>
-            <textarea name="pain" rows="4" placeholder="Excesso de informação, timing, saída, risco..."></textarea>
-          </label>
-          <button class="button button-primary button-full" type="submit">Receber acesso ao beta</button>
+          <div class="form-step active" data-form-step="1">
+            <p class="form-step-title">Passo 1</p>
+            <label>
+              <span>Nome</span>
+              <input type="text" name="name" placeholder="Seu nome" autocomplete="name" required />
+            </label>
+            <label>
+              <span>E-mail</span>
+              <input type="email" name="email" placeholder="voce@email.com" autocomplete="email" required />
+            </label>
+            <button class="button button-primary button-full" type="button" data-next-step>Garantir minha vaga</button>
+          </div>
+          <div class="form-step" data-form-step="2" aria-hidden="true">
+            <p class="form-step-title">Conte um pouco sobre você. Quem responde tem o acesso liberado primeiro.</p>
+            <label>
+              <span>WhatsApp opcional</span>
+              <input type="tel" name="whatsapp" placeholder="(51) 99999-9999" autocomplete="tel" />
+            </label>
+            <label>
+              <span>Nível com cripto</span>
+              <select name="profile" required>
+                <option value="Iniciante">Iniciante</option>
+                <option value="Intermediário">Intermediário</option>
+                <option value="Trader">Trader</option>
+              </select>
+            </label>
+            <label>
+              <span>Sua maior dificuldade hoje com cripto</span>
+              <textarea name="pain" rows="4" placeholder="Excesso de informação, timing, saída, risco..." required></textarea>
+            </label>
+            <button class="button button-primary button-full" type="submit">Enviar qualificação</button>
+          </div>
           <p class="form-message" data-form-message role="status" aria-live="polite"></p>
         </form>
       </section>
@@ -230,6 +313,46 @@
     <script>
       const form = document.querySelector("[data-lead-form]");
       const message = document.querySelector("[data-form-message]");
+      const nextStepButton = document.querySelector("[data-next-step]");
+      const stepOne = document.querySelector("[data-form-step='1']");
+      const stepTwo = document.querySelector("[data-form-step='2']");
+      const leadCount = document.querySelector("[data-lead-count]");
+      const spotsLeft = document.querySelector("[data-spots-left]");
+
+      const isProductionDomain = ["criptofarol.com.br", "www.criptofarol.com.br"].includes(window.location.hostname);
+      const leadsEndpoint = isProductionDomain
+        ? "/api/leads"
+        : `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
+      const leadStatsEndpoint = `${leadsEndpoint}/stats`;
+
+      async function refreshLeadStats() {
+        try {
+          const response = await fetch(leadStatsEndpoint, { headers: { Accept: "application/json" } });
+          if (!response.ok) throw new Error("stats_failed");
+          const stats = await response.json();
+          leadCount.textContent = String(stats.registered);
+          spotsLeft.textContent = String(stats.spotsLeft);
+        } catch (error) {
+          leadCount.textContent = "--";
+          spotsLeft.textContent = "--";
+        }
+      }
+
+      refreshLeadStats();
+
+      nextStepButton.addEventListener("click", () => {
+        const name = form.elements.name;
+        const email = form.elements.email;
+        if (!name.reportValidity() || !email.reportValidity()) return;
+
+        stepOne.classList.remove("active");
+        stepOne.setAttribute("aria-hidden", "true");
+        stepTwo.classList.add("active");
+        stepTwo.removeAttribute("aria-hidden");
+        form.elements.whatsapp.focus();
+        message.textContent = "Primeira etapa pronta. Complete a qualificação para priorizar seu acesso.";
+        message.className = "form-message";
+      });
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -243,17 +366,12 @@
           pain: formData.get("pain"),
           origin: window.location.href,
         };
-        const isProductionDomain = ["criptofarol.com.br", "www.criptofarol.com.br"].includes(window.location.hostname);
-        const endpoint = isProductionDomain
-          ? "/api/leads"
-          : `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
-
         submitButton.disabled = true;
-        message.textContent = "Criando seu acesso...";
+        message.textContent = "Enviando sua qualificação...";
         message.className = "form-message";
 
         try {
-          const response = await fetch(endpoint, {
+          const response = await fetch(leadsEndpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -261,8 +379,13 @@
 
           if (!response.ok) throw new Error("submit_failed");
           form.reset();
+          stepTwo.classList.remove("active");
+          stepTwo.setAttribute("aria-hidden", "true");
+          stepOne.classList.add("active");
+          stepOne.removeAttribute("aria-hidden");
           message.textContent = "Cadastro recebido. Verifique seu e-mail para o acesso inicial.";
           message.className = "form-message success";
+          refreshLeadStats();
         } catch (error) {
           message.textContent = "Não foi possível enviar agora. Tente novamente em alguns minutos.";
           message.className = "form-message error";
