@@ -52,7 +52,6 @@ def get_lead_stats(db: Session = Depends(get_db)):
     registered = (
         db.query(User)
         .filter(
-            User.access_invitation_source == "landing",
             User.status != "banned",
             User.is_banned.is_(False),
         )
