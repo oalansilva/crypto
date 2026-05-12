@@ -383,6 +383,7 @@ h3 {
 }
 
 .section {
+  scroll-margin-top: 104px;
   padding: clamp(76px, 10vw, 132px) clamp(20px, 6vw, 78px);
   background: linear-gradient(180deg, var(--night), var(--deep));
 }
@@ -463,9 +464,10 @@ h3 {
 
 .product-showcase {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(16px, 3vw, 28px);
-  align-items: start;
+  max-width: 1120px;
+  align-items: stretch;
 }
 
 .product-frame {
@@ -483,18 +485,36 @@ h3 {
   background: #0a111a;
 }
 
-.product-frame-primary {
-  grid-row: span 2;
-}
-
 .product-frame figcaption {
-  border-top: 1px solid var(--line);
-  padding: 13px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  padding: 16px 18px;
   color: var(--muted);
   background: rgba(4, 28, 48, 0.72);
   font-size: 0.9rem;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.product-frame figcaption span {
+  grid-row: span 2;
+  color: var(--gold);
+  font-family: var(--font-mono);
+}
+
+.product-frame figcaption strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.18rem, 2vw, 1.6rem);
+}
+
+.product-frame figcaption em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 600;
 }
 
 .signal-section,
