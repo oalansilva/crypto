@@ -650,6 +650,48 @@ def test_leads_route_returns_safe_response_without_temporary_password(auth_db_se
     assert "token_urlsafe" not in str(payload)
 
 
+def test_leads_stats_counts_landing_users_and_remaining_spots(auth_db_session):
+    initial = leads_routes.get_lead_stats(auth_db_session)
+    base_registered = initial.registered
+    base_spots_left = initial.spotsLeft
+
+    landing_user = User(
+        id=uuid.uuid4(),
+        email=f"landing-stats-{uuid.uuid4().hex}@example.com",
+        password_hash="hash",
+        name="Landing Stats",
+        status="active",
+        is_banned=False,
+        access_invitation_source="landing",
+    )
+    manual_user = User(
+        id=uuid.uuid4(),
+        email=f"manual-stats-{uuid.uuid4().hex}@example.com",
+        password_hash="hash",
+        name="Manual Stats",
+        status="active",
+        is_banned=False,
+        access_invitation_source="admin",
+    )
+    banned_landing_user = User(
+        id=uuid.uuid4(),
+        email=f"banned-landing-stats-{uuid.uuid4().hex}@example.com",
+        password_hash="hash",
+        name="Banned Landing Stats",
+        status="banned",
+        is_banned=True,
+        access_invitation_source="landing",
+    )
+    auth_db_session.add_all([landing_user, manual_user, banned_landing_user])
+    auth_db_session.commit()
+
+    stats = leads_routes.get_lead_stats(auth_db_session)
+
+    assert stats.totalSpots == 50
+    assert stats.registered == min(50, base_registered + 1)
+    assert stats.spotsLeft == max(0, base_spots_left - 1)
+
+
 def test_beta_lead_does_not_commit_unknown_password_when_email_not_sent(auth_db_session):
     email = f"no-email-{uuid.uuid4().hex}@example.com"
 

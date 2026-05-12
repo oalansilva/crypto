@@ -433,7 +433,6 @@ h3 {
 .trust-list article,
 .signal-card,
 .benefits-grid article,
-.testimonial-grid figure,
 .faq-list details,
 .product-panel {
   border: 1px solid var(--line);
@@ -460,7 +459,6 @@ h3 {
 .signal-card p,
 .trust-list p,
 .benefits-grid p,
-.testimonial-grid blockquote,
 .faq-list p,
 .product-panel p {
   margin-bottom: 0;
@@ -534,8 +532,7 @@ h3 {
   font-weight: 600;
 }
 
-.signal-section,
-.social-section {
+.signal-section {
   background:
     radial-gradient(circle at 18% 18%, rgba(18, 183, 202, 0.16), transparent 32%),
     linear-gradient(180deg, var(--deep), var(--night));
@@ -548,8 +545,7 @@ h3 {
 }
 
 .signal-grid,
-.benefits-grid,
-.testimonial-grid {
+.benefits-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
@@ -557,10 +553,6 @@ h3 {
 
 .benefits-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.testimonial-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .signal-card {
@@ -593,28 +585,6 @@ h3 {
   margin-bottom: 8px;
   font-family: var(--font-display);
   font-size: 1.08rem;
-}
-
-.testimonial-grid figure {
-  margin: 0;
-  padding: 22px;
-}
-
-.testimonial-grid blockquote {
-  margin: 0 0 18px;
-  font-size: 1.05rem;
-}
-
-.testimonial-grid figcaption,
-.credibility-line {
-  color: var(--teal-soft);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.credibility-line {
-  margin: 20px 0 0;
 }
 
 .faq-section {
@@ -749,8 +719,7 @@ h3 {
 }
 
 @media (max-width: 1100px) {
-  .benefits-grid,
-  .testimonial-grid {
+  .benefits-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -786,7 +755,6 @@ h3 {
 
   .signal-grid,
   .benefits-grid,
-  .testimonial-grid,
   .product-showcase {
     grid-template-columns: 1fr;
   }

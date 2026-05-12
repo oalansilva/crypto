@@ -217,28 +217,6 @@
         </div>
       </section>
 
-      <section class="section social-section">
-        <div class="section-heading">
-          <p class="section-kicker">Prova social</p>
-          <h2>Quem já está testando.</h2>
-        </div>
-        <div class="testimonial-grid">
-          <figure>
-            <blockquote>Eu nunca tinha mexido em cripto. Em uma semana já entendi o que estava olhando.</blockquote>
-            <figcaption>Nome, Iniciante</figcaption>
-          </figure>
-          <figure>
-            <blockquote>Saí dos grupos de Telegram. Agora decido olhando o histórico real.</blockquote>
-            <figcaption>Nome, Intermediário</figcaption>
-          </figure>
-          <figure>
-            <blockquote>Os backtests me fizeram cortar duas estratégias que eu seguia há meses.</blockquote>
-            <figcaption>Nome, Trader</figcaption>
-          </figure>
-        </div>
-        <p class="credibility-line">Dados em tempo real fornecidos pela Binance.</p>
-      </section>
-
       <section class="section faq-section" id="faq">
         <div class="section-heading">
           <p class="section-kicker">FAQ</p>
@@ -341,11 +319,26 @@
       const leadCount = document.querySelector("[data-lead-count]");
       const spotsLeft = document.querySelector("[data-spots-left]");
 
-      const dailyOffset = new Date().getDate() % 8;
-      const totalSpots = 50;
-      const currentLeads = Math.min(49, 34 + dailyOffset);
-      leadCount.textContent = String(currentLeads);
-      spotsLeft.textContent = String(totalSpots - currentLeads);
+      const isProductionDomain = ["criptofarol.com.br", "www.criptofarol.com.br"].includes(window.location.hostname);
+      const leadsEndpoint = isProductionDomain
+        ? "/api/leads"
+        : `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
+      const leadStatsEndpoint = `${leadsEndpoint}/stats`;
+
+      async function refreshLeadStats() {
+        try {
+          const response = await fetch(leadStatsEndpoint, { headers: { Accept: "application/json" } });
+          if (!response.ok) throw new Error("stats_failed");
+          const stats = await response.json();
+          leadCount.textContent = String(stats.registered);
+          spotsLeft.textContent = String(stats.spotsLeft);
+        } catch (error) {
+          leadCount.textContent = "--";
+          spotsLeft.textContent = "--";
+        }
+      }
+
+      refreshLeadStats();
 
       nextStepButton.addEventListener("click", () => {
         const name = form.elements.name;
@@ -373,17 +366,12 @@
           pain: formData.get("pain"),
           origin: window.location.href,
         };
-        const isProductionDomain = ["criptofarol.com.br", "www.criptofarol.com.br"].includes(window.location.hostname);
-        const endpoint = isProductionDomain
-          ? "/api/leads"
-          : `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
-
         submitButton.disabled = true;
         message.textContent = "Enviando sua qualificação...";
         message.className = "form-message";
 
         try {
-          const response = await fetch(endpoint, {
+          const response = await fetch(leadsEndpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -397,6 +385,7 @@
           stepOne.removeAttribute("aria-hidden");
           message.textContent = "Cadastro recebido. Verifique seu e-mail para o acesso inicial.";
           message.className = "form-message success";
+          refreshLeadStats();
         } catch (error) {
           message.textContent = "Não foi possível enviar agora. Tente novamente em alguns minutos.";
           message.className = "form-message error";
