@@ -130,3 +130,17 @@
 **Escopo:** vale para sinais/rascunhos internos do Monitor. O grupo externo do beta continua fora do envio direto da Clara sem nova aprovacao explicita.
 
 **Guardrail:** enviar somente evento real derivado do Monitor, sem inventar sinal manual e sem linguagem de recomendacao financeira.
+
+## 2026-05-13 - Release comercial do beta
+
+**Decisao:** consolidar os cards homologados `#149`, `#147`, `#148` e `#152` como pacote comercial inicial do beta fechado.
+
+**Cards incluidos nesta release:** `#149` roadmap de lancamento com datas, `#147` plano de conteudo do beta, `#148` mapa de canais/parceiros/influenciadores e `#152` checklist de aprovacao/publicacao piloto.
+
+**Documentos incluidos:** `docs/beta-content-plan.md`, `docs/beta-channel-map.md`, `docs/content-pilot-approval.md`, `docs/project-hub.md` e este `docs/decision-log.md`.
+
+**Direcao consolidada:** o primeiro piloto comercial deve ser pequeno e controlado, priorizando DM/WhatsApp para rede quente, leads proprios e LinkedIn. Comunidades externas, grupos grandes de Telegram e influenciador pago ficam para depois de validacao interna e aprovacao explicita.
+
+**Guardrail:** nenhum convite, publicacao externa, abordagem de parceiro ou disparo em grupo foi autorizado por esta release. Toda acao externa continua dependendo de aprovacao/acao explicita do Alan.
+
+**Fora da release:** `#197` lista inicial de contatos segue em execucao sob responsabilidade do Alan para envio manual via WhatsApp.
