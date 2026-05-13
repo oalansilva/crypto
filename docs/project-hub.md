@@ -38,6 +38,8 @@ Aqui deve ficar:
 - Canal de feedback do beta: definido no `#144` como grupo privado separado de Telegram, com Alan responsavel pela criacao e Clara responsavel por descricao, mensagem fixada, roteiro e consolidacao dos feedbacks.
 - Alertas do Monitor no beta: definido no `#174` que Clara envia alertas/rascunhos no grupo interno `Grupo Crypto`, topico `Crypto` (`telegram:-1003891182144`, `threadId=5`); Alan revisa e encaminha/adapta para o grupo privado do beta. Envio direto por Clara ao grupo externo fica fora do MVP atual.
 - Implementacao tecnica dos alertas: criada no card `#183`, com envio apenas ao grupo interno allowlistado, deduplicacao, rate limit, auditoria e opcao de desligar.
+- Release comercial 2026-05-13 preparada: cards `#149`, `#147`, `#148` e `#152` consolidados na documentacao, com roadmap, plano de conteudo, mapa de canais e checklist de publicacao piloto. Publicacao externa continua dependente de aprovacao explicita do Alan.
+- Lista inicial de contatos do beta: card `#197` segue em execucao com Alan, com canal WhatsApp definido para os nomes iniciais. Nenhum convite externo foi enviado automaticamente.
 - Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
 - Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
 
@@ -87,6 +89,17 @@ Cards com definicoes homologadas por Alan, consolidadas na documentacao e movida
 - `#138` roteiro de feedback no Telegram.
 - `#156` direcao visual minima.
 
+## Itens Publicados na Release 2026-05-13
+
+Cards homologados por Alan, sob responsabilidade da Clara, consolidados na documentacao e prontos para mover para `Pronto / Done`:
+
+- `#149` roadmap de lancamento com datas, dependencias, responsaveis e gates.
+- `#147` plano de conteudo para divulgar o beta, com CTA, canais, guardrails e rascunhos.
+- `#148` mapa de parceiros, grupos e influenciadores, com recomendacao de priorizar rede quente, leads e LinkedIn.
+- `#152` checklist de aprovacao e publicacao piloto, com pre-gates, textos e evidencias a registrar.
+
+Decisao da release: piloto comercial pequeno e controlado, com DM/WhatsApp para rede quente e LinkedIn como primeira validacao publica leve. Telegram/grupos externos e influenciador pago ficam para depois de validacao interna e aprovacao explicita.
+
 ## Itens Entregues e Aguardando Homologacao
 
 - `#143` identidade visual minima do beta:
@@ -110,6 +123,7 @@ Estes cards ainda nao sao apenas planejamento:
 - `#155` preparar DNS inicial do dominio aprovado.
 - `#151` gerar pacote inicial de conteudo.
 - `#183` implementar alertas Telegram internos do Monitor.
+- `#197` montar lista inicial de contatos para convite beta, sob responsabilidade do Alan para envio manual via WhatsApp.
 
 ## Proximos Passos Recomendados
 
@@ -127,6 +141,11 @@ Estes cards ainda nao sao apenas planejamento:
 - Validacao do beta: [beta-validation.md](/root/.openclaw/workspace/crypto/docs/beta-validation.md)
 - Grupo Telegram do beta: [beta-telegram-group.md](/root/.openclaw/workspace/crypto/docs/beta-telegram-group.md) / Drive `https://docs.google.com/document/d/1HFO-cpFeGzGnDvH8pz5JjpekMU6192I93TwEgzJ3tgU/edit?usp=drivesdk`
 - Alertas Telegram do Monitor: [monitor-telegram-alerts.md](/root/.openclaw/workspace/crypto/docs/monitor-telegram-alerts.md) / Drive `https://docs.google.com/document/d/1mSOQGGVY7OnnrDaQN6rDB_Q6Qp8fh-Xt-JHe39r6gqs/edit?usp=drivesdk`
+- Plano de conteudo do beta: [beta-content-plan.md](/root/.openclaw/workspace/crypto/docs/beta-content-plan.md)
+- Mapa de canais e parceiros do beta: [beta-channel-map.md](/root/.openclaw/workspace/crypto/docs/beta-channel-map.md)
+- Checklist de aprovacao/publicacao piloto: [content-pilot-approval.md](/root/.openclaw/workspace/crypto/docs/content-pilot-approval.md)
+- Lista inicial de contatos para convite do beta: [beta-invite-contacts.md](/root/.openclaw/workspace/crypto/docs/beta-invite-contacts.md)
+- Release comercial do beta 2026-05-13: [release-2026-05-13-commercial-beta.md](/root/.openclaw/workspace/crypto/docs/release-2026-05-13-commercial-beta.md)
 - Modelo operacional do backlog: [backlog-operating-model.md](/root/.openclaw/workspace/crypto/docs/backlog-operating-model.md)
 - Log de decisoes: [decision-log.md](/root/.openclaw/workspace/crypto/docs/decision-log.md)
 - Sistema de marca: [brand-system.md](/root/.openclaw/workspace/crypto/docs/brand-system.md)
