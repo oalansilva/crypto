@@ -144,7 +144,6 @@ Estes cards ainda nao sao apenas planejamento:
 - Plano de conteudo do beta: [beta-content-plan.md](/root/.openclaw/workspace/crypto/docs/beta-content-plan.md)
 - Mapa de canais e parceiros do beta: [beta-channel-map.md](/root/.openclaw/workspace/crypto/docs/beta-channel-map.md)
 - Checklist de aprovacao/publicacao piloto: [content-pilot-approval.md](/root/.openclaw/workspace/crypto/docs/content-pilot-approval.md)
-- Lista inicial de contatos para convite do beta: [beta-invite-contacts.md](/root/.openclaw/workspace/crypto/docs/beta-invite-contacts.md)
 - Release comercial do beta 2026-05-13: [release-2026-05-13-commercial-beta.md](/root/.openclaw/workspace/crypto/docs/release-2026-05-13-commercial-beta.md)
 - Modelo operacional do backlog: [backlog-operating-model.md](/root/.openclaw/workspace/crypto/docs/backlog-operating-model.md)
 - Log de decisoes: [decision-log.md](/root/.openclaw/workspace/crypto/docs/decision-log.md)
