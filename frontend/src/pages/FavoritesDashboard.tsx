@@ -1098,9 +1098,11 @@ const FavoritesDashboard: React.FC = () => {
                                                     </div>
                                                 </td>
                                                 <td className="strategy-cell" aria-label={`${getFavoriteStrategyName(fav)} ${strategyDetail || ''} ${strategyDescription || ''}`}>
-                                                    <strong>{getFavoriteStrategyName(fav)}</strong>
-                                                    {strategyDetail ? <span>{strategyDetail}</span> : null}
-                                                    {strategyDescription ? <span className="strategy-description">{strategyDescription}</span> : null}
+                                                    <div className="strategy-stack">
+                                                        <strong>{getFavoriteStrategyName(fav)}</strong>
+                                                        {strategyDetail ? <span>{strategyDetail}</span> : null}
+                                                        {strategyDescription ? <span className="strategy-description">{strategyDescription}</span> : null}
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
