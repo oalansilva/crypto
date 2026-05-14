@@ -26,6 +26,17 @@ class _FakeStrategy:
         return out
 
 
+class _FakeExecutor:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+
 def test_optimizer_final_backtest_uses_requested_deep_mode(monkeypatch):
     optimizer = combo_optimizer.ComboOptimizer()
     calls = []
@@ -62,6 +73,7 @@ def test_optimizer_final_backtest_uses_requested_deep_mode(monkeypatch):
     monkeypatch.setattr(
         combo_optimizer, "get_market_data_provider", lambda _source: _FakeProvider()
     )
+    monkeypatch.setattr(combo_optimizer.concurrent.futures, "ProcessPoolExecutor", _FakeExecutor)
 
     def fake_extract_trades_with_mode(*_args, **kwargs):
         calls.append(kwargs)
