@@ -626,9 +626,7 @@ def test_beta_lead_existing_user_preserves_password_and_records_audit(auth_db_se
     assert "ShouldNotBeUsed123!" not in str(audit.metadata_json)
 
 
-def test_leads_route_returns_safe_response_without_temporary_password(
-    auth_db_session, monkeypatch
-):
+def test_leads_route_returns_safe_response_without_temporary_password(auth_db_session, monkeypatch):
     email = f"route-lead-{uuid.uuid4().hex}@example.com"
     captured_payload = {}
 
