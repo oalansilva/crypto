@@ -63,7 +63,8 @@ The Favorites page MUST be directly accessible to any authenticated user while p
 #### Scenario: Desktop favorites list avoids horizontal scrolling
 - **WHEN** an authenticated user opens `/favorites` on a common desktop viewport
 - **THEN** the Favorites list MUST fit within the viewport without requiring horizontal page or table scrolling
-- **AND** tier, symbol, strategy, direction, timeframe, sharpe, trades, return, and analysis actions MUST remain visible
+- **AND** tier, symbol, strategy, timeframe, sharpe, trades, return, and analysis actions MUST remain visible
+- **AND** direction MAY remain available through the filter without occupying a grid column in the MVP
 
 #### Scenario: Mobile favorites list avoids horizontal scrolling
 - **WHEN** an authenticated user opens `/favorites` on a mobile viewport
@@ -74,6 +75,14 @@ The Favorites page MUST be directly accessible to any authenticated user while p
 - **WHEN** the desktop viewport cannot fit all advanced metric columns
 - **THEN** the grid MAY hide lower-priority advanced metric columns
 - **AND** those metrics MUST remain accessible through the existing wide-screen table, export, or analysis flows
+
+### Requirement: Favorites Strategy Visibility
+Favorites SHALL expose the Strategy field clearly in the desktop grid and mobile card without exposing protected technical parameters to common users.
+
+#### Scenario: Strategy field visible
+- **WHEN** Favorites loads saved strategies
+- **THEN** the grid/card SHALL show the strategy label under an explicit Strategy/Estratégia section
+- **AND** SHALL preserve existing protected-strategy redaction for common users.
 
 ### Requirement: Favorites tier selection uses stars
 The Favorites page MUST allow users to set the existing favorite tier through a star-based control.
