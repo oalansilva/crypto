@@ -445,13 +445,142 @@ test('monitor keeps backend exit in list and shows mismatched chart context', as
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Compacto' }).click()
-  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Espera')
+  await expect(dialog.getByText('Signal Context')).toBeVisible()
+  await expect(dialog.getByText('Risco / Stop')).toBeVisible()
+  await expect(dialog.getByText('Histórico de sinais')).toBeVisible()
+  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
   const signalContext = dialog.getByTestId('chart-modal-signal-context')
   await expect(signalContext.getByText('Sinal')).toBeVisible()
+  await expect(signalContext).toContainText('Venda')
   await expect(signalContext).toContainText('1d')
   await expect(signalContext).toContainText('Estado em revisão: decisão não confirmada pelo contexto atual.')
   await expect(signalContext).toContainText('Venda bloqueada: candle de referência não corresponde ao último candle exibido.')
+})
+
+test('monitor keeps Compra in chart detail while showing holding context mismatch', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 7,
+          name: 'SOL Compra',
+          symbol: 'SOL/USDT',
+          timeframe: '1d',
+          strategy_name: 'multi_ma_crossover',
+          parameters: {},
+          metrics: {},
+          created_at: '2099-04-01T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 7,
+          symbol: 'SOL/USDT',
+          timeframe: '1d',
+          template_name: 'multi_ma_crossover',
+          name: 'SOL Compra',
+          notes: '',
+          tier: 1,
+          parameters: { direction: 'long', ema_short: 18, sma_medium: 20, sma_long: 35, stop_loss: 0.042 },
+          indicator_values_candle_time: '2099-04-16T00:00:00+00:00',
+          is_holding: true,
+          distance_to_next_status: 0.41,
+          distance_to_stop_pct: 14.18,
+          next_status_label: 'exit',
+          status: 'HOLDING',
+          message: 'Em Hold. Distância para saída: 0.41%',
+          entry_price: 142.1,
+          stop_price: 121.95,
+          last_price: 151.24,
+          timestamp: '2099-04-16T00:00:00Z',
+          signal_history: [
+            { timestamp: '2099-04-10T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 142.1 },
+          ],
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+        'SOL/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
+  await page.route('**/api/market/candles**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candles: [
+          { timestamp_utc: '2099-04-14T00:00:00Z', open: 149, high: 152, low: 147, close: 151, volume: 1000 },
+          { timestamp_utc: '2099-04-15T00:00:00Z', open: 151, high: 154, low: 150, close: 151.24, volume: 1000 },
+        ],
+      }),
+    })
+  )
+
+  await page.goto('/monitor')
+
+  const row = page.getByTestId('monitor-row-sol-usdt')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('Compra', { exact: true })).toBeVisible()
+  await row.getByRole('button', { name: 'Abrir gráfico' }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')
+  await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
+  await expect(dialog.getByText('Signal Context')).toBeVisible()
+  await expect(dialog.getByText('Risco / Stop')).toBeVisible()
+  await expect(dialog.getByText('Histórico de sinais')).toBeVisible()
+
+  const signalContext = dialog.getByTestId('chart-modal-signal-context')
+  await expect(signalContext).toContainText('Compra')
+  await expect(signalContext).toContainText('Estado em revisão: decisão não confirmada pelo contexto atual.')
+  await expect(signalContext).toContainText('Compra bloqueada: entrada ativa não aparece nos candles exibidos.')
 })
 
 test('monitor resolves current exit signal consistently in list and chart', async ({ page }) => {
@@ -703,7 +832,7 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Compacto' }).click()
+  await expect(dialog.getByText('Signal Context')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')
   await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
   await expect(dialog.getByText('Até venda')).toBeVisible()

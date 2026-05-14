@@ -143,7 +143,6 @@ export const resolveOpportunitySignal = (
 ): ResolvedMonitorSignal => {
     const rawStatus = asStatus(opportunity.status);
     const isHolding = Boolean(opportunity.is_holding);
-    const uncertainty = isStale(opportunity.indicator_values_candle_time, opportunity.timeframe);
     const selectedTimeframe = normalizeTimeframe(context.selectedTimeframe);
     const strategyTimeframe = normalizeTimeframe(opportunity.timeframe);
     const timeframeMismatch = Boolean(selectedTimeframe) && selectedTimeframe !== strategyTimeframe;
@@ -154,6 +153,14 @@ export const resolveOpportunitySignal = (
     )
         ? context.latestSignalTime
         : opportunity.indicator_values_candle_time;
+    const exitSignalMatchesChart = (
+        rawStatus === 'EXIT_SIGNAL'
+        && context.latestSignalType === 'exit'
+        && hasSameCandleReference(decisionReferenceTime, context.latestCandleTime)
+    );
+    const uncertainty = exitSignalMatchesChart
+        ? false
+        : isStale(opportunity.indicator_values_candle_time, opportunity.timeframe);
     const candleMismatch = Boolean(context.requireCurrentCandleMatch) && !hasSameCandleReference(
         decisionReferenceTime,
         context.latestCandleTime,
@@ -202,8 +209,7 @@ export const resolveOpportunitySignal = (
         }
     }
 
-    const effectiveSection = isUncertain ? 'wait' : section;
-    const sectionVisual = VISUAL_BY_KIND[effectiveSection];
+    const sectionVisual = VISUAL_BY_KIND[section];
     const freshnessReason = reasons.length > 0 ? reasons.join(' ') : null;
     const fallbackStatusMessage = isUncertain
         ? 'Estado em revisão: decisão não confirmada pelo contexto atual.'
@@ -211,12 +217,8 @@ export const resolveOpportunitySignal = (
             opportunity.message || `Aguardando condição de ${normalizeNextStatus(opportunity.next_status_label)} para decisão.`,
         );
 
-    const markerLabel = isUncertain
-        ? 'Espera'
-        : sectionVisual.markerLabel;
-
     return {
-        section: effectiveSection,
+        section,
         isUncertain,
         statusMessage: fallbackStatusMessage,
         freshnessReason,
@@ -226,11 +228,6 @@ export const resolveOpportunitySignal = (
         latestCandleTime: context.latestCandleTime ?? null,
         visual: {
             ...sectionVisual,
-            markerLabel,
-            distanceLabel: isUncertain ? 'espera' : sectionVisual.distanceLabel,
-            markerColor: isUncertain ? '#8b949e' : sectionVisual.markerColor,
-            markerShape: isUncertain ? 'arrowUp' : sectionVisual.markerShape,
-            markerPosition: isUncertain ? 'belowBar' : sectionVisual.markerPosition,
         },
     };
 };
