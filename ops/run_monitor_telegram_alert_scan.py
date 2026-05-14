@@ -28,7 +28,12 @@ def _load_telegram_token() -> str | None:
         payload = json.loads(SECRETS_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    return str(payload.get("env", {}).get("TELEGRAM_BOT_TOKEN") or "").strip() or None
+    env_payload = payload.get("env", {})
+    return str(
+        env_payload.get("MONITOR_TELEGRAM_BOT_TOKEN")
+        or env_payload.get("TELEGRAM_BOT_TOKEN")
+        or ""
+    ).strip() or None
 
 
 def main() -> int:
@@ -64,6 +69,17 @@ def main() -> int:
 
     if summary.get("failed", 0) > 0:
         print(f"FAILED {summary['failed']}: {summary.get('results', [])}")
+        return 1
+
+    if summary.get("dry_run_count", 0) > 0 and not summary.get("can_send"):
+        print(
+            "CONFIG_INCOMPLETE: "
+            f"dry_run={summary.get('dry_run_count', 0)} "
+            f"token_configured={summary.get('token_configured')} "
+            f"destination_allowed={summary.get('destination_allowed')} "
+            f"chat_id={summary.get('destination_chat_id')} "
+            f"thread_id={summary.get('destination_thread_id')}"
+        )
         return 1
 
     print("ANNOUNCE_SKIP")

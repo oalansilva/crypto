@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import importlib.util
+import json
 from datetime import datetime, timedelta
-from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -17,6 +19,7 @@ from app.services.monitor_telegram_alerts import (
     build_monitor_alert_candidate,
     load_monitor_telegram_alert_settings,
     run_monitor_telegram_alert_scan,
+    send_telegram_message,
 )
 
 
@@ -135,6 +138,10 @@ def test_scan_dry_run_records_audit_when_delivery_config_incomplete(monitor_aler
     )
 
     assert summary["dry_run"] is True
+    assert summary["token_configured"] is False
+    assert summary["can_send"] is False
+    assert summary["destination_chat_id"] == "-1001"
+    assert summary["destination_thread_id"] == "45"
     assert summary["candidates"] == 1
     assert summary["dry_run_count"] == 1
     assert service.calls == [{"source": "catalog", "tier_filter": "1,2,3", "alerts_only": True}]
@@ -182,6 +189,47 @@ def test_scan_skips_unchanged_observed_status(monitor_alert_db_session):
     assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
 
 
+def test_scan_reports_no_opportunities_reason(monitor_alert_db_session):
+    service = _FakeOpportunityService([])
+
+    summary = run_monitor_telegram_alert_scan(
+        monitor_alert_db_session,
+        user_id="user-1",
+        settings=_settings(bot_token="token"),
+        opportunity_service=service,
+        sender=lambda *_args, **_kwargs: {"ok": True},
+    )
+
+    assert summary["skipped"] == 1
+    assert summary["results"] == [{"result": "no_opportunities"}]
+    assert summary["token_configured"] is True
+    assert summary["can_send"] is True
+
+
+def test_scan_reports_not_sendable_reason(monitor_alert_db_session):
+    service = _FakeOpportunityService([_opportunity("WAITING")])
+
+    summary = run_monitor_telegram_alert_scan(
+        monitor_alert_db_session,
+        user_id="user-1",
+        settings=_settings(bot_token="token"),
+        opportunity_service=service,
+        sender=lambda *_args, **_kwargs: {"ok": True},
+    )
+
+    assert summary["sent"] == 0
+    assert summary["skipped"] == 1
+    assert summary["results"] == [
+        {
+            "symbol": "BTC/USDT",
+            "timeframe": "1d",
+            "status": "WAITING",
+            "result": "not_sendable",
+        }
+    ]
+    assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
+
+
 def test_scan_alerts_when_silent_observed_status_becomes_sendable(monitor_alert_db_session):
     monitor_alert_db_session.add(
         MonitorObservedStatus(
@@ -224,6 +272,7 @@ def test_scan_updates_observed_status_for_non_sendable_status(monitor_alert_db_s
 
     assert summary["sent"] == 0
     assert summary["skipped"] == 1
+    assert summary["results"][0]["result"] == "not_sendable"
     assert monitor_alert_db_session.query(MonitorTelegramAlert).count() == 0
     observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
     assert observed.symbol == "BTC/USDT"
@@ -312,6 +361,66 @@ def test_scan_records_failure_and_continues(monitor_alert_db_session):
     row = monitor_alert_db_session.query(MonitorTelegramAlert).one()
     assert row.result_status == "failed"
     assert "telegram down" in row.error_text
+
+
+def test_send_telegram_message_uses_configured_thread(monkeypatch):
+    requests_payloads = []
+
+    class _Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"ok": True}
+
+    def fake_post(url, *, json, timeout):
+        requests_payloads.append({"url": url, "json": json, "timeout": timeout})
+        return _Response()
+
+    monkeypatch.setattr("app.services.monitor_telegram_alerts.requests.post", fake_post)
+
+    response = send_telegram_message(
+        _settings(
+            bot_token="token",
+            chat_id="-1003891182144",
+            allowed_chat_ids={"-1003891182144"},
+            thread_id="5",
+        ),
+        "mensagem",
+    )
+
+    assert response == {"ok": True}
+    assert requests_payloads == [
+        {
+            "url": "https://api.telegram.org/bottoken/sendMessage",
+            "json": {
+                "chat_id": "-1003891182144",
+                "text": "mensagem",
+                "disable_web_page_preview": True,
+                "message_thread_id": "5",
+            },
+            "timeout": 10,
+        }
+    ]
+
+
+def test_cron_wrapper_loads_monitor_token_from_runtime_secret(tmp_path, monkeypatch):
+    module_path = Path(__file__).resolve().parents[3] / "ops" / "run_monitor_telegram_alert_scan.py"
+    spec = importlib.util.spec_from_file_location("run_monitor_telegram_alert_scan_test", module_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    secret_path = tmp_path / "runtime-secrets.json"
+    secret_path.write_text(
+        json.dumps({"env": {"MONITOR_TELEGRAM_BOT_TOKEN": "monitor-token"}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "SECRETS_PATH", secret_path)
+    monkeypatch.delenv("MONITOR_TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+
+    assert module._load_telegram_token() == "monitor-token"
 
 
 def test_settings_require_allowlisted_destination(monkeypatch, monitor_alert_db_session):

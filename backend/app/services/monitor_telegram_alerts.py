@@ -371,6 +371,16 @@ def send_telegram_message(settings: MonitorTelegramAlertSettings, text: str) -> 
     return response.json()
 
 
+def _settings_diagnostics(settings: MonitorTelegramAlertSettings) -> dict[str, Any]:
+    return {
+        "token_configured": bool(settings.bot_token),
+        "can_send": settings.can_send,
+        "destination_chat_id": settings.chat_id,
+        "destination_thread_id": settings.thread_id,
+        "destination_allowed": settings.destination_allowed,
+    }
+
+
 def _record_alert(
     db: Session,
     candidate: MonitorAlertCandidate,
@@ -423,6 +433,7 @@ def run_monitor_telegram_alert_scan(
         "destination_allowed": settings.destination_allowed,
         "results": [],
     }
+    summary.update(_settings_diagnostics(settings))
 
     if not settings.enabled and not force_dry_run:
         summary["skipped"] += 1
@@ -433,6 +444,11 @@ def run_monitor_telegram_alert_scan(
         tier_filter=settings.tier_filter,
         alerts_only=True,
     )
+    if not opportunities:
+        summary["skipped"] += 1
+        summary["results"].append({"result": "no_opportunities"})
+        return summary
+
     duplicate_since = datetime.utcnow() - timedelta(minutes=max(settings.min_repeat_minutes, 1))
     rate_limit_since = datetime.utcnow() - timedelta(
         minutes=max(settings.rate_limit_window_minutes, 1)
@@ -461,6 +477,14 @@ def run_monitor_telegram_alert_scan(
             continue
         if candidate is None:
             summary["skipped"] += 1
+            summary["results"].append(
+                {
+                    "symbol": symbol or None,
+                    "timeframe": timeframe or None,
+                    "status": status or None,
+                    "result": "not_sendable",
+                }
+            )
             continue
 
         summary["candidates"] += 1
