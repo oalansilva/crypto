@@ -482,6 +482,7 @@ test('favorites grid fits common desktop without horizontal scrolling', async ({
   await page.goto('/favorites');
 
   await expect(page.locator('.fav-table-shell')).toBeVisible();
+  await expect(page.locator('.fav-table-shell thead th.strategy-col')).toHaveText('Estratégia');
   await expect(page.getByRole('cell', { name: 'BTC/USDT' }).first()).toBeVisible();
   await expect(page.locator('.fav-table-shell').locator('.advanced-col').first()).toBeHidden();
   await expectNoHorizontalOverflow(page);
