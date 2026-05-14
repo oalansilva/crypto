@@ -21,6 +21,7 @@ import app.middleware.authMiddleware as auth_middleware
 import app.routes.auth as auth_routes
 import app.routes.leads as leads_routes
 import app.routes.user_profile as user_profile_routes
+import app.services.beta_access as beta_access_service
 from app.services.beta_access import create_beta_access_for_lead, send_welcome_email_gog
 from app.services.beta_access import verify_password, WelcomeEmail
 
@@ -625,8 +626,18 @@ def test_beta_lead_existing_user_preserves_password_and_records_audit(auth_db_se
     assert "ShouldNotBeUsed123!" not in str(audit.metadata_json)
 
 
-def test_leads_route_returns_safe_response_without_temporary_password(auth_db_session):
+def test_leads_route_returns_safe_response_without_temporary_password(auth_db_session, monkeypatch):
     email = f"route-lead-{uuid.uuid4().hex}@example.com"
+    captured_payload = {}
+
+    def fake_create_beta_access_for_lead(db, **kwargs):
+        captured_payload.update(kwargs)
+
+    monkeypatch.setattr(
+        leads_routes,
+        "create_beta_access_for_lead",
+        fake_create_beta_access_for_lead,
+    )
 
     response = leads_routes.create_lead_access(
         leads_routes.LeadAccessRequest(
@@ -648,6 +659,7 @@ def test_leads_route_returns_safe_response_without_temporary_password(auth_db_se
     assert "temporaryPasswordExpiresAt" not in payload
     assert "TemporaryPass" not in str(payload)
     assert "token_urlsafe" not in str(payload)
+    assert captured_payload["email"] == email
 
 
 def test_leads_stats_counts_active_users_and_remaining_spots(auth_db_session):
@@ -743,6 +755,29 @@ def test_gog_welcome_email_uses_existing_clara_gmail_channel(monkeypatch, tmp_pa
     assert "--cc" in args and "alan@example.com" in args
     assert kwargs["env"]["GOG_KEYRING_PASSWORD"] == "secret-value"
     assert kwargs["capture_output"] is True
+
+
+def test_welcome_email_suppresses_reserved_example_domains(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(
+        beta_access_service,
+        "send_welcome_email_gog",
+        lambda message: calls.append(message) or True,
+    )
+
+    sent = beta_access_service.send_welcome_email(
+        WelcomeEmail(
+            to_email="route-lead@example.com",
+            name="Route Lead",
+            login_url="https://criptofarol.com.br/login",
+            temporary_password="TemporaryPass123!",
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+    )
+
+    assert sent is False
+    assert calls == []
 
 
 def test_temporary_password_login_requires_change_and_expires(monkeypatch, auth_db_session):

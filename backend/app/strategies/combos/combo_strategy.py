@@ -412,10 +412,12 @@ class ComboStrategy:
             logic_expr = logic_expr.replace("&&", " and ").replace("||", " or ")
 
             # Backward-compatible dotted indicator access:
-            # Some templates use bb.upper / bb.middle / bb.lower. Internally we materialize as
-            # bb_upper / bb_middle / bb_lower.
+            # Some templates use bb.upper / macd.signal style references. Internally we
+            # materialize those as bb_upper / macd_signal.
             logic_expr = re.sub(
-                r"\b([A-Za-z_][A-Za-z0-9_]*)\.(upper|middle|lower)\b", r"\1_\2", logic_expr
+                r"\b([A-Za-z_][A-Za-z0-9_]*)\.(upper|middle|lower|macd|signal|histogram)\b",
+                r"\1_\2",
+                logic_expr,
             )
 
             # Create local context with vectorized helper functions
@@ -447,6 +449,16 @@ class ComboStrategy:
                 "True",
                 "False",
                 "None",
+                # Safe pandas Series methods used by stored template expressions.
+                # Attribute access remains constrained by the identifier preflight:
+                # unsupported method names still fail before eval.
+                "abs",
+                "shift",
+                "rolling",
+                "mean",
+                "max",
+                "min",
+                "sum",
             }
             # helper functions are available via HELPER_FUNCTIONS/local_context
             allowed = set(local_context.keys()) | reserved

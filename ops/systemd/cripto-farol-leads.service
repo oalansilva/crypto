@@ -1,0 +1,27 @@
+[Unit]
+Description=Cripto Farol lead capture endpoint
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/.openclaw/workspace/crypto-worktrees/card-193-refazer-landing/ops/landing-leads
+Environment=HOST=0.0.0.0
+Environment=PORT=5174
+Environment=HOME=/root/.openclaw/agents/main/agent/codex-home/home
+Environment=CODEX_HOME=/root/.openclaw/agents/main/agent/codex-home
+Environment=DRIVE_FILE_ID=1cWFpAEfbTHcPJ8akzTf-oHRLRS-QmVNf
+Environment=GOG_ACCOUNT=claravalente840@gmail.com
+Environment=TELEGRAM_TARGET=-1003891182144
+Environment=TELEGRAM_THREAD_ID=5
+Environment=EMAIL_TO=o.alan.silva@gmail.com
+Environment=CRYPTO_LOGIN_URL=https://criptofarol.com.br/login
+Environment=CRYPTO_BACKEND_ENV=/root/.openclaw/workspace/crypto/backend/.env
+Environment=BACKEND_LEADS_ENDPOINT=http://127.0.0.1:8003/api/leads
+Environment=ALLOWED_ORIGINS=https://criptofarol.com.br,https://www.criptofarol.com.br,http://72.60.150.140:5173,http://localhost:5173,http://127.0.0.1:5173
+EnvironmentFile=/root/.openclaw/workspace/crypto-worktrees/card-193-refazer-landing/ops/landing-leads/.env.leads
+ExecStart=/usr/bin/node /root/.openclaw/workspace/crypto-worktrees/card-193-refazer-landing/ops/landing-leads/server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

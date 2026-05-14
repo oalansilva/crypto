@@ -199,7 +199,9 @@ export const resolveOpportunitySignal = (
             isUncertain = true;
             reasons.push('Estado de saída inconsistente com posição aberta.');
         }
-    } else if (rawStatus === 'WAIT' || rawStatus === 'NEUTRAL' || rawStatus === 'BUY_NEAR' || rawStatus === 'BUY_SIGNAL') {
+    } else if (rawStatus === 'BUY_SIGNAL') {
+        section = 'hold';
+    } else if (rawStatus === 'WAIT' || rawStatus === 'NEUTRAL' || rawStatus === 'BUY_NEAR') {
         section = 'wait';
     } else if (rawStatus) {
         section = isHolding ? 'hold' : 'wait';
