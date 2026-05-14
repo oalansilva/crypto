@@ -10,7 +10,6 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from io import StringIO
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR = ROOT_DIR / "backend"
 SECRETS_PATH = Path("/root/.openclaw/secrets/runtime-secrets.json")
@@ -29,11 +28,14 @@ def _load_telegram_token() -> str | None:
     except (OSError, json.JSONDecodeError):
         return None
     env_payload = payload.get("env", {})
-    return str(
-        env_payload.get("MONITOR_TELEGRAM_BOT_TOKEN")
-        or env_payload.get("TELEGRAM_BOT_TOKEN")
-        or ""
-    ).strip() or None
+    return (
+        str(
+            env_payload.get("MONITOR_TELEGRAM_BOT_TOKEN")
+            or env_payload.get("TELEGRAM_BOT_TOKEN")
+            or ""
+        ).strip()
+        or None
+    )
 
 
 def main() -> int:

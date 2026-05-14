@@ -406,7 +406,9 @@ def test_send_telegram_message_uses_configured_thread(monkeypatch):
 
 def test_cron_wrapper_loads_monitor_token_from_runtime_secret(tmp_path, monkeypatch):
     module_path = Path(__file__).resolve().parents[3] / "ops" / "run_monitor_telegram_alert_scan.py"
-    spec = importlib.util.spec_from_file_location("run_monitor_telegram_alert_scan_test", module_path)
+    spec = importlib.util.spec_from_file_location(
+        "run_monitor_telegram_alert_scan_test", module_path
+    )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
