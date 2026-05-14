@@ -25,6 +25,7 @@ interface FavoriteStrategy {
     end_date?: string | null;
     is_strategy_protected?: boolean;
     strategy_display_name?: string | null;
+    strategy_description?: string | null;
 }
 
 interface MonitorSignalHistoryItem {
@@ -361,6 +362,11 @@ const FavoritesDashboard: React.FC = () => {
         return label;
     };
 
+    const getFavoriteStrategyDescription = (fav: FavoriteStrategy): string | null => {
+        const description = String(fav.strategy_description || '').trim();
+        return description || null;
+    };
+
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
 
     const getSavedTrades = (fav: FavoriteStrategy): any[] | null => {
@@ -643,7 +649,8 @@ const FavoritesDashboard: React.FC = () => {
     const filteredFavorites = (favorites?.filter(fav => {
         const matchesSearch = fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase());
+            getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(fav.strategy_description || '').toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
         const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
@@ -984,6 +991,7 @@ const FavoritesDashboard: React.FC = () => {
                                 const totalReturn = formatSignedPct(m.total_return_pct ?? m.total_return);
                                 const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
                                 const strategyDetail = getGridStrategyDetail(fav);
+                                const strategyDescription = getFavoriteStrategyDescription(fav);
                                 return (
                                     <article key={fav.id} className={`fav-mobile-card ${tier.className}`}>
                                         <div className="fav-mobile-card-head">
@@ -991,6 +999,7 @@ const FavoritesDashboard: React.FC = () => {
                                                 <strong>{fav.symbol}</strong>
                                                 <span className="fav-strategy-name">{getFavoriteStrategyName(fav)}</span>
                                                 {strategyDetail ? <span>{strategyDetail}</span> : null}
+                                                {strategyDescription ? <span className="fav-strategy-description">{strategyDescription}</span> : null}
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                 {direction === 'short' ? 'Short' : 'Long'}
@@ -1063,6 +1072,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const symbol = splitSymbol(fav.symbol);
                                         const stopLoss = fav.parameters?.stop_loss ?? null;
                                         const strategyDetail = getGridStrategyDetail(fav);
+                                        const strategyDescription = getFavoriteStrategyDescription(fav);
 
                                         return (
                                             <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`}>
@@ -1087,9 +1097,10 @@ const FavoritesDashboard: React.FC = () => {
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="strategy-cell" aria-label={`${getFavoriteStrategyName(fav)} ${strategyDetail || ''}`}>
+                                                <td className="strategy-cell" aria-label={`${getFavoriteStrategyName(fav)} ${strategyDetail || ''} ${strategyDescription || ''}`}>
                                                     <strong>{getFavoriteStrategyName(fav)}</strong>
                                                     {strategyDetail ? <span>{strategyDetail}</span> : null}
+                                                    {strategyDescription ? <span className="strategy-description">{strategyDescription}</span> : null}
                                                 </td>
                                                 <td>
                                                     <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>

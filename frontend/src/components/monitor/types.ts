@@ -37,6 +37,7 @@ export interface Opportunity {
     signal_history?: OpportunitySignalHistoryItem[];
     is_strategy_protected?: boolean;
     strategy_display_name?: string | null;
+    strategy_description?: string | null;
 
     /** Optional risk info */
     entry_price?: number | null;

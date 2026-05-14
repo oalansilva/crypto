@@ -26,6 +26,7 @@ from app.symbols_config import get_excluded_symbols, is_excluded_symbol
 from app.database import SessionLocal
 from app.middleware.authMiddleware import ADMIN_EMAILS
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
+from app.services.strategy_descriptions import public_strategy_description
 
 logger = logging.getLogger(__name__)
 _OHLCV_CACHE_TTL_SECONDS = 300.0
@@ -1739,6 +1740,9 @@ class OpportunityService:
                         "asset_type": classify_asset_type(symbol),
                         "timeframe": normalized_tf,
                         "template_name": template_name,
+                        "strategy_description": public_strategy_description(
+                            template_name, meta.get("description")
+                        ),
                         "name": fav["name"],  # User custom name
                         "notes": fav.get("notes"),
                         "is_curated_fallback": bool(fav.get("is_curated_fallback")),

@@ -174,6 +174,7 @@ def extract_trades_with_mode(
     until_str: str = None,
     df_15m_cache: Optional[pd.DataFrame] = None,
     direction: str = "long",
+    return_mode: bool = False,
 ):
     """
     Extract trades using either Fast (daily) or Deep (15m) backtesting mode.
@@ -193,7 +194,8 @@ def extract_trades_with_mode(
     df_exec = df_with_signals.copy()
 
     if not deep_backtest:
-        return extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        return (trades, "fast_1d") if return_mode else trades
 
     logger = logging.getLogger(__name__)
 
@@ -201,7 +203,8 @@ def extract_trades_with_mode(
         logger.warning(
             "Deep Backtesting requires symbol and date range. Falling back to fast mode."
         )
-        return extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        return (trades, "fast_1d") if return_mode else trades
 
     try:
         if df_15m_cache is not None:
@@ -220,7 +223,8 @@ def extract_trades_with_mode(
         if df_15m.empty:
             if df_15m_cache is None:  # Only warn if we tried to fetch it
                 logger.warning("No 15m data available. Falling back to fast mode.")
-            return extract_trades_from_signals(df_exec, stop_loss, direction)
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            return (trades, "fast_1d") if return_mode else trades
 
         # Coverage guard: we need 15m for the current day of each trade to simulate stop/target correctly.
         # So 15m must cover the full daily range (same end as daily); otherwise fallback to fast mode.
@@ -256,10 +260,12 @@ def extract_trades_with_mode(
                         str(intraday_start),
                         str(intraday_end),
                     )
-                return extract_trades_from_signals(df_exec, stop_loss, direction)
+                trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+                return (trades, "fast_1d") if return_mode else trades
         except Exception:
             logger.warning("Failed to validate 15m coverage; falling back to fast mode.")
-            return extract_trades_from_signals(df_exec, stop_loss, direction)
+            trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+            return (trades, "fast_1d") if return_mode else trades
 
         if df_15m_cache is None:
             logger.info(f"Fetched {len(df_15m)} 15m candles for deep backtest simulation")
@@ -267,11 +273,12 @@ def extract_trades_with_mode(
         trades = simulate_execution_with_15m(
             df_daily_signals=df_exec, df_15m=df_15m, stop_loss=stop_loss, direction=direction
         )
-        return trades
+        return (trades, "deep_15m") if return_mode else trades
 
     except Exception as e:
         logger.error(f"Error in deep backtest: {e}. Falling back to fast mode.")
-        return extract_trades_from_signals(df_exec, stop_loss, direction)
+        trades = extract_trades_from_signals(df_exec, stop_loss, direction)
+        return (trades, "fast_1d") if return_mode else trades
 
 
 # -----------------------------------------------------------------------------
@@ -1945,7 +1952,16 @@ class ComboOptimizer:
             direction = best_params.get("direction", "long")
             if direction not in ("long", "short"):
                 direction = "long"
-            trades = extract_trades_from_signals(df_with_signals, stop_loss, direction)
+            trades, execution_mode = extract_trades_with_mode(
+                df_with_signals,
+                stop_loss,
+                deep_backtest=deep_backtest,
+                symbol=symbol,
+                since_str=start_date,
+                until_str=end_date,
+                direction=direction,
+                return_mode=True,
+            )
 
             # Recompute core metrics from final backtest trades (same set as returned to frontend)
             # Fixes Total Return / Win Rate mismatch vs. "List of trades" / Cumulative P&L
@@ -2037,6 +2053,7 @@ class ComboOptimizer:
             trades = []
             candles = []
             indicator_data = {}
+            execution_mode = "fast_1d"
 
         # COMPLETION SUMMARY (after final backtest so metrics match returned trades)
         logging.info("=" * 80)
@@ -2076,6 +2093,7 @@ class ComboOptimizer:
             "parameters": best_params,  # For compatibility with ComboResultsPage
             "direction": best_params.get("direction", "long"),
             "data_source": selected_data_source,
+            "execution_mode": execution_mode,
         }
 
 

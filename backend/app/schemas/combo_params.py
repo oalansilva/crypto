@@ -141,6 +141,10 @@ class ComboOptimizationResponse(BaseModel):
     indicator_data: Dict[str, List[Optional[float]]] = Field(default_factory=dict)
     parameters: Dict[str, Any] = Field(default_factory=dict)  # Alias for best_parameters
     direction: str = Field(default="long", description="Backtest direction: 'long' or 'short'")
+    execution_mode: str = Field(
+        default="fast_1d",
+        description="Execution mode used by final trades: 'fast_1d' or 'deep_15m'",
+    )
 
 
 class UpdateTemplateRequest(BaseModel):
