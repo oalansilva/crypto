@@ -943,12 +943,15 @@ textarea {
   width: 86px;
 }
 
-.favorites-workbench table.fav-strategies th.symbol-col {
+.favorites-workbench table.fav-strategies th.symbol-col,
+.favorites-workbench table.fav-strategies td.symbol-col {
   width: 128px;
 }
 
-.favorites-workbench table.fav-strategies th.strategy-col {
+.favorites-workbench table.fav-strategies th.strategy-col,
+.favorites-workbench table.fav-strategies td.strategy-cell {
   width: 24%;
+  min-width: 170px;
 }
 
 .favorites-workbench table.fav-strategies th.direction-col,
@@ -1146,7 +1149,7 @@ textarea {
   }
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1540px) {
   .favorites-workbench table.fav-strategies .period-col,
   .favorites-workbench table.fav-strategies .win-col {
     display: none;
@@ -1169,7 +1172,7 @@ textarea {
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
   .favorites-workbench table.fav-strategies .risk-col {
     display: none;
   }

@@ -1088,7 +1088,7 @@ const FavoritesDashboard: React.FC = () => {
                                                 ) : null}
                                                 <td className="stars-cell">{renderStarTierControl(fav)}</td>
                                                 {isAdmin ? <td className="telegram-col">{renderTelegramControl(fav)}</td> : null}
-                                                <td aria-label={fav.symbol}>
+                                                <td className="symbol-col" aria-label={fav.symbol}>
                                                     <div className="sym-cell">
                                                         <span className="sym-tile">{symbol.base.slice(0, 3)}</span>
                                                         <span>
