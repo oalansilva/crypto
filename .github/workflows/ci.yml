@@ -127,6 +127,7 @@ jobs:
 
   backend-unit-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       PYTHONPATH: ${{ github.workspace }}
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/crypto
@@ -162,7 +163,14 @@ jobs:
           python -m pip install -r backend/requirements.txt
 
       - name: Run backend unit tests
-        run: coverage run --parallel-mode --source=backend/app -m pytest -q backend/tests/unit
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_file in backend/tests/unit/test_*.py; do
+            echo "::group::${test_file}"
+            timeout 180s coverage run --parallel-mode --source=backend/app -m pytest -q "${test_file}"
+            echo "::endgroup::"
+          done
 
       - name: Upload backend unit coverage data
         uses: actions/upload-artifact@v4
