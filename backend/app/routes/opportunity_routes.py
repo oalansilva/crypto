@@ -47,6 +47,7 @@ class OpportunityResponse(BaseModel):
     signal_history: Optional[List[Dict[str, Any]]] = None
     is_strategy_protected: bool = False
     strategy_display_name: Optional[str] = None
+    strategy_description: Optional[str] = None
 
     # Risk / stop-loss (optional)
     entry_price: Optional[float] = None

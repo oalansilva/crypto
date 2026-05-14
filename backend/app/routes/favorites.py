@@ -8,7 +8,7 @@ import json
 from datetime import datetime, timezone
 
 from app.database import get_db
-from app.models import FavoriteStrategy, MonitorStrategyPreference, User
+from app.models import ComboTemplate, FavoriteStrategy, MonitorStrategyPreference, User
 from app.middleware.authMiddleware import ADMIN_EMAILS, get_current_user, is_admin_email
 from app.schemas.favorite import (
     FavoriteStrategyCreate,
@@ -21,6 +21,7 @@ from app.services.strategy_secret_visibility import (
     can_view_strategy_secrets,
     redact_favorite_strategy_payload,
 )
+from app.services.strategy_descriptions import public_strategy_description
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -71,14 +72,32 @@ def _favorite_response(
     *,
     include_secrets: bool,
     tier_override: int | None | object = _TIER_UNSET,
+    description_by_strategy: dict[str, str] | None = None,
 ) -> FavoriteStrategyResponse:
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
+    payload["strategy_description"] = (description_by_strategy or {}).get(
+        str(row.strategy_name),
+        public_strategy_description(row.strategy_name),
+    )
     if tier_override is not _TIER_UNSET:
         payload["tier"] = tier_override
     return FavoriteStrategyResponse(
         **redact_favorite_strategy_payload(payload, include_secrets=include_secrets)
     )
+
+
+def _strategy_descriptions_for_rows(
+    db: Session,
+    rows: list[FavoriteStrategy],
+) -> dict[str, str]:
+    names = sorted({str(row.strategy_name) for row in rows if row.strategy_name})
+    if not names:
+        return {}
+
+    templates = db.query(ComboTemplate).filter(ComboTemplate.name.in_(names)).all()
+    raw_by_name = {str(row.name): row.description for row in templates}
+    return {name: public_strategy_description(name, raw_by_name.get(name)) for name in names}
 
 
 def _configured_admin_emails() -> list[str]:
@@ -295,16 +314,34 @@ def list_favorites(
 
     if include_secrets or (current_user and is_admin_email(current_user.email)):
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
-        return [_favorite_response(row, include_secrets=include_secrets) for row in rows]
+        descriptions = _strategy_descriptions_for_rows(db, rows)
+        return [
+            _favorite_response(
+                row, include_secrets=include_secrets, description_by_strategy=descriptions
+            )
+            for row in rows
+        ]
 
     if not current_user:
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
-        return [_favorite_response(row, include_secrets=include_secrets) for row in rows]
+        descriptions = _strategy_descriptions_for_rows(db, rows)
+        return [
+            _favorite_response(
+                row, include_secrets=include_secrets, description_by_strategy=descriptions
+            )
+            for row in rows
+        ]
 
     admin_user_ids = _admin_catalog_user_ids(db, exclude_user_id=current_user_id)
     if not admin_user_ids:
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
-        return [_favorite_response(row, include_secrets=include_secrets) for row in rows]
+        descriptions = _strategy_descriptions_for_rows(db, rows)
+        return [
+            _favorite_response(
+                row, include_secrets=include_secrets, description_by_strategy=descriptions
+            )
+            for row in rows
+        ]
 
     tier_by_favorite_id = _strategy_tier_preferences(db, current_user_id)
     rows = (
@@ -317,11 +354,13 @@ def list_favorites(
         )
         .all()
     )
+    descriptions = _strategy_descriptions_for_rows(db, rows)
     return [
         _favorite_response(
             row,
             include_secrets=False,
             tier_override=tier_by_favorite_id.get(int(row.id)),
+            description_by_strategy=descriptions,
         )
         for row in rows
     ]

@@ -68,6 +68,7 @@ def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
     assert listed_a[0].strategy_name == "Estratégia protegida"
     assert listed_a[0].parameters == {}
     assert listed_a[0].is_strategy_protected is True
+    assert "tendência" in (listed_a[0].strategy_description or "").lower()
 
 
 def test_favorites_list_keeps_strategy_details_for_admin(tmp_path: Path, monkeypatch):
@@ -87,6 +88,7 @@ def test_favorites_list_keeps_strategy_details_for_admin(tmp_path: Path, monkeyp
         listed = favorites.list_favorites(current_user_id="admin-user", db=db)
 
     assert listed[0].strategy_name == "multi_ma_crossover"
+    assert "tendência" in (listed[0].strategy_description or "").lower()
     assert listed[0].notify_telegram is False
     assert updated.notify_telegram is False
     assert listed[0].parameters == {

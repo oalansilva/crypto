@@ -1064,6 +1064,12 @@ textarea {
   color: var(--fav-muted-strong);
 }
 
+.favorites-workbench .strategy-cell .strategy-description,
+.favorites-workbench .fav-mobile-card-head .fav-strategy-description {
+  color: var(--fav-muted);
+  font-weight: 400;
+}
+
 .favorites-workbench .fav-direction,
 .favorites-workbench .tf-pill {
   display: inline-flex;
@@ -2839,6 +2845,14 @@ select.input option {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
+.monitor-theme .pair-strat-desc {
+  margin-top: 2px;
+  color: var(--t-2);
+  font-size: 11px;
+  line-height: 1.25;
+  max-width: 320px;
+}
+
 .monitor-theme .status-pill {
   display: inline-flex;
   align-items: center;
@@ -3231,6 +3245,10 @@ select.input option {
   color: var(--t-1);
   font-weight: 500;
   margin-left: 4px;
+}
+
+.monitor-theme .candle-meta .strategy-description {
+  flex-basis: 100%;
 }
 
 .monitor-theme .detail-foot {
