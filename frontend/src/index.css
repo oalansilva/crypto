@@ -1049,21 +1049,27 @@ textarea {
 }
 
 .favorites-workbench .strategy-cell {
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+}
+
+.favorites-workbench .strategy-stack {
   display: grid;
   gap: 3px;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
 }
 
-.favorites-workbench .strategy-cell strong,
-.favorites-workbench .strategy-cell span {
+.favorites-workbench .strategy-stack strong,
+.favorites-workbench .strategy-stack span {
   overflow: hidden;
   max-width: 100%;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.favorites-workbench .strategy-cell span {
+.favorites-workbench .strategy-stack span {
   color: var(--fav-muted-strong);
 }
 
