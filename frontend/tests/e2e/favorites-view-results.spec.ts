@@ -488,6 +488,25 @@ test('favorites grid fits common desktop without horizontal scrolling', async ({
   await expectNoHorizontalOverflow(page);
 });
 
+test('favorites grid keeps strategy readable on wide desktop', async ({ page }) => {
+  await setupDeterministicApiMocks(page);
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await page.goto('/favorites');
+
+  const table = page.locator('.fav-table-shell');
+  const strategyHeader = table.locator('thead th.strategy-col');
+  const strategyCell = table.locator('tbody tr', { hasText: 'BTC/USDT' }).first().locator('.strategy-cell');
+
+  await expect(strategyHeader).toHaveText('Estratégia');
+  await expect(table.locator('.advanced-col').first()).toBeHidden();
+  await expect(strategyCell).toBeVisible();
+  await expect.poll(async () => {
+    const box = await strategyCell.boundingBox();
+    return Math.round(box?.width ?? 0);
+  }).toBeGreaterThanOrEqual(220);
+  await expectNoHorizontalOverflow(page);
+});
+
 test('favorites strategy column avoids duplicated raw strategy labels', async ({ page }) => {
   await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
