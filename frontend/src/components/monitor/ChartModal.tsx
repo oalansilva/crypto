@@ -345,7 +345,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [visibleIndicators, setVisibleIndicators] = React.useState<IndicatorState>(DEFAULT_INDICATORS);
     const [tooltip, setTooltip] = React.useState<TooltipSnapshot | null>(null);
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null);
-    const [chartMode, setChartMode] = React.useState<'compact' | 'algorithmic'>('algorithmic');
+    const [chartMode, setChartMode] = React.useState<'compact' | 'algorithmic'>('compact');
 
     const cacheRef = React.useRef<Map<string, MarketCandle[]>>(new Map([
         [`${symbol}|${resolvedInitialTimeframe}`, initialCandles],
