@@ -2,7 +2,6 @@
 
 ## Purpose
 General group Monitor Telegram scans for the curated Monitor catalog.
-
 ## Requirements
 ### Requirement: General alert scans use curated Monitor catalog
 Monitor Telegram alert scans SHALL evaluate the general curated Monitor strategy catalog instead of a user-specific favorite or liked-strategy subset.
@@ -27,3 +26,11 @@ Monitor Telegram alert scans SHALL preserve configured scoping controls so Alan 
 #### Scenario: Default scope targets curated tiers
 - **WHEN** no custom Monitor Telegram tier filter is configured
 - **THEN** the scan SHALL evaluate curated tiers `1`, `2`, and `3`
+
+### Requirement: General scanner preserves daily curated scope
+Monitor Telegram daily scans SHALL continue to evaluate the curated Monitor catalog using configured tier scope and SHALL NOT increase schedule cadence as part of delivery diagnostics.
+
+#### Scenario: Daily scan keeps tier-filtered catalog source
+- **WHEN** the daily Monitor Telegram scanner runs
+- **THEN** it SHALL evaluate the curated catalog source with the configured tier filter
+- **AND** it SHALL preserve the existing daily cadence decision outside application code

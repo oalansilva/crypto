@@ -61,18 +61,18 @@ def _override_db(SessionLocal):
     app.dependency_overrides[get_db] = override_get_db
 
 
-def _install_fast_password_helpers():
+def _install_fast_password_helpers(monkeypatch: pytest.MonkeyPatch):
     def _hash_password(password: str) -> str:
         return f"test-hash::{password}"
 
     def _verify_password(password: str, hashed: str) -> bool:
         return hashed == f"test-hash::{password}"
 
-    auth_routes._hash_password = _hash_password
-    auth_routes._verify_password = _verify_password
-    auth_routes.BETA_PUBLIC_REGISTRATION_ENABLED = True
-    user_profile_routes._hash_password = _hash_password
-    user_profile_routes._verify_password = _verify_password
+    monkeypatch.setattr(auth_routes, "_hash_password", _hash_password)
+    monkeypatch.setattr(auth_routes, "_verify_password", _verify_password)
+    monkeypatch.setattr(auth_routes, "BETA_PUBLIC_REGISTRATION_ENABLED", True)
+    monkeypatch.setattr(user_profile_routes, "_hash_password", _hash_password)
+    monkeypatch.setattr(user_profile_routes, "_verify_password", _verify_password)
 
 
 async def _register_and_login(
@@ -101,10 +101,10 @@ async def _register_and_login(
 
 
 @pytest.mark.asyncio
-async def test_get_me_returns_authenticated_profile():
+async def test_get_me_returns_authenticated_profile(monkeypatch):
     SessionLocal = _build_session_local()
     _override_db(SessionLocal)
-    _install_fast_password_helpers()
+    _install_fast_password_helpers(monkeypatch)
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -127,10 +127,10 @@ async def test_get_me_returns_authenticated_profile():
 
 
 @pytest.mark.asyncio
-async def test_get_me_requires_authentication():
+async def test_get_me_requires_authentication(monkeypatch):
     SessionLocal = _build_session_local()
     _override_db(SessionLocal)
-    _install_fast_password_helpers()
+    _install_fast_password_helpers(monkeypatch)
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -143,10 +143,10 @@ async def test_get_me_requires_authentication():
 
 
 @pytest.mark.asyncio
-async def test_put_me_updates_name():
+async def test_put_me_updates_name(monkeypatch):
     SessionLocal = _build_session_local()
     _override_db(SessionLocal)
-    _install_fast_password_helpers()
+    _install_fast_password_helpers(monkeypatch)
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -166,10 +166,10 @@ async def test_put_me_updates_name():
 
 
 @pytest.mark.asyncio
-async def test_put_password_changes_password_when_current_matches():
+async def test_put_password_changes_password_when_current_matches(monkeypatch):
     SessionLocal = _build_session_local()
     _override_db(SessionLocal)
-    _install_fast_password_helpers()
+    _install_fast_password_helpers(monkeypatch)
     transport = httpx.ASGITransport(app=app)
 
     try:
@@ -197,10 +197,10 @@ async def test_put_password_changes_password_when_current_matches():
 
 
 @pytest.mark.asyncio
-async def test_put_password_rejects_incorrect_current_password():
+async def test_put_password_rejects_incorrect_current_password(monkeypatch):
     SessionLocal = _build_session_local()
     _override_db(SessionLocal)
-    _install_fast_password_helpers()
+    _install_fast_password_helpers(monkeypatch)
     transport = httpx.ASGITransport(app=app)
 
     try:

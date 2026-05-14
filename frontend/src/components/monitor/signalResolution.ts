@@ -143,7 +143,6 @@ export const resolveOpportunitySignal = (
 ): ResolvedMonitorSignal => {
     const rawStatus = asStatus(opportunity.status);
     const isHolding = Boolean(opportunity.is_holding);
-    const uncertainty = isStale(opportunity.indicator_values_candle_time, opportunity.timeframe);
     const selectedTimeframe = normalizeTimeframe(context.selectedTimeframe);
     const strategyTimeframe = normalizeTimeframe(opportunity.timeframe);
     const timeframeMismatch = Boolean(selectedTimeframe) && selectedTimeframe !== strategyTimeframe;
@@ -154,6 +153,14 @@ export const resolveOpportunitySignal = (
     )
         ? context.latestSignalTime
         : opportunity.indicator_values_candle_time;
+    const exitSignalMatchesChart = (
+        rawStatus === 'EXIT_SIGNAL'
+        && context.latestSignalType === 'exit'
+        && hasSameCandleReference(decisionReferenceTime, context.latestCandleTime)
+    );
+    const uncertainty = exitSignalMatchesChart
+        ? false
+        : isStale(opportunity.indicator_values_candle_time, opportunity.timeframe);
     const candleMismatch = Boolean(context.requireCurrentCandleMatch) && !hasSameCandleReference(
         decisionReferenceTime,
         context.latestCandleTime,
