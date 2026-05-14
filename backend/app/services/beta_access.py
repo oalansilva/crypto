@@ -22,6 +22,7 @@ BETA_ACCESS_GOG_ENV_FILE = os.getenv(
     "BETA_ACCESS_GOG_ENV_FILE",
     "/root/.openclaw/workspace/cripto-farol-landing/.env.leads",
 )
+RESERVED_EMAIL_DOMAINS = {"example.com", "example.net", "example.org"}
 
 
 @dataclass
@@ -60,6 +61,11 @@ def generate_temporary_password() -> str:
 
 def _normalize_email(email: str) -> str:
     return str(email or "").strip().lower()
+
+
+def _is_reserved_email_domain(email: str) -> bool:
+    domain = _normalize_email(email).rsplit("@", 1)[-1]
+    return domain in RESERVED_EMAIL_DOMAINS
 
 
 def _metadata_for_lead(
@@ -200,6 +206,9 @@ def send_welcome_email_gog(message: WelcomeEmail) -> bool:
 
 
 def send_welcome_email(message: WelcomeEmail) -> bool:
+    if _is_reserved_email_domain(message.to_email):
+        return False
+
     provider = os.getenv("BETA_ACCESS_EMAIL_PROVIDER", "gog").strip().lower()
     if provider == "smtp":
         return send_welcome_email_smtp(message)
