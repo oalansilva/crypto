@@ -27,6 +27,7 @@ class FavoriteStrategyResponse(FavoriteStrategyBase):
     created_at: datetime
     is_strategy_protected: bool = False
     strategy_display_name: Optional[str] = None
+    strategy_description: Optional[str] = None
 
     class Config:
         from_attributes = True

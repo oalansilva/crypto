@@ -77,6 +77,14 @@ The Monitor list SHALL group opportunities into HOLD, WAIT, and EXIT using the b
 - **THEN** the Monitor list MUST still place that opportunity in HOLD
 - **AND** timeframe mismatch review MUST remain limited to the chart modal display context.
 
+### Requirement: Monitor Strategy Description
+Monitor SHALL display a high-level strategy description wherever the user needs to understand what a strategy is trying to capture.
+
+#### Scenario: Opportunity row and detail show description
+- **WHEN** Monitor renders an opportunity with strategy metadata
+- **THEN** the row/detail SHALL show the public strategy description when available
+- **AND** SHALL not expose technical parameters to common users.
+
 ### Requirement: Monitor delegates favorite curation to Favorites
 The Monitor MUST NOT provide controls for adding, removing, filtering, or locally storing favorite strategies. Favorites curation and star/tier ranking SHALL be managed on the Favorites screen.
 
@@ -108,4 +116,3 @@ The Monitor SHALL present public decision labels as `Compra` and `Venda` instead
 - **WHEN** Monitor receives raw status values such as `HOLDING`, `HOLD`, `EXIT_SIGNAL`, or `EXITED`
 - **THEN** the resolver MAY continue using those values internally
 - **AND** the user-facing badge text SHALL still render as `Compra` or `Venda`.
-

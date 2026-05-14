@@ -661,6 +661,7 @@ export const MonitorStatusTab: React.FC = () => {
                 opp.symbol,
                 opp.name,
                 getStrategyDisplayName(opp),
+                opp.strategy_description,
                 getOpportunityAssetType(opp),
                 toStringSearch(opp.next_status_label),
                 tierStars,
@@ -1084,6 +1085,9 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                         <span className="pair-tf">{chartTimeframe}</span>
                                                                                     </div>
                                                                                     <div className="pair-strat">{getStrategyDisplayName(opportunity)}</div>
+                                                                                    {opportunity.strategy_description ? (
+                                                                                        <div className="pair-strat-desc">{opportunity.strategy_description}</div>
+                                                                                    ) : null}
                                                                                 </div>
                                                                             </div>
                                                                     </td>

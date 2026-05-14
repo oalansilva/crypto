@@ -423,13 +423,22 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         logger.info(f"Generated signals for {len(df_with_signals)} candles")
 
         # Use unified trade extraction logic (same as optimizer)
-        from app.services.combo_optimizer import extract_trades_from_signals
+        from app.services.combo_optimizer import extract_trades_with_mode
 
         stop_loss_pct = request.stop_loss if request.stop_loss is not None else strategy.stop_loss
         direction = getattr(request, "direction", "long") or "long"
         if direction not in ("long", "short"):
             direction = "long"
-        trades = extract_trades_from_signals(df_with_signals, stop_loss_pct, direction)
+        trades, execution_mode = extract_trades_with_mode(
+            df_with_signals,
+            stop_loss_pct,
+            deep_backtest=request.deep_backtest,
+            symbol=request.symbol,
+            since_str=request.start_date,
+            until_str=request.end_date,
+            direction=direction,
+            return_mode=True,
+        )
 
         logger.info(f"Backtest complete: {len(trades)} trades extracted")
 
@@ -553,7 +562,7 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
                 "direction": direction,
                 "data_source": data_source,
             },
-            execution_mode="fast_1d",
+            execution_mode=execution_mode,
             direction=direction,
         )
         logger.info("Response object created successfully")

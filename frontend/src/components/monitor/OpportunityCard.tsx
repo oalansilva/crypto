@@ -283,6 +283,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                         <span>
                             estratégia <b>{strategyDisplayName || name || symbol}</b>
                         </span>
+                        {opportunity.strategy_description ? (
+                            <span className="strategy-description">
+                                descrição <b>{opportunity.strategy_description}</b>
+                            </span>
+                        ) : null}
                         <span>
                             tf <b>{effectiveTimeframe}</b>
                         </span>

@@ -943,18 +943,25 @@ textarea {
   width: 86px;
 }
 
-.favorites-workbench table.fav-strategies th.symbol-col {
+.favorites-workbench table.fav-strategies th.symbol-col,
+.favorites-workbench table.fav-strategies td.symbol-col {
   width: 128px;
 }
 
-.favorites-workbench table.fav-strategies th.strategy-col {
-  width: 24%;
+.favorites-workbench table.fav-strategies th.strategy-col,
+.favorites-workbench table.fav-strategies td.strategy-cell {
+  width: 30%;
+  min-width: 220px;
 }
 
 .favorites-workbench table.fav-strategies th.direction-col,
 .favorites-workbench table.fav-strategies th.return-col,
 .favorites-workbench table.fav-strategies th.actions-col {
   width: 86px;
+}
+
+.favorites-workbench table.fav-strategies .direction-col {
+  display: none;
 }
 
 .favorites-workbench table.fav-strategies th.timeframe-col,
@@ -967,9 +974,12 @@ textarea {
 }
 
 .favorites-workbench table.fav-strategies th.risk-col,
-.favorites-workbench table.fav-strategies th.win-col,
-.favorites-workbench table.fav-strategies th.advanced-col {
+.favorites-workbench table.fav-strategies th.win-col {
   width: 68px;
+}
+
+.favorites-workbench table.fav-strategies .advanced-col {
+  display: none;
 }
 
 .favorites-workbench .fav-select-row {
@@ -1046,22 +1056,34 @@ textarea {
 }
 
 .favorites-workbench .strategy-cell {
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+}
+
+.favorites-workbench .strategy-stack {
   display: grid;
   gap: 3px;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
 }
 
-.favorites-workbench .strategy-cell strong,
-.favorites-workbench .strategy-cell span {
+.favorites-workbench .strategy-stack strong,
+.favorites-workbench .strategy-stack span {
   overflow: hidden;
   max-width: 100%;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.favorites-workbench .strategy-cell span {
+.favorites-workbench .strategy-stack span {
   color: var(--fav-muted-strong);
+}
+
+.favorites-workbench .strategy-cell .strategy-description,
+.favorites-workbench .fav-mobile-card-head .fav-strategy-description {
+  color: var(--fav-muted);
+  font-weight: 400;
 }
 
 .favorites-workbench .fav-direction,
@@ -1134,13 +1156,8 @@ textarea {
   background: var(--fav-elevated);
 }
 
-@media (max-width: 1700px) {
-  .favorites-workbench table.fav-strategies .advanced-col {
-    display: none;
-  }
-}
-
-@media (max-width: 1440px) {
+@media (max-width: 1540px) {
+  .favorites-workbench table.fav-strategies .telegram-col,
   .favorites-workbench table.fav-strategies .period-col,
   .favorites-workbench table.fav-strategies .win-col {
     display: none;
@@ -1163,7 +1180,7 @@ textarea {
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
   .favorites-workbench table.fav-strategies .risk-col {
     display: none;
   }
@@ -2839,6 +2856,14 @@ select.input option {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
+.monitor-theme .pair-strat-desc {
+  margin-top: 2px;
+  color: var(--t-2);
+  font-size: 11px;
+  line-height: 1.25;
+  max-width: 320px;
+}
+
 .monitor-theme .status-pill {
   display: inline-flex;
   align-items: center;
@@ -3231,6 +3256,10 @@ select.input option {
   color: var(--t-1);
   font-weight: 500;
   margin-left: 4px;
+}
+
+.monitor-theme .candle-meta .strategy-description {
+  flex-basis: 100%;
 }
 
 .monitor-theme .detail-foot {
