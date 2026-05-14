@@ -40,6 +40,16 @@ class _FakeExecutor:
 def test_optimizer_final_backtest_uses_requested_deep_mode(monkeypatch):
     optimizer = combo_optimizer.ComboOptimizer()
     calls = []
+    intraday_df = pd.DataFrame(
+        {
+            "open": [100.0],
+            "high": [101.0],
+            "low": [99.0],
+            "close": [100.5],
+            "volume": [1.0],
+        },
+        index=pd.to_datetime(["2026-01-02T00:00:00Z"]),
+    )
 
     monkeypatch.setattr(
         optimizer,
@@ -72,6 +82,15 @@ def test_optimizer_final_backtest_uses_requested_deep_mode(monkeypatch):
     )
     monkeypatch.setattr(
         combo_optimizer, "get_market_data_provider", lambda _source: _FakeProvider()
+    )
+    monkeypatch.setattr(optimizer.loader, "fetch_intraday_data", lambda **_kwargs: intraday_df)
+    monkeypatch.setattr(
+        optimizer.loader,
+        "check_intraday_availability",
+        lambda *_args, **_kwargs: {
+            "available": True,
+            "coverage": {"end": "2026-01-02T00:00:00+00:00"},
+        },
     )
     monkeypatch.setattr(combo_optimizer.concurrent.futures, "ProcessPoolExecutor", _FakeExecutor)
 
