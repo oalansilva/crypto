@@ -1,0 +1,25 @@
+{
+  "name": "cripto-farol-landing-leads",
+  "version": "1.0.0",
+  "description": "Servico operacional de captura de leads do Cripto Farol.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --check server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oalansilva/crypto.git",
+    "directory": "ops/landing-leads"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oalansilva/crypto/issues"
+  },
+  "homepage": "https://github.com/oalansilva/crypto/tree/develop/ops/landing-leads#readme",
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  }
+}

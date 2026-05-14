@@ -31,6 +31,9 @@ Thumbs.db
 
 # Local data
 /data/
+ops/landing-leads/.env.leads
+ops/landing-leads/data/
+ops/landing-leads/node_modules/
 
 # Logs
 *.log

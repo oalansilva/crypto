@@ -98,6 +98,7 @@ Campos:
 ## Captacao Operacional
 
 - Formulario da landing envia os leads para o endpoint VPS `http://72.60.150.140:5174/api/leads`.
+- O endpoint operacional de leads fica neste repo em `ops/landing-leads/`; o antigo repo/diretorio separado `cripto-farol-landing` nao deve mais ser usado como fonte de codigo.
 - Os leads sao gravados em uma planilha `.xlsx` no Google Drive da Clara: `https://docs.google.com/spreadsheets/d/1cWFpAEfbTHcPJ8akzTf-oHRLRS-QmVNf/edit?usp=drivesdk&ouid=109602176178341361243&rtpof=true&sd=true`.
 - A cada inscricao, o endpoint tambem envia aviso no topico Telegram do projeto cripto, e-mail para Alan em `o.alan.silva@gmail.com` e e-mail de boas-vindas para o lead com link de acesso.
 - Se o e-mail ainda nao existir no sistema, o endpoint cria automaticamente um usuario ativo do beta com senha temporaria aleatoria, salva apenas o hash no banco e envia a senha somente no e-mail de boas-vindas com copia para Alan.
@@ -153,4 +154,5 @@ Revisao de marketing para aumentar cadastros:
 ## Publicacao Atual
 
 Em producao, `https://criptofarol.com.br/` serve a variante `frontend/public/prototypes/cripto-farol-landing-v4/`.
-Mudancas de conversao que precisam aparecer no dominio publico devem ser refletidas tambem nesta variante, nao apenas no prototipo base `cripto-farol-landing/`.
+O frontend publico roda via `cripto-farol-frontend.service`, apontando para o frontend deste repo `crypto`.
+Mudancas de conversao que precisam aparecer no dominio publico devem ser feitas nesta variante canônica; nao manter copia paralela da landing em repo ou diretorio externo.
