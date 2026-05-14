@@ -960,6 +960,10 @@ textarea {
   width: 86px;
 }
 
+.favorites-workbench table.fav-strategies .direction-col {
+  display: none;
+}
+
 .favorites-workbench table.fav-strategies th.timeframe-col,
 .favorites-workbench table.fav-strategies th.metric-col {
   width: 70px;
@@ -1153,6 +1157,7 @@ textarea {
 }
 
 @media (max-width: 1540px) {
+  .favorites-workbench table.fav-strategies .telegram-col,
   .favorites-workbench table.fav-strategies .period-col,
   .favorites-workbench table.fav-strategies .win-col {
     display: none;

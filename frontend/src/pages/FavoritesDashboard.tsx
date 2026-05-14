@@ -1104,7 +1104,7 @@ const FavoritesDashboard: React.FC = () => {
                                                         {strategyDescription ? <span className="strategy-description">{strategyDescription}</span> : null}
                                                     </div>
                                                 </td>
-                                                <td>
+                                                <td className="direction-col">
                                                     <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                         {direction === 'short' ? 'Short' : 'Long'}
                                                     </span>
