@@ -340,11 +340,9 @@ export function ComboResultsPage() {
                         <MonitorAlignedCandlestickChart
                             candles={result.candles}
                             markers={markers as any}
-                            parameters={result.parameters}
                             strategyName={result.template_name}
                             symbol={result.symbol}
                             timeframe={result.timeframe}
-                            hideTechnicalOverlays={isProtectedResult}
                         />
                     ) : (
                         <div className="glass-strong rounded-[28px] p-8 text-center border border-zinc-200 mb-8">

@@ -576,6 +576,9 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   await expect(dialog.getByText('Signal Context')).toBeVisible()
   await expect(dialog.getByText('Risco / Stop')).toBeVisible()
   await expect(dialog.getByText('Histórico de sinais')).toBeVisible()
+  await expect(dialog.getByRole('group', { name: 'Chart indicators' })).toHaveCount(0)
+  await expect(dialog.getByText('Indicators')).toHaveCount(0)
+  await expect(dialog.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0)
 
   const signalContext = dialog.getByTestId('chart-modal-signal-context')
   await expect(signalContext).toContainText('Compra')

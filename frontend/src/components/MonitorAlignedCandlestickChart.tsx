@@ -4,7 +4,6 @@ import {
     ColorType,
     CrosshairMode,
     type IChartApi,
-    type LineData,
     type LogicalRange,
     type Time,
     type UTCTimestamp,
@@ -30,19 +29,14 @@ interface Marker {
 
 interface Snapshot {
     candle: Candle
-    emaShort?: number
-    smaMedium?: number
-    smaLong?: number
 }
 
 interface MonitorAlignedCandlestickChartProps {
     candles: Candle[]
     markers?: Marker[]
-    parameters?: Record<string, any>
     strategyName: string
     symbol?: string
     timeframe?: string
-    hideTechnicalOverlays?: boolean
 }
 
 const LOGICAL_RANGE_PADDING = 8
@@ -98,49 +92,6 @@ function clampLogicalRange(center: number, span: number, candleCount: number): L
     }
 }
 
-function getNumericParameter(parameters: Record<string, any> | undefined, names: string[], fallback: number) {
-    for (const name of names) {
-        const value = Number(parameters?.[name])
-        if (Number.isFinite(value) && value > 0) return value
-    }
-    return fallback
-}
-
-function calculateSma(candles: Candle[], period: number): LineData<Time>[] {
-    const data: LineData<Time>[] = []
-    let rollingSum = 0
-    candles.forEach((candle, index) => {
-        rollingSum += candle.close
-        if (index >= period) rollingSum -= candles[index - period].close
-        if (index >= period - 1) {
-            data.push({
-                time: toUtcTimestamp(candle.timestamp_utc),
-                value: rollingSum / period,
-            })
-        }
-    })
-    return data
-}
-
-function calculateEma(candles: Candle[], period: number): LineData<Time>[] {
-    if (candles.length < period) return []
-    const multiplier = 2 / (period + 1)
-    let ema = candles.slice(0, period).reduce((sum, candle) => sum + candle.close, 0) / period
-    const data: LineData<Time>[] = [{
-        time: toUtcTimestamp(candles[period - 1].timestamp_utc),
-        value: ema,
-    }]
-
-    for (let index = period; index < candles.length; index += 1) {
-        ema = (candles[index].close - ema) * multiplier + ema
-        data.push({
-            time: toUtcTimestamp(candles[index].timestamp_utc),
-            value: ema,
-        })
-    }
-    return data
-}
-
 function formatPrice(value?: number | null) {
     if (value === null || value === undefined || Number.isNaN(value)) return '-'
     return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })
@@ -154,11 +105,9 @@ function formatVolume(value?: number | null) {
 export function MonitorAlignedCandlestickChart({
     candles,
     markers,
-    parameters,
     strategyName,
     symbol,
     timeframe,
-    hideTechnicalOverlays = false,
 }: MonitorAlignedCandlestickChartProps) {
     const shellRef = React.useRef<HTMLDivElement>(null)
     const chartRef = React.useRef<HTMLDivElement>(null)
@@ -170,11 +119,6 @@ export function MonitorAlignedCandlestickChart({
         () => [...candles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
         [candles],
     )
-    const periods = React.useMemo(() => ({
-        emaShort: getNumericParameter(parameters, ['ema_short', 'emaShort', 'sma_short', 'smaShort'], 9),
-        smaMedium: getNumericParameter(parameters, ['sma_medium', 'smaMedium', 'ema_medium', 'emaMedium'], 21),
-        smaLong: getNumericParameter(parameters, ['sma_long', 'smaLong', 'ema_long', 'emaLong'], 50),
-    }), [parameters])
     const candlestickData = React.useMemo(() => sortedCandles.map((candle) => ({
         time: toUtcTimestamp(candle.timestamp_utc),
         open: candle.open,
@@ -187,29 +131,15 @@ export function MonitorAlignedCandlestickChart({
         value: candle.volume,
         color: candle.close >= candle.open ? 'rgba(14, 203, 129, 0.45)' : 'rgba(246, 70, 93, 0.45)',
     })), [sortedCandles])
-    const emaShortData = React.useMemo(() => calculateEma(sortedCandles, periods.emaShort), [periods.emaShort, sortedCandles])
-    const smaMediumData = React.useMemo(() => calculateSma(sortedCandles, periods.smaMedium), [periods.smaMedium, sortedCandles])
-    const smaLongData = React.useMemo(() => calculateSma(sortedCandles, periods.smaLong), [periods.smaLong, sortedCandles])
     const chartMarkers = React.useMemo(() => normalizeMarkers(markers), [markers])
-    const tooltipData = React.useMemo(() => {
-        const emaShortMap = new Map<number, number>()
-        const smaMediumMap = new Map<number, number>()
-        const smaLongMap = new Map<number, number>()
-        emaShortData.forEach((point) => typeof point.time === 'number' && emaShortMap.set(point.time, point.value))
-        smaMediumData.forEach((point) => typeof point.time === 'number' && smaMediumMap.set(point.time, point.value))
-        smaLongData.forEach((point) => typeof point.time === 'number' && smaLongMap.set(point.time, point.value))
-        return new Map<number, Snapshot>(
+    const tooltipData = React.useMemo(() => (
+        new Map<number, Snapshot>(
             sortedCandles.map((candle) => {
                 const time = toUtcTimestamp(candle.timestamp_utc)
-                return [time, {
-                    candle,
-                    emaShort: emaShortMap.get(time),
-                    smaMedium: smaMediumMap.get(time),
-                    smaLong: smaLongMap.get(time),
-                }]
+                return [time, { candle }]
             }),
         )
-    }, [emaShortData, smaMediumData, smaLongData, sortedCandles])
+    ), [sortedCandles])
     const latestSnapshot = React.useMemo(() => {
         const latest = sortedCandles[sortedCandles.length - 1]
         return latest ? tooltipData.get(toUtcTimestamp(latest.timestamp_utc)) ?? null : null
@@ -332,31 +262,10 @@ export function MonitorAlignedCandlestickChart({
             lastValueVisible: false,
         })
         volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } })
-        const emaShortSeries = chart.addLineSeries({
-            color: '#fcd535',
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        })
-        const smaMediumSeries = chart.addLineSeries({
-            color: '#2dbdb6',
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        })
-        const smaLongSeries = chart.addLineSeries({
-            color: '#3b82f6',
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-        })
 
         candleSeries.setData(candlestickData)
         candleSeries.setMarkers(chartMarkers as any)
         volumeSeries.setData(volumeData)
-        emaShortSeries.setData(hideTechnicalOverlays ? [] : emaShortData)
-        smaMediumSeries.setData(hideTechnicalOverlays ? [] : smaMediumData)
-        smaLongSeries.setData(hideTechnicalOverlays ? [] : smaLongData)
 
         chart.timeScale().fitContent()
         const onVisibleRangeChange = (range: LogicalRange | null) => syncVisibleBars(range)
@@ -378,7 +287,7 @@ export function MonitorAlignedCandlestickChart({
             if (chartApiRef.current === chart) chartApiRef.current = null
             chart.remove()
         }
-    }, [candlestickData, chartMarkers, emaShortData, hideTechnicalOverlays, smaLongData, smaMediumData, syncVisibleBars, tooltipData, volumeData])
+    }, [candlestickData, chartMarkers, syncVisibleBars, tooltipData, volumeData])
 
     return (
         <section
@@ -472,24 +381,6 @@ export function MonitorAlignedCandlestickChart({
                             <dd className="font-mono text-[#eaecef]">{formatVolume(displaySnapshot?.candle.volume)}</dd>
                         </div>
                     </dl>
-
-                    {!hideTechnicalOverlays ? (
-                        <div className="mt-5 space-y-2 text-sm" data-testid="result-chart-overlays">
-                            <p className="text-xs font-semibold uppercase text-[#929aa5]">Overlays</p>
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-[#fcd535]">EMA {periods.emaShort}</span>
-                                <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.emaShort)}</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-[#2dbdb6]">SMA {periods.smaMedium}</span>
-                                <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.smaMedium)}</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-[#3b82f6]">SMA {periods.smaLong}</span>
-                                <span className="font-mono text-[#eaecef]">{formatPrice(displaySnapshot?.smaLong)}</span>
-                            </div>
-                        </div>
-                    ) : null}
                 </aside>
             </div>
         </section>
