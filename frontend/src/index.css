@@ -2728,6 +2728,17 @@ select.input option {
   overflow: hidden;
 }
 
+.monitor-theme .mobile-cards {
+  display: none;
+}
+
+.monitor-theme .mobile-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
 .monitor-theme table.signals {
   width: 100%;
   border-collapse: collapse;
@@ -3397,7 +3408,87 @@ select.input option {
     margin-left: 0;
   }
 
+  .monitor-theme .mobile-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .monitor-theme .table-wrap {
+    display: none;
+  }
+
   .monitor-theme .signals {
-    min-width: 760px;
+    min-width: 0;
+  }
+
+  .monitor-theme .pair-name {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .monitor-theme .detail-control-strip,
+  .monitor-theme .detail,
+  .monitor-theme .detail-foot {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .monitor-theme .detail-control-strip {
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+
+  .monitor-theme .detail-pair-summary,
+  .monitor-theme .detail-controls,
+  .monitor-theme .timeframe-toggle-group,
+  .monitor-theme .detail-foot .actions {
+    width: 100%;
+  }
+
+  .monitor-theme .detail-controls,
+  .monitor-theme .timeframe-toggle-group,
+  .monitor-theme .detail-foot .actions {
+    gap: 8px;
+  }
+
+  .monitor-theme .detail-controls .btn,
+  .monitor-theme .timeframe-toggle-group .btn,
+  .monitor-theme .detail-foot .btn {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+  }
+
+  .monitor-theme .detail {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding-top: 14px;
+    padding-bottom: 16px;
+  }
+
+  .monitor-theme .notes-block,
+  .monitor-theme .detail-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .monitor-theme .notes-edit {
+    align-self: flex-end;
+  }
+
+  .monitor-theme .risk-bar {
+    width: 100%;
+    max-width: 180px;
+  }
+
+  .monitor-theme .detail-foot {
+    gap: 12px;
+    padding-top: 12px;
+    padding-bottom: 14px;
+  }
+
+  .monitor-theme .detail-foot .hint {
+    overflow-wrap: anywhere;
   }
 }

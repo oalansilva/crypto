@@ -1020,6 +1020,39 @@ export const MonitorStatusTab: React.FC = () => {
                             </p>
                                         </div>
 
+                                        <div className="mobile-cards">
+                                            {rows.map(({ opportunity }) => {
+                                                const pref = getPreference(opportunity.symbol);
+                                                const derived = portfolioStatusBySymbol[opportunity.symbol];
+                                                const inPortfolio = derived?.inPortfolio ?? pref.in_portfolio;
+
+                                                return (
+                                                    <article
+                                                        key={`mobile-${sectionKey}-${opportunity.id}`}
+                                                        className="mobile-card"
+                                                    >
+                                                        <OpportunityCard
+                                                            opportunity={opportunity}
+                                                            preference={{
+                                                                ...pref,
+                                                                in_portfolio: inPortfolio,
+                                                            }}
+                                                            isPortfolioDerived={Boolean(derived?.active)}
+                                                            portfolioStatusMessage={derived?.message}
+                                                            portfolioStatusTone={derived?.tone}
+                                                            isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
+                                                            isOpeningChart={openingChartSymbol === opportunity.symbol}
+                                                            isAdmin={showTechnicalColumns}
+                                                            onToggleInPortfolio={handleToggleInPortfolio}
+                                                            onToggleCardMode={handleToggleCardMode}
+                                                            onToggleTimeframe={handleToggleTimeframe}
+                                                            onOpenChart={handleOpenChart}
+                                                        />
+                                                    </article>
+                                                );
+                                            })}
+                                        </div>
+
                                         <div className="table-wrap">
                                             <table className="signals">
                                                 <thead>
