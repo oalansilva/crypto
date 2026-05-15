@@ -18,8 +18,8 @@ async function mockAuthenticatedSession(page: any) {
 const FAVORITES_PAYLOAD = [
   {
     id: 1,
-    name: 'NVDA Trend',
-    symbol: 'NVDA',
+    name: 'BTC Trend',
+    symbol: 'BTC/USDT',
     timeframe: '1d',
     strategy_name: 'ema_rsi',
     parameters: {},
@@ -32,10 +32,10 @@ const FAVORITES_PAYLOAD = [
 const OPPORTUNITIES_PAYLOAD = [
   {
     id: 1,
-    symbol: 'NVDA',
+    symbol: 'BTC/USDT',
     timeframe: '1d',
     template_name: 'ema_rsi',
-    name: 'NVDA Trend',
+    name: 'BTC Trend',
     notes: '',
     tier: 1,
     parameters: { ema_short: 9, ema_long: 21 },
@@ -91,7 +91,7 @@ async function setupApiMocks(page: any) {
       contentType: 'application/json',
       body: JSON.stringify({
         __global__: { in_portfolio: false, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
-        NVDA: { in_portfolio: true, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
+        'BTC/USDT': { in_portfolio: true, card_mode: 'price', price_timeframe: '1d', theme: 'dark-green' },
       }),
     })
   )
@@ -120,15 +120,18 @@ async function setupApiMocks(page: any) {
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('monitor mobile uses single cards view and stock timeframe buttons are constrained to 1d', async ({ page }) => {
+test('monitor mobile uses single cards view without horizontal overflow', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
-  await expect(page.getByTestId('monitor-card-nvda')).toBeVisible()
-  await expect(page.getByTestId('timeframe-toggle-nvda-1d')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('timeframe-toggle-nvda-15m')).toBeDisabled()
-  await expect(page.getByTestId('timeframe-toggle-nvda-1h')).toBeDisabled()
-  await expect(page.getByTestId('timeframe-toggle-nvda-4h')).toBeDisabled()
+  await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
+  await expect(page.locator('.mobile-cards').first()).toBeVisible()
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-15m')).toBeEnabled()
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-1h')).toBeEnabled()
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toBeEnabled()
+  const viewportFits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
+  expect(viewportFits).toBe(true)
 })
 
 test('monitor card keeps strategy timeframe visible when chart timeframe differs', async ({ page }) => {
@@ -438,10 +441,10 @@ test('monitor keeps backend exit in list and shows mismatched chart context', as
 
   await page.goto('/monitor')
 
-  const row = page.getByTestId('monitor-row-btc-usdt')
-  await expect(row).toBeVisible()
-  await expect(row.getByText('Venda', { exact: true })).toBeVisible()
-  await row.getByRole('button', { name: 'Abrir gráfico' }).click()
+  const card = page.getByTestId('monitor-card-btc-usdt')
+  await expect(card).toBeVisible()
+  await expect(card.getByText('Venda', { exact: true })).toBeVisible()
+  await card.getByRole('button', { name: 'Ver gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -564,10 +567,10 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
 
   await page.goto('/monitor')
 
-  const row = page.getByTestId('monitor-row-sol-usdt')
-  await expect(row).toBeVisible()
-  await expect(row.getByText('Compra', { exact: true })).toBeVisible()
-  await row.getByRole('button', { name: 'Abrir gráfico' }).click()
+  const card = page.getByTestId('monitor-card-sol-usdt')
+  await expect(card).toBeVisible()
+  await expect(card.getByText('Compra', { exact: true })).toBeVisible()
+  await card.getByRole('button', { name: 'Ver gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -699,10 +702,10 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
 
   await page.goto('/monitor')
 
-  const row = page.getByTestId('monitor-row-hbar-usdt')
-  await expect(row).toBeVisible()
-  await expect(row.getByText('Venda', { exact: true })).toBeVisible()
-  await row.getByRole('button', { name: 'Abrir gráfico' }).click()
+  const card = page.getByTestId('monitor-card-hbar-usdt')
+  await expect(card).toBeVisible()
+  await expect(card.getByText('Venda', { exact: true })).toBeVisible()
+  await card.getByRole('button', { name: 'Ver gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -829,9 +832,9 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
 
   await page.goto('/monitor')
 
-  const row = page.getByTestId('monitor-row-btc-usdt')
-  await expect(row).toBeVisible()
-  await row.getByRole('button', { name: 'Abrir gráfico' }).click()
+  const card = page.getByTestId('monitor-card-btc-usdt')
+  await expect(card).toBeVisible()
+  await card.getByRole('button', { name: 'Ver gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
