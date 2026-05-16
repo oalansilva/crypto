@@ -37,7 +37,7 @@ Base validada:
   - `ETH/USDT` como `Venda`
 - Card/linha de `SOL/USDT` expande no Monitor.
 - Grafico detalhado de `SOL/USDT` abre.
-- No modo `Compacto`, o grafico mostra:
+- Antes da remocao do layout `Compacto`, o grafico mostrava nesse modo:
   - contexto do sinal;
   - risco/stop;
   - historico de sinais;
@@ -47,7 +47,7 @@ Base validada:
 
 - A lista do Monitor mostra `SOL/USDT` como `Compra`, mas o modal do grafico em modo padrao mostra badge `ESPERA` para o mesmo ativo.
 - O modo padrao `Algoritmica` do grafico nao mostra `Signal Context`, `Risco / Stop` nem `Historico de sinais`.
-- Para o tester enxergar contexto, risco e historico, foi necessario trocar manualmente para `Compacto`.
+- Para o tester enxergar contexto, risco e historico, era necessario trocar manualmente para `Compacto`; esse layout foi removido depois pelo card #213.
 
 Issue derivada criada:
 

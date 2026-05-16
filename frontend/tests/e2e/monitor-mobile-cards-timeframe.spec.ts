@@ -448,16 +448,10 @@ test('monitor keeps backend exit in list and shows mismatched chart context', as
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Signal Context')).toBeVisible()
-  await expect(dialog.getByText('Risco / Stop')).toBeVisible()
-  await expect(dialog.getByText('Histórico de sinais')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
-  const signalContext = dialog.getByTestId('chart-modal-signal-context')
-  await expect(signalContext.getByText('Sinal')).toBeVisible()
-  await expect(signalContext).toContainText('Venda')
-  await expect(signalContext).toContainText('1d')
-  await expect(signalContext).toContainText('Estado em revisão: decisão não confirmada pelo contexto atual.')
-  await expect(signalContext).toContainText('Venda bloqueada: candle de referência não corresponde ao último candle exibido.')
 })
 
 test('monitor keeps Compra in chart detail while showing holding context mismatch', async ({ page }) => {
@@ -576,17 +570,12 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   await expect(dialog).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')
   await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
-  await expect(dialog.getByText('Signal Context')).toBeVisible()
-  await expect(dialog.getByText('Risco / Stop')).toBeVisible()
-  await expect(dialog.getByText('Histórico de sinais')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(dialog.getByRole('group', { name: 'Chart indicators' })).toHaveCount(0)
   await expect(dialog.getByText('Indicators')).toHaveCount(0)
   await expect(dialog.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0)
-
-  const signalContext = dialog.getByTestId('chart-modal-signal-context')
-  await expect(signalContext).toContainText('Compra')
-  await expect(signalContext).toContainText('Estado em revisão: decisão não confirmada pelo contexto atual.')
-  await expect(signalContext).toContainText('Compra bloqueada: entrada ativa não aparece nos candles exibidos.')
 })
 
 test('monitor resolves current exit signal consistently in list and chart', async ({ page }) => {
@@ -709,9 +698,10 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Compacto' }).click()
+  await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
-  await expect(dialog.getByTestId('chart-modal-signal-context')).not.toContainText('Estado em revisão')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {
@@ -838,15 +828,11 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Signal Context')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')
   await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
-  await expect(dialog.getByText('Até venda')).toBeVisible()
-  await expect(dialog.getByText('Histórico de sinais')).toBeVisible()
-  await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
-  await expect(dialog.getByTestId('chart-modal-signal-history-item-0')).toContainText('Compra')
-  await expect(dialog.getByTestId('chart-modal-signal-history-item-1')).toContainText('Venda')
-  await expect(dialog.getByText('Marcadores alinhados ao timeframe do gráfico.')).toBeVisible()
 })
 
 test('monitor modal zoom controls adjust visible range without reloading candles', async ({ page }) => {
