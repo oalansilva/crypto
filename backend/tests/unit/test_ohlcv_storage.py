@@ -94,6 +94,7 @@ def test_ohlcv_repository_disabled_branches_short_circuit(monkeypatch):
     assert repo.enabled is False
     assert repo.get_latest_candle_time("BTC/USDT", "1m") is None
     assert repo.read_recent_candles("BTC/USDT", "1m", 10) == []
+    assert repo.read_all_candles("BTC/USDT", "1m") == []
     assert repo.write_candles("BTC/USDT", "1m", "ccxt", None) == 0
 
 
@@ -133,6 +134,11 @@ def test_ohlcv_repository_reads_and_inserts_with_fake_connection(monkeypatch):
     assert len(candles) == 2
     assert candles[0]["timestamp_utc"] == latest.isoformat()
     assert candles[1]["timestamp_utc"] == (latest + timedelta(minutes=1)).isoformat()
+
+    all_candles = repo.read_all_candles("BTC/USDT", "1m")
+    assert len(all_candles) == 2
+    assert all_candles[0]["timestamp_utc"] == (latest + timedelta(minutes=1)).isoformat()
+    assert all_candles[1]["timestamp_utc"] == latest.isoformat()
 
     frame = pd.DataFrame(
         {

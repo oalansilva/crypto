@@ -210,6 +210,68 @@ async def test_market_candles_uses_fresh_persisted_crypto_candles(monkeypatch):
     assert payload["candles"] == persisted
 
 
+async def test_market_candles_full_history_returns_all_persisted_crypto_candles(monkeypatch):
+    block_external_network(monkeypatch)
+
+    persisted = [
+        {
+            "timestamp_utc": "2020-01-01T00:00:00+00:00",
+            "open": 1,
+            "high": 2,
+            "low": 1,
+            "close": 2,
+            "volume": 10,
+            "source": "ccxt",
+        },
+        {
+            "timestamp_utc": "2020-01-02T00:00:00+00:00",
+            "open": 2,
+            "high": 3,
+            "low": 2,
+            "close": 3,
+            "volume": 11,
+            "source": "ccxt",
+        },
+        {
+            "timestamp_utc": "2020-01-03T00:00:00+00:00",
+            "open": 3,
+            "high": 4,
+            "low": 3,
+            "close": 4,
+            "volume": 12,
+            "source": "ccxt",
+        },
+    ]
+
+    class _FullHistoryOhlcvRepository:
+        enabled = True
+
+        def read_all_candles(self, symbol, timeframe):
+            assert symbol == "ADA/USDT"
+            assert timeframe == "1d"
+            return persisted
+
+        def read_recent_candles(self, *_args, **_kwargs):
+            raise AssertionError("Recent candle window should not be used for full_history=true")
+
+    def _fail_get_market_data_provider(data_source: str | None):
+        raise AssertionError(f"Unexpected provider selection: {data_source}")
+
+    monkeypatch.setattr(app_api, "_OHLCV_REPO", _FullHistoryOhlcvRepository())
+    monkeypatch.setattr(app_api, "get_market_data_provider", _fail_get_market_data_provider)
+
+    response = await _get(
+        "/api/market/candles?symbol=ADA/USDT&timeframe=1d&limit=1&full_history=true"
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+
+    assert payload["data_source"] == "timescaledb-full-history"
+    assert payload["limit"] == 3
+    assert payload["count"] == 3
+    assert payload["candles"] == persisted
+
+
 async def test_market_candles_stock_intraday_rejected(monkeypatch):
     block_external_network(monkeypatch)
 

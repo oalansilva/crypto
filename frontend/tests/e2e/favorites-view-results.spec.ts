@@ -160,11 +160,11 @@ const FAVORITES_PAYLOAD = [
   },
   {
     id: 201,
-    name: 'Quant BTC ROC+EMA Trend Rider Long v4',
+    name: 'BTC Multi MA Crossover - Price Action',
     symbol: 'BTC/USDT',
     timeframe: '1d',
     strategy_name: 'Estratégia protegida',
-    strategy_display_name: 'Quant Btc 1d Roc EMA Trend Rider Long V4',
+    strategy_display_name: 'Multi MA Crossover',
     is_strategy_protected: true,
     parameters: { direction: 'long' },
     metrics: {
@@ -248,6 +248,19 @@ const CURRENT_MARKET_CANDLES = Array.from({ length: 60 }, (_, index) => {
     low: Math.min(open, close) - 1.25,
     close,
     volume: 2000 + index * 30,
+  };
+});
+
+const FULL_HISTORY_MARKET_CANDLES = Array.from({ length: 120 }, (_, index) => {
+  const open = 65000 + index * 90;
+  const close = open + (index % 2 === 0 ? 180 : -120);
+  return {
+    timestamp_utc: new Date(Date.UTC(2025, 10, index + 1)).toISOString(),
+    open,
+    high: Math.max(open, close) + 240,
+    low: Math.min(open, close) - 240,
+    close,
+    volume: 9000 + index * 30,
   };
 });
 
@@ -447,14 +460,16 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
   await page.route('**/api/market/candles**', (route: any) => {
     marketCandlesTriggeredCount += 1;
     const url = new URL(route.request().url());
+    const isFullHistory = url.searchParams.get('full_history') === 'true';
+    const candles = isFullHistory ? FULL_HISTORY_MARKET_CANDLES : CURRENT_MARKET_CANDLES;
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         symbol: url.searchParams.get('symbol'),
         timeframe: url.searchParams.get('timeframe'),
-        count: CURRENT_MARKET_CANDLES.length,
-        candles: CURRENT_MARKET_CANDLES,
+        count: candles.length,
+        candles,
       }),
     });
   });
@@ -673,7 +688,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 4h • 60 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 120 candles')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-out')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-reset')).toBeVisible();
@@ -732,7 +747,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 4h • 60 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 120 candles')).toBeVisible();
 
   await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
   await expect(page).toHaveURL(/\/favorites$/);
@@ -770,7 +785,7 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect(page.getByText(/Estratégia protegida - Price Action/i)).toHaveCount(0);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
-  await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 120 candles')).toBeVisible();
   await expect(page.getByText('May 12, 2026').first()).toBeVisible();
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
   await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
@@ -784,7 +799,7 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
 });
 
-test('favorites opens Quant BTC chart even when monitor sync is slow', async ({ page }) => {
+test('favorites opens Multi MA Crossover full-history chart even when monitor sync is slow', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page, {
     user: {
       id: 'common-user',
@@ -796,7 +811,7 @@ test('favorites opens Quant BTC chart even when monitor sync is slow', async ({ 
   });
   await page.goto('/favorites');
 
-  const quantRow = page.locator('.fav-table-shell tbody tr', { hasText: 'Trend Rider Long v4' });
+  const quantRow = page.locator('.fav-table-shell tbody tr', { hasText: 'BTC Multi MA Crossover - Price Action' });
   const analysis = quantRow.locator('button[title="Ver análise completa"]');
   await expect(analysis).toBeVisible();
   await analysis.click();
@@ -805,11 +820,13 @@ test('favorites opens Quant BTC chart even when monitor sync is slow', async ({ 
   await expect(page).toHaveURL(/\/combo\/results$/, { timeout: 5000 });
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
-  await expect(page.getByText(/Quant Btc 1d Roc EMA Trend Rider Long V4 - Price Action/i)).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 1d • 60 candles')).toBeVisible();
+  await expect(page.getByText(/Multi MA Crossover - Price Action/i)).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 1d • 120 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 1d • 60 candles')).toHaveCount(0);
+  await expect(page.getByText('BTC/USDT • 1d • 80 candles')).toHaveCount(0);
 });
 
-test('favorites analysis prefers current market candles over stale saved analysis candles', async ({ page }) => {
+test('favorites analysis uses full market history over stale saved analysis candles', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
@@ -823,7 +840,7 @@ test('favorites analysis prefers current market candles over stale saved analysi
   expect(api.opportunitiesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
-  await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 120 candles')).toBeVisible();
   await expect(page.getByText('ETH/USDT • 1h • 40 candles')).toHaveCount(0);
   await expect(page.getByText('May 12, 2026').first()).toBeVisible();
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
