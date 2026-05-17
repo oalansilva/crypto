@@ -8,6 +8,7 @@
 - [x] 2.1 Keep Favorites Strategy filter options and matching based on the safe strategy label.
 - [x] 2.2 Keep Favorites analysis/chart handoff based on the same safe strategy label for protected common-user favorites.
 - [x] 2.3 Update Playwright coverage so a common/protected favorite can be filtered by a safe strategy label, shows that label in the chart, and not by symbol, timeframe, or nickname.
+- [x] 2.4 Prevent slow Monitor sync from blocking Favorites chart opening when saved/current candles are available.
 
 ## 3. Validation
 

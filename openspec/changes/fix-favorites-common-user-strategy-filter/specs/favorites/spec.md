@@ -25,3 +25,9 @@ The Favorites page Strategy filter MUST list and match only strategy labels, not
 - **WHEN** a common user opens the chart or full analysis for a protected favorite
 - **THEN** the chart title MUST show the same safe strategy label used by the Favorites filter
 - **AND** the chart MUST NOT show raw strategy names, parameters, or protected indicator values
+
+#### Scenario: Favorite chart opens when monitor sync is slow
+- **WHEN** a user opens full analysis for a favorite that already has saved chart context
+- **AND** monitor opportunity refresh or trade sync is slow
+- **THEN** the system MUST open the favorite chart using saved or current candle data without waiting indefinitely for monitor sync
+- **AND** monitor sync MAY be skipped for that open

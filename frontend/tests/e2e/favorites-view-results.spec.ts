@@ -158,6 +158,51 @@ const FAVORITES_PAYLOAD = [
     start_date: null,
     end_date: null,
   },
+  {
+    id: 201,
+    name: 'Quant BTC ROC+EMA Trend Rider Long v4',
+    symbol: 'BTC/USDT',
+    timeframe: '1d',
+    strategy_name: 'Estratégia protegida',
+    strategy_display_name: 'Quant Btc 1d Roc EMA Trend Rider Long V4',
+    is_strategy_protected: true,
+    parameters: { direction: 'long' },
+    metrics: {
+      total_return: 1029.9985,
+      total_return_pct: 102999.85,
+      total_trades: 219,
+      trades: [
+        {
+          entry_time: '2026-05-02T00:00:00Z',
+          entry_price: 78231.13,
+          exit_time: '2026-05-14T00:00:00Z',
+          exit_price: 79313.61,
+          profit: 0.012317,
+          type: 'long',
+        },
+      ],
+      trades_history_cached: true,
+      analysis_candles: Array.from({ length: 80 }, (_, index) => {
+        const open = 72000 + index * 120;
+        const close = open + (index % 3 === 0 ? 280 : -140);
+        return {
+          timestamp_utc: new Date(Date.UTC(2026, 2, index + 1)).toISOString(),
+          open,
+          high: Math.max(open, close) + 350,
+          low: Math.min(open, close) - 350,
+          close,
+          volume: 12000 + index * 25,
+        };
+      }),
+      analysis_indicator_data: {},
+      analysis_execution_mode: 'favorite_cache',
+    },
+    notes: 'quant btc cached favorite',
+    created_at: '2026-05-14T00:00:00Z',
+    tier: 1,
+    start_date: '2017-08-17',
+    end_date: '2026-05-14',
+  },
 ];
 
 const BACKTEST_PAYLOAD = {
@@ -317,7 +362,7 @@ function cloneFavoritesPayload() {
   return JSON.parse(JSON.stringify(FAVORITES_PAYLOAD));
 }
 
-async function setupDeterministicApiMocks(page: any, options?: { user?: Record<string, any> }) {
+async function setupDeterministicApiMocks(page: any, options?: { user?: Record<string, any>; hangOpportunities?: boolean }) {
   const authUser = options?.user || {
       id: 'admin-user',
       email: 'admin@example.com',
@@ -416,6 +461,9 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
 
   await page.route('**/api/opportunities/**', (route: any) => {
     opportunitiesTriggeredCount += 1;
+    if (options?.hangOpportunities) {
+      return;
+    }
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -734,6 +782,31 @@ test('common user opens protected favorite chart without moving averages or MA v
   await page.getByTestId('result-main-chart').hover();
   await page.mouse.wheel(0, -600);
   await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
+});
+
+test('favorites opens Quant BTC chart even when monitor sync is slow', async ({ page }) => {
+  const api = await setupDeterministicApiMocks(page, {
+    user: {
+      id: 'common-user',
+      email: 'user@example.com',
+      name: 'Common User',
+      isAdmin: false,
+    },
+    hangOpportunities: true,
+  });
+  await page.goto('/favorites');
+
+  const quantRow = page.locator('.fav-table-shell tbody tr', { hasText: 'Trend Rider Long v4' });
+  const analysis = quantRow.locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  expect(api.opportunitiesTriggeredCount()).toBe(1);
+  await expect(page).toHaveURL(/\/combo\/results$/, { timeout: 5000 });
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByTestId('result-main-chart')).toBeVisible();
+  await expect(page.getByText(/Quant Btc 1d Roc EMA Trend Rider Long V4 - Price Action/i)).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 1d • 60 candles')).toBeVisible();
 });
 
 test('favorites analysis prefers current market candles over stale saved analysis candles', async ({ page }) => {
