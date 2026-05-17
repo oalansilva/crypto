@@ -422,6 +422,7 @@ const FavoritesDashboard: React.FC = () => {
         url.searchParams.set('symbol', fav.symbol);
         url.searchParams.set('timeframe', fav.timeframe);
         url.searchParams.set('limit', String(CURRENT_CHART_CANDLE_LIMIT));
+        url.searchParams.set('full_history', 'true');
 
         try {
             const response = await authFetch(url.toString());
