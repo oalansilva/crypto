@@ -57,10 +57,31 @@ const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
 
 const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
 
-const selectMostCompleteCandles = (currentCandles: any[], savedCandles: any[]): any[] => {
+const getCandleTimestampKey = (candle: any): string => {
+    const rawTimestamp = candle?.timestamp_utc ?? candle?.timestamp ?? candle?.time;
+    if (!rawTimestamp) return '';
+    const parsed = Date.parse(String(rawTimestamp));
+    return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(rawTimestamp);
+};
+
+const mergeAnalysisCandles = (currentCandles: any[], savedCandles: any[]): any[] => {
     if (savedCandles.length === 0) return currentCandles;
     if (currentCandles.length === 0) return savedCandles;
-    return savedCandles.length > currentCandles.length ? savedCandles : currentCandles;
+
+    const byTimestamp = new Map<string, any>();
+    savedCandles.forEach((candle) => {
+        const key = getCandleTimestampKey(candle);
+        if (key) byTimestamp.set(key, candle);
+    });
+    currentCandles.forEach((candle) => {
+        const key = getCandleTimestampKey(candle);
+        if (key) byTimestamp.set(key, candle);
+    });
+
+    const merged = Array.from(byTimestamp.values()).sort((left, right) => (
+        Date.parse(getCandleTimestampKey(left)) - Date.parse(getCandleTimestampKey(right))
+    ));
+    return merged.length > 0 ? merged : (savedCandles.length > currentCandles.length ? savedCandles : currentCandles);
 };
 
 const resolveWithTimeout = <T,>(
@@ -615,7 +636,7 @@ const FavoritesDashboard: React.FC = () => {
                     () => console.warn(`Opening favorite analysis without monitor trade sync for ${fav.symbol} ${fav.timeframe}; monitor sync timed out.`),
                 ),
             ]);
-            const chartCandles = selectMostCompleteCandles(currentCandles, recovered.candles || []);
+            const chartCandles = mergeAnalysisCandles(currentCandles, recovered.candles || []);
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
             analysisResult.candles = chartCandles || [];
             if (monitorSyncedTrades && monitorSyncedTrades.length > 0) {

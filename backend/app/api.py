@@ -14,6 +14,7 @@ from app.services.market_data_providers import (
     get_market_data_provider,
 )
 from app.services.asset_classification import classify_asset_type
+from app.services.ohlcv_backfill_service import get_backfill_service
 from app.services.preset_service import get_presets
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
 from app.services.ohlcv_storage import MarketOhlcvRepository
@@ -348,6 +349,22 @@ def _write_candles_cache(
         }
 
 
+def _schedule_full_history_backfill(raw_symbol: str, timeframe: str) -> str | None:
+    try:
+        years = int(os.getenv("FAVORITES_FULL_HISTORY_BACKFILL_YEARS", "10"))
+    except ValueError:
+        years = 10
+    try:
+        return get_backfill_service().ensure_history_job(
+            symbol=raw_symbol,
+            timeframes=[timeframe],
+            data_source=CCXT_SOURCE,
+            history_window_years=max(1, min(10, years)),
+        )
+    except Exception:
+        return None
+
+
 @router.get("/market/candles")
 async def get_market_candles(
     symbol: str = Query(..., description="Ticker or pair (e.g. NVDA or BTC/USDT)"),
@@ -372,8 +389,10 @@ async def get_market_candles(
             return cached
 
         stale_persisted: list[dict[str, Any]] = []
+        backfill_job_id: str | None = None
         if _OHLCV_REPO.enabled:
             if full_history:
+                backfill_job_id = _schedule_full_history_backfill(raw_symbol, tf)
                 try:
                     persisted_full_history = _OHLCV_REPO.read_all_candles(raw_symbol, tf)
                 except Exception:
@@ -387,6 +406,9 @@ async def get_market_candles(
                         candles=persisted_full_history,
                         data_source="timescaledb-full-history",
                     )
+                    if backfill_job_id:
+                        payload["backfill_job_id"] = backfill_job_id
+                        payload["backfill_status"] = "scheduled"
                     _write_candles_cache(raw_symbol, tf, limit, payload, full_history=True)
                     return payload
 
@@ -460,6 +482,9 @@ async def get_market_candles(
             "count": len(candles),
             "candles": candles,
         }
+        if full_history and backfill_job_id:
+            payload["backfill_job_id"] = backfill_job_id
+            payload["backfill_status"] = "scheduled"
         if _OHLCV_REPO.enabled and candles:
             try:
                 _OHLCV_REPO.write_candles(raw_symbol, tf, data_source, df)

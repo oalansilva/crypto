@@ -301,7 +301,75 @@ class OhlcvBackfillService:
                 return True
             if earliest > window_start:
                 return True
+            get_latest = getattr(self._repo, "get_latest_candle_time", None)
+            if callable(get_latest):
+                latest = get_latest(symbol, timeframe)
+                if latest is None:
+                    return True
+                if latest.tzinfo is None:
+                    latest = latest.replace(tzinfo=UTC)
+                else:
+                    latest = latest.astimezone(UTC)
+                interval_seconds = _TIMEFRAME_INTERVAL_SECONDS.get(
+                    _normalize_timeframe(timeframe),
+                    86400,
+                )
+                stale_after = max(interval_seconds * 2, 24 * 60 * 60)
+                if (now - latest).total_seconds() > stale_after:
+                    return True
         return False
+
+    def ensure_history_job(
+        self,
+        symbol: str,
+        timeframes: list[str],
+        *,
+        data_source: str | None = None,
+        history_window_years: int = 10,
+    ) -> str | None:
+        normalized_symbol = _normalize_symbol(symbol)
+        normalized_timeframes = _normalize_timeframes(timeframes)
+        if not self._repo.enabled:
+            return None
+        if self._store.exists_active_for_symbol(normalized_symbol):
+            return None
+        if not self._needs_job(normalized_symbol, normalized_timeframes, history_window_years):
+            return None
+
+        return self.start_job(
+            symbol=normalized_symbol,
+            timeframes=normalized_timeframes,
+            data_source=data_source,
+            history_window_years=history_window_years,
+        )
+
+    def _favorite_symbol_timeframes(self) -> dict[str, set[str]]:
+        try:
+            from app.database import SessionLocal
+            from app.models import FavoriteStrategy
+        except Exception:
+            return {}
+
+        output: dict[str, set[str]] = {}
+        try:
+            with SessionLocal() as db:
+                rows = (
+                    db.query(FavoriteStrategy.symbol, FavoriteStrategy.timeframe)
+                    .filter(FavoriteStrategy.symbol.contains("/"))
+                    .distinct()
+                    .all()
+                )
+        except Exception as exc:
+            logger.debug("Could not load favorite symbols for backfill scheduler: %s", exc)
+            return {}
+
+        for symbol, timeframe in rows:
+            normalized_symbol = _normalize_symbol(symbol)
+            normalized_timeframe = _normalize_timeframe(timeframe)
+            if not normalized_symbol or normalized_timeframe not in SUPPORTED_OHLCV_TIMEFRAMES:
+                continue
+            output.setdefault(normalized_symbol, set()).add(normalized_timeframe)
+        return output
 
     def _fetch_with_retries(
         self,
@@ -829,14 +897,11 @@ class OhlcvBackfillService:
             if not enabled:
                 return 0
 
-            symbols = [
+            explicit_symbols = [
                 value.strip().upper()
                 for value in str(os.getenv("BACKFILL_SCHEDULER_SYMBOLS", "")).split(",")
                 if value.strip()
             ]
-            if not symbols:
-                symbols = self._default_symbols()
-
             timeframes = _normalize_timeframes(
                 [
                     part.strip()
@@ -852,20 +917,33 @@ class OhlcvBackfillService:
             if not timeframes:
                 timeframes = self._default_timeframes()
 
-            years = _parse_int(os.getenv("BACKFILL_WINDOW_YEARS", "2"), default=2)
+            symbols_by_timeframe: dict[str, set[str]] = {}
+            for symbol in explicit_symbols or self._default_symbols():
+                symbols_by_timeframe[_normalize_symbol(symbol)] = set(timeframes)
+
+            include_favorites = os.getenv(
+                "BACKFILL_SCHEDULER_INCLUDE_FAVORITES",
+                "1",
+            ).strip().lower() not in {"0", "false", "no", "off"}
+            if include_favorites and not explicit_symbols:
+                for symbol, favorite_timeframes in self._favorite_symbol_timeframes().items():
+                    symbols_by_timeframe.setdefault(symbol, set()).update(favorite_timeframes)
+
+            years = _parse_int(os.getenv("BACKFILL_WINDOW_YEARS", "10"), default=10)
             data_source = os.getenv("BACKFILL_SCHEDULER_DATA_SOURCE") or None
             start_count = 0
 
-            for symbol in symbols:
+            for symbol, symbol_timeframes in sorted(symbols_by_timeframe.items()):
+                job_timeframes = sorted(symbol_timeframes)
                 if self._store.exists_active_for_symbol(symbol):
                     continue
-                if not self._needs_job(symbol, timeframes, years):
+                if not self._needs_job(symbol, job_timeframes, years):
                     continue
 
                 try:
                     self.start_job(
                         symbol=symbol,
-                        timeframes=timeframes,
+                        timeframes=job_timeframes,
                         data_source=data_source,
                         history_window_years=years,
                     )

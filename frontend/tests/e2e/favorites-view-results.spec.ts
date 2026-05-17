@@ -688,7 +688,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 4h • 120 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 160 candles')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-out')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-reset')).toBeVisible();
@@ -747,7 +747,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 4h • 120 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 160 candles')).toBeVisible();
 
   await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
   await expect(page).toHaveURL(/\/favorites$/);
@@ -785,7 +785,7 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect(page.getByText(/Estratégia protegida - Price Action/i)).toHaveCount(0);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
-  await expect(page.getByText('ETH/USDT • 1h • 120 candles')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 160 candles')).toBeVisible();
   await expect(page.getByText('May 12, 2026').first()).toBeVisible();
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
   await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
@@ -821,7 +821,8 @@ test('favorites opens Multi MA Crossover full-history chart even when monitor sy
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText(/Multi MA Crossover - Price Action/i)).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 1d • 120 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 1d • 200 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 1d • 120 candles')).toHaveCount(0);
   await expect(page.getByText('BTC/USDT • 1d • 60 candles')).toHaveCount(0);
   await expect(page.getByText('BTC/USDT • 1d • 80 candles')).toHaveCount(0);
 });
@@ -840,7 +841,8 @@ test('favorites analysis uses full market history over stale saved analysis cand
   expect(api.opportunitiesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
-  await expect(page.getByText('ETH/USDT • 1h • 120 candles')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 160 candles')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 120 candles')).toHaveCount(0);
   await expect(page.getByText('ETH/USDT • 1h • 40 candles')).toHaveCount(0);
   await expect(page.getByText('May 12, 2026').first()).toBeVisible();
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();

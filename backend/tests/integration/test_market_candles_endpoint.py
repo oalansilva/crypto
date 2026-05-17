@@ -17,9 +17,14 @@ def isolate_market_candles_storage(monkeypatch):
     class _DisabledOhlcvRepository:
         enabled = False
 
+    class _NoopBackfillService:
+        def ensure_history_job(self, *_args, **_kwargs):
+            return None
+
     with app_api._CANDLES_CACHE_LOCK:
         app_api._CANDLES_CACHE.clear()
     monkeypatch.setattr(app_api, "_OHLCV_REPO", _DisabledOhlcvRepository())
+    monkeypatch.setattr(app_api, "get_backfill_service", lambda: _NoopBackfillService())
     yield
     with app_api._CANDLES_CACHE_LOCK:
         app_api._CANDLES_CACHE.clear()
@@ -270,6 +275,65 @@ async def test_market_candles_full_history_returns_all_persisted_crypto_candles(
     assert payload["limit"] == 3
     assert payload["count"] == 3
     assert payload["candles"] == persisted
+
+
+async def test_market_candles_full_history_schedules_backfill_when_history_is_sparse(monkeypatch):
+    block_external_network(monkeypatch)
+
+    calls = []
+
+    class _SparseOhlcvRepository:
+        enabled = True
+
+        def read_all_candles(self, *_args, **_kwargs):
+            return []
+
+        def read_recent_candles(self, *_args, **_kwargs):
+            return []
+
+        def write_candles(self, *_args, **_kwargs):
+            return 1
+
+    class _BackfillService:
+        def ensure_history_job(self, **kwargs):
+            calls.append(kwargs)
+            return "job-full-history"
+
+    fresh_df = _build_df(
+        [
+            {
+                "timestamp_utc": "2026-05-17T00:00:00Z",
+                "open": 1,
+                "high": 2,
+                "low": 1,
+                "close": 2,
+                "volume": 10,
+            }
+        ]
+    )
+    fake_ccxt = _FakeProvider(source="ccxt", df=fresh_df)
+
+    monkeypatch.setattr(app_api, "_OHLCV_REPO", _SparseOhlcvRepository())
+    monkeypatch.setattr(app_api, "get_backfill_service", lambda: _BackfillService())
+    monkeypatch.setattr(app_api, "get_market_data_provider", lambda *_args: fake_ccxt)
+
+    response = await _get(
+        "/api/market/candles?symbol=BTC/USDT&timeframe=1d&limit=1&full_history=true"
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+
+    assert payload["backfill_status"] == "scheduled"
+    assert payload["backfill_job_id"] == "job-full-history"
+    assert payload["candles"][-1]["timestamp_utc"] == "2026-05-17T00:00:00+00:00"
+    assert calls == [
+        {
+            "symbol": "BTC/USDT",
+            "timeframes": ["1d"],
+            "data_source": "ccxt",
+            "history_window_years": 10,
+        }
+    ]
 
 
 async def test_market_candles_stock_intraday_rejected(monkeypatch):
