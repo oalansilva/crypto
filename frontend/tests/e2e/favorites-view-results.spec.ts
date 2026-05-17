@@ -784,7 +784,7 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
 });
 
-test('favorites opens Quant BTC chart even when monitor sync is slow', async ({ page }) => {
+test('favorites opens Quant BTC full-history chart even when monitor sync is slow', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page, {
     user: {
       id: 'common-user',
@@ -806,7 +806,8 @@ test('favorites opens Quant BTC chart even when monitor sync is slow', async ({ 
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText(/Quant Btc 1d Roc EMA Trend Rider Long V4 - Price Action/i)).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 1d • 60 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 1d • 80 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 1d • 60 candles')).toHaveCount(0);
 });
 
 test('favorites analysis prefers current market candles over stale saved analysis candles', async ({ page }) => {

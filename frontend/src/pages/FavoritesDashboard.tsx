@@ -57,6 +57,12 @@ const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
 
 const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
 
+const selectMostCompleteCandles = (currentCandles: any[], savedCandles: any[]): any[] => {
+    if (savedCandles.length === 0) return currentCandles;
+    if (currentCandles.length === 0) return savedCandles;
+    return savedCandles.length > currentCandles.length ? savedCandles : currentCandles;
+};
+
 const resolveWithTimeout = <T,>(
     promise: Promise<T>,
     fallback: T,
@@ -608,7 +614,7 @@ const FavoritesDashboard: React.FC = () => {
                     () => console.warn(`Opening favorite analysis without monitor trade sync for ${fav.symbol} ${fav.timeframe}; monitor sync timed out.`),
                 ),
             ]);
-            const chartCandles = currentCandles.length > 0 ? currentCandles : recovered.candles;
+            const chartCandles = selectMostCompleteCandles(currentCandles, recovered.candles || []);
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
             analysisResult.candles = chartCandles || [];
             if (monitorSyncedTrades && monitorSyncedTrades.length > 0) {
