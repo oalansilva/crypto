@@ -41,12 +41,16 @@ def _session_factory(tmp_path: Path):
     return TestingSessionLocal
 
 
-def _favorite_payload(name: str, symbol: str = "BTC/USDT") -> favorites.FavoriteStrategyCreate:
+def _favorite_payload(
+    name: str,
+    symbol: str = "BTC/USDT",
+    strategy_name: str = "multi_ma_crossover",
+) -> favorites.FavoriteStrategyCreate:
     return favorites.FavoriteStrategyCreate(
         name=name,
         symbol=symbol,
         timeframe="1d",
-        strategy_name="multi_ma_crossover",
+        strategy_name=strategy_name,
         parameters={"ema_short": 9, "sma_medium": 21, "sma_long": 50, "direction": "long"},
         metrics={"total_return_pct": 12.3},
         period_type="2y",
@@ -66,6 +70,7 @@ def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
     assert [item.name for item in listed_b] == ["B favorite"]
     assert [item.name for item in listed_a] == ["A favorite"]
     assert listed_a[0].strategy_name == "Estratégia protegida"
+    assert listed_a[0].strategy_display_name == "Multi MA Crossover"
     assert listed_a[0].parameters == {}
     assert listed_a[0].is_strategy_protected is True
     assert "tendência" in (listed_a[0].strategy_description or "").lower()
@@ -231,6 +236,15 @@ def test_common_user_lists_admin_catalog_and_saves_own_star_tier(tmp_path: Path,
             current_user_id=admin_id,
             db=db,
         )
+        admin_second_favorite = favorites.create_favorite(
+            _favorite_payload(
+                "Admin generated second",
+                symbol="ETH/USDT",
+                strategy_name="ema_rsi",
+            ),
+            current_user_id=admin_id,
+            db=db,
+        )
 
         common_list = favorites.list_favorites(current_user_id=common_id, db=db)
         updated = favorites.update_favorite(
@@ -248,9 +262,14 @@ def test_common_user_lists_admin_catalog_and_saves_own_star_tier(tmp_path: Path,
             .one()
         )
 
-    assert [item.id for item in common_list] == [admin_favorite.id]
+    assert [item.id for item in common_list] == [admin_favorite.id, admin_second_favorite.id]
     assert common_list[0].tier is None
     assert common_list[0].strategy_name == "Estratégia protegida"
+    assert common_list[0].strategy_display_name == "Multi MA Crossover"
+    assert common_list[1].strategy_name == "Estratégia protegida"
+    assert common_list[1].strategy_display_name == "EMA RSI"
+    assert common_list[0].parameters == {}
+    assert common_list[1].parameters == {}
     assert updated.tier == 1
     assert common_list_after[0].tier == 1
     assert admin_row.tier is None

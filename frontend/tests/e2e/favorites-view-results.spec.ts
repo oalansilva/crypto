@@ -59,7 +59,7 @@ const FAVORITES_PAYLOAD = [
     symbol: 'ETH/USDT',
     timeframe: '1h',
     strategy_name: 'Estratégia protegida',
-    strategy_display_name: 'Estratégia protegida',
+    strategy_display_name: 'EMA RSI Volume',
     is_strategy_protected: true,
     parameters: { direction: 'long' },
     metrics: {
@@ -539,7 +539,7 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
   const strategyFilter = page.locator('.fav-filters label', { hasText: 'Strategy' }).locator('select');
   const timeFilter = page.locator('.fav-filters label', { hasText: 'Time' }).locator('select');
 
-  await expect(strategyFilter.locator('option', { hasText: 'ema rsi' })).toHaveCount(1);
+  await expect(strategyFilter.locator('option[value="ema rsi"]')).toHaveCount(1);
   await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: 'Protected BTC Setup ETH/USDT 1h' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: 'BTC Swing BTC/USDT 4h' })).toHaveCount(0);
@@ -547,7 +547,8 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
   await expect(strategyFilter.locator('option', { hasText: 'BTC/USDT' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: '1h' })).toHaveCount(0);
   await expect(strategyFilter.locator('option', { hasText: '4h' })).toHaveCount(0);
-  await expect(strategyFilter.locator('option', { hasText: 'Estratégia protegida' })).toHaveCount(1);
+  await expect(strategyFilter.locator('option[value="EMA RSI Volume"]')).toHaveCount(1);
+  await expect(strategyFilter.locator('option[value="Estratégia protegida"]')).toHaveCount(0);
   await expect(timeFilter.locator('option', { hasText: '1h' })).toHaveCount(1);
   await expect(timeFilter.locator('option', { hasText: '4h' })).toHaveCount(1);
 
@@ -555,6 +556,12 @@ test('favorites filters by strategy name and timeframe separately', async ({ pag
 
   await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(1);
   await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(0);
+
+  await strategyFilter.selectOption({ label: 'EMA RSI Volume' });
+
+  await expect(page.locator('tbody tr', { hasText: 'BTC Swing' })).toHaveCount(0);
+  await expect(page.locator('tbody tr', { hasText: 'Protected BTC Setup' })).toHaveCount(1);
+  await expect(page.locator('tbody tr', { hasText: 'ema_short' })).toHaveCount(0);
 
   await strategyFilter.selectOption('ALL');
   await timeFilter.selectOption('4h');
@@ -711,6 +718,8 @@ test('common user opens protected favorite chart without moving averages or MA v
   expect(api.favoriteTradesTriggeredCount()).toBe(0);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByText(/EMA RSI Volume - Price Action/i)).toBeVisible();
+  await expect(page.getByText(/Estratégia protegida - Price Action/i)).toHaveCount(0);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText('ETH/USDT • 1h • 60 candles')).toBeVisible();
