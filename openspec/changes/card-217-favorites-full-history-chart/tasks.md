@@ -6,6 +6,7 @@
 - [x] 1.4 Preserve recent backend candles when saved backtest chart context is longer but stale.
 - [x] 1.5 Schedule OHLCV backfill automatically when full market history is incomplete or stale.
 - [x] 1.6 Include favorite symbols/timeframes in the OHLCV backfill scheduler by default.
+- [x] 1.7 Run the backfill scheduler once on backend startup so Favorites history begins filling automatically.
 
 ## 2. Regression Coverage
 

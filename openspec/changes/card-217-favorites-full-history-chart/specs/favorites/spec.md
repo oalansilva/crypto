@@ -31,6 +31,12 @@ The Favorites analysis flow SHALL merge available candle sources when opening a 
 - **AND** the current request still returns the best available candle series
 - **AND** future requests can use the backfilled candles after the job writes them
 
+#### Scenario: Backend starts with favorite symbols already registered
+- **WHEN** the OHLCV backfill scheduler starts
+- **THEN** it includes crypto symbols/timeframes found in Favorites by default
+- **AND** it runs an initial scheduler pass without waiting for the daily interval
+- **AND** missing historical candles can be fetched in the background before the user opens the chart
+
 #### Scenario: Protected common user opens favorite analysis
 - **WHEN** a common user opens a protected favorite analysis
 - **THEN** the result chart uses the most complete allowed candle source

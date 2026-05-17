@@ -988,6 +988,18 @@ class OhlcvBackfillService:
             daemon=True,
         )
         self._scheduler_thread.start()
+        run_on_start = os.getenv("BACKFILL_SCHEDULER_RUN_ON_START", "1").strip().lower() not in {
+            "0",
+            "false",
+            "no",
+            "off",
+        }
+        if run_on_start:
+            threading.Thread(
+                target=self.run_scheduler_once,
+                name="ohlcv-backfill-scheduler-startup",
+                daemon=True,
+            ).start()
 
     def stop_scheduler(self) -> None:
         self._scheduler_stop.set()
