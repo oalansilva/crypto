@@ -203,6 +203,14 @@ async function notifyEmail(lead) {
   ]);
 }
 
+async function runBestEffort(label, action) {
+  try {
+    await action();
+  } catch (error) {
+    console.error(`${label}_error`, error.stderr || error.message);
+  }
+}
+
 async function handleLead(req, res, origin) {
   const rawBody = await readBody(req);
   const payload = JSON.parse(rawBody || "{}");
@@ -229,12 +237,14 @@ async function handleLead(req, res, origin) {
     return;
   }
 
-  queue = queue.then(async () => {
+  queue = queue.catch((error) => {
+    console.error("lead_queue_recovered", error.stderr || error.message);
+  }).then(async () => {
     await createBetaAccess(lead);
     await appendLead(lead);
-    await syncDrive();
-    await notifyTelegram(lead);
-    await notifyEmail(lead);
+    await runBestEffort("drive_sync", syncDrive);
+    await runBestEffort("telegram_notify", () => notifyTelegram(lead));
+    await runBestEffort("email_notify", () => notifyEmail(lead));
   });
   await queue;
   sendJson(res, 200, { ok: true }, origin);

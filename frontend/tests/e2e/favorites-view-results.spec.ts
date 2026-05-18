@@ -762,6 +762,31 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
 });
 
+test('favorites analysis opens cached multi MA chart when trade recovery hangs', async ({ page }) => {
+  await setupDeterministicApiMocks(page);
+  const dialogs: string[] = [];
+  page.on('dialog', async (dialog) => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+  await page.route('**/api/favorites/5/trades', () => {
+    // Simulates live full-history trade recovery taking too long.
+  });
+
+  await page.goto('/favorites');
+
+  const analysis = page
+    .locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' })
+    .locator('button[title="Ver análise completa"]');
+  await expect(analysis).toBeVisible();
+  await analysis.click();
+
+  await expect(page).toHaveURL(/\/combo\/results$/);
+  await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  await expect(page.getByText('HBAR/USDT • 1d • 120 candles')).toBeVisible();
+  expect(dialogs).toEqual([]);
+});
+
 test('common user opens protected favorite chart without moving averages or MA values', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page, {
     user: {
