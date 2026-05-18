@@ -433,39 +433,39 @@ export function StrategyChartSurface({
 
             <div className="flex flex-wrap items-center gap-2 border-b border-[#2b3139] bg-[#1e2329] px-4 py-3 sm:px-5">
                 {toolbarLeading}
-                <div className="ml-auto flex flex-wrap items-center gap-2" role="group" aria-label="Chart zoom controls">
+                <div className="ml-auto flex flex-wrap items-center gap-2" role="group" aria-label="Controles de zoom do grafico">
                     <button
                         type="button"
                         className="inline-flex h-9 items-center gap-1 rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 text-sm font-semibold text-[#eaecef] transition hover:border-[#fcd535] disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={() => applyZoom('out')}
                         disabled={candlestickData.length === 0}
-                        aria-label="Zoom out chart"
+                        aria-label="Reduzir zoom do grafico"
                         data-testid={`${zoomTestIdPrefix}-zoom-out`}
                     >
                         <Minus className="h-4 w-4" />
-                        <span className="hidden sm:inline">Out</span>
+                        <span className="hidden sm:inline">Menos</span>
                     </button>
                     <button
                         type="button"
                         className="inline-flex h-9 items-center gap-1 rounded-md border border-[#fcd535]/65 bg-[#fcd535] px-3 text-sm font-semibold text-[#181a20] transition hover:bg-[#f0b90b] disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={() => applyZoom('in')}
                         disabled={candlestickData.length === 0}
-                        aria-label="Zoom in chart"
+                        aria-label="Aumentar zoom do grafico"
                         data-testid={`${zoomTestIdPrefix}-zoom-in`}
                     >
                         <Plus className="h-4 w-4" />
-                        <span className="hidden sm:inline">In</span>
+                        <span className="hidden sm:inline">Mais</span>
                     </button>
                     <button
                         type="button"
                         className="inline-flex h-9 items-center gap-1 rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 text-sm font-semibold text-[#eaecef] transition hover:border-[#fcd535] disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={resetZoom}
                         disabled={candlestickData.length === 0}
-                        aria-label="Reset chart zoom"
+                        aria-label="Redefinir zoom do grafico"
                         data-testid={`${zoomTestIdPrefix}-zoom-reset`}
                     >
                         <RotateCcw className="h-4 w-4" />
-                        <span className="hidden sm:inline">Reset</span>
+                        <span className="hidden sm:inline">Resetar</span>
                     </button>
                     <span
                         className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1 text-xs font-medium text-[#929aa5]"
@@ -475,7 +475,7 @@ export function StrategyChartSurface({
                         {visibleBarCount ?? 0} candles
                     </span>
                     <span className="text-[11px] text-[#929aa5]">
-                        Mouse wheel: zoom
+                        Roda do mouse: zoom
                     </span>
                 </div>
             </div>
@@ -496,11 +496,11 @@ export function StrategyChartSurface({
                 >
                     <div ref={chartRef} className={heightClassName} data-testid={chartTestId} />
                     <div className="pointer-events-none absolute left-4 top-4 rounded-md border border-[#fcd535]/25 bg-[#0b0e11]/90 px-3 py-1 text-[11px] font-medium text-[#fcd535]">
-                        Scroll to zoom
+                        Role para dar zoom
                     </div>
                     {loading ? (
                         <div className="absolute right-4 top-4 rounded-md bg-black/60 px-3 py-1.5 text-xs text-white">
-                            Loading timeframe...
+                            Carregando timeframe...
                         </div>
                     ) : null}
                 </div>
@@ -511,11 +511,11 @@ export function StrategyChartSurface({
                             <p className="mb-3 text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Candle</p>
                             <dl className="grid grid-cols-2 gap-3 text-sm xl:grid-cols-1">
                                 <div>
-                                    <dt className="text-[#707a8a]">Close</dt>
+                                    <dt className="text-[#707a8a]">Fechamento</dt>
                                     <dd className="font-mono font-semibold text-[#eaecef]">{formatPrice(displaySnapshot?.candle.close)}</dd>
                                 </div>
                                 <div>
-                                    <dt className="text-[#707a8a]">High / Low</dt>
+                                    <dt className="text-[#707a8a]">Maxima / minima</dt>
                                     <dd className="font-mono text-[#eaecef]">
                                         {formatPrice(displaySnapshot?.candle.high)} / {formatPrice(displaySnapshot?.candle.low)}
                                     </dd>

@@ -418,24 +418,34 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         return () => controller.abort();
     }, [opportunity.id, signalHistoryTrades]);
 
-    const fallbackMarker = latestCandle ? [{
-        time: toStrategyChartTimestamp(latestCandle.timestamp_utc),
-        position: resolvedSignal.visual.markerPosition as StrategyChartMarker['position'],
-        color: resolvedSignal.visual.markerColor,
-        shape: resolvedSignal.visual.markerShape as StrategyChartMarker['shape'],
-        text: signalLabel,
-    }] : [];
-    const chartMarkers: StrategyChartMarker[] = historicalSignalMarkers.length > 0
-        ? historicalSignalMarkers as StrategyChartMarker[]
-        : fallbackMarker;
-    const priceLines: StrategyChartPriceLine[] = [
+    const fallbackMarker = React.useMemo<StrategyChartMarker[]>(() => (
+        latestCandle ? [{
+            time: toStrategyChartTimestamp(latestCandle.timestamp_utc),
+            position: resolvedSignal.visual.markerPosition as StrategyChartMarker['position'],
+            color: resolvedSignal.visual.markerColor,
+            shape: resolvedSignal.visual.markerShape as StrategyChartMarker['shape'],
+            text: signalLabel,
+        }] : []
+    ), [
+        latestCandle?.timestamp_utc,
+        resolvedSignal.visual.markerColor,
+        resolvedSignal.visual.markerPosition,
+        resolvedSignal.visual.markerShape,
+        signalLabel,
+    ]);
+    const chartMarkers = React.useMemo<StrategyChartMarker[]>(() => (
+        historicalSignalMarkers.length > 0
+            ? historicalSignalMarkers as StrategyChartMarker[]
+            : fallbackMarker
+    ), [fallbackMarker, historicalSignalMarkers]);
+    const priceLines = React.useMemo<StrategyChartPriceLine[]>(() => [
         ...(showEntryStopRows && opportunity.entry_price !== null && opportunity.entry_price !== undefined
             ? [{ price: opportunity.entry_price, color: '#fcd535', title: 'Compra' }]
             : []),
         ...(showEntryStopRows && opportunity.stop_price !== null && opportunity.stop_price !== undefined
             ? [{ price: opportunity.stop_price, color: '#f6465d', title: 'STOP' }]
             : []),
-    ];
+    ], [opportunity.entry_price, opportunity.stop_price, showEntryStopRows]);
     const summaryItems: StrategyChartSummaryItem[] = [
         { label: 'Candle', value: formatTimestamp(latestCandle?.timestamp_utc) },
         {

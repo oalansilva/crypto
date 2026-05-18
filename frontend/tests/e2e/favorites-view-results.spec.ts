@@ -651,7 +651,7 @@ test('favorites exposes one analysis CTA instead of separate trades/results acti
   expect(api.wasFavoriteTradesTriggered()).toBe(true);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('No results found')).toHaveCount(0);
-  await expect(page.getByText('List of trades')).toBeVisible();
+  await expect(page.getByText('Lista de trades')).toBeVisible();
   await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
 });
 
@@ -684,7 +684,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
   await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
-  await expect(page.getByText('List of trades')).toBeVisible();
+  await expect(page.getByText('Lista de trades')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
@@ -697,10 +697,10 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await page.getByTestId('result-main-chart').hover();
   await page.mouse.wheel(0, -600);
   await expect.poll(async () => page.getByTestId('result-chart-visible-bars').textContent()).not.toBe(visibleBarsBeforeWheel);
-  await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Date and time' })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Signal' })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Position value' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Tipo' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Data e hora' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Sinal' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Valor da posicao' })).toBeVisible();
   await expect(page.getByText('100.00 USD').first()).toBeVisible();
   await expect(page.getByText('May 10, 2026').first()).toBeVisible();
   await expect(page.getByText('May 20, 2026').first()).toBeVisible();
