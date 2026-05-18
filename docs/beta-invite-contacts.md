@@ -16,16 +16,17 @@ Este documento nao autoriza envio automatico de convite. Enviar mensagem externa
 |---|---|---|---|
 | Abel | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
 | Savio | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
-| Bruno | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
+| Bruno | WhatsApp | Convite enviado | Alan ja fez convite por voz no WhatsApp; formalizacao pode ficar para depois |
 | Diego | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
-| Marcos | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
-| Gabriel | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
+| Marcos | WhatsApp | Convite enviado | Alan enviou convite manualmente pelo WhatsApp |
+| Gabriel | WhatsApp | Convite enviado | Alan enviou convite manualmente pelo WhatsApp |
 | Andre Londeiro | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
 | Thiago Ferreira | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
 | Thomas | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
 | Levi | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
-| Lucas | WhatsApp | Contato definido | Responsavel pelo envio: Alan |
+| Lucas | WhatsApp | Fora do beta | Alan informou em 2026-05-17 que Lucas nao esta mais suportando o Crypto |
 | Adeudo | WhatsApp | Contato definido | Responsavel pelo envio: Alan; confirmar grafia |
+| Leo | WhatsApp | Convite enviado | Alan informou em 2026-05-18 que enviou convite manualmente |
 
 ## Dados Minimos Antes do Convite
 
