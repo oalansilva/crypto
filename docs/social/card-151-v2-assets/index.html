@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Card #151 v2 - Cripto Farol</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --night: #03111f;
+      --deep: #062640;
+      --ocean: #083b5d;
+      --teal: #12b7ca;
+      --mint: #9deaff;
+      --beam: #f2c95b;
+      --cloud: #f7f4ea;
+      --copy: #c3d6df;
+      --risk: #f47f6b;
+      --ok: #80e6b1;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #071019;
+      color: var(--cloud);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    h1, h2, p { margin: 0; }
+    header { margin-bottom: 28px; }
+    header h1 { font-size: 28px; }
+    header p { margin-top: 8px; color: var(--copy); line-height: 1.5; }
+    a { color: var(--mint); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 22px;
+    }
+
+    figure { margin: 0; }
+    figcaption { margin-top: 10px; color: var(--copy); font-size: 14px; }
+
+    .creative {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 80% 12%, rgba(242,201,91,.22), transparent 23%),
+        linear-gradient(135deg, #03111f 0%, #062640 54%, #051926 100%);
+      border: 1px solid rgba(157,234,255,.18);
+      box-shadow: 0 28px 100px rgba(0,0,0,.38);
+    }
+
+    .creative::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(157,234,255,.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(157,234,255,.055) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: linear-gradient(to bottom, transparent, black 22%, black 76%, transparent);
+      z-index: -4;
+    }
+
+    .creative::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(3,17,31,.06), rgba(3,17,31,.38));
+      z-index: -1;
+    }
+
+    .linkedin { width: 1200px; height: 675px; max-width: 100%; aspect-ratio: 16 / 9; }
+    .instagram { width: 1080px; height: 1350px; max-width: 100%; aspect-ratio: 4 / 5; }
+
+    .inner {
+      position: absolute;
+      inset: 0;
+      padding: 54px 66px 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .instagram .inner { padding: 78px 74px 76px; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 25px;
+      font-weight: 800;
+      color: var(--cloud);
+    }
+
+    .instagram .brand { font-size: 31px; gap: 18px; }
+
+    .mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, rgba(18,183,202,.2), rgba(242,201,91,.14));
+      border: 1px solid rgba(247,244,234,.18);
+      box-shadow: 0 22px 70px rgba(0,0,0,.28);
+    }
+
+    .instagram .mark { width: 58px; height: 58px; border-radius: 17px; }
+
+    .mark svg {
+      width: 29px;
+      height: 29px;
+      stroke: var(--beam);
+      filter: drop-shadow(0 0 12px rgba(242,201,91,.5));
+    }
+
+    .instagram .mark svg { width: 35px; height: 35px; }
+
+    .beam {
+      position: absolute;
+      right: -170px;
+      top: 88px;
+      width: 720px;
+      height: 310px;
+      background: linear-gradient(90deg, rgba(242,201,91,.50), rgba(242,201,91,.14), transparent);
+      clip-path: polygon(0 40%, 100% 0, 100% 100%, 0 60%);
+      transform: rotate(-16deg);
+      mix-blend-mode: screen;
+      opacity: .76;
+      z-index: -3;
+    }
+
+    .instagram .beam {
+      width: 830px;
+      height: 380px;
+      right: -270px;
+      top: 160px;
+    }
+
+    .horizon {
+      position: absolute;
+      left: -8%;
+      right: -8%;
+      bottom: -64px;
+      height: 210px;
+      background:
+        radial-gradient(62% 90% at 20% 20%, rgba(157,234,255,.30), transparent 70%),
+        radial-gradient(50% 80% at 78% 22%, rgba(18,183,202,.25), transparent 74%);
+      opacity: .92;
+      z-index: -2;
+    }
+
+    .horizon::before,
+    .horizon::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 42px;
+      border-top: 1px solid rgba(157,234,255,.22);
+      border-radius: 50%;
+    }
+
+    .horizon::before { top: 54px; }
+    .horizon::after { top: 92px; opacity: .72; }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--beam);
+      font-size: 20px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .instagram .kicker { font-size: 27px; }
+
+    .pulse {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--ok);
+      box-shadow: 0 0 20px rgba(128,230,177,.78);
+    }
+
+    .title {
+      margin-top: 18px;
+      max-width: 790px;
+      color: #fffdf4;
+      font-size: 62px;
+      line-height: 1.01;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .instagram .title {
+      margin-top: 28px;
+      max-width: 840px;
+      font-size: 88px;
+      line-height: 1.03;
+    }
+
+    .support {
+      margin-top: 22px;
+      max-width: 715px;
+      color: var(--copy);
+      font-size: 28px;
+      line-height: 1.22;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .instagram .support {
+      margin-top: 30px;
+      max-width: 780px;
+      font-size: 39px;
+    }
+
+    .signal-panel {
+      position: absolute;
+      right: 72px;
+      bottom: 128px;
+      width: 315px;
+      padding: 18px;
+      border: 1px solid rgba(157,234,255,.18);
+      background: rgba(3,17,31,.58);
+      border-radius: 8px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 26px 80px rgba(0,0,0,.28);
+    }
+
+    .signal-panel .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 13px 0;
+      border-bottom: 1px solid rgba(157,234,255,.12);
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 18px;
+      color: var(--copy);
+    }
+
+    .signal-panel .row:last-child { border-bottom: 0; }
+
+    .badge {
+      padding: 7px 10px;
+      border-radius: 7px;
+      color: #03111f;
+      font-weight: 900;
+      background: var(--ok);
+    }
+
+    .badge.wait { background: var(--beam); }
+    .badge.risk { background: var(--risk); color: #240d08; }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .chip {
+      border: 1px solid rgba(157,234,255,.22);
+      background: rgba(6,38,64,.64);
+      color: var(--cloud);
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: 750;
+    }
+
+    .instagram .chip {
+      padding: 16px 19px;
+      font-size: 27px;
+    }
+
+    .footer {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 28px;
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: #03111f;
+      background: var(--beam);
+      border-radius: 8px;
+      padding: 15px 18px;
+      font-size: 23px;
+      font-weight: 900;
+      box-shadow: 0 18px 60px rgba(242,201,91,.18);
+    }
+
+    .instagram .cta {
+      padding: 20px 24px;
+      font-size: 32px;
+    }
+
+    .note {
+      max-width: 420px;
+      color: rgba(195,214,223,.84);
+      font-size: 18px;
+      line-height: 1.34;
+      font-weight: 550;
+      text-align: right;
+    }
+
+    .instagram .note {
+      max-width: 470px;
+      font-size: 24px;
+    }
+
+    .linkedin.compact .title { max-width: 695px; font-size: 58px; }
+    .linkedin.compact .support { max-width: 650px; }
+
+    .instagram.short .title {
+      font-size: 78px;
+      max-width: 850px;
+    }
+
+    .instagram.short .support { font-size: 35px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Card #151 v2 - pacote visual</h1>
+      <p>Peças refeitas com texto renderizado de forma controlada. Conteúdo completo em <a href="../card-151-v2-content-package.md">card-151-v2-content-package.md</a>.</p>
+    </header>
+    <section class="grid">
+      <figure>
+        <div class="creative linkedin" id="linkedin-1">
+          <div class="beam"></div>
+          <div class="horizon"></div>
+          <div class="signal-panel">
+            <div class="row"><span>MERCADO</span><span class="badge">CONTEXTO</span></div>
+            <div class="row"><span>ROTINA</span><span class="badge wait">CRITERIO</span></div>
+            <div class="row"><span>POSICAO</span><span class="badge risk">RISCO</span></div>
+          </div>
+          <div class="inner">
+            <div class="brand">
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3v18"/><path d="M6 10l6-5 6 5"/><path d="M5 18h14"/><path d="M8 14h8"/></svg></span>
+              <span>Cripto Farol</span>
+            </div>
+            <div>
+              <div class="kicker"><span class="pulse"></span> beta fechado</div>
+              <h2 class="title">Informação demais. Critério de menos.</h2>
+              <p class="support">Uma rotina mais clara para acompanhar cripto antes de decidir comprar, manter ou sair.</p>
+              <div class="chips"><span class="chip">Dados</span><span class="chip">Backtests</span><span class="chip">Contexto</span></div>
+            </div>
+            <div class="footer">
+              <div class="cta">Entrar na lista do beta</div>
+              <div class="note">Apoio à decisão. Sem promessa de lucro ou recomendação individual.</div>
+            </div>
+          </div>
+        </div>
+        <figcaption>LinkedIn 1 - tese/problema</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative linkedin compact" id="linkedin-2">
+          <div class="beam"></div>
+          <div class="horizon"></div>
+          <div class="signal-panel">
+            <div class="row"><span>LEITURA</span><span class="badge">CLARA</span></div>
+            <div class="row"><span>ACESSO</span><span class="badge wait">BETA</span></div>
+            <div class="row"><span>FOCO</span><span class="badge">FEEDBACK</span></div>
+          </div>
+          <div class="inner">
+            <div class="brand">
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3v18"/><path d="M6 10l6-5 6 5"/><path d="M5 18h14"/><path d="M8 14h8"/></svg></span>
+              <span>Cripto Farol</span>
+            </div>
+            <div>
+              <div class="kicker"><span class="pulse"></span> convite controlado</div>
+              <h2 class="title">Teste o beta gratuito e ajude a validar.</h2>
+              <p class="support">Leitura de mercado, histórico de estratégias e contexto para reduzir ruído.</p>
+            </div>
+            <div class="footer">
+              <div class="cta">criptofarol.com.br</div>
+              <div class="note">Acesso pequeno, manual e orientado por feedback real.</div>
+            </div>
+          </div>
+        </div>
+        <figcaption>LinkedIn 2 - convite controlado</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram" id="instagram-1">
+          <div class="beam"></div>
+          <div class="horizon"></div>
+          <div class="inner">
+            <div class="brand">
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3v18"/><path d="M6 10l6-5 6 5"/><path d="M5 18h14"/><path d="M8 14h8"/></svg></span>
+              <span>Cripto Farol</span>
+            </div>
+            <div>
+              <div class="kicker"><span class="pulse"></span> carrossel</div>
+              <h2 class="title">Cripto não falta informação.</h2>
+              <p class="support">Falta critério para saber o que realmente importa agora.</p>
+              <div class="chips"><span class="chip">Menos ruído</span><span class="chip">Mais contexto</span><span class="chip">Beta gratuito</span></div>
+            </div>
+            <div class="footer">
+              <div class="cta">Entrar na lista</div>
+              <div class="note">Sem call. Sem promessa. Apoio para decidir melhor.</div>
+            </div>
+          </div>
+        </div>
+        <figcaption>Instagram 1 - capa do carrossel</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram short" id="instagram-2">
+          <div class="beam"></div>
+          <div class="horizon"></div>
+          <div class="inner">
+            <div class="brand">
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3v18"/><path d="M6 10l6-5 6 5"/><path d="M5 18h14"/><path d="M8 14h8"/></svg></span>
+              <span>Cripto Farol</span>
+            </div>
+            <div>
+              <div class="kicker"><span class="pulse"></span> post curto</div>
+              <h2 class="title">Antes de analisar uma cripto, você sabe o que observar?</h2>
+              <p class="support">Beta para testar leitura de mercado com contexto, histórico e clareza de risco.</p>
+            </div>
+            <div class="footer">
+              <div class="cta">criptofarol.com.br</div>
+              <div class="note">Ferramenta de apoio à decisão. O risco continua sendo do investidor.</div>
+            </div>
+          </div>
+        </div>
+        <figcaption>Instagram 2 - post curto</figcaption>
+      </figure>
+    </section>
+  </main>
+</body>
+</html>

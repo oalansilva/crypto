@@ -39,6 +39,7 @@ Aqui deve ficar:
 - Alertas do Monitor no beta: definido no `#174` que Clara envia alertas/rascunhos no grupo interno `Grupo Crypto`, topico `Crypto` (`telegram:-1003891182144`, `threadId=5`); Alan revisa e encaminha/adapta para o grupo privado do beta. Envio direto por Clara ao grupo externo fica fora do MVP atual.
 - Implementacao tecnica dos alertas: criada no card `#183`, com envio apenas ao grupo interno allowlistado, deduplicacao, rate limit, auditoria e opcao de desligar.
 - Release comercial 2026-05-13 preparada: cards `#149`, `#147`, `#148` e `#152` consolidados na documentacao, com roadmap, plano de conteudo, mapa de canais e checklist de publicacao piloto. Publicacao externa continua dependente de aprovacao explicita do Alan.
+- Release tecnica/documental 2026-05-18 preparada: cards `#217`, `#216`, `#213`, `#208`, `#75` e `#77` incluídos no pacote, com melhorias de Favoritos, Carteira, Monitor e revisao documental de Clara/Alan.
 - Lista inicial de contatos do beta: card `#197` segue em execucao com Alan, com canal WhatsApp definido para os nomes iniciais. Nenhum convite externo foi enviado automaticamente.
 - Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
 - Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
@@ -145,6 +146,7 @@ Estes cards ainda nao sao apenas planejamento:
 - Mapa de canais e parceiros do beta: [beta-channel-map.md](/root/.openclaw/workspace/crypto/docs/beta-channel-map.md)
 - Checklist de aprovacao/publicacao piloto: [content-pilot-approval.md](/root/.openclaw/workspace/crypto/docs/content-pilot-approval.md)
 - Release comercial do beta 2026-05-13: [release-2026-05-13-commercial-beta.md](/root/.openclaw/workspace/crypto/docs/release-2026-05-13-commercial-beta.md)
+- Release tecnica/documental 2026-05-18: [release-2026-05-18.md](/root/.openclaw/workspace/crypto/docs/release-2026-05-18.md)
 - Lista inicial de contatos para convite do beta: [beta-invite-contacts.md](/root/.openclaw/workspace/crypto/docs/beta-invite-contacts.md)
 - Modelo operacional do backlog: [backlog-operating-model.md](/root/.openclaw/workspace/crypto/docs/backlog-operating-model.md)
 - Log de decisoes: [decision-log.md](/root/.openclaw/workspace/crypto/docs/decision-log.md)

@@ -613,21 +613,6 @@ export function ComboResultsPage() {
                         </div>
                     </div>
 
-
-
-                    {/* Indicator Info */}
-                    {!isProtectedResult ? (
-                        <div className="glass-strong rounded-[28px] p-6 border border-zinc-200">
-                            <h2 className="text-xl font-bold text-zinc-900 mb-4 opacity-80">Indicators Used</h2>
-                            <div className="flex flex-wrap gap-2">
-                                {Object.keys(result.indicator_data).map((indicator) => (
-                                    <span key={indicator} className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-lg text-sm border border-blue-500/20 opacity-70 hover:opacity-100 transition-opacity">
-                                        {indicator}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    ) : null}
                 </div>
             </main>
 

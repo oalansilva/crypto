@@ -1,0 +1,40 @@
+//@version=5
+strategy("Quant BTC 1D ROC+EMA Momentum Guard Long v3", overlay=true, initial_capital=100, currency=currency.USD, pyramiding=0, commission_type=strategy.commission.percent, commission_value=0.075)
+
+// Cripto Farol TradingView approximation.
+// Backend validation:
+// - Symbol: BTC/USDT
+// - Timeframe: 1D
+// - Direction: long only
+// - Period: 2017-08-17 to 2026-05-14
+// - Engine: deep_backtest=true with 15m intraday stop simulation
+//
+// Approximation note:
+// Pine running on a 1D chart cannot fully reproduce the backend 15m intraday
+// execution path. This script preserves the daily entry/exit thesis and uses
+// TradingView's strategy stop handling as the closest chart-side equivalent.
+
+trendLength = input.int(40, "Trend EMA Length", minval=1)
+rocLength = input.int(3, "ROC Length", minval=1)
+entryMomentum = input.float(0.5, "Entry Momentum Threshold", step=0.1)
+exitMomentum = input.float(-3.0, "Exit Momentum Threshold", step=0.1)
+stopPct = input.float(2.5, "Stop Loss %", minval=0.1, step=0.1) / 100.0
+
+trend = ta.ema(close, trendLength)
+rocValue = ta.roc(close, rocLength)
+
+longCondition = close > trend and rocValue > entryMomentum
+exitCondition = close < trend or rocValue < exitMomentum
+
+if longCondition and strategy.position_size <= 0
+    strategy.entry("Long", strategy.long)
+
+if strategy.position_size > 0
+    strategy.exit("Long Stop", "Long", stop=strategy.position_avg_price * (1 - stopPct))
+
+if exitCondition and strategy.position_size > 0
+    strategy.close("Long")
+
+plot(trend, "Trend EMA", color=color.orange, linewidth=2)
+plotshape(longCondition and strategy.position_size <= 0, title="Long Setup", style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 0), size=size.tiny)
+plotshape(exitCondition and strategy.position_size > 0, title="Exit Setup", style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 0), size=size.tiny)

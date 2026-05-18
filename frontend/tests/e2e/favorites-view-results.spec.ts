@@ -718,6 +718,7 @@ test('common user opens protected favorite chart without moving averages or MA v
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
   await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
   await expect(page.getByTestId('result-chart-overlays')).toHaveCount(0);
+  await expect(page.getByText('Indicators Used')).toHaveCount(0);
   await expect(page.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0);
   await expect(page.getByText('Parâmetros técnicos protegidos para este perfil.')).toBeVisible();
 

@@ -709,9 +709,8 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Compacto' }).click()
+  await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
-  await expect(dialog.getByTestId('chart-modal-signal-context')).not.toContainText('Estado em revisão')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {

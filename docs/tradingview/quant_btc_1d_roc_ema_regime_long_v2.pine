@@ -1,0 +1,30 @@
+//@version=5
+strategy("Quant BTC 1D ROC+EMA Regime Long v2", overlay=true, initial_capital=100, currency=currency.USD, pyramiding=0, commission_type=strategy.commission.percent, commission_value=0.1)
+
+// Cripto Farol approximation for TradingView validation.
+// Internal engine evaluated BTC/USDT, 1D, long-only, 2017-08-17..2026-05-14 with Deep Backtest 15m stop simulation.
+// Pine cannot fully reproduce the backend's 15m intraday deep-exit simulation from a 1D chart.
+// This script keeps the same daily thesis and uses a strategy stop approximation.
+
+trendLength = input.int(30, "Trend EMA Length", minval=1)
+rocLength = input.int(15, "ROC Length", minval=1)
+stopPct = input.float(3.0, "Stop Loss %", minval=0.1, step=0.1) / 100.0
+
+trend = ta.ema(close, trendLength)
+rocValue = ta.roc(close, rocLength)
+
+longCondition = close > trend and rocValue > 0
+exitCondition = close < trend or rocValue < -3
+
+if longCondition and strategy.position_size <= 0
+    strategy.entry("Long", strategy.long)
+
+if strategy.position_size > 0
+    strategy.exit("Long Stop", "Long", stop=strategy.position_avg_price * (1 - stopPct))
+
+if exitCondition and strategy.position_size > 0
+    strategy.close("Long")
+
+plot(trend, "Trend EMA", color=color.orange, linewidth=2)
+plotshape(longCondition and strategy.position_size <= 0, title="Long Setup", style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 0), size=size.tiny)
+plotshape(exitCondition and strategy.position_size > 0, title="Exit Setup", style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 0), size=size.tiny)
