@@ -159,6 +159,28 @@ const FAVORITES_PAYLOAD = [
     end_date: null,
   },
   {
+    id: 6,
+    name: 'multi_ma_crossoverV2 - BTC/USDT 1d (batch)',
+    symbol: 'BTC/USDT',
+    timeframe: '1d',
+    strategy_name: 'multi_ma_crossoverV2',
+    parameters: { direction: 'long', ema_short: 10, sma_medium: 16, sma_long: 22, stop_loss: 0.035, data_source: 'ccxt' },
+    metrics: {
+      total_return: 0.42,
+      total_return_pct: 42,
+      total_trades: 10,
+      trades: [],
+      win_rate: 0.6,
+      sharpe_ratio: 1.8,
+      max_drawdown: 0.11,
+    },
+    notes: 'batch generated BTC favorite',
+    created_at: '2026-02-26T13:52:28Z',
+    tier: 1,
+    start_date: null,
+    end_date: null,
+  },
+  {
     id: 201,
     name: 'BTC Multi MA Crossover - Price Action',
     symbol: 'BTC/USDT',
@@ -583,6 +605,19 @@ test('favorites strategy column avoids duplicated raw strategy labels', async ({
   await expect(strategyCell).toHaveText('multi ma crossover');
   await expect(strategyCell).not.toContainText('multi_ma_crossover');
   await expect(strategyCell.locator('span')).toHaveCount(0);
+});
+
+test('favorites search matches combined symbol quote and strategy terms', async ({ page }) => {
+  await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  await page.locator('.fav-search input').fill('BTC/USDT USDT multi ma crossoverV2');
+
+  const targetRow = page.locator('.fav-table-shell tbody tr', { hasText: 'multi ma crossoverV2' });
+  await expect(targetRow).toHaveCount(1);
+  await expect(targetRow.getByRole('cell', { name: 'BTC/USDT' })).toBeVisible();
+  await expect(targetRow.locator('.strategy-cell')).toContainText('multi ma crossoverV2');
+  await expect(page.locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' })).toHaveCount(0);
 });
 
 test('favorites mobile cards fit viewport without horizontal scrolling', async ({ page }) => {

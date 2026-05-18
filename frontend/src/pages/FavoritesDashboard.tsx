@@ -57,6 +57,15 @@ const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
 
 const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
 
+const normalizeSearchText = (value: unknown): string => normalizeText(value)
+    .replace(/[\/_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getSearchTerms = (value: string): string[] => normalizeSearchText(value)
+    .split(/\s+/)
+    .filter(Boolean);
+
 const getCandleTimestampKey = (candle: any): string => {
     const rawTimestamp = candle?.timestamp_utc ?? candle?.timestamp ?? candle?.time;
     if (!rawTimestamp) return '';
@@ -424,6 +433,34 @@ const FavoritesDashboard: React.FC = () => {
         return description || null;
     };
 
+    const favoriteMatchesSearch = (fav: FavoriteStrategy, query: string): boolean => {
+        const normalizedQuery = normalizeSearchText(query);
+        if (!normalizedQuery) return true;
+
+        const symbol = String(fav.symbol || '');
+        const [baseAsset, quoteAsset] = symbol.split('/');
+        const searchHaystack = [
+            fav.name,
+            symbol,
+            baseAsset,
+            quoteAsset,
+            fav.strategy_name,
+            getFavoriteStrategyLabel(fav),
+            getFavoriteStrategyName(fav),
+            fav.strategy_description,
+            fav.timeframe,
+        ]
+            .map(normalizeSearchText)
+            .filter(Boolean)
+            .join(' ');
+
+        if (searchHaystack.includes(normalizedQuery)) {
+            return true;
+        }
+
+        return getSearchTerms(query).every((term) => searchHaystack.includes(term));
+    };
+
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
 
     const getSavedTrades = (fav: FavoriteStrategy): any[] | null => {
@@ -729,10 +766,7 @@ const FavoritesDashboard: React.FC = () => {
     }, [favorites]);
 
     const filteredFavorites = (favorites?.filter(fav => {
-        const matchesSearch = fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase()) ||
-            String(fav.strategy_description || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = favoriteMatchesSearch(fav, searchTerm);
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
         const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
