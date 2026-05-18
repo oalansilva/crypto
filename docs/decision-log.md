@@ -144,3 +144,15 @@
 **Guardrail:** nenhum convite, publicacao externa, abordagem de parceiro ou disparo em grupo foi autorizado por esta release. Toda acao externa continua dependendo de aprovacao/acao explicita do Alan.
 
 **Fora da release:** `#197` lista inicial de contatos segue em execucao sob responsabilidade do Alan para envio manual via WhatsApp.
+
+## 2026-05-18 - Release tecnica/documental com todos os responsaveis
+
+**Decisao:** ao subir uma release, considerar todos os cards `Homologado` incluídos no pacote, independente do responsavel.
+
+**Cards incluídos nesta release:** `#217`, `#216`, `#213`, `#208`, `#75` e `#77`.
+
+**Fluxo consolidado:** cards de `Codex` exigem commits/branches, PR, testes e merge em `main`; cards de `Clara` ou `Alan` exigem revisao documental local em `docs/` e sincronizacao com Google Drive quando aplicável.
+
+**Documentos revisados:** `docs/project-hub.md`, `docs/backlog-operating-model.md`, `docs/decision-log.md` e `docs/release-2026-05-18.md`.
+
+**Guardrail:** documento de produto/processo atualiza Markdown local e Drive sem divergencia; execucao/status atualiza GitHub Project e Issue/PR quando houver codigo.

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -19,6 +19,15 @@ router = APIRouter(prefix="/api/user", tags=["user"])
 class BinanceCredentialPayload(BaseModel):
     api_key: str = Field(..., min_length=5, max_length=256)
     api_secret: str = Field(..., min_length=10, max_length=256)
+
+    @field_validator("api_key", "api_secret")
+    @classmethod
+    def reject_login_credentials(cls, value: str, info):
+        normalized = str(value or "").strip()
+        if "@" in normalized:
+            field_name = "API Key" if info.field_name == "api_key" else "API Secret"
+            raise ValueError(f"{field_name} must be a Binance API credential, not an email or password")
+        return normalized
 
 
 class BinanceCredentialStatusResponse(BaseModel):
