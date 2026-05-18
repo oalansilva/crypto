@@ -733,18 +733,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                     Mouse wheel: zoom
                                 </span>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#1f6feb]/45 bg-[linear-gradient(135deg,rgba(31,111,235,0.18),rgba(9,105,218,0.06))] px-3 py-2">
-                                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#79c0ff]">
-                                    Layout
-                                </span>
-                                <button
-                                    type="button"
-                                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#4c8dff] bg-[#0f2747] px-3 text-sm font-semibold text-[#dbeafe]"
-                                    aria-current="true"
-                                >
-                                    Algorítmica
-                                </button>
-                            </div>
                         </div>
 
                         <div className={`relative flex min-h-0 flex-1 flex-col gap-3 p-4 ${isAlgorithmicChartMode ? 'pb-5' : ''}`}>
