@@ -927,7 +927,7 @@ test('monitor modal zoom controls adjust visible range without reloading candles
           name: 'BTC Zoom Test',
           notes: '',
           tier: 1,
-          parameters: { direction: 'long', ema_short: 9, sma_medium: 21, sma_long: 50, rsi_period: 14 },
+          parameters: { direction: 'long', ema_short: 9, sma_medium: 21, sma_long: 50, stop_loss: 0.035, data_source: 'ccxt', rsi_period: 14 },
           indicator_values: {
             ema_9: 73210.5,
             sma_21: 72654.8,
@@ -998,6 +998,22 @@ test('monitor modal zoom controls adjust visible range without reloading candles
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
+  const parameters = dialog.locator('section').filter({ hasText: 'Parametros' }).last()
+  await expect(parameters.getByText('Direção')).toBeVisible()
+  await expect(parameters.getByText('Compra')).toBeVisible()
+  await expect(parameters.getByText('EMA curta')).toBeVisible()
+  await expect(parameters.getByText('SMA média')).toBeVisible()
+  await expect(parameters.getByText('SMA longa')).toBeVisible()
+  await expect(parameters.getByText('Stop de perda')).toBeVisible()
+  await expect(parameters.getByText('3.50%')).toBeVisible()
+  await expect(parameters.getByText('Fonte de dados')).toBeVisible()
+  await expect(parameters.getByText('CCXT')).toBeVisible()
+  await expect(parameters.getByText('direction')).toHaveCount(0)
+  await expect(parameters.getByText('ema_short')).toHaveCount(0)
+  await expect(parameters.getByText('sma_medium')).toHaveCount(0)
+  await expect(parameters.getByText('sma_long')).toHaveCount(0)
+  await expect(parameters.getByText('stop_loss')).toHaveCount(0)
+  await expect(parameters.getByText('data_source')).toHaveCount(0)
   await expect(page.getByTestId('chart-zoom-in')).toBeVisible()
   await expect(page.getByTestId('chart-zoom-out')).toBeVisible()
   await expect(page.getByTestId('chart-zoom-reset')).toBeVisible()

@@ -3,6 +3,7 @@ import React from 'react';
 import type { MarketCandle } from './MiniCandlesChart';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
+import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters';
 import {
     StrategyChartSurface,
     toStrategyChartTimestamp,
@@ -596,14 +597,14 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
             <section>
                 <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Parametros</p>
-                <div className="mt-2 space-y-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] p-3">
+                <div className="mt-2 space-y-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] p-3" data-testid="chart-modal-parameters">
                     {strategyProtected ? (
                         <p className="text-[#929aa5]">Parametros protegidos.</p>
                     ) : opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
                         Object.entries(opportunity.parameters).map(([key, value]) => (
                             <div key={key} className="flex justify-between gap-3">
-                                <span className="text-[#929aa5]">{key}</span>
-                                <span className="font-mono text-[#eaecef]">{String(value)}</span>
+                                <span className="text-[#929aa5]">{formatStrategyParameterLabel(key)}</span>
+                                <span className="font-mono text-[#eaecef]">{formatStrategyParameterValue(key, value)}</span>
                             </div>
                         ))
                     ) : (

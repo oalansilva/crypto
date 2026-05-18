@@ -6,6 +6,7 @@ import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
+import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters'
 
 interface BacktestResult {
     template_name: string
@@ -309,20 +310,17 @@ export function ComboResultsPage() {
                                 Parâmetros técnicos protegidos para este perfil.
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" data-testid="combo-result-parameters">
                                 {Object.entries(result.parameters).map(([key, value]) => {
                                     // Skip internal keys if any
                                     if (key.startsWith('_')) return null;
 
-                                    const isPercentage = key.includes('stop_loss') || key.includes('take_profit') || key.includes('pct');
-                                    const formattedValue = isPercentage && typeof value === 'number'
-                                        ? `${(value * 100).toFixed(2)}%`
-                                        : value;
+                                    const formattedValue = formatStrategyParameterValue(key, value);
 
                                     return (
                                         <div key={key} className="bg-zinc-50 rounded-[16px] p-4 border border-zinc-100 hover:border-zinc-200 transition-colors group">
                                             <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 group-hover:text-blue-400 transition-colors">
-                                                {key.replace(/_/g, ' ')}
+                                                {formatStrategyParameterLabel(key)}
                                             </p>
                                             <div className="flex items-baseline gap-1">
                                                 <span className="text-xl font-bold text-zinc-900 font-mono">

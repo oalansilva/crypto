@@ -138,7 +138,7 @@ const FAVORITES_PAYLOAD = [
     symbol: 'HBAR/USDT',
     timeframe: '1d',
     strategy_name: 'multi_ma_crossover',
-    parameters: { ema_short: 9, sma_medium: 21, sma_long: 50, direction: 'long', stop_loss: 0.09 },
+    parameters: { ema_short: 9, sma_medium: 21, sma_long: 50, direction: 'long', stop_loss: 0.09, data_source: 'ccxt' },
     metrics: {
       total_return: 15081.33,
       total_return_pct: 15081.33,
@@ -785,6 +785,22 @@ test('favorites analysis opens cached multi MA chart when trade recovery hangs',
 
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
+  const parameters = page.getByTestId('combo-result-parameters');
+  await expect(parameters.getByText('Direção')).toBeVisible();
+  await expect(parameters.getByText('Compra')).toBeVisible();
+  await expect(parameters.getByText('EMA curta')).toBeVisible();
+  await expect(parameters.getByText('SMA média')).toBeVisible();
+  await expect(parameters.getByText('SMA longa')).toBeVisible();
+  await expect(parameters.getByText('Stop de perda')).toBeVisible();
+  await expect(parameters.getByText('9.00%')).toBeVisible();
+  await expect(parameters.getByText('Fonte de dados')).toBeVisible();
+  await expect(parameters.getByText('CCXT')).toBeVisible();
+  await expect(parameters.getByText('direction', { exact: true })).toHaveCount(0);
+  await expect(parameters.getByText('ema short', { exact: true })).toHaveCount(0);
+  await expect(parameters.getByText('sma medium', { exact: true })).toHaveCount(0);
+  await expect(parameters.getByText('sma long', { exact: true })).toHaveCount(0);
+  await expect(parameters.getByText('stop loss', { exact: true })).toHaveCount(0);
+  await expect(parameters.getByText('data source', { exact: true })).toHaveCount(0);
   await expect(page.getByText('HBAR/USDT • 1d • 120 candles')).toBeVisible();
   expect(dialogs).toEqual([]);
 });
