@@ -322,7 +322,7 @@ npm --prefix frontend run build
 
 ## Convenções de UI/UX (Lab)
 
-- Para qualquer tarefa em `frontend/`, use a skill local `$crypto-frontend` como padrão inicial de qualidade e validação visual.
+- Para qualquer tarefa em `frontend/`, use o `DESIGN.md` como fonte obrigatória de qualidade visual, tokens, componentes, densidade, responsividade e validação.
 - Para qualquer tela, componente visual ou funcionalidade com impacto de UI/UX, nova ou antiga, consulte e siga obrigatoriamente o `DESIGN.md` antes de implementar.
   - Registre no OpenSpec/hand-off quais tokens, componentes e padrões do `DESIGN.md` foram aplicados.
   - Não feche implementação visual sem validar aderência ao `DESIGN.md` em desktop/mobile quando aplicável.
