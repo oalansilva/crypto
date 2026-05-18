@@ -474,7 +474,7 @@ async function setupDeterministicApiMocks(page: any, options?: { user?: Record<s
     });
   });
 
-  await page.route('**/api/opportunities/**', (route: any) => {
+  await page.route('**/api/opportunities**', (route: any) => {
     opportunitiesTriggeredCount += 1;
     if (options?.hangOpportunities) {
       return;
