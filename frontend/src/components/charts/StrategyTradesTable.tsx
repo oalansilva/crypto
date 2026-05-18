@@ -53,6 +53,11 @@ function formatPrice(price?: number | null) {
     return `${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`
 }
 
+function formatUsd(value?: number | null) {
+    if (value === null || value === undefined || Number.isNaN(value)) return '-'
+    return `${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`
+}
+
 function formatPnl(usd: number, pct: number, isPositive: boolean) {
     const color = isPositive ? 'text-[#0ecb81]' : 'text-[#f6465d]'
     return (
@@ -224,7 +229,7 @@ export function StrategyTradesTable({
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Date and time</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Signal</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Price</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Position size</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Position value</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Net P&L</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Favorable excursion</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Adverse excursion</th>
@@ -243,8 +248,7 @@ export function StrategyTradesTable({
                                     <td className="px-4 py-2 text-[#eaecef]">{isShort ? 'Vender' : 'Comprar'}</td>
                                     <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.entry_price)}</td>
                                     <td className="px-4 py-2 text-[#eaecef]">
-                                        <div>{trade.positionSize.toFixed(2)}</div>
-                                        <div className="text-xs text-[#929aa5]">{(trade.positionValueUSD / 1000).toFixed(2)} K USD</div>
+                                        <div>{formatUsd(trade.positionValueUSD)}</div>
                                     </td>
                                     <td colSpan={4} className="px-4 py-2" />
                                 </tr>,

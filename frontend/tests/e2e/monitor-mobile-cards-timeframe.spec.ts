@@ -864,6 +864,8 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-trades')).toBeVisible()
   await expect(dialog.getByText('List of trades')).toBeVisible()
+  await expect(dialog.getByRole('columnheader', { name: 'Position value' })).toBeVisible()
+  await expect(dialog.getByText('100.00 USD').first()).toBeVisible()
   await expect(dialog.getByText('Apr 10, 2099')).toBeVisible()
   await expect(dialog.getByText('Apr 13, 2099')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')

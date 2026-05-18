@@ -700,6 +700,8 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Date and time' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Signal' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Position value' })).toBeVisible();
+  await expect(page.getByText('100.00 USD').first()).toBeVisible();
   await expect(page.getByText('May 10, 2026').first()).toBeVisible();
   await expect(page.getByText('May 20, 2026').first()).toBeVisible();
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
