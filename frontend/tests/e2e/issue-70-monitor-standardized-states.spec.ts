@@ -20,10 +20,10 @@ async function mockAuthenticatedSession(page: any) {
 const OPPORTUNITIES_PAYLOAD = [
   {
     id: 1,
-    symbol: 'BTC/USDT',
+    symbol: 'ETH/USDT',
     timeframe: '1d',
     template_name: 'ema_rsi',
-    name: 'BTC Compra',
+    name: 'ETH Compra',
     notes: '',
     tier: 1,
     parameters: { ema_short: 9, ema_long: 21 },
@@ -31,18 +31,18 @@ const OPPORTUNITIES_PAYLOAD = [
     distance_to_next_status: 0.4,
     next_status_label: 'exit',
     indicator_values_candle_time: NOW,
-    status: 'HOLDING',
+    status: 'HOLD',
     message: 'Posição ativa monitorada.',
     last_price: 50000,
     timestamp: NOW,
     details: {},
   },
   {
-    id: 2,
-    symbol: 'ETH/USDT',
-    timeframe: '1h',
-    template_name: 'ema_rsi',
-    name: 'ETH Wait',
+    id: 122,
+    symbol: 'BTC/USDT',
+    timeframe: '1d',
+    template_name: 'multi_ma_crossoverV2',
+    name: 'multi_ma_crossoverV2 - BTC/USDT 1d (batch)',
     notes: '',
     tier: 1,
     parameters: { ema_short: 9, ema_long: 21 },
@@ -50,28 +50,28 @@ const OPPORTUNITIES_PAYLOAD = [
     distance_to_next_status: 0.7,
     next_status_label: 'entry',
     indicator_values_candle_time: NOW,
-    status: 'WAIT',
-    message: 'Aguardando condição de entrada.',
-    last_price: 3000,
+    status: 'EXIT',
+    message: 'Venda/fora de posicao. Aguardando proxima compra.',
+    last_price: 76599,
     timestamp: NOW,
     details: {},
   },
   {
-    id: 3,
-    symbol: 'XRP/USDT',
+    id: 200,
+    symbol: 'BTC/USDT',
     timeframe: '1d',
-    template_name: 'ema_rsi',
-    name: 'XRP Venda',
+    template_name: 'quant_btc_1d_roc_ema_momentum_guard_long_v3',
+    name: 'Quant BTC 1D ROC+EMA Momentum Guard Long v3',
     notes: '',
-    tier: 2,
+    tier: 1,
     parameters: { ema_short: 9, ema_long: 21 },
     is_holding: false,
     distance_to_next_status: 1.2,
     next_status_label: 're-entry',
     indicator_values_candle_time: NOW,
-    status: 'EXITED',
-    message: 'Condição de saída registrada.',
-    last_price: 200,
+    status: 'EXIT',
+    message: 'Venda/fora de posicao. Aguardando proxima compra.',
+    last_price: 76599,
     timestamp: NOW,
     details: {},
   },
@@ -93,9 +93,9 @@ async function setupApiMocks(page: any) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify([
-        { id: 1, name: 'BTC Compra', symbol: 'BTC/USDT', timeframe: '4h', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 1 },
-        { id: 2, name: 'ETH Wait', symbol: 'ETH/USDT', timeframe: '1h', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 1 },
-        { id: 3, name: 'AAPL Venda', symbol: 'AAPL', timeframe: '1d', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 2 },
+        { id: 1, name: 'ETH Compra', symbol: 'ETH/USDT', timeframe: '1d', strategy_name: 'ema_rsi', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 1 },
+        { id: 122, name: 'multi_ma_crossoverV2 - BTC/USDT 1d (batch)', symbol: 'BTC/USDT', timeframe: '1d', strategy_name: 'multi_ma_crossoverV2', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 1 },
+        { id: 200, name: 'Quant BTC 1D ROC+EMA Momentum Guard Long v3', symbol: 'BTC/USDT', timeframe: '1d', strategy_name: 'quant_btc_1d_roc_ema_momentum_guard_long_v3', parameters: {}, metrics: {}, created_at: '2025-01-01T00:00:00Z', tier: 1 },
       ]),
     })
   )
@@ -151,7 +151,7 @@ async function setupApiMocks(page: any) {
   )
 }
 
-test('monitor shows actionable Compra and Venda states while hiding Espera', async ({ page }) => {
+test('monitor shows only Compra and Venda and keeps same-symbol starred strategies visible', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
@@ -159,14 +159,13 @@ test('monitor shows actionable Compra and Venda states while hiding Espera', asy
   await expect(page.getByText('Estado Espera')).toHaveCount(0)
   await expect(page.getByText('Estado Venda')).toBeVisible()
 
-  const holdCard = page.getByTestId('monitor-card-btc-usdt')
-  const exitCard = page.getByTestId('monitor-card-xrp-usdt')
+  await expect(page.getByTestId('monitor-row-btc-usdt')).toHaveCount(2)
+  await expect(page.locator('[data-testid="monitor-row-btc-usdt"]', { hasText: 'multi_ma_crossoverV2' })).toBeVisible()
+  await expect(page.locator('[data-testid="monitor-row-btc-usdt"]', { hasText: 'quant_btc_1d_roc_ema_momentum_guard_long_v3' })).toBeVisible()
 
-  await page.getByTestId('monitor-row-btc-usdt').click()
-  await page.getByTestId('monitor-row-xrp-usdt').click()
+  await page.getByTestId('monitor-row-eth-usdt').click()
+  await page.locator('[data-testid="monitor-row-btc-usdt"]', { hasText: 'multi_ma_crossoverV2' }).click()
 
-  await expect(holdCard.getByText(/^Compra$/)).toBeVisible()
-  await expect(exitCard.getByText(/^Venda$/)).toBeVisible()
-  await expect(page.getByTestId('monitor-row-eth-usdt')).toHaveCount(0)
-  await expect(page.getByTestId('monitor-card-eth-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-card-eth-usdt').locator('.status-pill.hold').first()).toHaveText('Compra')
+  await expect(page.getByTestId('monitor-card-btc-usdt').first().locator('.status-pill.exit').first()).toHaveText('Venda')
 })

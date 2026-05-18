@@ -118,9 +118,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const statusMessage = resolvedSignal.statusMessage;
     const exitClassName = resolvedSignal.section === 'exit'
         ? ''
-        : resolvedSignal.section === 'wait'
-            ? 'wait-msg'
-            : 'hold-msg';
+        : 'hold-msg';
     const batchReference = typeof opportunity.notes === 'string'
         ? opportunity.notes.match(/\(([^)]+)\)/)?.[1] ?? '-'
         : '-';

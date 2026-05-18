@@ -37,8 +37,7 @@ type StrategyFilter = 'all' | string;
 type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
 type StarFilter = 'all' | '3' | '2' | '1';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
-type SectionKey = 'hold' | 'wait' | 'exit';
-type VisibleSectionKey = Exclude<SectionKey, 'wait'>;
+type SectionKey = 'hold' | 'exit';
 
 type BinanceBalanceRow = {
     asset?: string;
@@ -55,7 +54,7 @@ type DerivedPortfolioStatus = {
 type SectionRecord = {
     title: string;
     label: string;
-    dotClass: 'monitor-dot--hold' | 'monitor-dot--wait' | 'monitor-dot--exit';
+    dotClass: 'monitor-dot--hold' | 'monitor-dot--exit';
     badgeClass: string;
     countClass: string;
     description: string;
@@ -116,14 +115,6 @@ const SectionConfig: Record<SectionKey, SectionRecord> = {
         countClass: 'text-emerald-300',
         description: 'Sinais com decisão de compra e gestão ativa.',
     },
-    wait: {
-        title: 'Espera',
-        label: 'Aguardando',
-        dotClass: 'monitor-dot--wait',
-        badgeClass: 'bg-slate-400/20 text-slate-200 border border-slate-400/40',
-        countClass: 'text-slate-300',
-        description: 'Aguardando confirmação para entrada ou saída.',
-    },
     exit: {
         title: 'Venda',
         label: 'Em observação',
@@ -134,8 +125,7 @@ const SectionConfig: Record<SectionKey, SectionRecord> = {
     },
 };
 
-const SECTION_ORDER: SectionKey[] = ['hold', 'wait', 'exit'];
-const VISIBLE_SECTION_ORDER: VisibleSectionKey[] = ['hold', 'exit'];
+const SECTION_ORDER: SectionKey[] = ['hold', 'exit'];
 
 const getDistanceLabel = (distance: number | null | undefined): string => {
     if (distance === null || distance === undefined) return '-';
@@ -473,7 +463,7 @@ export const MonitorStatusTab: React.FC = () => {
         }));
     };
 
-    const getSparklineColor = (sectionKey: VisibleSectionKey): string => {
+    const getSparklineColor = (sectionKey: SectionKey): string => {
         if (sectionKey === 'exit') return '#f26e7e';
         return '#3dd68c';
     };
@@ -684,7 +674,6 @@ export const MonitorStatusTab: React.FC = () => {
     const resolvedSections = useMemo(() => {
         const groups: Record<SectionKey, ResolvedSectionRow[]> = {
             hold: [],
-            wait: [],
             exit: [],
         };
 
@@ -743,7 +732,7 @@ export const MonitorStatusTab: React.FC = () => {
         }
 
         const rowsToFetch = new Map<string, { symbol: string; timeframe: ChartTimeframe }>();
-        for (const section of VISIBLE_SECTION_ORDER) {
+        for (const section of SECTION_ORDER) {
             for (const { opportunity } of resolvedSections[section]) {
                 const timeframe = resolveChartTimeframe(opportunity);
                 const key = getSparklineKey(opportunity.symbol, timeframe);
@@ -1000,7 +989,7 @@ export const MonitorStatusTab: React.FC = () => {
                                 <p className="monitor-empty-text">Nenhum sinal acionável no monitor.</p>
                             </section>
                         ) : (
-                            VISIBLE_SECTION_ORDER.map((sectionKey) => {
+                            SECTION_ORDER.map((sectionKey) => {
                                 const cfg = SectionConfig[sectionKey];
                                 const rows = resolvedSections[sectionKey];
 

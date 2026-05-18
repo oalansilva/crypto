@@ -27,14 +27,7 @@ MONITOR_TELEGRAM_RATE_LIMIT_COUNT_KEY = "monitor_telegram_rate_limit_count"
 MONITOR_TELEGRAM_RATE_LIMIT_WINDOW_MINUTES_KEY = "monitor_telegram_rate_limit_window_minutes"
 MONITOR_TELEGRAM_TIER_FILTER_KEY = "monitor_telegram_tier_filter"
 
-SENDABLE_STATUSES = {
-    "BUY_SIGNAL",
-    "BUY_NEAR",
-    "EXIT_SIGNAL",
-    "EXIT_NEAR",
-    "HOLDING",
-    "STOPPED_OUT",
-}
+SENDABLE_STATUSES = {"HOLD", "EXIT"}
 
 
 @dataclass(frozen=True)
@@ -93,6 +86,8 @@ def _split_csv(value: str | None) -> set[str]:
 
 def _status_label(status: str | None) -> str:
     labels = {
+        "HOLD": "Compra",
+        "EXIT": "Venda",
         "BUY_SIGNAL": "Compra",
         "BUY_NEAR": "Compra proxima",
         "EXIT_SIGNAL": "Venda",
@@ -105,9 +100,9 @@ def _status_label(status: str | None) -> str:
 
 def _action_label(status: str | None) -> str:
     normalized = str(status or "").strip().upper()
-    if normalized in {"BUY_SIGNAL", "BUY_NEAR"}:
+    if normalized in {"HOLD", "BUY_SIGNAL", "BUY_NEAR"}:
         return "Compra"
-    if normalized in {"EXIT_SIGNAL", "EXIT_NEAR", "STOPPED_OUT"}:
+    if normalized in {"EXIT", "EXIT_SIGNAL", "EXIT_NEAR", "STOPPED_OUT"}:
         return "Venda"
     return _status_label(status)
 
@@ -145,9 +140,9 @@ def _entry_value(opportunity: dict[str, Any]) -> Any:
 
 def _severity_for_status(status: str) -> str:
     normalized = str(status or "").strip().upper()
-    if normalized in {"EXIT_SIGNAL", "STOPPED_OUT"}:
+    if normalized in {"EXIT", "EXIT_SIGNAL", "STOPPED_OUT"}:
         return "Acao necessaria"
-    if normalized in {"BUY_SIGNAL", "EXIT_NEAR"}:
+    if normalized in {"HOLD", "BUY_SIGNAL", "EXIT_NEAR"}:
         return "Atencao"
     return "Informativo"
 

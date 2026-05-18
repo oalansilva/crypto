@@ -480,6 +480,34 @@ def _resolve_position_state(
     return bool(has_active_entry and short_above_long), False, False
 
 
+def _public_monitor_status(*, is_holding: bool, raw_status: str | None) -> str:
+    """Normalize Monitor API status to the public binary contract: HOLD or EXIT."""
+    normalized = str(raw_status or "").strip().upper()
+    if normalized in {
+        "EXIT",
+        "EXIT_SIGNAL",
+        "EXIT_NEAR",
+        "EXITED",
+        "STOPPED_OUT",
+        "MISSED_ENTRY",
+        "MISSED",
+    }:
+        return "EXIT"
+    if normalized in {"HOLD", "HOLDING", "BUY_SIGNAL"} or is_holding:
+        return "HOLD"
+    return "EXIT"
+
+
+def _public_monitor_badge(status: str) -> str:
+    return "info" if status == "HOLD" else "neutral"
+
+
+def _public_monitor_message(status: str, analysis: dict[str, Any]) -> str:
+    if status == "HOLD":
+        return str(analysis.get("message") or "Compra ativa. Acompanhe a proxima venda.")
+    return "Venda/fora de posicao. Aguardando proxima compra."
+
+
 class OpportunityService:
     """
     Service to manage Strategy Favorites and calculate Opportunities (Proximity to Signal).
@@ -1733,6 +1761,21 @@ class OpportunityService:
                     except Exception:
                         pass
 
+                raw_analysis_status = str(analysis.get("status") or "")
+                public_status = _public_monitor_status(
+                    is_holding=is_holding,
+                    raw_status=raw_analysis_status,
+                )
+                public_badge = _public_monitor_badge(public_status)
+                public_message = _public_monitor_message(public_status, analysis)
+                public_is_holding = public_status == "HOLD"
+                public_details = {
+                    **analysis,
+                    "status": public_status,
+                    "badge": public_badge,
+                    "message": public_message,
+                }
+
                 opportunities.append(
                     {
                         "id": fav["id"],
@@ -1748,7 +1791,7 @@ class OpportunityService:
                         "is_curated_fallback": bool(fav.get("is_curated_fallback")),
                         "tier": fav.get("tier"),
                         "parameters": fav.get("parameters") or {},
-                        "is_holding": is_holding,
+                        "is_holding": public_is_holding,
                         "distance_to_next_status": final_distance,
                         "next_status_label": next_status_label,
                         "indicator_values": indicator_values if indicator_values else None,
@@ -1758,10 +1801,10 @@ class OpportunityService:
                         "stop_price": stop_price,
                         "distance_to_stop_pct": distance_to_stop_pct,
                         # Keep legacy fields for backward compatibility
-                        "status": analysis["status"],
-                        "badge": analysis["badge"],
-                        "message": analysis["message"],
-                        "details": analysis,
+                        "status": public_status,
+                        "badge": public_badge,
+                        "message": public_message,
+                        "details": public_details,
                         "last_price": float(df.iloc[-1]["close"]),
                         "timestamp": str(df.index[-1]),
                     }

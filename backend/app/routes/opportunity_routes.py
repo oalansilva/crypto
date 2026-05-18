@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi import Depends
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel
 import logging
 import threading
@@ -53,8 +53,8 @@ class OpportunityResponse(BaseModel):
     entry_price: Optional[float] = None
     stop_price: Optional[float] = None
     distance_to_stop_pct: Optional[float] = None
-    # Legacy fields (kept for backward compatibility)
-    status: str
+    # Monitor status is intentionally binary for API consumers: "HOLD" or "EXIT".
+    status: Literal["HOLD", "EXIT"]
     badge: str
     message: str
     last_price: float
@@ -102,6 +102,34 @@ def _common_user_tier_filter(tier: str | None) -> str:
     return ",".join(allowed) if allowed else "999"
 
 
+def _normalize_monitor_status_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    raw_status = str(payload.get("status") or "").strip().upper()
+    is_holding = bool(payload.get("is_holding"))
+    if raw_status in {
+        "EXIT",
+        "EXIT_SIGNAL",
+        "EXIT_NEAR",
+        "EXITED",
+        "STOPPED_OUT",
+        "MISSED_ENTRY",
+        "MISSED",
+    }:
+        status = "EXIT"
+    elif raw_status in {"HOLD", "HOLDING", "BUY_SIGNAL"} or is_holding:
+        status = "HOLD"
+    else:
+        status = "EXIT"
+
+    payload["status"] = status
+    payload["is_holding"] = status == "HOLD"
+    payload["badge"] = "info" if status == "HOLD" else "neutral"
+    details = payload.get("details")
+    if isinstance(details, dict):
+        if "status" in details:
+            details["status"] = status
+    return payload
+
+
 @router.get("/", response_model=List[OpportunityResponse])
 async def get_opportunities(
     tier: Optional[str] = Query(
@@ -120,7 +148,7 @@ async def get_opportunities(
     Query params:
     - tier: Filter by tier(s). Examples: '1', '1,2', '3', 'none' (null tier), 'all' (no filter)
 
-    Returns opportunities sorted by Signal Priority (SIGNAL > NEAR > NEUTRAL).
+    Returns opportunities with binary Monitor status: HOLD or EXIT.
     """
     try:
         include_secrets = can_view_strategy_secrets(db, current_user_id)
@@ -129,14 +157,20 @@ async def get_opportunities(
             cached = _read_cached_opportunities(current_user_id, effective_tier)
             if cached is not None:
                 return [
-                    redact_opportunity_payload(dict(item), include_secrets=include_secrets)
+                    redact_opportunity_payload(
+                        _normalize_monitor_status_payload(dict(item)),
+                        include_secrets=include_secrets,
+                    )
                     for item in cached
                 ]
         service = OpportunityService()
         payload = service.get_opportunities(user_id=current_user_id, tier_filter=effective_tier)
         _write_cached_opportunities(current_user_id, effective_tier, payload)
         return [
-            redact_opportunity_payload(dict(item), include_secrets=include_secrets)
+            redact_opportunity_payload(
+                _normalize_monitor_status_payload(dict(item)),
+                include_secrets=include_secrets,
+            )
             for item in payload
         ]
     except Exception as e:

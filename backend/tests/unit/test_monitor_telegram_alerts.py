@@ -80,7 +80,7 @@ class _FakeOpportunityService:
         return list(self.opportunities)
 
 
-def _opportunity(status: str = "BUY_SIGNAL") -> dict:
+def _opportunity(status: str = "HOLD") -> dict:
     return {
         "id": 10,
         "symbol": "BTC/USDT",
@@ -96,12 +96,12 @@ def _opportunity(status: str = "BUY_SIGNAL") -> dict:
 
 def test_build_monitor_alert_candidate_formats_short_sell_summary():
     candidate = build_monitor_alert_candidate(
-        _opportunity("EXIT_SIGNAL"), previous_status="HOLDING"
+        _opportunity("EXIT"), previous_status="HOLD"
     )
 
     assert candidate is not None
     assert candidate.symbol == "BTC/USDT"
-    assert candidate.new_status == "EXIT_SIGNAL"
+    assert candidate.new_status == "EXIT"
     assert candidate.severity == "Acao necessaria"
     assert candidate.message == (
         "Cripto Farol - Alerta Monitor\n\n"
@@ -119,7 +119,7 @@ def test_build_monitor_alert_candidate_formats_short_sell_summary():
 
 
 def test_build_monitor_alert_candidate_formats_short_buy_summary():
-    candidate = build_monitor_alert_candidate(_opportunity("BUY_SIGNAL"), previous_status=None)
+    candidate = build_monitor_alert_candidate(_opportunity("HOLD"), previous_status=None)
 
     assert candidate is not None
     assert "Acao: Compra" in candidate.message
@@ -128,7 +128,7 @@ def test_build_monitor_alert_candidate_formats_short_buy_summary():
 
 
 def test_scan_dry_run_records_audit_when_delivery_config_incomplete(monitor_alert_db_session):
-    service = _FakeOpportunityService([_opportunity("BUY_SIGNAL")])
+    service = _FakeOpportunityService([_opportunity("HOLD")])
 
     summary = run_monitor_telegram_alert_scan(
         monitor_alert_db_session,
@@ -153,7 +153,7 @@ def test_scan_dry_run_records_audit_when_delivery_config_incomplete(monitor_aler
     observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
     assert observed.symbol == "BTC/USDT"
     assert observed.timeframe == "1d"
-    assert observed.status == "BUY_SIGNAL"
+    assert observed.status == "HOLD"
 
 
 def test_scan_skips_unchanged_observed_status(monitor_alert_db_session):
@@ -161,12 +161,12 @@ def test_scan_skips_unchanged_observed_status(monitor_alert_db_session):
         MonitorObservedStatus(
             symbol="BTC/USDT",
             timeframe="1d",
-            status="BUY_SIGNAL",
+            status="HOLD",
             payload_json={},
         )
     )
     monitor_alert_db_session.commit()
-    service = _FakeOpportunityService([_opportunity("BUY_SIGNAL")])
+    service = _FakeOpportunityService([_opportunity("HOLD")])
 
     summary = run_monitor_telegram_alert_scan(
         monitor_alert_db_session,
@@ -182,7 +182,7 @@ def test_scan_skips_unchanged_observed_status(monitor_alert_db_session):
         {
             "symbol": "BTC/USDT",
             "timeframe": "1d",
-            "status": "BUY_SIGNAL",
+            "status": "HOLD",
             "result": "unchanged",
         }
     ]
@@ -207,7 +207,7 @@ def test_scan_reports_no_opportunities_reason(monitor_alert_db_session):
 
 
 def test_scan_reports_not_sendable_reason(monitor_alert_db_session):
-    service = _FakeOpportunityService([_opportunity("WAITING")])
+    service = _FakeOpportunityService([_opportunity("UNKNOWN")])
 
     summary = run_monitor_telegram_alert_scan(
         monitor_alert_db_session,
@@ -223,7 +223,7 @@ def test_scan_reports_not_sendable_reason(monitor_alert_db_session):
         {
             "symbol": "BTC/USDT",
             "timeframe": "1d",
-            "status": "WAITING",
+            "status": "UNKNOWN",
             "result": "not_sendable",
         }
     ]
@@ -235,12 +235,12 @@ def test_scan_alerts_when_silent_observed_status_becomes_sendable(monitor_alert_
         MonitorObservedStatus(
             symbol="BTC/USDT",
             timeframe="1d",
-            status="WAITING",
+            status="EXIT",
             payload_json={},
         )
     )
     monitor_alert_db_session.commit()
-    service = _FakeOpportunityService([_opportunity("BUY_SIGNAL")])
+    service = _FakeOpportunityService([_opportunity("HOLD")])
     sent_messages = []
 
     summary = run_monitor_telegram_alert_scan(
@@ -254,13 +254,13 @@ def test_scan_alerts_when_silent_observed_status_becomes_sendable(monitor_alert_
     assert summary["sent"] == 1
     assert "Acao: Compra" in sent_messages[0]
     row = monitor_alert_db_session.query(MonitorTelegramAlert).one()
-    assert row.previous_status == "WAITING"
+    assert row.previous_status == "EXIT"
     observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
-    assert observed.status == "BUY_SIGNAL"
+    assert observed.status == "HOLD"
 
 
 def test_scan_updates_observed_status_for_non_sendable_status(monitor_alert_db_session):
-    service = _FakeOpportunityService([_opportunity("WAITING")])
+    service = _FakeOpportunityService([_opportunity("UNKNOWN")])
 
     summary = run_monitor_telegram_alert_scan(
         monitor_alert_db_session,
@@ -277,7 +277,7 @@ def test_scan_updates_observed_status_for_non_sendable_status(monitor_alert_db_s
     observed = monitor_alert_db_session.query(MonitorObservedStatus).one()
     assert observed.symbol == "BTC/USDT"
     assert observed.timeframe == "1d"
-    assert observed.status == "WAITING"
+    assert observed.status == "UNKNOWN"
 
 
 def test_scan_deduplicates_same_symbol_timeframe_status(monitor_alert_db_session):
@@ -286,7 +286,7 @@ def test_scan_deduplicates_same_symbol_timeframe_status(monitor_alert_db_session
         symbol="BTC/USDT",
         timeframe="1d",
         previous_status=None,
-        new_status="BUY_SIGNAL",
+        new_status="HOLD",
         severity="Atencao",
         destination_chat_id="-1001",
         result_status="sent",
@@ -296,7 +296,7 @@ def test_scan_deduplicates_same_symbol_timeframe_status(monitor_alert_db_session
     )
     monitor_alert_db_session.add(existing)
     monitor_alert_db_session.commit()
-    service = _FakeOpportunityService([_opportunity("BUY_SIGNAL")])
+    service = _FakeOpportunityService([_opportunity("HOLD")])
 
     summary = run_monitor_telegram_alert_scan(
         monitor_alert_db_session,
@@ -319,7 +319,7 @@ def test_scan_applies_rate_limit_before_send(monitor_alert_db_session):
                 symbol=f"ETH{idx}/USDT",
                 timeframe="1d",
                 previous_status=None,
-                new_status="BUY_SIGNAL",
+                new_status="HOLD",
                 severity="Atencao",
                 destination_chat_id="-1001",
                 result_status="sent",
@@ -329,7 +329,7 @@ def test_scan_applies_rate_limit_before_send(monitor_alert_db_session):
             )
         )
     monitor_alert_db_session.commit()
-    service = _FakeOpportunityService([_opportunity("EXIT_SIGNAL")])
+    service = _FakeOpportunityService([_opportunity("EXIT")])
 
     summary = run_monitor_telegram_alert_scan(
         monitor_alert_db_session,
@@ -344,7 +344,7 @@ def test_scan_applies_rate_limit_before_send(monitor_alert_db_session):
 
 
 def test_scan_records_failure_and_continues(monitor_alert_db_session):
-    service = _FakeOpportunityService([_opportunity("EXIT_SIGNAL")])
+    service = _FakeOpportunityService([_opportunity("EXIT")])
 
     def failing_sender(*_args, **_kwargs):
         raise RuntimeError("telegram down")
