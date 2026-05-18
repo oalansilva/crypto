@@ -847,6 +847,7 @@ test('favorites opens Multi MA Crossover full-history chart even when monitor sy
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
   await expect(page.getByText(/Multi MA Crossover - Price Action/i)).toBeVisible();
   await expect(page.getByText('BTC/USDT • 1d • 200 candles')).toBeVisible();
+  await expect(page.getByTestId('result-chart-visible-bars')).toContainText('180 candles');
   await expect(page.getByText('BTC/USDT • 1d • 120 candles')).toHaveCount(0);
   await expect(page.getByText('BTC/USDT • 1d • 60 candles')).toHaveCount(0);
   await expect(page.getByText('BTC/USDT • 1d • 80 candles')).toHaveCount(0);

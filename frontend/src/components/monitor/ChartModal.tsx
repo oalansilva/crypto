@@ -1,6 +1,8 @@
 import React from 'react';
 
 import type { MarketCandle } from './MiniCandlesChart';
+import { API_BASE_URL } from '../../lib/apiBase';
+import { authFetch } from '@/lib/authFetch';
 import {
     StrategyChartSurface,
     toStrategyChartTimestamp,
@@ -9,6 +11,11 @@ import {
     type StrategyChartSnapshot,
     type StrategyChartSummaryItem,
 } from '../charts/StrategyChartSurface';
+import {
+    StrategyTradesTable,
+    type StrategyTrade,
+    type StrategyTradeMetrics,
+} from '../charts/StrategyTradesTable';
 import {
     getOpportunityAssetType,
     getStrategyDisplayName,
@@ -128,6 +135,45 @@ function getLatestSignal(history?: OpportunitySignalHistoryItem[]): OpportunityS
     return sortedHistory.length > 0 ? sortedHistory[sortedHistory.length - 1] : null;
 }
 
+function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | undefined, direction: string): StrategyTrade[] {
+    const sortedHistory = [...(history || [])].sort(
+        (left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp),
+    );
+    const isShort = direction.toLowerCase() === 'short';
+    const trades: StrategyTrade[] = [];
+    let activeEntry: OpportunitySignalHistoryItem | null = null;
+
+    sortedHistory.forEach((item) => {
+        if (item.type === 'entry') {
+            activeEntry = item;
+            return;
+        }
+        if (!activeEntry || item.type !== 'exit') {
+            return;
+        }
+
+        const entryPrice = Number(activeEntry.price || 0);
+        const exitPrice = Number(item.price || 0);
+        const profit = entryPrice > 0
+            ? (isShort ? (entryPrice - exitPrice) / entryPrice : (exitPrice - entryPrice) / entryPrice)
+            : 0;
+
+        trades.push({
+            entry_time: activeEntry.timestamp,
+            entry_price: entryPrice,
+            exit_time: item.timestamp,
+            exit_price: exitPrice,
+            profit,
+            type: isShort ? 'short' : 'long',
+            entry_signal_type: isShort ? 'Vender' : 'Comprar',
+            signal_type: formatSignalReason(item.reason),
+        });
+        activeEntry = null;
+    });
+
+    return trades;
+}
+
 export const ChartModal: React.FC<ChartModalProps> = ({
     symbol,
     opportunity,
@@ -176,12 +222,17 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [candles, setCandles] = React.useState<MarketCandle[]>(initialCandles);
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [analysisTrades, setAnalysisTrades] = React.useState<StrategyTrade[]>([]);
+    const [analysisMetrics, setAnalysisMetrics] = React.useState<StrategyTradeMetrics | null>(null);
+    const [analysisTradesLoading, setAnalysisTradesLoading] = React.useState(false);
+    const [analysisTradesError, setAnalysisTradesError] = React.useState<string | null>(null);
 
     const cacheRef = React.useRef<Map<string, MarketCandle[]>>(new Map([
         [`${symbol}|${resolvedInitialTimeframe}`, initialCandles],
     ]));
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
+    const opportunityDirection = String(opportunity.parameters?.direction || 'long').toLowerCase();
 
     React.useEffect(() => {
         if (!supportedTimeframes.includes(timeframe)) {
@@ -263,6 +314,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         ),
         [opportunity.signal_history],
     );
+    const signalHistoryTrades = React.useMemo(
+        () => buildTradesFromSignalHistory(opportunity.signal_history, opportunityDirection),
+        [opportunity.signal_history, opportunityDirection],
+    );
 
     React.useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -327,6 +382,41 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
         return () => controller.abort();
     }, [symbol, timeframe, isStockAsset, supportedTimeframes, resolvedInitialTimeframe]);
+
+    React.useEffect(() => {
+        const controller = new AbortController();
+
+        const run = async () => {
+            setAnalysisTradesLoading(true);
+            setAnalysisTradesError(null);
+            try {
+                const response = await authFetch(`${API_BASE_URL}/favorites/${opportunity.id}/trades`, {
+                    signal: controller.signal,
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(String(payload?.detail || `Failed to load favorite trades (${response.status})`));
+                }
+                const payloadTrades = Array.isArray(payload?.trades) ? payload.trades : [];
+                setAnalysisTrades(payloadTrades.length > 0 ? payloadTrades : signalHistoryTrades);
+                setAnalysisMetrics(payload?.metrics && typeof payload.metrics === 'object' ? payload.metrics : null);
+            } catch (fetchError) {
+                if (!controller.signal.aborted) {
+                    setAnalysisTrades(signalHistoryTrades);
+                    setAnalysisMetrics(null);
+                    setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponiveis.');
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setAnalysisTradesLoading(false);
+                }
+            }
+        };
+
+        void run();
+
+        return () => controller.abort();
+    }, [opportunity.id, signalHistoryTrades]);
 
     const fallbackMarker = latestCandle ? [{
         time: toStrategyChartTimestamp(latestCandle.timestamp_utc),
@@ -580,6 +670,17 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     summaryItems={summaryItems}
                     summaryTestId="chart-modal-strategy-summary"
                     sideContent={sideContent}
+                    belowContent={(
+                        <StrategyTradesTable
+                            trades={analysisTrades}
+                            candles={sortedCandles}
+                            direction={opportunityDirection}
+                            metrics={analysisMetrics}
+                            loading={analysisTradesLoading}
+                            error={analysisTradesError}
+                            testId="chart-modal-trades"
+                        />
+                    )}
                     footerContent={(
                         <div className="flex flex-wrap items-center gap-3 text-xs text-[#929aa5]">
                             <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#fcd535]" /> Compra</span>

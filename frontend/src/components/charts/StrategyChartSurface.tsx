@@ -59,6 +59,7 @@ interface StrategyChartSurfaceProps {
     toolbarLeading?: React.ReactNode
     summaryItems?: StrategyChartSummaryItem[]
     sideContent?: React.ReactNode | ((snapshot: StrategyChartSnapshot | null) => React.ReactNode)
+    belowContent?: React.ReactNode
     footerContent?: React.ReactNode
     loading?: boolean
     error?: string | null
@@ -79,6 +80,7 @@ interface StrategyChartSurfaceProps {
 const LOGICAL_RANGE_PADDING = 8
 const MIN_VISIBLE_BARS = 12
 const ZOOM_STEP_FACTOR = 0.75
+const DEFAULT_VISIBLE_BARS = 180
 
 export function toStrategyChartTimestamp(value: string | number): UTCTimestamp {
     if (typeof value === 'number') return value as UTCTimestamp
@@ -129,6 +131,14 @@ function clampLogicalRange(center: number, span: number, candleCount: number): L
     }
 }
 
+function getDefaultLogicalRange(candleCount: number): LogicalRange | null {
+    if (candleCount <= DEFAULT_VISIBLE_BARS) return null
+    return {
+        from: candleCount - DEFAULT_VISIBLE_BARS,
+        to: candleCount,
+    } as LogicalRange
+}
+
 function formatPrice(value?: number | null) {
     if (value === null || value === undefined || Number.isNaN(value)) return '-'
     return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })
@@ -161,6 +171,7 @@ export function StrategyChartSurface({
     toolbarLeading,
     summaryItems,
     sideContent,
+    belowContent,
     footerContent,
     loading,
     error,
@@ -240,9 +251,15 @@ export function StrategyChartSurface({
     const resetZoom = React.useCallback(() => {
         const chart = chartApiRef.current
         if (!chart) return
+        const defaultRange = getDefaultLogicalRange(candlestickData.length)
+        if (defaultRange) {
+            chart.timeScale().setVisibleLogicalRange(defaultRange)
+            syncVisibleBars(defaultRange)
+            return
+        }
         chart.timeScale().fitContent()
         syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
-    }, [syncVisibleBars])
+    }, [candlestickData.length, syncVisibleBars])
 
     const handleWheelZoom = React.useCallback((deltaY: number) => {
         if (candlestickData.length === 0 || Math.abs(deltaY) < 3) return
@@ -345,10 +362,16 @@ export function StrategyChartSurface({
             })
         })
 
-        chart.timeScale().fitContent()
         const onVisibleRangeChange = (range: LogicalRange | null) => syncVisibleBars(range)
         chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange)
-        onVisibleRangeChange(chart.timeScale().getVisibleLogicalRange())
+        const defaultRange = getDefaultLogicalRange(candlestickData.length)
+        if (defaultRange) {
+            chart.timeScale().setVisibleLogicalRange(defaultRange)
+            onVisibleRangeChange(defaultRange)
+        } else {
+            chart.timeScale().fitContent()
+            onVisibleRangeChange(chart.timeScale().getVisibleLogicalRange())
+        }
 
         const onCrosshairMove = (param: { time?: Time }) => {
             if (typeof param.time !== 'number') {
@@ -506,6 +529,12 @@ export function StrategyChartSurface({
                     )}
                 </aside>
             </div>
+
+            {belowContent ? (
+                <div className="border-t border-[#2b3139] bg-[#0b0e11] p-3 sm:p-4">
+                    {belowContent}
+                </div>
+            ) : null}
 
             {footerContent ? (
                 <footer className="border-t border-[#2b3139] bg-[#1e2329] px-5 py-3">

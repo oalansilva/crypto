@@ -77,6 +77,32 @@ async function setupApiMocks(page: any) {
     })
   )
 
+  await page.route('**/api/favorites/5/trades', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        trades: [
+          {
+            entry_time: '2099-04-10T00:00:00Z',
+            entry_price: 70210.15,
+            exit_time: '2099-04-13T00:00:00Z',
+            exit_price: 72150.42,
+            profit: 0.0276,
+            type: 'long',
+            signal_type: 'Regra de venda',
+          },
+        ],
+        metrics: {
+          total_trades: 1,
+          win_rate: 1,
+          total_return: 0.0276,
+          avg_profit: 0.0276,
+        },
+      }),
+    })
+  )
+
   await page.route('**/api/opportunities/**', (route: any) =>
     route.fulfill({
       status: 200,
@@ -836,6 +862,10 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-trades')).toBeVisible()
+  await expect(dialog.getByText('List of trades')).toBeVisible()
+  await expect(dialog.getByText('Apr 10, 2099')).toBeVisible()
+  await expect(dialog.getByText('Apr 13, 2099')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')
   await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
 })
