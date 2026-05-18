@@ -5,6 +5,8 @@ import {
     CrosshairMode,
     LineStyle,
     type IChartApi,
+    type IPriceLine,
+    type ISeriesApi,
     type LogicalRange,
     type Time,
     type UTCTimestamp,
@@ -191,6 +193,10 @@ export function StrategyChartSurface({
     const shellRef = React.useRef<HTMLDivElement>(null)
     const chartRef = React.useRef<HTMLDivElement>(null)
     const chartApiRef = React.useRef<IChartApi | null>(null)
+    const candleSeriesRef = React.useRef<ISeriesApi<'Candlestick'> | null>(null)
+    const volumeSeriesRef = React.useRef<ISeriesApi<'Histogram'> | null>(null)
+    const priceLineRefs = React.useRef<IPriceLine[]>([])
+    const tooltipDataRef = React.useRef<Map<number, StrategyChartSnapshot>>(new Map())
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null)
     const [tooltip, setTooltip] = React.useState<StrategyChartSnapshot | null>(null)
 
@@ -228,6 +234,10 @@ export function StrategyChartSurface({
     const syncVisibleBars = React.useCallback((range: LogicalRange | null) => {
         setVisibleBarCount(getVisibleBarCount(range))
     }, [])
+
+    React.useEffect(() => {
+        tooltipDataRef.current = tooltipData
+    }, [tooltipData])
 
     const applyZoom = React.useCallback((direction: 'in' | 'out') => {
         const chart = chartApiRef.current
@@ -289,7 +299,7 @@ export function StrategyChartSurface({
     }, [candlestickData.length, handleWheelZoom])
 
     React.useEffect(() => {
-        if (!chartRef.current || candlestickData.length === 0) return undefined
+        if (!chartRef.current) return undefined
 
         const chart = createChart(chartRef.current, {
             autoSize: true,
@@ -347,11 +357,72 @@ export function StrategyChartSurface({
             lastValueVisible: false,
         })
         volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } })
+        candleSeriesRef.current = candleSeries
+        volumeSeriesRef.current = volumeSeries
+
+        const onVisibleRangeChange = (range: LogicalRange | null) => syncVisibleBars(range)
+        chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange)
+
+        const onCrosshairMove = (param: { time?: Time }) => {
+            if (typeof param.time !== 'number') {
+                setTooltip(null)
+                return
+            }
+            setTooltip(tooltipDataRef.current.get(param.time) ?? null)
+        }
+        chart.subscribeCrosshairMove(onCrosshairMove)
+
+        return () => {
+            chart.unsubscribeCrosshairMove(onCrosshairMove)
+            chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange)
+            priceLineRefs.current.forEach((line) => candleSeries.removePriceLine(line))
+            priceLineRefs.current = []
+            candleSeriesRef.current = null
+            volumeSeriesRef.current = null
+            if (chartApiRef.current === chart) chartApiRef.current = null
+            chart.remove()
+        }
+    }, [syncVisibleBars])
+
+    React.useEffect(() => {
+        const chart = chartApiRef.current
+        const candleSeries = candleSeriesRef.current
+        const volumeSeries = volumeSeriesRef.current
+        if (!chart || !candleSeries || !volumeSeries) return
 
         candleSeries.setData(candlestickData)
-        candleSeries.setMarkers(chartMarkers as any)
         volumeSeries.setData(volumeData)
-        priceLines?.forEach((line) => {
+
+        if (candlestickData.length === 0) {
+            setTooltip(null)
+            syncVisibleBars(null)
+            return
+        }
+
+        const defaultRange = getDefaultLogicalRange(candlestickData.length)
+        if (defaultRange) {
+            chart.timeScale().setVisibleLogicalRange(defaultRange)
+            syncVisibleBars(defaultRange)
+            return
+        }
+
+        chart.timeScale().fitContent()
+        syncVisibleBars(chart.timeScale().getVisibleLogicalRange())
+    }, [candlestickData, syncVisibleBars, volumeData])
+
+    React.useEffect(() => {
+        const candleSeries = candleSeriesRef.current
+        if (!candleSeries) return
+
+        candleSeries.setMarkers(chartMarkers as any)
+    }, [chartMarkers])
+
+    React.useEffect(() => {
+        const candleSeries = candleSeriesRef.current
+        if (!candleSeries) return
+
+        priceLineRefs.current.forEach((line) => candleSeries.removePriceLine(line))
+        priceLineRefs.current = (priceLines || []).map((line) => (
             candleSeries.createPriceLine({
                 price: line.price,
                 color: line.color,
@@ -360,35 +431,8 @@ export function StrategyChartSurface({
                 axisLabelVisible: true,
                 title: line.title,
             })
-        })
-
-        const onVisibleRangeChange = (range: LogicalRange | null) => syncVisibleBars(range)
-        chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange)
-        const defaultRange = getDefaultLogicalRange(candlestickData.length)
-        if (defaultRange) {
-            chart.timeScale().setVisibleLogicalRange(defaultRange)
-            onVisibleRangeChange(defaultRange)
-        } else {
-            chart.timeScale().fitContent()
-            onVisibleRangeChange(chart.timeScale().getVisibleLogicalRange())
-        }
-
-        const onCrosshairMove = (param: { time?: Time }) => {
-            if (typeof param.time !== 'number') {
-                setTooltip(null)
-                return
-            }
-            setTooltip(tooltipData.get(param.time) ?? null)
-        }
-        chart.subscribeCrosshairMove(onCrosshairMove)
-
-        return () => {
-            chart.unsubscribeCrosshairMove(onCrosshairMove)
-            chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange)
-            if (chartApiRef.current === chart) chartApiRef.current = null
-            chart.remove()
-        }
-    }, [candlestickData, chartMarkers, priceLines, syncVisibleBars, tooltipData, volumeData])
+        ))
+    }, [priceLines])
 
     const subtitleContent = subtitle ?? [symbol, timeframe, `${candlestickData.length} candles`].filter(Boolean).join(' • ')
 
