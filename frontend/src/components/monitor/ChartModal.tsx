@@ -199,7 +199,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             }
         };
 
-        addOption(strategyTimeframe, `Algorítmica (${strategyTimeframe.toUpperCase()})`, 'algorithmic');
+        addOption(strategyTimeframe, `Estratégia (${strategyTimeframe.toUpperCase()})`, 'algorithmic');
         CHART_TIMEFRAMES.forEach((item) => {
             addOption(item, item, 'manual');
         });
@@ -273,8 +273,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => (latestCandle ? tooltipData.get(toUtcTimestamp(latestCandle.timestamp_utc)) ?? null : null),
         [latestCandle, tooltipData],
     );
-    const isAlgorithmicChartMode = true;
-
     const displaySnapshot = tooltip ?? latestSnapshot;
     const candleTimes = React.useMemo(
         () => new Set(candlestickData.map((point) => point.time)),
@@ -608,7 +606,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 z-[1000] bg-[#010409]/85 px-4 py-6 sm:px-6"
+            className="fixed inset-0 z-[1000] bg-[#010409]/88 px-3 py-4 sm:px-6"
             onClick={(event) => {
                 if (event.target === event.currentTarget) {
                     onClose();
@@ -617,342 +615,339 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             data-testid="chart-modal-backdrop"
         >
             <div
-                className="mx-auto flex h-full max-h-[98vh] w-full max-w-[min(98vw,1680px)] flex-col overflow-hidden rounded-2xl border border-[#30363d] bg-[#0d1117] shadow-[0_20px_60px_rgba(0,0,0,0.55)]"
+                className="mx-auto flex h-full max-h-[98vh] w-full max-w-[min(98vw,1680px)] flex-col overflow-hidden rounded-xl border border-[#263241] bg-[#0b1117] text-[#e6edf3] shadow-[0_30px_90px_rgba(0,0,0,0.62)]"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="chart-modal-title"
                 data-testid="chart-modal"
             >
-                <header className="flex flex-wrap items-center gap-3 border-b border-[#30363d] bg-[#161b22]/90 px-5 py-4">
-                    <div className="min-w-0">
-                        <h2 id="chart-modal-title" className="text-xl font-bold text-[#e6edf3]">{symbol}</h2>
-                        <p className="text-xs text-[#8b949e]">
-                            {strategyDisplayName} • candle ref {formatTimestamp(opportunity.indicator_values_candle_time)}
-                        </p>
+                <header className="border-b border-[#263241] bg-[linear-gradient(135deg,rgba(56,139,253,0.10),rgba(13,17,23,0.96)_58%)] px-4 py-4 sm:px-5">
+                    <div className="flex flex-wrap items-start gap-4">
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-[#f7931a]/35 bg-[linear-gradient(135deg,#f7931a,#7c4a08)] font-mono text-xs font-bold text-white shadow-[0_12px_28px_rgba(247,147,26,0.18)]">
+                                {symbol.split('/')[0]?.slice(0, 4) || symbol.slice(0, 4)}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 id="chart-modal-title" className="truncate text-xl font-semibold tracking-normal text-[#f0f6fc]">
+                                        {symbol}
+                                    </h2>
+                                    <span
+                                        className={`rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${resolvedSignal.visual.badgeClass}`}
+                                        data-testid="chart-modal-signal-badge"
+                                    >
+                                        {resolvedSignal.visual.badgeText}
+                                    </span>
+                                </div>
+                                <p className="mt-1 text-sm text-[#9fb0c2]">
+                                    {strategyDisplayName}
+                                </p>
+                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#8b949e]">
+                                    <span className="rounded border border-[#30363d] bg-[#0d1117]/80 px-2 py-1 font-mono text-[#c9d1d9]">{timeframe.toUpperCase()}</span>
+                                    <span>{candlestickData.length} candles</span>
+                                    <span>candle ref {formatTimestamp(opportunity.indicator_values_candle_time)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-[#263241] bg-[#0d1117]/82 px-4 py-3 text-right">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7d8b99]">Ultimo preco</p>
+                            <p className="mt-1 font-mono text-xl font-semibold text-[#f0f6fc]">
+                                {formatPrice(displaySnapshot?.candle.close ?? opportunity.last_price)}
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="grid h-10 w-10 place-items-center rounded-lg border border-[#30363d] bg-[#161b22] text-2xl leading-none text-[#8b949e] transition hover:bg-[#1f2937] hover:text-[#e6edf3]"
+                            onClick={onClose}
+                            aria-label="Close chart modal"
+                            data-testid="chart-modal-close"
+                        >
+                            ×
+                        </button>
                     </div>
-                    <span className="rounded-md bg-[#388bfd]/20 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-[#58a6ff]">
-                        {timeframe}
-                    </span>
-                    <span
-                        className={`rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${resolvedSignal.visual.badgeClass}`}
-                        data-testid="chart-modal-signal-badge"
-                    >
-                        {resolvedSignal.visual.badgeText}
-                    </span>
-                    <div className="ml-auto text-right">
-                        <p className="text-xs uppercase tracking-wide text-[#8b949e]">Last price</p>
-                        <p className="font-mono text-lg font-semibold text-[#e6edf3]">
-                            {formatPrice(displaySnapshot?.candle.close ?? opportunity.last_price)}
-                        </p>
+
+                    <div className="mt-4 grid gap-2 md:grid-cols-4" data-testid="chart-modal-strategy-summary">
+                        <div className="rounded-lg border border-[#263241] bg-[#0d1117]/78 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7d8b99]">Candle</p>
+                            <p className="mt-1 font-mono text-sm text-[#f0f6fc]">{formatTimestamp(displaySnapshot?.candle.timestamp_utc)}</p>
+                        </div>
+                        <div className="rounded-lg border border-[#263241] bg-[#0d1117]/78 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7d8b99]">Ate {resolvedSignal.visual.distanceLabel}</p>
+                            <p className={`mt-1 font-mono text-sm font-semibold ${
+                                (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'text-[#3fb950]' : 'text-[#f0f6fc]'
+                            }`}>
+                                {formatPercent(opportunity.distance_to_next_status)}
+                            </p>
+                        </div>
+                        <div className="rounded-lg border border-[#263241] bg-[#0d1117]/78 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7d8b99]">Risco</p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-[#f85149]">{formatPercent(opportunity.distance_to_stop_pct)}</p>
+                        </div>
+                        <div className="rounded-lg border border-[#263241] bg-[#0d1117]/78 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7d8b99]">Historico</p>
+                            <p className="mt-1 font-mono text-sm text-[#f0f6fc]">{signalHistory.length} sinais</p>
+                        </div>
                     </div>
-                    <button
-                        type="button"
-                        className="rounded-md px-3 py-2 text-2xl leading-none text-[#8b949e] transition hover:bg-white/10 hover:text-[#e6edf3]"
-                        onClick={onClose}
-                        aria-label="Close chart modal"
-                        data-testid="chart-modal-close"
-                    >
-                        ×
-                    </button>
                 </header>
 
-                <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-                    <div className="flex min-h-0 flex-1 flex-col border-b border-[#30363d] lg:border-b-0 lg:border-r">
-                        <div className="flex flex-wrap items-center gap-2 border-b border-[#30363d] px-5 py-3">
-                                <div className="flex items-center gap-2" role="group" aria-label="Chart timeframe selector">
-                                    {timeframeOptions.map((item) => {
-                                        const active = item.value === timeframe;
-                                    return (
-                                        <button
-                                            key={item.value}
-                                            type="button"
-                                            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-                                                active
-                                                    ? 'border-[#388bfd] bg-[#388bfd]/20 text-[#e6edf3]'
-                                                    : 'border-[#30363d] bg-[#161b22] text-[#8b949e] hover:text-[#e6edf3]'
-                                            }`}
-                                            onClick={() => setTimeframe(item.value)}
-                                            aria-pressed={active}
-                                            title={item.source === 'algorithmic' ? 'Algorithmic timeframe' : 'Manual timeframe'}
-                                            data-testid={`chart-timeframe-${item.value}`}
-                                        >
-                                            {item.label}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <div
-                                className="flex flex-wrap items-center gap-2 rounded-xl border border-[#1f6feb]/45 bg-[linear-gradient(135deg,rgba(31,111,235,0.18),rgba(9,105,218,0.06))] px-3 py-2 shadow-[0_10px_24px_rgba(9,105,218,0.18)]"
-                                role="group"
-                                aria-label="Chart zoom controls"
-                            >
-                                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#79c0ff]">
-                                    Zoom
-                                </span>
-                                <button
-                                    type="button"
-                                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#4c8dff] bg-[#0f2747] px-3 text-sm font-semibold text-[#dbeafe] transition hover:border-[#79c0ff] hover:bg-[#16345b] disabled:cursor-not-allowed disabled:opacity-50"
-                                    onClick={() => applyZoom('out')}
-                                    disabled={candlestickData.length === 0}
-                                    aria-label="Zoom out chart"
-                                    data-testid="chart-zoom-out"
-                                >
-                                    <Minus className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Out</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#4c8dff] bg-[#0f2747] px-3 text-sm font-semibold text-[#dbeafe] transition hover:border-[#79c0ff] hover:bg-[#16345b] disabled:cursor-not-allowed disabled:opacity-50"
-                                    onClick={() => applyZoom('in')}
-                                    disabled={candlestickData.length === 0}
-                                    aria-label="Zoom in chart"
-                                    data-testid="chart-zoom-in"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    <span className="hidden sm:inline">In</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#335c8e] bg-[#111c2a] px-3 text-sm font-medium text-[#c9d1d9] transition hover:border-[#79c0ff] hover:text-[#e6edf3] disabled:cursor-not-allowed disabled:opacity-50"
-                                    onClick={resetZoom}
-                                    disabled={candlestickData.length === 0}
-                                    aria-label="Reset chart zoom"
-                                    data-testid="chart-zoom-reset"
-                                >
-                                    <RotateCcw className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Reset</span>
-                                </button>
-                                <span
-                                    className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1 text-xs font-medium text-[#d0d7de]"
-                                    aria-live="polite"
-                                    data-testid="chart-visible-bars"
-                                >
-                                    {visibleBarCount ?? 0} candles
-                                </span>
-                                <span className="text-[11px] text-[#9fbad7]">
-                                    Mouse wheel: zoom
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className={`relative flex min-h-0 flex-1 flex-col gap-3 p-4 ${isAlgorithmicChartMode ? 'pb-5' : ''}`}>
-                            {error ? (
-                                <div className="rounded-xl border border-[#f85149]/40 bg-[#f85149]/10 px-4 py-3 text-sm text-[#ffb1ac]">
-                                    {error}
-                                </div>
-                            ) : null}
-
-                            <div className={`grid gap-3 ${isAlgorithmicChartMode ? 'grid-cols-1' : 'xl:grid-cols-[minmax(0,1fr)_280px]'}`}>
-                                <div className="min-w-0 space-y-3">
-                                    <div
-                                        className={`relative rounded-2xl border border-[#30363d] bg-[#0b1118] p-2 ${isAlgorithmicChartMode ? 'min-h-0 flex-1' : ''}`}
-                                        onWheel={handleChartWheel}
-                                        data-testid="chart-modal-main-chart-shell"
-                                        data-current-marker={signalLabel}
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-[#263241] bg-[#0d1117] px-4 py-3 sm:px-5">
+                        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Chart timeframe selector">
+                            {timeframeOptions.map((item) => {
+                                const active = item.value === timeframe;
+                                return (
+                                    <button
+                                        key={item.value}
+                                        type="button"
+                                        className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                                            active
+                                                ? 'border-[#58a6ff] bg-[#1f6feb]/18 text-[#f0f6fc]'
+                                                : 'border-[#263241] bg-[#111820] text-[#8b949e] hover:border-[#3d4d60] hover:text-[#f0f6fc]'
+                                        }`}
+                                        onClick={() => setTimeframe(item.value)}
+                                        aria-pressed={active}
+                                        title={item.source === 'algorithmic' ? 'Timeframe da estrategia' : 'Timeframe manual'}
+                                        data-testid={`chart-timeframe-${item.value}`}
                                     >
-                                        <div
-                                            ref={mainChartRef}
-                                            className="w-full h-full"
-                                            style={
-                                                isAlgorithmicChartMode
-                                                    ? { minHeight: '520px', height: 'min(82vh, calc(100vh - 250px))' }
-                                                    : undefined
-                                            }
-                                            data-testid="chart-modal-main-chart"
-                                        />
-                                        <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-[#79c0ff]/25 bg-[#0d1117]/86 px-3 py-1 text-[11px] font-medium text-[#c9e6ff]">
-                                            Scroll to zoom
-                                        </div>
-                                        {loading ? (
-                                            <div className="absolute right-4 top-4 rounded-md bg-black/55 px-3 py-1.5 text-xs text-white">
-                                                Loading timeframe...
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                </div>
-
-                                {isAlgorithmicChartMode ? null : (
-                                    <div className="rounded-2xl border border-[#30363d] bg-[#11161d] p-4 text-sm text-[#c9d1d9]">
-                                        <div className="space-y-5">
-                                            <section>
-                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Signal Context</p>
-                                                <div
-                                                    className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3"
-                                                    data-testid="chart-modal-signal-context"
-                                                >
-                                                    <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Sinal</span>
-                                                        <span className="font-mono text-[#e6edf3]">{resolvedSignal.visual.badgeText}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Strategy timeframe</span>
-                                                        <span className="font-mono text-[#e6edf3]">{resolvedSignal.strategyTimeframe ?? '-'}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Displayed timeframe</span>
-                                                        <span className="font-mono text-[#e6edf3]">{resolvedSignal.displayTimeframe ?? '-'}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Reference candle</span>
-                                                        <span className="font-mono text-[#e6edf3]">{formatTimestamp(resolvedSignal.referenceCandleTime)}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Latest displayed candle</span>
-                                                        <span className="font-mono text-[#e6edf3]">{formatTimestamp(resolvedSignal.latestCandleTime)}</span>
-                                                    </div>
-                                                    <div className="rounded-lg border border-[#30363d] bg-[#11161d] px-3 py-2 text-xs text-[#c9d1d9]">
-                                                        {resolvedSignal.statusMessage}
-                                                        {resolvedSignal.freshnessReason ? ` ${resolvedSignal.freshnessReason}` : ''}
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            <section>
-                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Crosshair</p>
-                                                <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    <div>
-                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Time</p>
-                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatTimestamp(displaySnapshot?.candle.timestamp_utc)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Volume</p>
-                                                        <p className="font-mono text-sm text-[#e6edf3]">
-                                                            {displaySnapshot?.candle.volume?.toLocaleString('en-US') ?? '-'}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Open</p>
-                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.open)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">High</p>
-                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.high)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Low</p>
-                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.low)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Close</p>
-                                                        <p className="font-mono text-sm text-[#e6edf3]">{formatPrice(displaySnapshot?.candle.close)}</p>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            <section>
-                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Distance</p>
-                                                <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Até {resolvedSignal.visual.distanceLabel}</p>
-                                                    <p className={`font-mono text-lg font-semibold ${
-                                                        (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'text-[#3fb950]' : 'text-[#e6edf3]'
-                                                    }`}>
-                                                        {formatPercent(opportunity.distance_to_next_status)}
-                                                    </p>
-                                                </div>
-                                            </section>
-
-                                            <section>
-                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Risco / Stop</p>
-                                                <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    {showEntryStopRows ? (
-                                                        <>
-                                                            <div className="flex justify-between gap-3">
-                                                                <span className="text-[#8b949e]">Compra</span>
-                                                                <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.entry_price)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between gap-3">
-                                                                <span className="text-[#8b949e]">Stop</span>
-                                                                <span className="font-mono text-[#e6edf3]">{formatPrice(opportunity.stop_price)}</span>
-                                                            </div>
-                                                        </>
-                                                    ) : null}
-                                                    <div className="flex justify-between gap-3">
-                                                        <span className="text-[#8b949e]">Risco</span>
-                                                        <span className="font-mono text-[#f85149]">{formatPercent(opportunity.distance_to_stop_pct)}</span>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            <section>
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Histórico de sinais</p>
-                                                    <span className="text-[11px] text-[#8b949e]">
-                                                        {canRenderSignalHistoryMarkers
-                                                            ? 'Marcadores alinhados ao timeframe do gráfico.'
-                                                            : 'Marcadores ocultos: timeframe do gráfico difere da estratégia.'}
-                                                    </span>
-                                                </div>
-                                                <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    {signalHistory.length > 0 ? (
-                                                        <div className="space-y-2" data-testid="chart-modal-signal-history">
-                                                            {signalHistory.map((item, index) => {
-                                                                const marker = getSignalHistoryMarker(item);
-                                                                return (
-                                                                    <div
-                                                                        key={`${item.timestamp}-${item.type}-${index}`}
-                                                                        className="flex items-start justify-between gap-3 rounded-lg border border-[#30363d] bg-[#11161d] px-3 py-2"
-                                                                        data-testid={`chart-modal-signal-history-item-${index}`}
-                                                                    >
-                                                                        <div className="space-y-1">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: marker.color }} />
-                                                                                <span className="font-mono text-sm text-[#e6edf3]">{getSignalHistoryLabel(item)}</span>
-                                                                                <span className="text-xs text-[#8b949e]">{formatSignalReason(item.reason)}</span>
-                                                                            </div>
-                                                                            <p className="text-xs text-[#8b949e]">{formatTimestamp(item.timestamp)}</p>
-                                                                        </div>
-                                                                        <span className="font-mono text-sm text-[#e6edf3]">{formatPrice(item.price)}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-[#8b949e]">Nenhum histórico confirmado de compra/venda para esta estratégia.</p>
-                                                    )}
-                                                </div>
-                                            </section>
-
-                                            <section>
-                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Parameters</p>
-                                                <div className="mt-2 space-y-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    {strategyProtected ? (
-                                                        <p className="text-[#8b949e]">Parametros protegidos.</p>
-                                                    ) : opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
-                                                        Object.entries(opportunity.parameters).map(([key, value]) => (
-                                                            <div key={key} className="flex justify-between gap-3">
-                                                                <span className="text-[#8b949e]">{key}</span>
-                                                                <span className="font-mono text-[#e6edf3]">{String(value)}</span>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <p className="text-[#8b949e]">No parameters available.</p>
-                                                    )}
-                                                </div>
-                                            </section>
-
-                                            <section>
-                                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b949e]">Notes</p>
-                                                <div className="mt-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-3">
-                                                    <p className="whitespace-pre-wrap text-sm text-[#c9d1d9]">
-                                                        {opportunity.notes?.trim() ? opportunity.notes : 'No notes for this strategy.'}
-                                                    </p>
-                                                </div>
-                                            </section>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
                         </div>
 
-                        <footer className="border-t border-[#30363d] px-5 py-3">
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-[#8b949e]">
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#388bfd]" /> Compra</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Stop</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#3fb950]" /> Compra</span>
-                                <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Venda</span>
-                            </div>
-                        </footer>
+                        <div
+                            className="ml-auto flex flex-wrap items-center gap-2 rounded-lg border border-[#263241] bg-[#111820] px-2 py-2"
+                            role="group"
+                            aria-label="Chart zoom controls"
+                        >
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center gap-2 rounded-md border border-[#30363d] bg-[#161b22] px-3 text-sm font-semibold text-[#dbeafe] transition hover:border-[#58a6ff] disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() => applyZoom('out')}
+                                disabled={candlestickData.length === 0}
+                                aria-label="Zoom out chart"
+                                data-testid="chart-zoom-out"
+                            >
+                                <Minus className="h-4 w-4" />
+                                <span className="hidden sm:inline">Out</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center gap-2 rounded-md border border-[#58a6ff]/70 bg-[#1f6feb] px-3 text-sm font-semibold text-white transition hover:bg-[#388bfd] disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() => applyZoom('in')}
+                                disabled={candlestickData.length === 0}
+                                aria-label="Zoom in chart"
+                                data-testid="chart-zoom-in"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span className="hidden sm:inline">In</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center gap-2 rounded-md border border-[#30363d] bg-[#161b22] px-3 text-sm font-medium text-[#c9d1d9] transition hover:border-[#58a6ff] hover:text-[#e6edf3] disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={resetZoom}
+                                disabled={candlestickData.length === 0}
+                                aria-label="Reset chart zoom"
+                                data-testid="chart-zoom-reset"
+                            >
+                                <RotateCcw className="h-4 w-4" />
+                                <span className="hidden sm:inline">Reset</span>
+                            </button>
+                            <span
+                                className="rounded-md border border-[#30363d] bg-[#0d1117] px-2.5 py-1 text-xs font-medium text-[#c9d1d9]"
+                                aria-live="polite"
+                                data-testid="chart-visible-bars"
+                            >
+                                {visibleBarCount ?? 0} candles
+                            </span>
+                            <span className="text-[11px] text-[#8b949e]">
+                                Mouse wheel: zoom
+                            </span>
+                        </div>
                     </div>
+
+                    <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
+                        {error ? (
+                            <div className="mb-3 rounded-lg border border-[#f85149]/40 bg-[#f85149]/10 px-4 py-3 text-sm text-[#ffb1ac]">
+                                {error}
+                            </div>
+                        ) : null}
+
+                        <div className="grid min-h-full gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
+                            <div
+                                className="relative min-h-[420px] rounded-xl border border-[#263241] bg-[#06090f] p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)] sm:min-h-[560px]"
+                                onWheel={handleChartWheel}
+                                data-testid="chart-modal-main-chart-shell"
+                                data-current-marker={signalLabel}
+                            >
+                                <div
+                                    ref={mainChartRef}
+                                    className="h-[420px] w-full sm:h-[560px] xl:h-full xl:min-h-[calc(100vh-330px)]"
+                                    data-testid="chart-modal-main-chart"
+                                />
+                                <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-[#58a6ff]/25 bg-[#0d1117]/86 px-3 py-1 text-[11px] font-medium text-[#c9e6ff]">
+                                    Scroll to zoom
+                                </div>
+                                {loading ? (
+                                    <div className="absolute right-4 top-4 rounded-md bg-black/60 px-3 py-1.5 text-xs text-white">
+                                        Loading timeframe...
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            <aside className="space-y-3 rounded-xl border border-[#263241] bg-[#0d1117] p-3 text-sm text-[#c9d1d9] xl:max-h-[calc(100vh-276px)] xl:overflow-auto">
+                                <section>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7d8b99]">Contexto do sinal</p>
+                                    <div
+                                        className="mt-2 space-y-2 rounded-lg border border-[#263241] bg-[#111820] p-3"
+                                        data-testid="chart-modal-signal-context"
+                                    >
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-[#8b949e]">Sinal</span>
+                                            <span className="font-mono text-[#f0f6fc]">{resolvedSignal.visual.badgeText}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-[#8b949e]">Timeframe estrategia</span>
+                                            <span className="font-mono text-[#f0f6fc]">{resolvedSignal.strategyTimeframe ?? '-'}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-[#8b949e]">Timeframe exibido</span>
+                                            <span className="font-mono text-[#f0f6fc]">{resolvedSignal.displayTimeframe ?? '-'}</span>
+                                        </div>
+                                        <div className="rounded-md border border-[#30363d] bg-[#0d1117] px-3 py-2 text-xs text-[#c9d1d9]">
+                                            {resolvedSignal.statusMessage}
+                                            {resolvedSignal.freshnessReason ? ` ${resolvedSignal.freshnessReason}` : ''}
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7d8b99]">Candle</p>
+                                    <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-[#263241] bg-[#111820] p-3">
+                                        <div>
+                                            <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Open</p>
+                                            <p className="font-mono text-sm text-[#f0f6fc]">{formatPrice(displaySnapshot?.candle.open)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Close</p>
+                                            <p className="font-mono text-sm text-[#f0f6fc]">{formatPrice(displaySnapshot?.candle.close)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">High</p>
+                                            <p className="font-mono text-sm text-[#f0f6fc]">{formatPrice(displaySnapshot?.candle.high)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Low</p>
+                                            <p className="font-mono text-sm text-[#f0f6fc]">{formatPrice(displaySnapshot?.candle.low)}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Volume</p>
+                                            <p className="font-mono text-sm text-[#f0f6fc]">
+                                                {displaySnapshot?.candle.volume?.toLocaleString('en-US') ?? '-'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7d8b99]">Risco / Stop</p>
+                                    <div className="mt-2 space-y-2 rounded-lg border border-[#263241] bg-[#111820] p-3">
+                                        {showEntryStopRows ? (
+                                            <>
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="text-[#8b949e]">Compra</span>
+                                                    <span className="font-mono text-[#f0f6fc]">{formatPrice(opportunity.entry_price)}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="text-[#8b949e]">Stop</span>
+                                                    <span className="font-mono text-[#f85149]">{formatPrice(opportunity.stop_price)}</span>
+                                                </div>
+                                            </>
+                                        ) : null}
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-[#8b949e]">Risco</span>
+                                            <span className="font-mono text-[#f85149]">{formatPercent(opportunity.distance_to_stop_pct)}</span>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7d8b99]">Historico de sinais</p>
+                                        <span className="text-[11px] text-[#8b949e]">
+                                            {canRenderSignalHistoryMarkers ? 'Marcadores ativos' : 'Timeframe diferente'}
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 rounded-lg border border-[#263241] bg-[#111820] p-3">
+                                        {signalHistory.length > 0 ? (
+                                            <div className="space-y-2" data-testid="chart-modal-signal-history">
+                                                {signalHistory.slice(0, 5).map((item, index) => {
+                                                    const marker = getSignalHistoryMarker(item);
+                                                    return (
+                                                        <div
+                                                            key={`${item.timestamp}-${item.type}-${index}`}
+                                                            className="flex items-start justify-between gap-3 rounded-md border border-[#263241] bg-[#0d1117] px-3 py-2"
+                                                            data-testid={`chart-modal-signal-history-item-${index}`}
+                                                        >
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: marker.color }} />
+                                                                    <span className="font-mono text-sm text-[#f0f6fc]">{getSignalHistoryLabel(item)}</span>
+                                                                    <span className="text-xs text-[#8b949e]">{formatSignalReason(item.reason)}</span>
+                                                                </div>
+                                                                <p className="text-xs text-[#8b949e]">{formatTimestamp(item.timestamp)}</p>
+                                                            </div>
+                                                            <span className="font-mono text-sm text-[#f0f6fc]">{formatPrice(item.price)}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-[#8b949e]">Nenhum historico confirmado de compra/venda para esta estrategia.</p>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7d8b99]">Parametros</p>
+                                    <div className="mt-2 space-y-2 rounded-lg border border-[#263241] bg-[#111820] p-3">
+                                        {strategyProtected ? (
+                                            <p className="text-[#8b949e]">Parametros protegidos.</p>
+                                        ) : opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
+                                            Object.entries(opportunity.parameters).map(([key, value]) => (
+                                                <div key={key} className="flex justify-between gap-3">
+                                                    <span className="text-[#8b949e]">{key}</span>
+                                                    <span className="font-mono text-[#f0f6fc]">{String(value)}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-[#8b949e]">Sem parametros disponiveis.</p>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7d8b99]">Notas</p>
+                                    <div className="mt-2 rounded-lg border border-[#263241] bg-[#111820] p-3">
+                                        <p className="whitespace-pre-wrap text-sm text-[#c9d1d9]">
+                                            {opportunity.notes?.trim() ? opportunity.notes : 'Sem notas para esta estrategia.'}
+                                        </p>
+                                    </div>
+                                </section>
+                            </aside>
+                        </div>
+                    </div>
+
+                    <footer className="border-t border-[#263241] bg-[#0d1117] px-5 py-3">
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-[#8b949e]">
+                            <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#388bfd]" /> Compra</span>
+                            <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Stop</span>
+                            <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#3fb950]" /> Entrada</span>
+                            <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#f85149]" /> Venda</span>
+                        </div>
+                    </footer>
                 </div>
             </div>
         </div>
