@@ -26,7 +26,9 @@ class BinanceCredentialPayload(BaseModel):
         normalized = str(value or "").strip()
         if "@" in normalized:
             field_name = "API Key" if info.field_name == "api_key" else "API Secret"
-            raise ValueError(f"{field_name} must be a Binance API credential, not an email or password")
+            raise ValueError(
+                f"{field_name} must be a Binance API credential, not an email or password"
+            )
         return normalized
 
 

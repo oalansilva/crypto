@@ -183,7 +183,7 @@ def test_api_cache_read_and_write_helpers():
     api._write_candles_cache("BTC/USDT", "1d", 10, payload)
 
     assert api._read_candles_cache("BTC/USDT", "1d", 10) == payload
-    key = ("BTC/USDT", "1d", 10)
+    key = ("BTC/USDT", "1d", 10, False)
     api._CANDLES_CACHE[key]["expires_at"] = 0
     assert api._read_candles_cache("BTC/USDT", "1d", 10) is None
 

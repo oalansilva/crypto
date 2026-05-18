@@ -389,7 +389,9 @@ def test_start_job_controls_and_scheduler(monkeypatch):
 def test_ensure_history_job_uses_backfill_when_symbol_history_is_incomplete(monkeypatch):
     service = _new_service(monkeypatch)
     monkeypatch.setattr(backfill_service_module.threading, "Thread", _FakeThread)
-    service._repo = _FakeRepo(earliest=datetime(2025, 1, 1, tzinfo=UTC), latest=datetime(2026, 5, 1, tzinfo=UTC))
+    service._repo = _FakeRepo(
+        earliest=datetime(2025, 1, 1, tzinfo=UTC), latest=datetime(2026, 5, 1, tzinfo=UTC)
+    )
 
     job_id = service.ensure_history_job(
         "btc/usdt",
