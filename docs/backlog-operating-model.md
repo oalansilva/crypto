@@ -58,13 +58,13 @@ Clara nao deve usar `Pronto` como estado de revisao. Se ainda faltar execucao re
 
 Quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente para cards no nome da Clara ou do Alan:
 
-- levantar os cards `Homologado` e com `Responsavel=Clara` ou `Responsavel=Alan` incluídos no pacote;
+- levantar todos os cards `Homologado` incluídos no pacote, independente do responsavel;
 - revisar se decisões, status e entregáveis estão refletidos na documentação do projeto/produto;
 - sincronizar Markdown local e Google Docs/Drive correspondentes;
 - publicar/encerrar a release com evidência;
 - mover esses cards de `Homologado` para `Pronto`.
 
-Cards de `Codex` ficam fora deste fluxo e seguem o fluxo técnico próprio do Codex.
+Para cards de `Codex`, confirmar commits/branches, PRs, testes e merge em `main`. Para cards de `Clara` ou `Alan`, confirmar documentação local em `docs/` e Google Drive quando aplicável.
 
 ## Campos Recomendados
 

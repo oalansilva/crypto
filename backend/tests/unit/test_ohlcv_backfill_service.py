@@ -20,13 +20,17 @@ from app.services.ohlcv_backfill_store import _default_job_state, _default_timef
 
 
 class _FakeRepo:
-    def __init__(self, enabled: bool = True, earliest=None):
+    def __init__(self, enabled: bool = True, earliest=None, latest=None):
         self.enabled = enabled
         self.earliest = earliest
+        self.latest = latest
         self.write_calls = 0
 
     def get_earliest_candle_time(self, _symbol: str, _timeframe: str):
         return self.earliest
+
+    def get_latest_candle_time(self, _symbol: str, _timeframe: str):
+        return self.latest
 
     def write_candles(self, *_args, **_kwargs):
         self.write_calls += 1
@@ -380,3 +384,30 @@ def test_start_job_controls_and_scheduler(monkeypatch):
 
     monkeypatch.setenv("BACKFILL_SCHEDULER_ENABLED", "0")
     assert service.run_scheduler_once() == 0
+
+
+def test_ensure_history_job_uses_backfill_when_symbol_history_is_incomplete(monkeypatch):
+    service = _new_service(monkeypatch)
+    monkeypatch.setattr(backfill_service_module.threading, "Thread", _FakeThread)
+    service._repo = _FakeRepo(
+        earliest=datetime(2025, 1, 1, tzinfo=UTC), latest=datetime(2026, 5, 1, tzinfo=UTC)
+    )
+
+    job_id = service.ensure_history_job(
+        "btc/usdt",
+        ["1d"],
+        data_source=CCXT_SOURCE,
+        history_window_years=10,
+    )
+    assert job_id is not None
+    job = service._store.get_job(job_id)
+    assert job["symbol"] == "BTC/USDT"
+    assert job["timeframes"] == ["1d"]
+
+    second = service.ensure_history_job(
+        "BTC/USDT",
+        ["1d"],
+        data_source=CCXT_SOURCE,
+        history_window_years=10,
+    )
+    assert second is None

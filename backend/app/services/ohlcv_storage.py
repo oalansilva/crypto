@@ -454,6 +454,57 @@ class MarketOhlcvRepository:
         _METRICS.record_query_latency(elapsed)
         return list(reversed(candles))
 
+    def read_all_candles(self, symbol: str, timeframe: str) -> list[dict[str, Any]]:
+        if not self.enabled:
+            return []
+
+        normalized_symbol = _normalize_symbol(symbol)
+        normalized_timeframe = _normalize_timeframe(timeframe)
+        start = time.perf_counter()
+        with engine.begin() as conn:
+            rows = (
+                conn.execute(
+                    text("""
+                    SELECT candle_time, open, high, low, close, volume, source
+                    FROM market_ohlcv
+                    WHERE symbol = :symbol
+                      AND timeframe = :timeframe
+                    ORDER BY candle_time ASC
+                    """),
+                    {
+                        "symbol": normalized_symbol,
+                        "timeframe": normalized_timeframe,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+
+        candles: list[dict[str, Any]] = []
+        for row in rows:
+            candle_time = row["candle_time"]
+            if not isinstance(candle_time, datetime):
+                parsed = _to_utc_datetime(candle_time)
+                if parsed is None:
+                    continue
+                candle_time = parsed
+
+            candles.append(
+                {
+                    "timestamp_utc": candle_time.isoformat(),
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                    "volume": float(row["volume"] or 0.0),
+                    "source": row["source"],
+                }
+            )
+
+        elapsed = time.perf_counter() - start
+        _METRICS.record_query_latency(elapsed)
+        return candles
+
     def write_candles(
         self,
         symbol: str,

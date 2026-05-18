@@ -48,6 +48,7 @@ interface MonitorOpportunity {
 const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
 
 const CURRENT_CHART_CANDLE_LIMIT = 300;
+const FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS = 2500;
 
 const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
     const candles = fav.metrics?.analysis_candles;
@@ -55,6 +56,62 @@ const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
 };
 
 const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
+
+const getCandleTimestampKey = (candle: any): string => {
+    const rawTimestamp = candle?.timestamp_utc ?? candle?.timestamp ?? candle?.time;
+    if (!rawTimestamp) return '';
+    const parsed = Date.parse(String(rawTimestamp));
+    return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(rawTimestamp);
+};
+
+const mergeAnalysisCandles = (currentCandles: any[], savedCandles: any[]): any[] => {
+    if (savedCandles.length === 0) return currentCandles;
+    if (currentCandles.length === 0) return savedCandles;
+
+    const byTimestamp = new Map<string, any>();
+    savedCandles.forEach((candle) => {
+        const key = getCandleTimestampKey(candle);
+        if (key) byTimestamp.set(key, candle);
+    });
+    currentCandles.forEach((candle) => {
+        const key = getCandleTimestampKey(candle);
+        if (key) byTimestamp.set(key, candle);
+    });
+
+    const merged = Array.from(byTimestamp.values()).sort((left, right) => (
+        Date.parse(getCandleTimestampKey(left)) - Date.parse(getCandleTimestampKey(right))
+    ));
+    return merged.length > 0 ? merged : (savedCandles.length > currentCandles.length ? savedCandles : currentCandles);
+};
+
+const resolveWithTimeout = <T,>(
+    promise: Promise<T>,
+    fallback: T,
+    timeoutMs = FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS,
+    onTimeout?: () => void,
+): Promise<T> => new Promise((resolve) => {
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        onTimeout?.();
+        resolve(fallback);
+    }, timeoutMs);
+
+    promise
+        .then((value) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeoutId);
+            resolve(value);
+        })
+        .catch(() => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeoutId);
+            resolve(fallback);
+        });
+});
 
 const calculateSignalProfit = (
     entryPrice: number | null | undefined,
@@ -386,6 +443,7 @@ const FavoritesDashboard: React.FC = () => {
         url.searchParams.set('symbol', fav.symbol);
         url.searchParams.set('timeframe', fav.timeframe);
         url.searchParams.set('limit', String(CURRENT_CHART_CANDLE_LIMIT));
+        url.searchParams.set('full_history', 'true');
 
         try {
             const response = await authFetch(url.toString());
@@ -563,12 +621,22 @@ const FavoritesDashboard: React.FC = () => {
     const handleViewAnalysis = async (fav: FavoriteStrategy) => {
         setLoadingAnalysisId(fav.id);
         try {
-            const [recovered, currentCandles, monitorSyncedTrades] = await Promise.all([
-                loadTradesForAnalysis(fav),
-                loadCurrentChartCandles(fav),
-                loadMonitorSyncedTrades(fav),
+            const recovered = await loadTradesForAnalysis(fav);
+            const [currentCandles, monitorSyncedTrades] = await Promise.all([
+                resolveWithTimeout(
+                    loadCurrentChartCandles(fav),
+                    recovered.candles || [],
+                    FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS,
+                    () => console.warn(`Using saved favorite candles for ${fav.symbol} ${fav.timeframe}; current candle load timed out.`),
+                ),
+                resolveWithTimeout(
+                    loadMonitorSyncedTrades(fav),
+                    null,
+                    FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS,
+                    () => console.warn(`Opening favorite analysis without monitor trade sync for ${fav.symbol} ${fav.timeframe}; monitor sync timed out.`),
+                ),
             ]);
-            const chartCandles = currentCandles.length > 0 ? currentCandles : recovered.candles;
+            const chartCandles = mergeAnalysisCandles(currentCandles, recovered.candles || []);
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
             analysisResult.candles = chartCandles || [];
             if (monitorSyncedTrades && monitorSyncedTrades.length > 0) {

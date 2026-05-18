@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -40,3 +41,11 @@ def test_user_can_put_get_and_delete_binance_credentials(tmp_path: Path):
     assert status.api_key_masked is not None
     assert deleted["message"] == "Binance credentials deleted"
     assert empty.configured is False
+
+
+def test_binance_credentials_reject_email_as_api_key():
+    with pytest.raises(ValueError, match="API Key"):
+        user_credentials.BinanceCredentialPayload(
+            api_key="alan@example.com",
+            api_secret="very-secret-value",
+        )

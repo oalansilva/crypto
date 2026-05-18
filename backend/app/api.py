@@ -14,6 +14,7 @@ from app.services.market_data_providers import (
     get_market_data_provider,
 )
 from app.services.asset_classification import classify_asset_type
+from app.services.ohlcv_backfill_service import get_backfill_service
 from app.services.preset_service import get_presets
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
 from app.services.ohlcv_storage import MarketOhlcvRepository
@@ -32,7 +33,7 @@ _DEFAULT_HISTORY_DAYS = {
 }
 _CANDLES_CACHE_TTL_SECONDS = 120.0
 _CANDLES_CACHE_LOCK = threading.Lock()
-_CANDLES_CACHE: Dict[Tuple[str, str, int], Dict[str, Any]] = {}
+_CANDLES_CACHE: Dict[Tuple[str, str, int, bool], Dict[str, Any]] = {}
 _OHLCV_REPO = MarketOhlcvRepository()
 _PERSISTED_CANDLES_MAX_LAG_SECONDS = {
     "1m": 10 * 60,
@@ -313,9 +314,15 @@ def _persisted_candles_payload(
     }
 
 
-def _read_candles_cache(symbol: str, timeframe: str, limit: int) -> Dict[str, Any] | None:
+def _read_candles_cache(
+    symbol: str,
+    timeframe: str,
+    limit: int,
+    *,
+    full_history: bool = False,
+) -> Dict[str, Any] | None:
     now = time.time()
-    key = (symbol, timeframe, limit)
+    key = (symbol, timeframe, limit, full_history)
     with _CANDLES_CACHE_LOCK:
         cached = _CANDLES_CACHE.get(key)
         if not cached:
@@ -326,8 +333,15 @@ def _read_candles_cache(symbol: str, timeframe: str, limit: int) -> Dict[str, An
         return dict(cached.get("payload") or {})
 
 
-def _write_candles_cache(symbol: str, timeframe: str, limit: int, payload: Dict[str, Any]) -> None:
-    key = (symbol, timeframe, limit)
+def _write_candles_cache(
+    symbol: str,
+    timeframe: str,
+    limit: int,
+    payload: Dict[str, Any],
+    *,
+    full_history: bool = False,
+) -> None:
+    key = (symbol, timeframe, limit, full_history)
     with _CANDLES_CACHE_LOCK:
         _CANDLES_CACHE[key] = {
             "payload": dict(payload),
@@ -335,11 +349,31 @@ def _write_candles_cache(symbol: str, timeframe: str, limit: int, payload: Dict[
         }
 
 
+def _schedule_full_history_backfill(raw_symbol: str, timeframe: str) -> str | None:
+    try:
+        years = int(os.getenv("FAVORITES_FULL_HISTORY_BACKFILL_YEARS", "10"))
+    except ValueError:
+        years = 10
+    try:
+        return get_backfill_service().ensure_history_job(
+            symbol=raw_symbol,
+            timeframes=[timeframe],
+            data_source=CCXT_SOURCE,
+            history_window_years=max(1, min(10, years)),
+        )
+    except Exception:
+        return None
+
+
 @router.get("/market/candles")
 async def get_market_candles(
     symbol: str = Query(..., description="Ticker or pair (e.g. NVDA or BTC/USDT)"),
     timeframe: str = Query("1d", description="One of: 1m, 5m, 15m, 1h, 4h, 1d"),
     limit: int = Query(200, ge=1, le=2000, description="Max candles to return"),
+    full_history: bool = Query(
+        False,
+        description="When true, return all persisted candles for the symbol/timeframe when available.",
+    ),
 ):
     raw_symbol = str(symbol or "").strip()
     if not raw_symbol:
@@ -350,12 +384,34 @@ async def get_market_candles(
         if asset_type != "crypto":
             raise ValueError("The MVP supports only crypto pairs such as BTC/USDT.")
         tf = _validate_market_timeframe(asset_type, timeframe)
-        cached = _read_candles_cache(raw_symbol, tf, limit)
+        cached = _read_candles_cache(raw_symbol, tf, limit, full_history=full_history)
         if cached is not None:
             return cached
 
         stale_persisted: list[dict[str, Any]] = []
+        backfill_job_id: str | None = None
         if _OHLCV_REPO.enabled:
+            if full_history:
+                backfill_job_id = _schedule_full_history_backfill(raw_symbol, tf)
+                try:
+                    persisted_full_history = _OHLCV_REPO.read_all_candles(raw_symbol, tf)
+                except Exception:
+                    persisted_full_history = []
+                if persisted_full_history:
+                    payload = _persisted_candles_payload(
+                        raw_symbol=raw_symbol,
+                        asset_type=asset_type,
+                        timeframe=tf,
+                        limit=len(persisted_full_history),
+                        candles=persisted_full_history,
+                        data_source="timescaledb-full-history",
+                    )
+                    if backfill_job_id:
+                        payload["backfill_job_id"] = backfill_job_id
+                        payload["backfill_status"] = "scheduled"
+                    _write_candles_cache(raw_symbol, tf, limit, payload, full_history=True)
+                    return payload
+
             try:
                 persisted = _OHLCV_REPO.read_recent_candles(raw_symbol, tf, limit)
             except Exception:
@@ -426,6 +482,9 @@ async def get_market_candles(
             "count": len(candles),
             "candles": candles,
         }
+        if full_history and backfill_job_id:
+            payload["backfill_job_id"] = backfill_job_id
+            payload["backfill_status"] = "scheduled"
         if _OHLCV_REPO.enabled and candles:
             try:
                 _OHLCV_REPO.write_candles(raw_symbol, tf, data_source, df)

@@ -5,6 +5,9 @@ import { authFetch } from '@/lib/authFetch'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/use-toast'
 
+const BINANCE_API_KEY_HELP = 'Use a API Key read-only criada na Binance. Não use e-mail ou senha da sua conta Binance.'
+const BINANCE_API_SECRET_HELP = 'Use o API Secret da mesma chave read-only. O Cripto Farol não pede sua senha da Binance.'
+
 type BalanceRow = {
   asset: string
   free: number
@@ -300,12 +303,24 @@ export default function ExternalBalancesPage() {
   }
 
   const saveCredentials = async () => {
+    const apiKey = apiKeyInput.trim()
+    const apiSecret = apiSecretInput.trim()
+    if (apiKey.includes('@')) {
+      toast({
+        title: 'Use uma API Key da Binance',
+        description: 'Este campo não aceita e-mail. Crie uma chave API read-only na Binance e cole a API Key aqui.',
+        variant: 'destructive',
+      })
+      return
+    }
+    if (!apiKey || !apiSecret) return
+
     setSavingCredentials(true)
     try {
       const res = await authFetch(`${API_BASE_URL}/user/binance-credentials`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: apiKeyInput.trim(), api_secret: apiSecretInput.trim() }),
+        body: JSON.stringify({ api_key: apiKey, api_secret: apiSecret }),
       })
       const payload = await res.json()
       if (!res.ok) throw new Error(String(payload?.detail || 'Falha ao salvar credenciais'))
@@ -374,7 +389,7 @@ export default function ExternalBalancesPage() {
             </div>
             <h1 className="text-[30px] font-bold tracking-normal text-slate-50 lg:text-[34px]">Carteira</h1>
             <div className="mt-2 max-w-3xl text-sm text-slate-400">
-              Saldos lidos da Binance Spot via API key vinculada à sua conta. Atualização sob demanda.
+              Saldos lidos da Binance Spot por chave API read-only. O Cripto Farol não solicita e-mail nem senha da Binance.
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
               <span className="inline-flex items-center gap-2 rounded-md border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 font-mono text-emerald-200">
@@ -433,7 +448,7 @@ export default function ExternalBalancesPage() {
                 Credenciais Binance
               </div>
               <div className="mt-2 max-w-3xl text-sm text-slate-400">
-                A Home e a carteira usam uma API key vinculada ao usuário logado. Use chave read-only e mantenha IP whitelist habilitado na Binance.
+                A Home e a carteira usam uma chave API vinculada ao usuário logado. Use permissão somente leitura e mantenha IP whitelist habilitado na Binance.
               </div>
             </div>
             <div className="inline-flex w-fit items-center gap-2 rounded-md border border-white/10 bg-slate-950/40 px-3 py-1.5 font-mono text-xs text-slate-300">
@@ -443,12 +458,19 @@ export default function ExternalBalancesPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_auto_auto]">
+          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_auto_auto]" data-lpignore="true">
             <label className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-slate-950/35 px-3 text-sm text-slate-200 focus-within:border-sky-300/50">
               <ShieldCheck className="h-4 w-4 text-slate-500" />
               <input
+                aria-label="Binance API Key read-only"
+                title={BINANCE_API_KEY_HELP}
+                name="binance_api_key_readonly"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                spellCheck={false}
                 className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
-                placeholder="Binance API Key"
+                placeholder="API Key read-only da Binance"
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
               />
@@ -457,8 +479,15 @@ export default function ExternalBalancesPage() {
               <KeyRound className="h-4 w-4 text-slate-500" />
               <input
                 type={showApiSecret ? 'text' : 'password'}
+                aria-label="Binance API Secret read-only"
+                title={BINANCE_API_SECRET_HELP}
+                name="binance_api_secret_readonly"
+                autoComplete="new-password"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                spellCheck={false}
                 className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
-                placeholder="Binance API Secret"
+                placeholder="API Secret da chave read-only"
                 value={apiSecretInput}
                 onChange={(e) => setApiSecretInput(e.target.value)}
               />

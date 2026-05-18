@@ -53,8 +53,6 @@ const strategyNavItems: NavItemConfig[] = [
 
 const accountNavItems: NavItemConfig[] = [
   { to: '/external/balances', label: 'Carteira', icon: Wallet },
-  { to: '/profile', label: 'Meu Perfil', icon: User },
-  { to: '/change-password', label: 'Alterar Senha', icon: KeyRound },
 ]
 
 const adminNavItems: NavItemConfig[] = [
@@ -371,7 +369,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                 {visibleStrategyNavItems.length > 0 ? (
                   <NavSection title="Estratégias" items={visibleStrategyNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
                 ) : null}
-                <NavSection title="Conta" items={accountNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
+                <NavSection title="Carteira" items={accountNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} />
                 {visibleAdminNavItems.length > 0 ? <NavSection title="Admin" items={visibleAdminNavItems} collapsed={false} pathname={pathname} onNavigate={() => setMobileMenuOpen(false)} /> : null}
 
                 {user && (
@@ -441,7 +439,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
           {visibleStrategyNavItems.length > 0 ? (
             <NavSection title="Estratégias" items={visibleStrategyNavItems} collapsed={collapsed} pathname={pathname} />
           ) : null}
-          <NavSection title="Conta" items={accountNavItems} collapsed={collapsed} pathname={pathname} />
+          <NavSection title="Carteira" items={accountNavItems} collapsed={collapsed} pathname={pathname} />
           {visibleAdminNavItems.length > 0 ? <NavSection title="Admin" items={visibleAdminNavItems} collapsed={collapsed} pathname={pathname} /> : null}
         </nav>
 

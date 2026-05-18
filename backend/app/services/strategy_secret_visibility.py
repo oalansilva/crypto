@@ -73,10 +73,11 @@ def redact_favorite_strategy_payload(
         payload.setdefault("strategy_display_name", _display_name(payload))
         return payload
 
+    public_display_name = _public_strategy_display_name(payload)
     payload["strategy_name"] = PROTECTED_STRATEGY_LABEL
     payload["parameters"] = {}
     payload["is_strategy_protected"] = True
-    payload["strategy_display_name"] = PROTECTED_STRATEGY_LABEL
+    payload["strategy_display_name"] = public_display_name
     return payload
 
 
