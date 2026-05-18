@@ -621,7 +621,21 @@ const FavoritesDashboard: React.FC = () => {
     const handleViewAnalysis = async (fav: FavoriteStrategy) => {
         setLoadingAnalysisId(fav.id);
         try {
-            const recovered = await loadTradesForAnalysis(fav);
+            const cachedAnalysisFallback = {
+                trades: getSavedTrades(fav) || [],
+                metrics: fav.metrics || {},
+                candles: getSavedAnalysisCandles(fav),
+                indicatorData: fav.metrics?.analysis_indicator_data && typeof fav.metrics.analysis_indicator_data === 'object'
+                    ? fav.metrics.analysis_indicator_data
+                    : {},
+                executionMode: 'favorite_cache_timeout',
+            };
+            const recovered = await resolveWithTimeout(
+                loadTradesForAnalysis(fav),
+                cachedAnalysisFallback,
+                FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS,
+                () => console.warn(`Opening favorite analysis from saved summary for ${fav.symbol} ${fav.timeframe}; trade recovery timed out.`),
+            );
             const [currentCandles, monitorSyncedTrades] = await Promise.all([
                 resolveWithTimeout(
                     loadCurrentChartCandles(fav),
