@@ -8,12 +8,17 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
+import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models import AutoBacktestRun, FavoriteStrategy
 from app.services.combo_optimizer import ComboOptimizer
-from app.services.market_data_providers import resolve_data_source_for_symbol
+from app.services.market_data_providers import (
+    CCXT_SOURCE,
+    get_market_data_provider,
+    resolve_data_source_for_symbol,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +68,26 @@ def _error_text(exc: Exception) -> str:
 
 
 def _parse_candle_timestamp(value: Any) -> datetime | None:
-    if isinstance(value, datetime):
+    if isinstance(value, pd.Timestamp):
+        parsed = value.to_pydatetime()
+    elif isinstance(value, datetime):
         parsed = value
     elif isinstance(value, str):
         try:
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError:
-            return None
+            parsed = None
     else:
-        return None
+        parsed = None
+
+    if parsed is None:
+        try:
+            parsed_value = pd.to_datetime(value, utc=True, errors="coerce")
+        except Exception:
+            return None
+        if pd.isna(parsed_value):
+            return None
+        parsed = parsed_value.to_pydatetime()
 
     if parsed.tzinfo is not None:
         parsed = parsed.astimezone().replace(tzinfo=None)
@@ -106,6 +122,21 @@ def _latest_candle_timestamp(candles: list[dict[str, Any]]) -> datetime | None:
     return max(valid) if valid else None
 
 
+def _latest_frame_timestamp(frame: Any) -> datetime | None:
+    if frame is None or getattr(frame, "empty", True):
+        return None
+    if "timestamp_utc" in frame.columns:
+        values = frame["timestamp_utc"]
+    else:
+        values = frame.index
+    try:
+        parsed = [_parse_candle_timestamp(value) for value in values]
+    except Exception:
+        return None
+    valid = [timestamp for timestamp in parsed if timestamp is not None]
+    return max(valid) if valid else None
+
+
 def _ensure_fresh_candles(result: dict[str, Any], favorite: FavoriteStrategy, now: datetime) -> None:
     candles = result.get("candles") if isinstance(result.get("candles"), list) else []
     if not candles:
@@ -125,16 +156,111 @@ def _ensure_fresh_candles(result: dict[str, Any], favorite: FavoriteStrategy, no
         )
 
 
+def _ensure_fresh_frame(frame: Any, *, symbol: str, timeframe: str, now: datetime) -> None:
+    if frame is None or getattr(frame, "empty", True):
+        raise RuntimeError(f"No candles available for {symbol} {timeframe}")
+
+    latest = _latest_frame_timestamp(frame)
+    if latest is None:
+        raise RuntimeError(f"No valid candle timestamp available for {symbol} {timeframe}")
+
+    max_age = _max_candle_age(timeframe)
+    if latest < now - max_age:
+        raise RuntimeError(
+            f"Stale candles for {symbol} {timeframe}: "
+            f"latest={latest.date().isoformat()}, max_age_days={max_age.days}"
+        )
+
+
+def _fetch_ohlcv(provider: Any, **kwargs: Any) -> Any:
+    try:
+        return provider.fetch_ohlcv(**kwargs)
+    except TypeError as exc:
+        if "full_history_if_empty" not in kwargs:
+            raise
+        kwargs.pop("full_history_if_empty", None)
+        try:
+            return provider.fetch_ohlcv(**kwargs)
+        except TypeError:
+            raise exc
+
+
 class FavoriteBacktestRefreshService:
-    def __init__(self, db_factory=SessionLocal, optimizer_factory=ComboOptimizer):
+    def __init__(
+        self,
+        db_factory=SessionLocal,
+        optimizer_factory=ComboOptimizer,
+        market_data_provider_factory=get_market_data_provider,
+    ):
         self._db_factory = db_factory
         self._optimizer_factory = optimizer_factory
+        self._market_data_provider_factory = market_data_provider_factory
+
+    def _prepare_market_data(
+        self,
+        favorite: FavoriteStrategy,
+        *,
+        data_source: str,
+        start_date: str | None,
+        end_date: str,
+    ) -> None:
+        provider = self._market_data_provider_factory(data_source)
+        frame = _fetch_ohlcv(
+            provider,
+            symbol=favorite.symbol,
+            timeframe=favorite.timeframe,
+            since_str=start_date,
+            until_str=end_date,
+            full_history_if_empty=True,
+        )
+        _ensure_fresh_frame(
+            frame,
+            symbol=favorite.symbol,
+            timeframe=favorite.timeframe,
+            now=_utcnow(),
+        )
+
+        if data_source != CCXT_SOURCE:
+            return
+
+        intraday_since = start_date
+        latest_daily_start = _latest_frame_timestamp(frame)
+        if start_date is None and latest_daily_start is not None:
+            try:
+                first_value = frame.index.min()
+                parsed_first = _parse_candle_timestamp(first_value)
+                if parsed_first is not None:
+                    intraday_since = parsed_first.date().isoformat()
+            except Exception:
+                pass
+
+        intraday_frame = _fetch_ohlcv(
+            provider,
+            symbol=favorite.symbol,
+            timeframe="15m",
+            since_str=intraday_since,
+            until_str=end_date,
+            full_history_if_empty=True,
+        )
+        _ensure_fresh_frame(
+            intraday_frame,
+            symbol=favorite.symbol,
+            timeframe="15m",
+            now=_utcnow(),
+        )
 
     def _run_optimization(self, favorite: FavoriteStrategy) -> dict[str, Any]:
         parameters = _decode_jsonish(favorite.parameters)
         parameters = parameters if isinstance(parameters, dict) else {}
         data_source = parameters.get("data_source") or resolve_data_source_for_symbol(
             favorite.symbol, None
+        )
+        end_date = _utcnow().date().isoformat()
+        self._prepare_market_data(
+            favorite,
+            data_source=data_source,
+            start_date=favorite.start_date,
+            end_date=end_date,
         )
         optimizer = self._optimizer_factory()
         return optimizer.run_optimization(
@@ -143,7 +269,7 @@ class FavoriteBacktestRefreshService:
             timeframe=favorite.timeframe,
             data_source=data_source,
             start_date=favorite.start_date,
-            end_date=_utcnow().date().isoformat(),
+            end_date=end_date,
             custom_ranges=_fixed_optimization_ranges(parameters),
             deep_backtest=True,
             direction=_favorite_direction(parameters),

@@ -6,6 +6,7 @@ from pathlib import Path
 import uuid
 
 from fastapi import HTTPException
+import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -635,6 +636,7 @@ def test_favorite_trades_rejects_protected_access(tmp_path: Path, monkeypatch):
 def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     optimizer_calls = []
+    provider_calls = []
 
     class FakeOptimizer:
         def run_optimization(self, *, symbol: str, **kwargs):
@@ -648,6 +650,21 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
                 "indicator_data": {"sma_medium": [99]},
                 "execution_mode": "favorite_auto_refresh",
             }
+
+    class FakeProvider:
+        def fetch_ohlcv(self, **kwargs):
+            provider_calls.append(kwargs)
+            timestamp = pd.Timestamp.now("UTC")
+            return pd.DataFrame(
+                {
+                    "timestamp_utc": [timestamp],
+                    "open": [100.0],
+                    "high": [101.0],
+                    "low": [99.0],
+                    "close": [100.0],
+                    "volume": [1.0],
+                }
+            ).set_index("timestamp_utc", drop=False)
 
     with SessionLocal() as db:
         ok = favorites.create_favorite(
@@ -676,6 +693,7 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
     service = FavoriteBacktestRefreshService(
         db_factory=SessionLocal,
         optimizer_factory=FakeOptimizer,
+        market_data_provider_factory=lambda _source: FakeProvider(),
     )
     summary = service.run_due_refreshes(interval_seconds=86400)
 
@@ -700,6 +718,7 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
     assert ok_row.metrics["trades_history_cached"] is True
     assert ok_row.metrics["analysis_execution_mode"] == "favorite_auto_refresh"
     assert optimizer_calls[0]["deep_backtest"] is True
+    assert [call["timeframe"] for call in provider_calls[:2]] == ["1d", "15m"]
     assert fail_row.auto_refresh_status == REFRESH_STATUS_FAILED
     assert "market data unavailable" in fail_row.auto_refresh_error
     assert fail_row.metrics["total_return_pct"] == 12.3
@@ -708,9 +727,12 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
 
 def test_favorite_auto_refresh_rejects_stale_candles(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
+    optimizer_called = False
 
     class StaleOptimizer:
         def run_optimization(self, **_kwargs):
+            nonlocal optimizer_called
+            optimizer_called = True
             return {
                 "best_metrics": {"total_return_pct": 8.5, "total_trades": 1},
                 "trades": [{"entry_time": "2024-07-01T00:00:00Z", "profit": 0.085}],
@@ -718,6 +740,20 @@ def test_favorite_auto_refresh_rejects_stale_candles(tmp_path: Path):
                 "indicator_data": {"sma_medium": [99]},
                 "execution_mode": "favorite_auto_refresh",
             }
+
+    class StaleProvider:
+        def fetch_ohlcv(self, **_kwargs):
+            timestamp = pd.Timestamp("2024-07-01T00:00:00Z")
+            return pd.DataFrame(
+                {
+                    "timestamp_utc": [timestamp],
+                    "open": [100.0],
+                    "high": [101.0],
+                    "low": [99.0],
+                    "close": [100.0],
+                    "volume": [1.0],
+                }
+            ).set_index("timestamp_utc", drop=False)
 
     with SessionLocal() as db:
         favorite = favorites.create_favorite(
@@ -729,6 +765,7 @@ def test_favorite_auto_refresh_rejects_stale_candles(tmp_path: Path):
     service = FavoriteBacktestRefreshService(
         db_factory=SessionLocal,
         optimizer_factory=StaleOptimizer,
+        market_data_provider_factory=lambda _source: StaleProvider(),
     )
     result = service.refresh_favorite(favorite.id)
 
@@ -741,6 +778,7 @@ def test_favorite_auto_refresh_rejects_stale_candles(tmp_path: Path):
     assert "Stale candles for AGIX/USDT 1d" in stored.auto_refresh_error
     assert stored.metrics["total_return_pct"] == 12.3
     assert run.status == REFRESH_STATUS_FAILED
+    assert optimizer_called is False
 
 
 def test_favorites_list_exposes_refresh_state(tmp_path: Path, monkeypatch):

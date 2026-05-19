@@ -12,6 +12,8 @@ The system SHALL refresh due favorited backtests through an internal backend rou
 #### Scenario: Daily refresh runs for due favorites
 - **WHEN** the backend worker starts the favorite refresh routine
 - **THEN** it SHALL select favorites that never completed a refresh or completed before the configured refresh interval
+- **AND** it SHALL fetch and refresh the market data required by the favorite timeframe before recalculating the backtest
+- **AND** for crypto deep backtests it SHALL prepare the required intraday candles before recalculating the backtest
 - **AND** it SHALL rerun each due favorite using the saved symbol, timeframe, strategy, direction, period start, and fixed parameter ranges
 - **AND** it SHALL persist refreshed metrics, trades, candles, and indicator context on the favorite
 
