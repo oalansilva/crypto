@@ -62,6 +62,69 @@ def _error_text(exc: Exception) -> str:
     return str(exc)[:2000] or exc.__class__.__name__
 
 
+def _parse_candle_timestamp(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    else:
+        return None
+
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone().replace(tzinfo=None)
+    return parsed
+
+
+def _max_candle_age(timeframe: str) -> timedelta:
+    normalized = str(timeframe or "").strip().lower()
+    if normalized.endswith("m"):
+        try:
+            minutes = int(normalized[:-1])
+        except ValueError:
+            return timedelta(hours=6)
+        return timedelta(minutes=max(minutes * 4, 30))
+    if normalized.endswith("h"):
+        try:
+            hours = int(normalized[:-1])
+        except ValueError:
+            return timedelta(hours=24)
+        return timedelta(hours=max(hours * 3, 12))
+    if normalized.endswith("d"):
+        return timedelta(days=7)
+    return timedelta(days=7)
+
+
+def _latest_candle_timestamp(candles: list[dict[str, Any]]) -> datetime | None:
+    parsed = [
+        _parse_candle_timestamp(candle.get("timestamp_utc") or candle.get("timestamp"))
+        for candle in candles
+    ]
+    valid = [timestamp for timestamp in parsed if timestamp is not None]
+    return max(valid) if valid else None
+
+
+def _ensure_fresh_candles(result: dict[str, Any], favorite: FavoriteStrategy, now: datetime) -> None:
+    candles = result.get("candles") if isinstance(result.get("candles"), list) else []
+    if not candles:
+        raise RuntimeError(f"No candles returned for {favorite.symbol} {favorite.timeframe}")
+
+    latest = _latest_candle_timestamp(candles)
+    if latest is None:
+        raise RuntimeError(
+            f"No valid candle timestamp returned for {favorite.symbol} {favorite.timeframe}"
+        )
+
+    max_age = _max_candle_age(favorite.timeframe)
+    if latest < now - max_age:
+        raise RuntimeError(
+            f"Stale candles for {favorite.symbol} {favorite.timeframe}: "
+            f"latest={latest.date().isoformat()}, max_age_days={max_age.days}"
+        )
+
+
 class FavoriteBacktestRefreshService:
     def __init__(self, db_factory=SessionLocal, optimizer_factory=ComboOptimizer):
         self._db_factory = db_factory
@@ -121,6 +184,7 @@ class FavoriteBacktestRefreshService:
             session.commit()
 
             result = self._run_optimization(favorite)
+            _ensure_fresh_candles(result, favorite, _utcnow())
             refreshed_metrics = result.get("best_metrics") or result.get("metrics") or {}
             current_metrics = _decode_jsonish(favorite.metrics)
             current_metrics = current_metrics if isinstance(current_metrics, dict) else {}

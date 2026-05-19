@@ -644,7 +644,7 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
             return {
                 "best_metrics": {"total_return_pct": 8.5, "total_trades": 1},
                 "trades": [{"entry_time": "2026-05-01T00:00:00Z", "profit": 0.085}],
-                "candles": [{"timestamp_utc": "2026-05-01T00:00:00Z", "close": 100}],
+                "candles": [{"timestamp_utc": datetime.utcnow().isoformat(), "close": 100}],
                 "indicator_data": {"sma_medium": [99]},
                 "execution_mode": "favorite_auto_refresh",
             }
@@ -704,6 +704,43 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
     assert "market data unavailable" in fail_row.auto_refresh_error
     assert fail_row.metrics["total_return_pct"] == 12.3
     assert {run.status for run in runs} == {REFRESH_STATUS_SUCCESS, REFRESH_STATUS_FAILED}
+
+
+def test_favorite_auto_refresh_rejects_stale_candles(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+
+    class StaleOptimizer:
+        def run_optimization(self, **_kwargs):
+            return {
+                "best_metrics": {"total_return_pct": 8.5, "total_trades": 1},
+                "trades": [{"entry_time": "2024-07-01T00:00:00Z", "profit": 0.085}],
+                "candles": [{"timestamp_utc": "2024-07-01T00:00:00Z", "close": 100}],
+                "indicator_data": {"sma_medium": [99]},
+                "execution_mode": "favorite_auto_refresh",
+            }
+
+    with SessionLocal() as db:
+        favorite = favorites.create_favorite(
+            _favorite_payload("Stale refresh", symbol="AGIX/USDT"),
+            current_user_id="user-a",
+            db=db,
+        )
+
+    service = FavoriteBacktestRefreshService(
+        db_factory=SessionLocal,
+        optimizer_factory=StaleOptimizer,
+    )
+    result = service.refresh_favorite(favorite.id)
+
+    with SessionLocal() as db:
+        stored = db.query(favorites.FavoriteStrategy).filter_by(id=favorite.id).one()
+        run = db.query(AutoBacktestRun).filter_by(favorite_id=favorite.id).one()
+
+    assert result["status"] == REFRESH_STATUS_FAILED
+    assert stored.auto_refresh_status == REFRESH_STATUS_FAILED
+    assert "Stale candles for AGIX/USDT 1d" in stored.auto_refresh_error
+    assert stored.metrics["total_return_pct"] == 12.3
+    assert run.status == REFRESH_STATUS_FAILED
 
 
 def test_favorites_list_exposes_refresh_state(tmp_path: Path, monkeypatch):

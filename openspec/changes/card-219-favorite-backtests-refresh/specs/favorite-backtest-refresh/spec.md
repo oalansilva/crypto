@@ -21,6 +21,11 @@ The system SHALL refresh due favorited backtests through an internal backend rou
 - **AND** it SHALL continue processing other due favorites
 - **AND** it SHALL preserve the favorite's previous metrics
 
+#### Scenario: Favorite refresh returns stale market data
+- **WHEN** a favorite refresh completes its calculation but the newest returned candle is older than the tolerated freshness window for the favorite timeframe
+- **THEN** the routine SHALL persist failure status and error for that favorite
+- **AND** it SHALL preserve the favorite's previous metrics instead of marking stale results as refreshed
+
 ### Requirement: Favorite refresh attempts are auditable
 The system SHALL record refresh attempts in both the favorite row and `auto_backtest_runs`.
 

@@ -6,3 +6,4 @@
 - [x] Expose refresh metadata through the Favorites API and UI.
 - [x] Add focused backend tests for refresh success/failure and worker wiring.
 - [x] Run OpenSpec validation, backend tests, and frontend build.
+- [x] Reject stale candle refresh results so delisted/inactive pairs do not appear successfully updated.
