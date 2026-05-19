@@ -1086,6 +1086,24 @@ textarea {
   font-weight: 400;
 }
 
+.favorites-workbench .fav-refresh-status {
+  color: var(--fav-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.favorites-workbench .fav-refresh-status.success {
+  color: #0f766e;
+}
+
+.favorites-workbench .fav-refresh-status.running {
+  color: #2563eb;
+}
+
+.favorites-workbench .fav-refresh-status.failed {
+  color: #b91c1c;
+}
+
 .favorites-workbench .fav-direction,
 .favorites-workbench .tf-pill {
   display: inline-flex;

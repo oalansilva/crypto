@@ -289,6 +289,26 @@ def ensure_runtime_schema_migrations() -> None:
                 ADD COLUMN IF NOT EXISTS notify_telegram BOOLEAN NOT NULL DEFAULT TRUE
                 """))
         conn.execute(text("""
+                ALTER TABLE favorite_strategies
+                ADD COLUMN IF NOT EXISTS auto_refresh_status VARCHAR NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE favorite_strategies
+                ADD COLUMN IF NOT EXISTS auto_refresh_error TEXT NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE favorite_strategies
+                ADD COLUMN IF NOT EXISTS auto_refresh_started_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE favorite_strategies
+                ADD COLUMN IF NOT EXISTS auto_refresh_completed_at TIMESTAMP NULL
+                """))
+        conn.execute(text("""
+                ALTER TABLE favorite_strategies
+                ADD COLUMN IF NOT EXISTS auto_refresh_run_id VARCHAR NULL
+                """))
+        conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS market_indicator (
                     id BIGSERIAL PRIMARY KEY,
                     symbol TEXT NOT NULL,

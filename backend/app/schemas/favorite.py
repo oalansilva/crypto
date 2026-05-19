@@ -16,6 +16,11 @@ class FavoriteStrategyBase(BaseModel):
     start_date: Optional[str] = None  # Período do backtest (6m/2y/todo)
     end_date: Optional[str] = None
     period_type: Optional[str] = None  # '6m' | '2y' | 'all'; chave para skip
+    auto_refresh_status: Optional[str] = None
+    auto_refresh_error: Optional[str] = None
+    auto_refresh_started_at: Optional[datetime] = None
+    auto_refresh_completed_at: Optional[datetime] = None
+    auto_refresh_run_id: Optional[str] = None
 
 
 class FavoriteStrategyCreate(FavoriteStrategyBase):

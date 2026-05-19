@@ -283,6 +283,24 @@ async def test_runtime_worker_run_and_main_cover_enabled_and_disabled_paths(monk
     await runtime_worker._run(stop_event)
     assert tracker == ["init", "monitor-start", "feed-start", "feed-stop", "monitor-stop"]
 
+    tracker = []
+    stop_event = asyncio.Event()
+    monkeypatch.setattr(
+        runtime_worker,
+        "_env_enabled",
+        lambda name, default="1": name == "RUN_FAVORITE_BACKTEST_REFRESH",
+    )
+    monkeypatch.setattr(runtime_worker, "_initialize_runtime_state", lambda: tracker.append("init"))
+
+    async def _favorite_refresh_loop(event):
+        tracker.append("favorite-refresh-start")
+        event.set()
+        await event.wait()
+
+    monkeypatch.setattr(runtime_worker, "favorite_backtest_refresh_loop", _favorite_refresh_loop)
+    await runtime_worker._run(stop_event)
+    assert tracker == ["init", "favorite-refresh-start"]
+
     main_calls: list[str] = []
 
     async def _fake_run(event):

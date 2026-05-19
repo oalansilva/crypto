@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from pathlib import Path
 import uuid
 
@@ -9,8 +10,13 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
-from app.models import MonitorStrategyPreference, User
+from app.models import AutoBacktestRun, MonitorStrategyPreference, User
 from app.routes import favorites
+from app.services.favorite_backtest_refresh_service import (
+    FavoriteBacktestRefreshService,
+    REFRESH_STATUS_FAILED,
+    REFRESH_STATUS_SUCCESS,
+)
 from app.services.opportunity_service import OpportunityService
 
 
@@ -33,10 +39,50 @@ def _session_factory(tmp_path: Path):
             )
         )
         connection.execute(
+            text(
+                "ALTER TABLE favorite_strategies ADD COLUMN IF NOT EXISTS auto_refresh_status VARCHAR NULL"
+            )
+        )
+        connection.execute(
+            text(
+                "ALTER TABLE favorite_strategies ADD COLUMN IF NOT EXISTS auto_refresh_error TEXT NULL"
+            )
+        )
+        connection.execute(
+            text(
+                "ALTER TABLE favorite_strategies ADD COLUMN IF NOT EXISTS auto_refresh_started_at TIMESTAMP NULL"
+            )
+        )
+        connection.execute(
+            text(
+                "ALTER TABLE favorite_strategies ADD COLUMN IF NOT EXISTS auto_refresh_completed_at TIMESTAMP NULL"
+            )
+        )
+        connection.execute(
+            text(
+                "ALTER TABLE favorite_strategies ADD COLUMN IF NOT EXISTS auto_refresh_run_id VARCHAR NULL"
+            )
+        )
+        connection.execute(
             text("DELETE FROM monitor_strategy_preferences WHERE user_id IN ('user-a', 'user-b')")
         )
         connection.execute(
-            text("DELETE FROM favorite_strategies WHERE user_id IN ('user-a', 'user-b')")
+            text(
+                "DELETE FROM monitor_strategy_preferences "
+                "WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'admin-%@example.com' OR email LIKE 'common-%@example.com')"
+            )
+        )
+        connection.execute(
+            text(
+                "DELETE FROM favorite_strategies "
+                "WHERE user_id IN ('user-a', 'user-b', 'admin-user') "
+                "OR user_id IN (SELECT id FROM users WHERE email LIKE 'admin-%@example.com' OR email LIKE 'common-%@example.com')"
+            )
+        )
+        connection.execute(
+            text(
+                "DELETE FROM users WHERE email LIKE 'admin-%@example.com' OR email LIKE 'common-%@example.com'"
+            )
         )
     return TestingSessionLocal
 
@@ -584,3 +630,94 @@ def test_favorite_trades_rejects_protected_access(tmp_path: Path, monkeypatch):
             raise AssertionError("protected favorite trades should be rejected")
         except HTTPException as exc:
             assert exc.status_code == 403
+
+
+def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
+    SessionLocal = _session_factory(tmp_path)
+
+    class FakeOptimizer:
+        def run_optimization(self, *, symbol: str, **kwargs):
+            if symbol == "ETH/USDT":
+                raise RuntimeError("market data unavailable")
+            return {
+                "best_metrics": {"total_return_pct": 8.5, "total_trades": 1},
+                "trades": [{"entry_time": "2026-05-01T00:00:00Z", "profit": 0.085}],
+                "candles": [{"timestamp_utc": "2026-05-01T00:00:00Z", "close": 100}],
+                "indicator_data": {"sma_medium": [99]},
+                "execution_mode": "favorite_auto_refresh",
+            }
+
+    with SessionLocal() as db:
+        ok = favorites.create_favorite(
+            _favorite_payload("Refresh success", symbol="BTC/USDT"),
+            current_user_id="user-a",
+            db=db,
+        )
+        fail = favorites.create_favorite(
+            _favorite_payload("Refresh failure", symbol="ETH/USDT"),
+            current_user_id="user-a",
+            db=db,
+        )
+        (
+            db.query(favorites.FavoriteStrategy)
+            .filter(favorites.FavoriteStrategy.id.notin_([ok.id, fail.id]))
+            .update(
+                {
+                    "auto_refresh_status": REFRESH_STATUS_SUCCESS,
+                    "auto_refresh_completed_at": datetime.utcnow(),
+                },
+                synchronize_session=False,
+            )
+        )
+        db.commit()
+
+    service = FavoriteBacktestRefreshService(
+        db_factory=SessionLocal,
+        optimizer_factory=FakeOptimizer,
+    )
+    summary = service.run_due_refreshes(interval_seconds=86400)
+
+    with SessionLocal() as db:
+        ok_row = db.query(favorites.FavoriteStrategy).filter_by(id=ok.id).one()
+        fail_row = db.query(favorites.FavoriteStrategy).filter_by(id=fail.id).one()
+        runs = (
+            db.query(AutoBacktestRun)
+            .filter(AutoBacktestRun.run_id.like("favorite-refresh-%"))
+            .filter(AutoBacktestRun.favorite_id.in_([ok.id, fail.id]))
+            .order_by(AutoBacktestRun.id.asc())
+            .all()
+        )
+
+    assert summary == {"due": 2, "success": 1, "failed": 1}
+    assert ok_row.auto_refresh_status == REFRESH_STATUS_SUCCESS
+    assert ok_row.auto_refresh_error is None
+    assert ok_row.auto_refresh_started_at is not None
+    assert ok_row.auto_refresh_completed_at is not None
+    assert ok_row.auto_refresh_run_id
+    assert ok_row.metrics["total_return_pct"] == 8.5
+    assert ok_row.metrics["trades_history_cached"] is True
+    assert ok_row.metrics["analysis_execution_mode"] == "favorite_auto_refresh"
+    assert fail_row.auto_refresh_status == REFRESH_STATUS_FAILED
+    assert "market data unavailable" in fail_row.auto_refresh_error
+    assert fail_row.metrics["total_return_pct"] == 12.3
+    assert {run.status for run in runs} == {REFRESH_STATUS_SUCCESS, REFRESH_STATUS_FAILED}
+
+
+def test_favorites_list_exposes_refresh_state(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: True)
+
+    with SessionLocal() as db:
+        created = favorites.create_favorite(
+            _favorite_payload("Refresh state"),
+            current_user_id="user-a",
+            db=db,
+        )
+        stored = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one()
+        stored.auto_refresh_status = REFRESH_STATUS_SUCCESS
+        stored.auto_refresh_run_id = "favorite-refresh-test"
+        db.commit()
+        listed = favorites.list_favorites(current_user_id="user-a", db=db)
+
+    assert listed[0].auto_refresh_status == REFRESH_STATUS_SUCCESS
+    assert listed[0].auto_refresh_run_id == "favorite-refresh-test"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import signal
@@ -18,6 +19,7 @@ from app.services.binance_service import (
     start_signal_feed_snapshot_worker,
     stop_signal_feed_snapshot_worker,
 )
+from app.services.favorite_backtest_refresh_service import favorite_backtest_refresh_loop
 from app.services.signal_monitor import signal_monitor
 import app.models  # noqa: F401
 import app.models_signal_history  # noqa: F401
@@ -79,15 +81,17 @@ def _install_signal_handlers(stop_event: asyncio.Event, signals: Iterable[signal
 async def _run(stop_event: asyncio.Event) -> None:
     run_signal_monitor = _env_enabled("RUN_SIGNAL_MONITOR")
     run_signal_feed = _env_enabled("RUN_SIGNAL_FEED_SNAPSHOT_WORKER")
+    run_favorite_refresh = _env_enabled("RUN_FAVORITE_BACKTEST_REFRESH")
 
-    if not run_signal_monitor and not run_signal_feed:
+    if not run_signal_monitor and not run_signal_feed and not run_favorite_refresh:
         logger.warning(
-            "No worker routines enabled. Set RUN_SIGNAL_MONITOR and/or "
-            "RUN_SIGNAL_FEED_SNAPSHOT_WORKER to 1."
+            "No worker routines enabled. Set RUN_SIGNAL_MONITOR, "
+            "RUN_SIGNAL_FEED_SNAPSHOT_WORKER, and/or RUN_FAVORITE_BACKTEST_REFRESH to 1."
         )
         return
 
     _initialize_runtime_state()
+    favorite_refresh_task: asyncio.Task | None = None
 
     if run_signal_monitor:
         signal_monitor.start()
@@ -97,9 +101,18 @@ async def _run(stop_event: asyncio.Event) -> None:
         await start_signal_feed_snapshot_worker()
         logger.info("Signal feed snapshot worker started.")
 
+    if run_favorite_refresh:
+        favorite_refresh_task = asyncio.create_task(favorite_backtest_refresh_loop(stop_event))
+        logger.info("Favorite backtest refresh loop started.")
+
     try:
         await stop_event.wait()
     finally:
+        if favorite_refresh_task is not None:
+            favorite_refresh_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await favorite_refresh_task
+            logger.info("Favorite backtest refresh loop stopped.")
         if run_signal_feed:
             await stop_signal_feed_snapshot_worker()
             logger.info("Signal feed snapshot worker stopped.")
