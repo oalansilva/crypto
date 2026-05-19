@@ -61,6 +61,7 @@ interface StrategyChartSurfaceProps {
     toolbarLeading?: React.ReactNode
     summaryItems?: StrategyChartSummaryItem[]
     sideContent?: React.ReactNode | ((snapshot: StrategyChartSnapshot | null) => React.ReactNode)
+    showSideContent?: boolean
     belowContent?: React.ReactNode
     footerContent?: React.ReactNode
     loading?: boolean
@@ -173,6 +174,7 @@ export function StrategyChartSurface({
     toolbarLeading,
     summaryItems,
     sideContent,
+    showSideContent = true,
     belowContent,
     footerContent,
     loading,
@@ -549,29 +551,31 @@ export function StrategyChartSurface({
                     ) : null}
                 </div>
 
-                <aside className={sideClassName}>
-                    {typeof sideContent === 'function' ? sideContent(displaySnapshot) : sideContent ?? (
-                        <>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Candle</p>
-                            <dl className="grid grid-cols-2 gap-3 text-sm xl:grid-cols-1">
-                                <div>
-                                    <dt className="text-[#707a8a]">Fechamento</dt>
-                                    <dd className="font-mono font-semibold text-[#eaecef]">{formatPrice(displaySnapshot?.candle.close)}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-[#707a8a]">Maxima / minima</dt>
-                                    <dd className="font-mono text-[#eaecef]">
-                                        {formatPrice(displaySnapshot?.candle.high)} / {formatPrice(displaySnapshot?.candle.low)}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-[#707a8a]">Volume</dt>
-                                    <dd className="font-mono text-[#eaecef]">{formatVolume(displaySnapshot?.candle.volume)}</dd>
-                                </div>
-                            </dl>
-                        </>
-                    )}
-                </aside>
+                {showSideContent ? (
+                    <aside className={sideClassName}>
+                        {typeof sideContent === 'function' ? sideContent(displaySnapshot) : sideContent ?? (
+                            <>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Candle</p>
+                                <dl className="grid grid-cols-2 gap-3 text-sm xl:grid-cols-1">
+                                    <div>
+                                        <dt className="text-[#707a8a]">Fechamento</dt>
+                                        <dd className="font-mono font-semibold text-[#eaecef]">{formatPrice(displaySnapshot?.candle.close)}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-[#707a8a]">Maxima / minima</dt>
+                                        <dd className="font-mono text-[#eaecef]">
+                                            {formatPrice(displaySnapshot?.candle.high)} / {formatPrice(displaySnapshot?.candle.low)}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-[#707a8a]">Volume</dt>
+                                        <dd className="font-mono text-[#eaecef]">{formatVolume(displaySnapshot?.candle.volume)}</dd>
+                                    </div>
+                                </dl>
+                            </>
+                        )}
+                    </aside>
+                ) : null}
             </div>
 
             {belowContent ? (

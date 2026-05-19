@@ -470,15 +470,17 @@ test('monitor keeps backend exit in list and shows mismatched chart context', as
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Venda', { exact: true })).toBeVisible()
-  await card.getByRole('button', { name: 'Ver gráfico' }).click()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
-  await expect(dialog.getByTestId('chart-modal-strategy-summary')).toBeVisible()
-  await expect(dialog.getByTestId('chart-modal-signal-context')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-strategy-summary')).toHaveCount(0)
+  await expect(dialog.getByTestId('chart-modal-signal-context')).toHaveCount(0)
+  await expect(dialog.getByTestId('chart-modal-trades')).toHaveCount(0)
+  await expect(dialog.getByText('Lista de trades')).toHaveCount(0)
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
 })
 
@@ -592,7 +594,7 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   const card = page.getByTestId('monitor-card-sol-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Compra', { exact: true })).toBeVisible()
-  await card.getByRole('button', { name: 'Ver gráfico' }).click()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -601,7 +603,8 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
-  await expect(dialog.getByTestId('chart-modal-signal-context')).toContainText('Timeframe estrategia')
+  await expect(dialog.getByTestId('chart-modal-signal-context')).toHaveCount(0)
+  await expect(dialog.getByTestId('chart-modal-trades')).toHaveCount(0)
   await expect(dialog.getByRole('group', { name: 'Chart indicators' })).toHaveCount(0)
   await expect(dialog.getByText('Indicators')).toHaveCount(0)
   await expect(dialog.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0)
@@ -723,7 +726,7 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
   const card = page.getByTestId('monitor-card-hbar-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Venda', { exact: true })).toBeVisible()
-  await card.getByRole('button', { name: 'Ver gráfico' }).click()
+  await card.getByRole('button', { name: 'Ver Trades' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -854,7 +857,7 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
 
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
-  await card.getByRole('button', { name: 'Ver gráfico' }).click()
+  await card.getByRole('button', { name: 'Ver Trades' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -994,7 +997,7 @@ test('monitor modal zoom controls adjust visible range without reloading candles
 
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
-  await card.click()
+  await card.getByRole('button', { name: 'Ver Trades' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()

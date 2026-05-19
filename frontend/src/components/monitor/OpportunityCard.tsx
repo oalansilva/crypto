@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, LineChart, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
@@ -25,7 +25,7 @@ interface OpportunityCardProps {
     onToggleInPortfolio: (symbol: string, nextValue: boolean) => void;
     onToggleCardMode: (symbol: string, nextMode: MonitorCardMode) => void;
     onToggleTimeframe: (symbol: string, nextTimeframe: MonitorPriceTimeframe) => void;
-    onOpenChart: (opportunity: Opportunity) => void;
+    onOpenChart: (opportunity: Opportunity, mode?: 'chart' | 'trades') => void;
 }
 
 const symbolKey = (symbol: string): string => symbol.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
@@ -212,7 +212,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 if (target.closest('button, a, input, textarea, select')) {
                     return;
                 }
-                onOpenChart(opportunity);
+                onOpenChart(opportunity, 'chart');
             }}
         >
             <div className="detail-control-strip">
@@ -421,8 +421,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
             <div className="detail-foot">
                 <div className="hint">Lote {batchInfo} · ref {batchReference}</div>
-                {showTechnicalDetails ? (
-                    <div className="actions">
+                <div className="actions">
+                    {showTechnicalDetails ? (
+                        <>
                         <button type="button" className="btn ghost" onClick={exportSummary}>
                             <Download className="h-3.5 w-3.5" />
                             Exportar
@@ -436,10 +437,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             <RefreshCw className="h-3.5 w-3.5" />
                             Reavaliar
                         </button>
-                        <button type="button" className="btn" onClick={() => onOpenChart(opportunity)}>
-                            <LineChart className="h-3.5 w-3.5" />
-                            Ver gráfico
-                        </button>
                         <button
                             type="button"
                             className="btn primary"
@@ -449,8 +446,17 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             <ShieldCheck className="h-3.5 w-3.5" />
                             Confirmar gestão
                         </button>
-                    </div>
-                ) : null}
+                        </>
+                    ) : null}
+                    <button type="button" className="btn" onClick={() => onOpenChart(opportunity, 'chart')}>
+                        <LineChart className="h-3.5 w-3.5" />
+                        Abrir Gráfico
+                    </button>
+                    <button type="button" className="btn primary" onClick={() => onOpenChart(opportunity, 'trades')}>
+                        <ListChecks className="h-3.5 w-3.5" />
+                        Ver Trades
+                    </button>
+                </div>
             </div>
 
         </div>

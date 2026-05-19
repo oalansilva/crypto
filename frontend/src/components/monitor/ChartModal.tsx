@@ -32,6 +32,7 @@ interface ChartModalProps {
     opportunity: Opportunity;
     initialCandles: MarketCandle[];
     initialTimeframe: ChartTimeframe;
+    viewMode: 'chart' | 'trades';
     onClose: () => void;
 }
 
@@ -180,8 +181,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     opportunity,
     initialCandles,
     initialTimeframe,
+    viewMode,
     onClose,
 }) => {
+    const isTradesView = viewMode === 'trades';
     const isStockAsset = React.useMemo(
         () => getOpportunityAssetType(opportunity) === 'stock',
         [opportunity],
@@ -385,6 +388,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     }, [symbol, timeframe, isStockAsset, supportedTimeframes, resolvedInitialTimeframe]);
 
     React.useEffect(() => {
+        if (!isTradesView) {
+            return undefined;
+        }
+
         const controller = new AbortController();
 
         const run = async () => {
@@ -417,7 +424,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         void run();
 
         return () => controller.abort();
-    }, [opportunity.id, signalHistoryTrades]);
+    }, [isTradesView, opportunity.id, signalHistoryTrades]);
 
     const fallbackMarker = React.useMemo<StrategyChartMarker[]>(() => (
         latestCandle ? [{
@@ -678,10 +685,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                         </div>
                     )}
                     toolbarLeading={timeframeToolbar}
-                    summaryItems={summaryItems}
+                    summaryItems={isTradesView ? summaryItems : undefined}
                     summaryTestId="chart-modal-strategy-summary"
-                    sideContent={sideContent}
-                    belowContent={(
+                    sideContent={isTradesView ? sideContent : undefined}
+                    showSideContent={isTradesView}
+                    belowContent={isTradesView ? (
                         <StrategyTradesTable
                             trades={analysisTrades}
                             candles={sortedCandles}
@@ -691,7 +699,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             error={analysisTradesError}
                             testId="chart-modal-trades"
                         />
-                    )}
+                    ) : undefined}
                     footerContent={(
                         <div className="flex flex-wrap items-center gap-3 text-xs text-[#929aa5]">
                             <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#fcd535]" /> Compra</span>

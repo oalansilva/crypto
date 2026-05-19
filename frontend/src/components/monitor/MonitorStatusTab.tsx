@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/Button';
 import {
     ChevronRight,
     LineChart,
+    ListChecks,
     RefreshCw,
     Search,
 } from 'lucide-react';
@@ -175,6 +176,7 @@ export const MonitorStatusTab: React.FC = () => {
         opportunity: Opportunity;
         initialCandles: MarketCandle[];
         initialTimeframe: ChartTimeframe;
+        viewMode: 'chart' | 'trades';
     } | null>(null);
     const sortBy: SortOption = 'tier_distance';
     const [tierFilter, setTierFilter] = useState<TierFilter>('rated');
@@ -424,7 +426,7 @@ export const MonitorStatusTab: React.FC = () => {
         return getOpportunityAssetType(opportunity) === 'stock' ? '1d' : requested;
     };
 
-    const handleOpenChart = async (opportunity: Opportunity) => {
+    const handleOpenChart = async (opportunity: Opportunity, viewMode: 'chart' | 'trades' = 'chart') => {
         const initialTimeframe = resolveChartTimeframe(opportunity);
 
         setOpeningChartSymbol(opportunity.symbol);
@@ -444,6 +446,7 @@ export const MonitorStatusTab: React.FC = () => {
                 opportunity,
                 initialCandles: rows,
                 initialTimeframe,
+                viewMode,
             });
         } catch (error) {
             toast({
@@ -1171,18 +1174,36 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         </div>
                                                                     </td>
                                                                     <td className="actions-cell">
+                                                                        <div className="row-actions" aria-label={`Ações ${opportunity.symbol}`}>
                                                                         <button
                                                                             type="button"
                                                                             className="row-action"
-                                                                            title="Abrir gráfico"
+                                                                            title="Abrir Gráfico"
+                                                                            aria-label={`Abrir Gráfico ${opportunity.symbol}`}
                                                                             onClick={(event) => {
                                                                                 event.stopPropagation();
-                                                                                void handleOpenChart(opportunity);
+                                                                                void handleOpenChart(opportunity, 'chart');
                                                                             }}
                                                                             disabled={openingChartSymbol === opportunity.symbol}
                                                                         >
                                                                             <LineChart className="h-4 w-4" />
+                                                                            <span>Abrir Gráfico</span>
                                                                         </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="row-action row-action-primary"
+                                                                            title="Ver Trades"
+                                                                            aria-label={`Ver Trades ${opportunity.symbol}`}
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                void handleOpenChart(opportunity, 'trades');
+                                                                            }}
+                                                                            disabled={openingChartSymbol === opportunity.symbol}
+                                                                        >
+                                                                            <ListChecks className="h-4 w-4" />
+                                                                            <span>Ver Trades</span>
+                                                                        </button>
+                                                                        </div>
                                                                     </td>
                                                                 </tr>
                                                                 {expanded ? (
@@ -1233,6 +1254,7 @@ export const MonitorStatusTab: React.FC = () => {
                     opportunity={activeChart.opportunity}
                     initialCandles={activeChart.initialCandles}
                     initialTimeframe={activeChart.initialTimeframe}
+                    viewMode={activeChart.viewMode}
                     onClose={() => setActiveChart(null)}
                 />
             ) : null}

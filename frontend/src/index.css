@@ -2975,17 +2975,37 @@ select.input option {
   text-align: right;
 }
 
+.monitor-theme .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 210px;
+}
+
 .monitor-theme .row-action {
-  background: transparent;
-  border: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
   color: var(--t-3);
-  width: 28px;
-  height: 28px;
+  min-height: 30px;
+  min-width: 96px;
+  padding: 5px 9px;
   border-radius: 6px;
   cursor: pointer;
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
   transition: background 0.12s, color 0.12s;
+}
+
+.monitor-theme .row-action.row-action-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #181a20;
 }
 
 .monitor-theme .row-action.is-favorite {
@@ -2996,6 +3016,11 @@ select.input option {
 .monitor-theme .row-action:hover {
   background: var(--bg-3);
   color: var(--t-1);
+}
+
+.monitor-theme .row-action.row-action-primary:hover {
+  background: var(--accent-primary-hover);
+  color: #181a20;
 }
 
 .monitor-theme .row-action svg {
