@@ -252,10 +252,16 @@ async def favorite_backtest_refresh_loop(
     *,
     db_factory=SessionLocal,
     interval_seconds: int | None = None,
+    initial_delay_seconds: int | None = None,
     max_favorites: int | None = None,
 ) -> None:
     interval_seconds = interval_seconds or int(
         os.getenv("FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS", "86400")
+    )
+    initial_delay_seconds = (
+        initial_delay_seconds
+        if initial_delay_seconds is not None
+        else int(os.getenv("FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS", "300"))
     )
     max_favorites = max_favorites or (
         int(os.environ["FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES"])
@@ -263,6 +269,13 @@ async def favorite_backtest_refresh_loop(
         else None
     )
     service = FavoriteBacktestRefreshService(db_factory=db_factory)
+
+    if initial_delay_seconds > 0:
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=initial_delay_seconds)
+            return
+        except asyncio.TimeoutError:
+            pass
 
     while not stop_event.is_set():
         try:
