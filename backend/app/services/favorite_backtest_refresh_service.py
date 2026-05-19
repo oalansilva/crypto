@@ -22,11 +22,6 @@ REFRESH_STATUS_SUCCESS = "SUCCESS"
 REFRESH_STATUS_FAILED = "FAILED"
 
 
-def _env_enabled(name: str, default: str = "0") -> bool:
-    value = os.getenv(name, default).strip().lower()
-    return value not in {"", "0", "false", "no", "off"}
-
-
 def _utcnow() -> datetime:
     return datetime.utcnow()
 
@@ -87,7 +82,7 @@ class FavoriteBacktestRefreshService:
             start_date=favorite.start_date,
             end_date=_utcnow().date().isoformat(),
             custom_ranges=_fixed_optimization_ranges(parameters),
-            deep_backtest=_env_enabled("FAVORITE_BACKTEST_REFRESH_DEEP_BACKTEST", "0"),
+            deep_backtest=True,
             direction=_favorite_direction(parameters),
         )
 
