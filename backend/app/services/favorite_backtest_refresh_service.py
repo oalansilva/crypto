@@ -172,6 +172,27 @@ def _ensure_fresh_frame(frame: Any, *, symbol: str, timeframe: str, now: datetim
         )
 
 
+def _ensure_frame_covers_target(
+    frame: Any,
+    *,
+    symbol: str,
+    timeframe: str,
+    target: datetime,
+) -> None:
+    if frame is None or getattr(frame, "empty", True):
+        raise RuntimeError(f"No candles available for {symbol} {timeframe}")
+
+    latest = _latest_frame_timestamp(frame)
+    if latest is None:
+        raise RuntimeError(f"No valid candle timestamp available for {symbol} {timeframe}")
+
+    if latest < target:
+        raise RuntimeError(
+            f"Stale candles for {symbol} {timeframe}: "
+            f"latest={latest.date().isoformat()}, required={target.date().isoformat()}"
+        )
+
+
 def _fetch_ohlcv(provider: Any, **kwargs: Any) -> Any:
     try:
         return provider.fetch_ohlcv(**kwargs)
@@ -224,8 +245,12 @@ class FavoriteBacktestRefreshService:
             return
 
         intraday_since = start_date
-        latest_daily_start = _latest_frame_timestamp(frame)
-        if start_date is None and latest_daily_start is not None:
+        latest_daily = _latest_frame_timestamp(frame)
+        if latest_daily is None:
+            raise RuntimeError(
+                f"No valid candle timestamp available for {favorite.symbol} {favorite.timeframe}"
+            )
+        if start_date is None:
             try:
                 first_value = frame.index.min()
                 parsed_first = _parse_candle_timestamp(first_value)
@@ -242,11 +267,11 @@ class FavoriteBacktestRefreshService:
             until_str=end_date,
             full_history_if_empty=True,
         )
-        _ensure_fresh_frame(
+        _ensure_frame_covers_target(
             intraday_frame,
             symbol=favorite.symbol,
             timeframe="15m",
-            now=_utcnow(),
+            target=latest_daily,
         )
 
     def _run_optimization(self, favorite: FavoriteStrategy) -> dict[str, Any]:
