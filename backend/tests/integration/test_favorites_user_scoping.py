@@ -634,9 +634,11 @@ def test_favorite_trades_rejects_protected_access(tmp_path: Path, monkeypatch):
 
 def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
+    optimizer_calls = []
 
     class FakeOptimizer:
         def run_optimization(self, *, symbol: str, **kwargs):
+            optimizer_calls.append({"symbol": symbol, **kwargs})
             if symbol == "ETH/USDT":
                 raise RuntimeError("market data unavailable")
             return {
@@ -697,6 +699,7 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
     assert ok_row.metrics["total_return_pct"] == 8.5
     assert ok_row.metrics["trades_history_cached"] is True
     assert ok_row.metrics["analysis_execution_mode"] == "favorite_auto_refresh"
+    assert optimizer_calls[0]["deep_backtest"] is False
     assert fail_row.auto_refresh_status == REFRESH_STATUS_FAILED
     assert "market data unavailable" in fail_row.auto_refresh_error
     assert fail_row.metrics["total_return_pct"] == 12.3

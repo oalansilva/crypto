@@ -22,6 +22,11 @@ REFRESH_STATUS_SUCCESS = "SUCCESS"
 REFRESH_STATUS_FAILED = "FAILED"
 
 
+def _env_enabled(name: str, default: str = "0") -> bool:
+    value = os.getenv(name, default).strip().lower()
+    return value not in {"", "0", "false", "no", "off"}
+
+
 def _utcnow() -> datetime:
     return datetime.utcnow()
 
@@ -82,7 +87,7 @@ class FavoriteBacktestRefreshService:
             start_date=favorite.start_date,
             end_date=_utcnow().date().isoformat(),
             custom_ranges=_fixed_optimization_ranges(parameters),
-            deep_backtest=True,
+            deep_backtest=_env_enabled("FAVORITE_BACKTEST_REFRESH_DEEP_BACKTEST", "0"),
             direction=_favorite_direction(parameters),
         )
 
@@ -199,23 +204,34 @@ class FavoriteBacktestRefreshService:
         *,
         now: datetime | None = None,
         interval_seconds: int | None = None,
+        running_timeout_seconds: int | None = None,
         max_favorites: int | None = None,
     ) -> dict[str, int]:
         now = now or _utcnow()
         interval_seconds = interval_seconds or int(
             os.getenv("FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS", "86400")
         )
+        running_timeout_seconds = running_timeout_seconds or int(
+            os.getenv("FAVORITE_BACKTEST_REFRESH_RUNNING_TIMEOUT_SECONDS", "1800")
+        )
         cutoff = now - timedelta(seconds=interval_seconds)
+        running_cutoff = now - timedelta(seconds=running_timeout_seconds)
         session = self._db_factory()
         try:
-            rows = session.query(FavoriteStrategy).order_by(FavoriteStrategy.id.asc()).all()
+            rows = session.query(FavoriteStrategy).all()
         finally:
             session.close()
 
+        def _priority(row: FavoriteStrategy) -> tuple[int, float]:
+            if row.auto_refresh_completed_at is None:
+                created_at = row.created_at or datetime.min
+                return (0, -created_at.timestamp())
+            return (1, row.auto_refresh_completed_at.timestamp())
+
         due_ids: list[int] = []
-        for row in rows:
+        for row in sorted(rows, key=_priority):
             if row.auto_refresh_status == REFRESH_STATUS_RUNNING:
-                if row.auto_refresh_started_at and row.auto_refresh_started_at > cutoff:
+                if row.auto_refresh_started_at and row.auto_refresh_started_at > running_cutoff:
                     continue
             elif row.auto_refresh_completed_at and row.auto_refresh_completed_at > cutoff:
                 continue
@@ -238,11 +254,13 @@ def run_due_favorite_backtest_refresh(
     *,
     now: datetime | None = None,
     interval_seconds: int | None = None,
+    running_timeout_seconds: int | None = None,
     max_favorites: int | None = None,
 ) -> dict[str, int]:
     return FavoriteBacktestRefreshService(db_factory=db_factory).run_due_refreshes(
         now=now,
         interval_seconds=interval_seconds,
+        running_timeout_seconds=running_timeout_seconds,
         max_favorites=max_favorites,
     )
 
