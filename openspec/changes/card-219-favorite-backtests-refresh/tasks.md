@@ -8,3 +8,4 @@
 - [x] Run OpenSpec validation, backend tests, and frontend build.
 - [x] Reject stale candle refresh results so delisted/inactive pairs do not appear successfully updated.
 - [x] Prepare required market data before running favorite backtest recalculation.
+- [x] Prioritize recent tail candle updates before older missing-history backfill.
