@@ -1,9 +1,11 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { AppNav } from './AppNav'
+import { FirstUseOnboarding } from './onboarding/FirstUseOnboarding'
 
 export function Layout() {
   const location = useLocation()
   const isKanbanRoute = location.pathname.startsWith('/kanban')
+  const shouldShowFirstUseOnboarding = !location.pathname.startsWith('/help')
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden font-sans text-[var(--text-primary)] selection:bg-[rgba(252,213,53,0.28)] selection:text-[var(--text-on-primary)]">
@@ -23,6 +25,7 @@ export function Layout() {
 
       <div className="app-main-offset" style={{ marginLeft: 'var(--app-sidebar-width)' }}>
         <div className={isKanbanRoute ? 'page-shell page-shell-wide' : 'page-shell'}>
+          {shouldShowFirstUseOnboarding ? <FirstUseOnboarding /> : null}
           <Outlet />
         </div>
       </div>

@@ -18,6 +18,7 @@ import {
   X,
   Mail,
   Fingerprint,
+  HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '@/stores/authStore'
 
@@ -53,6 +54,7 @@ const strategyNavItems: NavItemConfig[] = [
 
 const accountNavItems: NavItemConfig[] = [
   { to: '/external/balances', label: 'Carteira', icon: Wallet },
+  { to: '/help', label: 'Ajuda', icon: HelpCircle },
 ]
 
 const adminNavItems: NavItemConfig[] = [
@@ -73,6 +75,7 @@ function resolvePageTitle(pathname: string) {
   if (pathname === '/supply-distribution') return 'Distribuição de supply'
   if (pathname.startsWith('/combo')) return 'Combo estratégias'
   if (pathname.startsWith('/external')) return 'Carteira'
+  if (pathname.startsWith('/help')) return 'Ajuda'
   if (pathname.startsWith('/profile')) return 'Meu Perfil'
   if (pathname.startsWith('/change-password')) return 'Alterar senha'
   if (pathname.startsWith('/system/preferences')) return 'Preferências do sistema'

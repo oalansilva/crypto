@@ -6,6 +6,7 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { useAuth } from '@/stores/authStore';
+import { ScreenHelpPanel } from '@/components/onboarding/ScreenHelpPanel';
 
 import * as XLSX from 'xlsx';
 
@@ -992,6 +993,9 @@ const FavoritesDashboard: React.FC = () => {
     return (
         <div className="app-page favorites-page favorites-workbench">
             <div className="max-w-[1920px] mx-auto page-stack">
+                <ScreenHelpPanel title="Como usar Favoritos">
+                    Escolha as estrategias que merecem acompanhamento, marque estrelas para priorizar e depois use o Monitor para acompanhar contexto e sinais.
+                </ScreenHelpPanel>
                 <section className="fav-header">
                     <div className="fav-title-row">
                         <div className="fav-title-block">
