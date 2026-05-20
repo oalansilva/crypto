@@ -26,16 +26,20 @@ def test_known_strategy_description_is_public_and_high_level():
 
 
 def test_known_strategy_display_name_is_product_copy():
-    assert public_strategy_display_name("short_ema200_pullback") == "Repique de Baixa"
-    assert public_strategy_display_name("ema_rsi") == "Retomada com Força"
-    assert public_strategy_display_name("multi_ma_crossover") == "Tendência em Virada"
+    assert (
+        public_strategy_display_name("short_ema200_pullback") == "Médias Móveis: Repique de Baixa"
+    )
+    assert public_strategy_display_name("ema_rsi") == "RSI: Retomada com Força"
+    assert (
+        public_strategy_display_name("multi_ma_crossover") == "Médias Móveis: Tendência em Virada"
+    )
 
 
 def test_generated_quant_strategy_has_safe_product_copy():
     raw_name = "Quant BTC ROC+EMA Momentum Guard Long v3"
     description = public_strategy_description(raw_name)
 
-    assert public_strategy_display_name(raw_name) == "Momentum BTC Protegido"
+    assert public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade Protegida"
     assert "força direcional do btc" in description.lower()
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
