@@ -9,6 +9,7 @@ When Monitor opens a chart for an opportunity backed by a saved favorite, the ch
 - **THEN** the Monitor chart SHALL build entry and exit markers from those returned trades
 - **AND** the Monitor chart SHALL use those returned candles for the strategy timeframe
 - **AND** the visible sell marker set SHALL match the Favorite analysis chart for the same favorite.
+- **AND** the Monitor chart SHALL NOT add a duplicate current-status marker on top of an equivalent favorite trade marker.
 
 #### Scenario: Favorite analysis source is unavailable
 - **WHEN** the user opens the Monitor chart for a saved favorite opportunity

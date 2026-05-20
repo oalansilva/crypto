@@ -236,6 +236,20 @@ function buildTradeMarkers(trades: StrategyTrade[], direction: string): Strategy
     });
 }
 
+function markerTimesMatch(left: StrategyChartMarker['time'], right: StrategyChartMarker['time']): boolean {
+    const leftTime = toStrategyChartTimestamp(left);
+    const rightTime = toStrategyChartTimestamp(right);
+    return Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime === rightTime;
+}
+
+function hasEquivalentMarker(markers: StrategyChartMarker[], marker: StrategyChartMarker): boolean {
+    return markers.some((existing) => (
+        markerTimesMatch(existing.time, marker.time)
+        && existing.shape === marker.shape
+        && existing.position === marker.position
+    ));
+}
+
 export const ChartModal: React.FC<ChartModalProps> = ({
     symbol,
     opportunity,
@@ -516,11 +530,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         return baseMarkers.length > 0
             ? [
                 ...baseMarkers,
-                ...fallbackMarker.filter((marker) => !baseMarkers.some((historical) => (
-                    historical.time === marker.time
-                    && historical.shape === marker.shape
-                    && historical.position === marker.position
-                ))),
+                ...fallbackMarker.filter((marker) => !hasEquivalentMarker(baseMarkers, marker)),
             ]
             : fallbackMarker;
     }, [fallbackMarker, historicalSignalMarkers, tradeSignalMarkers]);
