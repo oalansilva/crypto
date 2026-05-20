@@ -3,9 +3,9 @@ import { Activity, ArrowRight, Bookmark, ShieldCheck, Wallet } from 'lucide-reac
 import { OnboardingGuide } from '@/components/onboarding/OnboardingGuide'
 
 const quickActions = [
-  { to: '/external/balances', label: 'Abrir Carteira', icon: Wallet },
   { to: '/favorites', label: 'Abrir Favoritos', icon: Bookmark },
   { to: '/monitor', label: 'Abrir Monitor', icon: Activity },
+  { to: '/external/balances', label: 'Configurar Carteira', icon: Wallet },
 ]
 
 export default function HelpPage() {
@@ -16,7 +16,8 @@ export default function HelpPage() {
           <p className="eyebrow">Guia do beta</p>
           <h1>Como usar o Cripto Farol no primeiro acesso</h1>
           <p>
-            Use este fluxo para sair do primeiro login ate uma leitura util no Monitor, sem depender de explicacao manual.
+            Comece pelos Favoritos, escolha as estrategias que merecem acompanhamento e depois use o Monitor. A carteira
+            Binance e opcional e pode ficar para depois.
           </p>
         </div>
         <div className="help-page-guardrail">
@@ -31,22 +32,22 @@ export default function HelpPage() {
         <article>
           <h2>Favoritos</h2>
           <p>
-            E o catalogo de estrategias que voce decidiu acompanhar. As estrelas ajudam a separar prioridade antes de
-            levar a leitura para o Monitor.
+            E o ponto de partida. Compare estrategias, abra graficos, revise trades e use estrelas para separar o que
+            realmente merece acompanhamento.
           </p>
         </article>
         <article>
           <h2>Monitor</h2>
           <p>
-            E a tela de acompanhamento diario. Ela mostra Compra, Venda, contexto e distancia para decisao, sempre como
-            informacao para sua propria analise.
+            E a tela de acompanhamento das estrategias selecionadas. Ela mostra Compra, Venda, contexto e distancia para
+            decisao, sempre como informacao para sua propria analise.
           </p>
         </article>
         <article>
-          <h2>Grafico e Trades</h2>
+          <h2>Carteira Binance opcional</h2>
           <p>
-            Use Abrir Grafico para leitura visual da estrategia. Use Ver Trades quando precisar entender o historico e
-            a consistencia do setup.
+            Configure a carteira apenas se quiser complementar o acompanhamento com saldos read-only. Ela nao e
+            pre-requisito para usar Favoritos ou Monitor.
           </p>
         </article>
       </section>
