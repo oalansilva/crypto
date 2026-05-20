@@ -137,7 +137,9 @@ def _latest_frame_timestamp(frame: Any) -> datetime | None:
     return max(valid) if valid else None
 
 
-def _ensure_fresh_candles(result: dict[str, Any], favorite: FavoriteStrategy, now: datetime) -> None:
+def _ensure_fresh_candles(
+    result: dict[str, Any], favorite: FavoriteStrategy, now: datetime
+) -> None:
     candles = result.get("candles") if isinstance(result.get("candles"), list) else []
     if not candles:
         raise RuntimeError(f"No candles returned for {favorite.symbol} {favorite.timeframe}")

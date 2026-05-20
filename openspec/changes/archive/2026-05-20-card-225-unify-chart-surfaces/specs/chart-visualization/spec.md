@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Shared strategy chart surface
 Strategy chart surfaces used by Favorites results and Monitor SHALL use a shared chart rendering foundation.

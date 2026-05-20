@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Monitor favorite charts match Favorite analysis charts
 When Monitor opens a chart for an opportunity backed by a saved favorite, the chart SHALL use the same favorite analysis trades and candles used by the Favorite analysis chart as the canonical source for markers and strategy-timeframe candles.

@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Monitor chart modal uses strategy-detail layout
 The Monitor chart modal SHALL present the selected opportunity as a readable strategy-detail surface inspired by the card #218 `Estrategia.html` reference, while preserving existing signal resolution and data behavior.

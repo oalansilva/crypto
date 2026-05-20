@@ -95,9 +95,7 @@ def _opportunity(status: str = "HOLD") -> dict:
 
 
 def test_build_monitor_alert_candidate_formats_short_sell_summary():
-    candidate = build_monitor_alert_candidate(
-        _opportunity("EXIT"), previous_status="HOLD"
-    )
+    candidate = build_monitor_alert_candidate(_opportunity("EXIT"), previous_status="HOLD")
 
     assert candidate is not None
     assert candidate.symbol == "BTC/USDT"

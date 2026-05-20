@@ -63,7 +63,7 @@ const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
 const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
 
 const normalizeSearchText = (value: unknown): string => normalizeText(value)
-    .replace(/[\/_-]+/g, ' ')
+    .replace(/[/_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 

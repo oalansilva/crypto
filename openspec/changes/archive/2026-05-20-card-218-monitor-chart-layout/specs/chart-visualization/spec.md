@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Monitor chart preserves interaction controls in strategy layout
 The Monitor chart surface SHALL preserve explicit zoom controls, wheel zoom, candle count, signal markers and chart rendering when the layout is restyled as a strategy-detail modal.

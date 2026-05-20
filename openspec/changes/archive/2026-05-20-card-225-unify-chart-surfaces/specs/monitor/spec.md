@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Monitor graph shares chart base
 Monitor graph modal SHALL use the same chart base as Favorites while retaining Monitor-specific operational context.

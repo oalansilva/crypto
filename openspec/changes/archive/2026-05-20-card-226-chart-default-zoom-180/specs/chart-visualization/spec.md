@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Strategy chart default visible range
 Strategy chart surfaces SHALL open focused on the latest 180 candles when enough candle history is available.

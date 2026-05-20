@@ -141,3 +141,90 @@ The chart shown after opening full analysis from Favorites SHALL render entry an
 - **WHEN** a common user opens full analysis for a protected favorite
 - **THEN** the chart SHALL keep protected technical overlays hidden
 - **AND** trade entry and exit markers SHALL still reflect the available protected favorite trades
+
+### Requirement: Monitor chart preserves interaction controls in strategy layout
+The Monitor chart surface SHALL preserve explicit zoom controls, wheel zoom, candle count, signal markers and chart rendering when the layout is restyled as a strategy-detail modal.
+
+#### Scenario: User interacts with redesigned Monitor chart
+- **WHEN** the user opens the redesigned Monitor chart modal
+- **THEN** the chart SHALL expose zoom in, zoom out and reset controls
+- **AND** wheel zoom SHALL keep working inside the chart shell
+- **AND** visible candle count SHALL update from the chart logical range.
+
+#### Scenario: Signal history exists
+- **WHEN** the opportunity has signal history matching the displayed timeframe
+- **THEN** the chart SHALL render aligned buy/sell markers
+- **AND** the side context SHALL list recent signals without replacing marker behavior.
+
+### Requirement: Shared strategy chart surface
+Strategy chart surfaces used by Favorites results and Monitor SHALL use a shared chart rendering foundation.
+
+#### Scenario: Favorites renders through shared surface
+- **WHEN** a user opens a favorite result with candle history
+- **THEN** the result chart SHALL render with the shared dark operational surface
+- **AND** it SHALL keep result candles, volume, trade markers and zoom controls from the saved result data.
+
+#### Scenario: Monitor renders through shared surface
+- **WHEN** a user opens a Monitor graph modal
+- **THEN** the modal SHALL render candles through the same shared chart surface
+- **AND** it SHALL keep Monitor-specific timeframe controls, signal context, signal history and entry/stop price lines.
+
+#### Scenario: Existing chart tests remain stable
+- **WHEN** Playwright checks existing Favorites and Monitor chart selectors
+- **THEN** the shared implementation SHALL preserve the existing `data-testid` contracts for chart shell, chart canvas, zoom controls and visible bar count.
+
+### Requirement: Strategy chart default visible range
+Strategy chart surfaces SHALL open focused on the latest 180 candles when enough candle history is available.
+
+#### Scenario: Chart has more than 180 candles
+- **WHEN** a shared strategy chart renders with more than 180 candles
+- **THEN** the initial visible range SHALL focus on the latest 180 candles
+- **AND** zoom controls SHALL continue to adjust the visible range without fetching new candle data.
+
+#### Scenario: Chart has 180 candles or fewer
+- **WHEN** a shared strategy chart renders with 180 or fewer candles
+- **THEN** the chart SHALL show the available history without forcing an empty padded 180-candle range.
+
+### Requirement: Monitor chart detail includes Favorites-style trade details
+Monitor chart detail SHALL include the same core analysis information users expect from Favorites when the data is available.
+
+#### Scenario: Favorite trade data is available for a Monitor opportunity
+- **WHEN** a user opens the Monitor graph modal for an opportunity that maps to a saved favorite
+- **THEN** the modal SHALL render a metrics summary and List of trades section using the favorite trade payload
+- **AND** the chart SHALL remain the primary visual section.
+
+#### Scenario: Favorite trade data is unavailable
+- **WHEN** the favorite trade payload cannot be loaded
+- **THEN** the modal SHALL fall back to closed trades derived from Monitor signal history
+- **AND** the modal SHALL remain usable without blocking the chart.
+
+### Requirement: Favorites and Monitor share trade detail presentation
+Favorites result graphs and Monitor graph details SHALL render closed-trade metrics and trade rows through the same shared trade detail component.
+
+#### Scenario: User opens the Favorites result graph flow
+- **WHEN** the Favorites result page renders strategy trades
+- **THEN** it SHALL use the shared trade detail component
+- **AND** it SHALL keep the existing export action available.
+
+#### Scenario: User opens the Monitor graph modal
+- **WHEN** the Monitor graph modal renders strategy trades
+- **THEN** it SHALL use the same shared trade detail component as Favorites.
+
+### Requirement: Monitor favorite charts match Favorite analysis charts
+When Monitor opens a chart for an opportunity backed by a saved favorite, the chart SHALL use the same favorite analysis trades and candles used by the Favorite analysis chart as the canonical source for markers and strategy-timeframe candles.
+
+#### Scenario: Monitor chart opens for saved favorite with analysis trades
+- **WHEN** the user opens the Monitor chart for a saved favorite opportunity
+- **AND** `/api/favorites/{favorite_id}/trades` returns trades and candles
+- **THEN** the Monitor chart SHALL build entry and exit markers from those returned trades
+- **AND** the Monitor chart SHALL use those returned candles for the strategy timeframe
+- **AND** the chart marker text SHALL use Portuguese labels `COMPRA` and `VENDA` instead of `BUY` and `SELL`.
+- **AND** the visible sell marker set SHALL match the Favorite analysis chart for the same favorite.
+- **AND** the Monitor chart SHALL NOT add a duplicate current-status marker on top of an equivalent favorite trade marker.
+
+#### Scenario: Favorite analysis source is unavailable
+- **WHEN** the user opens the Monitor chart for a saved favorite opportunity
+- **AND** the favorite analysis trades endpoint fails or returns no usable trades
+- **THEN** the Monitor chart MAY fall back to Monitor signal history and current status markers
+- **AND** the chart SHALL remain usable instead of failing closed.
+

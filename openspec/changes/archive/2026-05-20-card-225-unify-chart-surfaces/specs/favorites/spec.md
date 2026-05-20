@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Favorites remains chart data base
 Favorites result charts SHALL remain driven by the complete result payload available on `/combo/results`.

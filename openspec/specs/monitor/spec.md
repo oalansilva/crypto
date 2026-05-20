@@ -116,3 +116,58 @@ The Monitor SHALL present public decision labels as `Compra` and `Venda` instead
 - **WHEN** Monitor receives raw status values such as `HOLDING`, `HOLD`, `EXIT_SIGNAL`, or `EXITED`
 - **THEN** the resolver MAY continue using those values internally
 - **AND** the user-facing badge text SHALL still render as `Compra` or `Venda`.
+
+### Requirement: Monitor separates chart and trades actions
+The Monitor UI SHALL expose two explicit Portuguese actions for each visible strategy opportunity: `Abrir Grafico` for chart-only inspection and `Ver Trades` for trade analysis.
+
+#### Scenario: User opens chart-only view
+- **WHEN** the user selects `Abrir Grafico` from a Monitor strategy
+- **THEN** the system SHALL open the strategy chart
+- **AND** the modal SHALL NOT render the strategy summary panel
+- **AND** the modal SHALL NOT render the trades list
+
+#### Scenario: User opens trades view
+- **WHEN** the user selects `Ver Trades` from a Monitor strategy
+- **THEN** the system SHALL open the strategy analysis view
+- **AND** the modal SHALL render the strategy summary/context panel
+- **AND** the modal SHALL render the trades list and trade metrics when available
+
+### Requirement: Monitor chart modal uses strategy-detail layout
+The Monitor chart modal SHALL present the selected opportunity as a readable strategy-detail surface inspired by the card #218 `Estrategia.html` reference, while preserving existing signal resolution and data behavior.
+
+#### Scenario: User opens Monitor chart
+- **WHEN** the user opens a Monitor opportunity chart
+- **THEN** the modal SHALL show a compact strategy header with symbol, public strategy label, resolved signal and timeframe/candle context
+- **AND** the main chart SHALL remain the dominant visible surface
+- **AND** supporting context SHALL be organized in compact panels instead of a long technical stack.
+
+#### Scenario: Common user opens protected strategy chart
+- **WHEN** the chart belongs to a protected strategy and the viewer is not allowed to see parameters
+- **THEN** the modal SHALL keep parameter values redacted
+- **AND** the new layout SHALL NOT expose original protected implementation details.
+
+#### Scenario: Modal is used on mobile
+- **WHEN** the viewport is mobile-sized
+- **THEN** the modal SHALL keep the chart and context panels usable without horizontal scrolling.
+
+### Requirement: Monitor graph shares chart base
+Monitor graph modal SHALL use the same chart base as Favorites while retaining Monitor-specific operational context.
+
+#### Scenario: Monitor keeps signal context
+- **WHEN** the Monitor graph modal opens
+- **THEN** it SHALL show the shared candle/volume chart
+- **AND** it SHALL keep signal badge, strategy summary, timeframe selector, signal context, signal history, risk/stop details, parameters and notes according to the opportunity visibility rules.
+
+### Requirement: Monitor chart modal keeps saved favorite parity
+The Monitor chart modal SHALL treat the saved favorite id as the identity for chart parity with Favorites and SHALL not render a divergent marker source when favorite analysis data is available.
+
+#### Scenario: Monitor card shows Venda and Favorite chart has sell marker
+- **WHEN** a Monitor opportunity for a saved favorite is classified as `Venda`
+- **AND** the Favorite analysis payload includes a sell trade for the same favorite
+- **THEN** opening `Abrir Gráfico` from Monitor SHALL show the sell marker from the favorite analysis trade set
+- **AND** the chart marker source SHALL not be limited to the opportunity `signal_history`.
+
+#### Scenario: Monitor and Favorites use same favorite id
+- **WHEN** Monitor and Favorites refer to the same `favorite_id`
+- **THEN** both chart paths SHALL resolve trades and candles from the same favorite analysis payload where permitted.
+

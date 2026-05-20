@@ -1,6 +1,6 @@
 # favorites Specification Delta
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Favorites expose automatic backtest refresh state
 The Favorites API and UI SHALL expose the last automatic refresh state for each favorite strategy.
