@@ -6,7 +6,7 @@ The bug persists because Monitor and Favorites have separate chart data assembly
 
 1. Use favorite analysis as the canonical chart source for saved favorite opportunities.
    - For a Monitor opportunity with a favorite id, load `/api/favorites/{id}/trades`.
-   - Use returned `trades` to build BUY/SELL markers.
+   - Use returned `trades` to build Portuguese `COMPRA`/`VENDA` markers.
    - Use returned `candles` as the strategy-timeframe chart candle source when available.
 
 2. Keep Monitor signal history as fallback, not primary source.

@@ -245,7 +245,7 @@ export function ComboResultsPage() {
                 position: 'aboveBar',
                 color: '#f97316',
                 shape: 'arrowDown',
-                text: 'SHORT'
+                text: 'VENDA'
             })
             if (curr.exit_time) {
                 list.push({
@@ -253,7 +253,7 @@ export function ComboResultsPage() {
                     position: 'belowBar',
                     color: '#10b981',
                     shape: 'arrowUp',
-                    text: `COVER (${(curr.profit! * 100).toFixed(2)}%)`
+                    text: `COMPRA (${(curr.profit! * 100).toFixed(2)}%)`
                 })
             }
         } else {
@@ -262,7 +262,7 @@ export function ComboResultsPage() {
                 position: 'belowBar',
                 color: '#10b981',
                 shape: 'arrowUp',
-                text: 'BUY'
+                text: 'COMPRA'
             })
             if (curr.exit_time) {
                 list.push({
@@ -270,7 +270,7 @@ export function ComboResultsPage() {
                     position: 'aboveBar',
                     color: '#ef4444',
                     shape: 'arrowDown',
-                    text: `SELL (${(curr.profit! * 100).toFixed(2)}%)`
+                    text: `VENDA (${(curr.profit! * 100).toFixed(2)}%)`
                 })
             }
         }

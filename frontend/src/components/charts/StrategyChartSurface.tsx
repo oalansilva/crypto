@@ -443,6 +443,7 @@ export function StrategyChartSurface({
             className={`overflow-hidden rounded-lg border border-[#2b3139] bg-[#0b0e11] text-[#eaecef] ${className}`}
             data-testid={rootTestId}
             data-marker-count={markerCount ?? markers?.length ?? 0}
+            data-marker-labels={chartMarkers.map((marker) => marker.text).join('|')}
         >
             <header className="border-b border-[#2b3139] bg-[#0b0e11] px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">

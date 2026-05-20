@@ -218,7 +218,7 @@ function buildTradeMarkers(trades: StrategyTrade[], direction: string): Strategy
                 position: isShort ? 'aboveBar' : 'belowBar',
                 color: isShort ? '#f97316' : '#10b981',
                 shape: isShort ? 'arrowDown' : 'arrowUp',
-                text: isShort ? 'SHORT' : 'BUY',
+                text: isShort ? 'VENDA' : 'COMPRA',
             });
         }
         if (trade.exit_time) {
@@ -229,7 +229,7 @@ function buildTradeMarkers(trades: StrategyTrade[], direction: string): Strategy
                 position: isShort ? 'belowBar' : 'aboveBar',
                 color: isShort ? '#10b981' : '#ef4444',
                 shape: isShort ? 'arrowUp' : 'arrowDown',
-                text: isShort ? `COVER${profitText}` : `SELL${profitText}`,
+                text: isShort ? `COMPRA${profitText}` : `VENDA${profitText}`,
             });
         }
         return markers;
