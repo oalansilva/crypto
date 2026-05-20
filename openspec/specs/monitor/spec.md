@@ -171,3 +171,10 @@ The Monitor chart modal SHALL treat the saved favorite id as the identity for ch
 - **WHEN** Monitor and Favorites refer to the same `favorite_id`
 - **THEN** both chart paths SHALL resolve trades and candles from the same favorite analysis payload where permitted.
 
+### Requirement: Monitor chart opens with stable operational timeframe
+Monitor opportunity cards SHALL open charts using the validated `1d` operational timeframe from the saved WIP.
+
+#### Scenario: User opens a Monitor chart
+- **WHEN** the user opens chart analysis from a Monitor opportunity card
+- **THEN** the chart request uses timeframe `1d` and does not expose stale intraday timeframe controls
+
