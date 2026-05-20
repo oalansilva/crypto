@@ -34,6 +34,7 @@ test('first-use onboarding prompt appears and can be dismissed', async ({ page }
 
   await expect(page.getByTestId('onboarding-prompt')).toBeVisible()
   await expect(page.getByText('Comece pelo fluxo certo')).toBeVisible()
+  await expect(page.getByText('O Cripto Farol comeca pelos Favoritos')).toBeVisible()
   await expect(page.getByText('Apoio a decisao, com leitura de contexto e disciplina.')).toBeVisible()
 
   await page.getByRole('button', { name: 'Dispensar' }).click()
@@ -51,10 +52,11 @@ test('help route explains journey and is available in navigation', async ({ page
   await expect(page.getByTestId('help-page')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Como usar o Cripto Farol no primeiro acesso' })).toBeVisible()
   const guide = page.getByTestId('onboarding-guide')
-  await expect(guide.getByRole('heading', { name: 'Carteira' })).toBeVisible()
-  await expect(guide.getByRole('heading', { name: 'Favoritos' })).toBeVisible()
-  await expect(guide.getByRole('heading', { name: 'Monitor' })).toBeVisible()
-  await expect(guide.getByRole('heading', { name: 'Grafico e Trades' })).toBeVisible()
+  await expect(guide.locator('.onboarding-step').nth(0).getByRole('heading', { name: 'Favoritos' })).toBeVisible()
+  await expect(guide.locator('.onboarding-step').nth(1).getByRole('heading', { name: 'Selecionar estrategias' })).toBeVisible()
+  await expect(guide.locator('.onboarding-step').nth(2).getByRole('heading', { name: 'Monitor' })).toBeVisible()
+  await expect(guide.locator('.onboarding-step').nth(3).getByRole('heading', { name: 'Carteira Binance opcional' })).toBeVisible()
+  await expect(guide).toContainText('nao e requisito para comecar')
   await expect(page.getByText('Sem promessa de lucro')).toBeVisible()
 
   const navigation = page.getByRole('navigation', { name: 'Navegacao principal' })
@@ -67,9 +69,10 @@ test('Monitor and Favorites show contextual help panels', async ({ page }) => {
 
   await page.goto('/monitor')
   await expect(page.getByTestId('screen-help-panel')).toContainText('Como usar o Monitor')
+  await expect(page.getByTestId('screen-help-panel')).toContainText('estrategias que voce selecionou em Favoritos')
   await expect(page.getByText('sempre como apoio a decisao')).toBeVisible()
 
   await page.goto('/favorites')
   await expect(page.getByTestId('screen-help-panel')).toContainText('Como usar Favoritos')
-  await expect(page.getByText('marque estrelas para priorizar')).toBeVisible()
+  await expect(page.getByText('Comece por aqui: compare estrategias')).toBeVisible()
 })

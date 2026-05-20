@@ -33,6 +33,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Nao usar auto-merge.
    - So comandos explicitos de lote/release autorizam qualquer acao em `main`.
    - Se `develop` contiver mudanca nao homologada, nao fazer merge direto `develop -> main`; usar branch `release-*` com somente conteudo aprovado ou pedir decisao de Alan.
+   - Release/lote nao pode deixar coisa para tras: antes de concluir, todo OpenSpec, branch, worktree, stash, PR, card, documentacao, Drive sync, arquivo solto ou bloqueio relacionado ao pacote precisa estar resolvido ou classificado com evidencia.
 
 6. Commits locais em branch de change/card sao permitidos e nao exigem suite completa a cada commit.
    - Evitar commit direto em `develop` enquanto a implementacao estiver parcial.

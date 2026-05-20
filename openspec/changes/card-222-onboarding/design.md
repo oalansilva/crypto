@@ -5,7 +5,7 @@ Card #222 is a frontend UX change for beta onboarding. The app already has a pro
 ## Goals / Non-Goals
 
 **Goals:**
-- Give a new user an obvious starting path on first access.
+- Give a new user an obvious starting path on first access, beginning with Favorites instead of wallet setup.
 - Make Help accessible later through navigation.
 - Explain Monitor and Favorites with concise Portuguese copy.
 - Keep guidance inside the product and aligned with `DESIGN.md`.
@@ -27,6 +27,8 @@ Card #222 is a frontend UX change for beta onboarding. The app already has a pro
   - Alternative considered: user-profile preference. Rejected because it requires backend/model changes outside the card's current value.
 - Use concise panels instead of long documentation.
   - Rationale: the app is an operational trading workspace; first viewport should stay focused on actions and status.
+- Put Binance wallet setup after Monitor as optional guidance.
+  - Rationale: the updated user story says the user must reach strategy selection and monitoring before any wallet configuration.
 - Use existing design tokens/classes and lucide icons.
   - Rationale: preserves the Binance-inspired system layout in `DESIGN.md`.
 

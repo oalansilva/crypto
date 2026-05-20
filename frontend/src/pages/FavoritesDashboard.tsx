@@ -994,7 +994,7 @@ const FavoritesDashboard: React.FC = () => {
         <div className="app-page favorites-page favorites-workbench">
             <div className="max-w-[1920px] mx-auto page-stack">
                 <ScreenHelpPanel title="Como usar Favoritos">
-                    Escolha as estrategias que merecem acompanhamento, marque estrelas para priorizar e depois use o Monitor para acompanhar contexto e sinais.
+                    Comece por aqui: compare estrategias, abra graficos, revise trades, marque estrelas nas melhores opcoes e depois acompanhe no Monitor.
                 </ScreenHelpPanel>
                 <section className="fav-header">
                     <div className="fav-title-row">
