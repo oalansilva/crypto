@@ -130,6 +130,35 @@ async function setupApiMocks(page: any) {
     })
   )
 
+  await page.route('**/api/favorites/2/trades', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        favorite_id: 2,
+        trades: [
+          {
+            entry_time: '2026-05-09T00:00:00+00:00',
+            entry_price: 0.0927,
+            exit_time: '2026-05-20T00:00:00+00:00',
+            exit_price: 0.08877,
+            profit: -0.04383015327501139,
+            type: 'long',
+          },
+        ],
+        metrics: { total_trades: 1 },
+        candles: [
+          { timestamp_utc: '2026-05-09T00:00:00Z', open: 0.0927, high: 0.094, low: 0.091, close: 0.0932, volume: 1000 },
+          { timestamp_utc: '2026-05-19T00:00:00Z', open: 0.089, high: 0.09, low: 0.088, close: 0.08877, volume: 1000 },
+          { timestamp_utc: '2026-05-20T00:00:00Z', open: 0.08877, high: 0.0895, low: 0.0875, close: 0.08812, volume: 1000 },
+        ],
+        indicator_data: {},
+        regenerated: false,
+        execution_mode: 'deep_15m',
+      }),
+    })
+  )
+
   await page.route('**/api/market/candles**', (route: any) =>
     route.fulfill({
       status: 200,
@@ -725,14 +754,14 @@ test('monitor adds current sell marker when history only has prior entry', async
   const card = page.getByTestId('monitor-card-hbar-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Venda', { exact: true })).toBeVisible()
-  await card.getByRole('button', { name: 'Ver Trades' }).click()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
-  await expect(dialog.getByTestId('chart-modal-strategy-summary')).toContainText('Historico')
+  await expect(dialog.getByTestId('chart-modal-strategy-summary')).toHaveCount(0)
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
   await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
   await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '2')

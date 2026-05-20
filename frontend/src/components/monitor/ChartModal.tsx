@@ -137,6 +137,38 @@ function getLatestSignal(history?: OpportunitySignalHistoryItem[]): OpportunityS
     return sortedHistory.length > 0 ? sortedHistory[sortedHistory.length - 1] : null;
 }
 
+function getCandleTimestampKey(candle: MarketCandle): string {
+    const parsed = Date.parse(String(candle.timestamp_utc || ''));
+    return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(candle.timestamp_utc || '');
+}
+
+function mergeAnalysisCandles(currentCandles: MarketCandle[], analysisCandles: MarketCandle[]): MarketCandle[] {
+    if (analysisCandles.length === 0) {
+        return currentCandles;
+    }
+    if (currentCandles.length === 0) {
+        return analysisCandles;
+    }
+
+    const byTimestamp = new Map<string, MarketCandle>();
+    analysisCandles.forEach((candle) => {
+        const key = getCandleTimestampKey(candle);
+        if (key) {
+            byTimestamp.set(key, candle);
+        }
+    });
+    currentCandles.forEach((candle) => {
+        const key = getCandleTimestampKey(candle);
+        if (key) {
+            byTimestamp.set(key, candle);
+        }
+    });
+
+    return Array.from(byTimestamp.values()).sort((left, right) => (
+        Date.parse(getCandleTimestampKey(left)) - Date.parse(getCandleTimestampKey(right))
+    ));
+}
+
 function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | undefined, direction: string): StrategyTrade[] {
     const sortedHistory = [...(history || [])].sort(
         (left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp),
@@ -174,6 +206,34 @@ function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | 
     });
 
     return trades;
+}
+
+function buildTradeMarkers(trades: StrategyTrade[], direction: string): StrategyChartMarker[] {
+    const isShort = direction.toLowerCase() === 'short';
+    return trades.flatMap((trade) => {
+        const markers: StrategyChartMarker[] = [];
+        if (trade.entry_time) {
+            markers.push({
+                time: trade.entry_time,
+                position: isShort ? 'aboveBar' : 'belowBar',
+                color: isShort ? '#f97316' : '#10b981',
+                shape: isShort ? 'arrowDown' : 'arrowUp',
+                text: isShort ? 'SHORT' : 'BUY',
+            });
+        }
+        if (trade.exit_time) {
+            const profit = Number(trade.profit);
+            const profitText = Number.isFinite(profit) ? ` (${(profit * 100).toFixed(2)}%)` : '';
+            markers.push({
+                time: trade.exit_time,
+                position: isShort ? 'belowBar' : 'aboveBar',
+                color: isShort ? '#10b981' : '#ef4444',
+                shape: isShort ? 'arrowUp' : 'arrowDown',
+                text: isShort ? `COVER${profitText}` : `SELL${profitText}`,
+            });
+        }
+        return markers;
+    });
 }
 
 export const ChartModal: React.FC<ChartModalProps> = ({
@@ -228,6 +288,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [error, setError] = React.useState<string | null>(null);
     const [analysisTrades, setAnalysisTrades] = React.useState<StrategyTrade[]>([]);
     const [analysisMetrics, setAnalysisMetrics] = React.useState<StrategyTradeMetrics | null>(null);
+    const [analysisCandles, setAnalysisCandles] = React.useState<MarketCandle[]>([]);
     const [analysisTradesLoading, setAnalysisTradesLoading] = React.useState(false);
     const [analysisTradesError, setAnalysisTradesError] = React.useState<string | null>(null);
 
@@ -244,9 +305,13 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         }
     }, [supportedTimeframes, timeframe, resolvedInitialTimeframe]);
 
+    const mergedCandles = React.useMemo(
+        () => timeframe === strategyTimeframe ? mergeAnalysisCandles(candles, analysisCandles) : candles,
+        [analysisCandles, candles, strategyTimeframe, timeframe],
+    );
     const sortedCandles = React.useMemo(
-        () => [...candles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
-        [candles],
+        () => [...mergedCandles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
+        [mergedCandles],
     );
     const latestCandle = sortedCandles[sortedCandles.length - 1] ?? null;
     const candleTimes = React.useMemo(
@@ -388,10 +453,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     }, [symbol, timeframe, isStockAsset, supportedTimeframes, resolvedInitialTimeframe]);
 
     React.useEffect(() => {
-        if (!isTradesView) {
-            return undefined;
-        }
-
         const controller = new AbortController();
 
         const run = async () => {
@@ -406,11 +467,14 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     throw new Error(String(payload?.detail || `Failed to load favorite trades (${response.status})`));
                 }
                 const payloadTrades = Array.isArray(payload?.trades) ? payload.trades : [];
+                const payloadCandles = Array.isArray(payload?.candles) ? payload.candles : [];
                 setAnalysisTrades(payloadTrades.length > 0 ? payloadTrades : signalHistoryTrades);
+                setAnalysisCandles(payloadCandles);
                 setAnalysisMetrics(payload?.metrics && typeof payload.metrics === 'object' ? payload.metrics : null);
             } catch (fetchError) {
                 if (!controller.signal.aborted) {
                     setAnalysisTrades(signalHistoryTrades);
+                    setAnalysisCandles([]);
                     setAnalysisMetrics(null);
                     setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponiveis.');
                 }
@@ -424,7 +488,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         void run();
 
         return () => controller.abort();
-    }, [isTradesView, opportunity.id, signalHistoryTrades]);
+    }, [opportunity.id, signalHistoryTrades]);
 
     const fallbackMarker = React.useMemo<StrategyChartMarker[]>(() => (
         latestCandle ? [{
@@ -441,19 +505,25 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         resolvedSignal.visual.markerShape,
         signalLabel,
     ]);
-    const chartMarkers = React.useMemo<StrategyChartMarker[]>(() => (
-        historicalSignalMarkers.length > 0
+    const tradeSignalMarkers = React.useMemo<StrategyChartMarker[]>(() => (
+        canRenderSignalHistoryMarkers ? buildTradeMarkers(analysisTrades, opportunityDirection) : []
+    ), [analysisTrades, canRenderSignalHistoryMarkers, opportunityDirection]);
+    const chartMarkers = React.useMemo<StrategyChartMarker[]>(() => {
+        const baseMarkers = tradeSignalMarkers.length > 0
+            ? tradeSignalMarkers
+            : historicalSignalMarkers as StrategyChartMarker[];
+
+        return baseMarkers.length > 0
             ? [
-                ...(historicalSignalMarkers as StrategyChartMarker[]),
-                ...fallbackMarker.filter((marker) => !historicalSignalMarkers.some((historical) => (
+                ...baseMarkers,
+                ...fallbackMarker.filter((marker) => !baseMarkers.some((historical) => (
                     historical.time === marker.time
-                    && historical.text === marker.text
                     && historical.shape === marker.shape
                     && historical.position === marker.position
                 ))),
             ]
-            : fallbackMarker
-    ), [fallbackMarker, historicalSignalMarkers]);
+            : fallbackMarker;
+    }, [fallbackMarker, historicalSignalMarkers, tradeSignalMarkers]);
     const priceLines = React.useMemo<StrategyChartPriceLine[]>(() => [
         ...(showEntryStopRows && opportunity.entry_price !== null && opportunity.entry_price !== undefined
             ? [{ price: opportunity.entry_price, color: '#fcd535', title: 'Compra' }]
