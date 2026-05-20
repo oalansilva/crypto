@@ -126,7 +126,7 @@ async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
     assert len(response) == 1
     assert response[0]["asset_type"] == "crypto"
     assert response[0]["template_name"] == "Estratégia protegida"
-    assert response[0]["strategy_display_name"] == "Virada de Tendência"
+    assert response[0]["strategy_display_name"] == "Tendência em Virada"
     assert response[0]["parameters"] == {}
     assert response[0]["indicator_values"] is None
     assert response[0]["details"] == {}
@@ -186,6 +186,7 @@ async def test_opportunities_route_keeps_admin_strategy_details(monkeypatch):
     response = await opportunity_routes.get_opportunities(tier="all", current_user_id="admin-user")
 
     assert response[0]["template_name"] == "multi_ma_crossover"
+    assert response[0]["strategy_display_name"] == "Tendência em Virada"
     assert response[0]["parameters"] == {"ema_short": 9, "sma_long": 50}
     assert response[0]["indicator_values"] == {"short": 71346.57}
     assert response[0]["details"] == {"exit_analysis": {"distance": 0.88}}
@@ -237,7 +238,7 @@ async def test_opportunities_route_redacts_curated_fallback_for_common_user(monk
 
     assert captured["user_id"] == "common-user"
     assert response[0]["template_name"] == "Estratégia protegida"
-    assert response[0]["strategy_display_name"] == "Secret Admin Strategy"
+    assert response[0]["strategy_display_name"] == "Estratégia Cripto Farol"
     assert response[0]["name"] == "Estratégia protegida"
     assert response[0]["notes"] is None
     assert response[0]["parameters"] == {}

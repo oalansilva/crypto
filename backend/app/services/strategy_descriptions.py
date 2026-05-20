@@ -6,20 +6,22 @@ import re
 from typing import Any
 
 PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
-    "multi_ma_crossover": "Virada de Tendência",
+    "multi_ma_crossover": "Tendência em Virada",
     "multi_ma_crossoverv2": "Tendência Confirmada",
-    "ema_rsi": "Pulso de Momentum",
-    "ema_macd_volume": "Força com Volume",
+    "ema_rsi": "Retomada com Força",
+    "ema_macd_volume": "Movimento com Confirmação",
     "bollinger_rsi_adx": "Retorno ao Equilíbrio",
-    "volume_atr_breakout": "Rompimento com Volatilidade",
-    "ema_rsi_fibonacci": "Pullback de Retomada",
-    "short_ema200_pullback": "Repique em Tendência de Baixa",
+    "volume_atr_breakout": "Rompimento com Pressão",
+    "ema_rsi_fibonacci": "Recuo de Retomada",
+    "short_ema200_pullback": "Repique de Baixa",
     "bollinger_breakout": "Expansão de Volatilidade",
-    "macd_cross": "Mudança de Momentum",
-    "rsi_ema_scalping": "Leitura Rápida de Movimento",
-    "example: breakout with volume": "Rompimento com Volume",
-    "example: scalping ema 5/13": "Leitura Ágil de Curto Prazo",
-    "example: swing rsi divergence": "Reversão de Swing",
+    "macd_cross": "Mudança de Ritmo",
+    "rsi_ema_scalping": "Movimento Curto",
+    "example_breakout_with_volume": "Rompimento com Volume",
+    "example_scalping_ema_5_13": "Leitura Ágil",
+    "example_swing_rsi_divergence": "Virada de Swing",
+    "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Momentum BTC Protegido",
+    "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC Protegido",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
@@ -65,6 +67,12 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     "example: swing rsi divergence": (
         "Observa sinais de enfraquecimento do movimento para estudar possíveis reversões em operações de swing."
     ),
+    "quant_btc_1d_roc_ema_momentum_guard_long_v3": (
+        "Acompanha a força direcional do BTC com filtros de proteção para evitar entradas em contexto fraco. Use como apoio para avaliar continuidade, sempre conferindo risco e histórico."
+    ),
+    "quant_btc_roc_ema_momentum_guard_long_v3": (
+        "Acompanha a força direcional do BTC com filtros de proteção para evitar entradas em contexto fraco. Use como apoio para avaliar continuidade, sempre conferindo risco e histórico."
+    ),
 }
 
 SENSITIVE_NAME_PATTERN = re.compile(
@@ -74,7 +82,8 @@ SENSITIVE_NAME_PATTERN = re.compile(
 
 
 def normalize_strategy_key(name: Any) -> str:
-    return str(name or "").strip().lower().replace("-", "_")
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(name or "").strip().lower())
+    return normalized.strip("_")
 
 
 def public_strategy_display_name(name: Any) -> str:
@@ -84,15 +93,7 @@ def public_strategy_display_name(name: Any) -> str:
     if key in PUBLIC_STRATEGY_DISPLAY_NAMES:
         return PUBLIC_STRATEGY_DISPLAY_NAMES[key]
 
-    raw = str(name or "").strip()
-    if not raw:
-        return "Estratégia Protegida"
-    if SENSITIVE_NAME_PATTERN.search(raw):
-        return "Estratégia Protegida"
-
-    parts = raw.replace("-", "_").split("_")
-    normalized = [part[:1].upper() + part[1:] for part in parts if part.strip()]
-    return " ".join(normalized) or "Estratégia Protegida"
+    return "Estratégia Cripto Farol"
 
 
 def public_strategy_description(name: Any, raw_description: Any = None) -> str:

@@ -51,12 +51,12 @@ def redact_favorite_strategy_payload(
     *,
     include_secrets: bool,
 ) -> dict[str, Any]:
+    public_display_name = _public_strategy_display_name(payload)
     if include_secrets:
         payload["is_strategy_protected"] = False
-        payload.setdefault("strategy_display_name", _display_name(payload))
+        payload["strategy_display_name"] = public_display_name
         return payload
 
-    public_display_name = _public_strategy_display_name(payload)
     payload["strategy_name"] = PROTECTED_STRATEGY_LABEL
     payload["parameters"] = {}
     payload["is_strategy_protected"] = True
@@ -101,12 +101,12 @@ def redact_opportunity_payload(
     *,
     include_secrets: bool,
 ) -> dict[str, Any]:
+    public_display_name = _public_strategy_display_name(payload)
     if include_secrets:
         payload["is_strategy_protected"] = False
-        payload.setdefault("strategy_display_name", _display_name(payload))
+        payload["strategy_display_name"] = public_display_name
         return payload
 
-    public_display_name = _public_strategy_display_name(payload)
     payload["template_name"] = PROTECTED_STRATEGY_LABEL
     if payload.get("is_curated_fallback"):
         payload["name"] = PROTECTED_STRATEGY_LABEL
