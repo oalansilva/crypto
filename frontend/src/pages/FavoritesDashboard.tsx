@@ -387,9 +387,9 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const getFavoriteStrategyLabel = (fav: FavoriteStrategy): string => {
-        return fav.is_strategy_protected
-            ? (fav.strategy_display_name || 'Estratégia protegida')
-            : fav.strategy_name.replace(/_/g, ' ');
+        return fav.strategy_display_name || (fav.is_strategy_protected
+            ? 'Estratégia protegida'
+            : fav.strategy_name.replace(/_/g, ' '));
     };
 
     const normalizeStrategyComparison = (value: string): string => {

@@ -6,22 +6,22 @@ import re
 from typing import Any
 
 PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
-    "multi_ma_crossover": "Tendência em Virada",
-    "multi_ma_crossoverv2": "Tendência Confirmada",
-    "ema_rsi": "Retomada com Força",
-    "ema_macd_volume": "Movimento com Confirmação",
-    "bollinger_rsi_adx": "Retorno ao Equilíbrio",
-    "volume_atr_breakout": "Rompimento com Pressão",
-    "ema_rsi_fibonacci": "Recuo de Retomada",
-    "short_ema200_pullback": "Repique de Baixa",
-    "bollinger_breakout": "Expansão de Volatilidade",
-    "macd_cross": "Mudança de Ritmo",
-    "rsi_ema_scalping": "Movimento Curto",
-    "example_breakout_with_volume": "Rompimento com Volume",
-    "example_scalping_ema_5_13": "Leitura Ágil",
-    "example_swing_rsi_divergence": "Virada de Swing",
-    "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Momentum BTC Protegido",
-    "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC Protegido",
+    "multi_ma_crossover": "Médias Móveis: Tendência em Virada",
+    "multi_ma_crossoverv2": "Médias Móveis: Tendência Confirmada",
+    "ema_rsi": "RSI: Retomada com Força",
+    "ema_macd_volume": "MACD + Volume: Movimento com Confirmação",
+    "bollinger_rsi_adx": "Bandas + RSI: Retorno ao Equilíbrio",
+    "volume_atr_breakout": "Volume + Volatilidade: Rompimento com Pressão",
+    "ema_rsi_fibonacci": "Fibonacci: Recuo de Retomada",
+    "short_ema200_pullback": "Médias Móveis: Repique de Baixa",
+    "bollinger_breakout": "Bandas: Expansão de Volatilidade",
+    "macd_cross": "MACD: Mudança de Ritmo",
+    "rsi_ema_scalping": "RSI: Movimento Curto",
+    "example_breakout_with_volume": "Volume: Rompimento com Pressão",
+    "example_scalping_ema_5_13": "Médias Móveis: Leitura Ágil",
+    "example_swing_rsi_divergence": "RSI: Virada de Swing",
+    "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
+    "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
