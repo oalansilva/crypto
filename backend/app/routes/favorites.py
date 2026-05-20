@@ -173,6 +173,20 @@ _METRICS_TO_COMPARE = (
     "profit_factor",
 )
 
+_PUBLIC_CHART_METRIC_KEYS = {
+    "total_trades",
+    "win_rate",
+    "total_return",
+    "total_return_pct",
+    "avg_profit",
+    "max_drawdown",
+    "profit_factor",
+    "sharpe_ratio",
+    "sortino",
+    "expectancy",
+    "analysis_execution_mode",
+}
+
 
 def _favorite_metric_summary(metrics: Dict[str, Any]) -> Dict[str, Any]:
     return {key: metrics.get(key) for key in _METRICS_TO_COMPARE if key in metrics}
@@ -217,9 +231,31 @@ def _analysis_indicators_from_metrics(metrics: Dict[str, Any]) -> Dict[str, Any]
     return indicator_data if isinstance(indicator_data, dict) else {}
 
 
+def _public_chart_metrics(metrics: Dict[str, Any]) -> Dict[str, Any]:
+    return {key: metrics[key] for key in _PUBLIC_CHART_METRIC_KEYS if key in metrics}
+
+
 def _analysis_metrics_deltas_from_metrics(metrics: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
     deltas = metrics.get("trades_metrics_deltas")
     return deltas if isinstance(deltas, dict) else {}
+
+
+def _can_view_cached_chart_payload(
+    db: Session,
+    *,
+    current_user_id: str,
+    favorite: FavoriteStrategy,
+    owns_favorite: bool,
+) -> bool:
+    if owns_favorite:
+        return True
+
+    current_user = _current_user(db, current_user_id)
+    if not current_user or is_admin_email(current_user.email):
+        return False
+
+    admin_user_ids = _admin_catalog_user_ids(db, exclude_user_id=current_user_id)
+    return str(favorite.user_id) in admin_user_ids
 
 
 def _fixed_optimization_ranges(parameters: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
@@ -378,15 +414,43 @@ async def get_favorite_trades(
 
     include_secrets = can_view_strategy_secrets(db, current_user_id)
     owns_favorite = str(favorite.user_id) == str(current_user_id)
-    if not owns_favorite or not include_secrets:
-        raise HTTPException(status_code=403, detail="Favorite trades are protected")
-
     favorite = _normalize_favorite_json_fields(favorite)
     metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     saved_trades = metrics.get("trades")
     saved_trade_count = _numeric_metric(metrics.get("total_trades"))
     history_cached = metrics.get("trades_history_cached") is True
     has_chart_context = len(_analysis_candles_from_metrics(metrics)) > 0
+
+    if not include_secrets:
+        if not _can_view_cached_chart_payload(
+            db,
+            current_user_id=current_user_id,
+            favorite=favorite,
+            owns_favorite=owns_favorite,
+        ):
+            raise HTTPException(status_code=403, detail="Favorite trades are protected")
+        if not isinstance(saved_trades, list):
+            raise HTTPException(status_code=403, detail="Favorite trade regeneration is protected")
+
+        return FavoriteTradesResponse(
+            favorite_id=favorite_id,
+            trades=saved_trades,
+            metrics=_public_chart_metrics(metrics),
+            metrics_match=True,
+            metrics_deltas={},
+            regenerated=False,
+            candles=_analysis_candles_from_metrics(metrics),
+            indicator_data={},
+            execution_mode=(
+                metrics.get("analysis_execution_mode")
+                if isinstance(metrics.get("analysis_execution_mode"), str)
+                else None
+            ),
+        )
+
+    if not owns_favorite:
+        raise HTTPException(status_code=403, detail="Favorite trades are protected")
+
     if isinstance(saved_trades, list) and (
         has_chart_context or history_cached or int(saved_trade_count or 0) <= 0
     ):

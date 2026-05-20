@@ -633,6 +633,116 @@ def test_favorite_trades_rejects_protected_access(tmp_path: Path, monkeypatch):
             assert exc.status_code == 403
 
 
+def test_common_user_can_read_cached_admin_catalog_chart_trades(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    admin_id = str(uuid.uuid4())
+    common_id = str(uuid.uuid4())
+    admin_email = f"admin-{uuid.uuid4()}@example.com"
+    monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
+    monkeypatch.setattr(
+        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+    )
+    monkeypatch.setattr(
+        favorites,
+        "can_view_strategy_secrets",
+        lambda _db, user_id: str(user_id) == admin_id,
+    )
+
+    with SessionLocal() as db:
+        db.add(User(id=admin_id, email=admin_email, password_hash="x", name="Admin"))
+        db.add(
+            User(
+                id=common_id,
+                email=f"common-{uuid.uuid4()}@example.com",
+                password_hash="x",
+                name="Common",
+            )
+        )
+        db.commit()
+        created = favorites.create_favorite(
+            favorites.FavoriteStrategyCreate(
+                **{
+                    **_favorite_payload("Admin cached trades", symbol="HBAR/USDT").model_dump(),
+                    "metrics": {
+                        "total_trades": 1,
+                        "win_rate": 0,
+                        "total_return_pct": -4.3,
+                        "trades": [
+                            {
+                                "entry_time": "2026-05-09T00:00:00+00:00",
+                                "entry_price": 0.0927,
+                                "exit_time": "2026-05-20T00:00:00+00:00",
+                                "exit_price": 0.08877,
+                                "profit": -0.0438,
+                            }
+                        ],
+                        "analysis_candles": [
+                            {"timestamp_utc": "2026-05-20T00:00:00+00:00", "close": 0.08877}
+                        ],
+                        "analysis_indicator_data": {"short": [0.09]},
+                    },
+                }
+            ),
+            current_user_id=admin_id,
+            db=db,
+        )
+
+        response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id=common_id, db=db)
+        )
+
+    assert response.regenerated is False
+    assert response.trades[0]["exit_time"] == "2026-05-20T00:00:00+00:00"
+    assert response.candles == [{"timestamp_utc": "2026-05-20T00:00:00+00:00", "close": 0.08877}]
+    assert response.indicator_data == {}
+    assert response.metrics == {
+        "total_trades": 1,
+        "win_rate": 0,
+        "total_return_pct": -4.3,
+    }
+
+
+def test_common_user_cannot_regenerate_admin_catalog_chart_trades(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    admin_id = str(uuid.uuid4())
+    common_id = str(uuid.uuid4())
+    admin_email = f"admin-{uuid.uuid4()}@example.com"
+    monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
+    monkeypatch.setattr(
+        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+    )
+    monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: False)
+
+    with SessionLocal() as db:
+        db.add(User(id=admin_id, email=admin_email, password_hash="x", name="Admin"))
+        db.add(
+            User(
+                id=common_id,
+                email=f"common-{uuid.uuid4()}@example.com",
+                password_hash="x",
+                name="Common",
+            )
+        )
+        db.commit()
+        created = favorites.create_favorite(
+            favorites.FavoriteStrategyCreate(
+                **{
+                    **_favorite_payload("Admin summary only", symbol="SOL/USDT").model_dump(),
+                    "metrics": {"total_trades": 1},
+                }
+            ),
+            current_user_id=admin_id,
+            db=db,
+        )
+
+        try:
+            asyncio.run(favorites.get_favorite_trades(created.id, current_user_id=common_id, db=db))
+            raise AssertionError("common user should not regenerate protected favorite trades")
+        except HTTPException as exc:
+            assert exc.status_code == 403
+            assert exc.detail == "Favorite trade regeneration is protected"
+
+
 def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
     SessionLocal = _session_factory(tmp_path)
     optimizer_calls = []
