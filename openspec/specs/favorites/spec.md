@@ -289,3 +289,25 @@ The Favorites page SHALL NOT expose a "Chat com agente", "Trader", or equivalent
 - **THEN** each visible favorite card SHALL keep the analysis action
 - **AND** administrative users SHALL keep the delete action
 - **AND** the card actions SHALL NOT include "Chat com agente", "Trader", or a chat icon action that opens the agent chat modal
+
+### Requirement: Favorites expose automatic backtest refresh state
+The Favorites API and UI SHALL expose the last automatic refresh state for each favorite strategy.
+
+#### Scenario: User lists favorites after an automatic refresh
+- **WHEN** a user opens Favorites
+- **THEN** each favorite response SHALL include refresh status, refresh run id, start timestamp, completion timestamp, and error when available
+- **AND** the Favorites UI SHALL show a compact last update/status line for each favorite
+
+#### Scenario: Protected favorite is listed
+- **WHEN** a protected favorite is listed for a common user
+- **THEN** refresh metadata MAY be shown
+- **AND** protected strategy parameters and implementation details SHALL remain redacted
+
+### Requirement: Favorites remains chart data base
+Favorites result charts SHALL remain driven by the complete result payload available on `/combo/results`.
+
+#### Scenario: Saved result chart opens without extra candle fetch
+- **WHEN** a saved favorite result includes candle and marker history
+- **THEN** the chart SHALL render from the saved result payload
+- **AND** it SHALL NOT require Monitor-specific opportunity data to display the full chart.
+

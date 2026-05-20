@@ -145,6 +145,11 @@ class FavoriteStrategy(Base):
 
     # Cached Metrics
     metrics = Column(JSONType, nullable=True)
+    auto_refresh_status = Column(String, nullable=True)
+    auto_refresh_error = Column(String, nullable=True)
+    auto_refresh_started_at = Column(DateTime, nullable=True)
+    auto_refresh_completed_at = Column(DateTime, nullable=True)
+    auto_refresh_run_id = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     notes = Column(String, nullable=True)

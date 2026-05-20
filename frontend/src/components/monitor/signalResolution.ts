@@ -1,6 +1,6 @@
 import type { Opportunity } from './types';
 
-export type MonitorSignalKind = 'hold' | 'wait' | 'exit';
+export type MonitorSignalKind = 'hold' | 'exit';
 
 type MarkerDirection = 'aboveBar' | 'belowBar';
 type MarkerShape = 'arrowDown' | 'arrowUp';
@@ -11,8 +11,8 @@ export interface MonitorSignalVisual {
     readonly borderClass: string;
     readonly cardBgClass: string;
     readonly titleClass: string;
-    readonly markerLabel: 'Compra' | 'Venda' | 'Espera';
-    readonly distanceLabel: 'compra' | 'venda' | 'espera';
+    readonly markerLabel: 'Compra' | 'Venda';
+    readonly distanceLabel: 'compra' | 'venda';
     readonly markerPosition: MarkerDirection;
     readonly markerShape: MarkerShape;
     readonly markerColor: string;
@@ -74,19 +74,6 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
         markerColor: '#0284c7',
         statusClass: 'info',
     },
-    wait: {
-        badgeText: 'Espera',
-        badgeClass: 'bg-slate-200 text-slate-600 border-slate-300',
-        borderClass: 'border-l-slate-300 border-l-4',
-        cardBgClass: 'bg-[var(--monitor-card)] border-[var(--monitor-border)]',
-        titleClass: 'text-[var(--monitor-text)]',
-        markerLabel: 'Espera',
-        distanceLabel: 'espera',
-        markerPosition: 'belowBar',
-        markerShape: 'arrowUp',
-        markerColor: '#2dd4bf',
-        statusClass: 'warning',
-    },
 };
 
 const asStatus = (rawStatus: unknown): string => String(rawStatus || '').trim().toUpperCase();
@@ -103,13 +90,13 @@ const normalizeNextStatus = (nextStatusLabel: string | null | undefined): string
 const toPublicSignalMessage = (message: string): string => message
     .replace(/\bEXIT\b/g, 'Venda')
     .replace(/\bHOLD\b/g, 'Compra')
-    .replace(/\bWAIT\b/g, 'Espera')
+    .replace(/\bWAIT\b/g, 'Venda')
     .replace(/\bExit\b/g, 'Venda')
     .replace(/\bHold\b/g, 'Compra')
-    .replace(/\bWait\b/g, 'Espera')
+    .replace(/\bWait\b/g, 'Venda')
     .replace(/\bexit\b/g, 'venda')
     .replace(/\bhold\b/g, 'compra')
-    .replace(/\bwait\b/g, 'espera');
+    .replace(/\bwait\b/g, 'venda');
 
 const toMsByTimeframe = (timeframe: string | null | undefined): number => {
     return TIMEFRAME_TO_MS[normalizeTimeframe(timeframe) || '1d'] ?? TIMEFRAME_TO_MS['1d'];
@@ -169,7 +156,7 @@ export const resolveOpportunitySignal = (
         && rawStatus !== 'EXIT_SIGNAL'
         && context.hasVisibleActiveEntry === false;
 
-    let section: MonitorSignalKind = 'wait';
+    let section: MonitorSignalKind = isHolding ? 'hold' : 'exit';
     let isUncertain = uncertainty || timeframeMismatch || candleMismatch || activeEntryMissingFromChart;
     const reasons: string[] = [];
     if (uncertainty) {
@@ -185,16 +172,16 @@ export const resolveOpportunitySignal = (
         reasons.push('Compra bloqueada: entrada ativa não aparece nos candles exibidos.');
     }
 
-    if (rawStatus === 'EXIT_SIGNAL') {
+    if (rawStatus === 'EXIT' || rawStatus === 'EXIT_SIGNAL' || rawStatus === 'EXIT_NEAR') {
         section = 'exit';
-    } else if (rawStatus === 'HOLDING' || rawStatus === 'HOLD' || rawStatus === 'EXIT_NEAR') {
-        section = isHolding ? 'hold' : 'wait';
+    } else if (rawStatus === 'HOLDING' || rawStatus === 'HOLD') {
+        section = isHolding || rawStatus === 'HOLD' ? 'hold' : 'exit';
         if (!isHolding) {
             isUncertain = true;
             reasons.push('Estado de decisão indica posição ativa, mas o sinal não confirma compra.');
         }
     } else if (rawStatus === 'EXITED' || rawStatus === 'STOPPED_OUT' || rawStatus === 'MISSED_ENTRY' || rawStatus === 'MISSED') {
-        section = isHolding ? 'wait' : 'exit';
+        section = 'exit';
         if (isHolding) {
             isUncertain = true;
             reasons.push('Estado de saída inconsistente com posição aberta.');
@@ -202,12 +189,12 @@ export const resolveOpportunitySignal = (
     } else if (rawStatus === 'BUY_SIGNAL') {
         section = 'hold';
     } else if (rawStatus === 'WAIT' || rawStatus === 'NEUTRAL' || rawStatus === 'BUY_NEAR') {
-        section = 'wait';
+        section = 'exit';
     } else if (rawStatus) {
-        section = isHolding ? 'hold' : 'wait';
+        section = isHolding ? 'hold' : 'exit';
         if (!isHolding) {
             isUncertain = true;
-            reasons.push('Estado desconhecido, tratado como espera.');
+            reasons.push('Estado desconhecido, tratado como venda.');
         }
     }
 
@@ -239,7 +226,9 @@ export const hasExitedOpportunity = (opportunity: Opportunity): boolean => {
     const isHolding = Boolean(opportunity.is_holding);
 
     return (
-        rawStatus === 'EXIT_SIGNAL'
+        rawStatus === 'EXIT'
+        || rawStatus === 'EXIT_SIGNAL'
+        || rawStatus === 'EXIT_NEAR'
         || (
             !isHolding
             && (

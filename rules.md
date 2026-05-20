@@ -17,6 +17,7 @@ Este arquivo define as regras obrigatorias e curtas do projeto. O `AGENTS.md` de
    - Branch padrao: `change-<id>-<slug>` ou `card-<id>-<slug>`.
    - Commits locais na branch da change sao permitidos.
    - Nessa etapa nao arquivar OpenSpec, nao abrir PR para `main` e nao publicar.
+   - Para qualquer correcao de bug ou ajuste solicitado por Alan, nao dizer `concluido` antes de validar, integrar em `develop`, rodar `./restart` e confirmar que a URL do sistema serve o resultado novo.
 
 3. Fluxo das colunas do GitHub Project:
    - `In Progress`: card em execucao.

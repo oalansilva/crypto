@@ -77,6 +77,32 @@ async function setupApiMocks(page: any) {
     })
   )
 
+  await page.route('**/api/favorites/5/trades', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        trades: [
+          {
+            entry_time: '2099-04-10T00:00:00Z',
+            entry_price: 70210.15,
+            exit_time: '2099-04-13T00:00:00Z',
+            exit_price: 72150.42,
+            profit: 0.0276,
+            type: 'long',
+            signal_type: 'Regra de venda',
+          },
+        ],
+        metrics: {
+          total_trades: 1,
+          win_rate: 1,
+          total_return: 0.0276,
+          avg_profit: 0.0276,
+        },
+      }),
+    })
+  )
+
   await page.route('**/api/opportunities/**', (route: any) =>
     route.fulfill({
       status: 200,
@@ -101,6 +127,35 @@ async function setupApiMocks(page: any) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
+  await page.route('**/api/favorites/2/trades', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        favorite_id: 2,
+        trades: [
+          {
+            entry_time: '2026-05-09T00:00:00+00:00',
+            entry_price: 0.0927,
+            exit_time: '2026-05-20T00:00:00+00:00',
+            exit_price: 0.08877,
+            profit: -0.04383015327501139,
+            type: 'long',
+          },
+        ],
+        metrics: { total_trades: 1 },
+        candles: [
+          { timestamp_utc: '2026-05-09T00:00:00Z', open: 0.0927, high: 0.094, low: 0.091, close: 0.0932, volume: 1000 },
+          { timestamp_utc: '2026-05-19T00:00:00Z', open: 0.089, high: 0.09, low: 0.088, close: 0.08877, volume: 1000 },
+          { timestamp_utc: '2026-05-20T00:00:00Z', open: 0.08877, high: 0.0895, low: 0.0875, close: 0.08812, volume: 1000 },
+        ],
+        indicator_data: {},
+        regenerated: false,
+        execution_mode: 'deep_15m',
+      }),
     })
   )
 
@@ -444,13 +499,17 @@ test('monitor keeps backend exit in list and shows mismatched chart context', as
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Venda', { exact: true })).toBeVisible()
-  await card.getByRole('button', { name: 'Ver gráfico' }).click()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-strategy-summary')).toHaveCount(0)
+  await expect(dialog.getByTestId('chart-modal-signal-context')).toHaveCount(0)
+  await expect(dialog.getByTestId('chart-modal-trades')).toHaveCount(0)
+  await expect(dialog.getByText('Lista de trades')).toHaveCount(0)
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
 })
 
@@ -564,7 +623,7 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   const card = page.getByTestId('monitor-card-sol-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Compra', { exact: true })).toBeVisible()
-  await card.getByRole('button', { name: 'Ver gráfico' }).click()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -573,12 +632,14 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-signal-context')).toHaveCount(0)
+  await expect(dialog.getByTestId('chart-modal-trades')).toHaveCount(0)
   await expect(dialog.getByRole('group', { name: 'Chart indicators' })).toHaveCount(0)
   await expect(dialog.getByText('Indicators')).toHaveCount(0)
   await expect(dialog.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0)
 })
 
-test('monitor resolves current exit signal consistently in list and chart', async ({ page }) => {
+test('monitor adds current sell marker when history only has prior entry', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -638,17 +699,16 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
             open: 0.08771,
             close: 0.08773,
           },
-          indicator_values_candle_time: '2026-05-04T00:00:00+00:00',
-          is_holding: true,
+          indicator_values_candle_time: '2026-05-19T00:00:00+00:00',
+          is_holding: false,
           distance_to_next_status: 0,
           next_status_label: 'exit',
-          status: 'EXIT_SIGNAL',
-          message: 'EXIT: regra de saída confirmada.',
-          last_price: 0.09068,
-          timestamp: '2026-05-05T00:00:00Z',
+          status: 'EXIT',
+          message: 'Venda/fora de posicao. Aguardando proxima compra.',
+          last_price: 0.08877,
+          timestamp: '2026-05-20T00:00:00Z',
           signal_history: [
-            { timestamp: '2026-04-24T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 0.09081 },
-            { timestamp: '2026-05-05T00:00:00+00:00', signal: -1, type: 'exit', reason: 'exit_logic', price: 0.08774 },
+            { timestamp: '2026-05-09T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 0.0927 },
           ],
           details: {},
         },
@@ -681,9 +741,9 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
       contentType: 'application/json',
       body: JSON.stringify({
         candles: [
-          { timestamp_utc: '2026-04-24T00:00:00Z', open: 0.09081, high: 0.0911, low: 0.089, close: 0.09093, volume: 1000 },
-          { timestamp_utc: '2026-05-04T00:00:00Z', open: 0.08771, high: 0.0885, low: 0.087, close: 0.08773, volume: 1000 },
-          { timestamp_utc: '2026-05-05T00:00:00Z', open: 0.08774, high: 0.091, low: 0.0875, close: 0.09068, volume: 1000 },
+          { timestamp_utc: '2026-05-09T00:00:00Z', open: 0.0927, high: 0.094, low: 0.091, close: 0.0932, volume: 1000 },
+          { timestamp_utc: '2026-05-19T00:00:00Z', open: 0.089, high: 0.09, low: 0.088, close: 0.08877, volume: 1000 },
+          { timestamp_utc: '2026-05-20T00:00:00Z', open: 0.08877, high: 0.0895, low: 0.0875, close: 0.08812, volume: 1000 },
         ],
       }),
     })
@@ -694,14 +754,170 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
   const card = page.getByTestId('monitor-card-hbar-usdt')
   await expect(card).toBeVisible()
   await expect(card.getByText('Venda', { exact: true })).toBeVisible()
-  await card.getByRole('button', { name: 'Ver gráfico' }).click()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-strategy-summary')).toHaveCount(0)
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
+  await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
+  await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '2')
+})
+
+test('monitor uses favorite trade markers without duplicating the current sell marker', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 8,
+          name: 'HBAR Trend',
+          symbol: 'HBAR/USDT',
+          timeframe: '1d',
+          strategy_name: 'multi_ma_crossover',
+          parameters: {},
+          metrics: {},
+          created_at: '2026-04-15T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 8,
+          symbol: 'HBAR/USDT',
+          timeframe: '1d',
+          template_name: 'multi_ma_crossover',
+          name: 'HBAR Trend',
+          notes: '',
+          tier: 1,
+          parameters: { direction: 'long', ema_short: 18, sma_medium: 20, sma_long: 35, stop_loss: 0.042 },
+          indicator_values_candle_time: '2026-05-20T00:00:00+00:00',
+          is_holding: false,
+          distance_to_next_status: 0,
+          next_status_label: 'exit',
+          status: 'EXIT',
+          message: 'Venda/fora de posicao. Aguardando proxima compra.',
+          last_price: 0.08877,
+          timestamp: '2026-05-20T00:00:00Z',
+          signal_history: [
+            { timestamp: '2026-05-09T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 0.0927 },
+          ],
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/favorites/8/trades', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        favorite_id: 8,
+        trades: [
+          {
+            entry_time: '2026-04-01T00:00:00+00:00',
+            entry_price: 0.08,
+            exit_time: '2026-04-10T00:00:00+00:00',
+            exit_price: 0.09,
+            profit: 0.125,
+            type: 'long',
+          },
+          {
+            entry_time: '2026-05-09T00:00:00+00:00',
+            entry_price: 0.0927,
+            exit_time: '2026-05-20T00:00:00+00:00',
+            exit_price: 0.08877,
+            profit: -0.0438,
+            type: 'long',
+          },
+        ],
+        metrics: { total_trades: 2 },
+        candles: [
+          { timestamp_utc: '2026-04-01T00:00:00Z', open: 0.08, high: 0.083, low: 0.079, close: 0.082, volume: 1000 },
+          { timestamp_utc: '2026-04-10T00:00:00Z', open: 0.09, high: 0.094, low: 0.088, close: 0.091, volume: 1000 },
+          { timestamp_utc: '2026-05-09T00:00:00Z', open: 0.0927, high: 0.094, low: 0.091, close: 0.0932, volume: 1000 },
+          { timestamp_utc: '2026-05-20T00:00:00Z', open: 0.08877, high: 0.0895, low: 0.0875, close: 0.08812, volume: 1000 },
+        ],
+        indicator_data: {},
+        regenerated: false,
+        execution_mode: 'deep_15m',
+      }),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+        'HBAR/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
+  await page.route('**/api/market/candles**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candles: [
+          { timestamp_utc: '2026-05-20T00:00:00Z', open: 0.08877, high: 0.0895, low: 0.0875, close: 0.08812, volume: 1000 },
+        ],
+      }),
+    })
+  )
+
+  await page.goto('/monitor')
+
+  const card = page.getByTestId('monitor-card-hbar-usdt')
+  await expect(card).toBeVisible()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '4')
+  await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-labels', /COMPRA.*VENDA/);
+  await expect(dialog.getByTestId('chart-modal-surface')).not.toHaveAttribute('data-marker-labels', /BUY|SELL|SHORT|COVER/);
+  await expect(dialog.locator('header p').first()).toContainText('4 candles')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {
@@ -824,13 +1040,23 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
 
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
-  await card.getByRole('button', { name: 'Ver gráfico' }).click()
+  await card.getByRole('button', { name: 'Ver Trades' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Compacto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Algorítmica', exact: true })).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-trades')).toBeVisible()
+  await expect(dialog.getByText('Lista de trades')).toBeVisible()
+  await expect(dialog.getByRole('columnheader', { name: 'Valor da posicao' })).toBeVisible()
+  await expect(dialog.getByText('100.00 USD').first()).toBeVisible()
+  await expect(dialog.getByText('Apr 10, 2099')).toBeVisible()
+  await expect(dialog.getByText('Apr 13, 2099')).toBeVisible()
+  await page.waitForTimeout(1500)
+  await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
+  await expect(dialog.getByTestId('chart-modal-main-chart').locator('canvas').first()).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-badge')).toHaveText('Compra')
   await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
 })
@@ -887,7 +1113,7 @@ test('monitor modal zoom controls adjust visible range without reloading candles
           name: 'BTC Zoom Test',
           notes: '',
           tier: 1,
-          parameters: { direction: 'long', ema_short: 9, sma_medium: 21, sma_long: 50, rsi_period: 14 },
+          parameters: { direction: 'long', ema_short: 9, sma_medium: 21, sma_long: 50, stop_loss: 0.035, data_source: 'ccxt', rsi_period: 14 },
           indicator_values: {
             ema_9: 73210.5,
             sma_21: 72654.8,
@@ -954,14 +1180,30 @@ test('monitor modal zoom controls adjust visible range without reloading candles
 
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
-  await card.click()
+  await card.getByRole('button', { name: 'Ver Trades' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
+  const parameters = dialog.locator('section').filter({ hasText: 'Parametros' }).last()
+  await expect(parameters.getByText('Direção')).toBeVisible()
+  await expect(parameters.getByText('Compra')).toBeVisible()
+  await expect(parameters.getByText('EMA curta')).toBeVisible()
+  await expect(parameters.getByText('SMA média')).toBeVisible()
+  await expect(parameters.getByText('SMA longa')).toBeVisible()
+  await expect(parameters.getByText('Stop de perda')).toBeVisible()
+  await expect(parameters.getByText('3.50%')).toBeVisible()
+  await expect(parameters.getByText('Fonte de dados')).toBeVisible()
+  await expect(parameters.getByText('CCXT')).toBeVisible()
+  await expect(parameters.getByText('direction')).toHaveCount(0)
+  await expect(parameters.getByText('ema_short')).toHaveCount(0)
+  await expect(parameters.getByText('sma_medium')).toHaveCount(0)
+  await expect(parameters.getByText('sma_long')).toHaveCount(0)
+  await expect(parameters.getByText('stop_loss')).toHaveCount(0)
+  await expect(parameters.getByText('data_source')).toHaveCount(0)
   await expect(page.getByTestId('chart-zoom-in')).toBeVisible()
   await expect(page.getByTestId('chart-zoom-out')).toBeVisible()
   await expect(page.getByTestId('chart-zoom-reset')).toBeVisible()
-  await expect(dialog.getByText('Mouse wheel: zoom')).toBeVisible()
+  await expect(dialog.getByText('Roda do mouse: zoom')).toBeVisible()
 
   const visibleBars = page.getByTestId('chart-visible-bars')
   const readVisibleBars = async () => {

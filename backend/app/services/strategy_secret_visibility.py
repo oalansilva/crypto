@@ -85,11 +85,11 @@ def _protected_message(payload: dict[str, Any]) -> str:
     raw_status = str(payload.get("status") or "").strip().upper()
     is_holding = bool(payload.get("is_holding"))
 
-    if raw_status in {"EXITED", "STOPPED_OUT", "MISSED_ENTRY", "MISSED"}:
+    if raw_status == "EXIT":
         return "Saida registrada. Acompanhe o sistema para a proxima janela."
-    if is_holding or raw_status in {"HOLDING", "HOLD", "EXIT_NEAR", "EXIT_SIGNAL"}:
+    if raw_status == "HOLD" or is_holding:
         return "Posicao ativa. Acompanhe o sistema para a proxima decisao."
-    return "Aguardando confirmacao do sistema para a proxima decisao."
+    return "Saida registrada. Acompanhe o sistema para a proxima janela."
 
 
 def _redact_signal_history(history: Any) -> list[dict[str, Any]] | None:

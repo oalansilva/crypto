@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/Button';
 import {
     ChevronRight,
     LineChart,
+    ListChecks,
     RefreshCw,
     Search,
 } from 'lucide-react';
@@ -37,8 +38,7 @@ type StrategyFilter = 'all' | string;
 type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
 type StarFilter = 'all' | '3' | '2' | '1';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
-type SectionKey = 'hold' | 'wait' | 'exit';
-type VisibleSectionKey = Exclude<SectionKey, 'wait'>;
+type SectionKey = 'hold' | 'exit';
 
 type BinanceBalanceRow = {
     asset?: string;
@@ -55,7 +55,7 @@ type DerivedPortfolioStatus = {
 type SectionRecord = {
     title: string;
     label: string;
-    dotClass: 'monitor-dot--hold' | 'monitor-dot--wait' | 'monitor-dot--exit';
+    dotClass: 'monitor-dot--hold' | 'monitor-dot--exit';
     badgeClass: string;
     countClass: string;
     description: string;
@@ -116,14 +116,6 @@ const SectionConfig: Record<SectionKey, SectionRecord> = {
         countClass: 'text-emerald-300',
         description: 'Sinais com decisão de compra e gestão ativa.',
     },
-    wait: {
-        title: 'Espera',
-        label: 'Aguardando',
-        dotClass: 'monitor-dot--wait',
-        badgeClass: 'bg-slate-400/20 text-slate-200 border border-slate-400/40',
-        countClass: 'text-slate-300',
-        description: 'Aguardando confirmação para entrada ou saída.',
-    },
     exit: {
         title: 'Venda',
         label: 'Em observação',
@@ -134,8 +126,7 @@ const SectionConfig: Record<SectionKey, SectionRecord> = {
     },
 };
 
-const SECTION_ORDER: SectionKey[] = ['hold', 'wait', 'exit'];
-const VISIBLE_SECTION_ORDER: VisibleSectionKey[] = ['hold', 'exit'];
+const SECTION_ORDER: SectionKey[] = ['hold', 'exit'];
 
 const getDistanceLabel = (distance: number | null | undefined): string => {
     if (distance === null || distance === undefined) return '-';
@@ -185,6 +176,7 @@ export const MonitorStatusTab: React.FC = () => {
         opportunity: Opportunity;
         initialCandles: MarketCandle[];
         initialTimeframe: ChartTimeframe;
+        viewMode: 'chart' | 'trades';
     } | null>(null);
     const sortBy: SortOption = 'tier_distance';
     const [tierFilter, setTierFilter] = useState<TierFilter>('rated');
@@ -434,7 +426,7 @@ export const MonitorStatusTab: React.FC = () => {
         return getOpportunityAssetType(opportunity) === 'stock' ? '1d' : requested;
     };
 
-    const handleOpenChart = async (opportunity: Opportunity) => {
+    const handleOpenChart = async (opportunity: Opportunity, viewMode: 'chart' | 'trades' = 'chart') => {
         const initialTimeframe = resolveChartTimeframe(opportunity);
 
         setOpeningChartSymbol(opportunity.symbol);
@@ -454,6 +446,7 @@ export const MonitorStatusTab: React.FC = () => {
                 opportunity,
                 initialCandles: rows,
                 initialTimeframe,
+                viewMode,
             });
         } catch (error) {
             toast({
@@ -473,7 +466,7 @@ export const MonitorStatusTab: React.FC = () => {
         }));
     };
 
-    const getSparklineColor = (sectionKey: VisibleSectionKey): string => {
+    const getSparklineColor = (sectionKey: SectionKey): string => {
         if (sectionKey === 'exit') return '#f26e7e';
         return '#3dd68c';
     };
@@ -684,7 +677,6 @@ export const MonitorStatusTab: React.FC = () => {
     const resolvedSections = useMemo(() => {
         const groups: Record<SectionKey, ResolvedSectionRow[]> = {
             hold: [],
-            wait: [],
             exit: [],
         };
 
@@ -743,7 +735,7 @@ export const MonitorStatusTab: React.FC = () => {
         }
 
         const rowsToFetch = new Map<string, { symbol: string; timeframe: ChartTimeframe }>();
-        for (const section of VISIBLE_SECTION_ORDER) {
+        for (const section of SECTION_ORDER) {
             for (const { opportunity } of resolvedSections[section]) {
                 const timeframe = resolveChartTimeframe(opportunity);
                 const key = getSparklineKey(opportunity.symbol, timeframe);
@@ -1000,7 +992,7 @@ export const MonitorStatusTab: React.FC = () => {
                                 <p className="monitor-empty-text">Nenhum sinal acionável no monitor.</p>
                             </section>
                         ) : (
-                            VISIBLE_SECTION_ORDER.map((sectionKey) => {
+                            SECTION_ORDER.map((sectionKey) => {
                                 const cfg = SectionConfig[sectionKey];
                                 const rows = resolvedSections[sectionKey];
 
@@ -1182,18 +1174,36 @@ export const MonitorStatusTab: React.FC = () => {
                                                                         </div>
                                                                     </td>
                                                                     <td className="actions-cell">
+                                                                        <div className="row-actions" aria-label={`Ações ${opportunity.symbol}`}>
                                                                         <button
                                                                             type="button"
                                                                             className="row-action"
-                                                                            title="Abrir gráfico"
+                                                                            title="Abrir Gráfico"
+                                                                            aria-label={`Abrir Gráfico ${opportunity.symbol}`}
                                                                             onClick={(event) => {
                                                                                 event.stopPropagation();
-                                                                                void handleOpenChart(opportunity);
+                                                                                void handleOpenChart(opportunity, 'chart');
                                                                             }}
                                                                             disabled={openingChartSymbol === opportunity.symbol}
                                                                         >
                                                                             <LineChart className="h-4 w-4" />
+                                                                            <span>Abrir Gráfico</span>
                                                                         </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="row-action row-action-primary"
+                                                                            title="Ver Trades"
+                                                                            aria-label={`Ver Trades ${opportunity.symbol}`}
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                void handleOpenChart(opportunity, 'trades');
+                                                                            }}
+                                                                            disabled={openingChartSymbol === opportunity.symbol}
+                                                                        >
+                                                                            <ListChecks className="h-4 w-4" />
+                                                                            <span>Ver Trades</span>
+                                                                        </button>
+                                                                        </div>
                                                                     </td>
                                                                 </tr>
                                                                 {expanded ? (
@@ -1244,6 +1254,7 @@ export const MonitorStatusTab: React.FC = () => {
                     opportunity={activeChart.opportunity}
                     initialCandles={activeChart.initialCandles}
                     initialTimeframe={activeChart.initialTimeframe}
+                    viewMode={activeChart.viewMode}
                     onClose={() => setActiveChart(null)}
                 />
             ) : null}

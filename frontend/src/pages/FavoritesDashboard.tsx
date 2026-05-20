@@ -26,6 +26,11 @@ interface FavoriteStrategy {
     is_strategy_protected?: boolean;
     strategy_display_name?: string | null;
     strategy_description?: string | null;
+    auto_refresh_status?: string | null;
+    auto_refresh_error?: string | null;
+    auto_refresh_started_at?: string | null;
+    auto_refresh_completed_at?: string | null;
+    auto_refresh_run_id?: string | null;
 }
 
 interface MonitorSignalHistoryItem {
@@ -56,6 +61,15 @@ const getSavedAnalysisCandles = (fav: FavoriteStrategy): any[] => {
 };
 
 const normalizeText = (value: unknown): string => String(value || '').trim().toLowerCase();
+
+const normalizeSearchText = (value: unknown): string => normalizeText(value)
+    .replace(/[/_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getSearchTerms = (value: string): string[] => normalizeSearchText(value)
+    .split(/\s+/)
+    .filter(Boolean);
 
 const getCandleTimestampKey = (candle: any): string => {
     const rawTimestamp = candle?.timestamp_utc ?? candle?.timestamp ?? candle?.time;
@@ -424,6 +438,34 @@ const FavoritesDashboard: React.FC = () => {
         return description || null;
     };
 
+    const favoriteMatchesSearch = (fav: FavoriteStrategy, query: string): boolean => {
+        const normalizedQuery = normalizeSearchText(query);
+        if (!normalizedQuery) return true;
+
+        const symbol = String(fav.symbol || '');
+        const [baseAsset, quoteAsset] = symbol.split('/');
+        const searchHaystack = [
+            fav.name,
+            symbol,
+            baseAsset,
+            quoteAsset,
+            fav.strategy_name,
+            getFavoriteStrategyLabel(fav),
+            getFavoriteStrategyName(fav),
+            fav.strategy_description,
+            fav.timeframe,
+        ]
+            .map(normalizeSearchText)
+            .filter(Boolean)
+            .join(' ');
+
+        if (searchHaystack.includes(normalizedQuery)) {
+            return true;
+        }
+
+        return getSearchTerms(query).every((term) => searchHaystack.includes(term));
+    };
+
     const isFavoriteProtected = (fav: FavoriteStrategy): boolean => Boolean(fav.is_strategy_protected);
 
     const getSavedTrades = (fav: FavoriteStrategy): any[] | null => {
@@ -729,10 +771,7 @@ const FavoritesDashboard: React.FC = () => {
     }, [favorites]);
 
     const filteredFavorites = (favorites?.filter(fav => {
-        const matchesSearch = fav.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            fav.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            getFavoriteStrategyLabel(fav).toLowerCase().includes(searchTerm.toLowerCase()) ||
-            String(fav.strategy_description || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = favoriteMatchesSearch(fav, searchTerm);
 
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
         const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
@@ -880,6 +919,36 @@ const FavoritesDashboard: React.FC = () => {
         if (s && e) return `${s} → ${e}`;
         if (s) return `≥ ${s}`;
         return `≤ ${e!}`;
+    };
+
+    const formatRefreshStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } => {
+        const status = (fav.auto_refresh_status || '').toUpperCase();
+        const completedAt = fav.auto_refresh_completed_at || fav.auto_refresh_started_at;
+        const formattedDate = completedAt
+            ? new Date(completedAt).toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            })
+            : null;
+        if (status === 'RUNNING') {
+            return { label: 'Atualizando backtest', className: 'running' };
+        }
+        if (status === 'FAILED') {
+            return {
+                label: formattedDate ? `Falha na atualização: ${formattedDate}` : 'Falha na atualização',
+                className: 'failed',
+                title: fav.auto_refresh_error || undefined,
+            };
+        }
+        if (status === 'SUCCESS') {
+            return {
+                label: formattedDate ? `Backtest atualizado: ${formattedDate}` : 'Backtest atualizado',
+                className: 'success',
+            };
+        }
+        return { label: 'Backtest aguardando atualização', className: 'pending' };
     };
 
     const cryptoFavorites = React.useMemo(
@@ -1074,6 +1143,7 @@ const FavoritesDashboard: React.FC = () => {
                                 const direction = ((fav.parameters?.direction as string) || 'long').toLowerCase();
                                 const strategyDetail = getGridStrategyDetail(fav);
                                 const strategyDescription = getFavoriteStrategyDescription(fav);
+                                const refreshStatus = formatRefreshStatus(fav);
                                 return (
                                     <article key={fav.id} className={`fav-mobile-card ${tier.className}`}>
                                         <div className="fav-mobile-card-head">
@@ -1082,6 +1152,9 @@ const FavoritesDashboard: React.FC = () => {
                                                 <span className="fav-strategy-name">{getFavoriteStrategyName(fav)}</span>
                                                 {strategyDetail ? <span>{strategyDetail}</span> : null}
                                                 {strategyDescription ? <span className="fav-strategy-description">{strategyDescription}</span> : null}
+                                                <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
+                                                    {refreshStatus.label}
+                                                </span>
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                 {direction === 'short' ? 'Short' : 'Long'}
@@ -1155,6 +1228,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const stopLoss = fav.parameters?.stop_loss ?? null;
                                         const strategyDetail = getGridStrategyDetail(fav);
                                         const strategyDescription = getFavoriteStrategyDescription(fav);
+                                        const refreshStatus = formatRefreshStatus(fav);
 
                                         return (
                                             <tr key={fav.id} className={`${tier.className} ${isSelected ? 'selected' : ''}`}>
@@ -1184,6 +1258,9 @@ const FavoritesDashboard: React.FC = () => {
                                                         <strong>{getFavoriteStrategyName(fav)}</strong>
                                                         {strategyDetail ? <span>{strategyDetail}</span> : null}
                                                         {strategyDescription ? <span className="strategy-description">{strategyDescription}</span> : null}
+                                                        <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
+                                                            {refreshStatus.label}
+                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className="direction-col">

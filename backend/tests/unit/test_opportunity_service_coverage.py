@@ -404,7 +404,7 @@ def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
         service.analyzer,
         "analyze",
         lambda *args, **kwargs: {
-            "status": "WAIT",
+            "status": "NEUTRAL",
             "badge": "neutral",
             "message": "ok",
             "distance": 0.5,
@@ -415,6 +415,8 @@ def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
 
     assert len(out) == 1
     assert out[0]["is_curated_fallback"] is True
+    assert out[0]["status"] == "EXIT"
+    assert out[0]["details"]["status"] == "EXIT"
 
 
 def test_get_opportunities_ignores_stock_favorites_for_crypto_only_mvp(monkeypatch):

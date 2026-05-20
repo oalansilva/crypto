@@ -250,30 +250,9 @@ class IncrementalLoader:
             
             until_ts_int = int(until_dt.timestamp() * 1000)
 
-            # HEAD coverage check (important for intraday/deep backtest):
-            # If cache starts AFTER requested since, we need to backfill at least to since_dt.
-            if first_ts is not None and isinstance(first_ts, (int, float)) and int(first_ts) > fetch_since_ts:
-                # For very large intraday backfills (e.g. 2017..now at 15m), avoid runaway downloads.
-                # Callers should prefer bounded windows (6m/2y) for intraday.
-                is_intraday = str(timeframe).endswith('m') or str(timeframe).endswith('h')
-                requested_days = (until_dt - since_dt).days
-                if is_intraday and requested_days > 900 and not allow_large_backfill:
-                    logger.warning(
-                        "Intraday cache does not cover requested start (%s %s). "
-                        "Requested window=%sd (>900d). Skipping backfill to avoid huge download.",
-                        symbol, timeframe, requested_days
-                    )
-                    # Do not attempt any fetch; we'll return what we have (caller may fallback).
-                    fetch_since_ts = None
-                else:
-                    backfill_until_ts = int(first_ts)
-                    logger.info(
-                        "Cache starts at %s but requested since is %s. Backfilling missing head...",
-                        datetime.utcfromtimestamp(int(first_ts) / 1000),
-                        datetime.utcfromtimestamp(fetch_since_ts / 1000),
-                    )
-            elif last_ts < until_ts_int:
-                # Overlap 1 candle to refresh last cached candle close
+            if last_ts < until_ts_int:
+                # Refresh the tail first. A favorite refresh must use current candles before trying
+                # to fill older missing history; otherwise stale/delisted caches can block fresh data.
                 tf = str(timeframe).strip().lower()
                 overlap_ms = 0
                 try:
@@ -294,6 +273,28 @@ class IncrementalLoader:
                     datetime.utcfromtimestamp(fetch_since_ts / 1000),
                     int(overlap_ms / 1000),
                 )
+            # HEAD coverage check (important for intraday/deep backtest):
+            # If cache starts AFTER requested since, backfill only after tail is already current.
+            elif first_ts is not None and isinstance(first_ts, (int, float)) and int(first_ts) > fetch_since_ts:
+                # For very large intraday backfills (e.g. 2017..now at 15m), avoid runaway downloads.
+                # Callers should prefer bounded windows (6m/2y) for intraday.
+                is_intraday = str(timeframe).endswith('m') or str(timeframe).endswith('h')
+                requested_days = (until_dt - since_dt).days
+                if is_intraday and requested_days > 900 and not allow_large_backfill:
+                    logger.warning(
+                        "Intraday cache does not cover requested start (%s %s). "
+                        "Requested window=%sd (>900d). Skipping backfill to avoid huge download.",
+                        symbol, timeframe, requested_days
+                    )
+                    # Do not attempt any fetch; we'll return what we have (caller may fallback).
+                    fetch_since_ts = None
+                else:
+                    backfill_until_ts = int(first_ts)
+                    logger.info(
+                        "Cache starts at %s but requested since is %s. Backfilling missing head...",
+                        datetime.utcfromtimestamp(int(first_ts) / 1000),
+                        datetime.utcfromtimestamp(fetch_since_ts / 1000),
+                    )
             else:
                 logger.info("Local data covers request. No network fetch needed.")
                 fetch_since_ts = None  # No fetch needed
