@@ -401,7 +401,10 @@ const FavoritesDashboard: React.FC = () => {
             .trim();
     };
 
-    const getFavoriteName = (fav: FavoriteStrategy): string => fav.name || fav.symbol || 'Estratégia';
+    const getFavoriteName = (fav: FavoriteStrategy): string => {
+        const label = getFavoriteStrategyLabel(fav).trim();
+        return label || fav.name || fav.symbol || 'Estratégia';
+    };
 
     const getFavoriteStrategyName = (fav: FavoriteStrategy): string => {
         let name = getFavoriteName(fav).trim();
@@ -424,7 +427,7 @@ const FavoritesDashboard: React.FC = () => {
         )) {
             return label;
         }
-        return readableName || label;
+        return label || readableName;
     };
 
     const getGridStrategyDetail = (fav: FavoriteStrategy): string | null => {
