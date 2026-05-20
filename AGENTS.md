@@ -30,6 +30,9 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - **Regra de commits e testes:** commits locais na branch da change são permitidos e não exigem suíte completa a cada commit. Durante o card, rode testes proporcionais/focados; testes completos ficam para fechamento de lote/release.
 - **Regra de worktree limpo no fechamento:** antes de iniciar nova change, antes de `Done`, release/lote, commit, PR ou merge, rode `git status --short` e não deixe nenhum arquivo modificado solto sem classificação. Trabalho de outra change deve ir para branch/worktree própria. Stash é só proteção temporária, sempre nomeado com hash, arquivos, motivo e comando de recuperação.
 - **Regra de varredura da release:** quando Alan pedir `suba a release`, `subir release`, `salvar tudo`, `subir para develop/main`, `limpar branches`, `limpar worktrees` ou equivalente, trate como fechamento completo de release: primeiro faça inventário de todos os worktrees e branches (`git worktree list`, `git status -sb` em cada diretório e commits `ahead`). Classifique cada item como `integrar`, `já integrado`, `preservar` ou `descartar somente com autorização explícita`. Integre o que deve entrar, valide, envie para `develop`, publique em `main` via PR/merge manual quando permitido e só então limpe branches/worktrees. Antes de remover branch ou diretório temporário, prove que o commit/patch entrou em `main` ou registre por que deve ser preservado. Nunca apague worktree/branch com arquivo modificado, não rastreado ou commit `ahead` sem commit/merge/cherry-pick confirmado.
+- **Regra de guard automatizado de release:** antes de abrir/mesclar PR de release, rode `scripts/release-guard pre`; depois do merge/publicação e antes de reportar limpeza final, rode `scripts/release-guard post`. Se qualquer modo estrito falhar, pare e classifique/corrija todos os bloqueios antes de seguir. Use `scripts/release-guard audit` para diagnostico sem bloqueio durante desenvolvimento.
+- **Regra de comparação oficial:** estado publicado deve ser comparado contra `origin/develop` e `origin/main` depois de `git fetch --prune origin`. `main` local ou `develop` local atrasados servem apenas como alerta, nunca como prova final de merge ou falta de merge.
+- **Regra anti-stash órfão:** stash não é armazenamento de trabalho. Nenhuma release/lote pode terminar com stash novo ou antigo sem classificação explícita: `integrar`, `preservar em branch/card`, ou `descartar somente com autorização explícita`.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
 - **Não usar SQLite** como banco de operação. Em runtime/QA/Homologação, use apenas PostgreSQL (`DATABASE_URL` e `WORKFLOW_DATABASE_URL`).
 - **Funcionalidades novas:** siga OpenSpec por padrão antes de implementar (`openspec/changes/<change>/` com proposal/spec/design/tasks quando aplicável).
@@ -228,9 +231,11 @@ Publicar lote direto de `develop` quando seguro:
 ```bash
 git switch develop
 git pull origin develop
+scripts/release-guard pre
 openspec validate --all
 gh pr create --base main --head develop --title "<titulo>" --body "<resumo>"
 gh pr merge --merge --delete-branch=false
+scripts/release-guard post
 ```
 
 Publicar com branch de release quando `develop` tiver conteúdo não homologado:
@@ -241,8 +246,10 @@ git switch -c release-YYYY-MM-DD
 # incluir apenas commits/branches homologados
 git cherry-pick <commit-homologado>
 git push origin release-YYYY-MM-DD
+scripts/release-guard pre
 gh pr create --base main --head release-YYYY-MM-DD --title "<titulo>" --body "<resumo>"
 gh pr merge --merge --delete-branch=false
+scripts/release-guard post
 ```
 
 Limpar branches após publicação/Pronto:
