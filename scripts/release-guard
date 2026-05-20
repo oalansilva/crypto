@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+set -u -o pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: scripts/release-guard <audit|pre|post>
+
+Modes:
+  audit  Report release hygiene findings and exit 0.
+  pre    Strict gate before opening/merging a release PR.
+  post   Strict gate after release merge/cleanup.
+USAGE
+}
+
+mode="${1:-}"
+case "$mode" in
+  audit|pre|post) ;;
+  -h|--help|help) usage; exit 0 ;;
+  *) usage >&2; exit 2 ;;
+esac
+
+strict=0
+if [[ "$mode" != "audit" ]]; then
+  strict=1
+fi
+
+failures=0
+warnings=0
+
+section() {
+  printf '\n== %s ==\n' "$1"
+}
+
+warn() {
+  warnings=$((warnings + 1))
+  printf 'WARN: %s\n' "$1"
+}
+
+blocker() {
+  failures=$((failures + 1))
+  printf 'BLOCKER: %s\n' "$1"
+}
+
+issue() {
+  if [[ "$strict" -eq 1 ]]; then
+    blocker "$1"
+  else
+    warn "$1"
+  fi
+}
+
+indent() {
+  sed 's/^/  /'
+}
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -z "$repo_root" ]]; then
+  printf 'ERROR: not inside a Git repository\n' >&2
+  exit 2
+fi
+cd "$repo_root" || exit 2
+
+section "Release guard"
+printf 'Mode: %s\n' "$mode"
+printf 'Repo: %s\n' "$repo_root"
+
+section "Remote refs"
+if git fetch --prune origin >/dev/null 2>&1; then
+  printf 'Fetched origin with prune.\n'
+else
+  issue "git fetch --prune origin failed; remote release comparison may be stale"
+fi
+
+for ref in origin/develop origin/main; do
+  if git rev-parse --verify -q "$ref" >/dev/null; then
+    printf '%s %s\n' "$ref" "$(git rev-parse --short "$ref")"
+  else
+    issue "missing required remote ref: $ref"
+  fi
+done
+
+current_branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+if [[ -z "$current_branch" ]]; then
+  issue "detached HEAD; release guard expects a named branch"
+else
+  printf 'Current branch: %s\n' "$current_branch"
+fi
+
+if [[ "$strict" -eq 1 ]]; then
+  case "$current_branch" in
+    develop|main|release-*) ;;
+    *) issue "strict release guard must run from develop, main, or release-*; current branch is ${current_branch:-detached}" ;;
+  esac
+fi
+
+if git rev-parse --verify -q refs/heads/main >/dev/null &&
+   git rev-parse --verify -q origin/main >/dev/null; then
+  if [[ "$(git rev-parse refs/heads/main)" != "$(git rev-parse origin/main)" ]]; then
+    warn "local main differs from origin/main; release decisions use origin/main"
+  fi
+fi
+
+if git rev-parse --verify -q refs/heads/develop >/dev/null &&
+   git rev-parse --verify -q origin/develop >/dev/null; then
+  if [[ "$(git rev-parse refs/heads/develop)" != "$(git rev-parse origin/develop)" ]]; then
+    if [[ "$strict" -eq 1 && "$current_branch" == "develop" ]]; then
+      blocker "local develop differs from origin/develop; push/pull before release"
+    else
+      warn "local develop differs from origin/develop; release decisions use origin/develop"
+    fi
+  fi
+fi
+
+if [[ "$mode" == "post" ]] &&
+   git rev-parse --verify -q origin/develop >/dev/null &&
+   git rev-parse --verify -q origin/main >/dev/null; then
+  if [[ "$(git rev-parse origin/develop)" != "$(git rev-parse origin/main)" ]]; then
+    issue "post-release requires origin/develop and origin/main aligned"
+  fi
+fi
+
+section "Worktrees"
+mapfile -t worktrees < <(git worktree list --porcelain | awk '$1 == "worktree" { sub(/^worktree /, ""); print }')
+for wt in "${worktrees[@]}"; do
+  wt_branch="$(git -C "$wt" symbolic-ref --short HEAD 2>/dev/null || true)"
+  printf '%s [%s]\n' "$wt" "${wt_branch:-detached}"
+
+  wt_status="$(git -C "$wt" status --porcelain=v1 --untracked-files=all)"
+  if [[ -n "$wt_status" ]]; then
+    issue "dirty worktree: $wt"
+    printf '%s\n' "$wt_status" | indent
+  fi
+
+  if [[ "$wt" != "$repo_root" ]]; then
+    issue "extra worktree requires classification before release cleanup: $wt"
+  fi
+done
+
+section "Local branches"
+if git rev-parse --verify -q origin/develop >/dev/null &&
+   git rev-parse --verify -q origin/main >/dev/null; then
+  mapfile -t branches < <(git for-each-ref refs/heads --format='%(refname:short)' | sort)
+  for branch in "${branches[@]}"; do
+    if [[ "$mode" == "pre" && "$branch" == "$current_branch" && "$branch" == release-* ]]; then
+      continue
+    fi
+
+    develop_contains=0
+    main_contains=0
+    git merge-base --is-ancestor "$branch" origin/develop >/dev/null 2>&1 && develop_contains=1
+    git merge-base --is-ancestor "$branch" origin/main >/dev/null 2>&1 && main_contains=1
+
+    if [[ "$develop_contains" -eq 0 && "$main_contains" -eq 0 ]]; then
+      issue "local branch not merged into origin/develop or origin/main: $branch"
+    fi
+  done
+else
+  issue "cannot check local branch merge state without origin/develop and origin/main"
+fi
+
+section "Stashes"
+stash_list="$(git stash list)"
+if [[ -n "$stash_list" ]]; then
+  issue "stash entries exist; classify, branch, integrate, or explicitly discard before release cleanup"
+  printf '%s\n' "$stash_list" | indent
+else
+  printf 'No stashes.\n'
+fi
+
+section "Tracked ignored/generated files"
+tracked_ignored="$(git ls-files -ci --exclude-standard)"
+if [[ -n "$tracked_ignored" ]]; then
+  issue "tracked files are also ignored; remove from index or unignore intentionally"
+  printf '%s\n' "$tracked_ignored" | indent
+else
+  printf 'No tracked ignored files.\n'
+fi
+
+tracked_generated="$(git ls-files -- output frontend/test-results frontend/playwright-report qa-evidence)"
+if [[ -n "$tracked_generated" ]]; then
+  issue "generated evidence/report files are tracked"
+  printf '%s\n' "$tracked_generated" | indent
+else
+  printf 'No tracked generated evidence/report paths.\n'
+fi
+
+section "Summary"
+printf 'Warnings: %d\n' "$warnings"
+printf 'Blockers: %d\n' "$failures"
+
+if [[ "$strict" -eq 1 && "$failures" -gt 0 ]]; then
+  printf 'Result: FAIL\n'
+  exit 1
+fi
+
+printf 'Result: PASS\n'
