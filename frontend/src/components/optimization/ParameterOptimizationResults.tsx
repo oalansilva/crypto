@@ -132,11 +132,14 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
     const getMetrics = (result: ParameterCombination) => {
         let returnPct = 0;
 
-        // Priority 1: Use Total Return Pct from Backend (it's a decimal, so * 100)
-        // Check for total_return_pct or total_pnl_pct (alias)
+        // Backend percentage fields are already percentage points (12 = 12%).
         if ('total_return_pct' in result.metrics || 'total_pnl_pct' in result.metrics) {
             const rawVal = result.metrics.total_return_pct ?? result.metrics.total_pnl_pct;
-            returnPct = extractNumber(rawVal) * 100;
+            returnPct = extractNumber(rawVal);
+        }
+        // total_return is stored as a decimal ratio (0.12 = 12%).
+        else if ('total_return' in result.metrics) {
+            returnPct = extractNumber(result.metrics.total_return) * 100;
         }
         // Priority 2: Recalculate from trades if metric missing
         else if (result.trades && result.trades.length > 0) {
@@ -160,7 +163,7 @@ const ParameterOptimizationResults: React.FC<ParameterOptimizationResultsProps> 
             sharpe: extractNumber(result.metrics.sharpe_ratio),
             winRate: extractNumber(result.metrics.win_rate),
             trades: extractNumber(result.metrics.total_trades),
-            total_return: returnPct,
+            total_return: returnPct / 100,
             total_return_pct: returnPct,
             max_drawdown: extractNumber(result.metrics.max_drawdown),
             profit_factor: extractNumber(result.metrics.profit_factor),

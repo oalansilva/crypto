@@ -1365,7 +1365,7 @@ const FavoritesDashboard: React.FC = () => {
                                             <tr className="bg-zinc-50/10">
                                                 <td className="p-4 font-bold text-zinc-400 border-r border-zinc-200 text-xs uppercase">Total Return</td>
                                                 {selectedStrategies.map(s => {
-                                                    const val = s.metrics.total_return || s.metrics.total_return_pct || 0;
+                                                    const val = s.metrics.total_return_pct ?? s.metrics.total_return ?? 0;
                                                     return (
                                                         <td key={s.id} className={`p-4 font-bold text-lg border-r border-zinc-200 ${val >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                             {formatPct(val)}

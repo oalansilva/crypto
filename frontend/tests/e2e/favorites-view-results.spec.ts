@@ -547,6 +547,14 @@ test('favorites page renders list from mocked API', async ({ page }) => {
   await expect(page.getByRole('cell', { name: /Protected BTC Setup/i }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Protected BTC Setup ETH/USDT 1h' }).first()).toHaveCount(0);
   await expect(page.getByRole('cell', { name: /Estratégia protegida/i }).first()).toHaveCount(0);
+
+  const btcBatchRow = page.locator('.fav-table-shell tbody tr', { hasText: 'multi ma crossoverV2' });
+  await expect(btcBatchRow.locator('.metric-cell.strong')).toHaveText('+42.00%');
+  await expect(btcBatchRow.locator('.metric-cell.strong')).not.toHaveText('+4200.00%');
+
+  const hbarRow = page.locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' });
+  await expect(hbarRow.locator('.metric-cell.strong')).toHaveText('+15081.33%');
+  await expect(hbarRow.locator('.metric-cell.strong')).not.toHaveText('+1508133.00%');
   expect(pageErrors).toEqual([]);
 });
 
