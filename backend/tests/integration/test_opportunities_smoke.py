@@ -126,7 +126,7 @@ async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
     assert len(response) == 1
     assert response[0]["asset_type"] == "crypto"
     assert response[0]["template_name"] == "Estratégia protegida"
-    assert response[0]["strategy_display_name"] == "Multi MA Crossover"
+    assert response[0]["strategy_display_name"] == "Virada de Tendência"
     assert response[0]["parameters"] == {}
     assert response[0]["indicator_values"] is None
     assert response[0]["details"] == {}
