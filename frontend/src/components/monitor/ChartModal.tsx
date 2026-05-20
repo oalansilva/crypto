@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 import type { MarketCandle } from './MiniCandlesChart';
 import { API_BASE_URL } from '../../lib/apiBase';
@@ -446,13 +447,13 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             try {
                 const rows = await fetchMarketCandles(symbol, timeframe, controller.signal);
                 if (rows.length === 0) {
-                    throw new Error('No candle data available for this timeframe.');
+                    throw new Error('Sem dados de candle para este timeframe.');
                 }
                 cacheRef.current.set(cacheKey, rows);
                 setCandles(rows);
             } catch (fetchError) {
                 if (!controller.signal.aborted) {
-                    setError(fetchError instanceof Error ? fetchError.message : 'Failed to load chart data');
+                    setError(fetchError instanceof Error ? fetchError.message : 'Falha ao carregar dados do gráfico');
                 }
             } finally {
                 if (!controller.signal.aborted) {
@@ -478,19 +479,19 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 });
                 const payload = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    throw new Error(String(payload?.detail || `Failed to load favorite trades (${response.status})`));
+                    throw new Error(String(payload?.detail || `Falha ao carregar trades do favorito (${response.status})`));
                 }
                 const payloadTrades = Array.isArray(payload?.trades) ? payload.trades : [];
                 const payloadCandles = Array.isArray(payload?.candles) ? payload.candles : [];
                 setAnalysisTrades(payloadTrades.length > 0 ? payloadTrades : signalHistoryTrades);
                 setAnalysisCandles(payloadCandles);
                 setAnalysisMetrics(payload?.metrics && typeof payload.metrics === 'object' ? payload.metrics : null);
-            } catch (fetchError) {
+            } catch {
                 if (!controller.signal.aborted) {
                     setAnalysisTrades(signalHistoryTrades);
                     setAnalysisCandles([]);
                     setAnalysisMetrics(null);
-                    setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponiveis.');
+                    setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponíveis.');
                 }
             } finally {
                 if (!controller.signal.aborted) {
@@ -550,10 +551,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             tone: (opportunity.distance_to_next_status ?? 999) < 0.5 ? 'success' : 'default',
         },
         { label: 'Risco', value: formatPercent(opportunity.distance_to_stop_pct), tone: 'danger' },
-        { label: 'Historico', value: `${signalHistory.length} sinais` },
+        { label: 'Histórico', value: `${signalHistory.length} sinais` },
     ];
     const timeframeToolbar = (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Chart timeframe selector">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Selecionar timeframe do gráfico">
             {timeframeOptions.map((item) => {
                 const active = item.value === timeframe;
                 return (
@@ -567,7 +568,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                         }`}
                         onClick={() => setTimeframe(item.value)}
                         aria-pressed={active}
-                        title={item.source === 'algorithmic' ? 'Timeframe da estrategia' : 'Timeframe manual'}
+                        title={item.source === 'algorithmic' ? 'Timeframe da estratégia' : 'Timeframe manual'}
                         data-testid={`chart-timeframe-${item.value}`}
                     >
                         {item.label}
@@ -607,19 +608,19 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Candle</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] p-3">
                     <div>
-                        <p className="text-[11px] uppercase tracking-normal text-[#929aa5]">Open</p>
+                        <p className="text-[11px] uppercase tracking-normal text-[#929aa5]">Abertura</p>
                         <p className="font-mono text-sm text-[#eaecef]">{formatPrice(snapshot?.candle.open)}</p>
                     </div>
                     <div>
-                        <p className="text-[11px] uppercase tracking-normal text-[#929aa5]">Close</p>
+                        <p className="text-[11px] uppercase tracking-normal text-[#929aa5]">Fechamento</p>
                         <p className="font-mono text-sm text-[#eaecef]">{formatPrice(snapshot?.candle.close)}</p>
                     </div>
                     <div>
-                        <p className="text-[11px] uppercase tracking-normal text-[#929aa5]">High</p>
+                        <p className="text-[11px] uppercase tracking-normal text-[#929aa5]">Máxima</p>
                         <p className="font-mono text-sm text-[#eaecef]">{formatPrice(snapshot?.candle.high)}</p>
                     </div>
                     <div>
-                        <p className="text-[11px] uppercase tracking-normal text-[#929aa5]">Low</p>
+                        <p className="text-[11px] uppercase tracking-normal text-[#929aa5]">Mínima</p>
                         <p className="font-mono text-sm text-[#eaecef]">{formatPrice(snapshot?.candle.low)}</p>
                     </div>
                     <div className="col-span-2">
@@ -655,7 +656,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
 
             <section>
                 <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Historico de sinais</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Histórico de sinais</p>
                     <span className="text-[11px] text-[#929aa5]">
                         {canRenderSignalHistoryMarkers ? 'Marcadores ativos' : 'Timeframe diferente'}
                     </span>
@@ -685,16 +686,16 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             })}
                         </div>
                     ) : (
-                        <p className="text-[#929aa5]">Nenhum historico confirmado de compra/venda para esta estrategia.</p>
+                        <p className="text-[#929aa5]">Nenhum histórico confirmado de compra/venda para esta estratégia.</p>
                     )}
                 </div>
             </section>
 
             <section>
-                <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Parametros</p>
+                <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Parâmetros</p>
                 <div className="mt-2 space-y-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] p-3" data-testid="chart-modal-parameters">
                     {strategyProtected ? (
-                        <p className="text-[#929aa5]">Parametros protegidos.</p>
+                        <p className="text-[#929aa5]">Parâmetros protegidos.</p>
                     ) : opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
                         Object.entries(opportunity.parameters).map(([key, value]) => (
                             <div key={key} className="flex justify-between gap-3">
@@ -703,7 +704,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             </div>
                         ))
                     ) : (
-                        <p className="text-[#929aa5]">Sem parametros disponiveis.</p>
+                        <p className="text-[#929aa5]">Sem parâmetros disponíveis.</p>
                     )}
                 </div>
             </section>
@@ -719,9 +720,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         </div>
     );
 
-    return (
+    const modalContent = (
         <div
             className="fixed inset-0 z-[1000] bg-[#0b0e11]/88 px-3 py-4 sm:px-6"
+            style={{ zIndex: 2147483647 }}
             onClick={(event) => {
                 if (event.target === event.currentTarget) {
                     onClose();
@@ -744,7 +746,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     symbol={symbol}
                     timeframe={timeframe.toUpperCase()}
                     title={<span id="chart-modal-title">{symbol}</span>}
-                    subtitle={`${strategyDisplayName} • ${timeframe.toUpperCase()} • ${sortedCandles.length} candles • candle ref ${formatTimestamp(opportunity.indicator_values_candle_time)}`}
+                    subtitle={`${strategyDisplayName} • ${timeframe.toUpperCase()} • ${sortedCandles.length} velas • candle ref ${formatTimestamp(opportunity.indicator_values_candle_time)}`}
                     headerMeta={(
                         <span
                             className={`rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-normal ${resolvedSignal.visual.badgeClass}`}
@@ -765,7 +767,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                 type="button"
                                 className="grid h-10 w-10 place-items-center rounded-lg border border-[#2b3139] bg-[#1e2329] text-2xl leading-none text-[#929aa5] transition hover:border-[#fcd535] hover:text-[#eaecef]"
                                 onClick={onClose}
-                                aria-label="Close chart modal"
+                                aria-label="Fechar modal do gráfico"
                                 data-testid="chart-modal-close"
                             >
                                 x
@@ -813,4 +815,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 };

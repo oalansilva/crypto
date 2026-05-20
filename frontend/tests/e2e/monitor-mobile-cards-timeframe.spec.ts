@@ -182,9 +182,9 @@ test('monitor mobile uses single cards view without horizontal overflow', async 
   await expect(page.getByTestId('monitor-card-btc-usdt')).toBeVisible()
   await expect(page.locator('.mobile-cards').first()).toBeVisible()
   await expect(page.getByTestId('timeframe-toggle-btc-usdt-1d')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('timeframe-toggle-btc-usdt-15m')).toBeEnabled()
-  await expect(page.getByTestId('timeframe-toggle-btc-usdt-1h')).toBeEnabled()
-  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toBeEnabled()
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-15m')).toHaveCount(0)
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-1h')).toHaveCount(0)
+  await expect(page.getByTestId('timeframe-toggle-btc-usdt-4h')).toHaveCount(0)
   const viewportFits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
   expect(viewportFits).toBe(true)
 })
@@ -291,8 +291,8 @@ test('monitor card keeps strategy timeframe visible when chart timeframe differs
 
   const card = page.getByTestId('monitor-card-btc-usdt')
   await expect(card).toBeVisible()
-  await expect(card.getByTitle('Strategy timeframe')).toHaveText('1d')
-  await expect(card.getByTitle('Price chart timeframe')).toHaveText('chart 1h')
+  await expect(card.getByTitle('Timeframe da estratégia')).toHaveText('1d')
+  await expect(card.getByTitle('Timeframe do gráfico de preço')).toHaveText('Gráfico 1d')
 })
 
 test('monitor renders exited strategies separately from stopped out ones', async ({ page }) => {
@@ -509,7 +509,7 @@ test('monitor keeps backend exit in list and shows mismatched chart context', as
   await expect(dialog.getByTestId('chart-modal-strategy-summary')).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-signal-context')).toHaveCount(0)
   await expect(dialog.getByTestId('chart-modal-trades')).toHaveCount(0)
-  await expect(dialog.getByText('Lista de trades')).toHaveCount(0)
+  await expect(dialog.getByText('Lista de operações')).toHaveCount(0)
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
 })
 
@@ -917,7 +917,7 @@ test('monitor uses favorite trade markers without duplicating the current sell m
   await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '4')
   await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-labels', /COMPRA.*VENDA/);
   await expect(dialog.getByTestId('chart-modal-surface')).not.toHaveAttribute('data-marker-labels', /BUY|SELL|SHORT|COVER/);
-  await expect(dialog.locator('header p').first()).toContainText('4 candles')
+  await expect(dialog.locator('header p').first()).toContainText('4 velas')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {
@@ -1049,8 +1049,8 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-signal-history')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-trades')).toBeVisible()
-  await expect(dialog.getByText('Lista de trades')).toBeVisible()
-  await expect(dialog.getByRole('columnheader', { name: 'Valor da posicao' })).toBeVisible()
+  await expect(dialog.getByText('Lista de operações')).toBeVisible()
+  await expect(dialog.getByRole('columnheader', { name: 'Valor da posição' })).toBeVisible()
   await expect(dialog.getByText('100.00 USD').first()).toBeVisible()
   await expect(dialog.getByText('Apr 10, 2099')).toBeVisible()
   await expect(dialog.getByText('Apr 13, 2099')).toBeVisible()
@@ -1061,7 +1061,7 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Compra')
 })
 
-test('monitor modal zoom controls adjust visible range without reloading candles', async ({ page }) => {
+test('monitor modal zoom controls adjust visible range without reloading velas', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -1184,7 +1184,7 @@ test('monitor modal zoom controls adjust visible range without reloading candles
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  const parameters = dialog.locator('section').filter({ hasText: 'Parametros' }).last()
+  const parameters = dialog.locator('section').filter({ hasText: 'Parâmetros' }).last()
   await expect(parameters.getByText('Direção')).toBeVisible()
   await expect(parameters.getByText('Compra')).toBeVisible()
   await expect(parameters.getByText('EMA curta')).toBeVisible()

@@ -90,13 +90,13 @@ const normalizeNextStatus = (nextStatusLabel: string | null | undefined): string
 const toPublicSignalMessage = (message: string): string => message
     .replace(/\bEXIT\b/g, 'Venda')
     .replace(/\bHOLD\b/g, 'Compra')
-    .replace(/\bWAIT\b/g, 'Venda')
     .replace(/\bExit\b/g, 'Venda')
     .replace(/\bHold\b/g, 'Compra')
-    .replace(/\bWait\b/g, 'Venda')
     .replace(/\bexit\b/g, 'venda')
     .replace(/\bhold\b/g, 'compra')
-    .replace(/\bwait\b/g, 'venda');
+    .replace(/entry/g, 'entrada')
+    .replace(/buy/g, 'compra')
+    .replace(/sell/g, 'venda');
 
 const toMsByTimeframe = (timeframe: string | null | undefined): number => {
     return TIMEFRAME_TO_MS[normalizeTimeframe(timeframe) || '1d'] ?? TIMEFRAME_TO_MS['1d'];
@@ -188,8 +188,8 @@ export const resolveOpportunitySignal = (
         }
     } else if (rawStatus === 'BUY_SIGNAL') {
         section = 'hold';
-    } else if (rawStatus === 'WAIT' || rawStatus === 'NEUTRAL' || rawStatus === 'BUY_NEAR') {
-        section = 'exit';
+    } else if (rawStatus === 'NEUTRAL' || rawStatus === 'BUY_NEAR') {
+        section = isHolding ? 'hold' : 'exit';
     } else if (rawStatus) {
         section = isHolding ? 'hold' : 'exit';
         if (!isHolding) {

@@ -71,8 +71,8 @@ function formatPnl(usd: number, pct: number, isPositive: boolean) {
 function resolveSignalType(trade: StrategyTrade, isShort: boolean) {
     if (trade.signal_type) return trade.signal_type
     const exitReason = trade.exit_reason || ''
-    if (exitReason.toLowerCase().includes('stop')) return 'Stop'
-    if (exitReason) return isShort ? 'Cobrir' : 'Close entry(s) order...'
+    if (exitReason.toLowerCase().includes('stop')) return 'Stop de perda'
+    if (exitReason) return isShort ? 'Cobrir' : 'Encerrar posição'
     return trade.entry_signal_type || (isShort ? 'Vender' : 'Comprar')
 }
 
@@ -168,7 +168,7 @@ export function StrategyTradesTable({
                         <Activity className="h-5 w-5 text-[#fcd535]" />
                         <span className="text-2xl font-bold text-[#eaecef]">{displayMetrics.total_trades}</span>
                     </div>
-                    <p className="text-sm text-[#929aa5]">Total de trades</p>
+                    <p className="text-sm text-[#929aa5]">Total de operações</p>
                 </div>
                 <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] p-5">
                     <div className="mb-3 flex items-center justify-between">
@@ -191,7 +191,7 @@ export function StrategyTradesTable({
                         <DollarSign className="h-5 w-5 text-[#fcd535]" />
                         <span className="text-2xl font-bold text-[#eaecef]">{(displayMetrics.avg_profit * 100).toFixed(2)}%</span>
                     </div>
-                    <p className="text-sm text-[#929aa5]">Lucro medio</p>
+                    <p className="text-sm text-[#929aa5]">Lucro médio</p>
                 </div>
             </div>
 
@@ -199,10 +199,10 @@ export function StrategyTradesTable({
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2b3139] bg-[#181a20] p-4">
                     <div className="flex items-center gap-3">
                         <span className="rounded-md border border-[#2b3139] bg-[#1e2329] px-3 py-1.5 text-sm font-medium text-[#929aa5]">
-                            Metricas
+                            Métricas
                         </span>
                         <span className="rounded-md border border-[#fcd535] bg-[#fcd535] px-3 py-1.5 text-sm font-semibold text-[#181a20]">
-                            Lista de trades
+                            Lista de operações
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -224,15 +224,15 @@ export function StrategyTradesTable({
                     <table className="w-full text-sm">
                         <thead className="border-b border-[#2b3139] bg-[#181a20]">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Trade # <span className="text-[#707a8a]">↓</span></th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Operação <span className="text-[#707a8a]">↓</span></th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Tipo</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Data e hora</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Sinal</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Preco</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Valor da posicao</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Lucro/prejuizo</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Maximo favoravel</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Maximo adverso</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Preço</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Valor da posição</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Lucro/Prejuízo</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Máximo favorável</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Máximo adverso</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Resultado acumulado</th>
                             </tr>
                         </thead>
@@ -241,7 +241,7 @@ export function StrategyTradesTable({
                                 <tr key={`${trade.tradeNum}-entry`} className="bg-[#1e2329] transition-colors hover:bg-[#2b3139]">
                                     <td rowSpan={2} className="border-r border-[#2b3139] px-4 py-3 text-center">
                                         <div className="font-medium text-[#eaecef]">{trade.tradeNum}</div>
-                                        <div className={`text-xs ${isShort ? 'text-[#f0b90b]' : 'text-[#929aa5]'}`}>{isShort ? 'Short' : 'Long'}</div>
+                                        <div className={`text-xs ${isShort ? 'text-[#f0b90b]' : 'text-[#929aa5]'}`}>{isShort ? 'Venda' : 'Compra'}</div>
                                     </td>
                                     <td className="px-4 py-2 text-[#eaecef]">Entrada</td>
                                     <td className="px-4 py-2 text-[#eaecef]">{formatDate(trade.entry_time)}</td>
