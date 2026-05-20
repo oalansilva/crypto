@@ -610,7 +610,7 @@ test('monitor keeps Compra in chart detail while showing holding context mismatc
   await expect(dialog.getByText(/EMA 9|SMA 21|SMA 50/)).toHaveCount(0)
 })
 
-test('monitor resolves current exit signal consistently in list and chart', async ({ page }) => {
+test('monitor adds current sell marker when history only has prior entry', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -670,17 +670,16 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
             open: 0.08771,
             close: 0.08773,
           },
-          indicator_values_candle_time: '2026-05-04T00:00:00+00:00',
-          is_holding: true,
+          indicator_values_candle_time: '2026-05-19T00:00:00+00:00',
+          is_holding: false,
           distance_to_next_status: 0,
           next_status_label: 'exit',
-          status: 'EXIT_SIGNAL',
-          message: 'EXIT: regra de saída confirmada.',
-          last_price: 0.09068,
-          timestamp: '2026-05-05T00:00:00Z',
+          status: 'EXIT',
+          message: 'Venda/fora de posicao. Aguardando proxima compra.',
+          last_price: 0.08877,
+          timestamp: '2026-05-20T00:00:00Z',
           signal_history: [
-            { timestamp: '2026-04-24T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 0.09081 },
-            { timestamp: '2026-05-05T00:00:00+00:00', signal: -1, type: 'exit', reason: 'exit_logic', price: 0.08774 },
+            { timestamp: '2026-05-09T00:00:00+00:00', signal: 1, type: 'entry', reason: 'entry', price: 0.0927 },
           ],
           details: {},
         },
@@ -713,9 +712,9 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
       contentType: 'application/json',
       body: JSON.stringify({
         candles: [
-          { timestamp_utc: '2026-04-24T00:00:00Z', open: 0.09081, high: 0.0911, low: 0.089, close: 0.09093, volume: 1000 },
-          { timestamp_utc: '2026-05-04T00:00:00Z', open: 0.08771, high: 0.0885, low: 0.087, close: 0.08773, volume: 1000 },
-          { timestamp_utc: '2026-05-05T00:00:00Z', open: 0.08774, high: 0.091, low: 0.0875, close: 0.09068, volume: 1000 },
+          { timestamp_utc: '2026-05-09T00:00:00Z', open: 0.0927, high: 0.094, low: 0.091, close: 0.0932, volume: 1000 },
+          { timestamp_utc: '2026-05-19T00:00:00Z', open: 0.089, high: 0.09, low: 0.088, close: 0.08877, volume: 1000 },
+          { timestamp_utc: '2026-05-20T00:00:00Z', open: 0.08877, high: 0.0895, low: 0.0875, close: 0.08812, volume: 1000 },
         ],
       }),
     })
@@ -735,6 +734,8 @@ test('monitor resolves current exit signal consistently in list and chart', asyn
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-strategy-summary')).toContainText('Historico')
   await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
+  await expect(dialog.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
+  await expect(dialog.getByTestId('chart-modal-surface')).toHaveAttribute('data-marker-count', '2')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {

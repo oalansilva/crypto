@@ -443,7 +443,15 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     ]);
     const chartMarkers = React.useMemo<StrategyChartMarker[]>(() => (
         historicalSignalMarkers.length > 0
-            ? historicalSignalMarkers as StrategyChartMarker[]
+            ? [
+                ...(historicalSignalMarkers as StrategyChartMarker[]),
+                ...fallbackMarker.filter((marker) => !historicalSignalMarkers.some((historical) => (
+                    historical.time === marker.time
+                    && historical.text === marker.text
+                    && historical.shape === marker.shape
+                    && historical.position === marker.position
+                ))),
+            ]
             : fallbackMarker
     ), [fallbackMarker, historicalSignalMarkers]);
     const priceLines = React.useMemo<StrategyChartPriceLine[]>(() => [
