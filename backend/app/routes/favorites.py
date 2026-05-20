@@ -368,15 +368,36 @@ def list_favorites(
             for row in rows
         ]
 
+    user_rows = (
+        db.query(FavoriteStrategy)
+        .filter(FavoriteStrategy.user_id == current_user_id)
+        .order_by(
+            FavoriteStrategy.symbol.asc(),
+            FavoriteStrategy.timeframe.asc(),
+            FavoriteStrategy.id.asc(),
+        )
+        .all()
+    )
+    has_user_rows = any(row.symbol and "/" in str(row.symbol) for row in user_rows)
+    if has_user_rows:
+        descriptions = _strategy_descriptions_for_rows(db, user_rows)
+        return [
+            _favorite_response(
+                row,
+                include_secrets=include_secrets,
+                description_by_strategy=descriptions,
+            )
+            for row in user_rows
+        ]
+
     admin_user_ids = _admin_catalog_user_ids(db, exclude_user_id=current_user_id)
     if not admin_user_ids:
-        rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
-        descriptions = _strategy_descriptions_for_rows(db, rows)
+        descriptions = _strategy_descriptions_for_rows(db, user_rows)
         return [
             _favorite_response(
                 row, include_secrets=include_secrets, description_by_strategy=descriptions
             )
-            for row in rows
+            for row in user_rows
         ]
 
     tier_by_favorite_id = _strategy_tier_preferences(db, current_user_id)
@@ -414,6 +435,11 @@ async def get_favorite_trades(
 
     include_secrets = can_view_strategy_secrets(db, current_user_id)
     owns_favorite = str(favorite.user_id) == str(current_user_id)
+    if not owns_favorite and not include_secrets:
+        admin_user_ids = set(_admin_catalog_user_ids(db, exclude_user_id=current_user_id))
+        if str(favorite.user_id) not in admin_user_ids:
+            raise HTTPException(status_code=404, detail="Favorite not found")
+
     favorite = _normalize_favorite_json_fields(favorite)
     metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
     saved_trades = metrics.get("trades")

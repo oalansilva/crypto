@@ -185,7 +185,7 @@ def test_get_favorites_falls_back_to_admin_curated_rows(monkeypatch):
     assert favorites[0]["symbol"] == "BTC/USDT"
 
 
-def test_get_favorites_uses_user_tier_preferences_for_admin_catalog(monkeypatch):
+def test_get_favorites_prefers_user_monitor_candidates_over_admin_catalog(monkeypatch):
     monkeypatch.setattr(opportunity_service, "ADMIN_EMAILS", {"admin@example.com"})
     admin = _db_user("admin@example.com")
     common = _db_user("common@example.com")
@@ -206,8 +206,8 @@ def test_get_favorites_uses_user_tier_preferences_for_admin_catalog(monkeypatch)
     favorites = service.get_favorites(common_id, tier_filter="1")
 
     assert len(favorites) == 1
-    assert favorites[0]["name"] == "Admin curated"
-    assert favorites[0]["symbol"] == "BTC/USDT"
+    assert favorites[0]["name"] == "Common own"
+    assert favorites[0]["symbol"] == "ETH/USDT"
     assert favorites[0]["tier"] == 1
 
 

@@ -630,7 +630,7 @@ def test_favorite_trades_rejects_protected_access(tmp_path: Path, monkeypatch):
             asyncio.run(favorites.get_favorite_trades(created.id, current_user_id="user-b", db=db))
             raise AssertionError("protected favorite trades should be rejected")
         except HTTPException as exc:
-            assert exc.status_code == 403
+            assert exc.status_code == 404
 
 
 def test_common_user_can_read_cached_admin_catalog_chart_trades(tmp_path: Path, monkeypatch):

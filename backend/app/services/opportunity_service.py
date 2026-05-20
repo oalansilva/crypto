@@ -547,11 +547,13 @@ class OpportunityService:
     ) -> List[Dict[str, Any]]:
         """List relevant favorites for one user from existing table."""
         with self._session_factory() as db:
-            if self._known_non_admin_user(db, user_id):
+            rows = self._favorite_rows_for_user(db, user_id, tier_filter)
+            source_user_id = user_id
+            if self._known_non_admin_user(db, user_id) and not self._has_monitor_candidate(rows):
                 admin_user_ids = self._admin_catalog_user_ids(db, exclude_user_id=user_id)
                 if admin_user_ids:
                     tier_by_favorite_id = self._strategy_tier_preferences(db, user_id)
-                    rows = (
+                    admin_rows = (
                         db.query(FavoriteStrategy)
                         .filter(FavoriteStrategy.user_id.in_(admin_user_ids))
                         .order_by(
@@ -567,22 +569,15 @@ class OpportunityService:
                             tier_override=tier_by_favorite_id.get(int(row.id)),
                             is_curated_fallback=True,
                         )
-                        for row in rows
+                        for row in admin_rows
                     ]
                     favorites = self._filter_by_tier(favorites, tier_filter)
                     logger.info(
-                        "Loaded %d user-selected admin favorite strategies for user %s",
+                        "Loaded %d curated favorite strategies for user %s from admin catalog",
                         len(favorites),
                         user_id,
                     )
                     return favorites
-
-            rows = self._favorite_rows_for_user(db, user_id, tier_filter)
-            source_user_id = user_id
-            if not self._has_monitor_candidate(rows):
-                fallback = self._favorite_rows_for_first_admin(db, user_id, tier_filter)
-                if fallback is not None:
-                    source_user_id, rows = fallback
             is_curated_fallback = source_user_id != user_id
 
         favorites = [

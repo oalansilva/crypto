@@ -120,24 +120,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       controller.abort()
     }, 8000)
 
-    axios
-      .get<AuthUser>(`${API_BASE}/auth/me`, {
-        headers: { Authorization: `Bearer ${stored.accessToken}` },
-        signal: controller.signal,
-      })
-      .then((res) => {
+    const verifySession = async () => {
+      try {
+        const response = await axios.get<AuthUser>(`${API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${stored.accessToken}` },
+          signal: controller.signal,
+        })
         setState({
-          user: res.data,
+          user: response.data,
           accessToken: stored.accessToken,
           refreshToken: stored.refreshToken,
           isLoading: false,
         })
-      })
-      .catch(() => {
-        // Token invalid - clear storage
+        return
+      } catch {
+        // Try one refresh attempt before logging out.
+      }
+
+      if (!stored.refreshToken) {
         persistAuthState(null, null, null)
         setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
-      })
+        return
+      }
+
+      try {
+        const refreshResponse = await axios.post<{
+          accessToken: string
+          refreshToken: string
+          id: string
+          userId: string
+          email: string
+          name: string
+          isAdmin: boolean
+          mustChangePassword: boolean
+          expiresIn: number
+        }>(`${API_BASE}/auth/refresh`, { refreshToken: stored.refreshToken })
+
+        const {
+          accessToken,
+          refreshToken,
+          email,
+          name,
+          isAdmin,
+          mustChangePassword,
+          id,
+        } = refreshResponse.data
+
+        const user: AuthUser = {
+          id,
+          email,
+          name,
+          isAdmin,
+          mustChangePassword: Boolean(mustChangePassword),
+        }
+        persistAuthState(accessToken, refreshToken, user)
+        setState({
+          user,
+          accessToken,
+          refreshToken,
+          isLoading: false,
+        })
+      } catch {
+        persistAuthState(null, null, null)
+        setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
+      }
+    }
+
+    void verifySession()
       .finally(() => {
         window.clearTimeout(timeoutId)
         setState((prev) => ({ ...prev, isLoading: false }))
@@ -158,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const register = useCallback(async (name: string, email: string, password: string) => {
-    const res = await axios.post<AuthUser>(`${API_BASE}/auth/register`, {
+    await axios.post<AuthUser>(`${API_BASE}/auth/register`, {
       name,
       email,
       password,

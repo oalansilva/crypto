@@ -156,3 +156,13 @@
 **Documentos revisados:** `docs/project-hub.md`, `docs/backlog-operating-model.md`, `docs/decision-log.md` e `docs/release-2026-05-18.md`.
 
 **Guardrail:** documento de produto/processo atualiza Markdown local e Drive sem divergencia; execucao/status atualiza GitHub Project e Issue/PR quando houver codigo.
+
+## 2026-05-20 - Higiene de WIP e output em release
+
+**Decisao:** WIP salvo em branch de backup deve ser revisado e integrado por branch normal; artefatos gerados em `output/` nao entram em `develop` nem `main`.
+
+**Motivo:** a release de 2026-05-20 encontrou alteracoes uteis misturadas com evidencias locais do Playwright em `output/playwright`. O backup preservou tudo para nao perder trabalho, mas o lixo apareceu porque o repo ainda nao ignorava `output/` e porque o WIP estava solto na worktree antes do fechamento.
+
+**Regra:** antes de release, todo `git status --short` precisa classificar arquivos como codigo, documentacao, evidencia operacional ou descarte. Evidencia operacional gerada localmente fica fora do Git, salvo quando existir decisao explicita de versionar.
+
+**Evidencia:** issue `#231`, branch `change-231-integrar-wip-flow-cleanup` e backup original `backup/develop-wip-20260520-022324`.

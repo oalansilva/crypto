@@ -28,14 +28,14 @@ import { API_BASE_URL } from '@/lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { useAuth } from '@/stores/authStore';
 import type { MarketCandle } from './MiniCandlesChart';
-import { fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
+import { fetchMarketCandles, type ChartTimeframe } from './chartData';
 import { resolveOpportunitySignal } from './signalResolution';
 
 type SortOption = 'distance' | 'risk' | 'symbol' | 'tier_distance';
 type TierFilter = 'rated' | 'all' | '1_2' | '1' | '2' | '3' | 'none';
 type ListFilter = 'in_portfolio' | 'all';
 type StrategyFilter = 'all' | string;
-type TimeframeFilter = 'all' | '15m' | '1h' | '4h' | '1d';
+type TimeframeFilter = 'all' | '1d';
 type StarFilter = 'all' | '3' | '2' | '1';
 type WalletSyncState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 type SectionKey = 'hold' | 'exit';
@@ -171,7 +171,7 @@ export const MonitorStatusTab: React.FC = () => {
     const { user } = useAuth();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
-    const [openingChartSymbol, setOpeningChartSymbol] = useState<string | null>(null);
+    const [openingChartOpportunityId, setOpeningChartOpportunityId] = useState<string | null>(null);
     const [activeChart, setActiveChart] = useState<{
         opportunity: Opportunity;
         initialCandles: MarketCandle[];
@@ -223,7 +223,7 @@ export const MonitorStatusTab: React.FC = () => {
             );
             const payload = await response.json();
             if (!response.ok) {
-                throw new Error(String(payload?.detail || `Failed to load Binance wallet (${response.status})`));
+                throw new Error(String(payload?.detail || `Falha ao carregar carteira Binance (${response.status})`));
             }
 
             const balances = Array.isArray(payload?.balances) ? payload.balances as BinanceBalanceRow[] : [];
@@ -264,7 +264,7 @@ export const MonitorStatusTab: React.FC = () => {
         try {
             const preferencesResponse = await authFetch(`${API_BASE_URL}/monitor/preferences`);
             if (!preferencesResponse.ok) {
-                throw new Error(`Failed to load monitor preferences (${preferencesResponse.status})`);
+                throw new Error(`Falha ao carregar preferências do monitor (${preferencesResponse.status})`);
             }
 
             const preferencesPayload = await preferencesResponse.json();
@@ -274,10 +274,7 @@ export const MonitorStatusTab: React.FC = () => {
                     normalized[symbol] = {
                         in_portfolio: Boolean(raw?.in_portfolio),
                         card_mode: raw?.card_mode === 'strategy' ? 'strategy' : 'price',
-                        price_timeframe: raw?.price_timeframe === '15m'
-                            || raw?.price_timeframe === '1h'
-                            || raw?.price_timeframe === '4h'
-                            || raw?.price_timeframe === '1d'
+                        price_timeframe: raw?.price_timeframe === '1d'
                             ? raw.price_timeframe
                             : '1d',
                         theme: normalizeMonitorTheme(raw?.theme),
@@ -301,7 +298,7 @@ export const MonitorStatusTab: React.FC = () => {
             const credentialsResponse = await authFetch(`${API_BASE_URL}/user/binance-credentials`);
             const payload = await credentialsResponse.json();
             if (!credentialsResponse.ok) {
-                throw new Error(String(payload?.detail || `Failed to load Binance credential status (${credentialsResponse.status})`));
+                throw new Error(String(payload?.detail || `Falha ao carregar status das credenciais Binance (${credentialsResponse.status})`));
             }
             configured = Boolean(payload?.configured);
             setBinanceConfigured(configured);
@@ -335,7 +332,7 @@ export const MonitorStatusTab: React.FC = () => {
             const refreshParam = options?.refresh ? '&refresh=true' : '';
             const url = `${baseUrl}/opportunities/?tier=${encodeURIComponent(apiTier)}${refreshParam}`;
             const response = await authFetch(url);
-            if (!response.ok) throw new Error('Failed to fetch opportunities');
+            if (!response.ok) throw new Error('Falha ao buscar oportunidades');
             const data = await response.json();
             setOpportunities(data);
             setLastUpdated(new Date());
@@ -348,7 +345,7 @@ export const MonitorStatusTab: React.FC = () => {
             console.error(error);
             toast({
                 title: 'Erro',
-                description: 'Não foi possível carregar. O backend está rodando?',
+                description: 'Não foi possível carregar as estratégias.',
                 variant: 'destructive',
             });
         } finally {
@@ -377,7 +374,7 @@ export const MonitorStatusTab: React.FC = () => {
             const payload = await response.json();
 
             if (!response.ok) {
-                throw new Error(String(payload?.detail || `Failed to save preference (${response.status})`));
+                throw new Error(String(payload?.detail || `Falha ao salvar preferência (${response.status})`));
             }
 
             setPreferences((current) => ({
@@ -385,10 +382,7 @@ export const MonitorStatusTab: React.FC = () => {
                 [symbol]: {
                     in_portfolio: Boolean(payload?.in_portfolio),
                     card_mode: payload?.card_mode === 'strategy' ? 'strategy' : 'price',
-                    price_timeframe: payload?.price_timeframe === '15m'
-                        || payload?.price_timeframe === '1h'
-                        || payload?.price_timeframe === '4h'
-                        || payload?.price_timeframe === '1d'
+                    price_timeframe: payload?.price_timeframe === '1d'
                         ? payload.price_timeframe
                         : '1d',
                     theme: normalizeMonitorTheme(payload?.theme),
@@ -415,28 +409,32 @@ export const MonitorStatusTab: React.FC = () => {
     };
 
     const handleToggleTimeframe = (symbol: string, nextTimeframe: MonitorPriceTimeframe) => {
-        void persistPreference(symbol, { price_timeframe: nextTimeframe });
-        void fetchMarketCandles(symbol, toChartTimeframe(nextTimeframe), undefined, SPARKLINE_LIMIT).catch((error) => {
-            console.error(`Failed to prefetch candles for ${symbol} (${nextTimeframe})`, error);
+        void nextTimeframe;
+        void persistPreference(symbol, { price_timeframe: '1d' });
+        void fetchMarketCandles(symbol, '1d', undefined, SPARKLINE_LIMIT).catch((error) => {
+            console.error(`Falha ao pré-carregar velas para ${symbol} (1d)`, error);
         });
     };
 
     const resolveChartTimeframe = (opportunity: Opportunity): ChartTimeframe => {
-        const requested = toChartTimeframe(opportunity.timeframe);
-        return getOpportunityAssetType(opportunity) === 'stock' ? '1d' : requested;
+        void opportunity;
+        return '1d';
     };
+
+    const getOpeningChartKey = (opportunity: Opportunity): string => String(opportunity.id);
 
     const handleOpenChart = async (opportunity: Opportunity, viewMode: 'chart' | 'trades' = 'chart') => {
         const initialTimeframe = resolveChartTimeframe(opportunity);
+        const currentKey = getOpeningChartKey(opportunity);
 
-        setOpeningChartSymbol(opportunity.symbol);
+        setOpeningChartOpportunityId(currentKey);
 
         try {
             const rows = await fetchMarketCandles(opportunity.symbol, initialTimeframe);
             if (rows.length === 0) {
                 toast({
-                    title: 'Chart unavailable',
-                    description: `No candle data available for ${opportunity.symbol} on ${initialTimeframe}.`,
+                    title: 'Gráfico indisponível',
+                    description: `Sem dados de candle para ${opportunity.symbol} no timeframe ${initialTimeframe}.`,
                     variant: 'destructive',
                 });
                 return;
@@ -450,12 +448,12 @@ export const MonitorStatusTab: React.FC = () => {
             });
         } catch (error) {
             toast({
-                title: 'Chart unavailable',
-                description: error instanceof Error ? error.message : 'Failed to load chart data.',
+                title: 'Gráfico indisponível',
+                description: error instanceof Error ? error.message : 'Falha ao carregar dados do gráfico.',
                 variant: 'destructive',
             });
         } finally {
-            setOpeningChartSymbol((current) => (current === opportunity.symbol ? null : current));
+            setOpeningChartOpportunityId((current) => (current === currentKey ? null : current));
         }
     };
 
@@ -801,7 +799,7 @@ export const MonitorStatusTab: React.FC = () => {
                             return;
                         }
                         if (!cancelled) {
-                            console.error(`Failed to load sparkline for ${request.symbol} (${request.timeframe})`, error);
+                            console.error(`Falha ao carregar sparkline para ${request.symbol} (${request.timeframe})`, error);
                             setSparklineErrorByKey((current) => ({ ...current, [key]: true }));
                         }
                     } finally {
@@ -937,9 +935,6 @@ export const MonitorStatusTab: React.FC = () => {
                         {showTechnicalColumns ? <div className="filter-divider" /> : null}
                         <select className="select" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value as TimeframeFilter)}>
                             <option value="all">Timeframe: Todos</option>
-                            <option value="15m">15m</option>
-                            <option value="1h">1h</option>
-                            <option value="4h">4h</option>
                             <option value="1d">1d</option>
                         </select>
                         <select
@@ -1033,7 +1028,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                             portfolioStatusMessage={derived?.message}
                                                             portfolioStatusTone={derived?.tone}
                                                             isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
-                                                            isOpeningChart={openingChartSymbol === opportunity.symbol}
+                                                            isOpeningChart={openingChartOpportunityId === getOpeningChartKey(opportunity)}
                                                             isAdmin={showTechnicalColumns}
                                                             onToggleInPortfolio={handleToggleInPortfolio}
                                                             onToggleCardMode={handleToggleCardMode}
@@ -1184,7 +1179,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 event.stopPropagation();
                                                                                 void handleOpenChart(opportunity, 'chart');
                                                                             }}
-                                                                            disabled={openingChartSymbol === opportunity.symbol}
+                                                                            disabled={openingChartOpportunityId === getOpeningChartKey(opportunity)}
                                                                         >
                                                                             <LineChart className="h-4 w-4" />
                                                                             <span>Abrir Gráfico</span>
@@ -1198,7 +1193,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 event.stopPropagation();
                                                                                 void handleOpenChart(opportunity, 'trades');
                                                                             }}
-                                                                            disabled={openingChartSymbol === opportunity.symbol}
+                                                                            disabled={openingChartOpportunityId === getOpeningChartKey(opportunity)}
                                                                         >
                                                                             <ListChecks className="h-4 w-4" />
                                                                             <span>Ver Trades</span>
@@ -1224,7 +1219,7 @@ export const MonitorStatusTab: React.FC = () => {
                                                                                 portfolioStatusMessage={derived?.message}
                                                                                 portfolioStatusTone={derived?.tone}
                                                                                 isSavingPreference={Boolean(savingSymbols[opportunity.symbol])}
-                                                                                isOpeningChart={openingChartSymbol === opportunity.symbol}
+                                                                                isOpeningChart={openingChartOpportunityId === getOpeningChartKey(opportunity)}
                                                                                 isAdmin={showTechnicalColumns}
                                                                                 onToggleInPortfolio={handleToggleInPortfolio}
                                                                                 onToggleCardMode={handleToggleCardMode}

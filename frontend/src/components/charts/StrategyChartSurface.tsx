@@ -436,7 +436,7 @@ export function StrategyChartSurface({
         ))
     }, [priceLines])
 
-    const subtitleContent = subtitle ?? [symbol, timeframe, `${candlestickData.length} candles`].filter(Boolean).join(' • ')
+    const subtitleContent = subtitle ?? [symbol, timeframe, `${candlestickData.length} velas`].filter(Boolean).join(' • ')
 
     return (
         <section
@@ -454,7 +454,7 @@ export function StrategyChartSurface({
                         <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="truncate text-lg font-semibold tracking-normal text-[#eaecef]">
-                                    {title ?? `${strategyName} - Price Action`}
+                                    {title ?? `${strategyName} - Ação de preço`}
                                 </h2>
                                 {headerMeta}
                             </div>
@@ -519,7 +519,7 @@ export function StrategyChartSurface({
                         aria-live="polite"
                         data-testid={visibleBarsTestId}
                     >
-                        {visibleBarCount ?? 0} candles
+                        {visibleBarCount ?? 0} velas
                     </span>
                     <span className="text-[11px] text-[#929aa5]">
                         Roda do mouse: zoom
@@ -563,7 +563,7 @@ export function StrategyChartSurface({
                                         <dd className="font-mono font-semibold text-[#eaecef]">{formatPrice(displaySnapshot?.candle.close)}</dd>
                                     </div>
                                     <div>
-                                        <dt className="text-[#707a8a]">Maxima / minima</dt>
+                                            <dt className="text-[#707a8a]">Máxima / Mínima</dt>
                                         <dd className="font-mono text-[#eaecef]">
                                             {formatPrice(displaySnapshot?.candle.high)} / {formatPrice(displaySnapshot?.candle.low)}
                                         </dd>

@@ -4,7 +4,6 @@ import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
 import {
-    getOpportunityAssetType,
     getStrategyDisplayName,
     isProtectedStrategy,
     type Opportunity,
@@ -59,13 +58,6 @@ const renderKeyValueRows = (values?: Record<string, unknown>): Array<[string, st
 
 const protectedRows = (): Array<[string, string]> => [['Protegido', 'Oculto']];
 
-const toMonitorPriceTimeframe = (value: string | null | undefined): MonitorPriceTimeframe | null => {
-    if (value === '15m' || value === '1h' || value === '4h' || value === '1d') {
-        return value;
-    }
-    return null;
-};
-
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     opportunity,
     preference,
@@ -92,14 +84,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
-    const isStock = getOpportunityAssetType(opportunity) === 'stock';
     const showTechnicalDetails = isAdmin || !strategyProtected;
-    const strategyTimeframe = toMonitorPriceTimeframe(timeframe);
-    const effectiveTimeframe: MonitorPriceTimeframe = !showTechnicalDetails && strategyTimeframe
-        ? strategyTimeframe
-        : isStock
-            ? '1d'
-            : preference.price_timeframe;
+    const effectiveTimeframe: MonitorPriceTimeframe = '1d';
     const distance = distance_to_next_status;
     const distanceStr = distance !== null && distance !== undefined ? `${distance.toFixed(2)}%` : '-';
 
@@ -201,7 +187,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         onToggleInPortfolio(symbol, true);
     };
     const nextMode: MonitorCardMode = preference.card_mode === 'price' ? 'strategy' : 'price';
-    const timeframeOptions: MonitorPriceTimeframe[] = ['15m', '1h', '4h', '1d'];
+    const timeframeOptions: MonitorPriceTimeframe[] = ['1d'];
 
     return (
         <div
@@ -219,8 +205,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 <div className="detail-pair-summary">
                     <span className="detail-symbol">{symbol}</span>
                     <span className={`status-pill ${resolvedSignal.section}`}>{resolvedSignal.visual.badgeText}</span>
-                    <span title="Strategy timeframe" className="detail-timeframe">{timeframe || '-'}</span>
-                    <span title="Price chart timeframe" className="detail-timeframe">chart {effectiveTimeframe}</span>
+                    <span title="Timeframe da estratégia" className="detail-timeframe">{timeframe || '-'}</span>
+                    <span title="Timeframe do gráfico de preço" className="detail-timeframe">Gráfico {effectiveTimeframe}</span>
                 </div>
                 {showTechnicalDetails ? (
                     <div className="detail-controls">
@@ -232,7 +218,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             disabled={isPortfolioDerived || isSavingPreference}
                             onClick={() => onToggleInPortfolio(symbol, !preference.in_portfolio)}
                         >
-                            {preference.in_portfolio ? 'In Portfolio' : 'Out Portfolio'}
+                            {preference.in_portfolio ? 'No portfólio' : 'Fora do portfólio'}
                         </button>
                         <button
                             type="button"
@@ -242,12 +228,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                             disabled={isSavingPreference}
                         >
                             <span data-testid={`mode-label-${symbolTestKey}`}>
-                                {preference.card_mode === 'price' ? 'Price' : 'Strategy'}
+                                {preference.card_mode === 'price' ? 'Preço' : 'Estratégia'}
                             </span>
                         </button>
                         <div className="timeframe-toggle-group" aria-label={`Timeframe ${symbol}`}>
                             {timeframeOptions.map((option) => {
-                                const disabled = isStock && option !== '1d';
                                 const active = effectiveTimeframe === option;
                                 return (
                                     <button
@@ -256,7 +241,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                                         className={`btn ghost ${active ? 'active' : ''}`}
                                         data-testid={`timeframe-toggle-${symbolTestKey}-${option}`}
                                         aria-pressed={active}
-                                        disabled={disabled || isSavingPreference}
+                                        disabled={isSavingPreference}
                                         onClick={() => onToggleTimeframe(symbol, option)}
                                     >
                                         {option}

@@ -602,9 +602,9 @@ test('favorites strategy column avoids duplicated raw strategy labels', async ({
   const hbarRow = page.locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' });
   const strategyCell = hbarRow.locator('.strategy-cell');
 
-  await expect(strategyCell).toHaveText('multi ma crossover');
+  await expect(strategyCell.locator('strong')).toHaveText('multi ma crossover');
   await expect(strategyCell).not.toContainText('multi_ma_crossover');
-  await expect(strategyCell.locator('span')).toHaveCount(0);
+  await expect(strategyCell.locator('.strategy-description')).toHaveCount(0);
 });
 
 test('favorites search matches combined symbol quote and strategy terms', async ({ page }) => {
@@ -686,7 +686,7 @@ test('favorites exposes one analysis CTA instead of separate trades/results acti
   expect(api.wasFavoriteTradesTriggered()).toBe(true);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('No results found')).toHaveCount(0);
-  await expect(page.getByText('Lista de trades')).toBeVisible();
+  await expect(page.getByText('Lista de operações')).toBeVisible();
   await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
 });
 
@@ -719,17 +719,17 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByRole('button', { name: /Voltar aos favoritos/i })).toBeVisible();
   await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
-  await expect(page.getByText('Lista de trades')).toBeVisible();
+  await expect(page.getByText('Lista de operações')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-labels', /COMPRA.*VENDA/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).not.toHaveAttribute('data-marker-labels', /BUY|SELL|SHORT|COVER/);
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 4h • 160 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 160 velas')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-out')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-reset')).toBeVisible();
-  await expect(page.getByTestId('result-chart-visible-bars')).toContainText('candles');
+  await expect(page.getByTestId('result-chart-visible-bars')).toContainText('velas');
   const visibleBarsBeforeWheel = await page.getByTestId('result-chart-visible-bars').textContent();
   await page.getByTestId('result-main-chart').hover();
   await page.mouse.wheel(0, -600);
@@ -737,7 +737,7 @@ test('favorites analysis regenerates missing trades into result view', async ({ 
   await expect(page.getByRole('columnheader', { name: 'Tipo' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Data e hora' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Sinal' })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Valor da posicao' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Valor da posição' })).toBeVisible();
   await expect(page.getByText('100.00 USD').first()).toBeVisible();
   await expect(page.getByText('May 10, 2026').first()).toBeVisible();
   await expect(page.getByText('May 20, 2026').first()).toBeVisible();
@@ -783,10 +783,10 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByText('Histórico reconstruído pode divergir do resumo salvo.')).toHaveCount(0);
   await expect(page.getByText('Chart data not available for this run.')).toHaveCount(0);
-  await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
+  await expect(page.getByText(/multi_ma_crossover - Ação de preço/i)).toBeVisible();
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-chart-zoom-in')).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 4h • 160 candles')).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 4h • 160 velas')).toBeVisible();
 
   await page.getByRole('button', { name: /Voltar aos favoritos/i }).click();
   await expect(page).toHaveURL(/\/favorites$/);
@@ -798,7 +798,7 @@ test('favorites analysis backfills chart context for legacy saved BTC multi MA t
 
   expect(api.backtestTriggeredCount()).toBe(0);
   expect(api.favoriteTradesTriggeredCount()).toBe(1);
-  await expect(page.getByText(/multi_ma_crossover - Price Action/i)).toBeVisible();
+  await expect(page.getByText(/multi_ma_crossover - Ação de preço/i)).toBeVisible();
 });
 
 test('favorites analysis opens cached multi MA chart when trade recovery hangs', async ({ page }) => {
@@ -838,7 +838,7 @@ test('favorites analysis opens cached multi MA chart when trade recovery hangs',
   await expect(parameters.getByText('sma long', { exact: true })).toHaveCount(0);
   await expect(parameters.getByText('stop loss', { exact: true })).toHaveCount(0);
   await expect(parameters.getByText('data source', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('HBAR/USDT • 1d • 120 candles')).toBeVisible();
+  await expect(page.getByText('HBAR/USDT • 1d • 120 velas')).toBeVisible();
   expect(dialogs).toEqual([]);
 });
 
@@ -861,11 +861,11 @@ test('common user opens protected favorite chart without moving averages or MA v
   expect(api.favoriteTradesTriggeredCount()).toBe(0);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
-  await expect(page.getByText(/EMA RSI Volume - Price Action/i)).toBeVisible();
-  await expect(page.getByText(/Estratégia protegida - Price Action/i)).toHaveCount(0);
+  await expect(page.getByText(/EMA RSI Volume - Ação de preço/i)).toBeVisible();
+  await expect(page.getByText(/Estratégia protegida - Ação de preço/i)).toHaveCount(0);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toHaveAttribute('data-marker-count', '4');
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
-  await expect(page.getByText('ETH/USDT • 1h • 160 candles')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 160 velas')).toBeVisible();
   await expect(page.getByText('May 12, 2026').first()).toBeVisible();
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
   await expect(page.getByText('Jan 2, 2025').first()).toBeVisible();
@@ -900,15 +900,15 @@ test('favorites opens Multi MA Crossover full-history chart even when monitor sy
   await expect(page).toHaveURL(/\/combo\/results$/, { timeout: 5000 });
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
   await expect(page.getByTestId('result-main-chart')).toBeVisible();
-  await expect(page.getByText(/Multi MA Crossover - Price Action/i)).toBeVisible();
-  await expect(page.getByText('BTC/USDT • 1d • 200 candles')).toBeVisible();
-  await expect(page.getByTestId('result-chart-visible-bars')).toContainText('180 candles');
-  await expect(page.getByText('BTC/USDT • 1d • 120 candles')).toHaveCount(0);
-  await expect(page.getByText('BTC/USDT • 1d • 60 candles')).toHaveCount(0);
-  await expect(page.getByText('BTC/USDT • 1d • 80 candles')).toHaveCount(0);
+  await expect(page.getByText(/Multi MA Crossover - Ação de preço/i)).toBeVisible();
+  await expect(page.getByText('BTC/USDT • 1d • 200 velas')).toBeVisible();
+  await expect(page.getByTestId('result-chart-visible-bars')).toContainText('180 velas');
+  await expect(page.getByText('BTC/USDT • 1d • 120 velas')).toHaveCount(0);
+  await expect(page.getByText('BTC/USDT • 1d • 60 velas')).toHaveCount(0);
+  await expect(page.getByText('BTC/USDT • 1d • 80 velas')).toHaveCount(0);
 });
 
-test('favorites analysis uses full market history over stale saved analysis candles', async ({ page }) => {
+test('favorites analysis uses full market history over stale saved analysis velas', async ({ page }) => {
   const api = await setupDeterministicApiMocks(page);
   await page.goto('/favorites');
 
@@ -922,9 +922,9 @@ test('favorites analysis uses full market history over stale saved analysis cand
   expect(api.opportunitiesTriggeredCount()).toBe(1);
   await expect(page).toHaveURL(/\/combo\/results$/);
   await expect(page.getByTestId('monitor-aligned-result-chart')).toBeVisible();
-  await expect(page.getByText('ETH/USDT • 1h • 160 candles')).toBeVisible();
-  await expect(page.getByText('ETH/USDT • 1h • 120 candles')).toHaveCount(0);
-  await expect(page.getByText('ETH/USDT • 1h • 40 candles')).toHaveCount(0);
+  await expect(page.getByText('ETH/USDT • 1h • 160 velas')).toBeVisible();
+  await expect(page.getByText('ETH/USDT • 1h • 120 velas')).toHaveCount(0);
+  await expect(page.getByText('ETH/USDT • 1h • 40 velas')).toHaveCount(0);
   await expect(page.getByText('May 12, 2026').first()).toBeVisible();
   await expect(page.getByText('Jan 1, 2025').first()).toBeVisible();
 });

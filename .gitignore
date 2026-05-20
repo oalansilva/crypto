@@ -94,6 +94,7 @@ frontend/playwright-report/
 .playwright-mcp/
 .playwright-cli/
 qa-evidence/
+output/
 tmp_retrospective_prompt.md
 artifacts-signals-*.png
 .coverage
