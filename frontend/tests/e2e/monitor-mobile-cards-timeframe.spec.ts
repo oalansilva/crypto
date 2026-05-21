@@ -920,6 +920,140 @@ test('monitor uses favorite trade markers without duplicating the current sell m
   await expect(dialog.locator('header p').first()).toContainText('4 velas')
 })
 
+test('monitor collapses same-day Compra and Venda favorite trade into one marker', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  await page.route('**/*', (route: any) => {
+    const url = new URL(route.request().url())
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return route.continue()
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.route('**/api/auth/me', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(AUTH_USER),
+    })
+  )
+
+  await page.route('**/api/favorites/', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 238,
+          name: 'ADA Compra Médias Móveis',
+          symbol: 'ADA/USDT',
+          timeframe: '1d',
+          strategy_name: 'Compra Médias Móveis: Tendência Confirmada',
+          parameters: {},
+          metrics: {},
+          created_at: '2026-05-21T00:00:00Z',
+          tier: 1,
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/opportunities/**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 238,
+          symbol: 'ADA/USDT',
+          timeframe: '1d',
+          template_name: 'Compra Médias Móveis: Tendência Confirmada',
+          name: 'ADA Compra Médias Móveis',
+          notes: '',
+          tier: 1,
+          parameters: { direction: 'long' },
+          is_holding: false,
+          distance_to_next_status: 0,
+          next_status_label: 'exit',
+          status: 'EXIT',
+          message: 'Venda no candle atual.',
+          last_price: 0.78,
+          timestamp: '2026-05-21T00:00:00Z',
+          signal_history: [],
+          details: {},
+        },
+      ]),
+    })
+  )
+
+  await page.route('**/api/favorites/238/trades', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        favorite_id: 238,
+        trades: [
+          {
+            entry_time: '2026-05-21T00:00:00+00:00',
+            entry_price: 0.77,
+            exit_time: '2026-05-21T16:00:00+00:00',
+            exit_price: 0.78,
+            profit: 0.012987,
+            type: 'long',
+          },
+        ],
+        metrics: { total_trades: 1 },
+        candles: [
+          { timestamp_utc: '2026-05-21T00:00:00Z', open: 0.77, high: 0.79, low: 0.76, close: 0.78, volume: 1000 },
+        ],
+      }),
+    })
+  )
+
+  await page.route('**/api/monitor/preferences', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        __global__: { in_portfolio: false, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+        'ADA/USDT': { in_portfolio: true, card_mode: 'strategy', price_timeframe: '1d', theme: 'dark-green' },
+      }),
+    })
+  )
+
+  await page.route('**/api/user/binance-credentials', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: false, api_key_masked: null }),
+    })
+  )
+
+  await page.route('**/api/market/candles**', (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candles: [
+          { timestamp_utc: '2026-05-21T00:00:00Z', open: 0.77, high: 0.79, low: 0.76, close: 0.78, volume: 1000 },
+        ],
+      }),
+    })
+  )
+
+  await page.goto('/monitor')
+
+  const card = page.getByTestId('monitor-card-ada-usdt')
+  await expect(card).toBeVisible()
+  await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
+
+  const surface = page.getByTestId('chart-modal-surface')
+  await expect(surface).toHaveAttribute('data-marker-count', '1')
+  await expect(surface).toHaveAttribute('data-marker-labels', /COMPRA\/VENDA/)
+  await expect(surface).not.toHaveAttribute('data-marker-labels', /^COMPRA\|VENDA$/)
+})
+
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
