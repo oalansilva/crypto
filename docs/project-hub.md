@@ -40,6 +40,7 @@ Aqui deve ficar:
 - Implementacao tecnica dos alertas: criada no card `#183`, com envio apenas ao grupo interno allowlistado, deduplicacao, rate limit, auditoria e opcao de desligar.
 - Release comercial 2026-05-13 preparada: cards `#149`, `#147`, `#148` e `#152` consolidados na documentacao, com roadmap, plano de conteudo, mapa de canais e checklist de publicacao piloto. Publicacao externa continua dependente de aprovacao explicita do Alan.
 - Release tecnica/documental 2026-05-18 preparada: cards `#217`, `#216`, `#213`, `#208`, `#75` e `#77` incluídos no pacote, com melhorias de Favoritos, Carteira, Monitor e revisao documental de Clara/Alan.
+- Pacote inicial de conteudo do card `#151` recuperado e versionado em `docs/social/card-151-content-package.md`, com 2 textos de LinkedIn, 2 pecas de Instagram, 1 texto para Telegram/grupos e 1 abordagem WhatsApp/DM. Publicacao externa continua dependendo de aprovacao explicita do Alan.
 - Lista inicial de contatos do beta: card `#197` segue em execucao com Alan, com canal WhatsApp definido para os nomes iniciais. Nenhum convite externo foi enviado automaticamente.
 - Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
 - Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
@@ -122,7 +123,6 @@ Estes cards ainda nao sao apenas planejamento:
 - `#157` criar logo ou wordmark inicial da marca aprovada.
 - `#158` exportar assets de marca para landing e produto.
 - `#155` preparar DNS inicial do dominio aprovado.
-- `#151` gerar pacote inicial de conteudo.
 - `#183` implementar alertas Telegram internos do Monitor.
 - `#197` montar lista inicial de contatos para convite beta, sob responsabilidade do Alan para envio manual via WhatsApp.
 
@@ -147,6 +147,7 @@ Estes cards ainda nao sao apenas planejamento:
 - Checklist de aprovacao/publicacao piloto: [content-pilot-approval.md](/root/.openclaw/workspace/crypto/docs/content-pilot-approval.md)
 - Release comercial do beta 2026-05-13: [release-2026-05-13-commercial-beta.md](/root/.openclaw/workspace/crypto/docs/release-2026-05-13-commercial-beta.md)
 - Release tecnica/documental 2026-05-18: [release-2026-05-18.md](/root/.openclaw/workspace/crypto/docs/release-2026-05-18.md)
+- Pacote inicial de conteudo do card #151: [card-151-content-package.md](/root/.openclaw/workspace/crypto/docs/social/card-151-content-package.md) / Drive `https://docs.google.com/document/d/1klZyP4IezZTOIq0xPWAz0k7o4gSjb8X0IQ_Vi_vcdVs/edit?usp=drivesdk`
 - Lista inicial de contatos para convite do beta: [beta-invite-contacts.md](/root/.openclaw/workspace/crypto/docs/beta-invite-contacts.md)
 - Modelo operacional do backlog: [backlog-operating-model.md](/root/.openclaw/workspace/crypto/docs/backlog-operating-model.md)
 - Log de decisoes: [decision-log.md](/root/.openclaw/workspace/crypto/docs/decision-log.md)
