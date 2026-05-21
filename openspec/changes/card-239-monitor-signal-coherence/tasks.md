@@ -13,4 +13,4 @@
 
 - [x] 3.1 Add focused automated coverage for chart/state divergence using ADA/USDT-like fixture or the reported case.
 - [x] 3.2 Run OpenSpec validation and focused frontend/backend tests.
-- [ ] 3.3 Run runtime validation with `./restart` and record evidence for card #239 before moving to `Done`.
+- [x] 3.3 Run runtime validation with `./restart` and record evidence for card #239 before moving to `Done`.
