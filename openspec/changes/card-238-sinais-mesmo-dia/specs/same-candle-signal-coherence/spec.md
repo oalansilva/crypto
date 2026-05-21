@@ -14,10 +14,14 @@ The system SHALL represent a trade whose entry and exit resolve to the same disp
 - **THEN** the chart marker source SHALL contain separate entry and exit markers
 - **AND** their labels SHALL remain direction-aware in Portuguese
 
+#### Scenario: Exit and next entry share one daily candle
+- **WHEN** one trade exits and another trade enters on the same displayed 1D candle
+- **THEN** the chart marker source SHALL represent the candle with one combined marker for the opposite actions
+- **AND** it SHALL NOT render independent `Compra` and `Venda` markers for that same displayed candle
+
 ### Requirement: Same-candle signal evidence remains inspectable
 The system SHALL keep enough evidence in UI/test output to verify how same-candle signals were represented.
 
 #### Scenario: Test reads marker labels
 - **WHEN** automated UI validation inspects the shared chart surface
 - **THEN** it SHALL be able to distinguish a same-candle combined marker from separate `COMPRA` and `VENDA` markers
-

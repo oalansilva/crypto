@@ -13,4 +13,10 @@
 - [x] 3.1 Add focused tests for same-candle marker behavior.
 - [x] 3.2 Run OpenSpec, frontend test/build, and focused runtime validation.
 
+## 4. Follow-up Persisting Bug
+
+- [x] 4.1 Collapse opposite markers from different trades that resolve to the same displayed candle.
+- [x] 4.2 Prevent the Monitor current-signal fallback from re-adding a Compra/Venda marker already covered by a same-candle combined marker.
+- [x] 4.3 Re-run focused Playwright/build/OpenSpec validation and reintegrate in develop.
+
 Note: use project skills when applicable; OpenSpec skills used for new, fast-forward, apply, and verify phases.
