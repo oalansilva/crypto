@@ -1052,6 +1052,8 @@ test('monitor resolves same-day Compra and Venda trade to the opposite signal', 
   await expect(surface).toHaveAttribute('data-marker-count', '1')
   await expect(surface).toHaveAttribute('data-marker-labels', /^VENDA/)
   await expect(surface).not.toHaveAttribute('data-marker-labels', /COMPRA/)
+  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
+  await expect(page.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
 })
 
 test('monitor resolves exit and next entry on the same day to the opposite of the previous signal', async ({ page }) => {
@@ -1192,6 +1194,8 @@ test('monitor resolves exit and next entry on the same day to the opposite of th
   await expect(surface).toHaveAttribute('data-marker-count', '2')
   await expect(surface).toHaveAttribute('data-marker-labels', /^COMPRA\|VENDA/)
   await expect(surface).not.toHaveAttribute('data-marker-labels', /COMPRA\|VENDA\|COMPRA/)
+  await expect(page.getByTestId('chart-modal-signal-badge')).toHaveText('Venda')
+  await expect(page.getByTestId('chart-modal-main-chart-shell')).toHaveAttribute('data-current-marker', 'Venda')
 })
 
 test('monitor modal shows recent entry and exit history from the strategy payload', async ({ page }) => {

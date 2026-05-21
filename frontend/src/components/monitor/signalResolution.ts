@@ -36,6 +36,7 @@ export interface ResolveOpportunitySignalContext {
     readonly latestCandleTime?: string | null;
     readonly latestSignalTime?: string | null;
     readonly latestSignalType?: 'entry' | 'exit' | null;
+    readonly latestVisibleMarkerType?: 'entry' | 'exit' | null;
     readonly requireCurrentCandleMatch?: boolean;
     readonly hasVisibleActiveEntry?: boolean | null;
 }
@@ -196,6 +197,16 @@ export const resolveOpportunitySignal = (
             isUncertain = true;
             reasons.push('Estado desconhecido, tratado como venda.');
         }
+    }
+
+    if (context.latestVisibleMarkerType === 'entry') {
+        section = 'hold';
+        isUncertain = false;
+        reasons.length = 0;
+    } else if (context.latestVisibleMarkerType === 'exit') {
+        section = 'exit';
+        isUncertain = false;
+        reasons.length = 0;
     }
 
     const sectionVisual = VISUAL_BY_KIND[section];
