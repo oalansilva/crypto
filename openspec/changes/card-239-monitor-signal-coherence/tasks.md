@@ -14,3 +14,11 @@
 - [x] 3.1 Add focused automated coverage for chart/state divergence using ADA/USDT-like fixture or the reported case.
 - [x] 3.2 Run OpenSpec validation and focused frontend/backend tests.
 - [x] 3.3 Run runtime validation with `./restart` and record evidence for card #239 before moving to `Done`.
+
+## 4. Follow-up after Alan retest
+
+- [x] 4.1 Make Monitor list sections and cards resolve `Compra`/`Venda` from favorite-backed latest markers when available, not only the chart modal.
+- [x] 4.2 Prevent duplicate synthetic fallback `Venda` markers when the latest favorite-backed chart marker already drives the same state.
+- [x] 4.3 Add focused regression coverage for raw `HOLDING` plus latest favorite marker `Venda`.
+- [x] 4.4 Re-run OpenSpec validation and focused frontend tests.
+- [ ] 4.5 Integrate in `develop`, restart runtime and update card evidence.

@@ -5,7 +5,7 @@ import type { MarketCandle } from './MiniCandlesChart';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters';
-import { buildTradeMarkers, collapseSameCandleOppositeMarkers, sameDisplayedCandle } from '@/lib/tradeMarkers';
+import { buildTradeMarkers, collapseSameCandleOppositeMarkers, getLatestMarkerSignalType, sameDisplayedCandle } from '@/lib/tradeMarkers';
 import {
     StrategyChartSurface,
     toStrategyChartTimestamp,
@@ -222,22 +222,6 @@ function hasEquivalentMarker(markers: StrategyChartMarker[], marker: StrategyCha
         && existing.shape === marker.shape
         && existing.position === marker.position
     ));
-}
-
-function getMarkerSignalType(marker: StrategyChartMarker): 'entry' | 'exit' | null {
-    const text = String(marker.text || '').toUpperCase();
-    if (text.includes('COMPRA')) return 'entry';
-    if (text.includes('VENDA')) return 'exit';
-    return null;
-}
-
-function getLatestMarkerSignalType(markers: StrategyChartMarker[]): 'entry' | 'exit' | null {
-    const latest = [...markers]
-        .filter((marker) => getMarkerSignalType(marker) !== null)
-        .sort((left, right) => toStrategyChartTimestamp(left.time) - toStrategyChartTimestamp(right.time))
-        .at(-1);
-
-    return latest ? getMarkerSignalType(latest) : null;
 }
 
 export const ChartModal: React.FC<ChartModalProps> = ({
@@ -529,18 +513,21 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         signalLabel,
     ]);
     const chartMarkers = React.useMemo<StrategyChartMarker[]>(() => {
+        const resolvedMarkerType = resolvedSignal.section === 'hold' ? 'entry' : 'exit';
+        const shouldAddFallbackMarker = latestVisibleMarkerType !== resolvedMarkerType;
+        const fallbackCandidates = shouldAddFallbackMarker ? fallbackMarker : [];
         const mergedMarkers = baseChartMarkers.length > 0
             ? [
                 ...baseChartMarkers,
-                ...fallbackMarker.filter((marker) => (
+                ...fallbackCandidates.filter((marker) => (
                     !hasEquivalentMarker(baseChartMarkers, marker)
                     && !baseChartMarkers.some((existing) => sameDisplayedCandle(existing.time, marker.time, timeframe))
                 )),
             ]
-            : fallbackMarker;
+            : fallbackCandidates;
 
         return collapseSameCandleOppositeMarkers(mergedMarkers, timeframe);
-    }, [baseChartMarkers, fallbackMarker, timeframe]);
+    }, [baseChartMarkers, fallbackMarker, latestVisibleMarkerType, resolvedSignal.section, timeframe]);
     const priceLines = React.useMemo<StrategyChartPriceLine[]>(() => [
         ...(showEntryStopRows && opportunity.entry_price !== null && opportunity.entry_price !== undefined
             ? [{ price: opportunity.entry_price, color: '#fcd535', title: 'Compra' }]

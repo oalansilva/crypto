@@ -13,6 +13,8 @@ export interface BuildTradeMarkersOptions {
     timeframe?: string | null
 }
 
+export type MarkerSignalType = 'entry' | 'exit'
+
 const TIMEFRAME_MS: Record<string, number> = {
     '1m': 60_000,
     '5m': 5 * 60_000,
@@ -62,6 +64,31 @@ function markerAction(marker: StrategyChartMarker): 'COMPRA' | 'VENDA' | null {
     if (text.includes('COMPRA')) return 'COMPRA'
     if (text.includes('VENDA')) return 'VENDA'
     return null
+}
+
+export function getMarkerSignalType(marker: StrategyChartMarker): MarkerSignalType | null {
+    const action = markerAction(marker)
+    if (action === 'COMPRA') return 'entry'
+    if (action === 'VENDA') return 'exit'
+    return null
+}
+
+export function getLatestMarkerSignalType(markers: StrategyChartMarker[]): MarkerSignalType | null {
+    const latest = [...markers]
+        .map((marker, index) => ({ marker, index, type: getMarkerSignalType(marker), timestamp: parseTime(marker.time) }))
+        .filter((entry): entry is {
+            marker: StrategyChartMarker
+            index: number
+            type: MarkerSignalType
+            timestamp: number
+        } => entry.type !== null && entry.timestamp !== null)
+        .sort((left, right) => {
+            const timeDelta = left.timestamp - right.timestamp
+            return timeDelta === 0 ? left.index - right.index : timeDelta
+        })
+        .at(-1)
+
+    return latest?.type ?? null
 }
 
 function markerProfitText(marker: StrategyChartMarker): string {

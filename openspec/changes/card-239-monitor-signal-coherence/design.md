@@ -40,3 +40,14 @@ The likely risk is drift between two sources:
 - If the API payload is already inconsistent, a frontend-only fix could mask backend debt. Implementation must record the diagnosed origin.
 - If there are multiple valid same-day actions, the resolver must use the post-card #238 marker rule instead of reviving duplicate signals.
 - Tests need stable fixtures because live market data can change.
+
+## Follow-up Diagnosis
+
+Alan's retest shows the initial fix was too narrow: the chart modal can resolve the favorite-backed marker as `Venda`, but the main Monitor list still groups and labels the opportunity from the raw opportunity state (`HOLDING`/`is_holding`) as `Em posição · Compra`.
+
+The follow-up correction should:
+
+- make the Monitor list/card/section consume the same favorite-backed latest marker direction used by the chart when that data exists;
+- keep raw backend state available as fallback and diagnostics, but not let it contradict the visible chart marker without an explicit explanation;
+- prevent the chart modal from adding a synthetic fallback marker of the same direction when the latest favorite-backed marker already drives the resolved state;
+- add regression coverage for a raw holding ADA/USDT-like opportunity whose favorite trade markers resolve latest visible signal as `Venda`.

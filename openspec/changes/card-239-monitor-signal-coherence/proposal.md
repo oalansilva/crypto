@@ -8,6 +8,7 @@ The Monitor can show `Venda` on the chart while the summary/current state shows 
 - Align the Monitor summary/current signal with the latest valid visible chart signal for the same favorite/strategy/timeframe.
 - Preserve existing chart marker behavior from card #238 while preventing a stale or mismatched current-state fallback from overriding the visible signal.
 - Add focused validation that compares chart marker direction, payload state and Monitor summary for the reported case or a deterministic fixture.
+- Follow-up from Alan's 2026-05-21 retest: extend the same resolution to the Monitor list/section/card state, not only to the chart modal, and avoid adding a duplicate fallback `Venda` marker when the favorite-backed latest marker already resolves to `Venda`.
 
 ## Capabilities
 

@@ -13,6 +13,12 @@ Monitor SHALL render the public current-state label from the same latest valid o
 - **THEN** Monitor state display SHALL prefer the resolved latest favorite-backed marker direction for the visible chart context
 - **AND** raw opportunity status SHALL remain available only for internal grouping and diagnostics
 
+#### Scenario: Monitor list resolves favorite-backed Venda before opening chart
+- **WHEN** the Monitor list receives an opportunity whose raw state indicates active position
+- **AND** the matching favorite-backed trade markers resolve the latest visible signal as `Venda`
+- **THEN** the Monitor list section and opportunity card SHALL render the opportunity as `Venda`
+- **AND** it SHALL NOT keep the opportunity under `Em posição · Compra` for the same strategy/timeframe
+
 #### Scenario: No chart signal is available
 - **WHEN** Monitor has no favorite-backed marker, signal history or trade evidence for the selected opportunity
 - **THEN** Monitor MAY fall back to the backend opportunity state

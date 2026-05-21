@@ -1044,6 +1044,11 @@ test('monitor resolves same-day Compra and Venda trade to the opposite signal', 
 
   await page.goto('/monitor')
 
+  await expect(page.getByTestId('monitor-section-exit').getByTestId('monitor-card-ada-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-section-hold').getByTestId('monitor-card-ada-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Venda')
+  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Venda')
+
   const card = page.getByTestId('monitor-card-ada-usdt')
   await expect(card).toBeVisible()
   await card.getByRole('button', { name: 'Abrir Gráfico' }).click()
@@ -1185,6 +1190,11 @@ test('monitor resolves exit and next entry on the same day to the opposite of th
   )
 
   await page.goto('/monitor')
+
+  await expect(page.getByTestId('monitor-section-exit').getByTestId('monitor-card-ada-usdt')).toBeVisible()
+  await expect(page.getByTestId('monitor-section-hold').getByTestId('monitor-card-ada-usdt')).toHaveCount(0)
+  await expect(page.getByTestId('monitor-card-signal-ada-usdt')).toHaveText('Venda')
+  await expect(page.getByTestId('monitor-row-signal-ada-usdt')).toHaveText('Venda')
 
   const card = page.getByTestId('monitor-card-ada-usdt')
   await expect(card).toBeVisible()
