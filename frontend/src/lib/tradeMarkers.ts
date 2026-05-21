@@ -42,19 +42,70 @@ function displayedCandleKey(value?: string | number | null, timeframe?: string |
     return String(Math.floor(parsed / interval))
 }
 
+export function sameDisplayedCandle(
+    left?: string | number | null,
+    right?: string | number | null,
+    timeframe?: string | null,
+): boolean {
+    const leftKey = displayedCandleKey(left, timeframe)
+    const rightKey = displayedCandleKey(right, timeframe)
+    return leftKey !== '' && leftKey === rightKey
+}
+
 function formatProfit(profit?: number | null): string {
     const value = Number(profit)
     return Number.isFinite(value) ? ` (${(value * 100).toFixed(2)}%)` : ''
 }
 
-function isSameDisplayedCandle(
-    entryTime?: string | number | null,
-    exitTime?: string | number | null,
+function markerAction(marker: StrategyChartMarker): 'COMPRA' | 'VENDA' | null {
+    const text = marker.text.toUpperCase()
+    if (text.includes('COMPRA')) return 'COMPRA'
+    if (text.includes('VENDA')) return 'VENDA'
+    return null
+}
+
+function markerProfitText(marker: StrategyChartMarker): string {
+    return marker.text.match(/\([+-]?\d+(?:\.\d+)?%\)/)?.[0] || ''
+}
+
+export function collapseSameCandleOppositeMarkers(
+    markers: StrategyChartMarker[],
     timeframe?: string | null,
-): boolean {
-    const entryKey = displayedCandleKey(entryTime, timeframe)
-    const exitKey = displayedCandleKey(exitTime, timeframe)
-    return entryKey !== '' && entryKey === exitKey
+): StrategyChartMarker[] {
+    const groups = new Map<string, StrategyChartMarker[]>()
+    const passthrough: StrategyChartMarker[] = []
+
+    markers.forEach((marker) => {
+        const key = displayedCandleKey(marker.time, timeframe)
+        if (!key) {
+            passthrough.push(marker)
+            return
+        }
+        groups.set(key, [...(groups.get(key) || []), marker])
+    })
+
+    return [
+        ...passthrough,
+        ...Array.from(groups.values()).flatMap((group) => {
+            const actions = group
+                .map(markerAction)
+                .filter((action): action is 'COMPRA' | 'VENDA' => action !== null)
+            const uniqueActions = actions.filter((action, index) => actions.indexOf(action) === index)
+
+            if (uniqueActions.length < 2) return group
+
+            const first = group[0]
+            const profitText = group.map(markerProfitText).find(Boolean) || ''
+            const combinedMarker: StrategyChartMarker = {
+                time: first.time,
+                position: 'aboveBar',
+                color: '#fcd535',
+                shape: 'circle',
+                text: `${uniqueActions.join('/')}${profitText ? ` ${profitText}` : ''}`,
+            }
+            return [combinedMarker]
+        }),
+    ]
 }
 
 export function buildTradeMarkers(
@@ -64,7 +115,7 @@ export function buildTradeMarkers(
     const isShort = String(options.direction || 'long').toLowerCase() === 'short'
     const timeframe = options.timeframe
 
-    return (trades || []).flatMap((trade) => {
+    const markers: StrategyChartMarker[] = (trades || []).flatMap((trade): StrategyChartMarker[] => {
         const entryTime = trade.entry_time
         const exitTime = trade.exit_time
         if (!entryTime) return []
@@ -83,7 +134,7 @@ export function buildTradeMarkers(
             return [entryMarker]
         }
 
-        if (isSameDisplayedCandle(entryTime, exitTime, timeframe)) {
+        if (sameDisplayedCandle(entryTime, exitTime, timeframe)) {
             return [{
                 time: entryTime,
                 position: 'aboveBar',
@@ -104,4 +155,6 @@ export function buildTradeMarkers(
             },
         ]
     })
+
+    return collapseSameCandleOppositeMarkers(markers, timeframe)
 }

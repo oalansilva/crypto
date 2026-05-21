@@ -13,3 +13,6 @@ Strategy chart surfaces SHALL consume trade markers built by a same-candle-aware
 - **THEN** it SHALL use the same marker conversion behavior as Favorites
 - **AND** the marker count and labels SHALL match the favorite analysis chart for that trade set
 
+#### Scenario: Monitor fallback signal is already covered
+- **WHEN** the Monitor chart modal has a same-candle combined marker that already includes the current signal action
+- **THEN** the current-signal fallback marker SHALL NOT add another independent `Compra` or `Venda` marker on that same displayed candle
