@@ -7,6 +7,7 @@ import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
 import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters'
+import { buildTradeMarkers } from '@/lib/tradeMarkers'
 
 interface BacktestResult {
     template_name: string
@@ -236,46 +237,7 @@ export function ComboResultsPage() {
         ? { ...baseMetrics, ...derivedMetrics }
         : baseMetrics
 
-    // Prepare Chart Data (entry/exit invertidos para short: entrada = venda, saída = compra)
-    const markers = result.trades.flatMap(curr => {
-        const list = []
-        if (isShort) {
-            list.push({
-                time: curr.entry_time,
-                position: 'aboveBar',
-                color: '#f97316',
-                shape: 'arrowDown',
-                text: 'VENDA'
-            })
-            if (curr.exit_time) {
-                list.push({
-                    time: curr.exit_time,
-                    position: 'belowBar',
-                    color: '#10b981',
-                    shape: 'arrowUp',
-                    text: `COMPRA (${(curr.profit! * 100).toFixed(2)}%)`
-                })
-            }
-        } else {
-            list.push({
-                time: curr.entry_time,
-                position: 'belowBar',
-                color: '#10b981',
-                shape: 'arrowUp',
-                text: 'COMPRA'
-            })
-            if (curr.exit_time) {
-                list.push({
-                    time: curr.exit_time,
-                    position: 'aboveBar',
-                    color: '#ef4444',
-                    shape: 'arrowDown',
-                    text: `VENDA (${(curr.profit! * 100).toFixed(2)}%)`
-                })
-            }
-        }
-        return list
-    })
+    const markers = buildTradeMarkers(result.trades, { direction, timeframe: result.timeframe })
 
     return (
         <div className="app-page combo-page relative overflow-hidden">

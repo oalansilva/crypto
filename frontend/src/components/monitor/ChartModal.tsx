@@ -5,6 +5,7 @@ import type { MarketCandle } from './MiniCandlesChart';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters';
+import { buildTradeMarkers } from '@/lib/tradeMarkers';
 import {
     StrategyChartSurface,
     toStrategyChartTimestamp,
@@ -207,34 +208,6 @@ function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | 
     });
 
     return trades;
-}
-
-function buildTradeMarkers(trades: StrategyTrade[], direction: string): StrategyChartMarker[] {
-    const isShort = direction.toLowerCase() === 'short';
-    return trades.flatMap((trade) => {
-        const markers: StrategyChartMarker[] = [];
-        if (trade.entry_time) {
-            markers.push({
-                time: trade.entry_time,
-                position: isShort ? 'aboveBar' : 'belowBar',
-                color: isShort ? '#f97316' : '#10b981',
-                shape: isShort ? 'arrowDown' : 'arrowUp',
-                text: isShort ? 'VENDA' : 'COMPRA',
-            });
-        }
-        if (trade.exit_time) {
-            const profit = Number(trade.profit);
-            const profitText = Number.isFinite(profit) ? ` (${(profit * 100).toFixed(2)}%)` : '';
-            markers.push({
-                time: trade.exit_time,
-                position: isShort ? 'belowBar' : 'aboveBar',
-                color: isShort ? '#10b981' : '#ef4444',
-                shape: isShort ? 'arrowUp' : 'arrowDown',
-                text: isShort ? `COMPRA${profitText}` : `VENDA${profitText}`,
-            });
-        }
-        return markers;
-    });
 }
 
 function markerTimesMatch(left: StrategyChartMarker['time'], right: StrategyChartMarker['time']): boolean {
@@ -521,8 +494,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         signalLabel,
     ]);
     const tradeSignalMarkers = React.useMemo<StrategyChartMarker[]>(() => (
-        canRenderSignalHistoryMarkers ? buildTradeMarkers(analysisTrades, opportunityDirection) : []
-    ), [analysisTrades, canRenderSignalHistoryMarkers, opportunityDirection]);
+        canRenderSignalHistoryMarkers
+            ? buildTradeMarkers(analysisTrades, { direction: opportunityDirection, timeframe })
+            : []
+    ), [analysisTrades, canRenderSignalHistoryMarkers, opportunityDirection, timeframe]);
     const chartMarkers = React.useMemo<StrategyChartMarker[]>(() => {
         const baseMarkers = tradeSignalMarkers.length > 0
             ? tradeSignalMarkers
