@@ -21,4 +21,4 @@
 - [x] 4.2 Prevent duplicate synthetic fallback `Venda` markers when the latest favorite-backed chart marker already drives the same state.
 - [x] 4.3 Add focused regression coverage for raw `HOLDING` plus latest favorite marker `Venda`.
 - [x] 4.4 Re-run OpenSpec validation and focused frontend tests.
-- [ ] 4.5 Integrate in `develop`, restart runtime and update card evidence.
+- [x] 4.5 Integrate in `develop`, restart runtime and update card evidence.
