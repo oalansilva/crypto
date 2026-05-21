@@ -22,3 +22,11 @@
 - [x] 4.3 Add focused regression coverage for raw `HOLDING` plus latest favorite marker `Venda`.
 - [x] 4.4 Re-run OpenSpec validation and focused frontend tests.
 - [x] 4.5 Integrate in `develop`, restart runtime and update card evidence.
+
+## 5. Backend parity and stale bundle prevention
+
+- [x] 5.1 Resolve backend opportunity public status from the latest cached favorite trade event when it proves exit/entry more specifically than raw opportunity state.
+- [x] 5.2 Keep Monitor payload, list grouping and chart fallback aligned so ADA/USDT-like raw `HOLD` plus latest saved exit renders as `Venda`.
+- [x] 5.3 Prevent canonical start/restart from serving stale `frontend/dist` when an old preview endpoint is still alive.
+- [x] 5.4 Add focused regression coverage for backend favorite-trade exit overriding raw holding state.
+- [ ] 5.5 Re-run OpenSpec validation, focused tests, build/restart and live Monitor payload/browser validation.

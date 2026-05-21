@@ -391,12 +391,13 @@ if flag_enabled "$BINANCE_REALTIME_WORKER_ENABLED"; then
     "crypto binance realtime worker"
 fi
 
+echo "Building crypto frontend..."
+(
+  cd "$FRONTEND_DIR"
+  VITE_API_URL="/api" npm run build
+)
+
 if ! wait_for_http_ok "$FRONTEND_URL" 2 1; then
-  echo "Building crypto frontend..."
-  (
-    cd "$FRONTEND_DIR"
-    VITE_API_URL="/api" npm run build
-  )
   if user_systemd_available; then
     start_transient_unit \
       "$FRONTEND_UNIT" \

@@ -51,3 +51,17 @@ The follow-up correction should:
 - keep raw backend state available as fallback and diagnostics, but not let it contradict the visible chart marker without an explicit explanation;
 - prevent the chart modal from adding a synthetic fallback marker of the same direction when the latest favorite-backed marker already drives the resolved state;
 - add regression coverage for a raw holding ADA/USDT-like opportunity whose favorite trade markers resolve latest visible signal as `Venda`.
+
+## Second Follow-up Diagnosis
+
+Alan's second retest after restart shows the contradiction can survive on the main Monitor because the backend opportunity payload still says `HOLD`/`is_holding=true` while the saved favorite trade history already has a later closed trade event. This means a frontend-only resolver is fragile: list grouping, cached opportunities, slow async trade loading or stale bundles can still present `Compra`.
+
+The runtime check also found a deploy/restart hazard: `start.sh` only builds the frontend when the preview endpoint is unavailable. If an old `vite preview` is still answering on port `5173`, a restart can keep serving the previous `frontend/dist` and hide a committed UI fix.
+
+The second follow-up correction should:
+
+- derive the public Monitor opportunity status from the latest saved favorite trade event when that event is newer than or more specific than the raw opportunity state;
+- return `Venda` semantics (`status=EXIT`, `is_holding=false`, next action `entry`) when the favorite's latest closed trade proves exit;
+- keep raw strategy analysis available internally, but make the public opportunity payload coherent before it reaches the frontend;
+- keep the frontend resolver as a fallback, not as the only protection;
+- force the canonical frontend build during start/restart so the served Monitor bundle matches the current source.

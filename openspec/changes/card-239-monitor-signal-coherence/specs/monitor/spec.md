@@ -23,3 +23,17 @@ Monitor SHALL render the public current-state label from the same latest valid o
 - **WHEN** Monitor has no favorite-backed marker, signal history or trade evidence for the selected opportunity
 - **THEN** Monitor MAY fall back to the backend opportunity state
 - **AND** the fallback SHALL stay auditable in tests or diagnostics
+
+#### Scenario: Backend opportunity has favorite cached exit trade
+- **WHEN** the backend builds a Monitor opportunity from a saved favorite
+- **AND** the raw strategy state indicates an active position
+- **AND** the favorite's cached trade history has a latest closed trade event for the same strategy context
+- **THEN** the public opportunity payload SHALL resolve to `status=EXIT`
+- **AND** `is_holding` SHALL be `false`
+- **AND** the next public action SHALL be `entry`
+- **AND** the Monitor SHALL render the opportunity as `Venda` without waiting for a separate frontend trade fetch
+
+#### Scenario: Restart after Monitor source change
+- **WHEN** the canonical runtime is restarted after a Monitor frontend or backend fix
+- **THEN** the frontend build used by `vite preview` SHALL be regenerated from the current source
+- **AND** a live preview already answering on port `5173` SHALL NOT cause the restart flow to keep serving a stale `frontend/dist`
