@@ -45,7 +45,7 @@ backend_log.txt
 .codex/antigravity-skills/
 
 # OpenClaw local agent workspace/persona state
-.openclaw/
+/.openclaw/workspace-state.json
 /HEARTBEAT.md
 /IDENTITY.md
 /SOUL.md
