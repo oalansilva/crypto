@@ -8,36 +8,44 @@ Este arquivo existe para reduzir retrabalho e evitar mudanças fora de escopo.
 - `AGENTS.md` define como executar essas regras na pratica: comandos, status, evidencias, OpenSpec/OPSX, GitHub Project, Git e responsabilidades dos agentes.
 - Use os dois arquivos. Em conflito real, aplique a regra mais restritiva e registre a ambiguidade antes de alterar codigo, card ou Git.
 
+## Processo global do Alan
+
+- Regras gerais de processo ficam na skill global `alan-workflow`: `/root/.codex/skills/alan-workflow/SKILL.md`.
+- Use essa skill para comunicacao curta, evidencias antes de concluir, OpenSpec no card antes de implementar, higiene Git/worktree/release, classificacao de pendencias, status `Todo`/`In Progress`/`Done`/`Homologado`/`Pronto`/`Cancelado`, seguranca de output e fechamento sem pendencia.
+- Este `AGENTS.md` deve manter apenas regras especificas do cripto: branches `develop/main`, Project 1, release guard, PostgreSQL, Drive/docs, comandos de backend/frontend, workflow DB e papeis dos agentes.
+- Se uma regra geral precisar mudar para todos os projetos, atualize `alan-workflow`; nao duplique a regra aqui.
+
 ## TL;DR
 
 - **Branch padrão:** cada card/change usa branch própria a partir de `develop` (`change-<id>-<slug>` ou `card-<id>-<slug>`). `develop` é integração/homologação; `main` é produção.
 - **Comunicação padrão com Alan:** usar sempre a skill `caveman` em modo `lite`: curto, direto, sem filler, mantendo clareza técnica. Só desligar se Alan pedir explicitamente `stop caveman` ou `normal mode`.
-- **Fluxo de status:** `In Progress` = em execução; `Done` = codificado e validado tecnicamente em `develop`; `Homologado` = Alan testou e aprovou em `develop`; `Pronto` = já subiu para `main`/produção.
+- **Colunas/Status:** seguir `alan-workflow`; no cripto, o campo `Status` e a fonte principal das colunas visuais. `Done` = Done tecnico: codificado, validado e integrado em `develop`, aguardando teste/aprovacao do Alan; `Homologado` = Alan testou e aprovou em `develop`; `Pronto` = já subiu para `main`/produção com evidencia.
 - **Fluxo de produção:** implemente em branch da change, integre em `develop` para homologação, acumule cards homologados quando fizer sentido; para liberar produção, abra PR `develop -> main` quando `develop` contiver só conteúdo homologado do pacote, ou use `release-*` quando precisar congelar apenas parte aprovada. Resolva checks/políticas bloqueantes quando possível e realize o merge manual quando permitido, sem auto-merge.
 - **Regra de fluxo:** não implemente diretamente em `main`; não implemente diretamente em `develop` salvo ajuste mínimo autorizado por Alan. Branch por change é o padrão.
 - **Regra de merge de release/lote:** após abrir um PR para `main` dentro de um fechamento de lote/release solicitado por Alan, execute o merge manualmente quando os checks estiverem verdes e não houver bloqueios.
 - **Regra de autonomia operacional:** dentro de fechamento de lote/release solicitado por Alan, após validação e evidência, o agente tem autonomia para repetir tentativas manuais de merge até resolução de bloqueios resolvíveis no repositório, sem pedir nova autorização.
-- **Regra de implementação por card:** ao receber pedido com número de card (ex.: `#99`), localizar o card no board `github.com/users/oalansilva/projects/1`, criar/usar branch própria da change a partir de `develop`, mover para `In Progress`, executar usando OpenSpec e subagents conforme o escopo, rodar `/opsx:verify`, integrar em `develop`, executar `./restart`, e só então mover o card para `Done`. Não arquivar nem publicar em `main` nesta etapa.
+- **Regra de implementação por card:** seguir `alan-workflow`; no cripto, usar o board `github.com/users/oalansilva/projects/1`, criar/usar branch propria da change a partir de `develop`, integrar em `develop`, executar `./restart`, e so entao mover o card para `Status=Done` como Done tecnico. Nao arquivar nem publicar em `main` nesta etapa.
 - **Regra de conclusão de correção:** para qualquer correção de bug ou ajuste solicitado por Alan, só diga `concluído` depois de validar, fazer merge/integração da branch de trabalho em `develop`, executar `./restart` e confirmar que a URL do sistema está servindo o bundle/resultado novo. Antes disso, reporte como `corrigido na branch`, `validado localmente` ou `aguardando integração`, conforme o estado real.
-- **Regra de homologação direta por card (solicitação do cliente):** quando Alan disser que um card está homologado, mova o card de `Done` para `Homologado` sem abrir PR, sem merge em `main` e sem arquivar OpenSpec automaticamente. Homologação aqui significa aprovação funcional em `develop`.
-- **Guardrail anti-release acidental:** as frases `card homologado`, `cards homologados`, `está homologado`, `homologuei`, `aprovado em develop` ou equivalentes significam somente atualizar status para `Homologado`. Elas **não autorizam** commit, PR, merge, archive, release ou qualquer ação em `main`.
-- **Regra de release/lote:** quando Alan pedir `subir lote`, `fechar lote`, `fechar release`, `criar release`, `gerar release` ou equivalente, selecione todos os cards `Homologado` incluídos no pacote, independente do responsavel. Para cards de `Codex`, confirme commits/branches incluídos, rode validação final completa, arquive as changes OpenSpec correspondentes, push, PR para `main`, merge manual, atualize `develop` e mova os cards incluídos para `Pronto`. Para cards de `Clara` ou `Alan`, revise a documentação do projeto antes de fechar, atualizando Markdown local e Drive quando aplicável.
+- **Regra de homologação direta por card (solicitação do cliente):** seguir `alan-workflow`; no cripto, homologacao significa aprovacao funcional em `develop`.
+- **Guardrail anti-release acidental:** seguir `alan-workflow`; no cripto, homologacao nao autoriza `main`, PR, merge, archive ou release.
+- **Regra de release/lote:** seguir `alan-workflow`; no cripto, selecione todos os cards `Homologado` incluídos no pacote, confirme commits/branches, rode validação final completa, arquive OpenSpec, push, PR para `main`, merge manual, atualize `develop` e mova os cards incluídos para `Pronto`.
 - **Regra documental de release da Clara/Alan:** quando Alan pedir `gerar release`, `criar release`, `fechar release`, `subir lote` ou equivalente para cards no nome da Clara ou do Alan, antes de publicar/encerrar o pacote, pegue todos os cards `Homologado` por Alan e com `Responsavel=Clara` ou `Responsavel=Alan` incluídos na release e revise se as decisões, status e entregáveis desses cards estão refletidos na documentação do projeto/produto. A documentação precisa ficar atualizada tanto nos Markdown locais quanto nos Google Docs/Drive correspondentes. Depois da release publicada/encerrada com evidência, mova esses cards de `Homologado` para `Pronto`. Cards de `Codex` seguem o fluxo técnico próprio do Codex no mesmo pacote.
 - **Regra de não regressão de status:** depois que um card estiver em `Done`, nunca mova de volta para `In Progress` durante homologação, archive, commit, PR ou merge. Se aparecer falha, ajuste necessário ou reteste, corrija e reteste mantendo o status atual. O card só avança: `Done` -> `Homologado` -> `Pronto`.
 - **Regra de confiabilidade por testes:** em qualquer etapa, se surgir erro de testes (locais ou CI), corrija, revalide e só então siga para próxima etapa de encerramento.
 - **Regra de validação OpenSpec global:** `openspec validate --all` verde é critério padrão de fechamento. Se falhar por changes antigas fora do card, valide os specs afetados pelo card como evidência parcial, mas resolva a sujeira global antes do encerramento: corrija ou arquive as changes antigas, inclusive por archive manual quando a CLI/skill não conseguir concluir.
-- **Regra de checks em execução:** teste, build ou CI iniciado precisa ser acompanhado até terminar. Status como "build está rodando" é atualização intermediária, não evidência final para `Done`, release/lote, commit, PR ou merge.
+- **Regra de checks em execução:** seguir `alan-workflow`; no cripto, isso vale para testes locais, `openspec validate`, build e CI antes de `Done`, release/lote, commit, PR ou merge.
 - **Regra de commits e testes:** commits locais na branch da change são permitidos e não exigem suíte completa a cada commit. Durante o card, rode testes proporcionais/focados; testes completos ficam para fechamento de lote/release.
-- **Regra de worktree limpo no fechamento:** antes de iniciar nova change, antes de `Done`, release/lote, commit, PR ou merge, rode `git status --short` e não deixe nenhum arquivo modificado solto sem classificação. Trabalho de outra change deve ir para branch/worktree própria. Stash é só proteção temporária, sempre nomeado com hash, arquivos, motivo e comando de recuperação.
-- **Regra de varredura da release:** quando Alan pedir `suba a release`, `subir release`, `salvar tudo`, `subir para develop/main`, `limpar branches`, `limpar worktrees` ou equivalente, trate como fechamento completo de release: primeiro faça inventário de todos os worktrees e branches (`git worktree list`, `git status -sb` em cada diretório e commits `ahead`). Classifique cada item como `integrar`, `já integrado`, `preservar` ou `descartar somente com autorização explícita`. Integre o que deve entrar, valide, envie para `develop`, publique em `main` via PR/merge manual quando permitido e só então limpe branches/worktrees. Antes de remover branch ou diretório temporário, prove que o commit/patch entrou em `main` ou registre por que deve ser preservado. Nunca apague worktree/branch com arquivo modificado, não rastreado ou commit `ahead` sem commit/merge/cherry-pick confirmado.
+- **Regra de worktree limpo no fechamento:** seguir `alan-workflow`; no cripto, trabalho de outra change deve ir para branch/worktree própria e a integração padrão acontece em `develop` antes de produção.
+- **Regra de varredura da release:** seguir o inventario/classificacao de `alan-workflow`; no cripto, integre o que deve entrar em `develop`, publique em `main` via PR/merge manual quando permitido e só então limpe branches/worktrees.
 - **Regra de guard automatizado de release:** antes de abrir/mesclar PR de release, rode `scripts/release-guard pre`; depois do merge/publicação e antes de reportar limpeza final, rode `scripts/release-guard post`. Se qualquer modo estrito falhar, pare e classifique/corrija todos os bloqueios antes de seguir. Use `scripts/release-guard audit` para diagnostico sem bloqueio durante desenvolvimento.
 - **Regra de comparação oficial:** estado publicado deve ser comparado contra `origin/develop` e `origin/main` depois de `git fetch --prune origin`. `main` local ou `develop` local atrasados servem apenas como alerta, nunca como prova final de merge ou falta de merge.
-- **Regra anti-stash órfão:** stash não é armazenamento de trabalho. Nenhuma release/lote pode terminar com stash novo ou antigo sem classificação explícita: `integrar`, `preservar em branch/card`, ou `descartar somente com autorização explícita`.
+- **Regra anti-stash órfão:** seguir `alan-workflow`; nenhuma release/lote pode terminar com stash novo ou antigo sem classificacao explicita.
 - **Banco padrão:** PostgreSQL é obrigatório em runtime, QA e scripts operacionais (`DATABASE_URL` e `WORKFLOW_DATABASE_URL` em formato PostgreSQL).
 - **Não usar SQLite** como banco de operação. Em runtime/QA/Homologação, use apenas PostgreSQL (`DATABASE_URL` e `WORKFLOW_DATABASE_URL`).
 - **Funcionalidades novas:** siga OpenSpec por padrão antes de implementar (`openspec/changes/<change>/` com proposal/spec/design/tasks quando aplicável).
 - **Regra obrigatória de criação via OpenSpec:** ao iniciar uma mudança por card, execute o fluxo ` /opsx:new ──► /opsx:ff ──► /opsx:apply ──► /opsx:verify ` antes de mover para `Done`; execute `/opsx:archive` somente no fechamento de lote/release para produção.
   - Se o projeto ainda não estiver inicializado com OpenSpec, rode `openspec init` e então comece o fluxo.
+- **OpenSpec no card antes de implementar:** seguir `alan-workflow`; neste repo, preferir Gist secreto descrito como `crypto openspec <change>` e comentario no issue/card.
 - **Observação de fluxo OpenSpec:** use os comandos nesta ordem para mudanças novas; ajuste a cadência apenas com justificativa explícita.
 - **Subagents:** use subagents sempre que houver ganho claro de paralelismo, investigação independente, validação especializada ou aceleração sem duplicar trabalho.
 - OpenSpec é a camada de especificação técnica (artifacts).
@@ -70,6 +78,8 @@ De-para principal:
 | `/opsx:verify <change>` | `$openspec-verify-change` | `openspec list --json` quando a change estiver ambígua; `openspec status --change "<change>" --json`; `openspec instructions apply --change "<change>" --json` | Verifica completude, corretude e coerência entre artifacts, specs, tasks, design, testes e implementação real. |
 | `/opsx:archive <change>` | `$openspec-archive-change` | `openspec status --change "<change>" --json`; avaliar sync de specs; mover para `openspec/changes/archive/YYYY-MM-DD-<change>/` | Arquiva somente no fechamento de lote/release após homologação, checando artifacts, tasks, delta specs e registrando warnings se algo ficar incompleto. |
 
+Antes de executar `/opsx:apply` em qualquer change vinculada a card/issue, siga `alan-workflow` e publique os artefatos OpenSpec no card. Convencao local do Gist: descricao `crypto openspec <change>` e comentario no card do Project 1.
+
 De-para complementar:
 
 | Intenção / comando | Skill Codex obrigatória | Uso correto |
@@ -89,6 +99,10 @@ Fluxo canônico para implementação por card:
 /opsx:ff <change>
   -> usar $openspec-ff-change
   -> gerar artifacts até apply-ready
+
+publicar artifacts OpenSpec no card
+  -> seguir alan-workflow; no cripto, usar Gist `crypto openspec <change>` ou links permanentes
+  -> comentar o card com change, arquivos e comandos gh gist view
 
 /opsx:apply <change>
   -> usar $openspec-apply-change
@@ -141,19 +155,23 @@ Este projeto usa branches por change para isolar trabalho, `develop` para integr
 
 1. Atualizar `develop`.
 2. Criar branch `change-<id>-<slug>` ou `card-<id>-<slug>`.
-3. Mover card para `In Progress`.
-4. Executar OpenSpec (`/opsx:new`, `/opsx:ff`, `/opsx:apply`, `/opsx:verify`) e implementar.
+3. Mover card para `Status=In Progress`.
+4. Executar OpenSpec (`/opsx:new`, `/opsx:ff`), publicar os artifacts OpenSpec no card, então executar `/opsx:apply` e `/opsx:verify` para implementar e validar.
 5. Fazer commits locais na branch quando útil. Não rodar suíte completa a cada commit.
 6. Rodar testes proporcionais/focados e validação OpenSpec da change.
 7. Integrar em `develop` quando pronto para teste integrado, preferencialmente com squash/commit único por card referenciando o card.
 8. Executar `./restart`.
-9. Mover para `Done` com comentário de evidência.
+9. Mover para `Status=Done` com comentário de evidência tecnica.
 
 ### Colunas Kanban
 
-- `Done`: implementação técnica concluída, validada proporcionalmente e integrada em `develop`.
+- O campo `Status` e a fonte principal das colunas. O campo `Fluxo`, quando existir, e substatus/legado; se houver divergencia, `Status` prevalece.
+- `Todo`: backlog ou pronto para comecar.
+- `In Progress`: Codex/Clara esta trabalhando ou validando tecnicamente.
+- `Done`: Done tecnico; implementação técnica concluída, validada proporcionalmente e integrada em `develop`, aguardando teste/aprovacao do Alan.
 - `Homologado`: Alan testou/aprovou funcionalmente em `develop`.
-- `Pronto`: conteúdo do card entrou em `main`/produção.
+- `Pronto`: conteúdo do card entrou em `main`/produção com evidencia; este e o fechamento final.
+- `Cancelado`: nao sera feito ou foi substituido.
 
 Nunca mover para `Homologado` sem aprovação explícita de Alan. Nunca mover para `Pronto` sem confirmar merge/publicação em `main`.
 
@@ -437,6 +455,6 @@ O agente principal continua responsável por consolidar decisões, evitar trabal
 
 ## Engenharia de prompt
 
-Reforço de fluxo de fechamento: `Done` conclui implementação validada em `develop`; `Homologado` conclui aprovação funcional de Alan em `develop`; `Pronto` conclui produção após merge manual em `main` (via PR `develop -> main`) com validação e evidências registradas.
+Reforço de fluxo de fechamento: `Done` conclui somente a implementação validada em `develop` (Done tecnico); `Homologado` conclui aprovação funcional de Alan em `develop`; `Pronto` conclui produção após merge manual em `main` (via PR `develop -> main`) com validação e evidências registradas.
 
 Se for necessário mudar o tom de um agente (ex: deixar o design mais exploratório ou o DEV mais cauteloso), primeiro atualiza este arquivo com o novo prompt/personalidade e registra no `openspec/changes/<change>/` do fluxo ativo. Nunca altere agentes apenas via jobs sem documentar aqui.
