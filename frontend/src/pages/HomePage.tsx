@@ -17,6 +17,8 @@ type FavoriteStrategy = {
   symbol: string
   timeframe: string
   strategy_name: string
+  is_strategy_protected?: boolean
+  strategy_display_name?: string | null
   metrics?: Record<string, unknown> | null
   created_at: string
 }
@@ -424,7 +426,7 @@ export default function HomePage() {
             ) : (
               <>
                 <div className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
-                  {bestFavorite.strategy_name || bestFavorite.name}
+                  {bestFavorite.strategy_display_name || bestFavorite.strategy_name || bestFavorite.name}
                 </div>
                 <div className="mt-1 text-[12px] text-[var(--text-tertiary)]">
                   {bestFavorite.symbol} · {bestFavorite.timeframe}

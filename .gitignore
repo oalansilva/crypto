@@ -44,6 +44,14 @@ backend_log.txt
 # .codex/  (commented to allow versioning of skills)
 .codex/antigravity-skills/
 
+# OpenClaw local agent workspace/persona state
+/.openclaw/workspace-state.json
+/HEARTBEAT.md
+/IDENTITY.md
+/SOUL.md
+/TOOLS.md
+/USER.md
+
 # Backend data (checkpoints, jobs, storage)
 backend/data/
 backend/backend/data/

@@ -387,9 +387,9 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const getFavoriteStrategyLabel = (fav: FavoriteStrategy): string => {
-        return fav.is_strategy_protected
-            ? (fav.strategy_display_name || 'Estratégia protegida')
-            : fav.strategy_name.replace(/_/g, ' ');
+        return fav.strategy_display_name || (fav.is_strategy_protected
+            ? 'Estratégia protegida'
+            : fav.strategy_name.replace(/_/g, ' '));
     };
 
     const normalizeStrategyComparison = (value: string): string => {
@@ -401,7 +401,10 @@ const FavoritesDashboard: React.FC = () => {
             .trim();
     };
 
-    const getFavoriteName = (fav: FavoriteStrategy): string => fav.name || fav.symbol || 'Estratégia';
+    const getFavoriteName = (fav: FavoriteStrategy): string => {
+        const label = getFavoriteStrategyLabel(fav).trim();
+        return label || fav.name || fav.symbol || 'Estratégia';
+    };
 
     const getFavoriteStrategyName = (fav: FavoriteStrategy): string => {
         let name = getFavoriteName(fav).trim();
@@ -424,7 +427,7 @@ const FavoritesDashboard: React.FC = () => {
         )) {
             return label;
         }
-        return readableName || label;
+        return label || readableName;
     };
 
     const getGridStrategyDetail = (fav: FavoriteStrategy): string | null => {
@@ -994,7 +997,7 @@ const FavoritesDashboard: React.FC = () => {
         <div className="app-page favorites-page favorites-workbench">
             <div className="max-w-[1920px] mx-auto page-stack">
                 <ScreenHelpPanel title="Como usar Favoritos">
-                    Escolha as estrategias que merecem acompanhamento, marque estrelas para priorizar e depois use o Monitor para acompanhar contexto e sinais.
+                    Comece por aqui: compare estrategias, abra graficos, revise trades, marque estrelas nas melhores opcoes e depois acompanhe no Monitor.
                 </ScreenHelpPanel>
                 <section className="fav-header">
                     <div className="fav-title-row">

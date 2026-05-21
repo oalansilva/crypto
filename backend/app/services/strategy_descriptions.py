@@ -1,55 +1,99 @@
-"""Public trader-facing strategy descriptions."""
+"""Public trader-facing strategy names and descriptions."""
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
+    "multi_ma_crossover": "Médias Móveis: Tendência em Virada",
+    "multi_ma_crossoverv2": "Médias Móveis: Tendência Confirmada",
+    "ema_rsi": "RSI: Retomada com Força",
+    "ema_macd_volume": "MACD + Volume: Movimento com Confirmação",
+    "bollinger_rsi_adx": "Bandas + RSI: Retorno ao Equilíbrio",
+    "volume_atr_breakout": "Volume + Volatilidade: Rompimento com Pressão",
+    "ema_rsi_fibonacci": "Fibonacci: Recuo de Retomada",
+    "short_ema200_pullback": "Médias Móveis: Repique de Baixa",
+    "bollinger_breakout": "Bandas: Expansão de Volatilidade",
+    "macd_cross": "MACD: Mudança de Ritmo",
+    "rsi_ema_scalping": "RSI: Movimento Curto",
+    "example_breakout_with_volume": "Volume: Rompimento com Pressão",
+    "example_scalping_ema_5_13": "Médias Móveis: Leitura Ágil",
+    "example_swing_rsi_divergence": "RSI: Virada de Swing",
+    "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
+    "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
+}
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     "multi_ma_crossover": (
-        "Segue a tendência usando médias móveis para indicar quando a força de compra ou venda muda."
+        "Acompanha mudanças de direção para apoiar decisões quando o mercado mostra virada de tendência. Use como sinal de contexto, sempre conferindo risco e histórico antes de agir."
     ),
     "multi_ma_crossoverv2": (
-        "Busca movimentos de tendência com médias móveis e filtro de direção antes de sinalizar entrada ou saída."
+        "Filtra movimentos direcionais e procura momentos em que a tendência parece ganhar confirmação. Ajuda a comparar oportunidades sem prometer continuidade do movimento."
     ),
     "ema_rsi": (
-        "Combina tendência e força do movimento para procurar entradas com confirmação de momentum."
+        "Observa força e fôlego do movimento para indicar quando uma retomada pode estar se formando. Serve como apoio para avaliar entrada, não como recomendação automática."
     ),
     "ema_macd_volume": (
-        "Procura movimentos de tendência confirmados por momentum e aumento de volume."
+        "Prioriza movimentos em que direção, força e participação do mercado parecem convergir. Útil para acompanhar tendências com confirmação ampla, sem garantia de resultado."
     ),
     "bollinger_rsi_adx": (
-        "Busca oportunidades de retorno ao preço médio quando o ativo estica demais dentro do contexto de tendência."
+        "Busca leituras de possível retorno ao equilíbrio depois de movimentos esticados. Ajuda a separar exagero de mercado de tendência persistente."
     ),
     "volume_atr_breakout": (
-        "Observa rompimentos com volume e volatilidade para capturar movimentos mais fortes."
+        "Acompanha rompimentos quando preço, volume e volatilidade sugerem aceleração. Deve ser validada junto ao risco, pois rompimentos podem falhar."
     ),
     "ema_rsi_fibonacci": (
-        "Procura pullbacks em tendência usando força do movimento e regiões prováveis de retomada."
+        "Observa recuos dentro de uma direção principal para identificar possíveis retomadas. Ajuda a estudar continuidade, sem expor a receita técnica da leitura."
     ),
     "short_ema200_pullback": (
-        "Busca vendas em repiques contra uma tendência principal de baixa, com gestão por stop."
+        "Acompanha repiques contra uma direção principal de baixa para apoiar decisões de venda. Use apenas como leitura de contexto e com atenção ao risco."
     ),
     "bollinger_breakout": (
-        "Observa expansão de volatilidade nas Bandas de Bollinger para identificar rompimentos."
+        "Observa momentos em que a volatilidade começa a expandir e pode abrir espaço para rompimento. Não substitui avaliação de risco e confirmação."
     ),
-    "macd_cross": ("Usa cruzamentos de MACD para acompanhar mudanças de momentum na tendência."),
+    "macd_cross": (
+        "Acompanha mudanças de momentum para indicar quando a força do movimento pode estar mudando de lado."
+    ),
     "rsi_ema_scalping": (
-        "Combina RSI e médias curtas para leituras rápidas em movimentos de curto prazo."
+        "Foca leituras rápidas de curto prazo para apoiar decisões em movimentos mais ágeis. Exige acompanhamento próximo e controle de risco."
     ),
     "example: breakout with volume": (
-        "Procura rompimentos de preço que ganham confirmação pelo aumento de volume."
+        "Procura rompimentos que ganham participação do mercado. Deve ser usada como apoio para comparar cenários, não como promessa de acerto."
     ),
     "example: scalping ema 5/13": (
-        "Usa médias rápidas para capturar movimentos curtos com resposta ágil."
+        "Apoia leituras curtas e rápidas para quem acompanha o movimento de perto. Não revela a configuração técnica usada."
     ),
     "example: swing rsi divergence": (
-        "Procura divergências de RSI para antecipar possíveis viradas em operações de swing."
+        "Observa sinais de enfraquecimento do movimento para estudar possíveis reversões em operações de swing."
+    ),
+    "quant_btc_1d_roc_ema_momentum_guard_long_v3": (
+        "Acompanha a força direcional do BTC com filtros de proteção para evitar entradas em contexto fraco. Use como apoio para avaliar continuidade, sempre conferindo risco e histórico."
+    ),
+    "quant_btc_roc_ema_momentum_guard_long_v3": (
+        "Acompanha a força direcional do BTC com filtros de proteção para evitar entradas em contexto fraco. Use como apoio para avaliar continuidade, sempre conferindo risco e histórico."
     ),
 }
 
+SENSITIVE_NAME_PATTERN = re.compile(
+    r"(\d|ema|sma|rsi|macd|adx|atr|bollinger|fibonacci|entry|exit|threshold|logic)",
+    re.IGNORECASE,
+)
+
 
 def normalize_strategy_key(name: Any) -> str:
-    return str(name or "").strip().lower().replace("-", "_")
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(name or "").strip().lower())
+    return normalized.strip("_")
+
+
+def public_strategy_display_name(name: Any) -> str:
+    """Return a safe product name for visible strategy identity."""
+
+    key = normalize_strategy_key(name)
+    if key in PUBLIC_STRATEGY_DISPLAY_NAMES:
+        return PUBLIC_STRATEGY_DISPLAY_NAMES[key]
+
+    return "Estratégia Cripto Farol"
 
 
 def public_strategy_description(name: Any, raw_description: Any = None) -> str:
@@ -59,14 +103,7 @@ def public_strategy_description(name: Any, raw_description: Any = None) -> str:
     if key in PUBLIC_STRATEGY_DESCRIPTIONS:
         return PUBLIC_STRATEGY_DESCRIPTIONS[key]
 
-    raw = str(raw_description or "").strip()
-    if not raw:
-        return "Estratégia configurada para avaliar entradas e saídas com regras salvas no sistema."
-
-    first_sentence = raw.split(".")[0].strip()
-    if not first_sentence:
-        return "Estratégia configurada para avaliar entradas e saídas com regras salvas no sistema."
-
-    if len(first_sentence) > 180:
-        first_sentence = first_sentence[:177].rstrip() + "..."
-    return first_sentence
+    return (
+        "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas "
+        "no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco."
+    )

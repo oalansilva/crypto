@@ -7,18 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.middleware.authMiddleware import is_admin_email
 from app.models import User
+from app.services.strategy_descriptions import public_strategy_display_name
 
 PROTECTED_STRATEGY_LABEL = "Estratégia protegida"
 PROTECTED_STRATEGY_CODE = "estrategia_protegida"
-PUBLIC_STRATEGY_ACRONYMS = {
-    "atr": "ATR",
-    "ema": "EMA",
-    "macd": "MACD",
-    "ma": "MA",
-    "rsi": "RSI",
-    "sma": "SMA",
-    "vwap": "VWAP",
-}
 
 
 def can_view_strategy_secrets(db: Session, user_id: str | None) -> bool:
@@ -51,16 +43,7 @@ def _public_strategy_display_name(payload: dict[str, Any]) -> str:
     if not raw or raw == PROTECTED_STRATEGY_LABEL:
         return PROTECTED_STRATEGY_LABEL
 
-    parts = raw.replace("-", "_").split("_")
-    normalized = []
-    for part in parts:
-        token = part.strip()
-        if not token:
-            continue
-        lower = token.lower()
-        normalized.append(PUBLIC_STRATEGY_ACRONYMS.get(lower, token[:1].upper() + token[1:]))
-
-    return " ".join(normalized) or PROTECTED_STRATEGY_LABEL
+    return public_strategy_display_name(raw)
 
 
 def redact_favorite_strategy_payload(
@@ -68,12 +51,12 @@ def redact_favorite_strategy_payload(
     *,
     include_secrets: bool,
 ) -> dict[str, Any]:
+    public_display_name = _public_strategy_display_name(payload)
     if include_secrets:
         payload["is_strategy_protected"] = False
-        payload.setdefault("strategy_display_name", _display_name(payload))
+        payload["strategy_display_name"] = public_display_name
         return payload
 
-    public_display_name = _public_strategy_display_name(payload)
     payload["strategy_name"] = PROTECTED_STRATEGY_LABEL
     payload["parameters"] = {}
     payload["is_strategy_protected"] = True
@@ -118,12 +101,12 @@ def redact_opportunity_payload(
     *,
     include_secrets: bool,
 ) -> dict[str, Any]:
+    public_display_name = _public_strategy_display_name(payload)
     if include_secrets:
         payload["is_strategy_protected"] = False
-        payload.setdefault("strategy_display_name", _display_name(payload))
+        payload["strategy_display_name"] = public_display_name
         return payload
 
-    public_display_name = _public_strategy_display_name(payload)
     payload["template_name"] = PROTECTED_STRATEGY_LABEL
     if payload.get("is_curated_fallback"):
         payload["name"] = PROTECTED_STRATEGY_LABEL

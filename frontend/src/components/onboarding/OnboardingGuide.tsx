@@ -1,26 +1,26 @@
 import { Link } from 'react-router-dom'
-import { Activity, BarChart3, Bookmark, HelpCircle, ShieldCheck, Wallet } from 'lucide-react'
+import { Activity, Bookmark, HelpCircle, ShieldCheck, Wallet } from 'lucide-react'
 
 const journeySteps = [
   {
-    title: 'Carteira',
-    description: 'Confirme o contexto dos ativos que voce acompanha. Isso ajuda a leitura do Monitor.',
-    icon: Wallet,
+    title: 'Favoritos',
+    description: 'Comece por aqui: compare estrategias, veja graficos, revise trades e separe as melhores opcoes.',
+    icon: Bookmark,
   },
   {
-    title: 'Favoritos',
-    description: 'Escolha as estrategias que merecem acompanhamento e use estrelas para priorizar.',
+    title: 'Selecionar estrategias',
+    description: 'Use as estrelas para priorizar o que merece acompanhamento e levar apenas o essencial ao Monitor.',
     icon: Bookmark,
   },
   {
     title: 'Monitor',
-    description: 'Veja sinais, contexto e distancia para a proxima decisao sem depender de suporte manual.',
+    description: 'Acompanhe as estrategias selecionadas com status, contexto e distancia para a proxima decisao.',
     icon: Activity,
   },
   {
-    title: 'Grafico e Trades',
-    description: 'Abra o grafico para leitura visual ou Ver Trades para entender o historico da estrategia.',
-    icon: BarChart3,
+    title: 'Carteira Binance opcional',
+    description: 'Configure a carteira depois, se quiser complementar a leitura. Ela nao e requisito para comecar.',
+    icon: Wallet,
   },
 ]
 
@@ -54,8 +54,8 @@ export function OnboardingGuide({ compact = false, onDismiss }: OnboardingGuideP
       </div>
 
       <p className="onboarding-guide-copy">
-        O Cripto Farol organiza informacao para apoiar sua decisao. Ele nao promete resultado, nao substitui sua analise
-        e nao incentiva alavancagem.
+        O Cripto Farol comeca pelos Favoritos: avalie graficos e trades, selecione as melhores estrategias e acompanhe
+        no Monitor. A Binance e opcional e entra depois, como complemento.
       </p>
 
       <div className="onboarding-steps">
@@ -75,8 +75,8 @@ export function OnboardingGuide({ compact = false, onDismiss }: OnboardingGuideP
         <Link to="/help" className="onboarding-primary-action">
           Ver guia completo
         </Link>
-        <Link to="/monitor" className="onboarding-secondary-action">
-          Ir para Monitor
+        <Link to="/favorites" className="onboarding-secondary-action">
+          Ir para Favoritos
         </Link>
       </div>
 

@@ -117,7 +117,7 @@ def test_favorites_list_only_returns_current_user_rows(tmp_path: Path):
     assert [item.name for item in listed_b] == ["B favorite"]
     assert [item.name for item in listed_a] == ["A favorite"]
     assert listed_a[0].strategy_name == "Estratégia protegida"
-    assert listed_a[0].strategy_display_name == "Multi MA Crossover"
+    assert listed_a[0].strategy_display_name == "Médias Móveis: Tendência em Virada"
     assert listed_a[0].parameters == {}
     assert listed_a[0].is_strategy_protected is True
     assert "tendência" in (listed_a[0].strategy_description or "").lower()
@@ -312,9 +312,9 @@ def test_common_user_lists_admin_catalog_and_saves_own_star_tier(tmp_path: Path,
     assert [item.id for item in common_list] == [admin_favorite.id, admin_second_favorite.id]
     assert common_list[0].tier is None
     assert common_list[0].strategy_name == "Estratégia protegida"
-    assert common_list[0].strategy_display_name == "Multi MA Crossover"
+    assert common_list[0].strategy_display_name == "Médias Móveis: Tendência em Virada"
     assert common_list[1].strategy_name == "Estratégia protegida"
-    assert common_list[1].strategy_display_name == "EMA RSI"
+    assert common_list[1].strategy_display_name == "RSI: Retomada com Força"
     assert common_list[0].parameters == {}
     assert common_list[1].parameters == {}
     assert updated.tier == 1
