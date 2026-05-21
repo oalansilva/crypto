@@ -224,15 +224,6 @@ function hasEquivalentMarker(markers: StrategyChartMarker[], marker: StrategyCha
     ));
 }
 
-function markerTextCovers(existing: StrategyChartMarker, marker: StrategyChartMarker): boolean {
-    const existingText = existing.text.toUpperCase();
-    const markerText = marker.text.toUpperCase();
-    return (
-        (markerText.includes('COMPRA') && existingText.includes('COMPRA'))
-        || (markerText.includes('VENDA') && existingText.includes('VENDA'))
-    );
-}
-
 export const ChartModal: React.FC<ChartModalProps> = ({
     symbol,
     opportunity,
@@ -517,10 +508,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 ...baseMarkers,
                 ...fallbackMarker.filter((marker) => (
                     !hasEquivalentMarker(baseMarkers, marker)
-                    && !baseMarkers.some((existing) => (
-                        sameDisplayedCandle(existing.time, marker.time, timeframe)
-                        && markerTextCovers(existing, marker)
-                    ))
+                    && !baseMarkers.some((existing) => sameDisplayedCandle(existing.time, marker.time, timeframe))
                 )),
             ]
             : fallbackMarker;
