@@ -29,4 +29,4 @@
 - [x] 5.2 Keep Monitor payload, list grouping and chart fallback aligned so ADA/USDT-like raw `HOLD` plus latest saved exit renders as `Venda`.
 - [x] 5.3 Prevent canonical start/restart from serving stale `frontend/dist` when an old preview endpoint is still alive.
 - [x] 5.4 Add focused regression coverage for backend favorite-trade exit overriding raw holding state.
-- [ ] 5.5 Re-run OpenSpec validation, focused tests, build/restart and live Monitor payload/browser validation.
+- [x] 5.5 Re-run OpenSpec validation, focused tests, build/restart and live Monitor payload/browser validation.
