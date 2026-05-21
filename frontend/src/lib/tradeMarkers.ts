@@ -68,44 +68,55 @@ function markerProfitText(marker: StrategyChartMarker): string {
     return marker.text.match(/\([+-]?\d+(?:\.\d+)?%\)/)?.[0] || ''
 }
 
+function markerForAction(group: StrategyChartMarker[], action: 'COMPRA' | 'VENDA'): StrategyChartMarker {
+    const selected = group.find((marker) => markerAction(marker) === action) ?? group[0]
+    return {
+        ...selected,
+        text: `${action}${markerProfitText(selected) ? ` ${markerProfitText(selected)}` : ''}`,
+    }
+}
+
 export function collapseSameCandleOppositeMarkers(
     markers: StrategyChartMarker[],
     timeframe?: string | null,
 ): StrategyChartMarker[] {
-    const groups = new Map<string, StrategyChartMarker[]>()
-    const passthrough: StrategyChartMarker[] = []
+    const groups = new Map<string, { marker: StrategyChartMarker; index: number }[]>()
+    const passthrough: { marker: StrategyChartMarker; index: number }[] = []
 
-    markers.forEach((marker) => {
+    markers.forEach((marker, index) => {
         const key = displayedCandleKey(marker.time, timeframe)
         if (!key) {
-            passthrough.push(marker)
+            passthrough.push({ marker, index })
             return
         }
-        groups.set(key, [...(groups.get(key) || []), marker])
+        groups.set(key, [...(groups.get(key) || []), { marker, index }])
     })
 
-    return [
-        ...passthrough,
-        ...Array.from(groups.values()).flatMap((group) => {
+    let lastAction: 'COMPRA' | 'VENDA' | null = null
+
+    return [...passthrough.map((entry) => [entry]), ...Array.from(groups.values())]
+        .sort((left, right) => left[0].index - right[0].index)
+        .flatMap((entries) => {
+            const group = entries.map((entry) => entry.marker)
             const actions = group
                 .map(markerAction)
                 .filter((action): action is 'COMPRA' | 'VENDA' => action !== null)
             const uniqueActions = actions.filter((action, index) => actions.indexOf(action) === index)
 
-            if (uniqueActions.length < 2) return group
-
-            const first = group[0]
-            const profitText = group.map(markerProfitText).find(Boolean) || ''
-            const combinedMarker: StrategyChartMarker = {
-                time: first.time,
-                position: 'aboveBar',
-                color: '#fcd535',
-                shape: 'circle',
-                text: `${uniqueActions.join('/')}${profitText ? ` ${profitText}` : ''}`,
+            if (uniqueActions.length < 2) {
+                if (uniqueActions[0]) lastAction = uniqueActions[0]
+                return group
             }
-            return [combinedMarker]
-        }),
-    ]
+
+            const targetAction = lastAction === 'COMPRA'
+                ? 'VENDA'
+                : lastAction === 'VENDA'
+                    ? 'COMPRA'
+                    : actions[actions.length - 1]
+
+            lastAction = targetAction
+            return [markerForAction(group, targetAction)]
+        })
 }
 
 export function buildTradeMarkers(
@@ -132,16 +143,6 @@ export function buildTradeMarkers(
 
         if (!exitTime) {
             return [entryMarker]
-        }
-
-        if (sameDisplayedCandle(entryTime, exitTime, timeframe)) {
-            return [{
-                time: entryTime,
-                position: 'aboveBar',
-                color: '#fcd535',
-                shape: 'circle',
-                text: `${entryLabel}/${exitLabel}${formatProfit(trade.profit)}`,
-            }]
         }
 
         return [

@@ -920,7 +920,7 @@ test('monitor uses favorite trade markers without duplicating the current sell m
   await expect(dialog.locator('header p').first()).toContainText('4 velas')
 })
 
-test('monitor collapses same-day Compra and Venda favorite trade into one marker', async ({ page }) => {
+test('monitor resolves same-day Compra and Venda trade to the opposite signal', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -1050,11 +1050,11 @@ test('monitor collapses same-day Compra and Venda favorite trade into one marker
 
   const surface = page.getByTestId('chart-modal-surface')
   await expect(surface).toHaveAttribute('data-marker-count', '1')
-  await expect(surface).toHaveAttribute('data-marker-labels', /COMPRA\/VENDA/)
-  await expect(surface).not.toHaveAttribute('data-marker-labels', /^COMPRA\|VENDA$/)
+  await expect(surface).toHaveAttribute('data-marker-labels', /^VENDA/)
+  await expect(surface).not.toHaveAttribute('data-marker-labels', /COMPRA/)
 })
 
-test('monitor collapses exit and next entry from different trades on the same day', async ({ page }) => {
+test('monitor resolves exit and next entry on the same day to the opposite of the previous signal', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
   await page.route('**/*', (route: any) => {
@@ -1190,7 +1190,7 @@ test('monitor collapses exit and next entry from different trades on the same da
 
   const surface = page.getByTestId('chart-modal-surface')
   await expect(surface).toHaveAttribute('data-marker-count', '2')
-  await expect(surface).toHaveAttribute('data-marker-labels', /COMPRA\|VENDA\/COMPRA/)
+  await expect(surface).toHaveAttribute('data-marker-labels', /^COMPRA\|VENDA/)
   await expect(surface).not.toHaveAttribute('data-marker-labels', /COMPRA\|VENDA\|COMPRA/)
 })
 

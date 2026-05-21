@@ -19,4 +19,10 @@
 - [x] 4.2 Prevent the Monitor current-signal fallback from re-adding a Compra/Venda marker already covered by a same-candle combined marker.
 - [x] 4.3 Re-run focused Playwright/build/OpenSpec validation and reintegrate in develop.
 
+## 5. Alternating Signal Rule
+
+- [x] 5.1 Resolve same-candle conflicts to the opposite action of the last emitted signal instead of a combined label.
+- [x] 5.2 Update focused Monitor tests and OpenSpec specs for the alternating signal rule.
+- [x] 5.3 Re-run validation, integrate in develop, restart, and update card evidence.
+
 Note: use project skills when applicable; OpenSpec skills used for new, fast-forward, apply, and verify phases.
