@@ -23,6 +23,7 @@ from app.services.canonical_candle_service import (
     canonical_empty_payload,
     direct_binance_candle_fetch_allowed,
 )
+from app.services.runtime_status import build_runtime_status_payload
 
 router = APIRouter(prefix="/api")
 
@@ -54,6 +55,19 @@ _PERSISTED_CANDLES_MAX_LAG_SECONDS = {
 async def health_check():
     """Health check endpoint"""
     return {"status": "ok", "service": "crypto-backtester-api"}
+
+
+@router.get("/runtime/status")
+async def get_runtime_status():
+    """Return safe runtime topology evidence without secrets."""
+    try:
+        metrics = _OHLCV_REPO.get_metrics()
+    except Exception:
+        metrics = {"error": "unavailable"}
+    return build_runtime_status_payload(
+        market_ohlcv_enabled=bool(getattr(_OHLCV_REPO, "enabled", False)),
+        market_ohlcv_metrics=metrics,
+    )
 
 
 @router.get("/presets", response_model=List[PresetResponse])

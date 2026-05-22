@@ -185,6 +185,9 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
 
     signal_stub = _SignalMonitorStub()
     scheduler_stub = _BackfillSchedulerStub()
+    monkeypatch.setenv("MARKET_OHLCV_INGESTION_ENABLED", "1")
+    monkeypatch.setenv("BINANCE_REALTIME_ENABLED", "1")
+    monkeypatch.setenv("BACKFILL_SCHEDULER_ENABLED", "1")
 
     class _WorkflowSession:
         def query(self, model):
@@ -257,6 +260,9 @@ async def test_main_lifespan_starts_and_stops_binance_connector(monkeypatch):
 async def test_start_noncritical_services_logs_timeout_and_failures(monkeypatch):
     errors: list[str] = []
     exceptions: list[str] = []
+    monkeypatch.setenv("MARKET_OHLCV_INGESTION_ENABLED", "1")
+    monkeypatch.setenv("BINANCE_REALTIME_ENABLED", "1")
+    monkeypatch.setenv("BACKFILL_SCHEDULER_ENABLED", "1")
 
     def failing_ohlcv():
         raise RuntimeError("ohlcv")

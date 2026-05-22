@@ -43,6 +43,7 @@ Aqui deve ficar:
 - Pacote inicial de conteudo do card `#151` recuperado e versionado em `docs/social/card-151-content-package.md`, com 2 textos de LinkedIn, 2 pecas de Instagram, 1 texto para Telegram/grupos e 1 abordagem WhatsApp/DM. Publicacao externa continua dependendo de aprovacao explicita do Alan.
 - Lista inicial de contatos do beta: card `#197` segue em execucao com Alan, com canal WhatsApp definido para os nomes iniciais. Nenhum convite externo foi enviado automaticamente.
 - Redis runtime: correcao aplicada localmente e card `#170` em `Pronto / Validate`.
+- Arquitetura runtime/candles: modelo operacional documentado em `docs/runtime-architecture.md`; boot padrao leve, candle writer dedicado opt-in e endpoint `/api/runtime/status`.
 - Nome, marca e dominio: decidido como **Cripto Farol** / `criptofarol.com.br`; registro do dominio em andamento com Alan no `#154`.
 
 ## Gates Atuais
@@ -149,6 +150,7 @@ Estes cards ainda nao sao apenas planejamento:
 - Release tecnica/documental 2026-05-18: [release-2026-05-18.md](/root/.openclaw/workspace/crypto/docs/release-2026-05-18.md)
 - Pacote inicial de conteudo do card #151: [card-151-content-package.md](/root/.openclaw/workspace/crypto/docs/social/card-151-content-package.md) / Drive `https://docs.google.com/document/d/1klZyP4IezZTOIq0xPWAz0k7o4gSjb8X0IQ_Vi_vcdVs/edit?usp=drivesdk`
 - Lista inicial de contatos para convite do beta: [beta-invite-contacts.md](/root/.openclaw/workspace/crypto/docs/beta-invite-contacts.md)
+- Arquitetura runtime/candles: [runtime-architecture.md](/root/.openclaw/workspace/crypto/docs/runtime-architecture.md)
 - Modelo operacional do backlog: [backlog-operating-model.md](/root/.openclaw/workspace/crypto/docs/backlog-operating-model.md)
 - Log de decisoes: [decision-log.md](/root/.openclaw/workspace/crypto/docs/decision-log.md)
 - Sistema de marca: [brand-system.md](/root/.openclaw/workspace/crypto/docs/brand-system.md)

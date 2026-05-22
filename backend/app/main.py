@@ -56,6 +56,11 @@ from app.services.ohlcv_storage import (
     stop_ohlcv_ingestion,
 )
 from app.services.ohlcv_backfill_service import get_backfill_service
+from app.services.runtime_status import (
+    should_start_backfill_scheduler,
+    should_start_binance_realtime_connector,
+    should_start_ohlcv_ingestion,
+)
 
 # Configure logging to file
 log_file = Path(__file__).parent.parent / "full_execution_log.txt"
@@ -98,22 +103,31 @@ def seed_combo_templates_if_empty():
 
 
 async def _start_noncritical_services() -> None:
-    try:
-        await asyncio.to_thread(start_ohlcv_ingestion)
-    except Exception:
-        logger.exception("Failed to start OHLCV ingestion service")
+    if should_start_ohlcv_ingestion():
+        try:
+            await asyncio.to_thread(start_ohlcv_ingestion)
+        except Exception:
+            logger.exception("Failed to start OHLCV ingestion service")
+    else:
+        logger.info("OHLCV ingestion service disabled by runtime flags")
 
-    try:
-        await asyncio.wait_for(start_binance_realtime_connector(), timeout=5.0)
-    except asyncio.TimeoutError:
-        logger.error("Timed out while starting Binance realtime connector")
-    except Exception:
-        logger.exception("Failed to start Binance realtime connector")
+    if should_start_binance_realtime_connector():
+        try:
+            await asyncio.wait_for(start_binance_realtime_connector(), timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.error("Timed out while starting Binance realtime connector")
+        except Exception:
+            logger.exception("Failed to start Binance realtime connector")
+    else:
+        logger.info("Binance realtime connector disabled by runtime flags")
 
-    try:
-        await asyncio.to_thread(get_backfill_service().start_scheduler)
-    except Exception:
-        logger.exception("Failed to start OHLCV backfill scheduler")
+    if should_start_backfill_scheduler():
+        try:
+            await asyncio.to_thread(get_backfill_service().start_scheduler)
+        except Exception:
+            logger.exception("Failed to start OHLCV backfill scheduler")
+    else:
+        logger.info("OHLCV backfill scheduler disabled by runtime flags")
 
 
 @asynccontextmanager

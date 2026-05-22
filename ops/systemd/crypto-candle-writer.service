@@ -1,0 +1,12 @@
+[Unit]
+Description=Crypto canonical candle writer
+After=network-online.target crypto-stack.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__ROOT_DIR__/backend
+ExecStart=/bin/bash -lc 'set -euo pipefail; for env_file in "__ROOT_DIR__/.env" "__ROOT_DIR__/backend/.env"; do if [ -f "$env_file" ]; then set -a; source "$env_file"; set +a; fi; done; export CRYPTO_CANDLES_CANONICAL_MODE=1 CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK=0 CRYPTO_CANDLES_WRITER_ENABLED=1 MARKET_OHLCV_TIMEFRAMES="${MARKET_OHLCV_TIMEFRAMES:-15m,1d}"; exec "__ROOT_DIR__/backend/.venv/bin/python" "__ROOT_DIR__/backend/scripts/run_canonical_candle_writer_once.py"'
+StandardOutput=append:/tmp/crypto-candle-writer.log
+StandardError=append:/tmp/crypto-candle-writer.log
+TimeoutStartSec=3600

@@ -61,7 +61,9 @@ def _ohlcv_frame(limit: int = 2, include_volume: bool = True) -> pd.DataFrame:
     )
 
 
-def test_api_health_presets_metadata_and_indicator_schema(monkeypatch):
+def test_api_health_presets_metadata_and_indicator_schema(monkeypatch, tmp_path):
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_LOCK_FILE", str(tmp_path / "writer.lock"))
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(tmp_path / "writer-state.json"))
     monkeypatch.setattr(
         api,
         "get_presets",
@@ -98,6 +100,13 @@ def test_api_health_presets_metadata_and_indicator_schema(monkeypatch):
     assert health.status_code == 200
     assert health.json()["status"] == "ok"
 
+    runtime_status = client.get("/api/runtime/status")
+    assert runtime_status.status_code == 200
+    runtime_payload = runtime_status.json()
+    assert runtime_payload["service"] == "crypto-runtime"
+    assert runtime_payload["runtime"]["canonical_candles_mode"] is True
+    assert "DATABASE_URL" not in str(runtime_payload)
+
     presets = client.get("/api/presets")
     assert presets.status_code == 200
     payload = presets.json()
@@ -126,6 +135,7 @@ def test_api_us_nasdaq100_symbols_disabled_for_crypto_only_mvp():
 
 
 def test_api_market_candles_crypto_and_stock_paths(monkeypatch):
+    monkeypatch.setenv("CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK", "1")
     crypto_provider = _Provider(_ohlcv_frame())
 
     def provider_factory(source):
@@ -167,6 +177,7 @@ def test_api_market_candles_crypto_and_stock_paths(monkeypatch):
 
 
 def test_api_market_candles_without_timestamp_column_raises_via_api(monkeypatch):
+    monkeypatch.setenv("CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK", "1")
     provider = _Provider(_ohlcv_frame().drop(columns=["timestamp_utc"]))
     monkeypatch.setattr(api, "get_market_data_provider", lambda *_: provider)
 

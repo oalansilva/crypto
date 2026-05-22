@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Crypto canonical candle writer periodically
+
+[Timer]
+OnBootSec=10min
+OnUnitInactiveSec=15min
+Persistent=true
+Unit=crypto-candle-writer.service
+
+[Install]
+WantedBy=timers.target
