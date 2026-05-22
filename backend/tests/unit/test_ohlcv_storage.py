@@ -247,14 +247,13 @@ def test_ohlcv_ingestion_service_resolve_symbols_and_timeframes(monkeypatch):
 
     monkeypatch.delenv("MARKET_OHLCV_SYMBOLS", raising=False)
     monkeypatch.delenv("MARKET_OHLCV_TIMEFRAMES", raising=False)
+    monkeypatch.setattr(
+        ohlcv_storage,
+        "resolve_binance_ohlcv_symbols",
+        lambda: ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+    )
     service = _new_service(monkeypatch)
-    assert service._symbols == [
-        "BTC/USDT",
-        "ETH/USDT",
-        "SOL/USDT",
-        "BNB/USDT",
-        "XRP/USDT",
-    ]
+    assert service._symbols == ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
     assert service._timeframes == ["15m", "1d"]
 
 

@@ -25,6 +25,13 @@ The market candles API SHALL use `market_ohlcv` as the canonical read source for
 
 The canonical candle writer SHALL fetch incrementally after the first population by starting from the last saved candle, with a small idempotent overlap, and persisting into `market_ohlcv`.
 
+#### Scenario: default writer symbol scope
+
+- **GIVEN** no explicit candle writer symbol env is set
+- **WHEN** the canonical writer resolves its symbol scope
+- **THEN** it uses all Binance spot `*/USDT` symbols available from the symbol cache/API
+- **AND** it excludes symbols blocked by the existing excluded-symbol rules.
+
 #### Scenario: default writer timeframe scope
 
 - **GIVEN** no explicit candle writer timeframe env is set

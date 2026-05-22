@@ -14,6 +14,7 @@ from requests.exceptions import RequestException
 from app.config import get_settings
 from app.services.ohlcv_storage import SUPPORTED_OHLCV_TIMEFRAMES, MarketOhlcvRepository
 from app.services.canonical_candle_service import candle_writer_enabled
+from app.services.binance_symbol_universe import resolve_binance_ohlcv_symbols
 from app.services.market_data_providers import (
     CCXT_SOURCE,
     STOOQ_SOURCE,
@@ -213,19 +214,7 @@ class OhlcvBackfillService:
 
     @staticmethod
     def _default_symbols() -> list[str]:
-        raw_symbols = os.getenv("MARKET_OHLCV_SYMBOLS", "")
-        if not raw_symbols.strip():
-            return ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT"]
-
-        normalized: list[str] = []
-        seen: set[str] = set()
-        for raw in raw_symbols.split(","):
-            symbol = _normalize_symbol(raw)
-            if not symbol or symbol in seen:
-                continue
-            seen.add(symbol)
-            normalized.append(symbol)
-        return normalized or ["BTC/USDT"]
+        return resolve_binance_ohlcv_symbols()
 
     @staticmethod
     def _default_timeframes() -> list[str]:

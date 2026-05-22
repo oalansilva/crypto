@@ -6,6 +6,7 @@ Crypto runtime currently has multiple Binance candle fetch paths. Backend startu
 
 - Introduce a canonical Binance candle boundary backed by `market_ohlcv`.
 - Scope the default canonical candle writer/backfill to `15m` and `1d` candles for the current operating need.
+- Resolve all Binance spot `*/USDT` symbols for the default writer/backfill universe, instead of only the previous five fixed symbols.
 - Make the canonical writer incremental: first population can fetch a larger lookback, then subsequent runs fetch from the last saved candle to the current moment and accumulate.
 - Add a one-shot canonical writer command so operators can populate/catch up `15m` and `1d` without enabling the old worker stack.
 - Make normal backend startup safe by disabling OHLCV ingestion/backfill unless explicitly enabled.
@@ -23,6 +24,7 @@ Crypto runtime currently has multiple Binance candle fetch paths. Backend startu
 ## Impact
 
 - `backend/app/services/canonical_candle_service.py`
+- `backend/app/services/binance_symbol_universe.py`
 - `backend/app/main.py`
 - `backend/app/workers/runtime_worker.py`
 - `backend/app/api.py`

@@ -20,6 +20,7 @@ from app.services.market_data_providers import (
     resolve_data_source_for_symbol,
 )
 from app.services.canonical_candle_service import candle_writer_enabled
+from app.services.binance_symbol_universe import resolve_binance_ohlcv_symbols
 
 logger = logging.getLogger(__name__)
 
@@ -661,20 +662,7 @@ class OhlcvIngestionService:
         self._symbols = self._resolve_symbols()
 
     def _resolve_symbols(self) -> list[str]:
-        raw_symbols = os.getenv("MARKET_OHLCV_SYMBOLS", "")
-        if raw_symbols:
-            symbols = [token.strip() for token in raw_symbols.split(",") if token.strip()]
-            symbols = [token.upper() for token in symbols]
-            if symbols:
-                return symbols
-
-        return [
-            "BTC/USDT",
-            "ETH/USDT",
-            "SOL/USDT",
-            "BNB/USDT",
-            "XRP/USDT",
-        ]
+        return resolve_binance_ohlcv_symbols()
 
     def _resolve_timeframes(self) -> list[str]:
         raw = os.getenv("MARKET_OHLCV_TIMEFRAMES", ",".join(DEFAULT_INGESTION_TIMEFRAMES))
