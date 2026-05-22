@@ -12,6 +12,7 @@ The crypto startup path SHALL NOT start Binance candle fetch loops, backfill sch
 - **AND** OHLCV ingestion and backfill scheduling remain disabled
 - **AND** runtime worker routines remain disabled
 - **AND** the Binance realtime worker and Celery worker are not started.
+- **AND** health checks do not require disabled workers to exist.
 
 #### Scenario: worker enablement flag is empty
 

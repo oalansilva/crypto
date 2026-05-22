@@ -448,14 +448,18 @@ echo "Running crypto health checks..."
 wait_for_http_ok "$HEALTH_URL" 30 1
 wait_for_http_ok "$FRONTEND_URL" 30 1
 wait_for_tcp_open "$REDIS_HOST" "$REDIS_PORT" 10 1
-ensure_process_running \
-  "$RUNTIME_WORKER_PID_FILE" \
-  "python -m app.workers.runtime_worker" \
-  "crypto runtime worker"
-ensure_process_running \
-  "$CELERY_WORKER_PID_FILE" \
-  "celery .*app.celery_app:celery_app worker" \
-  "crypto celery worker"
+if flag_enabled "$CRYPTO_RUNTIME_WORKER_ENABLED" && { flag_enabled "$RUN_SIGNAL_MONITOR" || flag_enabled "$RUN_SIGNAL_FEED_SNAPSHOT_WORKER" || flag_enabled "$RUN_FAVORITE_BACKTEST_REFRESH"; }; then
+  ensure_process_running \
+    "$RUNTIME_WORKER_PID_FILE" \
+    "python -m app.workers.runtime_worker" \
+    "crypto runtime worker"
+fi
+if flag_enabled "$CRYPTO_CELERY_WORKER_ENABLED"; then
+  ensure_process_running \
+    "$CELERY_WORKER_PID_FILE" \
+    "celery .*app.celery_app:celery_app worker" \
+    "crypto celery worker"
+fi
 if flag_enabled "$BINANCE_REALTIME_WORKER_ENABLED"; then
   ensure_process_running \
     "$BINANCE_WORKER_PID_FILE" \
