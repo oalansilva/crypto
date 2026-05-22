@@ -65,6 +65,7 @@ export BACKFILL_SCHEDULER_RUN_ON_START="${BACKFILL_SCHEDULER_RUN_ON_START:-0}"
 export RUN_SIGNAL_MONITOR="${RUN_SIGNAL_MONITOR:-0}"
 export RUN_SIGNAL_FEED_SNAPSHOT_WORKER="${RUN_SIGNAL_FEED_SNAPSHOT_WORKER:-0}"
 export RUN_FAVORITE_BACKTEST_REFRESH="${RUN_FAVORITE_BACKTEST_REFRESH:-0}"
+export CRYPTO_RUNTIME_WORKER_ENABLED="${CRYPTO_RUNTIME_WORKER_ENABLED:-0}"
 export CRYPTO_CELERY_WORKER_ENABLED="${CRYPTO_CELERY_WORKER_ENABLED:-0}"
 
 require_env_var() {
@@ -337,7 +338,7 @@ if ! wait_for_http_ok "$HEALTH_URL" 2 1; then
   store_runtime_pid "$BACKEND_PID_FILE" "uvicorn app.main:app.*--port ${BACKEND_PORT}" || true
 fi
 
-if flag_enabled "$RUN_SIGNAL_MONITOR" || flag_enabled "$RUN_SIGNAL_FEED_SNAPSHOT_WORKER" || flag_enabled "$RUN_FAVORITE_BACKTEST_REFRESH"; then
+if flag_enabled "$CRYPTO_RUNTIME_WORKER_ENABLED" && { flag_enabled "$RUN_SIGNAL_MONITOR" || flag_enabled "$RUN_SIGNAL_FEED_SNAPSHOT_WORKER" || flag_enabled "$RUN_FAVORITE_BACKTEST_REFRESH"; }; then
 if ! pgrep -f "python -m app.workers.runtime_worker" >/dev/null 2>&1; then
   if user_systemd_available; then
     start_transient_unit \

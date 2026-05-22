@@ -13,8 +13,15 @@ The crypto startup path SHALL NOT start Binance candle fetch loops, backfill sch
 - **AND** runtime worker routines remain disabled
 - **AND** the Binance realtime worker and Celery worker are not started.
 
+#### Scenario: legacy runtime routine flags remain in env
+
+- **GIVEN** `CRYPTO_RUNTIME_WORKER_ENABLED` is not enabled
+- **AND** one or more legacy `RUN_*` runtime routine flags are enabled
+- **WHEN** `start.sh` starts the crypto application
+- **THEN** the runtime worker is not started.
+
 #### Scenario: operator explicitly enables a worker
 
-- **GIVEN** an operator sets the relevant worker enablement flag
+- **GIVEN** an operator sets the relevant worker enablement flag and required routine flag
 - **WHEN** `start.sh` starts the crypto application
 - **THEN** only that explicitly enabled worker family may start.
