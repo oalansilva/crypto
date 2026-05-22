@@ -155,7 +155,7 @@ wait_for_tcp_open() {
 flag_enabled() {
   local raw="${1:-}"
   raw="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
-  [[ "$raw" != "0" && "$raw" != "false" && "$raw" != "no" && "$raw" != "off" ]]
+  [[ -n "$raw" && "$raw" != "0" && "$raw" != "false" && "$raw" != "no" && "$raw" != "off" ]]
 }
 
 store_runtime_pid() {
