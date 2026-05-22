@@ -853,6 +853,20 @@ class OhlcvIngestionService:
 
             self._stop_event.wait(timeout=next_wait)
 
+    def run_once(self) -> int:
+        if not self._repo.enabled:
+            logger.info("[ohlcv] storage is disabled; skipping one-shot ingestion")
+            return 0
+
+        runs = 0
+        for timeframe in self._timeframes:
+            if timeframe not in SUPPORTED_OHLCV_TIMEFRAMES:
+                continue
+            for symbol in self._symbols:
+                self._ingest_symbol(symbol, timeframe)
+                runs += 1
+        return runs
+
     def start(self) -> None:
         if not self._is_enabled():
             logger.info("[ohlcv] ingestion disabled by MARKET_OHLCV_INGESTION_ENABLED")
@@ -890,3 +904,7 @@ def start_ohlcv_ingestion() -> None:
 
 def stop_ohlcv_ingestion() -> None:
     _INGESTION_SERVICE.stop()
+
+
+def run_ohlcv_ingestion_once() -> int:
+    return _INGESTION_SERVICE.run_once()

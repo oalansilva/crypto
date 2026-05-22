@@ -31,6 +31,13 @@ The canonical candle writer SHALL fetch incrementally after the first population
 - **WHEN** the canonical writer resolves its timeframe scope
 - **THEN** it uses only `15m` and `1d` by default.
 
+#### Scenario: one-shot writer catch-up
+
+- **GIVEN** the operator runs the one-shot canonical writer command
+- **WHEN** the command resolves the default symbol and timeframe scope
+- **THEN** it runs the same incremental writer path for each symbol across `15m` and `1d`
+- **AND** it exits without starting runtime worker, Celery worker, or Binance realtime worker processes.
+
 #### Scenario: symbol timeframe already has stored candles
 
 - **GIVEN** `market_ohlcv` contains a latest candle for a symbol and timeframe

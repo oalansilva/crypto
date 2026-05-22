@@ -5,6 +5,7 @@
 - [x] 1.3 Disable runtime worker routines by default.
 - [x] 1.4 Make `start.sh` safe by default for Binance candle workers.
 - [x] 1.5 Make the canonical writer incremental after first population.
+- [x] 1.6 Add a one-shot canonical writer command for controlled catch-up.
 
 ## 2. Candle Consumers
 

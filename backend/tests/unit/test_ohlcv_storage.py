@@ -303,6 +303,28 @@ def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
     assert "full_history_if_empty" not in calls[1]
 
 
+def test_ohlcv_ingestion_service_run_once_uses_default_timeframes(monkeypatch):
+    service = _new_service(monkeypatch)
+    service._symbols = ["BTC/USDT", "ETH/USDT"]
+    service._timeframes = ["15m", "1d"]
+    service._repo._enabled = True
+
+    ingested: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        service,
+        "_ingest_symbol",
+        lambda symbol, timeframe: ingested.append((symbol, timeframe)),
+    )
+
+    assert service.run_once() == 4
+    assert ingested == [
+        ("BTC/USDT", "15m"),
+        ("ETH/USDT", "15m"),
+        ("BTC/USDT", "1d"),
+        ("ETH/USDT", "1d"),
+    ]
+
+
 def test_ohlcv_ingestion_lag_threshold_reads_env_or_defaults(monkeypatch):
     service = _new_service(monkeypatch)
     assert service._ingestion_lag_warning_threshold("1m") >= 60
