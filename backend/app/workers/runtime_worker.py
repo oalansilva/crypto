@@ -33,7 +33,7 @@ logging.basicConfig(
 logger = logging.getLogger("runtime_worker")
 
 
-def _env_enabled(name: str, default: str = "1") -> bool:
+def _env_enabled(name: str, default: str = "0") -> bool:
     value = os.getenv(name, default).strip().lower()
     return value not in {"", "0", "false", "no", "off"}
 

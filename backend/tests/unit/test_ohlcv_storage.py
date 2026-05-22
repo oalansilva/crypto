@@ -255,11 +255,17 @@ def test_ohlcv_ingestion_service_resolve_symbols_and_timeframes(monkeypatch):
         "BNB/USDT",
         "XRP/USDT",
     ]
-    assert service._timeframes == ["1d", "1h", "1m", "4h", "5m"]
+    assert service._timeframes == ["15m", "1d"]
 
 
 def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
     service = _new_service(monkeypatch)
+    assert service._is_enabled() is False
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_ENABLED", "1")
+    assert service._is_enabled() is True
+    monkeypatch.setenv("MARKET_OHLCV_INGESTION_ENABLED", "0")
+    assert service._is_enabled() is False
+    monkeypatch.setenv("MARKET_OHLCV_INGESTION_ENABLED", "1")
     assert service._is_enabled() is True
     assert service._ingestion_lag_warning_threshold("1m") >= 60
 

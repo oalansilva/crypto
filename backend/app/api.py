@@ -18,6 +18,11 @@ from app.services.ohlcv_backfill_service import get_backfill_service
 from app.services.preset_service import get_presets
 from app.services.pandas_ta_inspector import get_all_indicators_metadata
 from app.services.ohlcv_storage import MarketOhlcvRepository
+from app.services.canonical_candle_service import (
+    canonical_candles_enabled,
+    canonical_empty_payload,
+    direct_binance_candle_fetch_allowed,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -390,6 +395,7 @@ async def get_market_candles(
 
         stale_persisted: list[dict[str, Any]] = []
         backfill_job_id: str | None = None
+        canonical_mode = canonical_candles_enabled()
         if _OHLCV_REPO.enabled:
             if full_history:
                 backfill_job_id = _schedule_full_history_backfill(raw_symbol, tf)
@@ -416,18 +422,47 @@ async def get_market_candles(
                 persisted = _OHLCV_REPO.read_recent_candles(raw_symbol, tf, limit)
             except Exception:
                 persisted = []
-            if persisted and _is_persisted_candles_fresh(persisted, tf):
+            if persisted and (
+                _is_persisted_candles_fresh(persisted, tf)
+                or (canonical_mode and not direct_binance_candle_fetch_allowed())
+            ):
                 payload = _persisted_candles_payload(
                     raw_symbol=raw_symbol,
                     asset_type=asset_type,
                     timeframe=tf,
                     limit=limit,
                     candles=persisted,
-                    data_source="timescaledb",
+                    data_source="market_ohlcv" if canonical_mode else "timescaledb",
                 )
+                payload["canonical_candles"] = canonical_mode
                 _write_candles_cache(raw_symbol, tf, limit, payload)
                 return payload
             stale_persisted = persisted
+
+        if asset_type == "crypto" and canonical_mode and not direct_binance_candle_fetch_allowed():
+            if stale_persisted:
+                payload = _persisted_candles_payload(
+                    raw_symbol=raw_symbol,
+                    asset_type=asset_type,
+                    timeframe=tf,
+                    limit=limit,
+                    candles=stale_persisted,
+                    data_source="market_ohlcv-stale",
+                )
+                payload["canonical_candles"] = True
+                payload["direct_fetch_skipped"] = True
+                _write_candles_cache(raw_symbol, tf, limit, payload)
+                return payload
+            payload = canonical_empty_payload(
+                raw_symbol=raw_symbol,
+                asset_type=asset_type,
+                timeframe=tf,
+                limit=limit,
+                full_history=full_history,
+                backfill_job_id=backfill_job_id,
+            )
+            _write_candles_cache(raw_symbol, tf, limit, payload, full_history=full_history)
+            return payload
 
         since_str = _ui_default_since_str(tf, limit=limit)
 

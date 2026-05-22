@@ -19,10 +19,11 @@ from app.services.market_data_providers import (
     get_market_data_provider,
     resolve_data_source_for_symbol,
 )
+from app.services.canonical_candle_service import candle_writer_enabled
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_INGESTION_TIMEFRAMES = ["1m", "5m", "1h", "4h", "1d"]
+DEFAULT_INGESTION_TIMEFRAMES = ["15m", "1d"]
 SUPPORTED_OHLCV_TIMEFRAMES = {"1m", "5m", "15m", "1h", "4h", "1d"}
 
 _TIMEFRAME_TO_INTERVAL = {
@@ -687,7 +688,10 @@ class OhlcvIngestionService:
 
     @staticmethod
     def _is_enabled() -> bool:
-        enabled = os.getenv("MARKET_OHLCV_INGESTION_ENABLED", "1").strip().lower()
+        enabled = os.getenv("MARKET_OHLCV_INGESTION_ENABLED")
+        if enabled is None:
+            return candle_writer_enabled()
+        enabled = enabled.strip().lower()
         return enabled not in {"0", "false", "no", "off"}
 
     @staticmethod
@@ -701,7 +705,13 @@ class OhlcvIngestionService:
     @staticmethod
     def _timeframe_overlap(timeframe: str) -> timedelta:
         normalized = _normalize_timeframe(timeframe)
-        return _TIMEFRAME_TO_INTERVAL.get(normalized, timedelta(hours=1))
+        candle_interval = _TIMEFRAME_TO_INTERVAL.get(normalized, timedelta(hours=1))
+        raw_overlap = os.getenv("CRYPTO_CANDLES_INCREMENTAL_OVERLAP_CANDLES", "1")
+        try:
+            overlap_candles = max(0, int(float(raw_overlap)))
+        except ValueError:
+            overlap_candles = 1
+        return candle_interval * overlap_candles
 
     def _lookback_for_timeframe(self, timeframe: str) -> timedelta:
         normalized = _normalize_timeframe(timeframe)

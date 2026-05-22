@@ -13,6 +13,7 @@ from requests.exceptions import RequestException
 
 from app.config import get_settings
 from app.services.ohlcv_storage import SUPPORTED_OHLCV_TIMEFRAMES, MarketOhlcvRepository
+from app.services.canonical_candle_service import candle_writer_enabled
 from app.services.market_data_providers import (
     CCXT_SOURCE,
     STOOQ_SOURCE,
@@ -27,6 +28,7 @@ from app.services.ohlcv_backfill_store import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_BACKFILL_TIMEFRAMES = ["15m", "1d"]
 _WINDOW_YEAR_DAYS = 365
 _MAX_RETRIES = 4
 _LOOKBACK_TF_SECONDS = {
@@ -77,7 +79,7 @@ def _normalize_timeframes(values: list[str]) -> list[str]:
         seen.add(timeframe)
         output.append(timeframe)
     if not output:
-        return ["1d"]
+        return [*DEFAULT_BACKFILL_TIMEFRAMES]
     return output
 
 
@@ -103,6 +105,13 @@ def _parse_int(value: Any, *, default: int = 0) -> int:
     except (TypeError, ValueError):
         return default
     return parsed
+
+
+def _scheduler_enabled_by_env() -> bool:
+    raw = os.getenv("BACKFILL_SCHEDULER_ENABLED")
+    if raw is None:
+        return candle_writer_enabled()
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _coerce_status(value: str) -> str:
@@ -220,11 +229,11 @@ class OhlcvBackfillService:
 
     @staticmethod
     def _default_timeframes() -> list[str]:
-        raw = os.getenv("BACKFILL_DEFAULT_TIMEFRAMES", "1d")
+        raw = os.getenv("BACKFILL_DEFAULT_TIMEFRAMES", ",".join(DEFAULT_BACKFILL_TIMEFRAMES))
         filtered = [
             tf for tf in _normalize_timeframes([part.strip() for part in str(raw).split(",")]) if tf
         ]
-        return filtered or ["1d"]
+        return filtered or [*DEFAULT_BACKFILL_TIMEFRAMES]
 
     def _sleep_for_rate_limit(self, max_requests_per_minute: int) -> None:
         max_rpm = _parse_int(max_requests_per_minute, default=60)
@@ -888,13 +897,7 @@ class OhlcvBackfillService:
             if self._store is None:
                 return 0
 
-            enabled = os.getenv("BACKFILL_SCHEDULER_ENABLED", "1").strip().lower() not in {
-                "0",
-                "false",
-                "no",
-                "off",
-            }
-            if not enabled:
+            if not _scheduler_enabled_by_env():
                 return 0
 
             explicit_symbols = [
@@ -969,13 +972,7 @@ class OhlcvBackfillService:
                 logger.exception("Backfill scheduler loop failed: %s", exc)
 
     def start_scheduler(self) -> None:
-        enabled = os.getenv("BACKFILL_SCHEDULER_ENABLED", "1").strip().lower() not in {
-            "0",
-            "false",
-            "no",
-            "off",
-        }
-        if not enabled:
+        if not _scheduler_enabled_by_env():
             return
 
         if self._scheduler_thread is not None and self._scheduler_thread.is_alive():
@@ -988,7 +985,7 @@ class OhlcvBackfillService:
             daemon=True,
         )
         self._scheduler_thread.start()
-        run_on_start = os.getenv("BACKFILL_SCHEDULER_RUN_ON_START", "1").strip().lower() not in {
+        run_on_start = os.getenv("BACKFILL_SCHEDULER_RUN_ON_START", "0").strip().lower() not in {
             "0",
             "false",
             "no",
