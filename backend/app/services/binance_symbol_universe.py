@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import os
 
+import httpx
+
 from app.services.exchange_service import ExchangeService
 from app.symbols_config import is_excluded_symbol
 
@@ -17,6 +19,7 @@ FALLBACK_BINANCE_USDT_SYMBOLS = [
 ]
 
 _ALL_SYMBOL_SENTINELS = {"*", "all", "binance:all", "binance_all"}
+BINANCE_EXCHANGE_INFO_URL = "https://api.binance.com/api/v3/exchangeInfo"
 
 
 def _normalize_explicit_symbols(raw_symbols: str) -> list[str]:
@@ -49,19 +52,48 @@ def _apply_limit(symbols: list[str]) -> list[str]:
     return symbols[:limit]
 
 
+def _fetch_trading_spot_usdt_symbols() -> list[str]:
+    timeout = httpx.Timeout(20.0)
+    with httpx.Client(timeout=timeout) as client:
+        response = client.get(BINANCE_EXCHANGE_INFO_URL)
+        response.raise_for_status()
+        payload = response.json()
+
+    resolved: list[str] = []
+    for item in payload.get("symbols", []):
+        if item.get("status") != "TRADING":
+            continue
+        if item.get("quoteAsset") != "USDT":
+            continue
+        if item.get("isSpotTradingAllowed") is not True:
+            continue
+        base = str(item.get("baseAsset") or "").strip().upper()
+        if not base:
+            continue
+        resolved.append(f"{base}/USDT")
+    return sorted(dict.fromkeys(resolved))
+
+
 def resolve_binance_ohlcv_symbols() -> list[str]:
     raw_symbols = os.getenv("MARKET_OHLCV_SYMBOLS", "").strip()
     if raw_symbols and raw_symbols.lower() not in _ALL_SYMBOL_SENTINELS:
         return _apply_limit(_normalize_explicit_symbols(raw_symbols))
 
     try:
-        symbols = ExchangeService().fetch_binance_symbols()
-    except Exception as exc:
+        symbols = _fetch_trading_spot_usdt_symbols()
+    except Exception as exchange_info_exc:
+        try:
+            symbols = ExchangeService().fetch_binance_symbols()
+        except Exception as exc:
+            logger.warning(
+                "Could not resolve Binance symbol universe; using fallback symbols: %s",
+                exc,
+            )
+            return _apply_limit([*FALLBACK_BINANCE_USDT_SYMBOLS])
         logger.warning(
-            "Could not resolve Binance symbol universe; using fallback symbols: %s",
-            exc,
+            "Could not resolve Binance exchangeInfo symbol universe; using cached exchange service symbols: %s",
+            exchange_info_exc,
         )
-        return _apply_limit([*FALLBACK_BINANCE_USDT_SYMBOLS])
 
     filtered = [
         symbol.strip().upper()
