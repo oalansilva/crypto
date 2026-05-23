@@ -3,59 +3,640 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Card #151 - Imagens do Pacote Inicial</title>
+  <title>Card #151 - Pacote Revisto</title>
   <style>
-    :root { color-scheme: dark; --navy: #051c2f; --ocean: #063b5a; --cyan: #7dd3fc; --gold: #f5c451; --ink: #e7f6ff; --muted: #a9c7d7; --green: #86efac; }
+    :root {
+      color-scheme: dark;
+      --bg: #04121c;
+      --panel: #071f2e;
+      --panel-2: #0b2b3b;
+      --line: rgba(148, 210, 235, .22);
+      --text: #f3fbff;
+      --muted: #a8c7d5;
+      --cyan: #78d7ff;
+      --cyan-2: #20b8e8;
+      --gold: #f6c44b;
+      --green: #72e6a0;
+      --red: #ff8f8f;
+      --ink: #031018;
+    }
+
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #031421; color: var(--ink); }
-    main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 56px; }
-    header { margin-bottom: 28px; }
+
+    body {
+      margin: 0;
+      background: #020a10;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 20px 72px;
+    }
+
     h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
     p { color: var(--muted); line-height: 1.55; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
-    figure { margin: 0; }
-    figcaption { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
-    .creative { position: relative; overflow: hidden; background: radial-gradient(circle at 80% 18%, rgba(245,196,81,.34), transparent 15%), linear-gradient(135deg, var(--navy), var(--ocean) 62%, #031421); border: 1px solid rgba(125,211,252,.28); box-shadow: 0 18px 70px rgba(0,0,0,.32); }
-    .creative.linkedin { width: 1200px; height: 627px; max-width: 100%; aspect-ratio: 1200 / 627; }
-    .creative.instagram { width: 1080px; height: 1350px; max-width: 100%; aspect-ratio: 4 / 5; }
-    .inner { position: absolute; inset: 0; padding: 58px 64px; display: flex; flex-direction: column; justify-content: space-between; }
-    .instagram .inner { padding: 76px 70px; }
-    .brand { display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 800; color: #fff; }
-    .mark { width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #fff 0 7%, var(--gold) 8% 25%, #0b4b6c 26% 100%); border: 1px solid rgba(255,255,255,.35); box-shadow: 0 0 30px rgba(245,196,81,.35); }
-    .eyebrow { color: var(--gold); font-size: 24px; font-weight: 800; text-transform: uppercase; }
-    .title { margin: 18px 0 0; max-width: 870px; color: #fff; font-size: 64px; line-height: 1.02; font-weight: 900; letter-spacing: 0; }
-    .instagram .title { font-size: 82px; line-height: 1.04; }
-    .subtitle { margin: 24px 0 0; max-width: 780px; color: var(--ink); font-size: 30px; line-height: 1.22; font-weight: 600; }
-    .instagram .subtitle { font-size: 40px; line-height: 1.22; }
-    .chips { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
-    .chip { border: 1px solid rgba(125,211,252,.32); background: rgba(3,20,33,.54); color: var(--ink); padding: 12px 16px; border-radius: 8px; font-size: 22px; font-weight: 700; }
-    .instagram .chip { font-size: 28px; padding: 16px 20px; }
-    .footer { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
-    .cta { color: #031421; background: var(--gold); border-radius: 8px; padding: 16px 20px; font-weight: 900; font-size: 24px; }
-    .instagram .cta { font-size: 32px; padding: 20px 24px; }
-    .note { max-width: 470px; color: var(--muted); font-size: 19px; line-height: 1.35; }
-    .instagram .note { font-size: 25px; }
-    .beam { position: absolute; right: -180px; top: 110px; width: 660px; height: 220px; transform: rotate(-18deg); background: linear-gradient(90deg, rgba(245,196,81,.48), rgba(245,196,81,.06), transparent); clip-path: polygon(0 38%, 100% 0, 100% 100%, 0 62%); }
-    .waves { position: absolute; left: 0; right: 0; bottom: -32px; height: 130px; background: radial-gradient(80% 90% at 15% 10%, rgba(125,211,252,.32), transparent 60%), radial-gradient(70% 80% at 70% 20%, rgba(134,239,172,.18), transparent 64%); opacity: .9; }
-    .mini-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 28px; max-width: 650px; }
-    .asset { border-radius: 8px; padding: 18px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
-    .asset strong { display:block; color: #fff; font-size: 25px; }
-    .asset span { display:inline-block; margin-top: 12px; color: #062012; background: var(--green); padding: 8px 10px; border-radius: 6px; font-weight: 900; font-size: 18px; }
-    .asset.sell span { color: #2a100b; background: #fca5a5; }
     a { color: var(--cyan); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    figure { margin: 0; }
+    figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; }
+
+    .creative {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 78% 18%, rgba(120, 215, 255, .24), transparent 24%),
+        radial-gradient(circle at 18% 92%, rgba(246, 196, 75, .18), transparent 30%),
+        linear-gradient(135deg, #031018 0%, #061d2b 42%, #0a3142 100%);
+      border: 1px solid rgba(148, 210, 235, .24);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .42);
+    }
+
+    .linkedin { width: 1200px; height: 627px; max-width: 100%; aspect-ratio: 1200 / 627; }
+    .instagram { width: 1080px; height: 1350px; max-width: 100%; aspect-ratio: 4 / 5; }
+
+    .creative::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(148, 210, 235, .06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 210, 235, .06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(115deg, transparent 0 18%, #000 42%, transparent 78%);
+      opacity: .75;
+      z-index: -2;
+    }
+
+    .creative::after {
+      content: "";
+      position: absolute;
+      right: -160px;
+      top: 86px;
+      width: 680px;
+      height: 220px;
+      transform: rotate(-17deg);
+      background: linear-gradient(90deg, rgba(246, 196, 75, .56), rgba(120, 215, 255, .16), transparent);
+      clip-path: polygon(0 40%, 100% 0, 100% 100%, 0 60%);
+      opacity: .78;
+      z-index: -1;
+    }
+
+    .inner {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 30px;
+      padding: 54px 64px 46px;
+    }
+
+    .linkedin .inner {
+      gap: 14px;
+      padding: 42px 64px 34px;
+    }
+
+    .instagram .inner { padding: 72px 72px 64px; gap: 44px; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      width: fit-content;
+    }
+
+    .brand img {
+      display: block;
+      width: 286px;
+      height: auto;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(360px, .94fr);
+      align-items: center;
+      gap: 44px;
+    }
+
+    .instagram .split {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+      gap: 42px;
+    }
+
+    .eyebrow {
+      margin-bottom: 16px;
+      color: var(--gold);
+      font-size: 20px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .instagram .eyebrow { font-size: 24px; }
+
+    .title {
+      margin: 0;
+      max-width: 680px;
+      color: var(--text);
+      font-size: 60px;
+      line-height: .98;
+      letter-spacing: 0;
+      font-weight: 900;
+    }
+
+    .linkedin .title { font-size: 50px; }
+
+    .instagram .title {
+      max-width: 900px;
+      font-size: 84px;
+      line-height: 1;
+    }
+
+    .subtitle {
+      margin: 22px 0 0;
+      max-width: 620px;
+      color: #d9f1fb;
+      font-size: 25px;
+      line-height: 1.22;
+      font-weight: 650;
+    }
+
+    .instagram .subtitle {
+      max-width: 880px;
+      font-size: 40px;
+      line-height: 1.18;
+    }
+
+    .proof {
+      position: relative;
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .035));
+      border-radius: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+      min-height: 320px;
+    }
+
+    .instagram .proof { min-height: 480px; padding: 24px; }
+
+    .linkedin .proof {
+      min-height: 0;
+      gap: 10px;
+      padding: 16px;
+    }
+
+    .proof-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 780;
+    }
+
+    .signal-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid rgba(148, 210, 235, .16);
+      background: rgba(3, 16, 24, .52);
+      border-radius: 14px;
+    }
+
+    .pair { color: #fff; font-size: 22px; font-weight: 850; }
+    .meta { margin-top: 4px; color: var(--muted); font-size: 14px; }
+    .badge { padding: 8px 10px; border-radius: 999px; color: #042113; font-size: 14px; font-weight: 900; background: var(--green); }
+    .badge.red { color: #2d0b0b; background: var(--red); }
+    .badge.neutral { color: #261d04; background: var(--gold); }
+
+    .decision-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .decision-card {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 15px;
+      border: 1px solid rgba(148, 210, 235, .16);
+      background: rgba(3, 16, 24, .52);
+      border-radius: 14px;
+    }
+
+    .decision-card .mark {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      color: var(--ink);
+      background: linear-gradient(135deg, var(--gold), #ffd76e);
+      font-size: 24px;
+      font-weight: 950;
+    }
+
+    .decision-card strong {
+      display: block;
+      color: #fff;
+      font-size: 22px;
+      line-height: 1.05;
+    }
+
+    .decision-card span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .instagram .decision-list { gap: 18px; }
+    .instagram .decision-card { grid-template-columns: 64px 1fr; padding: 22px; }
+    .instagram .decision-card .mark { width: 64px; height: 64px; font-size: 30px; border-radius: 18px; }
+    .instagram .decision-card strong { font-size: 34px; }
+    .instagram .decision-card span { font-size: 24px; }
+
+    .linkedin .decision-list { gap: 10px; }
+    .linkedin .decision-card { grid-template-columns: 42px 1fr; gap: 12px; padding: 12px; }
+    .linkedin .decision-card .mark { width: 42px; height: 42px; font-size: 22px; }
+    .linkedin .decision-card strong { font-size: 20px; }
+    .linkedin .decision-card span { font-size: 14px; margin-top: 4px; }
+
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .tile {
+      min-height: 72px;
+      padding: 12px;
+      border: 1px solid rgba(148, 210, 235, .16);
+      border-radius: 14px;
+      background: rgba(3, 16, 24, .48);
+    }
+
+    .tile span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-weight: 760;
+    }
+
+    .tile strong { display: block; margin-top: 8px; color: #fff; font-size: 20px; }
+
+    .footer {
+      display: grid;
+      grid-template-columns: auto minmax(280px, 520px);
+      justify-content: space-between;
+      align-items: end;
+      gap: 28px;
+    }
+
+    .instagram .footer { grid-template-columns: 1fr; gap: 18px; }
+
+    .cta {
+      width: max-content;
+      max-width: 100%;
+      padding: 17px 22px;
+      border-radius: 10px;
+      color: var(--ink);
+      background: linear-gradient(135deg, var(--gold), #ffd76e);
+      font-size: 24px;
+      font-weight: 900;
+      box-shadow: 0 18px 42px rgba(246, 196, 75, .18);
+    }
+
+    .instagram .cta { font-size: 32px; padding: 20px 26px; }
+
+    .linkedin .cta {
+      padding: 14px 20px;
+      font-size: 22px;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    .linkedin .note { font-size: 17px; }
+
+    .instagram .note { font-size: 26px; max-width: 820px; }
+
+    .poster .inner { display: flex; flex-direction: column; justify-content: space-between; }
+    .poster .title { max-width: 890px; font-size: 90px; }
+    .poster .subtitle { font-size: 38px; max-width: 860px; }
+
+    .slide-number {
+      position: absolute;
+      right: 72px;
+      top: 76px;
+      color: rgba(243, 251, 255, .38);
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: .12em;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+      max-width: 870px;
+    }
+
+    .point {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 18px;
+      align-items: start;
+      padding: 22px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.065);
+      border: 1px solid rgba(148,210,235,.18);
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      color: var(--ink);
+      background: var(--gold);
+      font-size: 26px;
+      font-weight: 950;
+    }
+
+    .point strong { display: block; color: #fff; font-size: 32px; line-height: 1.1; }
+    .point span { display: block; margin-top: 8px; color: var(--muted); font-size: 25px; line-height: 1.24; }
+
+    .qa {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 28px;
+      max-width: 820px;
+    }
+
+    .qa div {
+      border-radius: 18px;
+      padding: 22px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(148,210,235,.18);
+    }
+
+    .qa span { display: block; color: var(--muted); font-size: 18px; text-transform: uppercase; letter-spacing: .08em; font-weight: 780; }
+    .qa strong { display: block; margin-top: 14px; font-size: 34px; line-height: 1.08; }
+
+    @media (max-width: 900px) {
+      .split { grid-template-columns: 1fr; }
+      .footer { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <main>
     <header>
-      <h1>Card #151 - Imagens do pacote inicial</h1>
-      <p>Arquivos visuais para revisao antes de publicar. Textos completos estao em <a href="../card-151-content-package.md">card-151-content-package.md</a>.</p>
+      <h1>Card #151 - pacote revisto</h1>
+      <p>Direção visual: público não técnico, copy curta e sequência de campanha. Textos completos em <a href="../card-151-content-package.md">card-151-content-package.md</a>.</p>
     </header>
+
     <section class="grid">
-      <figure><div class="creative linkedin" id="linkedin-1"><div class="beam"></div><div class="waves"></div><div class="inner"><div class="brand"><span class="mark"></span><span>Cripto Farol</span></div><div><div class="eyebrow">Beta fechado</div><h2 class="title">Informação demais. Critério de menos.</h2><p class="subtitle">Uma rotina mais clara para acompanhar cripto antes de decidir comprar, manter ou sair.</p><div class="chips"><span class="chip">Dados</span><span class="chip">Backtests</span><span class="chip">Contexto</span></div></div><div class="footer"><div class="cta">Entrar na lista do beta</div><div class="note">Ferramenta de apoio à decisão. Não é promessa de lucro nem recomendação individual.</div></div></div></div><figcaption>LinkedIn 1 - tese/problema</figcaption></figure>
-      <figure><div class="creative linkedin" id="linkedin-2"><div class="beam"></div><div class="waves"></div><div class="inner"><div class="brand"><span class="mark"></span><span>Cripto Farol</span></div><div><div class="eyebrow">Convite controlado</div><h2 class="title">Teste o beta gratuito e ajude a validar.</h2><p class="subtitle">Leitura de mercado, histórico de estratégias e contexto para reduzir ruído na decisão.</p><div class="mini-board"><div class="asset"><strong>BTC/USDT</strong><span>Compra</span></div><div class="asset sell"><strong>ADA/USDT</strong><span>Venda</span></div></div></div><div class="footer"><div class="cta">criptofarol.com.br</div><div class="note">Acesso controlado para poucos usuários, em troca de feedback honesto.</div></div></div></div><figcaption>LinkedIn 2 - convite controlado</figcaption></figure>
-      <figure><div class="creative instagram" id="instagram-1"><div class="beam"></div><div class="waves"></div><div class="inner"><div class="brand"><span class="mark"></span><span>Cripto Farol</span></div><div><div class="eyebrow">Carrossel</div><h2 class="title">Cripto não falta informação.</h2><p class="subtitle">Falta critério para saber o que realmente importa agora.</p><div class="chips"><span class="chip">Menos ruído</span><span class="chip">Mais contexto</span><span class="chip">Beta gratuito</span></div></div><div class="footer"><div class="cta">Entrar na lista</div><div class="note">Sem call. Sem promessa. Apoio para decidir melhor.</div></div></div></div><figcaption>Instagram 1 - capa do carrossel</figcaption></figure>
-      <figure><div class="creative instagram" id="instagram-2"><div class="beam"></div><div class="waves"></div><div class="inner"><div class="brand"><span class="mark"></span><span>Cripto Farol</span></div><div><div class="eyebrow">Post curto</div><h2 class="title">Antes de comprar uma cripto, você sabe o que está olhando?</h2><p class="subtitle">Beta fechado para testar leitura de mercado com mais contexto, histórico e clareza de risco.</p></div><div class="footer"><div class="cta">criptofarol.com.br</div><div class="note">Ferramenta de apoio à decisão. O risco continua sendo do investidor.</div></div></div></div><figcaption>Instagram 2 - post curto</figcaption></figure>
+      <figure>
+        <div class="creative linkedin" id="linkedin-1">
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div class="split">
+              <div>
+                <div class="eyebrow">Beta fechado</div>
+                <h2 class="title">Quer comprar cripto sem decidir no escuro?</h2>
+                <p class="subtitle">Veja contexto, risco e momento em linguagem simples antes de colocar dinheiro.</p>
+              </div>
+              <div class="proof">
+                <div class="proof-header"><span>Antes da compra</span><span>clareza</span></div>
+                <div class="decision-list">
+                  <div class="decision-card"><div class="mark">1</div><div><strong>Qual cripto é essa?</strong><span>Entender o básico antes de colocar dinheiro.</span></div></div>
+                  <div class="decision-card"><div class="mark">2</div><div><strong>Por que agora?</strong><span>Separar contexto de impulso, dica ou medo.</span></div></div>
+                  <div class="decision-card"><div class="mark">3</div><div><strong>Qual é o risco?</strong><span>Saber o que pode dar errado antes da compra.</span></div></div>
+                </div>
+                <div class="tiles">
+                  <div class="tile"><span>Contexto</span><strong>simples</strong></div>
+                  <div class="tile"><span>Risco</span><strong>claro</strong></div>
+                  <div class="tile"><span>Decisão</span><strong>calma</strong></div>
+                </div>
+              </div>
+            </div>
+            <div class="footer"><div class="cta">Entrar na lista do beta</div><div class="note">Ferramenta de apoio à decisão. Não é promessa de lucro nem recomendação individual.</div></div>
+          </div>
+        </div>
+        <figcaption>LinkedIn 1 - tese com prova visual</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative linkedin" id="linkedin-2">
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div class="split">
+              <div>
+                <div class="eyebrow">Convite controlado</div>
+                <h2 class="title">Para quem quer começar em cripto sem virar trader.</h2>
+                <p class="subtitle">Sem jargão. Um jeito simples de avaliar se faz sentido comprar agora ou esperar.</p>
+              </div>
+              <div class="proof">
+                <div class="proof-header"><span>O que olhar</span><span>sem pressa</span></div>
+                <div class="signal-row"><div><div class="pair">O preço faz sentido?</div><div class="meta">Evitar comprar só porque subiu</div></div><span class="badge neutral">Contexto</span></div>
+                <div class="signal-row"><div><div class="pair">O risco está claro?</div><div class="meta">Saber quanto pode perder antes de entrar</div></div><span class="badge red">Risco</span></div>
+                <div class="signal-row"><div><div class="pair">Vale esperar?</div><div class="meta">Nem toda oportunidade precisa virar compra</div></div><span class="badge">Calma</span></div>
+                <div class="tiles">
+                  <div class="tile"><span>Acesso</span><strong>gratuito</strong></div>
+                  <div class="tile"><span>Linguagem</span><strong>simples</strong></div>
+                  <div class="tile"><span>Troca</span><strong>feedback</strong></div>
+                </div>
+              </div>
+            </div>
+            <div class="footer"><div class="cta">criptofarol.com.br</div><div class="note">Não é grupo de call. É validação de produto com usuários reais.</div></div>
+          </div>
+        </div>
+        <figcaption>LinkedIn 2 - convite controlado</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram poster" id="instagram-carousel-01">
+          <span class="slide-number">01/08</span>
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div>
+              <h2 class="title">Quer comprar cripto, mas não sabe por onde começar?</h2>
+              <p class="subtitle">Uma rotina simples para olhar risco e contexto antes da decisão.</p>
+            </div>
+            <div class="footer"><div class="cta">Arraste para ver o processo</div><div class="note">Beta fechado. Apoio à decisão, sem promessa.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram carrossel - slide 1</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram" id="instagram-carousel-02">
+          <span class="slide-number">02/08</span>
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div>
+              <div class="eyebrow">O ruído</div>
+              <h2 class="title">O problema não é ser iniciante.</h2>
+              <p class="subtitle">É comprar porque alguém indicou, porque subiu muito ou porque deu medo de ficar de fora.</p>
+            </div>
+            <div class="footer"><div class="cta">O ponto é clareza</div><div class="note">Não uma opinião mais alta que as outras.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram carrossel - slide 2</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram" id="instagram-carousel-03">
+          <span class="slide-number">03/08</span>
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div>
+              <div class="eyebrow">A rotina</div>
+              <h2 class="title">Antes de comprar, responda três perguntas.</h2>
+              <div class="stack">
+                <div class="point"><span class="num">1</span><div><strong>Qual cripto é essa?</strong><span>Entender o básico antes de colocar dinheiro.</span></div></div>
+                <div class="point"><span class="num">2</span><div><strong>Por que agora?</strong><span>Evitar decisão por ansiedade ou hype.</span></div></div>
+                <div class="point"><span class="num">3</span><div><strong>Quanto posso perder se der errado?</strong><span>Sem risco claro, a compra vira aposta cega.</span></div></div>
+              </div>
+            </div>
+            <div class="footer"><div class="cta">Menos impulso</div><div class="note">Mais clareza antes de agir.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram carrossel - slide 3</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram" id="instagram-carousel-04">
+          <span class="slide-number">04/08</span>
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div class="proof">
+              <div class="proof-header"><span>Exemplo simples</span><span>antes de comprar</span></div>
+              <div class="decision-list">
+                <div class="decision-card"><div class="mark">?</div><div><strong>Subiu muito?</strong><span>Comprar por medo pode aumentar o risco.</span></div></div>
+                <div class="decision-card"><div class="mark">!</div><div><strong>Entendeu o risco?</strong><span>Sem clareza, a compra vira impulso.</span></div></div>
+                <div class="decision-card"><div class="mark">✓</div><div><strong>Vale esperar?</strong><span>Calma também é uma decisão.</span></div></div>
+              </div>
+              <div class="tiles">
+                <div class="tile"><span>Hype</span><strong>não basta</strong></div>
+                <div class="tile"><span>Preço</span><strong>oscila</strong></div>
+                <div class="tile"><span>Risco</span><strong>conta</strong></div>
+              </div>
+            </div>
+            <div class="footer"><div class="cta">Isso é o que o beta testa</div><div class="note">Transformar informação solta em uma decisão mais consciente.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram carrossel - slide 4</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram" id="instagram-carousel-05">
+          <span class="slide-number">05/08</span>
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div>
+              <div class="eyebrow">O que não é</div>
+              <h2 class="title">Não é promessa. Não é call. Não é guru.</h2>
+              <div class="qa">
+                <div><span>Fora</span><strong>lucro garantido</strong></div>
+                <div><span>Fora</span><strong>alavancagem</strong></div>
+                <div><span>Fora</span><strong>recomendação individual</strong></div>
+                <div><span>Dentro</span><strong>clareza e risco</strong></div>
+              </div>
+            </div>
+            <div class="footer"><div class="cta">O risco continua existindo</div><div class="note">A proposta é enxergar melhor antes de decidir.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram carrossel - slide 5</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram" id="instagram-carousel-06">
+          <span class="slide-number">06/08</span>
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div>
+              <div class="eyebrow">O beta</div>
+              <h2 class="title">Poucas pessoas. Feedback direto. Produto em validação.</h2>
+              <p class="subtitle">A primeira meta é simples: descobrir se essa rotina ajuda pessoas comuns a começar com mais clareza.</p>
+            </div>
+            <div class="footer"><div class="cta">Acesso gratuito nesta fase</div><div class="note">Entrada controlada para manter qualidade do feedback.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram carrossel - slide 6</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram" id="instagram-carousel-07">
+          <span class="slide-number">07/08</span>
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div>
+              <div class="eyebrow">Para quem faz sentido</div>
+              <h2 class="title">Se você quer comprar cripto sem operar todo dia, isso é para você.</h2>
+              <p class="subtitle">Principalmente se você quer entender melhor antes de colocar dinheiro.</p>
+            </div>
+            <div class="footer"><div class="cta">Teste com olhar crítico</div><div class="note">O feedback honesto vale mais que elogio.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram carrossel - slide 7</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram" id="instagram-carousel-08">
+          <span class="slide-number">08/08</span>
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div>
+              <div class="eyebrow">Convite</div>
+              <h2 class="title">Quer entrar na lista do beta fechado?</h2>
+              <p class="subtitle">Acesse criptofarol.com.br e deixe seu contato.</p>
+            </div>
+            <div class="footer"><div class="cta">criptofarol.com.br</div><div class="note">Apoio à decisão. Sem promessa de resultado financeiro.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram carrossel - slide 8</figcaption>
+      </figure>
+
+      <figure>
+        <div class="creative instagram poster" id="instagram-post-curto">
+          <div class="inner">
+            <div class="brand"><img src="../../../frontend/public/prototypes/cripto-farol-landing/assets/brand/cripto-farol-wordmark.svg" alt="Cripto Farol"></div>
+            <div>
+              <h2 class="title">Antes de comprar cripto, entenda o risco.</h2>
+              <p class="subtitle">Você não precisa operar todo dia para decidir com mais clareza.</p>
+            </div>
+            <div class="footer"><div class="cta">Beta fechado</div><div class="note">Cripto Farol testa uma rotina simples para quem quer começar melhor.</div></div>
+          </div>
+        </div>
+        <figcaption>Instagram card individual</figcaption>
+      </figure>
     </section>
   </main>
 </body>
