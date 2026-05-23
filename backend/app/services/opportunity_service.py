@@ -1846,9 +1846,9 @@ class OpportunityService:
                     except Exception:
                         pass
 
-                favorite_latest_trade_signal = str(
-                    fav.get("_favorite_latest_trade_signal") or ""
-                ).strip().lower()
+                favorite_latest_trade_signal = (
+                    str(fav.get("_favorite_latest_trade_signal") or "").strip().lower()
+                )
                 if favorite_latest_trade_signal in {"entry", "exit"}:
                     analysis["favorite_latest_trade_signal"] = favorite_latest_trade_signal
                     analysis["favorite_latest_trade_time"] = fav.get("_favorite_latest_trade_time")
@@ -1876,11 +1876,7 @@ class OpportunityService:
 
                 raw_analysis_status = str(analysis.get("status") or "")
                 public_status = _public_monitor_status(
-                    is_holding=(
-                        is_holding
-                        if favorite_latest_trade_signal != "exit"
-                        else False
-                    ),
+                    is_holding=(is_holding if favorite_latest_trade_signal != "exit" else False),
                     raw_status=raw_analysis_status,
                 )
                 public_badge = _public_monitor_badge(public_status)
