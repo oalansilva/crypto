@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pandas as pd
 from sqlalchemy.orm import Session
 
@@ -34,6 +35,9 @@ DEFAULT_REFRESH_CPU_LIMIT_PERCENT = 60.0
 DEFAULT_REFRESH_CPU_PAUSE_SECONDS = 30.0
 DEFAULT_REFRESH_MAX_FAVORITES = 12
 DEFAULT_REFRESH_INITIAL_DELAY_SECONDS = 300
+DEFAULT_REFRESH_DELETE_DELISTED_BINANCE = True
+DEFAULT_BINANCE_EXCHANGE_INFO_TTL_SECONDS = 3600
+BINANCE_EXCHANGE_INFO_URL = "https://api.binance.com/api/v3/exchangeInfo"
 
 
 def _utcnow() -> datetime:
@@ -105,6 +109,32 @@ def _load_average_cpu_percent() -> float | None:
         return None
     cpu_count = os.cpu_count() or 1
     return max(0.0, min(100.0, (load_1m / cpu_count) * 100.0))
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _binance_symbol_code(symbol: str) -> str:
+    return str(symbol or "").strip().upper().replace("/", "")
+
+
+def _fetch_binance_trading_symbols() -> set[str]:
+    response = httpx.get(
+        os.getenv("BINANCE_EXCHANGE_INFO_URL", BINANCE_EXCHANGE_INFO_URL),
+        timeout=float(os.getenv("BINANCE_EXCHANGE_INFO_TIMEOUT_SECONDS", "20")),
+    )
+    response.raise_for_status()
+    payload = response.json()
+    symbols = payload.get("symbols") if isinstance(payload, dict) else []
+    return {
+        str(item.get("symbol") or "").upper()
+        for item in symbols
+        if isinstance(item, dict) and item.get("status") == "TRADING"
+    }
 
 
 def _parse_candle_timestamp(value: Any) -> datetime | None:
@@ -256,12 +286,16 @@ class FavoriteBacktestRefreshService:
         market_data_provider_factory=get_market_data_provider,
         cpu_sampler=_load_average_cpu_percent,
         sleep_fn=time.sleep,
+        binance_trading_symbols_provider=_fetch_binance_trading_symbols,
     ):
         self._db_factory = db_factory
         self._optimizer_factory = optimizer_factory
         self._market_data_provider_factory = market_data_provider_factory
         self._cpu_sampler = cpu_sampler
         self._sleep_fn = sleep_fn
+        self._binance_trading_symbols_provider = binance_trading_symbols_provider
+        self._binance_trading_symbols_cache: set[str] | None = None
+        self._binance_trading_symbols_cached_at: datetime | None = None
 
     def _current_cpu_percent(self) -> float | None:
         try:
@@ -275,6 +309,67 @@ class FavoriteBacktestRefreshService:
             return float(value)
         except (TypeError, ValueError):
             return None
+
+    def _binance_trading_symbols(self) -> set[str]:
+        ttl_seconds = int(
+            os.getenv(
+                "BINANCE_EXCHANGE_INFO_TTL_SECONDS",
+                str(DEFAULT_BINANCE_EXCHANGE_INFO_TTL_SECONDS),
+            )
+        )
+        now = _utcnow()
+        if (
+            self._binance_trading_symbols_cache is not None
+            and self._binance_trading_symbols_cached_at is not None
+            and (now - self._binance_trading_symbols_cached_at).total_seconds() < ttl_seconds
+        ):
+            return self._binance_trading_symbols_cache
+
+        symbols = self._binance_trading_symbols_provider()
+        self._binance_trading_symbols_cache = set(symbols)
+        self._binance_trading_symbols_cached_at = now
+        return self._binance_trading_symbols_cache
+
+    def delete_delisted_binance_favorites(self) -> dict[str, Any]:
+        trading_symbols = self._binance_trading_symbols()
+        session = self._db_factory()
+        try:
+            rows = session.query(FavoriteStrategy).filter(FavoriteStrategy.symbol.like("%/%")).all()
+            delisted = [
+                row for row in rows if _binance_symbol_code(row.symbol) not in trading_symbols
+            ]
+            delisted_ids = [int(row.id) for row in delisted]
+            delisted_symbols = sorted({str(row.symbol) for row in delisted})
+            deleted_runs = 0
+            if delisted_ids:
+                deleted_runs = (
+                    session.query(AutoBacktestRun)
+                    .filter(AutoBacktestRun.favorite_id.in_(delisted_ids))
+                    .delete(synchronize_session=False)
+                )
+                (
+                    session.query(FavoriteStrategy)
+                    .filter(FavoriteStrategy.id.in_(delisted_ids))
+                    .delete(synchronize_session=False)
+                )
+            session.commit()
+            if delisted_ids:
+                logger.info(
+                    "Deleted %d delisted Binance favorites (%d runs): %s",
+                    len(delisted_ids),
+                    deleted_runs,
+                    ", ".join(delisted_symbols),
+                )
+            return {
+                "deleted_delisted_favorites": len(delisted_ids),
+                "deleted_delisted_runs": int(deleted_runs or 0),
+                "delisted_symbols": delisted_symbols,
+            }
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     def _prepare_market_data(
         self,
@@ -477,6 +572,7 @@ class FavoriteBacktestRefreshService:
         max_favorites: int | None = None,
         cpu_limit_percent: float | None = None,
         cpu_pause_seconds: float | None = None,
+        delete_delisted_binance_favorites: bool | None = None,
     ) -> dict[str, Any]:
         now = now or _utcnow()
         interval_seconds = interval_seconds or int(
@@ -521,6 +617,25 @@ class FavoriteBacktestRefreshService:
                 )
             )
         )
+        delete_delisted_binance_favorites = (
+            delete_delisted_binance_favorites
+            if delete_delisted_binance_favorites is not None
+            else _env_bool(
+                "FAVORITE_BACKTEST_DELETE_DELISTED_BINANCE",
+                DEFAULT_REFRESH_DELETE_DELISTED_BINANCE,
+            )
+        )
+        delisted_summary = {
+            "deleted_delisted_favorites": 0,
+            "deleted_delisted_runs": 0,
+            "delisted_symbols": [],
+        }
+        if delete_delisted_binance_favorites:
+            try:
+                delisted_summary = self.delete_delisted_binance_favorites()
+            except Exception as exc:
+                logger.warning("Could not delete delisted Binance favorites: %s", exc)
+
         cutoff = now - timedelta(seconds=interval_seconds)
         running_cutoff = now - timedelta(seconds=running_timeout_seconds)
         session = self._db_factory()
@@ -558,6 +673,7 @@ class FavoriteBacktestRefreshService:
             "pause_seconds": 0.0,
             "reason": None,
             "started_at": now.isoformat(),
+            **delisted_summary,
         }
         _write_refresh_state(summary)
 
@@ -598,6 +714,7 @@ def run_due_favorite_backtest_refresh(
     max_favorites: int | None = None,
     cpu_limit_percent: float | None = None,
     cpu_pause_seconds: float | None = None,
+    delete_delisted_binance_favorites: bool | None = None,
 ) -> dict[str, Any]:
     return FavoriteBacktestRefreshService(db_factory=db_factory).run_due_refreshes(
         now=now,
@@ -606,6 +723,7 @@ def run_due_favorite_backtest_refresh(
         max_favorites=max_favorites,
         cpu_limit_percent=cpu_limit_percent,
         cpu_pause_seconds=cpu_pause_seconds,
+        delete_delisted_binance_favorites=delete_delisted_binance_favorites,
     )
 
 
