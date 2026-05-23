@@ -10,6 +10,7 @@ def test_runtime_status_defaults_are_safe(monkeypatch, tmp_path):
     monkeypatch.setenv("CRYPTO_CANDLES_WRITER_LOCK_FILE", str(tmp_path / "writer.lock"))
     state_path = tmp_path / "writer.json"
     monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(state_path))
+    monkeypatch.setenv("FAVORITE_BACKTEST_REFRESH_STATE_FILE", str(tmp_path / "favorite.json"))
     monkeypatch.setenv("DATABASE_URL", "postgresql://secret-user:secret-pass@localhost/db")
     monkeypatch.delenv("MARKET_OHLCV_INGESTION_ENABLED", raising=False)
     monkeypatch.delenv("BACKFILL_SCHEDULER_ENABLED", raising=False)
@@ -33,6 +34,10 @@ def test_runtime_status_defaults_are_safe(monkeypatch, tmp_path):
     assert payload["workers"]["binance_realtime_worker"]["enabled"] is False
     assert payload["candle_writer"]["lock"]["lock_held"] is False
     assert payload["candle_writer"]["lock"]["exists"] is False
+    assert payload["favorite_backtest_refresh"]["enabled"] is False
+    assert payload["favorite_backtest_refresh"]["latest_run"] is None
+    assert payload["favorite_backtest_refresh"]["interval_seconds"] == 86400
+    assert payload["favorite_backtest_refresh"]["loop_seconds"] == 3600
     assert not (tmp_path / "writer.lock").exists()
     assert "secret-pass" not in json.dumps(payload)
 
@@ -40,6 +45,7 @@ def test_runtime_status_defaults_are_safe(monkeypatch, tmp_path):
 def test_runtime_status_reports_runtime_worker_only_with_routine(monkeypatch, tmp_path):
     monkeypatch.setenv("CRYPTO_CANDLES_WRITER_LOCK_FILE", str(tmp_path / "writer.lock"))
     monkeypatch.setenv("CRYPTO_CANDLES_WRITER_STATE_FILE", str(tmp_path / "writer.json"))
+    monkeypatch.setenv("FAVORITE_BACKTEST_REFRESH_STATE_FILE", str(tmp_path / "favorite.json"))
     monkeypatch.setenv("CRYPTO_RUNTIME_WORKER_ENABLED", "1")
     monkeypatch.setenv("RUN_SIGNAL_MONITOR", "0")
     monkeypatch.setenv("RUN_SIGNAL_FEED_SNAPSHOT_WORKER", "1")
@@ -52,6 +58,46 @@ def test_runtime_status_reports_runtime_worker_only_with_routine(monkeypatch, tm
 
     assert payload["workers"]["runtime_worker"]["enabled"] is True
     assert payload["workers"]["runtime_worker"]["routines"]["signal_feed_snapshot"] is True
+
+
+def test_runtime_status_sanitizes_favorite_refresh_state(monkeypatch, tmp_path):
+    state_path = tmp_path / "favorite-refresh.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "status": "paused_cpu",
+                "due": 184,
+                "selected": 12,
+                "success": 3,
+                "failed": 1,
+                "skipped_cpu": 8,
+                "skipped_limit": 172,
+                "cpu_limit_percent": 60,
+                "last_cpu_percent": 72.5,
+                "pause_seconds": 30,
+                "started_at": "2026-05-23T00:00:00",
+                "completed_at": "2026-05-23T00:05:00",
+                "updated_at": "2026-05-23T00:05:00",
+                "reason": "CPU 72.5% above limit 60.0% token=abc123",
+                "internal_path": "/tmp/private",
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("FAVORITE_BACKTEST_REFRESH_STATE_FILE", str(state_path))
+    monkeypatch.setenv("RUN_FAVORITE_BACKTEST_REFRESH", "1")
+
+    payload = runtime_status.build_runtime_status_payload(
+        market_ohlcv_enabled=False,
+        market_ohlcv_metrics={},
+    )
+
+    latest = payload["favorite_backtest_refresh"]["latest_run"]
+    assert latest["status"] == "paused_cpu"
+    assert latest["due"] == 184
+    assert latest["skipped_cpu"] == 8
+    assert "internal_path" not in latest
+    assert "abc123" not in latest["reason"]
 
 
 def test_runtime_status_detects_held_writer_lock(monkeypatch, tmp_path):

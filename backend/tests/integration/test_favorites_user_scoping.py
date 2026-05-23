@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime
 from pathlib import Path
 import uuid
@@ -743,8 +744,9 @@ def test_common_user_cannot_regenerate_admin_catalog_chart_trades(tmp_path: Path
             assert exc.detail == "Favorite trade regeneration is protected"
 
 
-def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
+def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path, monkeypatch):
     SessionLocal = _session_factory(tmp_path)
+    monkeypatch.setenv("FAVORITE_BACKTEST_REFRESH_STATE_FILE", str(tmp_path / "refresh-state.json"))
     optimizer_calls = []
     provider_calls = []
 
@@ -787,9 +789,11 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
             current_user_id="user-a",
             db=db,
         )
+        ok_id = ok.id
+        fail_id = fail.id
         (
             db.query(favorites.FavoriteStrategy)
-            .filter(favorites.FavoriteStrategy.id.notin_([ok.id, fail.id]))
+            .filter(favorites.FavoriteStrategy.id.notin_([ok_id, fail_id]))
             .update(
                 {
                     "auto_refresh_status": REFRESH_STATUS_SUCCESS,
@@ -805,20 +809,29 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
         optimizer_factory=FakeOptimizer,
         market_data_provider_factory=lambda _source: FakeProvider(),
     )
-    summary = service.run_due_refreshes(interval_seconds=86400)
+    summary = service.run_due_refreshes(
+        interval_seconds=86400,
+        cpu_limit_percent=100,
+        cpu_pause_seconds=0,
+    )
 
     with SessionLocal() as db:
-        ok_row = db.query(favorites.FavoriteStrategy).filter_by(id=ok.id).one()
-        fail_row = db.query(favorites.FavoriteStrategy).filter_by(id=fail.id).one()
+        ok_row = db.query(favorites.FavoriteStrategy).filter_by(id=ok_id).one()
+        fail_row = db.query(favorites.FavoriteStrategy).filter_by(id=fail_id).one()
         runs = (
             db.query(AutoBacktestRun)
             .filter(AutoBacktestRun.run_id.like("favorite-refresh-%"))
-            .filter(AutoBacktestRun.favorite_id.in_([ok.id, fail.id]))
+            .filter(AutoBacktestRun.favorite_id.in_([ok_id, fail_id]))
             .order_by(AutoBacktestRun.id.asc())
             .all()
         )
 
-    assert summary == {"due": 2, "success": 1, "failed": 1}
+    assert summary["due"] == 2
+    assert summary["selected"] == 2
+    assert summary["success"] == 1
+    assert summary["failed"] == 1
+    assert summary["skipped_cpu"] == 0
+    assert summary["skipped_limit"] == 0
     assert ok_row.auto_refresh_status == REFRESH_STATUS_SUCCESS
     assert ok_row.auto_refresh_error is None
     assert ok_row.auto_refresh_started_at is not None
@@ -833,6 +846,80 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path):
     assert "market data unavailable" in fail_row.auto_refresh_error
     assert fail_row.metrics["total_return_pct"] == 12.3
     assert {run.status for run in runs} == {REFRESH_STATUS_SUCCESS, REFRESH_STATUS_FAILED}
+
+
+def test_favorite_auto_refresh_pauses_when_cpu_limit_is_exceeded(tmp_path: Path, monkeypatch):
+    SessionLocal = _session_factory(tmp_path)
+    state_path = tmp_path / "refresh-state.json"
+    monkeypatch.setenv("FAVORITE_BACKTEST_REFRESH_STATE_FILE", str(state_path))
+    optimizer_calls = []
+
+    class FakeOptimizer:
+        def run_optimization(self, **kwargs):
+            optimizer_calls.append(kwargs)
+            return {
+                "best_metrics": {"total_return_pct": 8.5, "total_trades": 1},
+                "trades": [{"entry_time": "2026-05-01T00:00:00Z", "profit": 0.085}],
+                "candles": [{"timestamp_utc": datetime.utcnow().isoformat(), "close": 100}],
+                "indicator_data": {"sma_medium": [99]},
+                "execution_mode": "favorite_auto_refresh",
+            }
+
+    class FakeProvider:
+        def fetch_ohlcv(self, **_kwargs):
+            timestamp = pd.Timestamp.now("UTC")
+            return pd.DataFrame(
+                {
+                    "timestamp_utc": [timestamp],
+                    "open": [100.0],
+                    "high": [101.0],
+                    "low": [99.0],
+                    "close": [100.0],
+                    "volume": [1.0],
+                }
+            ).set_index("timestamp_utc", drop=False)
+
+    with SessionLocal() as db:
+        favorite_a = favorites.create_favorite(
+            _favorite_payload("CPU paused A", symbol="BTC/USDT"),
+            current_user_id="user-a",
+            db=db,
+        )
+        favorite_b = favorites.create_favorite(
+            _favorite_payload("CPU paused B", symbol="ETH/USDT"),
+            current_user_id="user-a",
+            db=db,
+        )
+        favorite_ids = [favorite_a.id, favorite_b.id]
+
+    service = FavoriteBacktestRefreshService(
+        db_factory=SessionLocal,
+        optimizer_factory=FakeOptimizer,
+        market_data_provider_factory=lambda _source: FakeProvider(),
+        cpu_sampler=lambda: 75.0,
+        sleep_fn=lambda _seconds: None,
+    )
+    summary = service.run_due_refreshes(
+        interval_seconds=86400,
+        cpu_limit_percent=60,
+        cpu_pause_seconds=30,
+    )
+
+    with SessionLocal() as db:
+        runs = db.query(AutoBacktestRun).filter(AutoBacktestRun.favorite_id.in_(favorite_ids)).all()
+
+    assert summary["status"] == "paused_cpu"
+    assert summary["due"] == 2
+    assert summary["selected"] == 2
+    assert summary["skipped_cpu"] == 2
+    assert summary["success"] == 0
+    assert summary["failed"] == 0
+    assert summary["pause_seconds"] == 30
+    assert "above limit" in summary["reason"]
+    assert optimizer_calls == []
+    assert runs == []
+    stored_state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert stored_state["status"] == "paused_cpu"
 
 
 def test_favorite_auto_refresh_rejects_stale_candles(tmp_path: Path):

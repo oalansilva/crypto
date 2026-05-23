@@ -35,6 +35,15 @@ def candle_writer_state_path() -> Path:
     )
 
 
+def favorite_refresh_state_path() -> Path:
+    return Path(
+        os.getenv(
+            "FAVORITE_BACKTEST_REFRESH_STATE_FILE",
+            "/tmp/crypto-favorite-refresh-state.json",
+        )
+    )
+
+
 def _safe_text(value: Any, *, limit: int = 200) -> str:
     text = str(value)
     text = re.sub(r"(?i)(password|passwd|secret|token|key)=([^\s]+)", r"\1=<redacted>", text)
@@ -71,6 +80,45 @@ def read_candle_writer_state() -> dict[str, Any] | None:
             "error": _safe_text(exc),
         }
     return _sanitize_candle_writer_state(data) if isinstance(data, dict) else {"status": "invalid"}
+
+
+def _sanitize_favorite_refresh_state(data: dict[str, Any]) -> dict[str, Any]:
+    allowed = {
+        "status",
+        "due",
+        "selected",
+        "success",
+        "failed",
+        "skipped_cpu",
+        "skipped_limit",
+        "cpu_limit_percent",
+        "last_cpu_percent",
+        "pause_seconds",
+        "started_at",
+        "completed_at",
+        "updated_at",
+    }
+    sanitized = {key: data[key] for key in allowed if key in data}
+    if "reason" in data and data["reason"]:
+        sanitized["reason"] = _safe_text(data["reason"])
+    return sanitized
+
+
+def read_favorite_refresh_state() -> dict[str, Any] | None:
+    path = favorite_refresh_state_path()
+    try:
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+    except FileNotFoundError:
+        return None
+    except Exception as exc:
+        return {
+            "status": "unreadable",
+            "error": _safe_text(exc),
+        }
+    return (
+        _sanitize_favorite_refresh_state(data) if isinstance(data, dict) else {"status": "invalid"}
+    )
 
 
 def inspect_candle_writer_lock() -> dict[str, Any]:
@@ -127,9 +175,7 @@ def build_runtime_status_payload(
         "service": "crypto-runtime",
         "runtime": {
             "canonical_candles_mode": env_flag_enabled("CRYPTO_CANDLES_CANONICAL_MODE", "1"),
-            "direct_fetch_fallback": env_flag_enabled(
-                "CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK", "0"
-            ),
+            "direct_fetch_fallback": env_flag_enabled("CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK", "0"),
             "backend_ohlcv_ingestion_enabled": should_start_ohlcv_ingestion(),
             "backfill_scheduler_enabled": should_start_backfill_scheduler(),
             "binance_realtime_connector_enabled": should_start_binance_realtime_connector(),
@@ -150,6 +196,18 @@ def build_runtime_status_payload(
             "enabled": env_flag_enabled("CRYPTO_CANDLES_WRITER_ENABLED", "0"),
             "lock": inspect_candle_writer_lock(),
             "latest_run": read_candle_writer_state(),
+        },
+        "favorite_backtest_refresh": {
+            "enabled": runtime_worker_routines["favorite_backtest_refresh"],
+            "latest_run": read_favorite_refresh_state(),
+            "interval_seconds": int(
+                os.getenv("FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS", "86400")
+            ),
+            "loop_seconds": int(os.getenv("FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS", "3600")),
+            "max_favorites": int(os.getenv("FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES", "12")),
+            "cpu_limit_percent": float(
+                os.getenv("FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT", "60")
+            ),
         },
         "market_ohlcv": {
             "enabled": market_ohlcv_enabled,
