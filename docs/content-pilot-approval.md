@@ -7,11 +7,12 @@ Status: revisado com `social-content-crypto`; pronto para aprovacao explicita do
 
 ## Revisao Pela Skill `social-content-crypto`
 
-Revisao aplicada em 2026-05-12:
+Revisao aplicada em 2026-05-12, com ajuste de posicionamento em 2026-05-22:
 
 - piloto mantido pequeno e controlado;
 - textos preservam o guardrail de rascunho, sem publicacao automatica;
 - linguagem revisada para nao parecer promessa, call, sinal ou recomendacao financeira personalizada;
+- textos reposicionados para pessoas nao tecnicas que querem comprar cripto, mas nao sao traders;
 - qualquer post sobre mercado atual deve ter fonte verificada no dia da publicacao;
 - envio externo continua dependendo de aprovacao explicita do Alan.
 
@@ -107,11 +108,11 @@ Texto-base:
 ```text
 Fala, tudo bem?
 
-Estou criando o Cripto Farol, uma ferramenta para ajudar investidores cripto a acompanhar o mercado com mais clareza e menos ruido.
+Estou criando o Cripto Farol, uma ferramenta para ajudar pessoas que querem comprar cripto, mas nao querem decidir so no impulso ou por dica de grupo.
 
 Estou abrindo um beta fechado gratuito para poucas pessoas, em troca de feedback sincero.
 
-Nao e call, promessa de lucro nem grupo de sinal. A ideia e testar se leitura de mercado, historico e contexto ajudam a decidir melhor o que fazer com uma posicao.
+Nao e call, promessa de lucro nem recomendacao individual. A ideia e testar se contexto simples e clareza de risco ajudam antes da compra.
 
 Faz sentido eu te mandar o link para entrar na lista?
 ```
@@ -146,20 +147,20 @@ Horario sugerido:
 Texto-base:
 
 ```text
-Estou construindo o Cripto Farol, um beta fechado para ajudar investidores cripto a decidir com mais clareza.
+Estou construindo o Cripto Farol, um beta fechado para ajudar pessoas que querem comprar cripto com mais clareza.
 
-O problema que quero validar e simples: no mercado cripto, informacao nao falta. O que falta e criterio para saber o que acompanhar, quando esperar e quando proteger uma posicao.
+O problema que quero validar e simples: informacao sobre cripto nao falta. O que falta e uma rotina simples para entender contexto, risco e momento antes de colocar dinheiro.
 
-A proposta do beta e testar uma rotina mais objetiva:
+A proposta do beta e testar uma rotina mais acessivel:
 
-- monitorar ativos e estrategias;
-- separar ruido de sinal relevante;
-- olhar se faz sentido comprar, manter ou sair com mais contexto;
-- usar dados e backtests como apoio, nao como promessa.
+- entender qual cripto esta sendo considerada;
+- separar palpite de contexto;
+- olhar se faz sentido comprar agora ou esperar;
+- enxergar risco antes da compra.
 
 Nesta fase, o beta sera gratuito e controlado, com poucos usuarios e feedback direto.
 
-Se voce investe em cripto e sente que perde tempo pulando entre graficos, grupos e opinioes, quero conversar.
+Se voce quer comprar cripto, mas nao quer virar trader nem depender de palpite, quero conversar.
 
 Entrar na lista do beta fechado:
 https://criptofarol.com.br/
@@ -187,7 +188,7 @@ Texto-base:
 ```text
 Pessoal, estou montando um beta fechado do Cripto Farol.
 
-A ideia e testar uma ferramenta para ajudar investidores cripto a decidir melhor se faz sentido comprar, manter ou sair, com contexto e risco mais claros.
+A ideia e testar uma ferramenta para ajudar pessoas que querem comprar cripto, mas nao sao traders e nao querem decidir so por palpite, grupo ou hype.
 
 Nao e grupo de call e nao tem promessa de lucro. E um beta gratuito nesta fase, com acesso controlado, para validar se a ferramenta ajuda de verdade.
 

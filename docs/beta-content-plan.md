@@ -6,12 +6,13 @@ Status: revisado com `social-content-crypto`; pronto para revisao final do Alan 
 
 ## Revisao Pela Skill `social-content-crypto`
 
-Revisao aplicada em 2026-05-12:
+Revisao aplicada em 2026-05-12, com ajuste de posicionamento em 2026-05-22:
 
 - conteudo mantido como rascunho, sem autorizacao de publicacao automatica;
 - CTAs ajustados para ficarem mais claros por canal;
 - linguagem revisada para evitar promessa, hype, recomendacao financeira ou tom de grupo de sinais;
-- termos sobre compra, manutencao e saida devem ser tratados como apoio para decidir melhor, nao como ordem operacional;
+- linguagem reposicionada para pessoas nao tecnicas que querem comprar cripto, mas nao sao traders;
+- termos sobre compra devem ser tratados como apoio para decidir melhor, nao como ordem operacional;
 - qualquer conteudo sobre mercado atual deve ser verificado com fonte atual antes de publicar.
 
 ## Objetivo
@@ -22,33 +23,33 @@ O conteudo nao tem objetivo de viralizar. O objetivo e gerar conversas qualifica
 
 ## Publico Prioritario
 
-1. Investidor cripto iniciante que sente excesso de informacao.
-2. Investidor intermediario que ja opera, mas sofre para decidir se compra, mantem ou sai de uma posicao.
-3. Trader ou investidor ativo que quer rotina mais clara para acompanhar o mercado sem depender de opiniao solta.
+1. Pessoa nao tecnica que quer comprar cripto, mas nao sabe por onde comecar.
+2. Investidor iniciante que sente excesso de informacao e medo de comprar no momento errado.
+3. Pessoa da rede quente do Alan que tem curiosidade por cripto, mas nao quer virar trader nem operar todo dia.
 
 ## Dor Central
 
-O investidor cripto tem informacao demais e criterio de menos.
+A pessoa comum que quer comprar cripto recebe informacao demais e contexto de menos.
 
 Dores que devem aparecer nos conteudos:
 
-- nao saber onde concentrar atencao;
+- nao saber qual cripto esta comprando;
 - comprar por impulso quando o mercado ja subiu;
-- demorar para sair porque falta plano;
-- pular entre grafico, grupo, influenciador e noticia;
-- confundir opiniao forte com decisao bem estruturada.
+- decidir por dica de grupo, medo de ficar de fora ou opiniao forte;
+- nao entender o risco antes de colocar dinheiro;
+- confundir barulho com decisao bem estruturada.
 
 ## Proposta de Valor
 
-Cripto Farol ajuda o investidor a enxergar melhor antes de decidir em cripto.
+Cripto Farol ajuda pessoas comuns a olhar contexto, risco e momento antes de comprar cripto.
 
 A promessa correta nao e "ganhar mais dinheiro". A promessa correta e:
 
-- organizar a leitura de mercado;
-- reduzir ruido;
-- mostrar contexto para decidir se faz sentido comprar, manter ou sair;
-- apoiar decisao com dados, backtests e acompanhamento;
-- criar uma rotina mais objetiva para observar oportunidades.
+- explicar o contexto em linguagem simples;
+- reduzir decisao por impulso;
+- mostrar risco antes da compra;
+- ajudar a decidir se faz sentido comprar agora ou esperar;
+- criar uma rotina simples para comecar com mais clareza.
 
 ## CTA Padrao
 
@@ -140,25 +141,25 @@ CTA recomendado: comentar, responder ou entrar na lista pelo site.
 
 Draft:
 
-Estou construindo o Cripto Farol, um beta fechado para ajudar investidores cripto a decidir com mais clareza.
+Estou construindo o Cripto Farol, um beta fechado para ajudar pessoas que querem comprar cripto com mais clareza.
 
-O problema que quero validar e simples: no mercado cripto, informacao nao falta. O que falta e criterio para saber o que acompanhar, quando esperar e quando proteger uma posicao.
+O problema que quero validar e simples: informacao sobre cripto nao falta. O que falta e uma rotina simples para entender contexto, risco e momento antes de colocar dinheiro.
 
-A proposta do beta e testar uma rotina mais objetiva:
+A proposta do beta e testar uma rotina mais acessivel:
 
-- monitorar ativos e estrategias;
-- separar ruido de sinal relevante;
-- olhar se faz sentido comprar, manter ou sair com mais contexto;
-- usar dados e backtests como apoio, nao como promessa.
+- entender qual cripto esta sendo considerada;
+- separar palpite de contexto;
+- olhar se faz sentido comprar agora ou esperar;
+- enxergar risco antes da compra.
 
 Nesta fase, o beta sera gratuito e controlado, com poucos usuarios e feedback direto.
 
-Se voce investe em cripto e sente que perde tempo pulando entre graficos, grupos e opinioes, quero conversar.
+Se voce quer comprar cripto, mas nao quer virar trader nem depender de palpite, quero conversar.
 
 Entre na lista do beta fechado:
 https://criptofarol.com.br/
 
-Revisao: aprovado como rascunho seguro. Nao promete lucro, nao recomenda ativo e nao chama o beta de grupo de sinais.
+Revisao: rascunho seguro para publico nao tecnico. Nao promete lucro, nao recomenda ativo e nao chama o beta de grupo de sinais.
 
 ### LinkedIn 2 - Convite Controlado
 
@@ -170,75 +171,75 @@ Draft:
 
 Estou abrindo uma primeira lista de interessados para testar o Cripto Farol.
 
-Nao e uma plataforma publica ainda. E um beta fechado para validar se investidores cripto enxergam valor em uma ferramenta que organiza:
+Nao e uma plataforma publica ainda. E um beta fechado para validar se pessoas comuns enxergam valor em uma ferramenta que ajuda a entender:
 
-- leitura de mercado;
-- contexto para decidir se faz sentido comprar, manter ou sair;
-- historico de estrategias;
-- apoio a decisao com dados e backtests.
+- qual cripto esta comprando;
+- se o momento faz sentido;
+- qual risco esta assumindo;
+- quando talvez seja melhor esperar.
 
-O objetivo nao e vender promessa. E entender se isso ajuda de verdade quem quer operar ou investir com menos ruido.
+O objetivo nao e vender promessa. E entender se isso ajuda de verdade quem quer comprar cripto sem decidir no escuro.
 
 Nesta fase, o acesso sera gratuito para um grupo pequeno, em troca de feedback honesto.
 
 Se fizer sentido para voce, entre na lista do beta fechado:
 https://criptofarol.com.br/
 
-Revisao: aprovado como rascunho seguro. A frase sobre comprar, manter ou sair deve permanecer como apoio a decisao, nao como promessa de acerto.
+Revisao: rascunho seguro para convite controlado. Compra aparece como decisao do usuario, nao como ordem operacional.
 
 ### Instagram 1 - Carrossel
 
-Tema: "Cripto nao falta informacao. Falta criterio."
+Tema: "Quer comprar cripto, mas nao sabe por onde comecar?"
 
 Canal: Instagram ou LinkedIn
 Formato recomendado: 4:5 para melhor leitura mobile
 
 Slides:
 
-1. Cripto nao falta informacao. Falta criterio.
-2. O problema nao e nao ter grafico, noticia ou opiniao.
-3. O problema e saber o que realmente importa agora.
-4. Comprar porque subiu costuma ser tarde.
-5. Segurar sem plano costuma custar caro.
-6. O Cripto Farol esta sendo criado para testar uma rotina mais clara de decisao.
+1. Quer comprar cripto, mas nao sabe por onde comecar?
+2. O problema nao e ser iniciante.
+3. E comprar porque alguem indicou, porque subiu muito ou porque deu medo de ficar de fora.
+4. Antes de comprar, responda: qual cripto e essa?
+5. Por que agora? Quanto posso perder se der errado?
+6. O Cripto Farol esta sendo criado para testar uma rotina mais clara antes da compra.
 7. Beta fechado, gratuito nesta fase, com acesso controlado.
 8. Quer testar e dar feedback? Entre na lista do beta fechado.
 
 Legenda:
 
-Estou montando o beta fechado do Cripto Farol para investidores que querem acompanhar cripto com menos ruido e mais criterio.
+Estou montando o beta fechado do Cripto Farol para pessoas que querem comprar cripto com menos impulso e mais criterio.
 
-Nao e promessa de lucro. E uma ferramenta de apoio a decisao, com leitura de mercado, dados e contexto.
+Nao e promessa de lucro. E uma ferramenta de apoio a decisao, com contexto, risco e linguagem simples.
 
 Entre na lista do beta fechado:
 https://criptofarol.com.br/
 
-Revisao: aprovado como rascunho seguro. Evitar incluir grafico, ativo especifico ou print que pareca call.
+Revisao: rascunho seguro. Evitar incluir ativo especifico, print que pareca call ou linguagem de trader.
 
 ### Instagram 2 - Post Curto
 
 Texto visual:
 
-Antes de comprar uma cripto, voce sabe o que esta olhando?
+Antes de comprar cripto, entenda o risco.
 
 Legenda:
 
 Muita gente compra porque viu uma alta, uma call ou um comentario forte.
 
-O Cripto Farol nasce para testar uma ideia: ajudar investidores a acompanhar o mercado com mais contexto, historico e clareza de risco.
+O Cripto Farol nasce para testar uma ideia: ajudar pessoas comuns a olhar contexto, momento e risco antes de comprar cripto.
 
 Beta fechado gratuito nesta fase.
 
 Entre na lista do beta fechado:
 https://criptofarol.com.br/
 
-Revisao: aprovado como rascunho seguro. "Acompanhar o mercado" e mais seguro que "acompanhar oportunidades" para primeira comunicacao publica.
+Revisao: rascunho seguro. Linguagem simples, sem ticker, sem call e sem promessa.
 
 ### Telegram/Grupos
 
 Pessoal, estou montando um beta fechado do Cripto Farol.
 
-A ideia e testar uma ferramenta para ajudar investidores cripto a decidir melhor se faz sentido comprar, manter ou sair, com contexto e risco mais claros.
+A ideia e testar uma ferramenta para ajudar pessoas que querem comprar cripto, mas nao sao traders e nao querem decidir so por palpite, grupo ou hype.
 
 Nao e grupo de call e nao tem promessa de lucro. E um beta gratuito nesta fase, com acesso controlado, para validar se a ferramenta ajuda de verdade.
 
@@ -251,11 +252,11 @@ Revisao: usar somente onde Alan ja tem contexto ou permissao. Nao postar como di
 
 Fala, tudo bem?
 
-Estou criando o Cripto Farol, uma ferramenta para ajudar investidores cripto a acompanhar o mercado com mais clareza e menos ruido.
+Estou criando o Cripto Farol, uma ferramenta para ajudar pessoas que querem comprar cripto, mas nao querem decidir so no impulso ou por dica de grupo.
 
 Estou abrindo um beta fechado gratuito para poucas pessoas, em troca de feedback sincero.
 
-Nao e call, promessa de lucro nem grupo de sinal. A ideia e testar se leitura de mercado, historico e contexto ajudam a decidir melhor o que fazer com uma posicao.
+Nao e call, promessa de lucro nem recomendacao individual. A ideia e testar se contexto simples e clareza de risco ajudam antes da compra.
 
 Faz sentido eu te mandar o link para entrar na lista?
 
