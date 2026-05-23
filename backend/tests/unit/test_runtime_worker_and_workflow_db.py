@@ -171,6 +171,7 @@ def test_workflow_db_init_sync_bootstrap_and_dependency(monkeypatch, tmp_path):
 
 
 def test_runtime_worker_env_database_init_and_signal_handlers(monkeypatch):
+    assert runtime_worker._env_enabled("MISSING_ENABLED") is False
     assert runtime_worker._env_enabled("MISSING_ENABLED", default="1") is True
     monkeypatch.setenv("RUN_SIGNAL_MONITOR", "0")
     assert runtime_worker._env_enabled("RUN_SIGNAL_MONITOR") is False

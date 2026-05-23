@@ -129,6 +129,7 @@ def _db_favorite(
     tier: int | None = 1,
     notes: str | None = None,
     notify_telegram: bool = True,
+    metrics: dict | None = None,
 ) -> FavoriteStrategy:
     return FavoriteStrategy(
         user_id=user_id,
@@ -137,7 +138,7 @@ def _db_favorite(
         timeframe="1d",
         strategy_name="multi_ma_crossover",
         parameters={"data_source": CCXT_SOURCE, "ema_short": 9},
-        metrics={},
+        metrics=metrics or {},
         tier=tier,
         notes=notes,
         notify_telegram=notify_telegram,
@@ -417,6 +418,66 @@ def test_get_opportunities_marks_curated_fallback_payload(monkeypatch):
     assert out[0]["is_curated_fallback"] is True
     assert out[0]["status"] == "EXIT"
     assert out[0]["details"]["status"] == "EXIT"
+
+
+def test_get_opportunities_resolves_public_exit_from_cached_favorite_trade(monkeypatch):
+    user = _db_user("cached-exit@example.com")
+    metrics = {
+        "trades": [
+            {
+                "entry_time": "2026-04-21T00:00:00Z",
+                "entry_price": 100.0,
+                "exit_time": "2026-04-22T00:00:00Z",
+                "exit_price": 101.0,
+                "type": "long",
+            }
+        ],
+        "trades_history_cached": True,
+    }
+
+    with SessionLocal() as db:
+        db.add(user)
+        db.flush()
+        user_id = str(user.id)
+        db.add(_db_favorite(user_id, "ADA/USDT", "ADA cached exit", metrics=metrics))
+        db.commit()
+
+    service = OpportunityService()
+    provider = _MockProvider(_sample_ohlcv())
+    monkeypatch.setattr(
+        opportunity_service, "resolve_data_source_for_symbol", lambda *_args: CCXT_SOURCE
+    )
+    monkeypatch.setattr(opportunity_service, "_is_unsupported_symbol", lambda *_args: False)
+    monkeypatch.setattr(opportunity_service, "get_market_data_provider", lambda *_args: provider)
+    monkeypatch.setattr(
+        service.combo_service,
+        "get_template_metadata",
+        lambda template_name: {
+            "indicators": [],
+            "entry_logic": "close > open",
+            "exit_logic": "close < open",
+            "stop_loss": 0.1,
+        },
+    )
+    monkeypatch.setattr(opportunity_service, "ComboStrategy", _FakeComboStrategy)
+    monkeypatch.setattr(
+        service.analyzer,
+        "analyze",
+        lambda *args, **kwargs: {
+            "status": "HOLD",
+            "badge": "info",
+            "message": "raw hold",
+            "distance": 0.5,
+        },
+    )
+
+    out = service.get_opportunities(user_id, tier_filter="1")
+
+    assert len(out) == 1
+    assert out[0]["status"] == "EXIT"
+    assert out[0]["is_holding"] is False
+    assert out[0]["next_status_label"] == "entry"
+    assert out[0]["details"]["favorite_latest_trade_signal"] == "exit"
 
 
 def test_get_opportunities_ignores_stock_favorites_for_crypto_only_mvp(monkeypatch):

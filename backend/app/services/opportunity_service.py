@@ -508,6 +508,91 @@ def _public_monitor_message(status: str, analysis: dict[str, Any]) -> str:
     return "Venda/fora de posicao. Aguardando proxima compra."
 
 
+def _decode_jsonish(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    if isinstance(parsed, str):
+        try:
+            return json.loads(parsed)
+        except json.JSONDecodeError:
+            return parsed
+    return parsed
+
+
+def _coerce_utc_timestamp(value: Any) -> pd.Timestamp | None:
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        timestamp = pd.Timestamp(value)
+    except Exception:
+        return None
+    if pd.isna(timestamp):
+        return None
+    if timestamp.tzinfo is None:
+        return timestamp.tz_localize("UTC")
+    return timestamp.tz_convert("UTC")
+
+
+def _coerce_trade_price(*values: Any) -> float | None:
+    for value in values:
+        if value is None or str(value).strip() == "":
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _latest_favorite_trade_event(metrics: Any) -> dict[str, Any] | None:
+    decoded_metrics = _decode_jsonish(metrics)
+    if not isinstance(decoded_metrics, dict):
+        return None
+    trades = _decode_jsonish(decoded_metrics.get("trades"))
+    if not isinstance(trades, list):
+        return None
+
+    latest: tuple[pd.Timestamp, int, str, float | None] | None = None
+    for raw_trade in trades:
+        trade = _decode_jsonish(raw_trade)
+        if not isinstance(trade, dict):
+            continue
+
+        entry_time = _coerce_utc_timestamp(trade.get("entry_time"))
+        if entry_time is not None:
+            candidate = (
+                entry_time,
+                0,
+                "entry",
+                _coerce_trade_price(trade.get("entry_price"), trade.get("price")),
+            )
+            if latest is None or (candidate[0], candidate[1]) > (latest[0], latest[1]):
+                latest = candidate
+
+        exit_time = _coerce_utc_timestamp(trade.get("exit_time"))
+        if exit_time is not None:
+            candidate = (
+                exit_time,
+                1,
+                "exit",
+                _coerce_trade_price(trade.get("exit_price"), trade.get("price")),
+            )
+            if latest is None or (candidate[0], candidate[1]) > (latest[0], latest[1]):
+                latest = candidate
+
+    if latest is None:
+        return None
+    return {
+        "type": latest[2],
+        "timestamp": latest[0].isoformat(),
+        "price": latest[3],
+    }
+
+
 class OpportunityService:
     """
     Service to manage Strategy Favorites and calculate Opportunities (Proximity to Signal).
@@ -626,6 +711,11 @@ class OpportunityService:
             except Exception as e:
                 logger.warning(f"Failed to parse parameters JSON for favorite {r.get('id')}: {e}")
                 r["parameters"] = {}
+        latest_trade_event = _latest_favorite_trade_event(getattr(row, "metrics", None))
+        if latest_trade_event:
+            r["_favorite_latest_trade_signal"] = latest_trade_event["type"]
+            r["_favorite_latest_trade_time"] = latest_trade_event["timestamp"]
+            r["_favorite_latest_trade_price"] = latest_trade_event["price"]
         return r
 
     def _is_admin_user(self, db, user_id: str) -> bool:
@@ -1756,9 +1846,37 @@ class OpportunityService:
                     except Exception:
                         pass
 
+                favorite_latest_trade_signal = (
+                    str(fav.get("_favorite_latest_trade_signal") or "").strip().lower()
+                )
+                if favorite_latest_trade_signal in {"entry", "exit"}:
+                    analysis["favorite_latest_trade_signal"] = favorite_latest_trade_signal
+                    analysis["favorite_latest_trade_time"] = fav.get("_favorite_latest_trade_time")
+                    analysis["favorite_latest_trade_price"] = fav.get(
+                        "_favorite_latest_trade_price"
+                    )
+
+                    if favorite_latest_trade_signal == "exit":
+                        analysis["status"] = "EXITED"
+                        analysis["badge"] = "neutral"
+                        analysis["message"] = (
+                            "Saida confirmada pelo historico de trades do favorito. "
+                            "Aguardando nova entrada."
+                        )
+                        next_status_label = "entry"
+                        final_distance = (
+                            round(float(entry_distance_override), 2)
+                            if entry_distance_override is not None
+                            else None
+                        )
+                    else:
+                        analysis["status"] = "HOLDING"
+                        analysis["badge"] = "info"
+                        next_status_label = "exit"
+
                 raw_analysis_status = str(analysis.get("status") or "")
                 public_status = _public_monitor_status(
-                    is_holding=is_holding,
+                    is_holding=(is_holding if favorite_latest_trade_signal != "exit" else False),
                     raw_status=raw_analysis_status,
                 )
                 public_badge = _public_monitor_badge(public_status)

@@ -4,10 +4,13 @@ import asyncio
 import json
 import logging
 import os
+import time
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
+import httpx
 import pandas as pd
 from sqlalchemy.orm import Session
 
@@ -25,6 +28,16 @@ logger = logging.getLogger(__name__)
 REFRESH_STATUS_RUNNING = "RUNNING"
 REFRESH_STATUS_SUCCESS = "SUCCESS"
 REFRESH_STATUS_FAILED = "FAILED"
+DEFAULT_REFRESH_INTERVAL_SECONDS = 86400
+DEFAULT_REFRESH_LOOP_SECONDS = 3600
+DEFAULT_REFRESH_RUNNING_TIMEOUT_SECONDS = 1800
+DEFAULT_REFRESH_CPU_LIMIT_PERCENT = 60.0
+DEFAULT_REFRESH_CPU_PAUSE_SECONDS = 30.0
+DEFAULT_REFRESH_MAX_FAVORITES = 12
+DEFAULT_REFRESH_INITIAL_DELAY_SECONDS = 300
+DEFAULT_REFRESH_DELETE_DELISTED_BINANCE = True
+DEFAULT_BINANCE_EXCHANGE_INFO_TTL_SECONDS = 3600
+BINANCE_EXCHANGE_INFO_URL = "https://api.binance.com/api/v3/exchangeInfo"
 
 
 def _utcnow() -> datetime:
@@ -65,6 +78,63 @@ def _favorite_direction(parameters: dict[str, Any]) -> str:
 
 def _error_text(exc: Exception) -> str:
     return str(exc)[:2000] or exc.__class__.__name__
+
+
+def favorite_refresh_state_path() -> Path:
+    return Path(
+        os.getenv(
+            "FAVORITE_BACKTEST_REFRESH_STATE_FILE",
+            "/tmp/crypto-favorite-refresh-state.json",
+        )
+    )
+
+
+def _write_refresh_state(state: dict[str, Any]) -> None:
+    path = favorite_refresh_state_path()
+    payload = {
+        **state,
+        "updated_at": _utcnow().isoformat(),
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, default=str, sort_keys=True), encoding="utf-8")
+    except Exception:
+        logger.exception("Could not write favorite refresh state.")
+
+
+def _load_average_cpu_percent() -> float | None:
+    try:
+        load_1m = os.getloadavg()[0]
+    except (AttributeError, OSError):
+        return None
+    cpu_count = os.cpu_count() or 1
+    return max(0.0, min(100.0, (load_1m / cpu_count) * 100.0))
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _binance_symbol_code(symbol: str) -> str:
+    return str(symbol or "").strip().upper().replace("/", "")
+
+
+def _fetch_binance_trading_symbols() -> set[str]:
+    response = httpx.get(
+        os.getenv("BINANCE_EXCHANGE_INFO_URL", BINANCE_EXCHANGE_INFO_URL),
+        timeout=float(os.getenv("BINANCE_EXCHANGE_INFO_TIMEOUT_SECONDS", "20")),
+    )
+    response.raise_for_status()
+    payload = response.json()
+    symbols = payload.get("symbols") if isinstance(payload, dict) else []
+    return {
+        str(item.get("symbol") or "").upper()
+        for item in symbols
+        if isinstance(item, dict) and item.get("status") == "TRADING"
+    }
 
 
 def _parse_candle_timestamp(value: Any) -> datetime | None:
@@ -214,10 +284,92 @@ class FavoriteBacktestRefreshService:
         db_factory=SessionLocal,
         optimizer_factory=ComboOptimizer,
         market_data_provider_factory=get_market_data_provider,
+        cpu_sampler=_load_average_cpu_percent,
+        sleep_fn=time.sleep,
+        binance_trading_symbols_provider=_fetch_binance_trading_symbols,
     ):
         self._db_factory = db_factory
         self._optimizer_factory = optimizer_factory
         self._market_data_provider_factory = market_data_provider_factory
+        self._cpu_sampler = cpu_sampler
+        self._sleep_fn = sleep_fn
+        self._binance_trading_symbols_provider = binance_trading_symbols_provider
+        self._binance_trading_symbols_cache: set[str] | None = None
+        self._binance_trading_symbols_cached_at: datetime | None = None
+
+    def _current_cpu_percent(self) -> float | None:
+        try:
+            value = self._cpu_sampler()
+        except Exception:
+            logger.exception("Favorite refresh CPU sampler failed.")
+            return None
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _binance_trading_symbols(self) -> set[str]:
+        ttl_seconds = int(
+            os.getenv(
+                "BINANCE_EXCHANGE_INFO_TTL_SECONDS",
+                str(DEFAULT_BINANCE_EXCHANGE_INFO_TTL_SECONDS),
+            )
+        )
+        now = _utcnow()
+        if (
+            self._binance_trading_symbols_cache is not None
+            and self._binance_trading_symbols_cached_at is not None
+            and (now - self._binance_trading_symbols_cached_at).total_seconds() < ttl_seconds
+        ):
+            return self._binance_trading_symbols_cache
+
+        symbols = self._binance_trading_symbols_provider()
+        self._binance_trading_symbols_cache = set(symbols)
+        self._binance_trading_symbols_cached_at = now
+        return self._binance_trading_symbols_cache
+
+    def delete_delisted_binance_favorites(self) -> dict[str, Any]:
+        trading_symbols = self._binance_trading_symbols()
+        session = self._db_factory()
+        try:
+            rows = session.query(FavoriteStrategy).filter(FavoriteStrategy.symbol.like("%/%")).all()
+            delisted = [
+                row for row in rows if _binance_symbol_code(row.symbol) not in trading_symbols
+            ]
+            delisted_ids = [int(row.id) for row in delisted]
+            delisted_symbols = sorted({str(row.symbol) for row in delisted})
+            deleted_runs = 0
+            if delisted_ids:
+                deleted_runs = (
+                    session.query(AutoBacktestRun)
+                    .filter(AutoBacktestRun.favorite_id.in_(delisted_ids))
+                    .delete(synchronize_session=False)
+                )
+                (
+                    session.query(FavoriteStrategy)
+                    .filter(FavoriteStrategy.id.in_(delisted_ids))
+                    .delete(synchronize_session=False)
+                )
+            session.commit()
+            if delisted_ids:
+                logger.info(
+                    "Deleted %d delisted Binance favorites (%d runs): %s",
+                    len(delisted_ids),
+                    deleted_runs,
+                    ", ".join(delisted_symbols),
+                )
+            return {
+                "deleted_delisted_favorites": len(delisted_ids),
+                "deleted_delisted_runs": int(deleted_runs or 0),
+                "delisted_symbols": delisted_symbols,
+            }
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     def _prepare_market_data(
         self,
@@ -418,14 +570,72 @@ class FavoriteBacktestRefreshService:
         interval_seconds: int | None = None,
         running_timeout_seconds: int | None = None,
         max_favorites: int | None = None,
-    ) -> dict[str, int]:
+        cpu_limit_percent: float | None = None,
+        cpu_pause_seconds: float | None = None,
+        delete_delisted_binance_favorites: bool | None = None,
+    ) -> dict[str, Any]:
         now = now or _utcnow()
         interval_seconds = interval_seconds or int(
-            os.getenv("FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS", "86400")
+            os.getenv(
+                "FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS",
+                str(DEFAULT_REFRESH_INTERVAL_SECONDS),
+            )
         )
         running_timeout_seconds = running_timeout_seconds or int(
-            os.getenv("FAVORITE_BACKTEST_REFRESH_RUNNING_TIMEOUT_SECONDS", "1800")
+            os.getenv(
+                "FAVORITE_BACKTEST_REFRESH_RUNNING_TIMEOUT_SECONDS",
+                str(DEFAULT_REFRESH_RUNNING_TIMEOUT_SECONDS),
+            )
         )
+        max_favorites = (
+            max_favorites
+            if max_favorites is not None
+            else int(
+                os.getenv(
+                    "FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES",
+                    str(DEFAULT_REFRESH_MAX_FAVORITES),
+                )
+            )
+        )
+        cpu_limit_percent = (
+            cpu_limit_percent
+            if cpu_limit_percent is not None
+            else float(
+                os.getenv(
+                    "FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT",
+                    str(DEFAULT_REFRESH_CPU_LIMIT_PERCENT),
+                )
+            )
+        )
+        cpu_pause_seconds = (
+            cpu_pause_seconds
+            if cpu_pause_seconds is not None
+            else float(
+                os.getenv(
+                    "FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS",
+                    str(DEFAULT_REFRESH_CPU_PAUSE_SECONDS),
+                )
+            )
+        )
+        delete_delisted_binance_favorites = (
+            delete_delisted_binance_favorites
+            if delete_delisted_binance_favorites is not None
+            else _env_bool(
+                "FAVORITE_BACKTEST_DELETE_DELISTED_BINANCE",
+                DEFAULT_REFRESH_DELETE_DELISTED_BINANCE,
+            )
+        )
+        delisted_summary = {
+            "deleted_delisted_favorites": 0,
+            "deleted_delisted_runs": 0,
+            "delisted_symbols": [],
+        }
+        if delete_delisted_binance_favorites:
+            try:
+                delisted_summary = self.delete_delisted_binance_favorites()
+            except Exception as exc:
+                logger.warning("Could not delete delisted Binance favorites: %s", exc)
+
         cutoff = now - timedelta(seconds=interval_seconds)
         running_cutoff = now - timedelta(seconds=running_timeout_seconds)
         session = self._db_factory()
@@ -448,16 +658,50 @@ class FavoriteBacktestRefreshService:
             elif row.auto_refresh_completed_at and row.auto_refresh_completed_at > cutoff:
                 continue
             due_ids.append(int(row.id))
-            if max_favorites and len(due_ids) >= max_favorites:
-                break
 
-        summary = {"due": len(due_ids), "success": 0, "failed": 0}
-        for favorite_id in due_ids:
+        selected_ids = due_ids[:max_favorites] if max_favorites and max_favorites > 0 else due_ids
+        summary: dict[str, Any] = {
+            "status": "completed",
+            "due": len(due_ids),
+            "selected": len(selected_ids),
+            "success": 0,
+            "failed": 0,
+            "skipped_cpu": 0,
+            "skipped_limit": max(0, len(due_ids) - len(selected_ids)),
+            "cpu_limit_percent": cpu_limit_percent,
+            "last_cpu_percent": None,
+            "pause_seconds": 0.0,
+            "reason": None,
+            "started_at": now.isoformat(),
+            **delisted_summary,
+        }
+        _write_refresh_state(summary)
+
+        for index, favorite_id in enumerate(selected_ids):
+            cpu_percent = self._current_cpu_percent()
+            if cpu_percent is not None:
+                summary["last_cpu_percent"] = round(cpu_percent, 2)
+            if (
+                cpu_limit_percent is not None
+                and cpu_percent is not None
+                and cpu_percent > cpu_limit_percent
+            ):
+                remaining = len(selected_ids) - index
+                summary["status"] = "paused_cpu"
+                summary["skipped_cpu"] = remaining
+                summary["reason"] = f"CPU {cpu_percent:.1f}% above limit {cpu_limit_percent:.1f}%"
+                if cpu_pause_seconds > 0:
+                    self._sleep_fn(cpu_pause_seconds)
+                    summary["pause_seconds"] = float(cpu_pause_seconds)
+                break
             result = self.refresh_favorite(favorite_id)
             if result.get("status") == REFRESH_STATUS_SUCCESS:
                 summary["success"] += 1
             else:
                 summary["failed"] += 1
+            _write_refresh_state(summary)
+        summary["completed_at"] = _utcnow().isoformat()
+        _write_refresh_state(summary)
         return summary
 
 
@@ -468,12 +712,18 @@ def run_due_favorite_backtest_refresh(
     interval_seconds: int | None = None,
     running_timeout_seconds: int | None = None,
     max_favorites: int | None = None,
-) -> dict[str, int]:
+    cpu_limit_percent: float | None = None,
+    cpu_pause_seconds: float | None = None,
+    delete_delisted_binance_favorites: bool | None = None,
+) -> dict[str, Any]:
     return FavoriteBacktestRefreshService(db_factory=db_factory).run_due_refreshes(
         now=now,
         interval_seconds=interval_seconds,
         running_timeout_seconds=running_timeout_seconds,
         max_favorites=max_favorites,
+        cpu_limit_percent=cpu_limit_percent,
+        cpu_pause_seconds=cpu_pause_seconds,
+        delete_delisted_binance_favorites=delete_delisted_binance_favorites,
     )
 
 
@@ -482,21 +732,36 @@ async def favorite_backtest_refresh_loop(
     *,
     db_factory=SessionLocal,
     interval_seconds: int | None = None,
+    loop_sleep_seconds: int | None = None,
     initial_delay_seconds: int | None = None,
     max_favorites: int | None = None,
 ) -> None:
     interval_seconds = interval_seconds or int(
-        os.getenv("FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS", "86400")
+        os.getenv(
+            "FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS",
+            str(DEFAULT_REFRESH_INTERVAL_SECONDS),
+        )
+    )
+    loop_sleep_seconds = loop_sleep_seconds or int(
+        os.getenv(
+            "FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS",
+            str(DEFAULT_REFRESH_LOOP_SECONDS),
+        )
     )
     initial_delay_seconds = (
         initial_delay_seconds
         if initial_delay_seconds is not None
-        else int(os.getenv("FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS", "300"))
+        else int(
+            os.getenv(
+                "FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS",
+                str(DEFAULT_REFRESH_INITIAL_DELAY_SECONDS),
+            )
+        )
     )
     max_favorites = max_favorites or (
         int(os.environ["FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES"])
         if os.getenv("FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES")
-        else None
+        else DEFAULT_REFRESH_MAX_FAVORITES
     )
     service = FavoriteBacktestRefreshService(db_factory=db_factory)
 
@@ -518,6 +783,6 @@ async def favorite_backtest_refresh_loop(
         except Exception:  # pragma: no cover - defensive runtime path
             logger.exception("Favorite backtest refresh loop failed.")
         try:
-            await asyncio.wait_for(stop_event.wait(), timeout=interval_seconds)
+            await asyncio.wait_for(stop_event.wait(), timeout=loop_sleep_seconds)
         except asyncio.TimeoutError:
             continue

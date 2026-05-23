@@ -1,4 +1,5 @@
 import type { Opportunity } from './types';
+import type { MarkerSignalType } from '@/lib/tradeMarkers';
 
 export type MonitorSignalKind = 'hold' | 'exit';
 
@@ -36,6 +37,7 @@ export interface ResolveOpportunitySignalContext {
     readonly latestCandleTime?: string | null;
     readonly latestSignalTime?: string | null;
     readonly latestSignalType?: 'entry' | 'exit' | null;
+    readonly latestVisibleMarkerType?: MarkerSignalType | null;
     readonly requireCurrentCandleMatch?: boolean;
     readonly hasVisibleActiveEntry?: boolean | null;
 }
@@ -101,6 +103,16 @@ const toPublicSignalMessage = (message: string): string => message
 const toMsByTimeframe = (timeframe: string | null | undefined): number => {
     return TIMEFRAME_TO_MS[normalizeTimeframe(timeframe) || '1d'] ?? TIMEFRAME_TO_MS['1d'];
 };
+
+const isExplicitExitStatus = (rawStatus: string): boolean => (
+    rawStatus === 'EXIT'
+    || rawStatus === 'EXIT_SIGNAL'
+    || rawStatus === 'EXIT_NEAR'
+    || rawStatus === 'EXITED'
+    || rawStatus === 'STOPPED_OUT'
+    || rawStatus === 'MISSED_ENTRY'
+    || rawStatus === 'MISSED'
+);
 
 const isStale = (referenceTime: string | null | undefined, timeframe: string | undefined): boolean => {
     if (!referenceTime) return false;
@@ -196,6 +208,16 @@ export const resolveOpportunitySignal = (
             isUncertain = true;
             reasons.push('Estado desconhecido, tratado como venda.');
         }
+    }
+
+    if (context.latestVisibleMarkerType === 'entry' && !isExplicitExitStatus(rawStatus)) {
+        section = 'hold';
+        isUncertain = false;
+        reasons.length = 0;
+    } else if (context.latestVisibleMarkerType === 'exit') {
+        section = 'exit';
+        isUncertain = false;
+        reasons.length = 0;
     }
 
     const sectionVisual = VISUAL_BY_KIND[section];

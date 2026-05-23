@@ -19,10 +19,12 @@ from app.services.market_data_providers import (
     get_market_data_provider,
     resolve_data_source_for_symbol,
 )
+from app.services.canonical_candle_service import candle_writer_enabled
+from app.services.binance_symbol_universe import resolve_binance_ohlcv_symbols
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_INGESTION_TIMEFRAMES = ["1m", "5m", "1h", "4h", "1d"]
+DEFAULT_INGESTION_TIMEFRAMES = ["15m", "1d"]
 SUPPORTED_OHLCV_TIMEFRAMES = {"1m", "5m", "15m", "1h", "4h", "1d"}
 
 _TIMEFRAME_TO_INTERVAL = {
@@ -660,20 +662,7 @@ class OhlcvIngestionService:
         self._symbols = self._resolve_symbols()
 
     def _resolve_symbols(self) -> list[str]:
-        raw_symbols = os.getenv("MARKET_OHLCV_SYMBOLS", "")
-        if raw_symbols:
-            symbols = [token.strip() for token in raw_symbols.split(",") if token.strip()]
-            symbols = [token.upper() for token in symbols]
-            if symbols:
-                return symbols
-
-        return [
-            "BTC/USDT",
-            "ETH/USDT",
-            "SOL/USDT",
-            "BNB/USDT",
-            "XRP/USDT",
-        ]
+        return resolve_binance_ohlcv_symbols()
 
     def _resolve_timeframes(self) -> list[str]:
         raw = os.getenv("MARKET_OHLCV_TIMEFRAMES", ",".join(DEFAULT_INGESTION_TIMEFRAMES))
@@ -687,7 +676,10 @@ class OhlcvIngestionService:
 
     @staticmethod
     def _is_enabled() -> bool:
-        enabled = os.getenv("MARKET_OHLCV_INGESTION_ENABLED", "1").strip().lower()
+        enabled = os.getenv("MARKET_OHLCV_INGESTION_ENABLED")
+        if enabled is None:
+            return candle_writer_enabled()
+        enabled = enabled.strip().lower()
         return enabled not in {"0", "false", "no", "off"}
 
     @staticmethod
@@ -701,7 +693,13 @@ class OhlcvIngestionService:
     @staticmethod
     def _timeframe_overlap(timeframe: str) -> timedelta:
         normalized = _normalize_timeframe(timeframe)
-        return _TIMEFRAME_TO_INTERVAL.get(normalized, timedelta(hours=1))
+        candle_interval = _TIMEFRAME_TO_INTERVAL.get(normalized, timedelta(hours=1))
+        raw_overlap = os.getenv("CRYPTO_CANDLES_INCREMENTAL_OVERLAP_CANDLES", "1")
+        try:
+            overlap_candles = max(0, int(float(raw_overlap)))
+        except ValueError:
+            overlap_candles = 1
+        return candle_interval * overlap_candles
 
     def _lookback_for_timeframe(self, timeframe: str) -> timedelta:
         normalized = _normalize_timeframe(timeframe)
@@ -843,6 +841,20 @@ class OhlcvIngestionService:
 
             self._stop_event.wait(timeout=next_wait)
 
+    def run_once(self) -> int:
+        if not self._repo.enabled:
+            logger.info("[ohlcv] storage is disabled; skipping one-shot ingestion")
+            return 0
+
+        runs = 0
+        for timeframe in self._timeframes:
+            if timeframe not in SUPPORTED_OHLCV_TIMEFRAMES:
+                continue
+            for symbol in self._symbols:
+                self._ingest_symbol(symbol, timeframe)
+                runs += 1
+        return runs
+
     def start(self) -> None:
         if not self._is_enabled():
             logger.info("[ohlcv] ingestion disabled by MARKET_OHLCV_INGESTION_ENABLED")
@@ -880,3 +892,7 @@ def start_ohlcv_ingestion() -> None:
 
 def stop_ohlcv_ingestion() -> None:
     _INGESTION_SERVICE.stop()
+
+
+def run_ohlcv_ingestion_once() -> int:
+    return _INGESTION_SERVICE.run_once()

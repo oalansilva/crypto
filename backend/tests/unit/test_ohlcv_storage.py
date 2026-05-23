@@ -247,19 +247,24 @@ def test_ohlcv_ingestion_service_resolve_symbols_and_timeframes(monkeypatch):
 
     monkeypatch.delenv("MARKET_OHLCV_SYMBOLS", raising=False)
     monkeypatch.delenv("MARKET_OHLCV_TIMEFRAMES", raising=False)
+    monkeypatch.setattr(
+        ohlcv_storage,
+        "resolve_binance_ohlcv_symbols",
+        lambda: ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+    )
     service = _new_service(monkeypatch)
-    assert service._symbols == [
-        "BTC/USDT",
-        "ETH/USDT",
-        "SOL/USDT",
-        "BNB/USDT",
-        "XRP/USDT",
-    ]
-    assert service._timeframes == ["1d", "1h", "1m", "4h", "5m"]
+    assert service._symbols == ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+    assert service._timeframes == ["15m", "1d"]
 
 
 def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
     service = _new_service(monkeypatch)
+    assert service._is_enabled() is False
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_ENABLED", "1")
+    assert service._is_enabled() is True
+    monkeypatch.setenv("MARKET_OHLCV_INGESTION_ENABLED", "0")
+    assert service._is_enabled() is False
+    monkeypatch.setenv("MARKET_OHLCV_INGESTION_ENABLED", "1")
     assert service._is_enabled() is True
     assert service._ingestion_lag_warning_threshold("1m") >= 60
 
@@ -295,6 +300,28 @@ def test_ohlcv_ingestion_service_helpers_and_fallbacks(monkeypatch):
     assert len(calls) == 2
     assert "full_history_if_empty" in calls[0]
     assert "full_history_if_empty" not in calls[1]
+
+
+def test_ohlcv_ingestion_service_run_once_uses_default_timeframes(monkeypatch):
+    service = _new_service(monkeypatch)
+    service._symbols = ["BTC/USDT", "ETH/USDT"]
+    service._timeframes = ["15m", "1d"]
+    service._repo._enabled = True
+
+    ingested: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        service,
+        "_ingest_symbol",
+        lambda symbol, timeframe: ingested.append((symbol, timeframe)),
+    )
+
+    assert service.run_once() == 4
+    assert ingested == [
+        ("BTC/USDT", "15m"),
+        ("ETH/USDT", "15m"),
+        ("BTC/USDT", "1d"),
+        ("ETH/USDT", "1d"),
+    ]
 
 
 def test_ohlcv_ingestion_lag_threshold_reads_env_or_defaults(monkeypatch):

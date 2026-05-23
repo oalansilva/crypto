@@ -23,6 +23,7 @@ def isolate_market_candles_storage(monkeypatch):
 
     with app_api._CANDLES_CACHE_LOCK:
         app_api._CANDLES_CACHE.clear()
+    monkeypatch.setenv("CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK", "1")
     monkeypatch.setattr(app_api, "_OHLCV_REPO", _DisabledOhlcvRepository())
     monkeypatch.setattr(app_api, "get_backfill_service", lambda: _NoopBackfillService())
     yield
@@ -177,6 +178,51 @@ async def test_market_candles_refreshes_when_persisted_crypto_candles_are_stale(
     assert payload["candles"][-1]["timestamp_utc"] == "2026-05-02T00:00:00+00:00"
 
 
+async def test_market_candles_canonical_mode_returns_stale_persisted_without_direct_fetch(
+    monkeypatch,
+):
+    block_external_network(monkeypatch)
+    monkeypatch.setenv("CRYPTO_CANDLES_CANONICAL_MODE", "1")
+    monkeypatch.setenv("CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK", "0")
+
+    stale_candles = [
+        {
+            "timestamp_utc": "2026-05-03T00:00:00+00:00",
+            "open": 0.2499,
+            "high": 0.2519,
+            "low": 0.2499,
+            "close": 0.2516,
+            "volume": 8827222.3,
+            "source": "ccxt",
+        }
+    ]
+
+    class _StaleOhlcvRepository:
+        enabled = True
+
+        def read_recent_candles(self, *_args, **_kwargs):
+            return stale_candles
+
+    def _unexpected_fetch(*_args, **_kwargs):
+        raise AssertionError("canonical read path must not fetch Binance directly")
+
+    monkeypatch.setattr(app_api, "_OHLCV_REPO", _StaleOhlcvRepository())
+    monkeypatch.setattr(
+        app_api,
+        "_current_market_bucket_start",
+        lambda timeframe, now=None: pd.Timestamp("2026-05-05T00:00:00Z"),
+    )
+    monkeypatch.setattr(app_api, "get_market_data_provider", _unexpected_fetch)
+
+    response = await _get("/api/market/candles?symbol=ADA/USDT&timeframe=1d&limit=200")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+
+    assert payload["data_source"] == "market_ohlcv"
+    assert payload["canonical_candles"] is True
+    assert payload["candles"] == stale_candles
+
+
 async def test_market_candles_uses_fresh_persisted_crypto_candles(monkeypatch):
     block_external_network(monkeypatch)
 
@@ -211,7 +257,8 @@ async def test_market_candles_uses_fresh_persisted_crypto_candles(monkeypatch):
     assert response.status_code == 200, response.text
     payload = response.json()
 
-    assert payload["data_source"] == "timescaledb"
+    assert payload["data_source"] == "market_ohlcv"
+    assert payload["canonical_candles"] is True
     assert payload["candles"] == persisted
 
 

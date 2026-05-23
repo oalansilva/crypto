@@ -2,7 +2,7 @@ import React from 'react';
 import { Download, LineChart, ListChecks, RefreshCw, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
-import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
+import { hasExitedOpportunity, resolveOpportunitySignal, type ResolvedMonitorSignal } from './signalResolution';
 import {
     getStrategyDisplayName,
     isProtectedStrategy,
@@ -18,6 +18,7 @@ interface OpportunityCardProps {
     isPortfolioDerived: boolean;
     portfolioStatusMessage?: string | null;
     portfolioStatusTone?: 'neutral' | 'success' | 'warning';
+    resolvedSignal?: ResolvedMonitorSignal;
     isSavingPreference: boolean;
     isOpeningChart: boolean;
     isAdmin?: boolean;
@@ -64,6 +65,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     isPortfolioDerived,
     portfolioStatusMessage,
     portfolioStatusTone = 'neutral',
+    resolvedSignal: resolvedSignalOverride,
     isSavingPreference,
     isOpeningChart,
     isAdmin = false,
@@ -97,10 +99,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         setNotesValue(opportunity.notes || '');
     }, [opportunity.notes]);
 
-    const resolvedSignal = React.useMemo(
+    const computedResolvedSignal = React.useMemo(
         () => resolveOpportunitySignal(opportunity, { selectedTimeframe: effectiveTimeframe }),
         [effectiveTimeframe, opportunity],
     );
+    const resolvedSignal = resolvedSignalOverride ?? computedResolvedSignal;
     const statusMessage = resolvedSignal.statusMessage;
     const exitClassName = resolvedSignal.section === 'exit'
         ? ''
@@ -204,7 +207,12 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
             <div className="detail-control-strip">
                 <div className="detail-pair-summary">
                     <span className="detail-symbol">{symbol}</span>
-                    <span className={`status-pill ${resolvedSignal.section}`}>{resolvedSignal.visual.badgeText}</span>
+                    <span
+                        className={`status-pill ${resolvedSignal.section}`}
+                        data-testid={`monitor-card-signal-${symbolTestKey}`}
+                    >
+                        {resolvedSignal.visual.badgeText}
+                    </span>
                     <span title="Timeframe da estratégia" className="detail-timeframe">{timeframe || '-'}</span>
                     <span title="Timeframe do gráfico de preço" className="detail-timeframe">Gráfico {effectiveTimeframe}</span>
                 </div>

@@ -130,8 +130,8 @@ jobs:
     timeout-minutes: 30
     env:
       PYTHONPATH: ${{ github.workspace }}
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/crypto
-      WORKFLOW_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/crypto
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      WORKFLOW_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     services:
       postgres:
         image: postgres:15
@@ -184,8 +184,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/crypto
-      WORKFLOW_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/crypto
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      WORKFLOW_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     services:
       postgres:
         image: postgres:15

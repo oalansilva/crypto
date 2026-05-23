@@ -52,7 +52,28 @@ export CELERY_RESULT_BACKEND="${CELERY_RESULT_BACKEND:-redis://${REDIS_HOST}:${R
 export CELERY_WORKER_CONCURRENCY="${CELERY_WORKER_CONCURRENCY:-1}"
 export CELERY_WORKER_PREFETCH_MULTIPLIER="${CELERY_WORKER_PREFETCH_MULTIPLIER:-1}"
 export CELERY_LOG_LEVEL="${CELERY_LOG_LEVEL:-INFO}"
-export BINANCE_REALTIME_WORKER_ENABLED="${BINANCE_REALTIME_WORKER_ENABLED:-1}"
+export BINANCE_REALTIME_WORKER_ENABLED="${BINANCE_REALTIME_WORKER_ENABLED:-0}"
+export CRYPTO_CANDLES_CANONICAL_MODE="${CRYPTO_CANDLES_CANONICAL_MODE:-1}"
+export CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK="${CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK:-0}"
+export CRYPTO_CANDLES_WRITER_ENABLED="${CRYPTO_CANDLES_WRITER_ENABLED:-0}"
+export MARKET_OHLCV_INGESTION_ENABLED="${MARKET_OHLCV_INGESTION_ENABLED:-0}"
+export MARKET_OHLCV_TIMEFRAMES="${MARKET_OHLCV_TIMEFRAMES:-15m,1d}"
+export BACKFILL_SCHEDULER_ENABLED="${BACKFILL_SCHEDULER_ENABLED:-0}"
+export BACKFILL_DEFAULT_TIMEFRAMES="${BACKFILL_DEFAULT_TIMEFRAMES:-15m,1d}"
+export BACKFILL_SCHEDULER_TIMEFRAMES="${BACKFILL_SCHEDULER_TIMEFRAMES:-15m,1d}"
+export BACKFILL_SCHEDULER_RUN_ON_START="${BACKFILL_SCHEDULER_RUN_ON_START:-0}"
+export RUN_SIGNAL_MONITOR="${RUN_SIGNAL_MONITOR:-0}"
+export RUN_SIGNAL_FEED_SNAPSHOT_WORKER="${RUN_SIGNAL_FEED_SNAPSHOT_WORKER:-0}"
+export RUN_FAVORITE_BACKTEST_REFRESH="${RUN_FAVORITE_BACKTEST_REFRESH:-1}"
+export CRYPTO_RUNTIME_WORKER_ENABLED="${CRYPTO_RUNTIME_WORKER_ENABLED:-1}"
+export CRYPTO_CELERY_WORKER_ENABLED="${CRYPTO_CELERY_WORKER_ENABLED:-0}"
+export FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS="${FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS:-86400}"
+export FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS="${FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS:-3600}"
+export FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS="${FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS:-300}"
+export FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES="${FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES:-12}"
+export FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT="${FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT:-60}"
+export FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS="${FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS:-30}"
+export FAVORITE_BACKTEST_REFRESH_STATE_FILE="${FAVORITE_BACKTEST_REFRESH_STATE_FILE:-/tmp/crypto-favorite-refresh-state.json}"
 
 require_env_var() {
   local var_name="$1"
@@ -141,7 +162,7 @@ wait_for_tcp_open() {
 flag_enabled() {
   local raw="${1:-}"
   raw="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
-  [[ "$raw" != "0" && "$raw" != "false" && "$raw" != "no" && "$raw" != "off" ]]
+  [[ -n "$raw" && "$raw" != "0" && "$raw" != "false" && "$raw" != "no" && "$raw" != "off" ]]
 }
 
 store_runtime_pid() {
@@ -303,25 +324,42 @@ if ! wait_for_http_ok "$HEALTH_URL" 2 1; then
       "$BACKEND_UNIT" \
       "$BACKEND_DIR" \
       "$BACKEND_LOG" \
-      "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; export BINANCE_REALTIME_ENABLED=0; exec $(shell_escape "$VENV_PYTHON") -m uvicorn app.main:app --host 127.0.0.1 --port $(shell_escape "$BACKEND_PORT")"
+      "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; export BINANCE_REALTIME_ENABLED=0 CRYPTO_CANDLES_CANONICAL_MODE=$(shell_escape "$CRYPTO_CANDLES_CANONICAL_MODE") CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK=$(shell_escape "$CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK") CRYPTO_CANDLES_WRITER_ENABLED=0 MARKET_OHLCV_INGESTION_ENABLED=$(shell_escape "$MARKET_OHLCV_INGESTION_ENABLED") MARKET_OHLCV_TIMEFRAMES=$(shell_escape "$MARKET_OHLCV_TIMEFRAMES") BACKFILL_SCHEDULER_ENABLED=$(shell_escape "$BACKFILL_SCHEDULER_ENABLED") BACKFILL_DEFAULT_TIMEFRAMES=$(shell_escape "$BACKFILL_DEFAULT_TIMEFRAMES") BACKFILL_SCHEDULER_TIMEFRAMES=$(shell_escape "$BACKFILL_SCHEDULER_TIMEFRAMES") BACKFILL_SCHEDULER_RUN_ON_START=$(shell_escape "$BACKFILL_SCHEDULER_RUN_ON_START") CRYPTO_RUNTIME_WORKER_ENABLED=$(shell_escape "$CRYPTO_RUNTIME_WORKER_ENABLED") RUN_FAVORITE_BACKTEST_REFRESH=$(shell_escape "$RUN_FAVORITE_BACKTEST_REFRESH") FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS") FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS") FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES") FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT") FAVORITE_BACKTEST_REFRESH_STATE_FILE=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_STATE_FILE"); exec $(shell_escape "$VENV_PYTHON") -m uvicorn app.main:app --host 127.0.0.1 --port $(shell_escape "$BACKEND_PORT")"
   else
     (
       cd "$BACKEND_DIR"
       nohup env \
         BINANCE_REALTIME_ENABLED=0 \
+        CRYPTO_CANDLES_CANONICAL_MODE="$CRYPTO_CANDLES_CANONICAL_MODE" \
+        CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK="$CRYPTO_CANDLES_DIRECT_FETCH_FALLBACK" \
+        CRYPTO_CANDLES_WRITER_ENABLED=0 \
+        MARKET_OHLCV_INGESTION_ENABLED="$MARKET_OHLCV_INGESTION_ENABLED" \
+        MARKET_OHLCV_TIMEFRAMES="$MARKET_OHLCV_TIMEFRAMES" \
+        BACKFILL_SCHEDULER_ENABLED="$BACKFILL_SCHEDULER_ENABLED" \
+        BACKFILL_DEFAULT_TIMEFRAMES="$BACKFILL_DEFAULT_TIMEFRAMES" \
+        BACKFILL_SCHEDULER_TIMEFRAMES="$BACKFILL_SCHEDULER_TIMEFRAMES" \
+        BACKFILL_SCHEDULER_RUN_ON_START="$BACKFILL_SCHEDULER_RUN_ON_START" \
+        CRYPTO_RUNTIME_WORKER_ENABLED="$CRYPTO_RUNTIME_WORKER_ENABLED" \
+        RUN_FAVORITE_BACKTEST_REFRESH="$RUN_FAVORITE_BACKTEST_REFRESH" \
+        FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS="$FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS" \
+        FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS="$FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS" \
+        FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES="$FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES" \
+        FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT="$FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT" \
+        FAVORITE_BACKTEST_REFRESH_STATE_FILE="$FAVORITE_BACKTEST_REFRESH_STATE_FILE" \
         "$VENV_PYTHON" -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" >"$BACKEND_LOG" 2>&1 < /dev/null &
     )
   fi
   store_runtime_pid "$BACKEND_PID_FILE" "uvicorn app.main:app.*--port ${BACKEND_PORT}" || true
 fi
 
+if flag_enabled "$CRYPTO_RUNTIME_WORKER_ENABLED" && { flag_enabled "$RUN_SIGNAL_MONITOR" || flag_enabled "$RUN_SIGNAL_FEED_SNAPSHOT_WORKER" || flag_enabled "$RUN_FAVORITE_BACKTEST_REFRESH"; }; then
 if ! pgrep -f "python -m app.workers.runtime_worker" >/dev/null 2>&1; then
   if user_systemd_available; then
     start_transient_unit \
       "$RUNTIME_WORKER_UNIT" \
       "$BACKEND_DIR" \
       "$RUNTIME_WORKER_LOG" \
-      "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; export REDIS_URL=$(shell_escape "$REDIS_URL") CELERY_BROKER_URL=$(shell_escape "$CELERY_BROKER_URL") CELERY_RESULT_BACKEND=$(shell_escape "$CELERY_RESULT_BACKEND"); exec $(shell_escape "$VENV_PYTHON") -m app.workers.runtime_worker"
+      "for env_file in $(shell_escape "$ROOT_DIR/backend/.env") $(shell_escape "$ROOT_DIR/.env"); do [ -f \"\$env_file\" ] && source \"\$env_file\"; done; export REDIS_URL=$(shell_escape "$REDIS_URL") CELERY_BROKER_URL=$(shell_escape "$CELERY_BROKER_URL") CELERY_RESULT_BACKEND=$(shell_escape "$CELERY_RESULT_BACKEND") RUN_SIGNAL_MONITOR=$(shell_escape "$RUN_SIGNAL_MONITOR") RUN_SIGNAL_FEED_SNAPSHOT_WORKER=$(shell_escape "$RUN_SIGNAL_FEED_SNAPSHOT_WORKER") RUN_FAVORITE_BACKTEST_REFRESH=$(shell_escape "$RUN_FAVORITE_BACKTEST_REFRESH") FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS") FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS") FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS") FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES") FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT") FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS") FAVORITE_BACKTEST_REFRESH_STATE_FILE=$(shell_escape "$FAVORITE_BACKTEST_REFRESH_STATE_FILE"); exec $(shell_escape "$VENV_PYTHON") -m app.workers.runtime_worker"
   else
     (
       cd "$BACKEND_DIR"
@@ -329,6 +367,16 @@ if ! pgrep -f "python -m app.workers.runtime_worker" >/dev/null 2>&1; then
         REDIS_URL="$REDIS_URL" \
         CELERY_BROKER_URL="$CELERY_BROKER_URL" \
         CELERY_RESULT_BACKEND="$CELERY_RESULT_BACKEND" \
+        RUN_SIGNAL_MONITOR="$RUN_SIGNAL_MONITOR" \
+        RUN_SIGNAL_FEED_SNAPSHOT_WORKER="$RUN_SIGNAL_FEED_SNAPSHOT_WORKER" \
+        RUN_FAVORITE_BACKTEST_REFRESH="$RUN_FAVORITE_BACKTEST_REFRESH" \
+        FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS="$FAVORITE_BACKTEST_REFRESH_INTERVAL_SECONDS" \
+        FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS="$FAVORITE_BACKTEST_REFRESH_LOOP_SECONDS" \
+        FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS="$FAVORITE_BACKTEST_REFRESH_INITIAL_DELAY_SECONDS" \
+        FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES="$FAVORITE_BACKTEST_REFRESH_MAX_FAVORITES" \
+        FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT="$FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT" \
+        FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS="$FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS" \
+        FAVORITE_BACKTEST_REFRESH_STATE_FILE="$FAVORITE_BACKTEST_REFRESH_STATE_FILE" \
         "$VENV_PYTHON" -m app.workers.runtime_worker >"$RUNTIME_WORKER_LOG" 2>&1 < /dev/null &
       echo "$!" >"$RUNTIME_WORKER_PID_FILE"
     )
@@ -338,7 +386,9 @@ ensure_process_running \
   "$RUNTIME_WORKER_PID_FILE" \
   "python -m app.workers.runtime_worker" \
   "crypto runtime worker"
+fi
 
+if flag_enabled "$CRYPTO_CELERY_WORKER_ENABLED"; then
 if ! pgrep -f "celery .*app.celery_app:celery_app worker" >/dev/null 2>&1; then
   if user_systemd_available; then
     start_transient_unit \
@@ -366,6 +416,7 @@ ensure_process_running \
   "$CELERY_WORKER_PID_FILE" \
   "celery .*app.celery_app:celery_app worker" \
   "crypto celery worker"
+fi
 
 if flag_enabled "$BINANCE_REALTIME_WORKER_ENABLED"; then
   if ! pgrep -f "python -m app.binance_realtime_worker" >/dev/null 2>&1; then
@@ -391,12 +442,13 @@ if flag_enabled "$BINANCE_REALTIME_WORKER_ENABLED"; then
     "crypto binance realtime worker"
 fi
 
+echo "Building crypto frontend..."
+(
+  cd "$FRONTEND_DIR"
+  VITE_API_URL="/api" npm run build
+)
+
 if ! wait_for_http_ok "$FRONTEND_URL" 2 1; then
-  echo "Building crypto frontend..."
-  (
-    cd "$FRONTEND_DIR"
-    VITE_API_URL="/api" npm run build
-  )
   if user_systemd_available; then
     start_transient_unit \
       "$FRONTEND_UNIT" \
@@ -417,14 +469,18 @@ echo "Running crypto health checks..."
 wait_for_http_ok "$HEALTH_URL" 30 1
 wait_for_http_ok "$FRONTEND_URL" 30 1
 wait_for_tcp_open "$REDIS_HOST" "$REDIS_PORT" 10 1
-ensure_process_running \
-  "$RUNTIME_WORKER_PID_FILE" \
-  "python -m app.workers.runtime_worker" \
-  "crypto runtime worker"
-ensure_process_running \
-  "$CELERY_WORKER_PID_FILE" \
-  "celery .*app.celery_app:celery_app worker" \
-  "crypto celery worker"
+if flag_enabled "$CRYPTO_RUNTIME_WORKER_ENABLED" && { flag_enabled "$RUN_SIGNAL_MONITOR" || flag_enabled "$RUN_SIGNAL_FEED_SNAPSHOT_WORKER" || flag_enabled "$RUN_FAVORITE_BACKTEST_REFRESH"; }; then
+  ensure_process_running \
+    "$RUNTIME_WORKER_PID_FILE" \
+    "python -m app.workers.runtime_worker" \
+    "crypto runtime worker"
+fi
+if flag_enabled "$CRYPTO_CELERY_WORKER_ENABLED"; then
+  ensure_process_running \
+    "$CELERY_WORKER_PID_FILE" \
+    "celery .*app.celery_app:celery_app worker" \
+    "crypto celery worker"
+fi
 if flag_enabled "$BINANCE_REALTIME_WORKER_ENABLED"; then
   ensure_process_running \
     "$BINANCE_WORKER_PID_FILE" \

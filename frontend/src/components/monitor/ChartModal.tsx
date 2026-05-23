@@ -5,7 +5,7 @@ import type { MarketCandle } from './MiniCandlesChart';
 import { API_BASE_URL } from '../../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters';
-import { buildTradeMarkers, collapseSameCandleOppositeMarkers, sameDisplayedCandle } from '@/lib/tradeMarkers';
+import { buildTradeMarkers, collapseSameCandleOppositeMarkers, getLatestMarkerSignalType, sameDisplayedCandle } from '@/lib/tradeMarkers';
 import {
     StrategyChartSurface,
     toStrategyChartTimestamp,
@@ -327,26 +327,6 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         }
         return candleTimes.has(toStrategyChartTimestamp(activeEntrySignal.timestamp));
     }, [activeEntrySignal, canRenderSignalHistoryMarkers, candleTimes]);
-    const resolvedSignal = React.useMemo(
-        () => resolveOpportunitySignal(opportunity, {
-            selectedTimeframe: timeframe,
-            latestCandleTime: latestCandle?.timestamp_utc ?? null,
-            latestSignalTime: latestSignal?.timestamp ?? null,
-            latestSignalType: latestSignal?.type ?? null,
-            requireCurrentCandleMatch: true,
-            hasVisibleActiveEntry,
-        }),
-        [
-            hasVisibleActiveEntry,
-            latestCandle?.timestamp_utc,
-            latestSignal?.timestamp,
-            latestSignal?.type,
-            opportunity,
-            timeframe,
-        ],
-    );
-    const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
-    const signalLabel = resolvedSignal.visual.markerLabel;
     const historicalSignalMarkers = React.useMemo(() => {
         if (!canRenderSignalHistoryMarkers || sortedCandles.length === 0) {
             return [];
@@ -375,6 +355,45 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         () => buildTradesFromSignalHistory(opportunity.signal_history, opportunityDirection),
         [opportunity.signal_history, opportunityDirection],
     );
+    const tradeSignalMarkers = React.useMemo<StrategyChartMarker[]>(() => (
+        canRenderSignalHistoryMarkers
+            ? buildTradeMarkers(analysisTrades, { direction: opportunityDirection, timeframe })
+            : []
+    ), [analysisTrades, canRenderSignalHistoryMarkers, opportunityDirection, timeframe]);
+    const baseChartMarkers = React.useMemo<StrategyChartMarker[]>(
+        () => (
+            tradeSignalMarkers.length > 0
+                ? tradeSignalMarkers
+                : historicalSignalMarkers as StrategyChartMarker[]
+        ),
+        [historicalSignalMarkers, tradeSignalMarkers],
+    );
+    const latestVisibleMarkerType = React.useMemo(
+        () => getLatestMarkerSignalType(baseChartMarkers),
+        [baseChartMarkers],
+    );
+    const resolvedSignal = React.useMemo(
+        () => resolveOpportunitySignal(opportunity, {
+            selectedTimeframe: timeframe,
+            latestCandleTime: latestCandle?.timestamp_utc ?? null,
+            latestSignalTime: latestSignal?.timestamp ?? null,
+            latestSignalType: latestSignal?.type ?? null,
+            latestVisibleMarkerType,
+            requireCurrentCandleMatch: true,
+            hasVisibleActiveEntry,
+        }),
+        [
+            hasVisibleActiveEntry,
+            latestCandle?.timestamp_utc,
+            latestSignal?.timestamp,
+            latestSignal?.type,
+            latestVisibleMarkerType,
+            opportunity,
+            timeframe,
+        ],
+    );
+    const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
+    const signalLabel = resolvedSignal.visual.markerLabel;
 
     React.useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -493,28 +512,22 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         resolvedSignal.visual.markerShape,
         signalLabel,
     ]);
-    const tradeSignalMarkers = React.useMemo<StrategyChartMarker[]>(() => (
-        canRenderSignalHistoryMarkers
-            ? buildTradeMarkers(analysisTrades, { direction: opportunityDirection, timeframe })
-            : []
-    ), [analysisTrades, canRenderSignalHistoryMarkers, opportunityDirection, timeframe]);
     const chartMarkers = React.useMemo<StrategyChartMarker[]>(() => {
-        const baseMarkers = tradeSignalMarkers.length > 0
-            ? tradeSignalMarkers
-            : historicalSignalMarkers as StrategyChartMarker[];
-
-        const mergedMarkers = baseMarkers.length > 0
+        const resolvedMarkerType = resolvedSignal.section === 'hold' ? 'entry' : 'exit';
+        const shouldAddFallbackMarker = latestVisibleMarkerType !== resolvedMarkerType;
+        const fallbackCandidates = shouldAddFallbackMarker ? fallbackMarker : [];
+        const mergedMarkers = baseChartMarkers.length > 0
             ? [
-                ...baseMarkers,
-                ...fallbackMarker.filter((marker) => (
-                    !hasEquivalentMarker(baseMarkers, marker)
-                    && !baseMarkers.some((existing) => sameDisplayedCandle(existing.time, marker.time, timeframe))
+                ...baseChartMarkers,
+                ...fallbackCandidates.filter((marker) => (
+                    !hasEquivalentMarker(baseChartMarkers, marker)
+                    && !baseChartMarkers.some((existing) => sameDisplayedCandle(existing.time, marker.time, timeframe))
                 )),
             ]
-            : fallbackMarker;
+            : fallbackCandidates;
 
         return collapseSameCandleOppositeMarkers(mergedMarkers, timeframe);
-    }, [fallbackMarker, historicalSignalMarkers, timeframe, tradeSignalMarkers]);
+    }, [baseChartMarkers, fallbackMarker, latestVisibleMarkerType, resolvedSignal.section, timeframe]);
     const priceLines = React.useMemo<StrategyChartPriceLine[]>(() => [
         ...(showEntryStopRows && opportunity.entry_price !== null && opportunity.entry_price !== undefined
             ? [{ price: opportunity.entry_price, color: '#fcd535', title: 'Compra' }]

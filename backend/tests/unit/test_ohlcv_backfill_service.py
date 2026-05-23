@@ -146,7 +146,7 @@ def _new_service(monkeypatch) -> OhlcvBackfillService:
 
 def test_backfill_service_helpers_and_formatters():
     assert _normalize_timeframes([" 1m ", "1m", "15m", "bad"]) == ["1m", "15m"]
-    assert _normalize_timeframes([]) == ["1d"]
+    assert _normalize_timeframes([]) == ["15m", "1d"]
     assert _parse_int("12", default=0) == 12
     assert _parse_int("x", default=7) == 7
     assert _coerce_status(None) == "pending"
@@ -384,6 +384,13 @@ def test_start_job_controls_and_scheduler(monkeypatch):
 
     monkeypatch.setenv("BACKFILL_SCHEDULER_ENABLED", "0")
     assert service.run_scheduler_once() == 0
+
+    monkeypatch.delenv("BACKFILL_SCHEDULER_ENABLED", raising=False)
+    monkeypatch.delenv("CRYPTO_CANDLES_WRITER_ENABLED", raising=False)
+    assert service.run_scheduler_once() == 0
+
+    monkeypatch.setenv("CRYPTO_CANDLES_WRITER_ENABLED", "1")
+    assert service.run_scheduler_once() == 1
 
 
 def test_ensure_history_job_uses_backfill_when_symbol_history_is_incomplete(monkeypatch):
