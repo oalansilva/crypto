@@ -44,6 +44,11 @@ backend_log.txt
 # .codex/  (commented to allow versioning of skills)
 .codex/antigravity-skills/
 
+# Local Codex homes created during old harness/test runs. These can contain auth
+# material and must never be committed.
+.codex-home/
+.codex-home-test/
+
 # OpenClaw local agent workspace/persona state
 /.openclaw/workspace-state.json
 /HEARTBEAT.md
