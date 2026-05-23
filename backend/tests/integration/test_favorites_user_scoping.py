@@ -813,6 +813,7 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path, monk
         interval_seconds=86400,
         cpu_limit_percent=100,
         cpu_pause_seconds=0,
+        delete_delisted_binance_favorites=False,
     )
 
     with SessionLocal() as db:
@@ -903,6 +904,7 @@ def test_favorite_auto_refresh_pauses_when_cpu_limit_is_exceeded(tmp_path: Path,
         interval_seconds=86400,
         cpu_limit_percent=60,
         cpu_pause_seconds=30,
+        delete_delisted_binance_favorites=False,
     )
 
     with SessionLocal() as db:

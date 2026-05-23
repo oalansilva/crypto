@@ -11,9 +11,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
-from app.models import SystemPreference
+from app.models import AutoBacktestRun, FavoriteStrategy, SystemPreference
 from app.services import binance_prices, change_tasks_service, preset_service, upstream_guard
 from app.services.binance_prices import compute_usdt_price_for_asset, fetch_all_binance_prices
+from app.services.favorite_backtest_refresh_service import FavoriteBacktestRefreshService
 from app.services.change_tasks_service import (
     get_change_tasks_checklist,
     parse_tasks_markdown,
@@ -65,6 +66,60 @@ def test_combo_helper_functions_cover_cross_and_window_logic():
     assert list(below(right, left, periods=2)) == [False, False, True]
     assert list(crossover(short, short)) == [False]
     assert list(above(short, short, periods=2)) == [False]
+
+
+def test_favorite_refresh_deletes_delisted_binance_favorites(app_db_session):
+    active = FavoriteStrategy(
+        user_id="user-a",
+        name="Active BTC",
+        symbol="BTC/USDT",
+        timeframe="1d",
+        strategy_name="multi_ma_crossover",
+        parameters={"data_source": "ccxt"},
+        metrics={},
+    )
+    delisted = FavoriteStrategy(
+        user_id="user-a",
+        name="Delisted ANY",
+        symbol="ANY/USDT",
+        timeframe="1d",
+        strategy_name="multi_ma_crossover",
+        parameters={"data_source": "ccxt"},
+        metrics={},
+    )
+    app_db_session.add_all([active, delisted])
+    app_db_session.commit()
+    app_db_session.add(
+        AutoBacktestRun(
+            run_id="run-delisted",
+            symbol="ANY/USDT",
+            strategy="multi_ma_crossover",
+            status="FAILED",
+            favorite_id=delisted.id,
+        )
+    )
+    app_db_session.commit()
+
+    SessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=app_db_session.get_bind(),
+    )
+    service = FavoriteBacktestRefreshService(
+        db_factory=SessionLocal,
+        binance_trading_symbols_provider=lambda: {"BTCUSDT", "ETHUSDT"},
+    )
+    summary = service.delete_delisted_binance_favorites()
+
+    remaining = app_db_session.query(FavoriteStrategy).order_by(FavoriteStrategy.symbol).all()
+    runs = app_db_session.query(AutoBacktestRun).all()
+    assert summary == {
+        "deleted_delisted_favorites": 1,
+        "deleted_delisted_runs": 1,
+        "delisted_symbols": ["ANY/USDT"],
+    }
+    assert [row.symbol for row in remaining] == ["BTC/USDT"]
+    assert runs == []
 
 
 def test_symbols_config_supports_reload_and_symbol_filters(tmp_path, monkeypatch):
