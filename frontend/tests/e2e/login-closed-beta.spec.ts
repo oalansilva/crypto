@@ -12,4 +12,6 @@ test('login page does not expose public account creation during closed beta', as
   await expect(page.getByText('Criar conta')).toHaveCount(0)
   await expect(page.getByText('Nome')).toHaveCount(0)
   await expect(page.getByText('Confirmar Senha')).toHaveCount(0)
+  await expect(page.getByText('Produto educacional com finalidade informativa')).toHaveCount(0)
+  await expect(page.getByText('não configuram recomendação financeira')).toHaveCount(0)
 })
