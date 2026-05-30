@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/stores/authStore'
 import axios from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
-import { MonitorDisclaimer } from '@/components/monitor/MonitorDisclaimer'
 
 interface FormErrors {
   email?: string
@@ -73,8 +72,6 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-md">
-      <MonitorDisclaimer className="mb-4" />
-
       {/* Card */}
       <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-8 shadow-[var(--shadow-xl)] backdrop-blur-xl">
         {/* Logo */}
