@@ -628,6 +628,30 @@ test('favorites search matches combined symbol quote and strategy terms', async 
   await expect(page.locator('.fav-table-shell tbody tr', { hasText: 'HBAR/USDT' })).toHaveCount(0);
 });
 
+test('favorites ordering follows selected sort option immediately', async ({ page }) => {
+  await setupDeterministicApiMocks(page);
+  await page.goto('/favorites');
+
+  const sortSelect = page.locator('.fav-filters label', { hasText: 'Ordenar' }).locator('select');
+  const firstSymbol = page.locator('.fav-table-shell tbody tr').first().locator('.symbol-col strong');
+
+  await sortSelect.selectOption('sharpe');
+  await expect(firstSymbol).toHaveText('BTC/USDT');
+  await expect(page.locator('.fav-table-shell tbody tr').first().locator('.strategy-cell')).toContainText('multi ma crossoverV2');
+
+  await sortSelect.selectOption('return');
+  await expect(firstSymbol).toHaveText('BTC/USDT');
+  await expect(page.locator('.fav-table-shell tbody tr').first().locator('.strategy-cell')).toContainText('Multi MA Crossover');
+
+  await sortSelect.selectOption('returnPerTrade');
+  await expect(firstSymbol).toHaveText('BTC/USDT');
+  await expect(page.locator('.fav-table-shell tbody tr').first().locator('.strategy-cell')).toContainText('Multi MA Crossover');
+
+  await sortSelect.selectOption('trades');
+  await expect(firstSymbol).toHaveText('BTC/USDT');
+  await expect(page.locator('.fav-table-shell tbody tr').first().locator('.strategy-cell')).toContainText('Multi MA Crossover');
+});
+
 test('favorites mobile cards fit viewport without horizontal scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setupDeterministicApiMocks(page);

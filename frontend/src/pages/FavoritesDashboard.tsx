@@ -757,6 +757,40 @@ const FavoritesDashboard: React.FC = () => {
         return n != null ? Math.max(0, Number(n)) : 0;
     };
 
+    const getSortableNumber = (value: unknown, fallback = -Infinity): number => {
+        if (value === null || value === undefined || value === '') return fallback;
+        const numberValue = Number(value);
+        return Number.isFinite(numberValue) ? numberValue : fallback;
+    };
+
+    const getReturnPct = (fav: FavoriteStrategy): number => {
+        const metrics = fav.metrics || {};
+        if (metrics.total_return_pct != null) {
+            return getSortableNumber(metrics.total_return_pct);
+        }
+        if (metrics.total_return != null) {
+            return getSortableNumber(metrics.total_return) * 100;
+        }
+        return -Infinity;
+    };
+
+    const getFavoriteSortValue = (fav: FavoriteStrategy, option: SortByOption): number => {
+        const returnPct = getReturnPct(fav);
+        const trades = Math.max(1, getTradesCount(fav));
+
+        switch (option) {
+            case 'return':
+                return returnPct;
+            case 'sharpe':
+                return getSortableNumber(fav.metrics?.sharpe_ratio);
+            case 'trades':
+                return trades;
+            case 'returnPerTrade':
+            default:
+                return returnPct === -Infinity ? -Infinity : returnPct / trades;
+        }
+    };
+
     // Get unique symbols for filter
     const uniqueSymbols = React.useMemo(() => {
         if (!favorites) return [];
@@ -790,40 +824,18 @@ const FavoritesDashboard: React.FC = () => {
 
         return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTimeframe && matchesTier && matchesDirection;
     }) || []).sort((a, b) => {
+        const sortValueA = getFavoriteSortValue(a, sortBy);
+        const sortValueB = getFavoriteSortValue(b, sortBy);
+        if (sortValueA !== sortValueB) return sortValueB > sortValueA ? 1 : -1;
+
         const tierA = a.tier ?? 999;
         const tierB = b.tier ?? 999;
         if (tierA !== tierB) return tierA - tierB;
 
-        const returnPctA = a.metrics?.total_return_pct ?? (a.metrics?.total_return != null ? a.metrics.total_return * 100 : -Infinity);
-        const returnPctB = b.metrics?.total_return_pct ?? (b.metrics?.total_return != null ? b.metrics.total_return * 100 : -Infinity);
-        const tradesA = Math.max(1, getTradesCount(a));
-        const tradesB = Math.max(1, getTradesCount(b));
-        const sharpeA = a.metrics?.sharpe_ratio ?? -Infinity;
-        const sharpeB = b.metrics?.sharpe_ratio ?? -Infinity;
+        const createdDelta = Date.parse(b.created_at || '') - Date.parse(a.created_at || '');
+        if (Number.isFinite(createdDelta) && createdDelta !== 0) return createdDelta;
 
-        let valA: number, valB: number;
-        switch (sortBy) {
-            case 'return':
-                valA = returnPctA === -Infinity ? -Infinity : returnPctA;
-                valB = returnPctB === -Infinity ? -Infinity : returnPctB;
-                break;
-            case 'sharpe':
-                valA = sharpeA;
-                valB = sharpeB;
-                break;
-            case 'trades':
-                valA = tradesA;
-                valB = tradesB;
-                break;
-            case 'returnPerTrade':
-                valA = returnPctA === -Infinity ? -Infinity : returnPctA / tradesA;
-                valB = returnPctB === -Infinity ? -Infinity : returnPctB / tradesB;
-                break;
-            default:
-                valA = returnPctA === -Infinity ? -Infinity : returnPctA / tradesA;
-                valB = returnPctB === -Infinity ? -Infinity : returnPctB / tradesB;
-        }
-        return valB - valA; // Descending
+        return a.id - b.id;
     });
 
     const { visibleItems: visibleFavorites, hasMore, sentinelRef } = useInfiniteScroll(
