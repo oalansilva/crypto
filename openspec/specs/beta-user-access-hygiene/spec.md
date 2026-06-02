@@ -4,12 +4,13 @@
 TBD - created by archiving change card-135-remove-test-users. Update Purpose after archive.
 ## Requirements
 ### Requirement: Closed beta user cleanup blocks unauthorized accounts
-The system SHALL provide an operation that makes all beta users except the allowed Alan accounts unable to authenticate.
+The system SHALL provide an operation that makes all beta users except the allowed Alan accounts unable to authenticate without physically deleting user rows.
 
 #### Scenario: Unauthorized users exist
 - **WHEN** the cleanup operation runs with apply mode enabled
 - **THEN** every user whose email is not `o.alan.silva@gmail.com` or `o2.alan.silva@gmail.com` SHALL be marked banned/inactive
 - **AND** user-owned history SHALL remain preserved
+- **AND** no row SHALL be physically deleted from `users`
 
 #### Scenario: Allowed users exist
 - **WHEN** allowed users are present before cleanup
@@ -36,3 +37,15 @@ The system SHALL preserve safe admin action evidence when a selected beta user i
 - **THEN** the deletion action SHALL remain visible in admin action logs
 - **AND** the action evidence SHALL NOT include credential hashes or secrets
 
+### Requirement: Runtime blocks physical user deletion
+The runtime database SHALL block physical deletion or truncation of rows from `users`.
+
+#### Scenario: Delete is attempted
+- **WHEN** any runtime code or operator attempts `DELETE FROM users`
+- **THEN** PostgreSQL SHALL reject the statement before removing rows
+- **AND** existing user rows SHALL remain available for authentication or audit
+
+#### Scenario: Truncate is attempted
+- **WHEN** any runtime code or operator attempts `TRUNCATE users`
+- **THEN** PostgreSQL SHALL reject the statement before removing rows
+- **AND** existing user rows SHALL remain available for authentication or audit
