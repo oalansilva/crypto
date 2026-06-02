@@ -51,6 +51,18 @@ class ComboService:
                 return value
         return value
 
+    def _list_template_rows(self) -> list[ComboTemplate]:
+        with self._session_factory() as db:
+            return db.query(ComboTemplate).order_by(ComboTemplate.name.asc()).all()
+
+    def _seed_runtime_templates_if_empty(self) -> None:
+        if self._session_factory is not SessionLocal:
+            return
+
+        from app.startup_seed import seed_combo_templates_if_empty
+
+        seed_combo_templates_if_empty()
+
     def list_templates(self) -> Dict[str, List[Dict[str, Any]]]:
         """
         List all available combo templates from database.
@@ -58,8 +70,10 @@ class ComboService:
         Returns:
             Dict with prebuilt, examples, and custom templates
         """
-        with self._session_factory() as db:
-            rows = db.query(ComboTemplate).order_by(ComboTemplate.name.asc()).all()
+        rows = self._list_template_rows()
+        if not rows:
+            self._seed_runtime_templates_if_empty()
+            rows = self._list_template_rows()
 
         prebuilt: list[dict[str, Any]] = []
         examples: list[dict[str, Any]] = []
