@@ -4,7 +4,7 @@ from backend.scripts.cleanup_beta_test_users import (
     build_summary,
     mask_email,
     parse_allowed_emails,
-    serialize_backup_rows,
+    require_explicit_allowed_emails_for_apply,
 )
 
 
@@ -21,6 +21,18 @@ def test_parse_allowed_emails_accepts_repeated_and_comma_separated_values():
         "b@example.com",
         "c@example.com",
     }
+
+
+def test_apply_requires_explicit_allowed_emails():
+    require_explicit_allowed_emails_for_apply(False, None)
+    require_explicit_allowed_emails_for_apply(True, ["o.alan.silva@gmail.com"])
+
+    try:
+        require_explicit_allowed_emails_for_apply(True, None)
+    except SystemExit as exc:
+        assert "requires at least one explicit --allowed-email" in str(exc)
+    else:
+        raise AssertionError("Expected SystemExit for apply without explicit allowlist")
 
 
 def test_mask_email_hides_local_part_but_preserves_domain():
@@ -58,11 +70,3 @@ def test_build_summary_classifies_allowed_and_unauthorized_active_users():
     assert summary["unauthorized_active"] == 1
     assert summary["unauthorized_active_masked"] == ["te***t@example.com"]
     assert summary["allowed_missing"] == ["o2***a@gmail.com"]
-
-
-def test_serialize_backup_rows_converts_uuid_to_string():
-    rows = [{"id": 123, "email": "test@example.com", "status": "banned"}]
-
-    assert serialize_backup_rows(rows) == [
-        {"id": "123", "email": "test@example.com", "status": "banned"}
-    ]

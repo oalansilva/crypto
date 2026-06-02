@@ -264,6 +264,24 @@ The Favorites analysis flow SHALL refresh current Monitor opportunity data befor
 - **THEN** the chart can show safe entry/exit markers from that history
 - **AND** protected parameters, indicators, moving averages, and moving-average values remain hidden
 
+### Requirement: Favorites list ordering follows the selected sort option
+The Favorites page MUST apply the selected ordering option as the primary sort key for the visible filtered Favorites list.
+
+#### Scenario: User changes Favorites ordering
+- **WHEN** an authenticated user opens `/favorites`
+- **AND** selects an available option in the `Ordenar` control
+- **THEN** the visible Favorites list MUST reorder according to that selected option
+- **AND** the list MUST update immediately without requiring a page reload
+
+#### Scenario: User changes Favorites ordering repeatedly
+- **WHEN** the user changes the `Ordenar` control more than once
+- **THEN** each selected ordering option MUST be reflected by the visible Favorites list
+- **AND** ties MUST be resolved deterministically
+
+#### Scenario: Favorites ordering handles small result sets
+- **WHEN** the filtered Favorites list is empty or contains one item
+- **THEN** changing the `Ordenar` control MUST NOT break the screen or show a visual error
+
 ### Requirement: Favorites analysis preserves all recoverable trades
 The Favorites page SHALL preserve all saved or regenerated trades when opening a full analysis result from a favorite, even when Monitor synchronization returns a shorter `signal_history`.
 
@@ -330,4 +348,3 @@ The favorites API SHALL allow a common user to read favorite details from the ad
 #### Scenario: Common user opens private favorite from another user
 - **WHEN** the requested favorite is not owned by the current user and is not an admin catalog favorite
 - **THEN** the API returns not found
-

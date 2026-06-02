@@ -81,12 +81,12 @@ The system SHALL support disabling unauthorized beta users without physically de
 - **AND** existing user-owned records SHALL remain available for audit or future migration
 
 ### Requirement: Admin can delete a selected user
-The system SHALL allow an authenticated admin to delete a selected user from admin user management.
+The system SHALL NOT physically delete runtime user rows through admin user management; support SHALL use ban, suspension, reactivation, or editable status fields to manage access while preserving audit history.
 
-#### Scenario: Delete succeeds
+#### Scenario: Delete is blocked
 - **WHEN** an admin deletes another user with a valid reason
-- **THEN** the target user SHALL be removed from the user list
-- **AND** the system SHALL record a `user_deleted` admin action containing the deletion reason and target user evidence
+- **THEN** the system SHALL reject the physical deletion
+- **AND** the target user SHALL remain in the database for audit and history preservation
 
 #### Scenario: Delete own account is blocked
 - **WHEN** an admin attempts to delete their own logged-in user account
@@ -96,4 +96,3 @@ The system SHALL allow an authenticated admin to delete a selected user from adm
 #### Scenario: Delete reason is required
 - **WHEN** an admin attempts to delete a user without a valid reason
 - **THEN** the system SHALL reject the request before deleting the user
-

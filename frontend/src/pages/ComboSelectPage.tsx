@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, NavLink } from 'react-router-dom'
 import { Layers, Sparkles, ArrowRight, Database, Edit, Copy, Settings, Lock, Unlock, X, Trash2, Play, Kanban, Shuffle, Wallet, Activity, Bookmark } from 'lucide-react'
 import { API_BASE_URL } from '../lib/apiBase'
+import { authFetch } from '../lib/authFetch'
 
 interface Template {
     name: string
@@ -13,6 +14,12 @@ interface TemplateList {
     prebuilt: Template[]
     examples: Template[]
     custom: Template[]
+}
+
+function isTemplateList(value: unknown): value is TemplateList {
+    if (!value || typeof value !== 'object') return false
+    const maybe = value as Partial<Record<keyof TemplateList, unknown>>
+    return Array.isArray(maybe.prebuilt) && Array.isArray(maybe.examples) && Array.isArray(maybe.custom)
 }
 
 export function ComboSelectPage() {
@@ -38,11 +45,18 @@ export function ComboSelectPage() {
 
     const fetchTemplates = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/combos/templates`)
+            const response = await authFetch(`${API_BASE_URL}/combos/templates`)
+            if (!response.ok) {
+                throw new Error(`Failed to fetch templates (${response.status})`)
+            }
             const data = await response.json()
+            if (!isTemplateList(data)) {
+                throw new Error('Invalid templates response')
+            }
             setTemplates(data)
         } catch (error) {
             console.error('Failed to fetch templates:', error)
+            setTemplates({ prebuilt: [], examples: [], custom: [] })
         } finally {
             setLoading(false)
         }
@@ -82,7 +96,7 @@ export function ComboSelectPage() {
         e.stopPropagation()
         if (window.confirm(`Are you sure you want to delete "${templateName}"? This cannot be undone.`)) {
             try {
-                const response = await fetch(`${API_BASE_URL}/combos/meta/${templateName}`, {
+                const response = await authFetch(`${API_BASE_URL}/combos/meta/${templateName}`, {
                     method: 'DELETE'
                 })
                 if (response.ok) {
@@ -104,7 +118,7 @@ export function ComboSelectPage() {
 
         setCloning(true)
         try {
-            const response = await fetch(`${API_BASE_URL}/combos/meta/${templateToClone}/clone`, {
+            const response = await authFetch(`${API_BASE_URL}/combos/meta/${templateToClone}/clone`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ new_name: newTemplateName })
