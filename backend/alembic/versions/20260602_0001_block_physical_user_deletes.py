@@ -16,8 +16,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        """
+    op.execute("""
         CREATE OR REPLACE FUNCTION public.block_physical_users_delete()
         RETURNS trigger
         LANGUAGE plpgsql
@@ -27,26 +26,21 @@ def upgrade() -> None:
             'physical deletion/truncate from public.users is blocked in runtime; use status/is_banned or explicit audited maintenance instead';
         END;
         $$;
-        """
-    )
+        """)
     op.execute("DROP TRIGGER IF EXISTS trg_block_users_delete ON public.users;")
     op.execute("DROP TRIGGER IF EXISTS trg_block_users_truncate ON public.users;")
-    op.execute(
-        """
+    op.execute("""
         CREATE TRIGGER trg_block_users_delete
         BEFORE DELETE ON public.users
         FOR EACH STATEMENT
         EXECUTE FUNCTION public.block_physical_users_delete();
-        """
-    )
-    op.execute(
-        """
+        """)
+    op.execute("""
         CREATE TRIGGER trg_block_users_truncate
         BEFORE TRUNCATE ON public.users
         FOR EACH STATEMENT
         EXECUTE FUNCTION public.block_physical_users_delete();
-        """
-    )
+        """)
 
 
 def downgrade() -> None:

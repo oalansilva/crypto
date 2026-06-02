@@ -178,9 +178,7 @@ def run(
         before = build_summary(fetch_users(conn), allowed_emails)
         changed = 0
         if apply:
-            changed = apply_cleanup(
-                conn, allowed_emails=allowed_emails, reason=reason, actor=actor
-            )
+            changed = apply_cleanup(conn, allowed_emails=allowed_emails, reason=reason, actor=actor)
         after = build_summary(fetch_users(conn), allowed_emails)
 
     return {
