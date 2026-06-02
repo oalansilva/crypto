@@ -16,6 +16,6 @@
 - [x] 3.2 Run OpenSpec validation for `card-252-combo-templates`.
 - [x] 3.3 Run focused backend/frontend checks proportional to the changed files.
 - [x] 3.4 Validate the served runtime API and Combo UI/DOM show the non-zero template count.
-- [ ] 3.5 Move the card through Code Review to Done tecnico only after review, integration in `develop`, `./restart`, and runtime evidence.
+- [x] 3.5 Move the card through Code Review to Done tecnico only after review, integration in `develop`, `./restart`, and runtime evidence.
 
 Note: use project skills when applicable; `alan-workflow`, `openspec-new-change`, and `openspec-ff-change` were used for this planning package.
