@@ -2,6 +2,8 @@
  * Fetch wrapper that automatically includes JWT authentication.
  */
 
+import { notifyAuthSessionCleared } from './authEvents'
+
 type RefreshResponse = {
   accessToken: string
   refreshToken: string
@@ -95,6 +97,8 @@ async function refreshAuthToken(): Promise<string | null> {
 
   const { refreshToken } = loadAuthTokens()
   if (!refreshToken) {
+    persistAuthTokens(null, null)
+    notifyAuthSessionCleared('missing-refresh-token')
     return null
   }
 
@@ -108,6 +112,7 @@ async function refreshAuthToken(): Promise<string | null> {
 
       if (!response.ok) {
         persistAuthTokens(null, null)
+        notifyAuthSessionCleared('refresh-failed')
         return null
       }
 
@@ -116,6 +121,7 @@ async function refreshAuthToken(): Promise<string | null> {
 
       if (!parsed?.accessToken || !parsed.refreshToken) {
         persistAuthTokens(null, null)
+        notifyAuthSessionCleared('refresh-invalid')
         return null
       }
 
@@ -123,6 +129,7 @@ async function refreshAuthToken(): Promise<string | null> {
       return parsed.accessToken
     } catch {
       persistAuthTokens(null, null)
+      notifyAuthSessionCleared('refresh-error')
       return null
     } finally {
       refreshPromise = null

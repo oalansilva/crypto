@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import axios from 'axios'
+import { AUTH_SESSION_CLEARED_EVENT } from '../lib/authEvents'
 import { queryClient } from '../lib/queryClient'
 
 const API_BASE = '/api'
@@ -100,6 +101,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   })
 
+  const clearAuthSession = useCallback(() => {
+    persistAuthState(null, null, null)
+    queryClient.clear()
+    setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
+  }, [])
+
+  useEffect(() => {
+    if (E2E_AUTH_BYPASS) {
+      return
+    }
+
+    const handleSessionCleared = () => {
+      clearAuthSession()
+    }
+
+    window.addEventListener(AUTH_SESSION_CLEARED_EVENT, handleSessionCleared)
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CLEARED_EVENT, handleSessionCleared)
+    }
+  }, [clearAuthSession])
+
   // Validate existing token on mount
   useEffect(() => {
     if (E2E_AUTH_BYPASS) {
@@ -111,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const stored = loadFromStorage()
     if (!stored.accessToken) {
-      setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
+      clearAuthSession()
       return
     }
 
@@ -138,8 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!stored.refreshToken) {
-        persistAuthState(null, null, null)
-        setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
+        clearAuthSession()
         return
       }
 
@@ -181,8 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isLoading: false,
         })
       } catch {
-        persistAuthState(null, null, null)
-        setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
+        clearAuthSession()
       }
     }
 
@@ -191,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.clearTimeout(timeoutId)
         setState((prev) => ({ ...prev, isLoading: false }))
       })
-  }, [])
+  }, [clearAuthSession])
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await axios.post<{ accessToken: string; refreshToken: string } & AuthUser>(
@@ -217,10 +237,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [login])
 
   const logout = useCallback(() => {
-    persistAuthState(null, null, null)
-    queryClient.clear() // Clear React Query cache on logout
-    setState({ user: null, accessToken: null, refreshToken: null, isLoading: false })
-  }, [])
+    clearAuthSession()
+  }, [clearAuthSession])
 
   const getAccessToken = useCallback(() => state.accessToken, [state.accessToken])
   const updateUser = useCallback((patch: Partial<AuthUser>) => {
