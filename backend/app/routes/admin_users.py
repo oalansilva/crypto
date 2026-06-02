@@ -563,32 +563,13 @@ def delete_user(
             detail="Você não pode excluir o próprio usuário logado.",
         )
 
-    reason = _require_reason(payload.reason, ACTION_DELETE)
-    deleted_user_id = str(user.id)
-    deleted_email = user.email
-
-    _append_admin_action(
-        db=db,
-        actor_user_id=_admin_user_id,
-        target_user_id=deleted_user_id,
-        action=ACTION_DELETE,
-        reason=reason,
-        target_subject="user",
-        metadata={
-            "email": user.email,
-            "name": user.name,
-            "status": user.status,
-            "isBanned": bool(user.is_banned),
-        },
-    )
-
-    db.delete(user)
-    db.commit()
-
-    return AdminUserDeleteResponse(
-        message="User deleted successfully",
-        deletedUserId=deleted_user_id,
-        deletedEmail=deleted_email,
+    _require_reason(payload.reason, ACTION_DELETE)
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=(
+            "Physical user deletion is disabled in runtime. "
+            "Use ban, suspension, reactivation, or status update instead."
+        ),
     )
 
 

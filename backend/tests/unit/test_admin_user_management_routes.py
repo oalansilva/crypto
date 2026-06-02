@@ -280,34 +280,14 @@ def test_admin_user_routes_cover_crud_filters_and_action_logs(admin_db_session, 
     assert actions.total >= 1
     assert any(item.action == admin_users.ACTION_BAN for item in actions.items)
 
-    deleted = admin_users.delete_user(
-        str(created.id),
-        admin_users.AdminUserDeleteRequest(reason="cleanup requested"),
-        _admin_user_id=admin_id,
-        db=admin_db_session,
-    )
-    assert deleted.deletedUserId == created.id
-    assert deleted.deletedEmail == "created@example.com"
-    assert admin_db_session.query(User).filter(User.id == uuid.UUID(created.id)).first() is None
-
-    delete_actions = admin_users.list_user_actions(
-        action=admin_users.ACTION_DELETE,
-        actor_user_id=admin_id,
-        target_user_id=created.id,
-        from_=(now - timedelta(days=1)).isoformat(),
-        to=(now + timedelta(days=1)).isoformat(),
-        page=1,
-        page_size=20,
-        _admin_user_id=admin_id,
-        db=admin_db_session,
-    )
-    assert delete_actions.total >= 1
-    assert any(
-        item.action == admin_users.ACTION_DELETE
-        and item.reason == "cleanup requested"
-        and item.metadata["email"] == "created@example.com"
-        for item in delete_actions.items
-    )
+    with pytest.raises(Exception, match="Physical user deletion is disabled"):
+        admin_users.delete_user(
+            str(created.id),
+            admin_users.AdminUserDeleteRequest(reason="cleanup requested"),
+            _admin_user_id=admin_id,
+            db=admin_db_session,
+        )
+    assert admin_db_session.query(User).filter(User.id == uuid.UUID(created.id)).first() is not None
 
     with pytest.raises(Exception, match="Você não pode excluir o próprio usuário logado"):
         admin_users.delete_user(
