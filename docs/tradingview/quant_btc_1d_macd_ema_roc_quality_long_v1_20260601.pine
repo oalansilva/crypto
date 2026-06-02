@@ -1,0 +1,40 @@
+//@version=5
+strategy("MACD BTC: Continuidade com Risco Controlado",
+     overlay=true,
+     initial_capital=100,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=100,
+     pyramiding=0,
+     commission_type=strategy.commission.percent,
+     commission_value=0.075)
+
+trendLength = input.int(20, "EMA tendencia", minval=1)
+macdFast = input.int(10, "MACD rapido", minval=1)
+macdSlow = input.int(22, "MACD lento", minval=1)
+macdSignal = input.int(6, "MACD sinal", minval=1)
+rocLength = input.int(6, "ROC", minval=1)
+stopLossPct = input.float(4.0, "Stop loss (%)", minval=0.0, step=0.1)
+
+trend = ta.ema(close, trendLength)
+[macdLine, signalLine, histLine] = ta.macd(close, macdFast, macdSlow, macdSignal)
+roc = ta.roc(close, rocLength)
+
+entrySignal = close > trend and histLine > 0 and macdLine > signalLine and roc > 0
+exitSignal = close < trend or histLine < 0 or roc < -2
+
+if entrySignal and strategy.position_size == 0
+    strategy.entry("Long", strategy.long)
+
+if strategy.position_size > 0
+    stopPrice = strategy.position_avg_price * (1 - stopLossPct / 100)
+    strategy.exit("Stop", "Long", stop=stopPrice)
+
+if exitSignal and strategy.position_size > 0
+    strategy.close("Long")
+
+plot(trend, "EMA tendencia", color=color.orange)
+plot(macdLine, "MACD", color=color.blue, display=display.none)
+plot(signalLine, "MACD sinal", color=color.purple, display=display.none)
+plot(histLine, "MACD histograma", style=plot.style_columns, color=histLine >= 0 ? color.teal : color.red, display=display.none)
+plotchar(entrySignal, "Entrada", "▲", location.belowbar, color=color.lime, size=size.tiny)
+plotchar(exitSignal, "Saida", "▼", location.abovebar, color=color.red, size=size.tiny)

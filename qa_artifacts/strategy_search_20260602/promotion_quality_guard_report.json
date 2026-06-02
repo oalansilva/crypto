@@ -1,0 +1,474 @@
+{
+  "started_at": "2026-06-02T02:15:03.693508+00:00",
+  "generated_at": "2026-06-02T02:15:12.131908+00:00",
+  "template": {
+    "id": 77,
+    "name": "quant_btc_1d_ema_roc_rsi_quality_guard_long_v1_20260602",
+    "description": "Acompanha continuidade do BTC com filtro adicional de qualidade para evitar entradas fracas ou esticadas. Serve como apoio de leitura e deve ser comparada com histórico, contexto do ativo e risco.",
+    "template_data": {
+      "indicators": [
+        {
+          "type": "ema",
+          "alias": "trend",
+          "params": {
+            "length": 15
+          }
+        },
+        {
+          "type": "roc",
+          "alias": "roc",
+          "params": {
+            "length": 2
+          }
+        },
+        {
+          "type": "rsi",
+          "alias": "rsi",
+          "params": {
+            "length": 10
+          }
+        }
+      ],
+      "entry_logic": "(close > trend) & (roc > 0) & (rsi > 48) & (rsi < 82)",
+      "exit_logic": "(close < trend) | (roc < -1) | (rsi < 40)",
+      "stop_loss": 0.025
+    },
+    "optimization_schema": {
+      "parameters": {
+        "trend_length": {
+          "type": "int",
+          "min": 12,
+          "max": 18,
+          "step": 3
+        },
+        "roc_length": {
+          "type": "int",
+          "min": 2,
+          "max": 4,
+          "step": 2
+        },
+        "rsi_length": {
+          "type": "int",
+          "min": 10,
+          "max": 18,
+          "step": 4
+        },
+        "stop_loss": {
+          "type": "float",
+          "min": 0.02,
+          "max": 0.03,
+          "step": 0.005
+        }
+      },
+      "correlated_groups": []
+    }
+  },
+  "mapping": {
+    "display": "Momentum BTC: Continuidade com Filtro de Qualidade",
+    "description": "Acompanha continuidade do BTC com filtro adicional de qualidade para evitar entradas fracas ou esticadas. Serve como apoio de leitura e deve ser comparada com histórico, contexto do ativo e risco."
+  },
+  "payload": {
+    "name": "Momentum BTC: Continuidade com Filtro de Qualidade",
+    "symbol": "BTC/USDT",
+    "timeframe": "1d",
+    "strategy_name": "quant_btc_1d_ema_roc_rsi_quality_guard_long_v1_20260602",
+    "parameters": {
+      "trend_length": 15,
+      "roc_length": 2,
+      "rsi_length": 10,
+      "stop_loss": 0.025,
+      "direction": "long",
+      "data_source": "ccxt"
+    },
+    "metrics": {
+      "total_trades": 298,
+      "win_rate": 0.4697986577181208,
+      "total_return": 1114.5787770304566,
+      "total_return_pct": 111457.87770304567,
+      "avg_profit": 0.026956481800398967,
+      "sharpe_ratio": 0.30896758858310924,
+      "sortino_ratio": 2.9887975559044073,
+      "sortino_status": "ok",
+      "downside_deviation": 0.009019172860050724,
+      "neg_return_count": 158,
+      "return_series_kind": "per_trade",
+      "profit_factor": 2.267122855558967,
+      "max_loss": -0.02646140394704004,
+      "max_consecutive_losses": 7,
+      "max_drawdown": 0.2134649716756186,
+      "max_drawdown_pct": 21.34649716756186,
+      "expectancy": 0.026956481800398967,
+      "expectancy_pct": 2.6956481800398966,
+      "expectancy_usd_10k": 269.56481800398967,
+      "analysis_execution_mode": "deep_15m",
+      "initial_capital_usd": 100,
+      "entry_size_pct": 100,
+      "exit_size_pct": 100,
+      "pyramiding": 0,
+      "allow_partial_exits": false
+    },
+    "notes": "Hard mode BTC/USDT 1d long winner; deep backtest, 100 USD, 100% in/out, no partial exits.",
+    "tier": 1,
+    "notify_telegram": true,
+    "start_date": "2017-08-17",
+    "end_date": "2026-06-02",
+    "period_type": "all",
+    "auto_refresh_status": "completed",
+    "auto_refresh_completed_at": "2026-06-02T02:15:04.455413+00:00"
+  },
+  "create_response": {
+    "name": "Momentum BTC: Continuidade com Filtro de Qualidade",
+    "symbol": "BTC/USDT",
+    "timeframe": "1d",
+    "strategy_name": "quant_btc_1d_ema_roc_rsi_quality_guard_long_v1_20260602",
+    "parameters": {
+      "trend_length": 15,
+      "roc_length": 2,
+      "rsi_length": 10,
+      "stop_loss": 0.025,
+      "direction": "long",
+      "data_source": "ccxt"
+    },
+    "metrics": {
+      "total_trades": 298,
+      "win_rate": 0.4697986577181208,
+      "total_return": 1114.5787770304566,
+      "total_return_pct": 111457.87770304567,
+      "avg_profit": 0.026956481800398967,
+      "sharpe_ratio": 0.30896758858310924,
+      "sortino_ratio": 2.9887975559044073,
+      "sortino_status": "ok",
+      "downside_deviation": 0.009019172860050724,
+      "neg_return_count": 158,
+      "return_series_kind": "per_trade",
+      "profit_factor": 2.267122855558967,
+      "max_loss": -0.02646140394704004,
+      "max_consecutive_losses": 7,
+      "max_drawdown": 0.2134649716756186,
+      "max_drawdown_pct": 21.34649716756186,
+      "expectancy": 0.026956481800398967,
+      "expectancy_pct": 2.6956481800398966,
+      "expectancy_usd_10k": 269.56481800398967,
+      "analysis_execution_mode": "deep_15m",
+      "initial_capital_usd": 100,
+      "entry_size_pct": 100,
+      "exit_size_pct": 100,
+      "pyramiding": 0,
+      "allow_partial_exits": false
+    },
+    "notes": "Hard mode BTC/USDT 1d long winner; deep backtest, 100 USD, 100% in/out, no partial exits.",
+    "tier": 1,
+    "notify_telegram": true,
+    "start_date": "2017-08-17",
+    "end_date": "2026-06-02",
+    "period_type": "all",
+    "auto_refresh_status": "completed",
+    "auto_refresh_error": null,
+    "auto_refresh_started_at": null,
+    "auto_refresh_completed_at": "2026-06-02T02:15:04.455413",
+    "auto_refresh_run_id": null,
+    "id": 198,
+    "created_at": "2026-06-02T02:15:04.508164",
+    "is_strategy_protected": false,
+    "strategy_display_name": "Momentum BTC: Continuidade com Filtro de Qualidade",
+    "strategy_description": "Acompanha continuidade do BTC com filtro adicional de qualidade para evitar entradas fracas ou esticadas. Serve como apoio de leitura e deve ser comparada com histórico, contexto do ativo e risco."
+  },
+  "favorites_readback_match": [
+    {
+      "name": "Momentum BTC: Continuidade com Filtro de Qualidade",
+      "symbol": "BTC/USDT",
+      "timeframe": "1d",
+      "strategy_name": "quant_btc_1d_ema_roc_rsi_quality_guard_long_v1_20260602",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "metrics": {
+        "total_trades": 298,
+        "win_rate": 0.4697986577181208,
+        "total_return": 1114.5787770304566,
+        "total_return_pct": 111457.87770304567,
+        "avg_profit": 0.026956481800398967,
+        "sharpe_ratio": 0.30896758858310924,
+        "sortino_ratio": 2.9887975559044073,
+        "sortino_status": "ok",
+        "downside_deviation": 0.009019172860050724,
+        "neg_return_count": 158,
+        "return_series_kind": "per_trade",
+        "profit_factor": 2.267122855558967,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "max_drawdown": 0.2134649716756186,
+        "max_drawdown_pct": 21.34649716756186,
+        "expectancy": 0.026956481800398967,
+        "expectancy_pct": 2.6956481800398966,
+        "expectancy_usd_10k": 269.56481800398967,
+        "analysis_execution_mode": "deep_15m",
+        "initial_capital_usd": 100,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "pyramiding": 0,
+        "allow_partial_exits": false
+      },
+      "notes": "Hard mode BTC/USDT 1d long winner; deep backtest, 100 USD, 100% in/out, no partial exits.",
+      "tier": 1,
+      "notify_telegram": true,
+      "start_date": "2017-08-17",
+      "end_date": "2026-06-02",
+      "period_type": "all",
+      "auto_refresh_status": "completed",
+      "auto_refresh_error": null,
+      "auto_refresh_started_at": null,
+      "auto_refresh_completed_at": "2026-06-02T02:15:04.455413",
+      "auto_refresh_run_id": null,
+      "id": 198,
+      "created_at": "2026-06-02T02:15:04.508164",
+      "is_strategy_protected": false,
+      "strategy_display_name": "Momentum BTC: Continuidade com Filtro de Qualidade",
+      "strategy_description": "Acompanha continuidade do BTC com filtro adicional de qualidade para evitar entradas fracas ou esticadas. Serve como apoio de leitura e deve ser comparada com histórico, contexto do ativo e risco."
+    }
+  ],
+  "trades_readback_summary": {
+    "keys": [
+      "candles",
+      "execution_mode",
+      "favorite_id",
+      "indicator_data",
+      "metrics",
+      "metrics_deltas",
+      "metrics_match",
+      "regenerated",
+      "trades"
+    ],
+    "trade_count": 298,
+    "metrics": {
+      "total_trades": 298,
+      "win_rate": 0.4697986577181208,
+      "total_return": 1114.5787770304566,
+      "total_return_pct": 111457.87770304567,
+      "max_drawdown": 0.2134649716756186,
+      "max_drawdown_pct": 21.34649716756186,
+      "sharpe_ratio": 0.30896758858310924,
+      "profit_factor": 2.267122855558967,
+      "max_loss": -0.02646140394704004,
+      "max_consecutive_losses": 7,
+      "expectancy_pct": 2.6956481800398966,
+      "analysis_execution_mode": "deep_15m",
+      "initial_capital_usd": 100,
+      "entry_size_pct": 100,
+      "exit_size_pct": 100,
+      "pyramiding": 0,
+      "allow_partial_exits": false
+    }
+  },
+  "final_metrics": {
+    "total_trades": 298,
+    "win_rate": 0.4697986577181208,
+    "total_return": 1114.5787770304566,
+    "total_return_pct": 111457.87770304567,
+    "max_drawdown": 0.2134649716756186,
+    "max_drawdown_pct": 21.34649716756186,
+    "sharpe_ratio": 0.30896758858310924,
+    "profit_factor": 2.267122855558967,
+    "max_loss": -0.02646140394704004,
+    "max_consecutive_losses": 7,
+    "expectancy_pct": 2.6956481800398966,
+    "analysis_execution_mode": "deep_15m",
+    "initial_capital_usd": 100,
+    "entry_size_pct": 100,
+    "exit_size_pct": 100,
+    "pyramiding": 0,
+    "allow_partial_exits": false
+  },
+  "local_trade_count": 298,
+  "execution_mode": "deep_15m",
+  "benchmarks": [
+    {
+      "id": 9,
+      "name": "multi_ma_crossover - BTC/USDT 1d (00:12:26)",
+      "strategy_name": "multi_ma_crossover",
+      "metrics": {
+        "total_trades": 72,
+        "win_rate": 0.5833333333333334,
+        "total_return": 199.26913124189718,
+        "total_return_pct": 19926.91312418972,
+        "max_drawdown": 0.12214660412400954,
+        "max_drawdown_pct": 12.214660412400955,
+        "sharpe_ratio": null,
+        "profit_factor": 3.723343317608936,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null,
+        "analysis_execution_mode": null,
+        "initial_capital_usd": null,
+        "entry_size_pct": null,
+        "exit_size_pct": null,
+        "pyramiding": null,
+        "allow_partial_exits": null
+      }
+    },
+    {
+      "id": 122,
+      "name": "multi_ma_crossoverV2 - BTC/USDT 1d (batch)",
+      "strategy_name": "multi_ma_crossoverV2",
+      "metrics": {
+        "total_trades": 81,
+        "win_rate": 0.49382716049382713,
+        "total_return": 99.83324626311352,
+        "total_return_pct": 9983.324626311352,
+        "max_drawdown": 0.10540263529968669,
+        "max_drawdown_pct": 10.54026352996867,
+        "sharpe_ratio": null,
+        "profit_factor": 4.8684511275925235,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null,
+        "analysis_execution_mode": null,
+        "initial_capital_usd": null,
+        "entry_size_pct": null,
+        "exit_size_pct": null,
+        "pyramiding": null,
+        "allow_partial_exits": null
+      }
+    },
+    {
+      "id": 192,
+      "name": "Bollinger_Breakout - BTC/USDT 1d (15:00:33)",
+      "strategy_name": "Bollinger_Breakout",
+      "metrics": {
+        "total_trades": 56,
+        "win_rate": 0.5,
+        "total_return": 44.02196428055752,
+        "total_return_pct": 4402.196428055752,
+        "max_drawdown": 0.14768238906354314,
+        "max_drawdown_pct": 14.768238906354314,
+        "sharpe_ratio": null,
+        "profit_factor": 4.231588644252209,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null,
+        "analysis_execution_mode": null,
+        "initial_capital_usd": null,
+        "entry_size_pct": null,
+        "exit_size_pct": null,
+        "pyramiding": null,
+        "allow_partial_exits": null
+      }
+    },
+    {
+      "id": 194,
+      "name": "Momentum BTC: Continuidade Protegida",
+      "strategy_name": "quant_btc_1d_roc_ema_momentum_guard_long_v3",
+      "metrics": {
+        "total_trades": 304,
+        "win_rate": 0.46710526315789475,
+        "total_return": 1085.0526700751666,
+        "total_return_pct": 108505.26700751665,
+        "max_drawdown": 0.21346497167561862,
+        "max_drawdown_pct": 21.34649716756186,
+        "sharpe_ratio": null,
+        "profit_factor": 2.2699819098968375,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null,
+        "analysis_execution_mode": null,
+        "initial_capital_usd": null,
+        "entry_size_pct": null,
+        "exit_size_pct": null,
+        "pyramiding": null,
+        "allow_partial_exits": null
+      }
+    },
+    {
+      "id": 195,
+      "name": "Momentum BTC: Continuidade Equilibrada",
+      "strategy_name": "quant_btc_1d_ema_roc_trend_rider_long_v1",
+      "metrics": {
+        "total_trades": 148,
+        "win_rate": 0.46621621621621623,
+        "total_return": 558.8660335701964,
+        "total_return_pct": 55886.60335701964,
+        "max_drawdown": 0.15317040951158192,
+        "max_drawdown_pct": 15.317040951158193,
+        "sharpe_ratio": null,
+        "profit_factor": 3.004888034019783,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null,
+        "analysis_execution_mode": null,
+        "initial_capital_usd": null,
+        "entry_size_pct": null,
+        "exit_size_pct": null,
+        "pyramiding": null,
+        "allow_partial_exits": null
+      }
+    },
+    {
+      "id": 196,
+      "name": "Momentum BTC: Continuidade com Filtro RSI",
+      "strategy_name": "quant_btc_1d_ema_roc_rsi_regime_long_v2_20260601",
+      "metrics": {
+        "total_trades": 153,
+        "win_rate": 0.47058823529411764,
+        "total_return": 746.0599995259767,
+        "total_return_pct": 74605.99995259766,
+        "max_drawdown": 0.12345347680467544,
+        "max_drawdown_pct": 12.345347680467544,
+        "sharpe_ratio": null,
+        "profit_factor": 3.6998986615598413,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null,
+        "analysis_execution_mode": null,
+        "initial_capital_usd": null,
+        "entry_size_pct": null,
+        "exit_size_pct": null,
+        "pyramiding": null,
+        "allow_partial_exits": null
+      }
+    },
+    {
+      "id": 197,
+      "name": "MACD BTC: Continuidade com Risco Controlado",
+      "strategy_name": "quant_btc_1d_macd_ema_roc_quality_long_v1_20260601",
+      "metrics": {
+        "total_trades": 155,
+        "win_rate": 0.45806451612903226,
+        "total_return": 323.93861836794736,
+        "total_return_pct": 32393.861836794735,
+        "max_drawdown": 0.14019779051654735,
+        "max_drawdown_pct": 14.019779051654735,
+        "sharpe_ratio": null,
+        "profit_factor": 3.0382912678078204,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null,
+        "analysis_execution_mode": null,
+        "initial_capital_usd": null,
+        "entry_size_pct": null,
+        "exit_size_pct": null,
+        "pyramiding": null,
+        "allow_partial_exits": null
+      }
+    }
+  ],
+  "dominated_by": [],
+  "final_gate": {
+    "favorite_id_new": true,
+    "created_after_t0": true,
+    "strategy_name_absent_in_t0": true,
+    "no_duplicate_name_strategy_parameters_in_t0": true,
+    "api_visible": true,
+    "display_name_ok": true,
+    "description_ok": true,
+    "fallback_absent": true,
+    "backtest_updated": true,
+    "trades_visible": true,
+    "not_dominated_by_t0": true
+  },
+  "invalid_reasons": []
+}

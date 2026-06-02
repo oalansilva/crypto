@@ -23,6 +23,12 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
     "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
     "quant_btc_1d_adx_momentum_guard_long_v1": "Momentum BTC: Continuidade com Regime",
+    "quant_btc_1d_ema_roc_trend_rider_long_v1": "Momentum BTC: Continuidade Equilibrada",
+    "quant_btc_1d_ema_roc_rsi_regime_long_v2_20260601": "Momentum BTC: Continuidade com Filtro RSI",
+    "quant_btc_1d_volume_momentum_pressure_long_v1": "Volume + Momentum: Continuidade com Pressão",
+    "quant_btc_1d_macd_ema_roc_quality_long_v1_20260601": "MACD BTC: Continuidade com Risco Controlado",
+    "quant_btc_1d_bbands_ema_rsi_quality_long_v1_20260602": "Bandas BTC: Continuidade com Qualidade",
+    "quant_btc_1d_ema_roc_rsi_quality_guard_long_v1_20260602": "Momentum BTC: Continuidade com Filtro de Qualidade",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
@@ -76,6 +82,24 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     ),
     "quant_btc_1d_adx_momentum_guard_long_v1": (
         "Usa leituras de momentum, tendência e regime de mercado para avaliar continuidade no BTC. Serve como apoio à decisão e deve ser comparada com histórico, contexto do ativo e risco."
+    ),
+    "quant_btc_1d_ema_roc_trend_rider_long_v1": (
+        "Acompanha continuidade do BTC com leitura de tendência e força direcional, priorizando equilíbrio entre retorno e controle de risco. Pode sofrer em mercados laterais ou muito erráticos."
+    ),
+    "quant_btc_1d_ema_roc_rsi_regime_long_v2_20260601": (
+        "Acompanha continuidade do BTC com filtro adicional de regime para evitar entradas fracas ou esticadas. Serve como apoio de leitura e deve ser comparada com histórico, contexto do ativo e risco."
+    ),
+    "quant_btc_1d_volume_momentum_pressure_long_v1": (
+        "Observa continuidade do BTC quando força direcional e participação do mercado parecem convergir. Serve como apoio de leitura e pode sofrer quando o volume não confirma o movimento."
+    ),
+    "quant_btc_1d_macd_ema_roc_quality_long_v1_20260601": (
+        "Acompanha continuidade do BTC combinando leitura de tendência, momentum e confirmação direcional para buscar avanço com controle de risco. Serve como apoio de leitura e deve ser comparada com histórico, contexto do ativo e risco."
+    ),
+    "quant_btc_1d_bbands_ema_rsi_quality_long_v1_20260602": (
+        "Acompanha continuidade do BTC com filtros de tendência, volatilidade e qualidade de regime para evitar entradas fracas ou esticadas. Serve como apoio de leitura e deve ser comparada com histórico, contexto do ativo e risco."
+    ),
+    "quant_btc_1d_ema_roc_rsi_quality_guard_long_v1_20260602": (
+        "Acompanha continuidade do BTC com filtro adicional de qualidade para evitar entradas fracas ou esticadas. Serve como apoio de leitura e deve ser comparada com histórico, contexto do ativo e risco."
     ),
 }
 

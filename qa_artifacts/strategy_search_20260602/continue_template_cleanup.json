@@ -1,0 +1,39 @@
+{
+  "cleaned_at": "2026-06-02T01:47:37.966746+00:00",
+  "prefix": "tmp_quant_20260602b_",
+  "removed": [
+    {
+      "id": 54,
+      "name": "tmp_quant_20260602b_roc_ema_fast_guard_long_v1"
+    },
+    {
+      "id": 55,
+      "name": "tmp_quant_20260602b_ema_roc_rsi_fast_quality_long_v1"
+    },
+    {
+      "id": 56,
+      "name": "tmp_quant_20260602b_dual_ema_roc_rsi_alignment_long_v1"
+    },
+    {
+      "id": 57,
+      "name": "tmp_quant_20260602b_bbands_roc_quality_long_v1"
+    },
+    {
+      "id": 58,
+      "name": "tmp_quant_20260602b_macd_ema_rsi_compound_long_v1"
+    },
+    {
+      "id": 59,
+      "name": "tmp_quant_20260602b_volume_ema_roc_rsi_sponsored_long_v1"
+    },
+    {
+      "id": 60,
+      "name": "tmp_quant_20260602b_adx_ema_roc_compound_long_v1"
+    },
+    {
+      "id": 61,
+      "name": "tmp_quant_20260602b_ma_breakout_trend_exit_long_v1"
+    }
+  ],
+  "remaining": []
+}

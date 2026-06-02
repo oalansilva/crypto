@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-06-02T01:25:30Z",
+  "method": "Count all parameter-grid combinations implied by each candidate optimization_schema. The API adaptive optimizer may sample/refine internally, but these are the material candidate variants made available per thesis.",
+  "counts": [
+    {
+      "template": "tmp_quant_20260602_bb_mid_rsi_quality_long_v1",
+      "cycle": 2,
+      "thesis": "Bollinger middle-band continuation with RSI quality filter avoids late upper-band chases.",
+      "grid_candidate_count": 324
+    },
+    {
+      "template": "tmp_quant_20260602_macd_rsi_ceiling_long_v1",
+      "cycle": 3,
+      "thesis": "MACD confirmation plus RSI ceiling filters low-quality momentum and euphoric entries.",
+      "grid_candidate_count": 1215
+    },
+    {
+      "template": "tmp_quant_20260602_dual_ema_roc_alignment_long_v1",
+      "cycle": 4,
+      "thesis": "Dual EMA trend alignment reduces whipsaw while ROC handles exit discipline.",
+      "grid_candidate_count": 81
+    },
+    {
+      "template": "tmp_quant_20260602_volume_roc_trend_confirm_long_v1",
+      "cycle": 3,
+      "thesis": "Volume participation confirms that trend continuation has market sponsorship.",
+      "grid_candidate_count": 108
+    },
+    {
+      "template": "tmp_quant_20260602_ema_roc_rsi_regime_long_v1",
+      "cycle": 1,
+      "thesis": "EMA trend + ROC acceleration + RSI regime avoids weak or overextended continuation.",
+      "grid_candidate_count": 135
+    },
+    {
+      "template": "tmp_quant_20260602_ema_slope_roc_guard_long_v1",
+      "cycle": 1,
+      "thesis": "EMA slope confirms that momentum is persistent, not just above-trend noise.",
+      "grid_candidate_count": 36
+    },
+    {
+      "template": "tmp_quant_20260602_adx_rsi_momentum_regime_long_v1",
+      "cycle": 4,
+      "thesis": "ADX regime guard accepts fewer entries but targets smoother trend periods.",
+      "grid_candidate_count": 405
+    },
+    {
+      "template": "tmp_quant_20260602_atr_breakout_ema_guard_long_v1",
+      "cycle": 2,
+      "thesis": "ATR-adjusted breakout enters only when trend continuation clears normal daily noise.",
+      "grid_candidate_count": 45
+    }
+  ],
+  "total_material_candidates": 2349,
+  "distinct_theses": 8,
+  "cycles": [
+    1,
+    2,
+    3,
+    4
+  ]
+}

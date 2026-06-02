@@ -1,0 +1,3689 @@
+{
+  "generated_at": "2026-06-02T02:11:36.036851+00:00",
+  "config": {
+    "symbol": "BTC/USDT",
+    "timeframe": "1d",
+    "direction": "long",
+    "deep_backtest": true,
+    "initial_capital": 100,
+    "entry_size_pct": 100,
+    "exit_size_pct": 100,
+    "pyramiding": 0,
+    "allow_partial_exits": false
+  },
+  "finalist_count": 6,
+  "finalists": [
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "full_period": {
+        "start": "2017-08-17",
+        "end": "2026-06-02",
+        "execution_mode": "deep_15m",
+        "metrics": {
+          "total_trades": 298,
+          "win_rate": 0.4697986577181208,
+          "total_return": 1114.5787770304566,
+          "total_return_pct": 111457.87770304567,
+          "max_drawdown": 0.2134649716756186,
+          "max_drawdown_pct": 21.34649716756186,
+          "sharpe_ratio": 0.30896758858310924,
+          "profit_factor": 2.267122855558967,
+          "max_loss": -0.02646140394704004,
+          "max_consecutive_losses": 7,
+          "expectancy_pct": 2.6956481800398966
+        },
+        "trade_count": 298,
+        "conservative_cost_stress": {
+          "method": "return_pct_minus_20bps_round_trip_per_trade",
+          "trade_count": 298,
+          "drag_pct_points": 59.6,
+          "stressed_total_return_pct": 111398.27770304566,
+          "stressed_positive": true
+        }
+      },
+      "segments": [
+        {
+          "label": "early",
+          "start": "2017-08-17",
+          "end": "2020-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 117,
+            "win_rate": 0.49572649572649574,
+            "total_return": 48.573412254529615,
+            "total_return_pct": 4857.341225452961,
+            "max_drawdown": 0.1126775430837601,
+            "max_drawdown_pct": 11.26775430837601,
+            "sharpe_ratio": 0.3785781678874308,
+            "profit_factor": 4.795275043711312,
+            "max_loss": -0.02646140394703999,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 3.803748557611645
+          },
+          "trade_count": 117,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 117,
+            "drag_pct_points": 23.400000000000002,
+            "stressed_total_return_pct": 4833.941225452962,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "middle",
+          "start": "2021-01-01",
+          "end": "2023-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 98,
+            "win_rate": 0.42857142857142855,
+            "total_return": 4.540997145316759,
+            "total_return_pct": 454.0997145316759,
+            "max_drawdown": 0.13154190072018154,
+            "max_drawdown_pct": 13.154190072018155,
+            "sharpe_ratio": 0.28844500202274315,
+            "profit_factor": 2.5383208511277267,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 1.9732876895209746
+          },
+          "trade_count": 98,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 98,
+            "drag_pct_points": 19.6,
+            "stressed_total_return_pct": 434.49971453167586,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "oos_recent",
+          "start": "2024-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 80,
+            "win_rate": 0.4625,
+            "total_return": 1.7649823086148428,
+            "total_return_pct": 176.49823086148427,
+            "max_drawdown": 0.2134649716756187,
+            "max_drawdown_pct": 21.34649716756187,
+            "sharpe_ratio": 0.24733768100188808,
+            "profit_factor": 2.0709413433290935,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 1.4280224140186089
+          },
+          "trade_count": 80,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 80,
+            "drag_pct_points": 16.0,
+            "stressed_total_return_pct": 160.49823086148427,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "bear_2022",
+          "start": "2022-01-01",
+          "end": "2022-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 24,
+            "win_rate": 0.5,
+            "total_return": 0.22823322551961378,
+            "total_return_pct": 22.82332255196138,
+            "max_drawdown": 0.062386766550835165,
+            "max_drawdown_pct": 6.238676655083516,
+            "sharpe_ratio": 0.25900625367288904,
+            "profit_factor": 2.008014551252026,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 2,
+            "expectancy_pct": 0.920851814858786
+          },
+          "trade_count": 24,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 24,
+            "drag_pct_points": 4.800000000000001,
+            "stressed_total_return_pct": 18.02332255196138,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "recent_2025_2026",
+          "start": "2025-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 43,
+            "win_rate": 0.3953488372093023,
+            "total_return": 0.1040347501286143,
+            "total_return_pct": 10.40347501286143,
+            "max_drawdown": 0.23427779277860666,
+            "max_drawdown_pct": 23.427779277860665,
+            "sharpe_ratio": 0.08489654131153207,
+            "profit_factor": 1.2150955624048907,
+            "max_loss": -0.02646140394703991,
+            "max_consecutive_losses": 8,
+            "expectancy_pct": 0.28524624700976475
+          },
+          "trade_count": 43,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 43,
+            "drag_pct_points": 8.6,
+            "stressed_total_return_pct": 1.8034750128614299,
+            "stressed_positive": true
+          }
+        }
+      ],
+      "parameter_stress": {
+        "tested": 54,
+        "valid_positive": 54,
+        "positive_rate": 1.0,
+        "median_return_pct": 37992.24176411707,
+        "worst_return_pct": 14479.896486913995,
+        "worst_drawdown_pct": 27.613493587388575,
+        "sample": [
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 6,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 334,
+              "win_rate": 0.4161676646706587,
+              "total_return": 144.79896486913995,
+              "total_return_pct": 14479.896486913995,
+              "max_drawdown": 0.23195090050555212,
+              "max_drawdown_pct": 23.195090050555212,
+              "sharpe_ratio": 0.26267405065751237,
+              "profit_factor": 2.0324493415624536,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 17,
+              "expectancy_pct": 1.6855627733396457
+            },
+            "trade_count": 334,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 334,
+              "drag_pct_points": 66.8,
+              "stressed_total_return_pct": 14413.096486913995,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 306,
+              "win_rate": 0.4411764705882353,
+              "total_return": 308.46654464929736,
+              "total_return_pct": 30846.654464929736,
+              "max_drawdown": 0.18854607955990685,
+              "max_drawdown_pct": 18.854607955990684,
+              "sharpe_ratio": 0.3060342131962292,
+              "profit_factor": 2.175433404656036,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 13,
+              "expectancy_pct": 2.100249782936036
+            },
+            "trade_count": 306,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 306,
+              "drag_pct_points": 61.2,
+              "stressed_total_return_pct": 30785.454464929735,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 298,
+              "win_rate": 0.4463087248322148,
+              "total_return": 212.8803271362055,
+              "total_return_pct": 21288.03271362055,
+              "max_drawdown": 0.16907781352824763,
+              "max_drawdown_pct": 16.907781352824763,
+              "sharpe_ratio": 0.30255105664554033,
+              "profit_factor": 2.1757117419113623,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 11,
+              "expectancy_pct": 2.0127615077592553
+            },
+            "trade_count": 298,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 298,
+              "drag_pct_points": 59.6,
+              "stressed_total_return_pct": 21228.43271362055,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 6,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 324,
+              "win_rate": 0.4351851851851852,
+              "total_return": 459.0376941825891,
+              "total_return_pct": 45903.76941825891,
+              "max_drawdown": 0.21346497167561898,
+              "max_drawdown_pct": 21.3464971675619,
+              "sharpe_ratio": 0.2643224397313059,
+              "profit_factor": 2.054943746596817,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 8,
+              "expectancy_pct": 2.1933254742788053
+            },
+            "trade_count": 324,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 324,
+              "drag_pct_points": 64.8,
+              "stressed_total_return_pct": 45838.96941825891,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 298,
+              "win_rate": 0.4697986577181208,
+              "total_return": 1039.3263640211367,
+              "total_return_pct": 103932.63640211367,
+              "max_drawdown": 0.21346497167561856,
+              "max_drawdown_pct": 21.346497167561857,
+              "sharpe_ratio": 0.3064002176600845,
+              "profit_factor": 2.2211532027061955,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.6709299164164118
+            },
+            "trade_count": 298,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 298,
+              "drag_pct_points": 59.6,
+              "stressed_total_return_pct": 103873.03640211366,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 290,
+              "win_rate": 0.4689655172413793,
+              "total_return": 672.9557726711065,
+              "total_return_pct": 67295.57726711065,
+              "max_drawdown": 0.19208644473547495,
+              "max_drawdown_pct": 19.208644473547494,
+              "sharpe_ratio": 0.2992295164126071,
+              "profit_factor": 2.180895028958385,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 6,
+              "expectancy_pct": 2.5740783393038447
+            },
+            "trade_count": 290,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 290,
+              "drag_pct_points": 58.0,
+              "stressed_total_return_pct": 67237.57726711065,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 6,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 319,
+              "win_rate": 0.4263322884012539,
+              "total_return": 325.0276485199901,
+              "total_return_pct": 32502.76485199901,
+              "max_drawdown": 0.2402566192147346,
+              "max_drawdown_pct": 24.02566192147346,
+              "sharpe_ratio": 0.2520078901561765,
+              "profit_factor": 1.95862115137016,
+              "max_loss": -0.0314539095678244,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.1232193910480746
+            },
+            "trade_count": 319,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 319,
+              "drag_pct_points": 63.800000000000004,
+              "stressed_total_return_pct": 32438.96485199901,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 293,
+              "win_rate": 0.4641638225255973,
+              "total_return": 801.7718290927323,
+              "total_return_pct": 80177.18290927324,
+              "max_drawdown": 0.24025661921473476,
+              "max_drawdown_pct": 24.025661921473475,
+              "sharpe_ratio": 0.2976184152781346,
+              "profit_factor": 2.1022750046536607,
+              "max_loss": -0.0314539095678244,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.6306793489737395
+            },
+            "trade_count": 293,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 293,
+              "drag_pct_points": 58.6,
+              "stressed_total_return_pct": 80118.58290927323,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 283,
+              "win_rate": 0.4628975265017668,
+              "total_return": 540.1720759560399,
+              "total_return_pct": 54017.207595603984,
+              "max_drawdown": 0.21558365854715322,
+              "max_drawdown_pct": 21.558365854715323,
+              "sharpe_ratio": 0.29234740864650166,
+              "profit_factor": 2.116725128570899,
+              "max_loss": -0.03145390956782439,
+              "max_consecutive_losses": 9,
+              "expectancy_pct": 2.564740477966225
+            },
+            "trade_count": 283,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 283,
+              "drag_pct_points": 56.6,
+              "stressed_total_return_pct": 53960.607595603986,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 6,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 274,
+              "win_rate": 0.3978102189781022,
+              "total_return": 272.6072926213646,
+              "total_return_pct": 27260.729262136458,
+              "max_drawdown": 0.20045322112789812,
+              "max_drawdown_pct": 20.045322112789812,
+              "sharpe_ratio": 0.20591309133515712,
+              "profit_factor": 2.293194711766069,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 14,
+              "expectancy_pct": 2.5681551862005256
+            },
+            "trade_count": 274,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 274,
+              "drag_pct_points": 54.800000000000004,
+              "stressed_total_return_pct": 27205.92926213646,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 10,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 247,
+              "win_rate": 0.42105263157894735,
+              "total_return": 410.387871873274,
+              "total_return_pct": 41038.7871873274,
+              "max_drawdown": 0.1465133445745304,
+              "max_drawdown_pct": 14.651334457453041,
+              "sharpe_ratio": 0.23052050323992815,
+              "profit_factor": 2.4814878186189717,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 3.0155836597474983
+            },
+            "trade_count": 247,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 247,
+              "drag_pct_points": 49.400000000000006,
+              "stressed_total_return_pct": 40989.3871873274,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 242,
+              "win_rate": 0.4256198347107438,
+              "total_return": 259.5125235648022,
+              "total_return_pct": 25951.25235648022,
+              "max_drawdown": 0.23688513135497397,
+              "max_drawdown_pct": 23.688513135497395,
+              "sharpe_ratio": 0.21964916121633657,
+              "profit_factor": 2.403026765034213,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.864859468084681
+            },
+            "trade_count": 242,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 242,
+              "drag_pct_points": 48.400000000000006,
+              "stressed_total_return_pct": 25902.85235648022,
+              "stressed_positive": true
+            }
+          }
+        ]
+      },
+      "source_metrics": {
+        "total_trades": 298,
+        "win_rate": 0.4697986577181208,
+        "total_return": 1114.5787770304566,
+        "total_return_pct": 111457.87770304567,
+        "max_drawdown": 0.2134649716756186,
+        "max_drawdown_pct": 21.34649716756186,
+        "sharpe_ratio": 0.30896758858310924,
+        "profit_factor": 2.267122855558967,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.6956481800398966
+      },
+      "source_strong_gate": {
+        "dominance_clear": true,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_42_86_38",
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "full_period": {
+        "start": "2017-08-17",
+        "end": "2026-06-02",
+        "execution_mode": "deep_15m",
+        "metrics": {
+          "total_trades": 303,
+          "win_rate": 0.46864686468646866,
+          "total_return": 1114.5722787759767,
+          "total_return_pct": 111457.22787759766,
+          "max_drawdown": 0.2134649716756186,
+          "max_drawdown_pct": 21.34649716756186,
+          "sharpe_ratio": 0.30603710418926383,
+          "profit_factor": 2.278740454801953,
+          "max_loss": -0.02646140394704004,
+          "max_consecutive_losses": 7,
+          "expectancy_pct": 2.651622231835629
+        },
+        "trade_count": 303,
+        "conservative_cost_stress": {
+          "method": "return_pct_minus_20bps_round_trip_per_trade",
+          "trade_count": 303,
+          "drag_pct_points": 60.6,
+          "stressed_total_return_pct": 111396.62787759765,
+          "stressed_positive": true
+        }
+      },
+      "segments": [
+        {
+          "label": "early",
+          "start": "2017-08-17",
+          "end": "2020-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 121,
+            "win_rate": 0.4793388429752066,
+            "total_return": 45.58557907452532,
+            "total_return_pct": 4558.557907452532,
+            "max_drawdown": 0.14349286715913787,
+            "max_drawdown_pct": 14.349286715913786,
+            "sharpe_ratio": 0.3653518474908324,
+            "profit_factor": 4.574902785304765,
+            "max_loss": -0.02646140394703999,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 3.6272341569538553
+          },
+          "trade_count": 121,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 121,
+            "drag_pct_points": 24.200000000000003,
+            "stressed_total_return_pct": 4534.357907452532,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "middle",
+          "start": "2021-01-01",
+          "end": "2023-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 99,
+            "win_rate": 0.4444444444444444,
+            "total_return": 4.896342627786083,
+            "total_return_pct": 489.63426277860833,
+            "max_drawdown": 0.1545225212963035,
+            "max_drawdown_pct": 15.45225212963035,
+            "sharpe_ratio": 0.2965537270323086,
+            "profit_factor": 2.622592888009537,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 2.016806266833412
+          },
+          "trade_count": 99,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 99,
+            "drag_pct_points": 19.8,
+            "stressed_total_return_pct": 469.8342627786083,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "oos_recent",
+          "start": "2024-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 80,
+            "win_rate": 0.4625,
+            "total_return": 1.7649823086148428,
+            "total_return_pct": 176.49823086148427,
+            "max_drawdown": 0.2134649716756187,
+            "max_drawdown_pct": 21.34649716756187,
+            "sharpe_ratio": 0.24733768100188808,
+            "profit_factor": 2.0709413433290935,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 1.4280224140186089
+          },
+          "trade_count": 80,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 80,
+            "drag_pct_points": 16.0,
+            "stressed_total_return_pct": 160.49823086148427,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "bear_2022",
+          "start": "2022-01-01",
+          "end": "2022-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 24,
+            "win_rate": 0.5,
+            "total_return": 0.22823322551961378,
+            "total_return_pct": 22.82332255196138,
+            "max_drawdown": 0.062386766550835165,
+            "max_drawdown_pct": 6.238676655083516,
+            "sharpe_ratio": 0.25900625367288904,
+            "profit_factor": 2.008014551252026,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 2,
+            "expectancy_pct": 0.920851814858786
+          },
+          "trade_count": 24,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 24,
+            "drag_pct_points": 4.800000000000001,
+            "stressed_total_return_pct": 18.02332255196138,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "recent_2025_2026",
+          "start": "2025-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 43,
+            "win_rate": 0.3953488372093023,
+            "total_return": 0.1040347501286143,
+            "total_return_pct": 10.40347501286143,
+            "max_drawdown": 0.23427779277860666,
+            "max_drawdown_pct": 23.427779277860665,
+            "sharpe_ratio": 0.08489654131153207,
+            "profit_factor": 1.2150955624048907,
+            "max_loss": -0.02646140394703991,
+            "max_consecutive_losses": 8,
+            "expectancy_pct": 0.28524624700976475
+          },
+          "trade_count": 43,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 43,
+            "drag_pct_points": 8.6,
+            "stressed_total_return_pct": 1.8034750128614299,
+            "stressed_positive": true
+          }
+        }
+      ],
+      "parameter_stress": {
+        "tested": 54,
+        "valid_positive": 54,
+        "positive_rate": 1.0,
+        "median_return_pct": 37984.6136662135,
+        "worst_return_pct": 21858.86282014509,
+        "worst_drawdown_pct": 27.092074270154104,
+        "sample": [
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 337,
+              "win_rate": 0.42729970326409494,
+              "total_return": 218.5886282014509,
+              "total_return_pct": 21858.86282014509,
+              "max_drawdown": 0.23195090050555212,
+              "max_drawdown_pct": 23.195090050555212,
+              "sharpe_ratio": 0.2740935655293542,
+              "profit_factor": 2.065195991605519,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 17,
+              "expectancy_pct": 1.8044698700549417
+            },
+            "trade_count": 337,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 337,
+              "drag_pct_points": 67.4,
+              "stressed_total_return_pct": 21791.462820145087,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 333,
+              "win_rate": 0.43243243243243246,
+              "total_return": 305.6248454818144,
+              "total_return_pct": 30562.48454818144,
+              "max_drawdown": 0.21509996138014867,
+              "max_drawdown_pct": 21.509996138014866,
+              "sharpe_ratio": 0.28657314230144737,
+              "profit_factor": 2.092224639318519,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 16,
+              "expectancy_pct": 1.9359326539935076
+            },
+            "trade_count": 333,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 333,
+              "drag_pct_points": 66.60000000000001,
+              "stressed_total_return_pct": 30495.884548181442,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 331,
+              "win_rate": 0.43202416918429004,
+              "total_return": 288.68190269789176,
+              "total_return_pct": 28868.190269789175,
+              "max_drawdown": 0.2150999613801484,
+              "max_drawdown_pct": 21.509996138014838,
+              "sharpe_ratio": 0.28525283231591614,
+              "profit_factor": 2.1408594079754986,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 16,
+              "expectancy_pct": 1.9294694007308422
+            },
+            "trade_count": 331,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 331,
+              "drag_pct_points": 66.2,
+              "stressed_total_return_pct": 28801.990269789174,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 326,
+              "win_rate": 0.44171779141104295,
+              "total_return": 646.3274194593504,
+              "total_return_pct": 64632.741945935035,
+              "max_drawdown": 0.2134649716756184,
+              "max_drawdown_pct": 21.34649716756184,
+              "sharpe_ratio": 0.27270873319992134,
+              "profit_factor": 2.058613452303777,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 8,
+              "expectancy_pct": 2.297201248978689
+            },
+            "trade_count": 326,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 326,
+              "drag_pct_points": 65.2,
+              "stressed_total_return_pct": 64567.54194593504,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 322,
+              "win_rate": 0.4409937888198758,
+              "total_return": 652.9077861223795,
+              "total_return_pct": 65290.778612237955,
+              "max_drawdown": 0.21346497167561862,
+              "max_drawdown_pct": 21.34649716756186,
+              "sharpe_ratio": 0.27538181379438836,
+              "profit_factor": 2.090890325507102,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.3272874745448746
+            },
+            "trade_count": 322,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 322,
+              "drag_pct_points": 64.4,
+              "stressed_total_return_pct": 65226.37861223795,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 320,
+              "win_rate": 0.440625,
+              "total_return": 608.9309233870372,
+              "total_return_pct": 60893.09233870372,
+              "max_drawdown": 0.2134649716756186,
+              "max_drawdown_pct": 21.34649716756186,
+              "sharpe_ratio": 0.2738096422459435,
+              "profit_factor": 2.110370108052739,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.3191152162656
+            },
+            "trade_count": 320,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 320,
+              "drag_pct_points": 64.0,
+              "stressed_total_return_pct": 60829.09233870372,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 321,
+              "win_rate": 0.43302180685358255,
+              "total_return": 458.5250521163184,
+              "total_return_pct": 45852.50521163184,
+              "max_drawdown": 0.24025661921473485,
+              "max_drawdown_pct": 24.025661921473485,
+              "sharpe_ratio": 0.26075510453953626,
+              "profit_factor": 1.962928657186516,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.229655262642935
+            },
+            "trade_count": 321,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 321,
+              "drag_pct_points": 64.2,
+              "stressed_total_return_pct": 45788.30521163184,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 317,
+              "win_rate": 0.43217665615141954,
+              "total_return": 467.9941884492301,
+              "total_return_pct": 46799.418844923006,
+              "max_drawdown": 0.24025661921473468,
+              "max_drawdown_pct": 24.025661921473468,
+              "sharpe_ratio": 0.26375150029892036,
+              "profit_factor": 1.9932232054084436,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.262513564886234
+            },
+            "trade_count": 317,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 317,
+              "drag_pct_points": 63.400000000000006,
+              "stressed_total_return_pct": 46736.018844923005,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 315,
+              "win_rate": 0.43174603174603177,
+              "total_return": 436.4532074625841,
+              "total_return_pct": 43645.32074625841,
+              "max_drawdown": 0.24025661921473468,
+              "max_drawdown_pct": 24.025661921473468,
+              "sharpe_ratio": 0.26214203408280684,
+              "profit_factor": 2.0100110445759767,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.2538003253031063
+            },
+            "trade_count": 315,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 315,
+              "drag_pct_points": 63.0,
+              "stressed_total_return_pct": 43582.32074625841,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 10,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 274,
+              "win_rate": 0.3978102189781022,
+              "total_return": 272.6072926213646,
+              "total_return_pct": 27260.729262136458,
+              "max_drawdown": 0.20045322112789812,
+              "max_drawdown_pct": 20.045322112789812,
+              "sharpe_ratio": 0.20591309133515712,
+              "profit_factor": 2.293194711766069,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 14,
+              "expectancy_pct": 2.5681551862005256
+            },
+            "trade_count": 274,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 274,
+              "drag_pct_points": 54.800000000000004,
+              "stressed_total_return_pct": 27205.92926213646,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 269,
+              "win_rate": 0.39776951672862454,
+              "total_return": 298.4660151154678,
+              "total_return_pct": 29846.60151154678,
+              "max_drawdown": 0.1715267256052561,
+              "max_drawdown_pct": 17.15267256052561,
+              "sharpe_ratio": 0.21060429575227696,
+              "profit_factor": 2.324025981951414,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.65081667239408
+            },
+            "trade_count": 269,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 269,
+              "drag_pct_points": 53.800000000000004,
+              "stressed_total_return_pct": 29792.801511546782,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 18,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 268,
+              "win_rate": 0.39552238805970147,
+              "total_return": 271.6196459956975,
+              "total_return_pct": 27161.96459956975,
+              "max_drawdown": 0.1853178142983181,
+              "max_drawdown_pct": 18.53178142983181,
+              "sharpe_ratio": 0.20820604255264313,
+              "profit_factor": 2.3878280630605078,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.6240252562772697
+            },
+            "trade_count": 268,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 268,
+              "drag_pct_points": 53.6,
+              "stressed_total_return_pct": 27108.36459956975,
+              "stressed_positive": true
+            }
+          }
+        ]
+      },
+      "source_metrics": {
+        "total_trades": 303,
+        "win_rate": 0.46864686468646866,
+        "total_return": 1114.5722787759767,
+        "total_return_pct": 111457.22787759766,
+        "max_drawdown": 0.2134649716756186,
+        "max_drawdown_pct": 21.34649716756186,
+        "sharpe_ratio": 0.30603710418926383,
+        "profit_factor": 2.278740454801953,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.651622231835629
+      },
+      "source_strong_gate": {
+        "dominance_clear": true,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 22,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "full_period": {
+        "start": "2017-08-17",
+        "end": "2026-06-02",
+        "execution_mode": "deep_15m",
+        "metrics": {
+          "total_trades": 264,
+          "win_rate": 0.4696969696969697,
+          "total_return": 854.9677019017446,
+          "total_return_pct": 85496.77019017446,
+          "max_drawdown": 0.1490576105336607,
+          "max_drawdown_pct": 14.90576105336607,
+          "sharpe_ratio": 0.3225406162926456,
+          "profit_factor": 2.511381660024302,
+          "max_loss": -0.02646140394704004,
+          "max_consecutive_losses": 6,
+          "expectancy_pct": 2.9279926988535663
+        },
+        "trade_count": 264,
+        "conservative_cost_stress": {
+          "method": "return_pct_minus_20bps_round_trip_per_trade",
+          "trade_count": 264,
+          "drag_pct_points": 52.800000000000004,
+          "stressed_total_return_pct": 85443.97019017446,
+          "stressed_positive": true
+        }
+      },
+      "segments": [
+        {
+          "label": "early",
+          "start": "2017-08-17",
+          "end": "2020-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 105,
+            "win_rate": 0.47619047619047616,
+            "total_return": 37.13037758061246,
+            "total_return_pct": 3713.037758061246,
+            "max_drawdown": 0.12548780659028308,
+            "max_drawdown_pct": 12.548780659028308,
+            "sharpe_ratio": 0.378966569485303,
+            "profit_factor": 4.810238705938316,
+            "max_loss": -0.02646140394703999,
+            "max_consecutive_losses": 5,
+            "expectancy_pct": 3.9752494032038537
+          },
+          "trade_count": 105,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 105,
+            "drag_pct_points": 21.0,
+            "stressed_total_return_pct": 3692.037758061246,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "middle",
+          "start": "2021-01-01",
+          "end": "2023-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 83,
+            "win_rate": 0.4578313253012048,
+            "total_return": 4.618443617860353,
+            "total_return_pct": 461.84436178603534,
+            "max_drawdown": 0.09550127228760993,
+            "max_drawdown_pct": 9.550127228760994,
+            "sharpe_ratio": 0.33213599737492056,
+            "profit_factor": 2.827325482960369,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 2.321980466780264
+          },
+          "trade_count": 83,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 83,
+            "drag_pct_points": 16.6,
+            "stressed_total_return_pct": 445.2443617860353,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "oos_recent",
+          "start": "2024-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 72,
+            "win_rate": 0.4444444444444444,
+            "total_return": 1.6840187030065876,
+            "total_return_pct": 168.40187030065877,
+            "max_drawdown": 0.1490576105336607,
+            "max_drawdown_pct": 14.90576105336607,
+            "sharpe_ratio": 0.25721249223196646,
+            "profit_factor": 2.247558052750448,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 1.5398021594507658
+          },
+          "trade_count": 72,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 72,
+            "drag_pct_points": 14.4,
+            "stressed_total_return_pct": 154.00187030065877,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "bear_2022",
+          "start": "2022-01-01",
+          "end": "2022-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 17,
+            "win_rate": 0.47058823529411764,
+            "total_return": 0.03687842095274951,
+            "total_return_pct": 3.6878420952749513,
+            "max_drawdown": 0.052222601995231474,
+            "max_drawdown_pct": 5.222260199523148,
+            "sharpe_ratio": 0.08615244522110875,
+            "profit_factor": 1.1946803851223546,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 2,
+            "expectancy_pct": 0.2568762531943903
+          },
+          "trade_count": 17,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 17,
+            "drag_pct_points": 3.4000000000000004,
+            "stressed_total_return_pct": 0.28784209527495097,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "recent_2025_2026",
+          "start": "2025-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 34,
+            "win_rate": 0.4117647058823529,
+            "total_return": 0.24223694180237598,
+            "total_return_pct": 24.223694180237597,
+            "max_drawdown": 0.09110235848925015,
+            "max_drawdown_pct": 9.110235848925015,
+            "sharpe_ratio": 0.19384413519792942,
+            "profit_factor": 1.633960923371396,
+            "max_loss": -0.02646140394703998,
+            "max_consecutive_losses": 5,
+            "expectancy_pct": 0.7032331123554504
+          },
+          "trade_count": 34,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 34,
+            "drag_pct_points": 6.800000000000001,
+            "stressed_total_return_pct": 17.423694180237597,
+            "stressed_positive": true
+          }
+        }
+      ],
+      "parameter_stress": {
+        "tested": 54,
+        "valid_positive": 54,
+        "positive_rate": 1.0,
+        "median_return_pct": 35609.907966941384,
+        "worst_return_pct": 21563.118725864173,
+        "worst_drawdown_pct": 25.081902504629806,
+        "sample": [
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 284,
+              "win_rate": 0.4507042253521127,
+              "total_return": 267.4121245354438,
+              "total_return_pct": 26741.21245354438,
+              "max_drawdown": 0.17595998682912714,
+              "max_drawdown_pct": 17.595998682912715,
+              "sharpe_ratio": 0.3181643560238904,
+              "profit_factor": 2.440870959655866,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 11,
+              "expectancy_pct": 2.200011511719536
+            },
+            "trade_count": 284,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 284,
+              "drag_pct_points": 56.800000000000004,
+              "stressed_total_return_pct": 26684.41245354438,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 22,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 274,
+              "win_rate": 0.45255474452554745,
+              "total_return": 337.2842581696598,
+              "total_return_pct": 33728.42581696598,
+              "max_drawdown": 0.18471068676032554,
+              "max_drawdown_pct": 18.471068676032555,
+              "sharpe_ratio": 0.3306541865523974,
+              "profit_factor": 2.5016139328218134,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 11,
+              "expectancy_pct": 2.3761171985027634
+            },
+            "trade_count": 274,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 274,
+              "drag_pct_points": 54.800000000000004,
+              "stressed_total_return_pct": 33673.62581696598,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 26,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 270,
+              "win_rate": 0.46296296296296297,
+              "total_return": 332.1517125404616,
+              "total_return_pct": 33215.17125404616,
+              "max_drawdown": 0.15855789835094017,
+              "max_drawdown_pct": 15.855789835094017,
+              "sharpe_ratio": 0.33400869414162276,
+              "profit_factor": 2.4361010033825368,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 9,
+              "expectancy_pct": 2.402889685059518
+            },
+            "trade_count": 270,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 270,
+              "drag_pct_points": 54.0,
+              "stressed_total_return_pct": 33161.17125404616,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 275,
+              "win_rate": 0.4618181818181818,
+              "total_return": 558.234239057365,
+              "total_return_pct": 55823.423905736505,
+              "max_drawdown": 0.1346420123693748,
+              "max_drawdown_pct": 13.464201236937482,
+              "sharpe_ratio": 0.30071799090703927,
+              "profit_factor": 2.395828277208389,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 8,
+              "expectancy_pct": 2.6427581516599083
+            },
+            "trade_count": 275,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 275,
+              "drag_pct_points": 55.0,
+              "stressed_total_return_pct": 55768.423905736505,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 22,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 267,
+              "win_rate": 0.46441947565543074,
+              "total_return": 767.0240106263311,
+              "total_return_pct": 76702.40106263311,
+              "max_drawdown": 0.16197164962089133,
+              "max_drawdown_pct": 16.197164962089133,
+              "sharpe_ratio": 0.31584065691482555,
+              "profit_factor": 2.4308007079328795,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 6,
+              "expectancy_pct": 2.8535971240733287
+            },
+            "trade_count": 267,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 267,
+              "drag_pct_points": 53.400000000000006,
+              "stressed_total_return_pct": 76649.00106263312,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 26,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 262,
+              "win_rate": 0.4770992366412214,
+              "total_return": 764.562418598805,
+              "total_return_pct": 76456.24185988051,
+              "max_drawdown": 0.16197164962089128,
+              "max_drawdown_pct": 16.19716496208913,
+              "sharpe_ratio": 0.31986740838593836,
+              "profit_factor": 2.4080584246049512,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.903934389089494
+            },
+            "trade_count": 262,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 262,
+              "drag_pct_points": 52.400000000000006,
+              "stressed_total_return_pct": 76403.84185988051,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 270,
+              "win_rate": 0.45555555555555555,
+              "total_return": 467.7315456211023,
+              "total_return_pct": 46773.154562110234,
+              "max_drawdown": 0.18129828184878533,
+              "max_drawdown_pct": 18.129828184878534,
+              "sharpe_ratio": 0.29450415102862293,
+              "profit_factor": 2.274127179720232,
+              "max_loss": -0.03145390956782439,
+              "max_consecutive_losses": 12,
+              "expectancy_pct": 2.6309878558115587
+            },
+            "trade_count": 270,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 270,
+              "drag_pct_points": 54.0,
+              "stressed_total_return_pct": 46719.154562110234,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 22,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 264,
+              "win_rate": 0.45075757575757575,
+              "total_return": 557.5800820358497,
+              "total_return_pct": 55758.00820358497,
+              "max_drawdown": 0.16368982773240448,
+              "max_drawdown_pct": 16.368982773240447,
+              "sharpe_ratio": 0.30255354791831424,
+              "profit_factor": 2.296287275657448,
+              "max_loss": -0.03145390956782439,
+              "max_consecutive_losses": 9,
+              "expectancy_pct": 2.7685014908723082
+            },
+            "trade_count": 264,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 264,
+              "drag_pct_points": 52.800000000000004,
+              "stressed_total_return_pct": 55705.20820358497,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 26,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 258,
+              "win_rate": 0.46511627906976744,
+              "total_return": 571.3233994019796,
+              "total_return_pct": 57132.33994019796,
+              "max_drawdown": 0.163689827732404,
+              "max_drawdown_pct": 16.3689827732404,
+              "sharpe_ratio": 0.30839659816838494,
+              "profit_factor": 2.325974425076419,
+              "max_loss": -0.03145390956782439,
+              "max_consecutive_losses": 8,
+              "expectancy_pct": 2.839017119217105
+            },
+            "trade_count": 258,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 258,
+              "drag_pct_points": 51.6,
+              "stressed_total_return_pct": 57080.739940197964,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 18,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 228,
+              "win_rate": 0.4298245614035088,
+              "total_return": 260.2124592033033,
+              "total_return_pct": 26021.24592033033,
+              "max_drawdown": 0.15860757916252505,
+              "max_drawdown_pct": 15.860757916252505,
+              "sharpe_ratio": 0.22693403730209283,
+              "profit_factor": 2.6500819784941108,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 3.038001850970523
+            },
+            "trade_count": 228,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 228,
+              "drag_pct_points": 45.6,
+              "stressed_total_return_pct": 25975.64592033033,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 22,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 220,
+              "win_rate": 0.42727272727272725,
+              "total_return": 304.9970741863269,
+              "total_return_pct": 30499.707418632694,
+              "max_drawdown": 0.18536376603771154,
+              "max_drawdown_pct": 18.536376603771153,
+              "sharpe_ratio": 0.2356887806430132,
+              "profit_factor": 2.6496155377688444,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 8,
+              "expectancy_pct": 3.235373949837872
+            },
+            "trade_count": 220,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 220,
+              "drag_pct_points": 44.0,
+              "stressed_total_return_pct": 30455.707418632694,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 26,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 216,
+              "win_rate": 0.4305555555555556,
+              "total_return": 339.345369127092,
+              "total_return_pct": 33934.5369127092,
+              "max_drawdown": 0.18536376603771126,
+              "max_drawdown_pct": 18.536376603771128,
+              "sharpe_ratio": 0.24173197998644136,
+              "profit_factor": 2.5003257567578827,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 6,
+              "expectancy_pct": 3.3446489075082604
+            },
+            "trade_count": 216,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 216,
+              "drag_pct_points": 43.2,
+              "stressed_total_return_pct": 33891.3369127092,
+              "stressed_positive": true
+            }
+          }
+        ]
+      },
+      "source_metrics": {
+        "total_trades": 264,
+        "win_rate": 0.4696969696969697,
+        "total_return": 854.9677019017446,
+        "total_return_pct": 85496.77019017446,
+        "max_drawdown": 0.1490576105336607,
+        "max_drawdown_pct": 14.90576105336607,
+        "sharpe_ratio": 0.3225406162926456,
+        "profit_factor": 2.511381660024302,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.9279926988535663
+      },
+      "source_strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": true
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 2,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "full_period": {
+        "start": "2017-08-17",
+        "end": "2026-06-02",
+        "execution_mode": "deep_15m",
+        "metrics": {
+          "total_trades": 298,
+          "win_rate": 0.4697986577181208,
+          "total_return": 1039.3263640211367,
+          "total_return_pct": 103932.63640211367,
+          "max_drawdown": 0.21346497167561856,
+          "max_drawdown_pct": 21.346497167561857,
+          "sharpe_ratio": 0.3064002176600845,
+          "profit_factor": 2.2211532027061955,
+          "max_loss": -0.02646140394704004,
+          "max_consecutive_losses": 7,
+          "expectancy_pct": 2.6709299164164118
+        },
+        "trade_count": 298,
+        "conservative_cost_stress": {
+          "method": "return_pct_minus_20bps_round_trip_per_trade",
+          "trade_count": 298,
+          "drag_pct_points": 59.6,
+          "stressed_total_return_pct": 103873.03640211366,
+          "stressed_positive": true
+        }
+      },
+      "segments": [
+        {
+          "label": "early",
+          "start": "2017-08-17",
+          "end": "2020-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 116,
+            "win_rate": 0.49137931034482757,
+            "total_return": 46.952937015253404,
+            "total_return_pct": 4695.29370152534,
+            "max_drawdown": 0.11624995618363322,
+            "max_drawdown_pct": 11.624995618363322,
+            "sharpe_ratio": 0.377916727908207,
+            "profit_factor": 4.976911328711189,
+            "max_loss": -0.02646140394703999,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 3.8051970113747795
+          },
+          "trade_count": 116,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 116,
+            "drag_pct_points": 23.200000000000003,
+            "stressed_total_return_pct": 4672.09370152534,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "middle",
+          "start": "2021-01-01",
+          "end": "2023-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 100,
+            "win_rate": 0.44,
+            "total_return": 4.779740427007287,
+            "total_return_pct": 477.97404270072866,
+            "max_drawdown": 0.11246730477819646,
+            "max_drawdown_pct": 11.246730477819646,
+            "sharpe_ratio": 0.29142770636232895,
+            "profit_factor": 2.465843462978437,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 1.9772950901127893
+          },
+          "trade_count": 100,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 100,
+            "drag_pct_points": 20.0,
+            "stressed_total_return_pct": 457.97404270072866,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "oos_recent",
+          "start": "2024-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 80,
+            "win_rate": 0.4625,
+            "total_return": 1.6727784538170352,
+            "total_return_pct": 167.27784538170351,
+            "max_drawdown": 0.2134649716756186,
+            "max_drawdown_pct": 21.34649716756186,
+            "sharpe_ratio": 0.2402425793317895,
+            "profit_factor": 2.0284976090655493,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 1.384420677854196
+          },
+          "trade_count": 80,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 80,
+            "drag_pct_points": 16.0,
+            "stressed_total_return_pct": 151.27784538170351,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "bear_2022",
+          "start": "2022-01-01",
+          "end": "2022-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 24,
+            "win_rate": 0.5,
+            "total_return": 0.21478442327374925,
+            "total_return_pct": 21.478442327374925,
+            "max_drawdown": 0.062386766550835165,
+            "max_drawdown_pct": 6.238676655083516,
+            "sharpe_ratio": 0.243785514974565,
+            "profit_factor": 1.8987634606250798,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 2,
+            "expectancy_pct": 0.8759435448323355
+          },
+          "trade_count": 24,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 24,
+            "drag_pct_points": 4.800000000000001,
+            "stressed_total_return_pct": 16.678442327374924,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "recent_2025_2026",
+          "start": "2025-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 43,
+            "win_rate": 0.4186046511627907,
+            "total_return": 0.16636336789893047,
+            "total_return_pct": 16.636336789893047,
+            "max_drawdown": 0.21346497167561881,
+            "max_drawdown_pct": 21.346497167561882,
+            "sharpe_ratio": 0.12335704261294979,
+            "profit_factor": 1.3382169916252673,
+            "max_loss": -0.02646140394703991,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 0.41297276266049315
+          },
+          "trade_count": 43,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 43,
+            "drag_pct_points": 8.6,
+            "stressed_total_return_pct": 8.036336789893047,
+            "stressed_positive": true
+          }
+        }
+      ],
+      "parameter_stress": {
+        "tested": 54,
+        "valid_positive": 54,
+        "positive_rate": 1.0,
+        "median_return_pct": 36775.153602069,
+        "worst_return_pct": 10630.050732064792,
+        "worst_drawdown_pct": 39.21330404445863,
+        "sample": [
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 6,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 357,
+              "win_rate": 0.4005602240896359,
+              "total_return": 106.30050732064792,
+              "total_return_pct": 10630.050732064792,
+              "max_drawdown": 0.24844006853217054,
+              "max_drawdown_pct": 24.844006853217053,
+              "sharpe_ratio": 0.23682992101785103,
+              "profit_factor": 1.9788177248803227,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 18,
+              "expectancy_pct": 1.4951265953356896
+            },
+            "trade_count": 357,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 357,
+              "drag_pct_points": 71.4,
+              "stressed_total_return_pct": 10558.650732064792,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 309,
+              "win_rate": 0.43042071197411,
+              "total_return": 248.71435347973073,
+              "total_return_pct": 24871.435347973074,
+              "max_drawdown": 0.18854607955990652,
+              "max_drawdown_pct": 18.85460795599065,
+              "sharpe_ratio": 0.2921641722239269,
+              "profit_factor": 2.1574066867846193,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 13,
+              "expectancy_pct": 2.012517042752879
+            },
+            "trade_count": 309,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 309,
+              "drag_pct_points": 61.800000000000004,
+              "stressed_total_return_pct": 24809.635347973075,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 300,
+              "win_rate": 0.44,
+              "total_return": 183.53561511727315,
+              "total_return_pct": 18353.561511727316,
+              "max_drawdown": 0.16907781352824752,
+              "max_drawdown_pct": 16.907781352824752,
+              "sharpe_ratio": 0.29202532905375245,
+              "profit_factor": 2.159911935726098,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 11,
+              "expectancy_pct": 1.9523877639219027
+            },
+            "trade_count": 300,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 300,
+              "drag_pct_points": 60.0,
+              "stressed_total_return_pct": 18293.561511727316,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 6,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 345,
+              "win_rate": 0.40869565217391307,
+              "total_return": 213.58297733110237,
+              "total_return_pct": 21358.297733110237,
+              "max_drawdown": 0.23702706339570387,
+              "max_drawdown_pct": 23.702706339570387,
+              "sharpe_ratio": 0.23059097438105444,
+              "profit_factor": 1.9701979318297411,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 9,
+              "expectancy_pct": 1.8269559299047171
+            },
+            "trade_count": 345,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 345,
+              "drag_pct_points": 69.0,
+              "stressed_total_return_pct": 21289.297733110237,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 300,
+              "win_rate": 0.45666666666666667,
+              "total_return": 594.1740327527805,
+              "total_return_pct": 59417.40327527805,
+              "max_drawdown": 0.2134649716756187,
+              "max_drawdown_pct": 21.34649716756187,
+              "sharpe_ratio": 0.2880254560096621,
+              "profit_factor": 2.1958567108879263,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.450307981611373
+            },
+            "trade_count": 300,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 300,
+              "drag_pct_points": 60.0,
+              "stressed_total_return_pct": 59357.40327527805,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 291,
+              "win_rate": 0.46048109965635736,
+              "total_return": 415.7461669065385,
+              "total_return_pct": 41574.61669065385,
+              "max_drawdown": 0.19208644473547495,
+              "max_drawdown_pct": 19.208644473547494,
+              "sharpe_ratio": 0.2840864914599092,
+              "profit_factor": 2.160263665526658,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 6,
+              "expectancy_pct": 2.382881835315798
+            },
+            "trade_count": 291,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 291,
+              "drag_pct_points": 58.2,
+              "stressed_total_return_pct": 41516.41669065385,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 6,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 341,
+              "win_rate": 0.39882697947214074,
+              "total_return": 145.36247666841228,
+              "total_return_pct": 14536.24766684123,
+              "max_drawdown": 0.25382286850437985,
+              "max_drawdown_pct": 25.382286850437985,
+              "sharpe_ratio": 0.21659419128814517,
+              "profit_factor": 1.8784865320236483,
+              "max_loss": -0.0314539095678244,
+              "max_consecutive_losses": 13,
+              "expectancy_pct": 1.7394723795748432
+            },
+            "trade_count": 341,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 341,
+              "drag_pct_points": 68.2,
+              "stressed_total_return_pct": 14468.047666841228,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 10,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 296,
+              "win_rate": 0.44932432432432434,
+              "total_return": 442.3992033332587,
+              "total_return_pct": 44239.92033332587,
+              "max_drawdown": 0.24025661921473462,
+              "max_drawdown_pct": 24.025661921473464,
+              "sharpe_ratio": 0.27700307057834744,
+              "profit_factor": 2.072296119336294,
+              "max_loss": -0.0314539095678244,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.386481386344302
+            },
+            "trade_count": 296,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 296,
+              "drag_pct_points": 59.2,
+              "stressed_total_return_pct": 44180.72033332587,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 285,
+              "win_rate": 0.45263157894736844,
+              "total_return": 323.74082641048386,
+              "total_return_pct": 32374.082641048386,
+              "max_drawdown": 0.21558365854715317,
+              "max_drawdown_pct": 21.558365854715316,
+              "sharpe_ratio": 0.27503806362550887,
+              "profit_factor": 2.089073952966162,
+              "max_loss": -0.03145390956782439,
+              "max_consecutive_losses": 9,
+              "expectancy_pct": 2.349862677973997
+            },
+            "trade_count": 285,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 285,
+              "drag_pct_points": 57.0,
+              "stressed_total_return_pct": 32317.082641048386,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 4,
+              "rsi_length": 6,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 296,
+              "win_rate": 0.38513513513513514,
+              "total_return": 181.7751117956161,
+              "total_return_pct": 18177.51117956161,
+              "max_drawdown": 0.24920845455531915,
+              "max_drawdown_pct": 24.920845455531914,
+              "sharpe_ratio": 0.18627876841317909,
+              "profit_factor": 2.190647569468421,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 13,
+              "expectancy_pct": 2.237506944397725
+            },
+            "trade_count": 296,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 296,
+              "drag_pct_points": 59.2,
+              "stressed_total_return_pct": 18118.31117956161,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 4,
+              "rsi_length": 10,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 249,
+              "win_rate": 0.41365461847389556,
+              "total_return": 313.56969904889144,
+              "total_return_pct": 31356.969904889145,
+              "max_drawdown": 0.1465133445745307,
+              "max_drawdown_pct": 14.65133445745307,
+              "sharpe_ratio": 0.2213054020976152,
+              "profit_factor": 2.464679569316012,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.87710044766054
+            },
+            "trade_count": 249,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 249,
+              "drag_pct_points": 49.800000000000004,
+              "stressed_total_return_pct": 31307.169904889146,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 9,
+              "roc_length": 4,
+              "rsi_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 244,
+              "win_rate": 0.42213114754098363,
+              "total_return": 209.49728311493178,
+              "total_return_pct": 20949.728311493178,
+              "max_drawdown": 0.23688513135497405,
+              "max_drawdown_pct": 23.688513135497406,
+              "sharpe_ratio": 0.2120826425820531,
+              "profit_factor": 2.3855801265869228,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.7475149024501375
+            },
+            "trade_count": 244,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 244,
+              "drag_pct_points": 48.800000000000004,
+              "stressed_total_return_pct": 20900.92831149318,
+              "stressed_positive": true
+            }
+          }
+        ]
+      },
+      "source_metrics": {
+        "total_trades": 298,
+        "win_rate": 0.4697986577181208,
+        "total_return": 1039.3263640211367,
+        "total_return_pct": 103932.63640211367,
+        "max_drawdown": 0.21346497167561856,
+        "max_drawdown_pct": 21.346497167561857,
+        "sharpe_ratio": 0.3064002176600845,
+        "profit_factor": 2.2211532027061955,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.6709299164164118
+      },
+      "source_strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_42_86_38",
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 18,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "full_period": {
+        "start": "2017-08-17",
+        "end": "2026-06-02",
+        "execution_mode": "deep_15m",
+        "metrics": {
+          "total_trades": 302,
+          "win_rate": 0.46688741721854304,
+          "total_return": 1030.3032103133498,
+          "total_return_pct": 103030.32103133498,
+          "max_drawdown": 0.2134649716756185,
+          "max_drawdown_pct": 21.34649716756185,
+          "sharpe_ratio": 0.3036161098779012,
+          "profit_factor": 2.2785716305856893,
+          "max_loss": -0.02646140394704004,
+          "max_consecutive_losses": 7,
+          "expectancy_pct": 2.633388888329936
+        },
+        "trade_count": 302,
+        "conservative_cost_stress": {
+          "method": "return_pct_minus_20bps_round_trip_per_trade",
+          "trade_count": 302,
+          "drag_pct_points": 60.400000000000006,
+          "stressed_total_return_pct": 102969.92103133499,
+          "stressed_positive": true
+        }
+      },
+      "segments": [
+        {
+          "label": "early",
+          "start": "2017-08-17",
+          "end": "2020-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 120,
+            "win_rate": 0.475,
+            "total_return": 42.06655710966464,
+            "total_return_pct": 4206.6557109664645,
+            "max_drawdown": 0.14349286715913803,
+            "max_drawdown_pct": 14.349286715913804,
+            "sharpe_ratio": 0.36032434424201865,
+            "profit_factor": 4.5542291510069015,
+            "max_loss": -0.02646140394703999,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 3.5894770085071803
+          },
+          "trade_count": 120,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 120,
+            "drag_pct_points": 24.0,
+            "stressed_total_return_pct": 4182.6557109664645,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "middle",
+          "start": "2021-01-01",
+          "end": "2023-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 98,
+            "win_rate": 0.4489795918367347,
+            "total_return": 5.023705766420083,
+            "total_return_pct": 502.37057664200825,
+            "max_drawdown": 0.1545225212963037,
+            "max_drawdown_pct": 15.45225212963037,
+            "sharpe_ratio": 0.30178798681181773,
+            "profit_factor": 2.6410984535210122,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 2.0589610777463028
+          },
+          "trade_count": 98,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 98,
+            "drag_pct_points": 19.6,
+            "stressed_total_return_pct": 482.7705766420082,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "oos_recent",
+          "start": "2024-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 80,
+            "win_rate": 0.4625,
+            "total_return": 1.7649823086148428,
+            "total_return_pct": 176.49823086148427,
+            "max_drawdown": 0.2134649716756187,
+            "max_drawdown_pct": 21.34649716756187,
+            "sharpe_ratio": 0.24733768100188808,
+            "profit_factor": 2.0709413433290935,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 1.4280224140186089
+          },
+          "trade_count": 80,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 80,
+            "drag_pct_points": 16.0,
+            "stressed_total_return_pct": 160.49823086148427,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "bear_2022",
+          "start": "2022-01-01",
+          "end": "2022-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 24,
+            "win_rate": 0.5,
+            "total_return": 0.22823322551961378,
+            "total_return_pct": 22.82332255196138,
+            "max_drawdown": 0.062386766550835165,
+            "max_drawdown_pct": 6.238676655083516,
+            "sharpe_ratio": 0.25900625367288904,
+            "profit_factor": 2.008014551252026,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 2,
+            "expectancy_pct": 0.920851814858786
+          },
+          "trade_count": 24,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 24,
+            "drag_pct_points": 4.800000000000001,
+            "stressed_total_return_pct": 18.02332255196138,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "recent_2025_2026",
+          "start": "2025-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 42,
+            "win_rate": 0.40476190476190477,
+            "total_return": 0.13404312330782542,
+            "total_return_pct": 13.404312330782542,
+            "max_drawdown": 0.21346497167561865,
+            "max_drawdown_pct": 21.346497167561864,
+            "sharpe_ratio": 0.1053927432346249,
+            "profit_factor": 1.2854208033966166,
+            "max_loss": -0.02646140394703991,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 0.3550411670505681
+          },
+          "trade_count": 42,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 42,
+            "drag_pct_points": 8.4,
+            "stressed_total_return_pct": 5.0043123307825415,
+            "stressed_positive": true
+          }
+        }
+      ],
+      "parameter_stress": {
+        "tested": 54,
+        "valid_positive": 54,
+        "positive_rate": 1.0,
+        "median_return_pct": 37125.93957745752,
+        "worst_return_pct": 22216.557056831458,
+        "worst_drawdown_pct": 25.081735624895334,
+        "sample": [
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 333,
+              "win_rate": 0.43243243243243246,
+              "total_return": 305.6248454818144,
+              "total_return_pct": 30562.48454818144,
+              "max_drawdown": 0.21509996138014867,
+              "max_drawdown_pct": 21.509996138014866,
+              "sharpe_ratio": 0.28657314230144737,
+              "profit_factor": 2.092224639318519,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 16,
+              "expectancy_pct": 1.9359326539935076
+            },
+            "trade_count": 333,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 333,
+              "drag_pct_points": 66.60000000000001,
+              "stressed_total_return_pct": 30495.884548181442,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 331,
+              "win_rate": 0.43202416918429004,
+              "total_return": 288.68190269789176,
+              "total_return_pct": 28868.190269789175,
+              "max_drawdown": 0.2150999613801484,
+              "max_drawdown_pct": 21.509996138014838,
+              "sharpe_ratio": 0.28525283231591614,
+              "profit_factor": 2.1408594079754986,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 16,
+              "expectancy_pct": 1.9294694007308422
+            },
+            "trade_count": 331,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 331,
+              "drag_pct_points": 66.2,
+              "stressed_total_return_pct": 28801.990269789174,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 22,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 328,
+              "win_rate": 0.4329268292682927,
+              "total_return": 263.8917424610815,
+              "total_return_pct": 26389.17424610815,
+              "max_drawdown": 0.2114217446574096,
+              "max_drawdown_pct": 21.142174465740958,
+              "sharpe_ratio": 0.28343144864590986,
+              "profit_factor": 2.1305113623052905,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 15,
+              "expectancy_pct": 1.9176404127303468
+            },
+            "trade_count": 328,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 328,
+              "drag_pct_points": 65.60000000000001,
+              "stressed_total_return_pct": 26323.57424610815,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 322,
+              "win_rate": 0.4409937888198758,
+              "total_return": 652.9077861223795,
+              "total_return_pct": 65290.778612237955,
+              "max_drawdown": 0.21346497167561862,
+              "max_drawdown_pct": 21.34649716756186,
+              "sharpe_ratio": 0.27538181379438836,
+              "profit_factor": 2.090890325507102,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.3272874745448746
+            },
+            "trade_count": 322,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 322,
+              "drag_pct_points": 64.4,
+              "stressed_total_return_pct": 65226.37861223795,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 320,
+              "win_rate": 0.440625,
+              "total_return": 608.9309233870372,
+              "total_return_pct": 60893.09233870372,
+              "max_drawdown": 0.2134649716756186,
+              "max_drawdown_pct": 21.34649716756186,
+              "sharpe_ratio": 0.2738096422459435,
+              "profit_factor": 2.110370108052739,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.3191152162656
+            },
+            "trade_count": 320,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 320,
+              "drag_pct_points": 64.0,
+              "stressed_total_return_pct": 60829.09233870372,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 22,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 316,
+              "win_rate": 0.4462025316455696,
+              "total_return": 621.5760792802951,
+              "total_return_pct": 62157.60792802951,
+              "max_drawdown": 0.2134649716756188,
+              "max_drawdown_pct": 21.34649716756188,
+              "sharpe_ratio": 0.2768174359991369,
+              "profit_factor": 2.117166946560141,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.3538310579542463
+            },
+            "trade_count": 316,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 316,
+              "drag_pct_points": 63.2,
+              "stressed_total_return_pct": 62094.40792802951,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 14,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 317,
+              "win_rate": 0.43217665615141954,
+              "total_return": 467.9941884492301,
+              "total_return_pct": 46799.418844923006,
+              "max_drawdown": 0.24025661921473468,
+              "max_drawdown_pct": 24.025661921473468,
+              "sharpe_ratio": 0.26375150029892036,
+              "profit_factor": 1.9932232054084436,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.262513564886234
+            },
+            "trade_count": 317,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 317,
+              "drag_pct_points": 63.400000000000006,
+              "stressed_total_return_pct": 46736.018844923005,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 18,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 315,
+              "win_rate": 0.43174603174603177,
+              "total_return": 436.4532074625841,
+              "total_return_pct": 43645.32074625841,
+              "max_drawdown": 0.24025661921473468,
+              "max_drawdown_pct": 24.025661921473468,
+              "sharpe_ratio": 0.26214203408280684,
+              "profit_factor": 2.0100110445759767,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.2538003253031063
+            },
+            "trade_count": 315,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 315,
+              "drag_pct_points": 63.0,
+              "stressed_total_return_pct": 43582.32074625841,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "rsi_length": 22,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 311,
+              "win_rate": 0.43729903536977494,
+              "total_return": 457.74190808530597,
+              "total_return_pct": 45774.1908085306,
+              "max_drawdown": 0.24025661921473476,
+              "max_drawdown_pct": 24.025661921473475,
+              "sharpe_ratio": 0.26617061147561005,
+              "profit_factor": 2.016506107356802,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.296758683994046
+            },
+            "trade_count": 311,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 311,
+              "drag_pct_points": 62.2,
+              "stressed_total_return_pct": 45711.9908085306,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 269,
+              "win_rate": 0.39776951672862454,
+              "total_return": 298.4660151154678,
+              "total_return_pct": 29846.60151154678,
+              "max_drawdown": 0.1715267256052561,
+              "max_drawdown_pct": 17.15267256052561,
+              "sharpe_ratio": 0.21060429575227696,
+              "profit_factor": 2.324025981951414,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.65081667239408
+            },
+            "trade_count": 269,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 269,
+              "drag_pct_points": 53.800000000000004,
+              "stressed_total_return_pct": 29792.801511546782,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 18,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 268,
+              "win_rate": 0.39552238805970147,
+              "total_return": 271.6196459956975,
+              "total_return_pct": 27161.96459956975,
+              "max_drawdown": 0.1853178142983181,
+              "max_drawdown_pct": 18.53178142983181,
+              "sharpe_ratio": 0.20820604255264313,
+              "profit_factor": 2.3878280630605078,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.6240252562772697
+            },
+            "trade_count": 268,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 268,
+              "drag_pct_points": 53.6,
+              "stressed_total_return_pct": 27108.36459956975,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "rsi_length": 22,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 266,
+              "win_rate": 0.39473684210526316,
+              "total_return": 253.5307561336035,
+              "total_return_pct": 25353.07561336035,
+              "max_drawdown": 0.21789671336940553,
+              "max_drawdown_pct": 21.789671336940554,
+              "sharpe_ratio": 0.2069484482257948,
+              "profit_factor": 2.3607902768512123,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.616904206895301
+            },
+            "trade_count": 266,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 266,
+              "drag_pct_points": 53.2,
+              "stressed_total_return_pct": 25299.87561336035,
+              "stressed_positive": true
+            }
+          }
+        ]
+      },
+      "source_metrics": {
+        "total_trades": 302,
+        "win_rate": 0.46688741721854304,
+        "total_return": 1030.3032103133498,
+        "total_return_pct": 103030.32103133498,
+        "max_drawdown": 0.2134649716756185,
+        "max_drawdown_pct": 21.34649716756185,
+        "sharpe_ratio": 0.3036161098779012,
+        "profit_factor": 2.2785716305856893,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.633388888329936
+      },
+      "source_strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_adx_12_10",
+      "family": "ema_roc_adx_regime",
+      "thesis": "ADX regime filter targets the high-return EMA/ROC member but rejects low-strength continuation.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "adx_length": 18,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "full_period": {
+        "start": "2017-08-17",
+        "end": "2026-06-02",
+        "execution_mode": "deep_15m",
+        "metrics": {
+          "total_trades": 295,
+          "win_rate": 0.4745762711864407,
+          "total_return": 907.9073049736949,
+          "total_return_pct": 90790.73049736948,
+          "max_drawdown": 0.20225849514068306,
+          "max_drawdown_pct": 20.225849514068305,
+          "sharpe_ratio": 0.3054100719755434,
+          "profit_factor": 2.247159323158363,
+          "max_loss": -0.02646140394704004,
+          "max_consecutive_losses": 7,
+          "expectancy_pct": 2.64338579147071
+        },
+        "trade_count": 295,
+        "conservative_cost_stress": {
+          "method": "return_pct_minus_20bps_round_trip_per_trade",
+          "trade_count": 295,
+          "drag_pct_points": 59.0,
+          "stressed_total_return_pct": 90731.73049736948,
+          "stressed_positive": true
+        }
+      },
+      "segments": [
+        {
+          "label": "early",
+          "start": "2017-08-17",
+          "end": "2020-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 114,
+            "win_rate": 0.49122807017543857,
+            "total_return": 41.66248390932275,
+            "total_return_pct": 4166.2483909322755,
+            "max_drawdown": 0.1106106687649681,
+            "max_drawdown_pct": 11.06106687649681,
+            "sharpe_ratio": 0.3766994869265422,
+            "profit_factor": 4.798043412733071,
+            "max_loss": -0.02646140394703999,
+            "max_consecutive_losses": 7,
+            "expectancy_pct": 3.7489064118919253
+          },
+          "trade_count": 114,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 114,
+            "drag_pct_points": 22.8,
+            "stressed_total_return_pct": 4143.448390932275,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "middle",
+          "start": "2021-01-01",
+          "end": "2023-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 100,
+            "win_rate": 0.42,
+            "total_return": 2.600780012867803,
+            "total_return_pct": 260.0780012867803,
+            "max_drawdown": 0.15452252129630356,
+            "max_drawdown_pct": 15.452252129630356,
+            "sharpe_ratio": 0.23694651433393094,
+            "profit_factor": 2.311254844163555,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 1.461754567623306
+          },
+          "trade_count": 100,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 100,
+            "drag_pct_points": 20.0,
+            "stressed_total_return_pct": 240.0780012867803,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "oos_recent",
+          "start": "2024-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 76,
+            "win_rate": 0.47368421052631576,
+            "total_return": 1.6189333806221429,
+            "total_return_pct": 161.8933380622143,
+            "max_drawdown": 0.20225849514068298,
+            "max_drawdown_pct": 20.225849514068297,
+            "sharpe_ratio": 0.2442785790536905,
+            "profit_factor": 2.045782259415329,
+            "max_loss": -0.02646140394704004,
+            "max_consecutive_losses": 6,
+            "expectancy_pct": 1.4265587476348227
+          },
+          "trade_count": 76,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 76,
+            "drag_pct_points": 15.200000000000001,
+            "stressed_total_return_pct": 146.6933380622143,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "bear_2022",
+          "start": "2022-01-01",
+          "end": "2022-12-31",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 24,
+            "win_rate": 0.5,
+            "total_return": 0.1897867980208503,
+            "total_return_pct": 18.97867980208503,
+            "max_drawdown": 0.062386766550835145,
+            "max_drawdown_pct": 6.238676655083514,
+            "sharpe_ratio": 0.2245643585621565,
+            "profit_factor": 1.839873875489088,
+            "max_loss": -0.026461403947039962,
+            "max_consecutive_losses": 2,
+            "expectancy_pct": 0.7851935186804588
+          },
+          "trade_count": 24,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 24,
+            "drag_pct_points": 4.800000000000001,
+            "stressed_total_return_pct": 14.178679802085028,
+            "stressed_positive": true
+          }
+        },
+        {
+          "label": "recent_2025_2026",
+          "start": "2025-01-01",
+          "end": "2026-06-02",
+          "execution_mode": "deep_15m",
+          "metrics": {
+            "total_trades": 38,
+            "win_rate": 0.4473684210526316,
+            "total_return": 0.1298347786965941,
+            "total_return_pct": 12.98347786965941,
+            "max_drawdown": 0.16134800680370262,
+            "max_drawdown_pct": 16.13480068037026,
+            "sharpe_ratio": 0.1164235967077415,
+            "profit_factor": 1.3193321983095758,
+            "max_loss": -0.02646140394703991,
+            "max_consecutive_losses": 4,
+            "expectancy_pct": 0.37123996025883665
+          },
+          "trade_count": 38,
+          "conservative_cost_stress": {
+            "method": "return_pct_minus_20bps_round_trip_per_trade",
+            "trade_count": 38,
+            "drag_pct_points": 7.6000000000000005,
+            "stressed_total_return_pct": 5.383477869659409,
+            "stressed_positive": true
+          }
+        }
+      ],
+      "parameter_stress": {
+        "tested": 54,
+        "valid_positive": 54,
+        "positive_rate": 1.0,
+        "median_return_pct": 30872.570066639146,
+        "worst_return_pct": 14849.4152977724,
+        "worst_drawdown_pct": 27.092074270154132,
+        "sample": [
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 333,
+              "win_rate": 0.4294294294294294,
+              "total_return": 245.06893622571894,
+              "total_return_pct": 24506.893622571894,
+              "max_drawdown": 0.23195090050555223,
+              "max_drawdown_pct": 23.195090050555223,
+              "sharpe_ratio": 0.2795356113096231,
+              "profit_factor": 2.0486628710249244,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 17,
+              "expectancy_pct": 1.86357578807647
+            },
+            "trade_count": 333,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 333,
+              "drag_pct_points": 66.60000000000001,
+              "stressed_total_return_pct": 24440.293622571895,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 18,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 328,
+              "win_rate": 0.4329268292682927,
+              "total_return": 222.37296560574816,
+              "total_return_pct": 22237.296560574818,
+              "max_drawdown": 0.19787931392542768,
+              "max_drawdown_pct": 19.787931392542767,
+              "sharpe_ratio": 0.27886198674740914,
+              "profit_factor": 2.0482241064431967,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 15,
+              "expectancy_pct": 1.8589507072483566
+            },
+            "trade_count": 328,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 328,
+              "drag_pct_points": 65.60000000000001,
+              "stressed_total_return_pct": 22171.69656057482,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 22,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 326,
+              "win_rate": 0.4263803680981595,
+              "total_return": 158.75840105878177,
+              "total_return_pct": 15875.840105878176,
+              "max_drawdown": 0.1978793139254275,
+              "max_drawdown_pct": 19.787931392542752,
+              "sharpe_ratio": 0.2659296555595848,
+              "profit_factor": 1.9648506426792853,
+              "max_loss": -0.021468898326255564,
+              "max_consecutive_losses": 15,
+              "expectancy_pct": 1.7622102225179144
+            },
+            "trade_count": 326,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 326,
+              "drag_pct_points": 65.2,
+              "stressed_total_return_pct": 15810.640105878176,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 14,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 322,
+              "win_rate": 0.43788819875776397,
+              "total_return": 544.1253067293515,
+              "total_return_pct": 54412.53067293514,
+              "max_drawdown": 0.2134649716756187,
+              "max_drawdown_pct": 21.34649716756187,
+              "sharpe_ratio": 0.26974750432152134,
+              "profit_factor": 2.0132156715735654,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 8,
+              "expectancy_pct": 2.2661025972607325
+            },
+            "trade_count": 322,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 322,
+              "drag_pct_points": 64.4,
+              "stressed_total_return_pct": 54348.13067293514,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 18,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 317,
+              "win_rate": 0.4479495268138801,
+              "total_return": 543.2989320564051,
+              "total_return_pct": 54329.89320564051,
+              "max_drawdown": 0.2022584951406831,
+              "max_drawdown_pct": 20.225849514068308,
+              "sharpe_ratio": 0.2730112324473482,
+              "profit_factor": 2.0407914609213984,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.2976167627828477
+            },
+            "trade_count": 317,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 317,
+              "drag_pct_points": 63.400000000000006,
+              "stressed_total_return_pct": 54266.49320564051,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 22,
+              "stop_loss": 0.025,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 315,
+              "win_rate": 0.4380952380952381,
+              "total_return": 377.0189348500773,
+              "total_return_pct": 37701.89348500773,
+              "max_drawdown": 0.20225849514068336,
+              "max_drawdown_pct": 20.225849514068337,
+              "sharpe_ratio": 0.26077950519934556,
+              "profit_factor": 1.9393274116234505,
+              "max_loss": -0.02646140394704004,
+              "max_consecutive_losses": 7,
+              "expectancy_pct": 2.1910340243161004
+            },
+            "trade_count": 315,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 315,
+              "drag_pct_points": 63.0,
+              "stressed_total_return_pct": 37638.89348500773,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 14,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 317,
+              "win_rate": 0.43217665615141954,
+              "total_return": 383.142008814053,
+              "total_return_pct": 38314.2008814053,
+              "max_drawdown": 0.24025661921473462,
+              "max_drawdown_pct": 24.025661921473464,
+              "sharpe_ratio": 0.2573063880295618,
+              "profit_factor": 1.9154955038051047,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 10,
+              "expectancy_pct": 2.194952399277744
+            },
+            "trade_count": 317,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 317,
+              "drag_pct_points": 63.400000000000006,
+              "stressed_total_return_pct": 38250.800881405296,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 18,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 312,
+              "win_rate": 0.4423076923076923,
+              "total_return": 382.66914806249434,
+              "total_return_pct": 38266.914806249435,
+              "max_drawdown": 0.22943186753459544,
+              "max_drawdown_pct": 22.943186753459543,
+              "sharpe_ratio": 0.2604120496268456,
+              "profit_factor": 1.9417658510733447,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 9,
+              "expectancy_pct": 2.2259059300353545
+            },
+            "trade_count": 312,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 312,
+              "drag_pct_points": 62.400000000000006,
+              "stressed_total_return_pct": 38204.51480624943,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 2,
+              "adx_length": 22,
+              "stop_loss": 0.03,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 310,
+              "win_rate": 0.4290322580645161,
+              "total_return": 258.3866679312234,
+              "total_return_pct": 25838.666793122342,
+              "max_drawdown": 0.2294318675345954,
+              "max_drawdown_pct": 22.94318675345954,
+              "sharpe_ratio": 0.24699637728195156,
+              "profit_factor": 1.8222162317344015,
+              "max_loss": -0.031453909567824394,
+              "max_consecutive_losses": 9,
+              "expectancy_pct": 2.1085579183129486
+            },
+            "trade_count": 310,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 310,
+              "drag_pct_points": 62.0,
+              "stressed_total_return_pct": 25776.666793122342,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "adx_length": 14,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 269,
+              "win_rate": 0.39776951672862454,
+              "total_return": 256.09974859838707,
+              "total_return_pct": 25609.974859838705,
+              "max_drawdown": 0.19859599842553413,
+              "max_drawdown_pct": 19.859599842553415,
+              "sharpe_ratio": 0.206139198625763,
+              "profit_factor": 2.2999685336982494,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 13,
+              "expectancy_pct": 2.5904217589220586
+            },
+            "trade_count": 269,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 269,
+              "drag_pct_points": 53.800000000000004,
+              "stressed_total_return_pct": 25556.174859838706,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "adx_length": 18,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 265,
+              "win_rate": 0.4,
+              "total_return": 219.0842767377032,
+              "total_return_pct": 21908.42767377032,
+              "max_drawdown": 0.19859599842553424,
+              "max_drawdown_pct": 19.859599842553425,
+              "sharpe_ratio": 0.2034474224259553,
+              "profit_factor": 2.349512023388668,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 13,
+              "expectancy_pct": 2.5625385865515637
+            },
+            "trade_count": 265,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 265,
+              "drag_pct_points": 53.0,
+              "stressed_total_return_pct": 21855.42767377032,
+              "stressed_positive": true
+            }
+          },
+          {
+            "parameters": {
+              "trend_length": 12,
+              "roc_length": 4,
+              "adx_length": 22,
+              "stop_loss": 0.02,
+              "direction": "long",
+              "data_source": "ccxt"
+            },
+            "start": "2017-08-17",
+            "end": "2026-06-02",
+            "execution_mode": "deep_15m",
+            "metrics": {
+              "total_trades": 264,
+              "win_rate": 0.3939393939393939,
+              "total_return": 159.5137059149698,
+              "total_return_pct": 15951.37059149698,
+              "max_drawdown": 0.20143320390659222,
+              "max_drawdown_pct": 20.143320390659223,
+              "sharpe_ratio": 0.19433775487939664,
+              "profit_factor": 2.1931091351230747,
+              "max_loss": -0.02146889832625555,
+              "max_consecutive_losses": 13,
+              "expectancy_pct": 2.4464323643772103
+            },
+            "trade_count": 264,
+            "conservative_cost_stress": {
+              "method": "return_pct_minus_20bps_round_trip_per_trade",
+              "trade_count": 264,
+              "drag_pct_points": 52.800000000000004,
+              "stressed_total_return_pct": 15898.57059149698,
+              "stressed_positive": true
+            }
+          }
+        ]
+      },
+      "source_metrics": {
+        "total_trades": 295,
+        "win_rate": 0.4745762711864407,
+        "total_return": 907.9073049736949,
+        "total_return_pct": 90790.73049736948,
+        "max_drawdown": 0.20225849514068306,
+        "max_drawdown_pct": 20.225849514068305,
+        "sharpe_ratio": 0.3054100719755434,
+        "profit_factor": 2.247159323158363,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.64338579147071
+      },
+      "source_strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    }
+  ]
+}

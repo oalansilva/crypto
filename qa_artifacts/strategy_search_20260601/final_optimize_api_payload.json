@@ -1,0 +1,49 @@
+{
+  "template_name": "quant_btc_1d_macd_ema_roc_quality_long_v1_20260601",
+  "symbol": "BTC/USDT",
+  "timeframe": "1d",
+  "data_source": "ccxt",
+  "start_date": "2017-08-17",
+  "end_date": "2026-06-01",
+  "deep_backtest": true,
+  "initial_capital": 100,
+  "direction": "long",
+  "custom_ranges": {
+    "trend_length": {
+      "min": 8,
+      "max": 20,
+      "step": 4,
+      "default": 16
+    },
+    "m_fast": {
+      "min": 8,
+      "max": 12,
+      "step": 2,
+      "default": 10
+    },
+    "m_slow": {
+      "min": 22,
+      "max": 30,
+      "step": 4,
+      "default": 24
+    },
+    "m_signal": {
+      "min": 6,
+      "max": 10,
+      "step": 2,
+      "default": 8
+    },
+    "roc_length": {
+      "min": 2,
+      "max": 6,
+      "step": 2,
+      "default": 4
+    },
+    "stop_loss": {
+      "min": 0.02,
+      "max": 0.04,
+      "step": 0.01,
+      "default": 0.035
+    }
+  }
+}

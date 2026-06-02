@@ -1,0 +1,29 @@
+//@version=5
+strategy("Bandas BTC: Continuidade com Qualidade", overlay=true, initial_capital=100, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0, commission_type=strategy.commission.percent, commission_value=0.1)
+
+trendLength = input.int(10, "Trend EMA Length", minval=1)
+bbLength = input.int(21, "Bollinger Length", minval=1)
+bbStd = input.float(2.4, "Bollinger StdDev", minval=0.1, step=0.1)
+rsiLength = input.int(18, "RSI Length", minval=1)
+stopLossPct = input.float(4.0, "Stop Loss %", minval=0.1, step=0.1) / 100.0
+
+trend = ta.ema(close, trendLength)
+basis = ta.sma(close, bbLength)
+dev = bbStd * ta.stdev(close, bbLength)
+upper = basis + dev
+rsiValue = ta.rsi(close, rsiLength)
+
+entryCondition = close > trend and close > basis and close < upper and rsiValue > 50
+exitCondition = close < basis or rsiValue < 43
+
+if entryCondition and strategy.position_size == 0
+    strategy.entry("Long", strategy.long)
+
+if strategy.position_size > 0
+    strategy.exit("Stop", "Long", stop=strategy.position_avg_price * (1.0 - stopLossPct))
+    if exitCondition
+        strategy.close("Long")
+
+plot(trend, "Trend EMA", color=color.orange)
+plot(basis, "Bollinger Middle", color=color.blue)
+plot(upper, "Bollinger Upper", color=color.gray)

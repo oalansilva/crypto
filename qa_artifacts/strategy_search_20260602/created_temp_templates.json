@@ -1,0 +1,58 @@
+[
+  {
+    "id": 44,
+    "name": "tmp_quant_20260602_ema_roc_rsi_regime_long_v1",
+    "created": true,
+    "cycle": 1,
+    "thesis": "EMA trend + ROC acceleration + RSI regime avoids weak or overextended continuation."
+  },
+  {
+    "id": 45,
+    "name": "tmp_quant_20260602_ema_slope_roc_guard_long_v1",
+    "created": true,
+    "cycle": 1,
+    "thesis": "EMA slope confirms that momentum is persistent, not just above-trend noise."
+  },
+  {
+    "id": 46,
+    "name": "tmp_quant_20260602_bb_mid_rsi_quality_long_v1",
+    "created": true,
+    "cycle": 2,
+    "thesis": "Bollinger middle-band continuation with RSI quality filter avoids late upper-band chases."
+  },
+  {
+    "id": 47,
+    "name": "tmp_quant_20260602_atr_breakout_ema_guard_long_v1",
+    "created": true,
+    "cycle": 2,
+    "thesis": "ATR-adjusted breakout enters only when trend continuation clears normal daily noise."
+  },
+  {
+    "id": 48,
+    "name": "tmp_quant_20260602_macd_rsi_ceiling_long_v1",
+    "created": true,
+    "cycle": 3,
+    "thesis": "MACD confirmation plus RSI ceiling filters low-quality momentum and euphoric entries."
+  },
+  {
+    "id": 49,
+    "name": "tmp_quant_20260602_volume_roc_trend_confirm_long_v1",
+    "created": true,
+    "cycle": 3,
+    "thesis": "Volume participation confirms that trend continuation has market sponsorship."
+  },
+  {
+    "id": 50,
+    "name": "tmp_quant_20260602_adx_rsi_momentum_regime_long_v1",
+    "created": true,
+    "cycle": 4,
+    "thesis": "ADX regime guard accepts fewer entries but targets smoother trend periods."
+  },
+  {
+    "id": 51,
+    "name": "tmp_quant_20260602_dual_ema_roc_alignment_long_v1",
+    "created": true,
+    "cycle": 4,
+    "thesis": "Dual EMA trend alignment reduces whipsaw while ROC handles exit discipline."
+  }
+]

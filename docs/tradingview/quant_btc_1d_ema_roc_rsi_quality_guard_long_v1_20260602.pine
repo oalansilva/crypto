@@ -1,0 +1,26 @@
+//@version=5
+strategy("Momentum BTC: Continuidade com Filtro de Qualidade", overlay=true, initial_capital=100, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0, commission_type=strategy.commission.percent, commission_value=0.1)
+
+trendLength = input.int(15, "Trend EMA Length", minval=1)
+rocLength = input.int(2, "ROC Length", minval=1)
+rsiLength = input.int(10, "RSI Length", minval=1)
+stopLossPct = input.float(2.5, "Stop Loss %", minval=0.1, step=0.1) / 100.0
+
+trend = ta.ema(close, trendLength)
+rocValue = ta.roc(close, rocLength)
+rsiValue = ta.rsi(close, rsiLength)
+
+entryCondition = close > trend and rocValue > 0 and rsiValue > 48 and rsiValue < 82
+exitCondition = close < trend or rocValue < -1 or rsiValue < 40
+
+if entryCondition and strategy.position_size == 0
+    strategy.entry("Long", strategy.long)
+
+if strategy.position_size > 0
+    strategy.exit("Stop", "Long", stop=strategy.position_avg_price * (1.0 - stopLossPct))
+    if exitCondition
+        strategy.close("Long")
+
+plot(trend, "Trend EMA", color=color.orange)
+plot(rocValue, "ROC", color=color.blue, display=display.data_window)
+plot(rsiValue, "Quality Filter", color=color.purple, display=display.data_window)

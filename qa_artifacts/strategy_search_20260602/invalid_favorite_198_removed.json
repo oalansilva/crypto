@@ -1,0 +1,9 @@
+{
+  "deleted_at": "2026-06-02T01:40:23.620114+00:00",
+  "favorite_id": 198,
+  "status_code": 200,
+  "response": {
+    "message": "Favorite deleted"
+  },
+  "still_present": false
+}

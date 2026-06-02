@@ -1,0 +1,316 @@
+{
+  "generated_at": "2026-06-02T01:39:49.157141+00:00",
+  "start_date": "2017-08-17",
+  "end_date": "2026-06-02",
+  "config": {
+    "deep_backtest": true,
+    "initial_capital": 100,
+    "entry_size_pct": 100,
+    "exit_size_pct": 100,
+    "pyramiding": 0,
+    "allow_partial_exits": false
+  },
+  "results": [
+    {
+      "id": 9,
+      "name": "multi_ma_crossover - BTC/USDT 1d (00:12:26)",
+      "strategy_name": "multi_ma_crossover",
+      "status": 200,
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 72,
+        "win_rate": 0.5833333333333334,
+        "total_return": 199.26913124189718,
+        "total_return_pct": 19926.91312418972,
+        "max_drawdown": 0.12214660412400954,
+        "max_drawdown_pct": 12.214660412400955,
+        "sharpe_ratio": null,
+        "profit_factor": 3.723343317608936,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null
+      },
+      "payload": {
+        "template_name": "multi_ma_crossover",
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "data_source": "ccxt",
+        "start_date": "2017-08-17",
+        "end_date": "2026-06-02",
+        "deep_backtest": true,
+        "initial_capital": 100,
+        "direction": "long",
+        "parameters": {
+          "direction": "long",
+          "ema_short": 18,
+          "sma_medium": 20,
+          "sma_long": 35,
+          "stop_loss": 0.042,
+          "data_source": "ccxt"
+        }
+      }
+    },
+    {
+      "id": 122,
+      "name": "multi_ma_crossoverV2 - BTC/USDT 1d (batch)",
+      "strategy_name": "multi_ma_crossoverV2",
+      "status": 200,
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 81,
+        "win_rate": 0.49382716049382713,
+        "total_return": 99.83324626311352,
+        "total_return_pct": 9983.324626311352,
+        "max_drawdown": 0.10540263529968669,
+        "max_drawdown_pct": 10.54026352996867,
+        "sharpe_ratio": null,
+        "profit_factor": 4.8684511275925235,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null
+      },
+      "payload": {
+        "template_name": "multi_ma_crossoverV2",
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "data_source": "ccxt",
+        "start_date": "2017-08-17",
+        "end_date": "2026-06-02",
+        "deep_backtest": true,
+        "initial_capital": 100,
+        "direction": "long",
+        "parameters": {
+          "direction": "long",
+          "ema_short": 10,
+          "sma_medium": 16,
+          "sma_long": 22,
+          "stop_loss": 0.035,
+          "data_source": "ccxt"
+        }
+      }
+    },
+    {
+      "id": 192,
+      "name": "Bollinger_Breakout - BTC/USDT 1d (15:00:33)",
+      "strategy_name": "Bollinger_Breakout",
+      "status": 200,
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 56,
+        "win_rate": 0.5,
+        "total_return": 44.02196428055752,
+        "total_return_pct": 4402.196428055752,
+        "max_drawdown": 0.14768238906354314,
+        "max_drawdown_pct": 14.768238906354314,
+        "sharpe_ratio": null,
+        "profit_factor": 4.231588644252209,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null
+      },
+      "payload": {
+        "template_name": "Bollinger_Breakout",
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "data_source": "ccxt",
+        "start_date": "2017-08-17",
+        "end_date": "2026-06-02",
+        "deep_backtest": true,
+        "initial_capital": 100,
+        "direction": "long",
+        "parameters": {
+          "direction": "long",
+          "bb_length": 29,
+          "bb_std": 2,
+          "data_source": "ccxt"
+        }
+      }
+    },
+    {
+      "id": 194,
+      "name": "Momentum BTC: Continuidade Protegida",
+      "strategy_name": "quant_btc_1d_roc_ema_momentum_guard_long_v3",
+      "status": 200,
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 304,
+        "win_rate": 0.46710526315789475,
+        "total_return": 1085.0526700751666,
+        "total_return_pct": 108505.26700751665,
+        "max_drawdown": 0.21346497167561862,
+        "max_drawdown_pct": 21.34649716756186,
+        "sharpe_ratio": null,
+        "profit_factor": 2.2699819098968375,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null
+      },
+      "payload": {
+        "template_name": "quant_btc_1d_roc_ema_momentum_guard_long_v3",
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "data_source": "ccxt",
+        "start_date": "2017-08-17",
+        "end_date": "2026-06-02",
+        "deep_backtest": true,
+        "initial_capital": 100,
+        "direction": "long",
+        "parameters": {
+          "direction": "long",
+          "trend_length": 15,
+          "roc_length": 2,
+          "stop_loss": 0.025,
+          "data_source": "ccxt",
+          "initial_capital_usd": 100,
+          "position_size_type": "percent_equity",
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "pyramiding": 0,
+          "allow_partial_exits": false,
+          "deep_backtest": true,
+          "execution_mode": "deep_15m"
+        }
+      }
+    },
+    {
+      "id": 195,
+      "name": "Momentum BTC: Continuidade Equilibrada",
+      "strategy_name": "quant_btc_1d_ema_roc_trend_rider_long_v1",
+      "status": 200,
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 148,
+        "win_rate": 0.46621621621621623,
+        "total_return": 558.8660335701964,
+        "total_return_pct": 55886.60335701964,
+        "max_drawdown": 0.15317040951158192,
+        "max_drawdown_pct": 15.317040951158193,
+        "sharpe_ratio": null,
+        "profit_factor": 3.004888034019783,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null
+      },
+      "payload": {
+        "template_name": "quant_btc_1d_ema_roc_trend_rider_long_v1",
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "data_source": "ccxt",
+        "start_date": "2017-08-17",
+        "end_date": "2026-06-02",
+        "deep_backtest": true,
+        "initial_capital": 100,
+        "direction": "long",
+        "parameters": {
+          "direction": "long",
+          "trend_length": 20,
+          "roc_length": 10,
+          "stop_loss": 0.04,
+          "data_source": "ccxt",
+          "initial_capital_usd": 100,
+          "position_size_type": "percent_equity",
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "pyramiding": 0,
+          "allow_partial_exits": false,
+          "deep_backtest": true,
+          "execution_mode": "deep_15m"
+        }
+      }
+    },
+    {
+      "id": 196,
+      "name": "Momentum BTC: Continuidade com Filtro RSI",
+      "strategy_name": "quant_btc_1d_ema_roc_rsi_regime_long_v2_20260601",
+      "status": 200,
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 153,
+        "win_rate": 0.47058823529411764,
+        "total_return": 746.0599995259767,
+        "total_return_pct": 74605.99995259766,
+        "max_drawdown": 0.12345347680467544,
+        "max_drawdown_pct": 12.345347680467544,
+        "sharpe_ratio": null,
+        "profit_factor": 3.6998986615598413,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null
+      },
+      "payload": {
+        "template_name": "quant_btc_1d_ema_roc_rsi_regime_long_v2_20260601",
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "data_source": "ccxt",
+        "start_date": "2017-08-17",
+        "end_date": "2026-06-02",
+        "deep_backtest": true,
+        "initial_capital": 100,
+        "direction": "long",
+        "parameters": {
+          "direction": "long",
+          "trend_length": 12,
+          "roc_length": 10,
+          "rsi_length": 20,
+          "stop_loss": 0.04,
+          "data_source": "ccxt",
+          "initial_capital_usd": 100,
+          "position_size_type": "percent_equity",
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "pyramiding": 0,
+          "allow_partial_exits": false,
+          "deep_backtest": true,
+          "execution_mode": "deep_15m"
+        }
+      }
+    },
+    {
+      "id": 197,
+      "name": "MACD BTC: Continuidade com Risco Controlado",
+      "strategy_name": "quant_btc_1d_macd_ema_roc_quality_long_v1_20260601",
+      "status": 200,
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 155,
+        "win_rate": 0.45806451612903226,
+        "total_return": 323.93861836794736,
+        "total_return_pct": 32393.861836794735,
+        "max_drawdown": 0.14019779051654735,
+        "max_drawdown_pct": 14.019779051654735,
+        "sharpe_ratio": null,
+        "profit_factor": 3.0382912678078204,
+        "max_loss": null,
+        "max_consecutive_losses": null,
+        "expectancy_pct": null
+      },
+      "payload": {
+        "template_name": "quant_btc_1d_macd_ema_roc_quality_long_v1_20260601",
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "data_source": "ccxt",
+        "start_date": "2017-08-17",
+        "end_date": "2026-06-02",
+        "deep_backtest": true,
+        "initial_capital": 100,
+        "direction": "long",
+        "parameters": {
+          "direction": "long",
+          "trend_length": 20,
+          "m_fast": 10,
+          "m_slow": 22,
+          "m_signal": 6,
+          "roc_length": 6,
+          "stop_loss": 0.04,
+          "data_source": "ccxt",
+          "deep_backtest": true,
+          "initial_capital_usd": 100,
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "pyramiding": 0,
+          "allow_partial_exits": false
+        }
+      }
+    }
+  ]
+}

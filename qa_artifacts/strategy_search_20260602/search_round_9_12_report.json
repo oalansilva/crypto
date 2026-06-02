@@ -1,0 +1,1544 @@
+{
+  "started_at": "2026-06-02T02:01:11.461524+00:00",
+  "generated_at": "2026-06-02T02:08:12.303900+00:00",
+  "config": {
+    "symbol": "BTC/USDT",
+    "timeframe": "1d",
+    "direction": "long",
+    "deep_backtest": true,
+    "initial_capital": 100,
+    "entry_size_pct": 100,
+    "exit_size_pct": 100,
+    "pyramiding": 0,
+    "allow_partial_exits": false
+  },
+  "benchmark_return": {
+    "id": 194,
+    "name": "Momentum BTC: Continuidade Protegida",
+    "strategy_name": "quant_btc_1d_roc_ema_momentum_guard_long_v3",
+    "metrics": {
+      "total_trades": 304,
+      "win_rate": 0.46710526315789475,
+      "total_return": 1085.0526700751666,
+      "total_return_pct": 108505.26700751665,
+      "max_drawdown": 0.21346497167561862,
+      "max_drawdown_pct": 21.34649716756186,
+      "sharpe_ratio": null,
+      "profit_factor": 2.2699819098968375,
+      "max_loss": null,
+      "max_consecutive_losses": null,
+      "expectancy_pct": null
+    },
+    "execution_mode": "deep_15m"
+  },
+  "created_templates": [
+    {
+      "id": 62,
+      "name": "tmp_quant_20260602c_ema_roc_rsi_q_42_86_38",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries."
+    },
+    {
+      "id": 63,
+      "name": "tmp_quant_20260602c_ema_roc_rsi_q_45_84_39",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries."
+    },
+    {
+      "id": 64,
+      "name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries."
+    },
+    {
+      "id": 65,
+      "name": "tmp_quant_20260602c_ema_roc_rsi_q_50_80_42",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries."
+    },
+    {
+      "id": 66,
+      "name": "tmp_quant_20260602c_ema_roc_adx_12_10",
+      "cycle": 10,
+      "family": "ema_roc_adx_regime",
+      "thesis": "ADX regime filter targets the high-return EMA/ROC member but rejects low-strength continuation."
+    },
+    {
+      "id": 67,
+      "name": "tmp_quant_20260602c_ema_roc_adx_15_11",
+      "cycle": 10,
+      "family": "ema_roc_adx_regime",
+      "thesis": "ADX regime filter targets the high-return EMA/ROC member but rejects low-strength continuation."
+    },
+    {
+      "id": 68,
+      "name": "tmp_quant_20260602c_ema_roc_adx_18_13",
+      "cycle": 10,
+      "family": "ema_roc_adx_regime",
+      "thesis": "ADX regime filter targets the high-return EMA/ROC member but rejects low-strength continuation."
+    },
+    {
+      "id": 69,
+      "name": "tmp_quant_20260602c_ema_roc_adx_20_15",
+      "cycle": 10,
+      "family": "ema_roc_adx_regime",
+      "thesis": "ADX regime filter targets the high-return EMA/ROC member but rejects low-strength continuation."
+    },
+    {
+      "id": 70,
+      "name": "tmp_quant_20260602c_ema_roc_macd_8_21_5",
+      "cycle": 11,
+      "family": "ema_roc_macd_quality",
+      "thesis": "MACD confirmation aims for a materially different momentum quality gate versus raw ROC continuation."
+    },
+    {
+      "id": 71,
+      "name": "tmp_quant_20260602c_ema_roc_macd_10_22_6",
+      "cycle": 11,
+      "family": "ema_roc_macd_quality",
+      "thesis": "MACD confirmation aims for a materially different momentum quality gate versus raw ROC continuation."
+    },
+    {
+      "id": 72,
+      "name": "tmp_quant_20260602c_ema_roc_macd_12_26_8",
+      "cycle": 11,
+      "family": "ema_roc_macd_quality",
+      "thesis": "MACD confirmation aims for a materially different momentum quality gate versus raw ROC continuation."
+    },
+    {
+      "id": 73,
+      "name": "tmp_quant_20260602c_bb_ema_roc_q_1_8_46",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC."
+    },
+    {
+      "id": 74,
+      "name": "tmp_quant_20260602c_bb_ema_roc_q_2_0_46",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC."
+    },
+    {
+      "id": 75,
+      "name": "tmp_quant_20260602c_bb_ema_roc_q_2_2_48",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC."
+    },
+    {
+      "id": 76,
+      "name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC."
+    }
+  ],
+  "candidate_count": 3216,
+  "families": [
+    "bbands_ema_roc_quality",
+    "ema_roc_adx_regime",
+    "ema_roc_macd_quality",
+    "ema_roc_rsi_quality"
+  ],
+  "cycles": [
+    9,
+    10,
+    11,
+    12
+  ],
+  "failure_count": 0,
+  "failures": [],
+  "eligible_count": 3,
+  "eligible": [
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 298,
+        "win_rate": 0.4697986577181208,
+        "total_return": 1114.5787770304566,
+        "total_return_pct": 111457.87770304567,
+        "max_drawdown": 0.2134649716756186,
+        "max_drawdown_pct": 21.34649716756186,
+        "sharpe_ratio": 0.30896758858310924,
+        "profit_factor": 2.267122855558967,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.6956481800398966
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0006127734389187222,
+        "top5_share_of_total_return": 0.002102450155083195,
+        "positive_trade_count": 140
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": true,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_42_86_38",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 303,
+        "win_rate": 0.46864686468646866,
+        "total_return": 1114.5722787759767,
+        "total_return_pct": 111457.22787759766,
+        "max_drawdown": 0.2134649716756186,
+        "max_drawdown_pct": 21.34649716756186,
+        "sharpe_ratio": 0.30603710418926383,
+        "profit_factor": 2.278740454801953,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.651622231835629
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0006127770115517587,
+        "top5_share_of_total_return": 0.002102462412929904,
+        "positive_trade_count": 142
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": true,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 22,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 264,
+        "win_rate": 0.4696969696969697,
+        "total_return": 854.9677019017446,
+        "total_return_pct": 85496.77019017446,
+        "max_drawdown": 0.1490576105336607,
+        "max_drawdown_pct": 14.90576105336607,
+        "sharpe_ratio": 0.3225406162926456,
+        "profit_factor": 2.511381660024302,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.9279926988535663
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0007988421885734195,
+        "top5_share_of_total_return": 0.0027408594703726315,
+        "positive_trade_count": 124
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": true
+      }
+    }
+  ],
+  "top30": [
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 298,
+        "win_rate": 0.4697986577181208,
+        "total_return": 1114.5787770304566,
+        "total_return_pct": 111457.87770304567,
+        "max_drawdown": 0.2134649716756186,
+        "max_drawdown_pct": 21.34649716756186,
+        "sharpe_ratio": 0.30896758858310924,
+        "profit_factor": 2.267122855558967,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.6956481800398966
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0006127734389187222,
+        "top5_share_of_total_return": 0.002102450155083195,
+        "positive_trade_count": 140
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": true,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_42_86_38",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 303,
+        "win_rate": 0.46864686468646866,
+        "total_return": 1114.5722787759767,
+        "total_return_pct": 111457.22787759766,
+        "max_drawdown": 0.2134649716756186,
+        "max_drawdown_pct": 21.34649716756186,
+        "sharpe_ratio": 0.30603710418926383,
+        "profit_factor": 2.278740454801953,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.651622231835629
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0006127770115517587,
+        "top5_share_of_total_return": 0.002102462412929904,
+        "positive_trade_count": 142
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": true,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 22,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 264,
+        "win_rate": 0.4696969696969697,
+        "total_return": 854.9677019017446,
+        "total_return_pct": 85496.77019017446,
+        "max_drawdown": 0.1490576105336607,
+        "max_drawdown_pct": 14.90576105336607,
+        "sharpe_ratio": 0.3225406162926456,
+        "profit_factor": 2.511381660024302,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.9279926988535663
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0007988421885734195,
+        "top5_share_of_total_return": 0.0027408594703726315,
+        "positive_trade_count": 124
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": true
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 2,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 298,
+        "win_rate": 0.4697986577181208,
+        "total_return": 1039.3263640211367,
+        "total_return_pct": 103932.63640211367,
+        "max_drawdown": 0.21346497167561856,
+        "max_drawdown_pct": 21.346497167561857,
+        "sharpe_ratio": 0.3064002176600845,
+        "profit_factor": 2.2211532027061955,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.6709299164164118
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0006571412924659408,
+        "top5_share_of_total_return": 0.0022546780335233226,
+        "positive_trade_count": 140
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_42_86_38",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 18,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 302,
+        "win_rate": 0.46688741721854304,
+        "total_return": 1030.3032103133498,
+        "total_return_pct": 103030.32103133498,
+        "max_drawdown": 0.2134649716756185,
+        "max_drawdown_pct": 21.34649716756185,
+        "sharpe_ratio": 0.3036161098779012,
+        "profit_factor": 2.2785716305856893,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.633388888329936
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0006628963816768639,
+        "top5_share_of_total_return": 0.002274423974576796,
+        "positive_trade_count": 141
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_adx_12_10",
+      "cycle": 10,
+      "family": "ema_roc_adx_regime",
+      "thesis": "ADX regime filter targets the high-return EMA/ROC member but rejects low-strength continuation.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "adx_length": 18,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 295,
+        "win_rate": 0.4745762711864407,
+        "total_return": 907.9073049736949,
+        "total_return_pct": 90790.73049736948,
+        "max_drawdown": 0.20225849514068306,
+        "max_drawdown_pct": 20.225849514068305,
+        "sharpe_ratio": 0.3054100719755434,
+        "profit_factor": 2.247159323158363,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 2.64338579147071
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0007522621157526262,
+        "top5_share_of_total_return": 0.0025810413792055746,
+        "positive_trade_count": 140
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 2,
+        "rsi_length": 22,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 267,
+        "win_rate": 0.46441947565543074,
+        "total_return": 767.0240106263311,
+        "total_return_pct": 76702.40106263311,
+        "max_drawdown": 0.16197164962089133,
+        "max_drawdown_pct": 16.197164962089133,
+        "sharpe_ratio": 0.31584065691482555,
+        "profit_factor": 2.4308007079328795,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.8535971240733287
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0008904340159952359,
+        "top5_share_of_total_return": 0.0030551146902254183,
+        "positive_trade_count": 124
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_48_82_40",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 290,
+        "win_rate": 0.4724137931034483,
+        "total_return": 753.0338532264207,
+        "total_return_pct": 75303.38532264206,
+        "max_drawdown": 0.19208644473547484,
+        "max_drawdown_pct": 19.208644473547483,
+        "sharpe_ratio": 0.3037175380720619,
+        "profit_factor": 2.233500863896203,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.6142242351253264
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0009069768473495419,
+        "top5_share_of_total_return": 0.003111873805646197,
+        "positive_trade_count": 137
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_50_80_42",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 266,
+        "win_rate": 0.46616541353383456,
+        "total_return": 603.2235100171494,
+        "total_return_pct": 60322.35100171494,
+        "max_drawdown": 0.11515306612777795,
+        "max_drawdown_pct": 11.515306612777795,
+        "sharpe_ratio": 0.3108103790790575,
+        "profit_factor": 2.6300988602847855,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.7579119547151856
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0011322242233684817,
+        "top5_share_of_total_return": 0.003884706553551769,
+        "positive_trade_count": 124
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_50_80_42",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 2,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 266,
+        "win_rate": 0.46616541353383456,
+        "total_return": 560.5342759734935,
+        "total_return_pct": 56053.42759734936,
+        "max_drawdown": 0.11515306612777784,
+        "max_drawdown_pct": 11.515306612777785,
+        "sharpe_ratio": 0.30775513792894427,
+        "profit_factor": 2.5582056972575877,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.7291367342645096
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0012184522863666475,
+        "top5_share_of_total_return": 0.0041805584833333785,
+        "positive_trade_count": 124
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_50_80_42",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 6,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 189,
+        "win_rate": 0.455026455026455,
+        "total_return": 479.72758859128766,
+        "total_return_pct": 47972.758859128764,
+        "max_drawdown": 0.11881133034735517,
+        "max_drawdown_pct": 11.881133034735516,
+        "sharpe_ratio": 0.28869727579985877,
+        "profit_factor": 2.7088043610170125,
+        "max_loss": -0.026461403947039986,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 4.004007171650787
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 347.38103935252315,
+        "largest_trade_share_of_total_return": 0.0025238779760338808,
+        "top5_share_of_total_return": 0.007241214547877098,
+        "positive_trade_count": 86
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 18,
+        "roc_length": 2,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 252,
+        "win_rate": 0.4365079365079365,
+        "total_return": 445.04652345726754,
+        "total_return_pct": 44504.652345726754,
+        "max_drawdown": 0.1144053619077007,
+        "max_drawdown_pct": 11.44053619077007,
+        "sharpe_ratio": 0.30690291795956626,
+        "profit_factor": 2.3318600140470758,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 9,
+        "expectancy_pct": 2.7856501670674865
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.001534635670988126,
+        "top5_share_of_total_return": 0.005265396310516568,
+        "positive_trade_count": 110
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 250,
+        "win_rate": 0.436,
+        "total_return": 427.24972203083337,
+        "total_return_pct": 42724.972203083336,
+        "max_drawdown": 0.11440536190770074,
+        "max_drawdown_pct": 11.440536190770075,
+        "sharpe_ratio": 0.3076997953867299,
+        "profit_factor": 2.334803370155997,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 9,
+        "expectancy_pct": 2.787383343703778
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.001598559893498275,
+        "top5_share_of_total_return": 0.005484722872332282,
+        "positive_trade_count": 109
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_50_80_42",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 6,
+        "rsi_length": 18,
+        "stop_loss": 0.03,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 171,
+        "win_rate": 0.43859649122807015,
+        "total_return": 424.2116909120079,
+        "total_return_pct": 42421.16909120079,
+        "max_drawdown": 0.11495970739717003,
+        "max_drawdown_pct": 11.495970739717002,
+        "sharpe_ratio": 0.29921919800366614,
+        "profit_factor": 2.610455773970087,
+        "max_loss": -0.03145390956782438,
+        "max_consecutive_losses": 9,
+        "expectancy_pct": 4.355602385181241
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 347.38103935252315,
+        "largest_trade_share_of_total_return": 0.002854173803504482,
+        "top5_share_of_total_return": 0.008188860580567513,
+        "positive_trade_count": 75
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 18,
+        "roc_length": 2,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 262,
+        "win_rate": 0.44274809160305345,
+        "total_return": 415.91955778913683,
+        "total_return_pct": 41591.95577891368,
+        "max_drawdown": 0.1144053619077009,
+        "max_drawdown_pct": 11.44053619077009,
+        "sharpe_ratio": 0.29669984324782406,
+        "profit_factor": 2.3056862288065254,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.655665036735902
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0016421066462400798,
+        "top5_share_of_total_return": 0.0056341335210982136,
+        "positive_trade_count": 116
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_50_80_42",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 6,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 188,
+        "win_rate": 0.4521276595744681,
+        "total_return": 410.9938198209243,
+        "total_return_pct": 41099.381982092425,
+        "max_drawdown": 0.11881133034735497,
+        "max_drawdown_pct": 11.881133034735496,
+        "sharpe_ratio": 0.283835941303278,
+        "profit_factor": 2.658678292301335,
+        "max_loss": -0.026461403947039986,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 3.935347449369274
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 347.38103935252315,
+        "largest_trade_share_of_total_return": 0.0029459661847687744,
+        "top5_share_of_total_return": 0.00845222051036879,
+        "positive_trade_count": 85
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_50_80_42",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 18,
+        "roc_length": 2,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 269,
+        "win_rate": 0.45353159851301117,
+        "total_return": 404.86447449054634,
+        "total_return_pct": 40486.447449054634,
+        "max_drawdown": 0.11515306612777788,
+        "max_drawdown_pct": 11.515306612777788,
+        "sharpe_ratio": 0.29741087276652756,
+        "profit_factor": 2.579961861012789,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.5607356205754774
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 224.4764103018894,
+        "largest_trade_share_of_total_return": 0.0016869454179851099,
+        "top5_share_of_total_return": 0.005544482770051758,
+        "positive_trade_count": 122
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 2,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 260,
+        "win_rate": 0.4423076923076923,
+        "total_return": 399.28489259040487,
+        "total_return_pct": 39928.489259040485,
+        "max_drawdown": 0.11440536190770056,
+        "max_drawdown_pct": 11.440536190770057,
+        "sharpe_ratio": 0.2973852875765047,
+        "profit_factor": 2.3069277320457005,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.6563316671144
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 234.33463226201215,
+        "largest_trade_share_of_total_return": 0.0017105186868349581,
+        "top5_share_of_total_return": 0.005868857966093842,
+        "positive_trade_count": 115
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 9,
+        "roc_length": 6,
+        "bb_length": 14,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.03,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 166,
+        "win_rate": 0.4457831325301205,
+        "total_return": 397.9760281929416,
+        "total_return_pct": 39797.60281929416,
+        "max_drawdown": 0.11495970739717003,
+        "max_drawdown_pct": 11.495970739717002,
+        "sharpe_ratio": 0.30279607986659457,
+        "profit_factor": 2.7926230567360104,
+        "max_loss": -0.031453909567824366,
+        "max_consecutive_losses": 9,
+        "expectancy_pct": 4.429904155469331
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 347.38103935252315,
+        "largest_trade_share_of_total_return": 0.0030423287071813317,
+        "top5_share_of_total_return": 0.008728692552912014,
+        "positive_trade_count": 74
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 6,
+        "bb_length": 14,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.03,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 167,
+        "win_rate": 0.437125748502994,
+        "total_return": 387.42075005117454,
+        "total_return_pct": 38742.075005117455,
+        "max_drawdown": 0.11495970739717003,
+        "max_drawdown_pct": 11.495970739717002,
+        "sharpe_ratio": 0.3005362278545181,
+        "profit_factor": 2.7784333802336505,
+        "max_loss": -0.031453909567824366,
+        "max_consecutive_losses": 9,
+        "expectancy_pct": 4.388279863623463
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 347.38103935252315,
+        "largest_trade_share_of_total_return": 0.0031252169512899393,
+        "top5_share_of_total_return": 0.008966505777159264,
+        "positive_trade_count": 73
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 6,
+        "bb_length": 14,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.03,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 167,
+        "win_rate": 0.437125748502994,
+        "total_return": 387.42075005117454,
+        "total_return_pct": 38742.075005117455,
+        "max_drawdown": 0.11495970739717003,
+        "max_drawdown_pct": 11.495970739717002,
+        "sharpe_ratio": 0.3005362278545181,
+        "profit_factor": 2.7784333802336505,
+        "max_loss": -0.031453909567824366,
+        "max_consecutive_losses": 9,
+        "expectancy_pct": 4.388279863623463
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 347.38103935252315,
+        "largest_trade_share_of_total_return": 0.0031252169512899393,
+        "top5_share_of_total_return": 0.008966505777159264,
+        "positive_trade_count": 73
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 18,
+        "roc_length": 6,
+        "bb_length": 14,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.03,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 167,
+        "win_rate": 0.437125748502994,
+        "total_return": 387.42075005117454,
+        "total_return_pct": 38742.075005117455,
+        "max_drawdown": 0.11495970739717003,
+        "max_drawdown_pct": 11.495970739717002,
+        "sharpe_ratio": 0.3005362278545181,
+        "profit_factor": 2.7784333802336505,
+        "max_loss": -0.031453909567824366,
+        "max_consecutive_losses": 9,
+        "expectancy_pct": 4.388279863623463
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 347.38103935252315,
+        "largest_trade_share_of_total_return": 0.0031252169512899393,
+        "top5_share_of_total_return": 0.008966505777159264,
+        "positive_trade_count": 73
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 9,
+        "roc_length": 6,
+        "bb_length": 14,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.035,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 160,
+        "win_rate": 0.44375,
+        "total_return": 383.3262072178297,
+        "total_return_pct": 38332.620721782965,
+        "max_drawdown": 0.12225086629999433,
+        "max_drawdown_pct": 12.225086629999433,
+        "sharpe_ratio": 0.3070387297814466,
+        "profit_factor": 2.6631191942713226,
+        "max_loss": -0.036446415188608784,
+        "max_consecutive_losses": 8,
+        "expectancy_pct": 4.575339223427295
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 347.38103935252315,
+        "largest_trade_share_of_total_return": 0.0031585993144824472,
+        "top5_share_of_total_return": 0.009062282536688648,
+        "positive_trade_count": 71
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 6,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 185,
+        "win_rate": 0.42702702702702705,
+        "total_return": 371.7865503221539,
+        "total_return_pct": 37178.65503221539,
+        "max_drawdown": 0.1060253448601743,
+        "max_drawdown_pct": 10.60253448601743,
+        "sharpe_ratio": 0.2827618197577184,
+        "profit_factor": 2.525119709065395,
+        "max_loss": -0.02646140394703999,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 3.9394904649528772
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 340.80313431916835,
+        "largest_trade_share_of_total_return": 0.0032566371599302203,
+        "top5_share_of_total_return": 0.009166634296583931,
+        "positive_trade_count": 79
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 15,
+        "roc_length": 6,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 187,
+        "win_rate": 0.42780748663101603,
+        "total_return": 370.35346537988283,
+        "total_return_pct": 37035.346537988284,
+        "max_drawdown": 0.10602534486017423,
+        "max_drawdown_pct": 10.602534486017422,
+        "sharpe_ratio": 0.28095950524200086,
+        "profit_factor": 2.5421584974353912,
+        "max_loss": -0.02646140394703999,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 3.895383725395549
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 340.80313431916835,
+        "largest_trade_share_of_total_return": 0.0032692387368360807,
+        "top5_share_of_total_return": 0.009202104642644458,
+        "positive_trade_count": 80
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 9,
+        "roc_length": 6,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 10,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 185,
+        "win_rate": 0.43243243243243246,
+        "total_return": 370.23239769304195,
+        "total_return_pct": 37023.23976930419,
+        "max_drawdown": 0.1060253448601742,
+        "max_drawdown_pct": 10.60253448601742,
+        "sharpe_ratio": 0.28264191586893894,
+        "profit_factor": 2.4754446505901786,
+        "max_loss": -0.02646140394703999,
+        "max_consecutive_losses": 7,
+        "expectancy_pct": 3.9365013627408936
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 340.80313431916835,
+        "largest_trade_share_of_total_return": 0.0032703077928508046,
+        "top5_share_of_total_return": 0.00920511377293693,
+        "positive_trade_count": 80
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 9,
+        "roc_length": 6,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.03,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 164,
+        "win_rate": 0.43902439024390244,
+        "total_return": 363.0626207206133,
+        "total_return_pct": 36306.262072061334,
+        "max_drawdown": 0.11923454533858832,
+        "max_drawdown_pct": 11.923454533858832,
+        "sharpe_ratio": 0.3001417233365613,
+        "profit_factor": 2.528692974975318,
+        "max_loss": -0.03145390956782438,
+        "max_consecutive_losses": 8,
+        "expectancy_pct": 4.436324046145586
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 340.80313431916835,
+        "largest_trade_share_of_total_return": 0.0033348899783134578,
+        "top5_share_of_total_return": 0.009386896773970728,
+        "positive_trade_count": 72
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 9,
+        "roc_length": 6,
+        "bb_length": 21,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.035,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 160,
+        "win_rate": 0.4375,
+        "total_return": 358.7478466001938,
+        "total_return_pct": 35874.78466001938,
+        "max_drawdown": 0.11796337570565682,
+        "max_drawdown_pct": 11.796337570565681,
+        "sharpe_ratio": 0.3035405251013794,
+        "profit_factor": 2.525072055414501,
+        "max_loss": -0.036446415188608784,
+        "max_consecutive_losses": 8,
+        "expectancy_pct": 4.542319430111701
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 340.80313431916835,
+        "largest_trade_share_of_total_return": 0.0033749997576730797,
+        "top5_share_of_total_return": 0.009499795958328805,
+        "positive_trade_count": 70
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_bb_ema_roc_q_2_4_50",
+      "cycle": 12,
+      "family": "bbands_ema_roc_quality",
+      "thesis": "Bollinger volatility quality plus ROC attempts a defensive Pareto profile distinct from raw EMA/ROC.",
+      "parameters": {
+        "trend_length": 12,
+        "roc_length": 6,
+        "bb_length": 28,
+        "bb_std": 2.4,
+        "rsi_length": 18,
+        "stop_loss": 0.03,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 165,
+        "win_rate": 0.4303030303030303,
+        "total_return": 358.2657391444094,
+        "total_return_pct": 35826.57391444094,
+        "max_drawdown": 0.119234545338588,
+        "max_drawdown_pct": 11.9234545338588,
+        "sharpe_ratio": 0.2984918519519943,
+        "profit_factor": 2.566653377355428,
+        "max_loss": -0.03145390956782438,
+        "max_consecutive_losses": 8,
+        "expectancy_pct": 4.402309825156236
+      },
+      "concentration": {
+        "largest_trade_return_pct": 121.07738953413933,
+        "top5_return_pct_sum": 340.80313431916835,
+        "largest_trade_share_of_total_return": 0.0033795413935837045,
+        "top5_share_of_total_return": 0.009512579548718661,
+        "positive_trade_count": 71
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    },
+    {
+      "template_name": "tmp_quant_20260602c_ema_roc_rsi_q_50_80_42",
+      "cycle": 9,
+      "family": "ema_roc_rsi_quality",
+      "thesis": "EMA/ROC compounding with RSI quality gates tries to keep the high-return Pareto member while removing exhausted or weak entries.",
+      "parameters": {
+        "trend_length": 9,
+        "roc_length": 2,
+        "rsi_length": 14,
+        "stop_loss": 0.025,
+        "direction": "long",
+        "data_source": "ccxt"
+      },
+      "execution_mode": "deep_15m",
+      "metrics": {
+        "total_trades": 268,
+        "win_rate": 0.458955223880597,
+        "total_return": 354.12151361559785,
+        "total_return_pct": 35412.15136155979,
+        "max_drawdown": 0.11515306612777794,
+        "max_drawdown_pct": 11.515306612777794,
+        "sharpe_ratio": 0.29248988761637335,
+        "profit_factor": 2.5443627979310155,
+        "max_loss": -0.02646140394704004,
+        "max_consecutive_losses": 6,
+        "expectancy_pct": 2.517812854661463
+      },
+      "concentration": {
+        "largest_trade_return_pct": 68.29842701467766,
+        "top5_return_pct_sum": 224.4764103018894,
+        "largest_trade_share_of_total_return": 0.001928672062799783,
+        "top5_share_of_total_return": 0.006338965628209773,
+        "positive_trade_count": 123
+      },
+      "dominated_by": [],
+      "strong_gate": {
+        "dominance_clear": false,
+        "new_pareto_defensible": false,
+        "defensive_exceptional": false
+      }
+    }
+  ]
+}

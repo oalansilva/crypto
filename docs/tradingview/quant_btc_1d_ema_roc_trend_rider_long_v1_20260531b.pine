@@ -1,0 +1,27 @@
+//@version=5
+strategy("Momentum BTC: Continuidade Equilibrada - BTC 1D", overlay=true, initial_capital=100, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0, commission_type=strategy.commission.percent, commission_value=0.075)
+
+// Aproximação TradingView da estratégia salva no Cripto Farol.
+// Backend validado com Deep Backtest 15m; no Pine 1D, stops/saídas intraperíodo podem divergir.
+trendLen = input.int(20, "Trend length")
+rocLen = input.int(10, "Momentum length")
+stopPct = input.float(4.0000, "Stop %") / 100.0
+
+trend = ta.ema(close, trendLen)
+rocValue = ta.roc(close, rocLen)
+
+longCondition = close > trend and rocValue > 0
+exitCondition = close < trend or rocValue < -3
+
+if longCondition and strategy.position_size == 0
+    strategy.entry("Long", strategy.long, qty_percent=100)
+
+if strategy.position_size > 0
+    strategy.exit("Stop", "Long", stop=strategy.position_avg_price * (1 - stopPct), qty_percent=100)
+
+if exitCondition and strategy.position_size > 0
+    strategy.close("Long", qty_percent=100)
+
+plot(trend, "Trend", color=color.orange)
+plotshape(longCondition and strategy.position_size == 0, title="Compra", style=shape.triangleup, color=color.lime, location=location.belowbar, size=size.tiny)
+plotshape(exitCondition and strategy.position_size > 0, title="Venda", style=shape.triangledown, color=color.red, location=location.abovebar, size=size.tiny)

@@ -53,6 +53,66 @@ def test_adx_momentum_guard_strategy_has_safe_product_copy():
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
 
+def test_ema_roc_trend_rider_strategy_has_safe_product_copy():
+    raw_name = "quant_btc_1d_ema_roc_trend_rider_long_v1"
+    description = public_strategy_description(raw_name)
+
+    assert public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade Equilibrada"
+    assert "controle de risco" in description.lower()
+    assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
+def test_ema_roc_rsi_regime_strategy_has_safe_product_copy():
+    raw_name = "quant_btc_1d_ema_roc_rsi_regime_long_v2_20260601"
+    description = public_strategy_description(raw_name)
+
+    assert public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade com Filtro RSI"
+    assert "filtro adicional de regime" in description.lower()
+    assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
+def test_volume_momentum_pressure_strategy_has_safe_product_copy():
+    raw_name = "quant_btc_1d_volume_momentum_pressure_long_v1"
+    description = public_strategy_description(raw_name)
+
+    assert public_strategy_display_name(raw_name) == "Volume + Momentum: Continuidade com Pressão"
+    assert "participação do mercado" in description.lower()
+    assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
+def test_macd_ema_roc_quality_strategy_has_safe_product_copy():
+    raw_name = "quant_btc_1d_macd_ema_roc_quality_long_v1_20260601"
+    description = public_strategy_description(raw_name)
+
+    assert (
+        public_strategy_display_name(raw_name)
+        == "MACD BTC: Continuidade com Risco Controlado"
+    )
+    assert "confirmação direcional" in description.lower()
+    assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
+def test_bbands_ema_rsi_quality_strategy_has_safe_product_copy():
+    raw_name = "quant_btc_1d_bbands_ema_rsi_quality_long_v1_20260602"
+    description = public_strategy_description(raw_name)
+
+    assert public_strategy_display_name(raw_name) == "Bandas BTC: Continuidade com Qualidade"
+    assert "qualidade de regime" in description.lower()
+    assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
+def test_ema_roc_rsi_quality_guard_strategy_has_safe_product_copy():
+    raw_name = "quant_btc_1d_ema_roc_rsi_quality_guard_long_v1_20260602"
+    description = public_strategy_description(raw_name)
+
+    assert (
+        public_strategy_display_name(raw_name)
+        == "Momentum BTC: Continuidade com Filtro de Qualidade"
+    )
+    assert "filtro adicional de qualidade" in description.lower()
+    assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
 def test_unknown_sensitive_strategy_display_name_is_protected():
     assert public_strategy_display_name("ema_9_sma_50_rsi_30_70") == "Estratégia Cripto Farol"
 
