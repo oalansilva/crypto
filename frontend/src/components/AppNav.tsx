@@ -21,6 +21,7 @@ import {
   HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '@/stores/authStore'
+import { EnvironmentIndicator } from './EnvironmentIndicator'
 
 interface AppNavProps {
   hideOnMobile?: boolean
@@ -267,6 +268,8 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
                 <div className="truncate text-xs text-[var(--text-tertiary)]">Navegação principal</div>
               </div>
 
+              <EnvironmentIndicator compact />
+
               {user ? (
                 <div className="relative" ref={accountMenuRef}>
                   <button
@@ -363,8 +366,13 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
               </div>
 
               <div className="page-card-muted mb-5 px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Você está em</div>
-                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{pageTitle}</div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Você está em</div>
+                    <div className="mt-2 truncate text-sm font-semibold text-[var(--text-primary)]">{pageTitle}</div>
+                  </div>
+                  <EnvironmentIndicator compact className="mt-0.5" />
+                </div>
               </div>
 
               <div className="flex-1 space-y-5 overflow-y-auto pr-1 custom-scrollbar">
@@ -428,6 +436,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
             <>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Painel</div>
               <div className="mt-1 text-[13px] font-semibold text-[var(--text-primary)]">{pageTitle}</div>
+              <EnvironmentIndicator className="mt-3 w-full justify-start" />
             </>
           ) : (
             <div className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Menu</div>
@@ -472,6 +481,7 @@ export function AppNav({ hideOnMobile = false }: AppNavProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            <EnvironmentIndicator compact />
             {!isLoading && (
               user ? (
                 <div className="relative" ref={accountMenuRef}>
