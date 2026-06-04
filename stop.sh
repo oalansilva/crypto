@@ -71,6 +71,12 @@ kill_by_port() {
     pids="$(lsof -ti "tcp:$port" 2>/dev/null || true)"
   elif command -v fuser >/dev/null 2>&1; then
     pids="$(fuser "${port}/tcp" 2>/dev/null || true)"
+  elif command -v ss >/dev/null 2>&1; then
+    pids="$(
+      ss -ltnp "sport = :${port}" 2>/dev/null \
+        | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' \
+        | sort -u
+    )"
   fi
 
   if [[ -n "$pids" ]]; then
@@ -82,11 +88,17 @@ kill_by_port() {
 
 kill_by_pattern() {
   local pattern="$1"
-  if pgrep -f "$pattern" >/dev/null 2>&1; then
-    pkill -f "$pattern" 2>/dev/null || true
-    sleep 1
-    pkill -9 -f "$pattern" 2>/dev/null || true
+  local self_pid="$$"
+  local pids=""
+
+  pids="$(pgrep -f "$pattern" 2>/dev/null | grep -v -E "^(${self_pid}|${PPID})$" || true)"
+  if [[ -z "$pids" ]]; then
+    return
   fi
+
+  echo "$pids" | xargs -r kill 2>/dev/null || true
+  sleep 1
+  echo "$pids" | xargs -r kill -9 2>/dev/null || true
 }
 
 echo "Stopping crypto services..."
