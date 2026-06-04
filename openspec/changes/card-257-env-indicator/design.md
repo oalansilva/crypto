@@ -13,6 +13,7 @@ The frontend already reads runtime/build configuration through `import.meta.env`
 - Keep the indicator visible in desktop sidebar/header and mobile header/menu.
 - Use `DESIGN.md` tokens and avoid a decorative or oversized treatment.
 - Allow explicit configuration through `VITE_APP_ENV` while falling back to Vite mode.
+- Ensure the local `start.sh`/`restart` path passes a branch-aware `VITE_APP_ENV` to production builds so `develop` does not render as `PROD`.
 
 **Non-Goals:**
 
@@ -28,23 +29,28 @@ The frontend already reads runtime/build configuration through `import.meta.env`
    - Rationale: the UI needs only a safe label and visual variant. Backend dependency would slow first paint and add failure modes for a shell-level cue.
    - Alternative considered: fetch environment from `/api/config`. Rejected because the indicator should render with the shell even if API requests are unavailable.
 
-2. **Render the indicator in the authenticated navigation shell.**
+2. **Make restart builds explicit about environment.**
+   - Decision: `start.sh` exports `VITE_APP_ENV` before `npm run build`, using existing `VITE_APP_ENV` / `VITE_ENVIRONMENT` when present and otherwise falling back to `production` on `main` and `development` on non-main branches.
+   - Rationale: Vite production mode alone cannot distinguish the develop runtime from production when `start.sh` builds a static preview bundle.
+   - Alternative considered: default every production-mode build to `PROD`. Rejected because it makes the develop/homologation runtime ambiguous.
+
+3. **Render the indicator in the authenticated navigation shell.**
    - Decision: add a reusable component and mount it from `AppNav` in desktop and mobile navigation.
    - Rationale: `AppNav` is present on every protected page and already owns responsive shell layout.
    - Alternative considered: mount in individual pages. Rejected because it would be inconsistent and easy to miss.
 
-3. **Differentiate DEV and PROD with compact state styling.**
+4. **Differentiate DEV and PROD with compact state styling.**
    - Decision: DEV uses warning/yellow emphasis plus a stronger border; PROD uses a calmer success/green treatment.
    - Rationale: DEV should be unmistakable during validation, while PROD should remain clear without dominating normal operation.
    - Alternative considered: a full-width banner. Rejected for now because it would consume vertical space on dense operational screens.
 
-4. **Expose stable selectors for validation.**
+5. **Expose stable selectors for validation.**
    - Decision: add `data-testid` and `data-environment` attributes to the indicator.
    - Rationale: the card requires visual/runtime proof across screens; stable selectors make Playwright/DOM checks direct and less brittle.
 
 ## Risks / Trade-offs
 
-- [Risk] A production build accidentally using an unset environment variable could show the wrong label. -> Mitigation: production mode defaults to `PROD`; only explicit development-like values or Vite dev mode show `DEV`.
+- [Risk] A production build accidentally using an unset environment variable could show the wrong label. -> Mitigation: `start.sh` uses branch-aware defaults and still allows explicit environment override.
 - [Risk] The compact indicator may be missed in mobile if only shown inside the menu. -> Mitigation: render it in the fixed mobile header and repeat it in the mobile drawer context.
 - [Risk] Header width could become crowded on desktop. -> Mitigation: use compact text and hide nonessential descriptive copy on narrow desktop widths.
 

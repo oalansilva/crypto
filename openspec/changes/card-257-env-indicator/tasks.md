@@ -2,6 +2,7 @@
 
 - [x] 1.1 Create a centralized frontend helper that resolves `DEV` or `PROD` from `VITE_APP_ENV`, `VITE_ENVIRONMENT`, and Vite mode.
 - [x] 1.2 Keep the helper safe for public UI by exposing only label, kind, and display metadata.
+- [x] 1.3 Configure the local restart build to pass a branch-aware `VITE_APP_ENV` default.
 
 ## 2. Authenticated Shell UI
 

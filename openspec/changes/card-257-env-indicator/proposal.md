@@ -25,4 +25,5 @@ Users can log into development and production with the same application shell, b
   - `frontend/src/components/Layout.tsx`
   - `frontend/src/components/AppNav.tsx`
 - New frontend environment helper/component may be added under `frontend/src/lib/` and `frontend/src/components/`.
+- Runtime startup script `start.sh` passes the frontend environment label into static builds.
 - Frontend build and UI validation are required.

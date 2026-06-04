@@ -24,6 +24,14 @@ The system SHALL resolve the displayed environment from centralized frontend run
 - **WHEN** the frontend is running with `VITE_APP_ENV=production`, `VITE_APP_ENV=prod`, or Vite production mode
 - **THEN** the environment indicator displays `PROD`
 
+#### Scenario: Develop restart build
+- **WHEN** the local restart flow builds the frontend from a non-main branch without an explicit environment override
+- **THEN** the build receives a development environment label and the indicator displays `DEV`
+
+#### Scenario: Main restart build
+- **WHEN** the local restart flow builds the frontend from the `main` branch without an explicit environment override
+- **THEN** the build receives a production environment label and the indicator displays `PROD`
+
 ### Requirement: Distinct visual treatment
 
 The system SHALL use distinct visual treatments for development and production environment indicators while preserving the existing design system.
