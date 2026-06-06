@@ -1,4 +1,4 @@
-276e46b96e1500287b72921cdfc8be48737e14ca5505422c6373710eabe6e40c  frontend/public/redes-sociais/cripto-farol/2026-06-semanas-1-2/semana-1-contact-sheet.jpg
-f2b674bfe792336dc5ae239bd9badf1f136a6beb9110aff49f98eb642b06158d  frontend/public/redes-sociais/cripto-farol/2026-06-semanas-1-2/semana-1-editorial-humana.zip
+97e31818819924d314d9888b8678873bd8baac64e1d99b4d151c63414ca0e6c3  frontend/public/redes-sociais/cripto-farol/2026-06-semanas-1-2/semana-1-contact-sheet.jpg
+f509381ed12f41e8808c467e82c3db000e22cefdf35d5933588ffe487ef918b0  frontend/public/redes-sociais/cripto-farol/2026-06-semanas-1-2/semana-1-editorial-humana.zip
 047f575e66fe281c2deeeb7b1d3cac83c5d0322fab06b6de1a6ab7e9f1f94844  frontend/public/redes-sociais/cripto-farol/2026-06-semanas-1-2/semana-2-contact-sheet.jpg
 2495dfd00e29f7d2362acca598b7cba22cbf99ef00467bab15221936388d1268  frontend/public/redes-sociais/cripto-farol/2026-06-semanas-1-2/semana-2-editorial-humana.zip
