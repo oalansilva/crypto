@@ -594,6 +594,43 @@ def test_beta_lead_access_creates_temp_user_and_audit_without_exposing_password(
     assert "TemporaryPass123!" not in str(audit.metadata_json)
 
 
+def test_beta_lead_access_persists_social_attribution_metadata(auth_db_session):
+    email = f"lead-attribution-{uuid.uuid4().hex}@example.com"
+
+    create_beta_access_for_lead(
+        auth_db_session,
+        name="Lead Attribution",
+        email=email,
+        origin="instagram",
+        attribution={
+            "utm_source": "instagram" * 30,
+            "utm_medium": "social",
+            "utm_campaign": "criptofarol_semana_1",
+            "utm_content": "ig_empresa_carrossel_2026_06_10",
+            "utm_term": "beta",
+            "referrer": "https://instagram.com/path?token=secret#frag",
+            "landing_path": "/?utm_source=instagram&utm_medium=social&email=lead@example.com&token=secret",
+            "first_seen_at": "2026-06-07T18:00:00.000Z",
+            "ignored_empty": "",
+        },
+        temporary_password="TemporaryPass123!",
+        email_sender=lambda _message: True,
+    )
+
+    audit = auth_db_session.query(BetaAccessAuditLog).filter_by(email=email).one()
+    assert audit.metadata_json["origin"] == "instagram"
+    assert audit.metadata_json["utm_source"] == ("instagram" * 30)[:120]
+    assert audit.metadata_json["utm_medium"] == "social"
+    assert audit.metadata_json["utm_campaign"] == "criptofarol_semana_1"
+    assert audit.metadata_json["utm_content"] == "ig_empresa_carrossel_2026_06_10"
+    assert audit.metadata_json["utm_term"] == "beta"
+    assert audit.metadata_json["referrer"] == "https://instagram.com/path"
+    assert audit.metadata_json["landing_path"] == "/?utm_source=instagram&utm_medium=social"
+    assert audit.metadata_json["first_seen_at"] == "2026-06-07T18:00:00.000Z"
+    assert "ignored_empty" not in audit.metadata_json
+    assert "TemporaryPass123!" not in str(audit.metadata_json)
+
+
 def test_beta_access_gog_env_file_default_is_repo_local():
     expected = (
         beta_access_service.Path(beta_access_service.__file__).resolve().parents[3]
@@ -657,7 +694,15 @@ def test_leads_route_returns_safe_response_without_temporary_password(auth_db_se
             whatsapp="51999999999",
             profile="intermediario",
             pain="timing",
-            origin="landing-v4",
+            origin="https://dev.criptofarol.com.br/?utm_source=linkedin&utm_medium=social&utm_campaign=criptofarol_semana_1&utm_content=linkedin_pessoal_2026_06_11",
+            utm_source="linkedin",
+            utm_medium="social",
+            utm_campaign="criptofarol_semana_1",
+            utm_content="linkedin_pessoal_2026_06_11",
+            utm_term="beta",
+            referrer="https://www.linkedin.com/",
+            landing_path="/?utm_source=linkedin&utm_medium=social",
+            first_seen_at="2026-06-07T18:00:00.000Z",
         ),
         auth_db_session,
     )
@@ -671,6 +716,18 @@ def test_leads_route_returns_safe_response_without_temporary_password(auth_db_se
     assert "TemporaryPass" not in str(payload)
     assert "token_urlsafe" not in str(payload)
     assert captured_payload["email"] == email
+    assert len(captured_payload["origin"]) == 80
+    assert captured_payload["origin"].startswith("https://dev.criptofarol.com.br/")
+    assert captured_payload["attribution"] == {
+        "utm_source": "linkedin",
+        "utm_medium": "social",
+        "utm_campaign": "criptofarol_semana_1",
+        "utm_content": "linkedin_pessoal_2026_06_11",
+        "utm_term": "beta",
+        "referrer": "https://www.linkedin.com/",
+        "landing_path": "/?utm_source=linkedin&utm_medium=social",
+        "first_seen_at": "2026-06-07T18:00:00.000Z",
+    }
 
 
 def test_leads_stats_counts_active_users_and_remaining_spots(auth_db_session):

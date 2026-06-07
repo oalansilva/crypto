@@ -326,6 +326,70 @@
         ? "/api/leads"
         : `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
       const leadStatsEndpoint = `${leadsEndpoint}/stats`;
+      const attributionStorageKey = "criptofarol_attribution";
+      const attributionKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+
+      function getStoredAttribution() {
+        try {
+          const raw = window.localStorage.getItem(attributionStorageKey);
+          return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function safeReferrer(value) {
+        if (!value) return undefined;
+        try {
+          const url = new URL(value);
+          return `${url.origin}${url.pathname}`.slice(0, 500);
+        } catch (error) {
+          const sanitized = value.split("?")[0].split("#")[0].slice(0, 500);
+          return sanitized || undefined;
+        }
+      }
+
+      function safeLandingPath(url) {
+        const params = new URLSearchParams();
+        attributionKeys.forEach((key) => {
+          const value = url.searchParams.get(key);
+          if (value) params.set(key, value);
+        });
+        const query = params.toString();
+        return `${url.pathname}${query ? `?${query}` : ""}`.slice(0, 500);
+      }
+
+      function captureAttribution() {
+        const url = new URL(window.location.href);
+        const existing = getStoredAttribution();
+        const utms = {};
+        attributionKeys.forEach((key) => {
+          const value = url.searchParams.get(key);
+          if (value) utms[key] = value.slice(0, 200);
+        });
+
+        const hasUtm = Object.keys(utms).length > 0;
+        if (existing) return existing;
+
+        const referrer = safeReferrer(document.referrer);
+        if (!hasUtm && !referrer) return null;
+
+        const attribution = {
+          ...utms,
+          referrer,
+          landing_path: safeLandingPath(url),
+          first_seen_at: new Date().toISOString(),
+        };
+
+        try {
+          window.localStorage.setItem(attributionStorageKey, JSON.stringify(attribution));
+        } catch (error) {
+          // Ignore storage failures; the current payload can still carry attribution.
+        }
+        return attribution;
+      }
+
+      const currentAttribution = captureAttribution();
 
       async function refreshLeadStats() {
         try {
@@ -366,7 +430,8 @@
           whatsapp: formData.get("whatsapp"),
           profile: formData.get("profile"),
           pain: formData.get("pain"),
-          origin: window.location.href,
+          origin: "landing-v4",
+          ...(currentAttribution || getStoredAttribution() || {}),
         };
         submitButton.disabled = true;
         message.textContent = "Enviando sua qualificação...";
