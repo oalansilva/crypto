@@ -32,6 +32,6 @@
 - [x] 4.3 Executar testes focados, `openspec validate` da change e validações API/UI/runtime aplicáveis.
 - [x] 4.4 Comentar no card relatório completo com T0, benchmarks, ranking, winners ou bloqueio.
 - [x] 4.5 Mover card para `Code Review`, executar review Codex do diff exato e corrigir/classificar achados.
-- [ ] 4.6 Commitar e integrar em `develop`, executar `./restart`, revalidar DEV e mover card para `Done` técnico quando aplicável.
+- [x] 4.6 Commitar e integrar em `develop`, executar `./restart`, revalidar DEV e mover card para `Done` técnico quando aplicável.
 
 Nota: usar skills do projeto quando aplicáveis; `openspec-apply-change` e `openspec-verify-change` permanecem obrigatórias para implementação/verificação.
