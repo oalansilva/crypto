@@ -241,6 +241,20 @@ The Favorites analysis flow SHALL use the current market candles source as the p
 - **THEN** the result chart uses current market candles when available
 - **AND** the view does not show moving average overlays, moving average values, indicators, or protected parameters
 
+### Requirement: New hard-mode Favorite has visible final metrics
+When a hard-mode BTC discovery run saves a BTC/USDT 1d long Favorite, the system SHALL expose the new Favorite through `/api/favorites/` with the new id, public name, technical strategy name, updated deep backtest metrics, and no pending backtest placeholder.
+
+#### Scenario: Saved Favorite is read back through Favorites API
+- **WHEN** the new Favorite is saved and any required refresh completes
+- **THEN** `/api/favorites/` returns the Favorite by id with updated metrics and without "Backtest aguardando atualização"
+
+### Requirement: New hard-mode Favorite exposes trade evidence
+When a hard-mode BTC discovery run saves a BTC/USDT 1d long Favorite, the system SHALL expose trade history or equivalent cached trade evidence for the saved Favorite.
+
+#### Scenario: Saved Favorite trades are queryable
+- **WHEN** the new Favorite id is requested through `/api/favorites/{id}/trades` or an equivalent endpoint
+- **THEN** the response proves the saved Favorite has backtest trade evidence for the final strategy
+
 ### Requirement: Favorites analysis synchronizes entry and exit signals with Monitor
 The Favorites analysis flow SHALL refresh current Monitor opportunity data before rendering entry/exit markers and visible trades. When a matching Monitor opportunity includes signal history, the result chart and trade list SHALL include non-duplicate Monitor-derived entry and exit points without replacing a longer saved or regenerated favorite history.
 
