@@ -5,8 +5,11 @@ import './index.css'
 import App from './App.tsx'
 import { queryClient } from './lib/queryClient'
 import { captureAttributionFromUrl } from './lib/attribution'
+import { captureInitialPageview, initAnalytics } from './lib/analytics'
 
-captureAttributionFromUrl()
+const attribution = captureAttributionFromUrl()
+initAnalytics(attribution)
+captureInitialPageview(attribution)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
