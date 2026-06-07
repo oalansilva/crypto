@@ -23,15 +23,15 @@
 
 ## 4. Save, Visibility, And Artifacts
 
-- [ ] 4.1 Save only a new non-dominated Pareto winner that passes full-period, OOS, stress, novelty, anti-duplicate, and superation gates.
-- [ ] 4.2 Verify the saved Favorite through PostgreSQL, `/api/favorites/`, and trades/equivalent endpoint by new id and metrics.
+- [x] 4.1 Save only a new non-dominated Pareto winner that passes full-period, OOS, stress, novelty, anti-duplicate, and superation gates.
+- [x] 4.2 Verify the saved Favorite through PostgreSQL, `/api/favorites/`, and trades/equivalent endpoint by new id and metrics.
 - [x] 4.3 Add explicit public display and description mapping plus focused validation if the final `strategy_name` is new.
 - [x] 4.4 Generate a TradingView Pine script for the saved strategy with 100 USD, 100% equity, no pyramiding, and no partial exits.
-- [ ] 4.5 Remove rejected `tmp_quant_*` templates or document why any template remains.
+- [x] 4.5 Remove rejected `tmp_quant_*` templates or document why any template remains.
 
 ## 5. Closeout
 
 - [x] 5.1 Run focused tests and OpenSpec validation for this change.
 - [x] 5.2 Move the card to Code Review, run Codex review over the exact diff, and fix or classify findings before commit.
-- [ ] 5.3 Commit the versioned artifacts/code on the branch, integrate into `develop`, run `./restart`, and verify served API/runtime if versioned changes were made.
+- [x] 5.3 Commit the versioned artifacts/code on the branch, integrate into `develop`, run `./restart`, and verify served API/runtime if versioned changes were made.
 - [ ] 5.4 Move issue #261 to Done tecnico with final evidence, or leave it In Progress/Blocked with the configured blocker report if completion criteria are not met.
