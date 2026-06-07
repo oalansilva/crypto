@@ -18,9 +18,10 @@ from app.models import BetaAccessAuditLog, User
 
 BETA_ACCESS_DEFAULT_EXPIRY_HOURS = int(os.getenv("BETA_ACCESS_EXPIRY_HOURS", "72"))
 BETA_ACCESS_APP_URL = os.getenv("BETA_ACCESS_APP_URL", "https://criptofarol.com.br/login")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BETA_ACCESS_GOG_ENV_FILE = os.getenv(
     "BETA_ACCESS_GOG_ENV_FILE",
-    "/root/.openclaw/workspace/cripto-farol-landing/.env.leads",
+    str(PROJECT_ROOT / "ops" / "landing-leads" / ".env.leads"),
 )
 RESERVED_EMAIL_DOMAINS = {"example.com", "example.net", "example.org"}
 
