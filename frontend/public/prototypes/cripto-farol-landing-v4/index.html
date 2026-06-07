@@ -319,8 +319,10 @@
       const leadCount = document.querySelector("[data-lead-count]");
       const spotsLeft = document.querySelector("[data-spots-left]");
 
-      const isProductionDomain = ["criptofarol.com.br", "www.criptofarol.com.br"].includes(window.location.hostname);
-      const leadsEndpoint = isProductionDomain
+      const usesRelativeLeadsEndpoint =
+        window.location.hostname === "criptofarol.com.br" ||
+        window.location.hostname.endsWith(".criptofarol.com.br");
+      const leadsEndpoint = usesRelativeLeadsEndpoint
         ? "/api/leads"
         : `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
       const leadStatsEndpoint = `${leadsEndpoint}/stats`;
