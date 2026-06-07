@@ -1,0 +1,16 @@
+//@version=5
+strategy("BTC 1D WINNER 3 - Médias com Defesa Reforçada", overlay=true, initial_capital=100, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0)
+short = ta.ema(close, 4)
+medium = ta.sma(close, 21)
+longMa = ta.sma(close, 25)
+entry = short > longMa and (ta.crossover(short, longMa) or ta.crossover(short, medium))
+exitSignal = ta.crossunder(short, longMa)
+if entry and strategy.position_size == 0
+    strategy.entry("Long", strategy.long)
+if strategy.position_size > 0
+    strategy.exit("Stop", "Long", stop=strategy.position_avg_price * (1 - 0.03))
+if exitSignal and strategy.position_size > 0
+    strategy.close("Long")
+plot(short, color=color.teal)
+plot(medium, color=color.blue)
+plot(longMa, color=color.orange)

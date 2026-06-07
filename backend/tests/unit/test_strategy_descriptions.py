@@ -63,6 +63,23 @@ def test_ema_roc_rsi_guard_strategy_has_safe_product_copy():
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
 
+def test_card_262_chain_winners_have_safe_product_copy():
+    expected = {
+        "quant_btc_1d_ma_trend_chain_w1_20260607": "BTC 1D WINNER 1: Médias com Risco Menor",
+        "quant_btc_1d_ma_trend_chain_w2_20260607": "BTC 1D WINNER 2: Médias com Saída Ágil",
+        "quant_btc_1d_ma_trend_chain_w3_20260607": "BTC 1D WINNER 3: Médias com Defesa Reforçada",
+        "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": "BTC 1D WINNER 4: Momentum com Força Relativa",
+        "quant_btc_1d_ma_trend_chain_w5_20260607": "BTC 1D WINNER 5: Médias com Continuidade Defensiva",
+    }
+
+    for strategy_name, display_name in expected.items():
+        description = public_strategy_description(strategy_name)
+
+        assert public_strategy_display_name(strategy_name) == display_name
+        assert "btc em 1d" in description.lower()
+        assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
 def test_unknown_sensitive_strategy_display_name_is_protected():
     assert public_strategy_display_name("ema_9_sma_50_rsi_30_70") == "Estratégia Cripto Farol"
 

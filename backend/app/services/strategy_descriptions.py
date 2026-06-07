@@ -24,6 +24,11 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
     "quant_btc_1d_adx_momentum_guard_long_v1": "Momentum BTC: Continuidade com Regime",
     "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607": "Momentum BTC: Continuidade com Guard RSI",
+    "quant_btc_1d_ma_trend_chain_w1_20260607": "BTC 1D WINNER 1: Médias com Risco Menor",
+    "quant_btc_1d_ma_trend_chain_w2_20260607": "BTC 1D WINNER 2: Médias com Saída Ágil",
+    "quant_btc_1d_ma_trend_chain_w3_20260607": "BTC 1D WINNER 3: Médias com Defesa Reforçada",
+    "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": "BTC 1D WINNER 4: Momentum com Força Relativa",
+    "quant_btc_1d_ma_trend_chain_w5_20260607": "BTC 1D WINNER 5: Médias com Continuidade Defensiva",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
@@ -80,6 +85,21 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     ),
     "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607": (
         "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico."
+    ),
+    "quant_btc_1d_ma_trend_chain_w1_20260607": (
+        "Acompanha viradas de tendência do BTC em 1D com filtro de médias e controle de risco para reduzir quedas frente ao benchmark. Use como apoio e sempre confira risco e histórico."
+    ),
+    "quant_btc_1d_ma_trend_chain_w2_20260607": (
+        "Acompanha continuidade do BTC em 1D com leitura de médias e saída mais ágil quando o movimento perde força. Use como apoio e sempre confira risco e histórico."
+    ),
+    "quant_btc_1d_ma_trend_chain_w3_20260607": (
+        "Filtra tendências do BTC em 1D com médias próximas e proteção reforçada para buscar melhora de drawdown sem abandonar retorno. Use como apoio e sempre confira risco e histórico."
+    ),
+    "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": (
+        "Combina tendência, momentum e força relativa do BTC em 1D para buscar continuidade com queda menor na cadeia. Use como apoio e sempre confira risco e histórico."
+    ),
+    "quant_btc_1d_ma_trend_chain_w5_20260607": (
+        "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico."
     ),
 }
 
