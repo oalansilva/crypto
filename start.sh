@@ -75,6 +75,29 @@ export FAVORITE_BACKTEST_REFRESH_CPU_LIMIT_PERCENT="${FAVORITE_BACKTEST_REFRESH_
 export FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS="${FAVORITE_BACKTEST_REFRESH_CPU_PAUSE_SECONDS:-30}"
 export FAVORITE_BACKTEST_REFRESH_STATE_FILE="${FAVORITE_BACKTEST_REFRESH_STATE_FILE:-/tmp/crypto-favorite-refresh-state.json}"
 
+detect_frontend_app_env() {
+  if [[ -n "${VITE_APP_ENV:-}" ]]; then
+    printf '%s\n' "$VITE_APP_ENV"
+    return
+  fi
+
+  if [[ -n "${VITE_ENVIRONMENT:-}" ]]; then
+    printf '%s\n' "$VITE_ENVIRONMENT"
+    return
+  fi
+
+  local git_branch
+  git_branch="$(git -C "$ROOT_DIR" branch --show-current 2>/dev/null || true)"
+  if [[ "$git_branch" == "main" ]]; then
+    printf 'production\n'
+    return
+  fi
+
+  printf 'development\n'
+}
+
+export VITE_APP_ENV="$(detect_frontend_app_env)"
+
 require_env_var() {
   local var_name="$1"
   local value="${!var_name:-}"
@@ -445,7 +468,7 @@ fi
 echo "Building crypto frontend..."
 (
   cd "$FRONTEND_DIR"
-  VITE_API_URL="/api" npm run build
+  VITE_API_URL="/api" VITE_APP_ENV="$VITE_APP_ENV" npm run build
 )
 
 if ! wait_for_http_ok "$FRONTEND_URL" 2 1; then
