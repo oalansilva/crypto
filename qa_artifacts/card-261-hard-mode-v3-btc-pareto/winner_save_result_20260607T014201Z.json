@@ -1,0 +1,12 @@
+{
+  "template_status": "existing",
+  "favorite_status": "existing",
+  "favorite": {
+    "id": "194",
+    "name": "Momentum BTC: Continuidade com Guard RSI",
+    "strategy_name": "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607",
+    "created_at": "2026-06-07 01:51:20.721667"
+  },
+  "saved_at": "2026-06-07T02:00:44+00:00",
+  "admin_user_id": "38b88997-612d-45ee-b13c-a5cc81a34585"
+}
