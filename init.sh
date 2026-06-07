@@ -13,7 +13,7 @@ if curl -sf http://127.0.0.1:8003/api/health > /dev/null 2>&1; then
     BACKEND_OK=true
 else
     echo "  ❌ Backend OFFLINE — iniciando..."
-    cd /root/.openclaw/workspace/crypto
+    cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     ./start.sh > /dev/null 2>&1 &
     sleep 5
     if curl -sf http://127.0.0.1:8003/api/health > /dev/null 2>&1; then

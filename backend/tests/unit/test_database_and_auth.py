@@ -594,6 +594,17 @@ def test_beta_lead_access_creates_temp_user_and_audit_without_exposing_password(
     assert "TemporaryPass123!" not in str(audit.metadata_json)
 
 
+def test_beta_access_gog_env_file_default_is_repo_local():
+    expected = (
+        beta_access_service.Path(beta_access_service.__file__).resolve().parents[3]
+        / "ops"
+        / "landing-leads"
+        / ".env.leads"
+    )
+
+    assert beta_access_service._default_beta_access_gog_env_file() == str(expected)
+
+
 def test_beta_lead_existing_user_preserves_password_and_records_audit(auth_db_session):
     user = User(
         id=uuid.uuid4(),
