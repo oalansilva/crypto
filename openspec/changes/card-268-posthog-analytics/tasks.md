@@ -13,6 +13,6 @@
 
 - [x] 3.1 Validar OpenSpec da change.
 - [x] 3.2 Executar build frontend sem env PostHog para provar no-op seguro.
-- [ ] 3.3 Registrar evidência técnica e próximos passos de configuração da chave PostHog.
+- [x] 3.3 Registrar evidência técnica e próximos passos de configuração da chave PostHog.
 
 Nota: usar as skills/regras do projeto quando aplicável a frontend, testes, debugging e revisão.
