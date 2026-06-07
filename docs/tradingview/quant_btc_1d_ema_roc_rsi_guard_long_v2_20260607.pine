@@ -1,0 +1,41 @@
+//@version=5
+strategy("Quant BTC 1D EMA+ROC+RSI Guard Long v2 20260607", overlay=true, initial_capital=100, currency=currency.USD, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0, commission_type=strategy.commission.percent, commission_value=0.075)
+
+// Cripto Farol TradingView approximation.
+// Backend validation:
+// - Symbol: BTC/USDT
+// - Timeframe: 1D
+// - Direction: long only
+// - Period: 2017-08-17 to 2026-06-07
+// - Engine: deep_backtest=true with 15m intraday stop simulation
+//
+// Pine running on a 1D chart cannot fully reproduce the backend 15m intraday
+// execution path. This script preserves the daily entry/exit thesis and uses
+// a strategy stop approximation. Entries use 100% equity and exits close 100%.
+
+emaLength = input.int(32, "Trend EMA Length", minval=1)
+rocLength = input.int(9, "ROC Length", minval=1)
+rsiLength = input.int(10, "RSI Length", minval=1)
+rsiMin = input.float(40.0, "RSI Guard Min", step=0.5)
+rsiExit = input.float(45.0, "RSI Exit Guard", step=0.5)
+stopPct = input.float(2.8, "Stop Loss %", minval=0.1, step=0.1) / 100.0
+
+trend = ta.ema(close, emaLength)
+rocValue = ta.roc(close, rocLength)
+rsiValue = ta.rsi(close, rsiLength)
+
+longCondition = close > trend and rocValue > 0 and rsiValue > rsiMin
+exitCondition = close < trend or rsiValue < rsiExit
+
+if longCondition and strategy.position_size <= 0
+    strategy.entry("Long", strategy.long)
+
+if strategy.position_size > 0
+    strategy.exit("Long Stop", "Long", stop=strategy.position_avg_price * (1 - stopPct), qty_percent=100)
+
+if exitCondition and strategy.position_size > 0
+    strategy.close("Long", qty_percent=100)
+
+plot(trend, "Trend EMA", color=color.orange)
+plotshape(longCondition and strategy.position_size <= 0, title="Long Setup", style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 0), size=size.tiny)
+plotshape(exitCondition and strategy.position_size > 0, title="Exit Setup", style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 0), size=size.tiny)

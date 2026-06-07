@@ -53,6 +53,16 @@ def test_adx_momentum_guard_strategy_has_safe_product_copy():
     assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
 
+def test_ema_roc_rsi_guard_strategy_has_safe_product_copy():
+    raw_name = "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607"
+    description = public_strategy_description(raw_name)
+
+    assert public_strategy_display_name(raw_name) == "Momentum BTC: Continuidade com Guard RSI"
+    assert "continuidade do btc" in description.lower()
+    assert "força relativa" in description.lower()
+    assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
 def test_unknown_sensitive_strategy_display_name_is_protected():
     assert public_strategy_display_name("ema_9_sma_50_rsi_30_70") == "Estratégia Cripto Farol"
 

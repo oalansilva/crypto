@@ -23,6 +23,7 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
     "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
     "quant_btc_1d_adx_momentum_guard_long_v1": "Momentum BTC: Continuidade com Regime",
+    "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607": "Momentum BTC: Continuidade com Guard RSI",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
@@ -76,6 +77,9 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     ),
     "quant_btc_1d_adx_momentum_guard_long_v1": (
         "Usa leituras de momentum, tendência e regime de mercado para avaliar continuidade no BTC. Serve como apoio à decisão e deve ser comparada com histórico, contexto do ativo e risco."
+    ),
+    "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607": (
+        "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico."
     ),
 }
 
