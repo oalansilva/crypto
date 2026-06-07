@@ -34,4 +34,4 @@
 - [x] 5.1 Run focused tests and OpenSpec validation for this change.
 - [x] 5.2 Move the card to Code Review, run Codex review over the exact diff, and fix or classify findings before commit.
 - [x] 5.3 Commit the versioned artifacts/code on the branch, integrate into `develop`, run `./restart`, and verify served API/runtime if versioned changes were made.
-- [ ] 5.4 Move issue #261 to Done tecnico with final evidence, or leave it In Progress/Blocked with the configured blocker report if completion criteria are not met.
+- [x] 5.4 Move issue #261 to Done tecnico with final evidence, or leave it In Progress/Blocked with the configured blocker report if completion criteria are not met.
