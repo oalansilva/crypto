@@ -1,0 +1,54 @@
+{
+  "verified_at": "2026-06-07T02:00:32+00:00",
+  "api_base": "http://127.0.0.1:8014",
+  "frontend_url": "http://127.0.0.1:5175",
+  "commit_develop": "7500586c",
+  "runtime_backend_cwd": "/srv/apps/dev/criptofarol/worktrees/integrate-card-261/backend",
+  "runtime_note": "API integrada servida em porta alternativa 8014 porque a porta DEV 8004 estava ocupada por processo antigo da worktree source.",
+  "database": {
+    "id": 194,
+    "name": "Momentum BTC: Continuidade com Guard RSI",
+    "strategy_name": "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607",
+    "created_at": "2026-06-07T01:51:20.721667",
+    "auto_refresh_status": "SUCCESS",
+    "auto_refresh_completed_at": "2026-06-07T01:44:39"
+  },
+  "api_favorite": {
+    "id": 194,
+    "name": "Momentum BTC: Continuidade com Guard RSI",
+    "strategy_name": "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607",
+    "strategy_display_name": "Momentum BTC: Continuidade com Guard RSI",
+    "strategy_description": "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico.",
+    "created_at": "2026-06-07T01:51:20.721667",
+    "auto_refresh_status": "SUCCESS",
+    "auto_refresh_completed_at": "2026-06-07T01:44:39",
+    "metrics": {
+      "total_trades": 111,
+      "total_return_pct": 38966.95985050802,
+      "max_drawdown_pct": 9.332347999166629,
+      "profit_factor": 4.528211740680639,
+      "sharpe_ratio": 0.30721802160487094,
+      "analysis_execution_mode": "deep_15m",
+      "auto_refreshed_at": "2026-06-07T01:44:39+00:00"
+    }
+  },
+  "trades_endpoint": {
+    "favorite_id": 194,
+    "execution_mode": "deep_15m",
+    "trade_count": 111,
+    "metrics_match": true,
+    "metrics": {
+      "total_trades": 111,
+      "total_return_pct": 38966.95985050802,
+      "max_drawdown_pct": 9.332347999166629,
+      "profit_factor": 4.528211740680639,
+      "sharpe_ratio": 0.30721802160487094,
+      "analysis_execution_mode": "deep_15m"
+    }
+  },
+  "fallback_check": {
+    "display_is_generic_fallback": false,
+    "description_is_generic_fallback": false,
+    "passes": true
+  }
+}
