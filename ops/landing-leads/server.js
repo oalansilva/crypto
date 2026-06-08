@@ -21,6 +21,16 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ||
 
 const HEADERS = ["Data", "Nome", "Email", "WhatsApp", "Perfil", "Dificuldade", "Origem"];
 const LEGACY_HEADERS = ["Data", "Nome", "Email", "Perfil", "Dificuldade", "Origem"];
+const ATTRIBUTION_FIELDS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+  "referrer",
+  "landing_path",
+  "first_seen_at",
+];
 let queue = Promise.resolve();
 
 function corsHeaders(origin) {
@@ -58,6 +68,14 @@ function readBody(req) {
 
 function clean(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function attributionPayload(lead) {
+  return Object.fromEntries(
+    ATTRIBUTION_FIELDS
+      .map((field) => [field, lead[field]])
+      .filter(([, value]) => value),
+  );
 }
 
 async function ensureWorkbook() {
@@ -126,6 +144,7 @@ async function createBetaAccess(lead) {
       profile: lead.profile,
       pain: lead.pain,
       origin: lead.origin,
+      ...attributionPayload(lead),
     }),
   });
 
@@ -222,6 +241,14 @@ async function handleLead(req, res, origin) {
     profile: clean(payload.profile),
     pain: clean(payload.pain),
     origin: clean(payload.origin) || "landing",
+    utm_source: clean(payload.utm_source),
+    utm_medium: clean(payload.utm_medium),
+    utm_campaign: clean(payload.utm_campaign),
+    utm_content: clean(payload.utm_content),
+    utm_term: clean(payload.utm_term),
+    referrer: clean(payload.referrer),
+    landing_path: clean(payload.landing_path),
+    first_seen_at: clean(payload.first_seen_at),
   };
 
   if (!lead.name || lead.name.length < 2) {
