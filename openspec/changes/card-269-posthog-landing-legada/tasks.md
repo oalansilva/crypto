@@ -11,4 +11,4 @@
 - [x] 2.2 Validar sintaxe dos scripts HTML/config.
 - [x] 2.3 Rodar build frontend sem chave PostHog.
 - [x] 2.4 Validar OpenSpec da change.
-- [ ] 2.5 Reiniciar serviço DEV afetado e validar URL pública.
+- [x] 2.5 Reiniciar serviço DEV afetado e validar URL pública.
