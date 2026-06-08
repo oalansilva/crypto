@@ -16,7 +16,6 @@ const SAFE_ATTRIBUTION_KEYS: Array<keyof AttributionPayload> = [
   'utm_campaign',
   'utm_content',
   'utm_term',
-  'referrer',
   'landing_path',
   'first_seen_at',
 ]
@@ -70,6 +69,13 @@ export function safeAttributionProperties(attribution?: AttributionPayload | nul
   for (const key of SAFE_ATTRIBUTION_KEYS) {
     const value = attribution[key]
     if (value) properties[key] = value
+  }
+  if (attribution.referrer) {
+    try {
+      properties.referrer_domain = new URL(attribution.referrer).hostname
+    } catch {
+      properties.referrer_domain = attribution.referrer.split('/')[0]
+    }
   }
   return properties
 }

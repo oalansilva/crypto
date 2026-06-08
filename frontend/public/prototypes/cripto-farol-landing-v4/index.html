@@ -394,12 +394,24 @@
 
       function attributionProperties() {
         const attribution = currentAttribution || getStoredAttribution() || {};
-        const allowedKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "referrer", "landing_path", "first_seen_at"];
-        return Object.fromEntries(
+        const allowedKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "landing_path", "first_seen_at"];
+        const properties = Object.fromEntries(
           allowedKeys
             .map((key) => [key, attribution[key]])
             .filter(([, value]) => value !== undefined && value !== null && value !== "")
         );
+        if (attribution.referrer) {
+          try {
+            properties.referrer_domain = new URL(attribution.referrer).hostname;
+          } catch (error) {
+            properties.referrer_domain = attribution.referrer.split("/")[0];
+          }
+        }
+        return properties;
+      }
+
+      function safeFailureReason(error) {
+        return error instanceof Error && error.message === "submit_failed" ? "submit_failed" : "network_or_runtime_error";
       }
 
       function compactProperties(properties) {
@@ -579,7 +591,7 @@
           message.className = "form-message error";
           captureAnalyticsEvent("lead_form_submit_failed", {
             origin: "landing-v4",
-            failure: error instanceof Error ? error.message : "unknown_error",
+            failure: safeFailureReason(error),
             ...attributionProperties(),
           });
         } finally {

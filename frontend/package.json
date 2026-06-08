@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:playground-label": "node --test tests/playground-label.test.mjs",
+    "test:landing-posthog": "node --test tests/landing-posthog-legacy.test.mjs",
     "test:e2e": "npx playwright test",
     "preview": "vite preview"
   },

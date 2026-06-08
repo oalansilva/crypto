@@ -294,6 +294,7 @@
         </form>
       </section>
     </main>
+    <script src="./posthog-config.js"></script>
     <script>
       const form = document.querySelector("[data-lead-form]");
       const message = document.querySelector("[data-form-message]");
@@ -362,6 +363,130 @@
 
       const currentAttribution = captureAttribution();
 
+      function attributionProperties() {
+        const attribution = currentAttribution || getStoredAttribution() || {};
+        const allowedKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "landing_path", "first_seen_at"];
+        const properties = Object.fromEntries(
+          allowedKeys
+            .map((key) => [key, attribution[key]])
+            .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        );
+        if (attribution.referrer) {
+          try {
+            properties.referrer_domain = new URL(attribution.referrer).hostname;
+          } catch (error) {
+            properties.referrer_domain = attribution.referrer.split("/")[0];
+          }
+        }
+        return properties;
+      }
+
+      function safeFailureReason(error) {
+        return error instanceof Error && error.message === "submit_failed" ? "submit_failed" : "network_or_runtime_error";
+      }
+
+      function compactProperties(properties) {
+        return Object.fromEntries(
+          Object.entries(properties).filter(([, value]) => value !== undefined && value !== null && value !== "")
+        );
+      }
+
+      const deniedAutomaticProperties = [
+        "$current_url",
+        "$initial_current_url",
+        "$referrer",
+        "$initial_referrer",
+        "$referring_domain",
+        "$initial_referring_domain",
+        "$search_engine",
+        "$search_keyword",
+        "$initial_search_engine",
+        "$initial_search_keyword",
+      ];
+
+      function stripUrlAutomaticProperties(captureResult) {
+        if (!captureResult || !captureResult.properties) return captureResult;
+        const properties = { ...captureResult.properties };
+        deniedAutomaticProperties.forEach((property) => {
+          delete properties[property];
+        });
+        return { ...captureResult, properties };
+      }
+
+      function installPostHogSnippet() {
+        if (window.posthog && window.posthog.__SV) return;
+        const posthog = window.posthog || [];
+        window.posthog = posthog;
+        posthog._i = [];
+        posthog.init = function init(token, config, name) {
+          function addMethod(target, methodName) {
+            const parts = methodName.split(".");
+            if (parts.length === 2) {
+              target = target[parts[0]];
+              methodName = parts[1];
+            }
+            target[methodName] = function queuedMethod() {
+              target.push([methodName].concat(Array.from(arguments)));
+            };
+          }
+
+          const apiHost = config.api_host || "https://us.i.posthog.com";
+          const script = document.createElement("script");
+          script.type = "text/javascript";
+          script.crossOrigin = "anonymous";
+          script.async = true;
+          script.src = apiHost.replace(".i.posthog.com", "-assets.i.posthog.com") + "/static/array.js";
+          const firstScript = document.getElementsByTagName("script")[0];
+          firstScript.parentNode.insertBefore(script, firstScript);
+
+          const target = name ? (posthog[name] = []) : posthog;
+          target.people = target.people || [];
+          [
+            "capture",
+            "identify",
+            "alias",
+            "people.set",
+            "people.set_once",
+            "register",
+            "register_once",
+            "unregister",
+            "reset",
+          ].forEach((methodName) => addMethod(target, methodName));
+          posthog._i.push([token, config, name]);
+        };
+        posthog.__SV = 1;
+      }
+
+      function initPostHogFromRuntimeConfig() {
+        const config = window.CRIPTOFAROL_POSTHOG || {};
+        if (!config.key) return;
+
+        installPostHogSnippet();
+        window.posthog.init(config.key, {
+          api_host: config.host || "https://us.i.posthog.com",
+          capture_pageview: false,
+          autocapture: false,
+          before_send: stripUrlAutomaticProperties,
+          persistence: "localStorage",
+        });
+      }
+
+      function captureAnalyticsEvent(eventName, properties = {}) {
+        if (!window.posthog || typeof window.posthog.capture !== "function") return;
+        try {
+          window.posthog.capture(eventName, compactProperties(properties));
+        } catch (error) {
+          // Analytics must never block lead capture.
+        }
+      }
+
+      initPostHogFromRuntimeConfig();
+      captureAnalyticsEvent("landing_pageview", {
+        path: window.location.pathname,
+        origin: "landing",
+        ...attributionProperties(),
+      });
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const submitButton = form.querySelector("button[type='submit']");
@@ -379,6 +504,10 @@
         submitButton.disabled = true;
         message.textContent = "Enviando inscrição...";
         message.className = "form-message";
+        captureAnalyticsEvent("lead_form_submit_started", {
+          origin: "landing",
+          ...attributionProperties(),
+        });
 
         try {
           const response = await fetch(endpoint, {
@@ -391,9 +520,18 @@
           form.reset();
           message.textContent = "Inscrição recebida. Em breve entraremos em contato.";
           message.className = "form-message success";
+          captureAnalyticsEvent("lead_form_submit_accepted", {
+            origin: "landing",
+            ...attributionProperties(),
+          });
         } catch (error) {
           message.textContent = "Não foi possível enviar agora. Tente novamente em alguns minutos.";
           message.className = "form-message error";
+          captureAnalyticsEvent("lead_form_submit_failed", {
+            origin: "landing",
+            failure: safeFailureReason(error),
+            ...attributionProperties(),
+          });
         } finally {
           submitButton.disabled = false;
         }
