@@ -1,0 +1,48 @@
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Avatar Instagram Cripto Farol">
+  <defs>
+    <radialGradient id="bgGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(540 520) scale(660)">
+      <stop offset="0" stop-color="#083B5D"/>
+      <stop offset="0.48" stop-color="#062640"/>
+      <stop offset="1" stop-color="#03111F"/>
+    </radialGradient>
+    <radialGradient id="cyanGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(350 720) scale(520)">
+      <stop offset="0" stop-color="#12B7CA" stop-opacity="0.38"/>
+      <stop offset="0.55" stop-color="#12B7CA" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#12B7CA" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="goldGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(725 315) scale(480)">
+      <stop offset="0" stop-color="#F2C95B" stop-opacity="0.32"/>
+      <stop offset="0.46" stop-color="#F2C95B" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#F2C95B" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="90" y="90" width="900" height="900" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="34" stdDeviation="32" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+
+  <rect width="1080" height="1080" fill="#03111F"/>
+  <rect width="1080" height="1080" fill="url(#bgGlow)"/>
+  <rect width="1080" height="1080" fill="url(#cyanGlow)"/>
+  <rect width="1080" height="1080" fill="url(#goldGlow)"/>
+
+  <circle cx="540" cy="540" r="455" fill="#03111F" fill-opacity="0.42" stroke="#12B7CA" stroke-opacity="0.22" stroke-width="34"/>
+  <circle cx="540" cy="540" r="400" stroke="#9DEAFF" stroke-opacity="0.70" stroke-width="10"/>
+  <circle cx="540" cy="540" r="345" stroke="#F2C95B" stroke-opacity="0.20" stroke-width="5"/>
+
+  <svg x="160" y="160" width="760" height="760" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" filter="url(#softShadow)">
+    <rect width="256" height="256" rx="52" fill="transparent"/>
+    <circle cx="128" cy="128" r="92" fill="#062640"/>
+    <circle cx="128" cy="128" r="92" stroke="#9DEAFF" stroke-width="10"/>
+    <path d="M44 150C75 127 101 128 128 151C156 175 185 178 212 154V202H44V150Z" fill="#083B5D"/>
+    <path d="M44 151C75 128 101 128 128 151C156 175 185 178 212 154" stroke="#9DEAFF" stroke-width="11" stroke-linecap="round"/>
+    <path d="M69 108C95 82 131 67 195 52" stroke="#F2C95B" stroke-width="14" stroke-linecap="round"/>
+    <path d="M82 127C113 106 143 98 194 93" stroke="#12B7CA" stroke-width="10" stroke-linecap="round" opacity="0.95"/>
+    <path d="M123 49L154 91L145 183H104L94 91L123 49Z" fill="#03111F" stroke="#F7F4EA" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M109 98H140" stroke="#9DEAFF" stroke-width="9" stroke-linecap="round"/>
+    <path d="M106 126H143" stroke="#9DEAFF" stroke-width="9" stroke-linecap="round"/>
+    <path d="M113 183L101 207" stroke="#F7F4EA" stroke-width="9" stroke-linecap="round"/>
+    <path d="M136 183L151 207" stroke="#F7F4EA" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="123" cy="49" r="8" fill="#F2C95B"/>
+    <circle cx="125" cy="157" r="10" fill="#F2C95B"/>
+  </svg>
+</svg>

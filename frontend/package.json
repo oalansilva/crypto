@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:playground-label": "node --test tests/playground-label.test.mjs",
+    "test:landing-posthog": "node --test tests/landing-posthog-legacy.test.mjs",
     "test:e2e": "npx playwright test",
     "preview": "vite preview"
   },
@@ -19,6 +20,7 @@
     "clsx": "^2.1.1",
     "lightweight-charts": "^4.2.0",
     "lucide-react": "^0.562.0",
+    "posthog-js": "^1.382.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.11.0",

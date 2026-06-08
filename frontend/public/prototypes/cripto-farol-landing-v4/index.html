@@ -310,6 +310,7 @@
       </section>
     </main>
 
+    <script src="./posthog-config.js"></script>
     <script>
       const form = document.querySelector("[data-lead-form]");
       const message = document.querySelector("[data-form-message]");
@@ -326,6 +327,194 @@
         ? "/api/leads"
         : `${window.location.protocol}//${window.location.hostname}:5174/api/leads`;
       const leadStatsEndpoint = `${leadsEndpoint}/stats`;
+      const attributionStorageKey = "criptofarol_attribution";
+      const attributionKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+
+      function getStoredAttribution() {
+        try {
+          const raw = window.localStorage.getItem(attributionStorageKey);
+          return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function safeReferrer(value) {
+        if (!value) return undefined;
+        try {
+          const url = new URL(value);
+          return `${url.origin}${url.pathname}`.slice(0, 500);
+        } catch (error) {
+          const sanitized = value.split("?")[0].split("#")[0].slice(0, 500);
+          return sanitized || undefined;
+        }
+      }
+
+      function safeLandingPath(url) {
+        const params = new URLSearchParams();
+        attributionKeys.forEach((key) => {
+          const value = url.searchParams.get(key);
+          if (value) params.set(key, value);
+        });
+        const query = params.toString();
+        return `${url.pathname}${query ? `?${query}` : ""}`.slice(0, 500);
+      }
+
+      function captureAttribution() {
+        const url = new URL(window.location.href);
+        const existing = getStoredAttribution();
+        const utms = {};
+        attributionKeys.forEach((key) => {
+          const value = url.searchParams.get(key);
+          if (value) utms[key] = value.slice(0, 200);
+        });
+
+        const hasUtm = Object.keys(utms).length > 0;
+        if (existing) return existing;
+
+        const referrer = safeReferrer(document.referrer);
+        if (!hasUtm && !referrer) return null;
+
+        const attribution = {
+          ...utms,
+          referrer,
+          landing_path: safeLandingPath(url),
+          first_seen_at: new Date().toISOString(),
+        };
+
+        try {
+          window.localStorage.setItem(attributionStorageKey, JSON.stringify(attribution));
+        } catch (error) {
+          // Ignore storage failures; the current payload can still carry attribution.
+        }
+        return attribution;
+      }
+
+      const currentAttribution = captureAttribution();
+
+      function attributionProperties() {
+        const attribution = currentAttribution || getStoredAttribution() || {};
+        const allowedKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "landing_path", "first_seen_at"];
+        const properties = Object.fromEntries(
+          allowedKeys
+            .map((key) => [key, attribution[key]])
+            .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        );
+        if (attribution.referrer) {
+          try {
+            properties.referrer_domain = new URL(attribution.referrer).hostname;
+          } catch (error) {
+            properties.referrer_domain = attribution.referrer.split("/")[0];
+          }
+        }
+        return properties;
+      }
+
+      function safeFailureReason(error) {
+        return error instanceof Error && error.message === "submit_failed" ? "submit_failed" : "network_or_runtime_error";
+      }
+
+      function compactProperties(properties) {
+        return Object.fromEntries(
+          Object.entries(properties).filter(([, value]) => value !== undefined && value !== null && value !== "")
+        );
+      }
+
+      const deniedAutomaticProperties = [
+        "$current_url",
+        "$initial_current_url",
+        "$referrer",
+        "$initial_referrer",
+        "$referring_domain",
+        "$initial_referring_domain",
+        "$search_engine",
+        "$search_keyword",
+        "$initial_search_engine",
+        "$initial_search_keyword",
+      ];
+
+      function stripUrlAutomaticProperties(captureResult) {
+        if (!captureResult || !captureResult.properties) return captureResult;
+        const properties = { ...captureResult.properties };
+        deniedAutomaticProperties.forEach((property) => {
+          delete properties[property];
+        });
+        return { ...captureResult, properties };
+      }
+
+      function installPostHogSnippet() {
+        if (window.posthog && window.posthog.__SV) return;
+        const posthog = window.posthog || [];
+        window.posthog = posthog;
+        posthog._i = [];
+        posthog.init = function init(token, config, name) {
+          function addMethod(target, methodName) {
+            const parts = methodName.split(".");
+            if (parts.length === 2) {
+              target = target[parts[0]];
+              methodName = parts[1];
+            }
+            target[methodName] = function queuedMethod() {
+              target.push([methodName].concat(Array.from(arguments)));
+            };
+          }
+
+          const apiHost = config.api_host || "https://us.i.posthog.com";
+          const script = document.createElement("script");
+          script.type = "text/javascript";
+          script.crossOrigin = "anonymous";
+          script.async = true;
+          script.src = apiHost.replace(".i.posthog.com", "-assets.i.posthog.com") + "/static/array.js";
+          const firstScript = document.getElementsByTagName("script")[0];
+          firstScript.parentNode.insertBefore(script, firstScript);
+
+          const target = name ? (posthog[name] = []) : posthog;
+          target.people = target.people || [];
+          [
+            "capture",
+            "identify",
+            "alias",
+            "people.set",
+            "people.set_once",
+            "register",
+            "register_once",
+            "unregister",
+            "reset",
+          ].forEach((methodName) => addMethod(target, methodName));
+          posthog._i.push([token, config, name]);
+        };
+        posthog.__SV = 1;
+      }
+
+      function initPostHogFromRuntimeConfig() {
+        const config = window.CRIPTOFAROL_POSTHOG || {};
+        if (!config.key) return;
+
+        installPostHogSnippet();
+        window.posthog.init(config.key, {
+          api_host: config.host || "https://us.i.posthog.com",
+          capture_pageview: false,
+          autocapture: false,
+          before_send: stripUrlAutomaticProperties,
+          persistence: "localStorage",
+        });
+      }
+
+      function captureAnalyticsEvent(eventName, properties = {}) {
+        if (!window.posthog || typeof window.posthog.capture !== "function") return;
+        try {
+          window.posthog.capture(eventName, compactProperties(properties));
+        } catch (error) {
+          // Analytics must never block lead capture.
+        }
+      }
+
+      initPostHogFromRuntimeConfig();
+      captureAnalyticsEvent("landing_pageview", {
+        path: window.location.pathname,
+        origin: "landing-v4",
+        ...attributionProperties(),
+      });
 
       async function refreshLeadStats() {
         try {
@@ -366,11 +555,16 @@
           whatsapp: formData.get("whatsapp"),
           profile: formData.get("profile"),
           pain: formData.get("pain"),
-          origin: window.location.href,
+          origin: "landing-v4",
+          ...(currentAttribution || getStoredAttribution() || {}),
         };
         submitButton.disabled = true;
         message.textContent = "Enviando sua qualificação...";
         message.className = "form-message";
+        captureAnalyticsEvent("lead_form_submit_started", {
+          origin: "landing-v4",
+          ...attributionProperties(),
+        });
 
         try {
           const response = await fetch(leadsEndpoint, {
@@ -387,10 +581,19 @@
           stepOne.removeAttribute("aria-hidden");
           message.textContent = "Cadastro recebido. Verifique seu e-mail para o acesso inicial.";
           message.className = "form-message success";
+          captureAnalyticsEvent("lead_form_submit_accepted", {
+            origin: "landing-v4",
+            ...attributionProperties(),
+          });
           refreshLeadStats();
         } catch (error) {
           message.textContent = "Não foi possível enviar agora. Tente novamente em alguns minutos.";
           message.className = "form-message error";
+          captureAnalyticsEvent("lead_form_submit_failed", {
+            origin: "landing-v4",
+            failure: safeFailureReason(error),
+            ...attributionProperties(),
+          });
         } finally {
           submitButton.disabled = false;
         }

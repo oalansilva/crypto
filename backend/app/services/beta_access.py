@@ -8,6 +8,7 @@ from pathlib import Path
 import secrets
 import smtplib
 import subprocess
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import uuid
 from typing import Callable
 
@@ -75,11 +76,78 @@ def _is_reserved_email_domain(email: str) -> bool:
     return domain in RESERVED_EMAIL_DOMAINS
 
 
+ATTRIBUTION_METADATA_KEYS = {
+    "utm_source": 120,
+    "utm_medium": 120,
+    "utm_campaign": 160,
+    "utm_content": 200,
+    "utm_term": 160,
+    "referrer": 500,
+    "landing_path": 500,
+    "first_seen_at": 80,
+}
+UTM_ATTRIBUTION_KEYS = {
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+}
+
+
+def _strip_url_query_and_fragment(value: str) -> str:
+    parts = urlsplit(value)
+    if not parts.scheme and not parts.netloc:
+        return value.split("?", 1)[0].split("#", 1)[0]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+
+def _sanitize_landing_path(value: str) -> str:
+    parts = urlsplit(value)
+    allowed_query = [
+        (key, query_value)
+        for key, query_value in parse_qsl(parts.query, keep_blank_values=False)
+        if key in UTM_ATTRIBUTION_KEYS
+    ]
+    path = parts.path or "/"
+    query = urlencode(allowed_query)
+    return f"{path}?{query}" if query else path
+
+
+def _sanitize_attribution_value(key: str, value: str) -> str:
+    if key == "referrer":
+        return _strip_url_query_and_fragment(value)
+    if key == "landing_path":
+        return _sanitize_landing_path(value)
+    return value
+
+
+def _sanitize_attribution(attribution: dict | None) -> dict[str, str]:
+    if not attribution:
+        return {}
+
+    sanitized: dict[str, str] = {}
+    for key, max_length in ATTRIBUTION_METADATA_KEYS.items():
+        value = attribution.get(key)
+        normalized = str(value or "").strip()
+        if normalized:
+            sanitized_value = _sanitize_attribution_value(key, normalized)
+            if sanitized_value:
+                sanitized[key] = sanitized_value[:max_length]
+    return sanitized
+
+
 def _metadata_for_lead(
-    *, whatsapp: str | None, profile: str | None, pain: str | None, origin: str
+    *,
+    whatsapp: str | None,
+    profile: str | None,
+    pain: str | None,
+    origin: str,
+    attribution: dict | None = None,
 ) -> dict:
     return {
         "origin": origin,
+        **_sanitize_attribution(attribution),
         "has_whatsapp": bool(str(whatsapp or "").strip()),
         "has_profile": bool(str(profile or "").strip()),
         "has_pain": bool(str(pain or "").strip()),
@@ -233,6 +301,7 @@ def create_beta_access_for_lead(
     profile: str | None = None,
     pain: str | None = None,
     origin: str = "landing",
+    attribution: dict | None = None,
     now: datetime | None = None,
     temporary_password: str | None = None,
     email_sender: EmailSender | None = None,
@@ -245,6 +314,7 @@ def create_beta_access_for_lead(
         profile=profile,
         pain=pain,
         origin=origin,
+        attribution=attribution,
     )
 
     existing = db.query(User).filter(User.email == normalized_email).first()
