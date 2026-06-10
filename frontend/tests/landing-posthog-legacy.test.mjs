@@ -3,10 +3,15 @@ import fs from 'node:fs'
 import test from 'node:test'
 import vm from 'node:vm'
 
-const landingHtml = fs.readFileSync(new URL('../public/prototypes/cripto-farol-landing/index.html', import.meta.url), 'utf8')
-const script = landingHtml.match(/<script>\n([\s\S]*)\n\s*<\/script>\s*<\/body>/)?.[1]
+function extractInlineScript(path) {
+  const html = fs.readFileSync(new URL(path, import.meta.url), 'utf8')
+  const script = html.match(/<script>\n([\s\S]*)\n\s*<\/script>\s*<\/body>/)?.[1]
+  assert.ok(script, `${path} inline script should be extractable`)
+  return script
+}
 
-assert.ok(script, 'landing inline script should be extractable')
+const legacyLandingScript = extractInlineScript('../public/prototypes/cripto-farol-landing/index.html')
+const rootLandingScript = extractInlineScript('../public/prototypes/cripto-farol-landing-v4/index.html')
 
 function makeElement(tagName = 'div') {
   const listeners = new Map()
@@ -20,6 +25,11 @@ function makeElement(tagName = 'div') {
     crossOrigin: '',
     src: '',
     type: '',
+    attributes: {},
+    classList: {
+      add() {},
+      remove() {},
+    },
     parentNode: {
       insertBefore() {},
     },
@@ -33,21 +43,45 @@ function makeElement(tagName = 'div') {
       if (selector === "button[type='submit']") return submitButton
       return null
     },
+    setAttribute(name, value) {
+      this.attributes[name] = value
+    },
+    removeAttribute(name) {
+      delete this.attributes[name]
+    },
+    focus() {},
+    reportValidity() {
+      return true
+    },
   }
 }
 
 const submitButton = makeElement('button')
 
-function createHarness({ posthogConfig = undefined, fetchOk = true, fetchRejectMessage = undefined } = {}) {
+function createHarness({
+  script = legacyLandingScript,
+  posthogConfig = undefined,
+  fetchOk = true,
+  fetchRejectMessage = undefined,
+  href = 'https://dev.criptofarol.com.br/prototypes/cripto-farol-landing/?utm_source=instagram&utm_medium=social&utm_campaign=beta&token=secret',
+  hostname = 'dev.criptofarol.com.br',
+  pathname = '/prototypes/cripto-farol-landing/',
+} = {}) {
   const storage = new Map()
   const captures = []
   const insertedScripts = []
   const form = makeElement('form')
   const message = makeElement('p')
+  const nextStepButton = makeElement('button')
+  const stepOne = makeElement('div')
+  const stepTwo = makeElement('div')
+  const leadCount = makeElement('strong')
+  const spotsLeft = makeElement('strong')
 
   form.elements = {
-    name: { value: 'Alan' },
-    email: { value: 'alan@example.com' },
+    name: { value: 'Alan', reportValidity: () => true },
+    email: { value: 'alan@example.com', reportValidity: () => true },
+    whatsapp: { value: '+5511999999999', focus() {} },
     profile: { value: 'Iniciante' },
     pain: { value: 'texto livre que não deve ir ao PostHog' },
   }
@@ -74,16 +108,21 @@ function createHarness({ posthogConfig = undefined, fetchOk = true, fetchRejectM
     querySelector(selector) {
       if (selector === '[data-lead-form]') return form
       if (selector === '[data-form-message]') return message
+      if (selector === '[data-next-step]') return nextStepButton
+      if (selector === "[data-form-step='1']") return stepOne
+      if (selector === "[data-form-step='2']") return stepTwo
+      if (selector === '[data-lead-count]') return leadCount
+      if (selector === '[data-spots-left]') return spotsLeft
       return null
     },
   }
 
   const window = {
     location: {
-      href: 'https://dev.criptofarol.com.br/prototypes/cripto-farol-landing/?utm_source=instagram&utm_medium=social&utm_campaign=beta&token=secret',
+      href,
       protocol: 'https:',
-      hostname: 'dev.criptofarol.com.br',
-      pathname: '/prototypes/cripto-farol-landing/',
+      hostname,
+      pathname,
     },
     localStorage: {
       getItem(key) {
@@ -114,8 +153,14 @@ function createHarness({ posthogConfig = undefined, fetchOk = true, fetchRejectM
     Promise,
     document,
     window,
-    fetch: async () => {
+    fetch: async (url) => {
       if (fetchRejectMessage) throw new Error(fetchRejectMessage)
+      if (String(url).endsWith('/stats')) {
+        return {
+          ok: true,
+          json: async () => ({ registered: 12, spotsLeft: 38 }),
+        }
+      }
       return { ok: fetchOk }
     },
     console,
@@ -159,7 +204,7 @@ test('legacy landing captures safe funnel events without PII when PostHog is con
 
   assert.deepEqual(
     captures.map((capture) => capture.eventName),
-    ['landing_pageview', 'lead_form_submit_started', 'lead_form_submit_accepted'],
+    ['$pageview', 'landing_pageview', 'lead_form_submit_started', 'lead_form_submit_accepted'],
   )
 
   for (const capture of captures) {
@@ -171,10 +216,57 @@ test('legacy landing captures safe funnel events without PII when PostHog is con
     assert.equal(capture.properties.utm_source, 'instagram')
     assert.equal(capture.properties.referrer, undefined)
     assert.equal(capture.properties.referrer_domain, 'instagram.com')
-    assert.equal(capture.properties.landing_path, '/prototypes/cripto-farol-landing/?utm_source=instagram&utm_medium=social&utm_campaign=beta')
   }
+  assert.equal(captures[0].properties.$current_url, 'https://dev.criptofarol.com.br/prototypes/cripto-farol-landing/')
+  assert.equal(captures[0].properties.$pathname, '/prototypes/cripto-farol-landing/')
+  assert.equal(captures[0].properties.landing_path, undefined)
+  assert.equal(
+    captures[1].properties.landing_path,
+    '/prototypes/cripto-farol-landing/?utm_source=instagram&utm_medium=social&utm_campaign=beta',
+  )
 
   assert.ok(insertedScripts.some((scriptEl) => scriptEl.src === 'https://eu-assets.i.posthog.com/static/array.js'))
+})
+
+test('published root landing captures standard pageview through first-party ingest config', () => {
+  const { captures, insertedScripts, window } = createHarness({
+    script: rootLandingScript,
+    posthogConfig: { key: 'ph_test_key', host: '/ingest', ui_host: 'https://us.posthog.com' },
+    href: 'https://criptofarol.com.br/?utm_source=instagram&utm_medium=social&utm_campaign=beta&token=secret',
+    hostname: 'criptofarol.com.br',
+    pathname: '/',
+  })
+
+  assert.deepEqual(
+    captures.map((capture) => capture.eventName),
+    ['$pageview', 'landing_pageview'],
+  )
+  assert.equal(captures[0].properties.$current_url, 'https://criptofarol.com.br/')
+  assert.equal(captures[0].properties.$pathname, '/')
+  assert.equal(captures[0].properties.landing_path, undefined)
+  assert.equal(captures[0].properties.utm_source, 'instagram')
+  assert.equal(captures[0].properties.token, undefined)
+  assert.equal(captures[1].properties.landing_path, '/?utm_source=instagram&utm_medium=social&utm_campaign=beta')
+  assert.ok(insertedScripts.some((scriptEl) => scriptEl.src === '/ingest/static/array.js'))
+  const posthogInitConfig = window.posthog._i[0][1]
+  assert.deepEqual(posthogInitConfig.ui_host, 'https://us.posthog.com')
+  assert.equal(
+    posthogInitConfig.before_send({
+      event: '$pageview',
+      properties: {
+        $current_url: 'https://criptofarol.com.br/',
+        $referrer: 'https://instagram.com/path?token=secret',
+      },
+    }).properties.$current_url,
+    'https://criptofarol.com.br/',
+  )
+  assert.equal(
+    posthogInitConfig.before_send({
+      event: '$pageview',
+      properties: { $current_url: 'https://criptofarol.com.br/?token=secret' },
+    }).properties.$current_url,
+    undefined,
+  )
 })
 
 test('legacy landing captures submit failure event without PII', async () => {

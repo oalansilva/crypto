@@ -1,0 +1,25 @@
+# Import this snippet before the generic /api/* and frontend handlers for
+# criptofarol.com.br and dev.criptofarol.com.br.
+
+(posthog_first_party_routes) {
+	handle /ingest/static/* {
+		uri strip_prefix /ingest
+		reverse_proxy https://us-assets.i.posthog.com {
+			header_up Host us-assets.i.posthog.com
+		}
+	}
+
+	handle /ingest/array/* {
+		uri strip_prefix /ingest
+		reverse_proxy https://us-assets.i.posthog.com {
+			header_up Host us-assets.i.posthog.com
+		}
+	}
+
+	handle /ingest/* {
+		uri strip_prefix /ingest
+		reverse_proxy https://us.i.posthog.com {
+			header_up Host us.i.posthog.com
+		}
+	}
+}
