@@ -13,6 +13,6 @@
 
 - [x] 3.1 Expand focused Node tests for root/V4 and legacy static landing analytics.
 - [x] 3.2 Run OpenSpec validation, focused tests, syntax checks, and frontend build.
-- [ ] 3.3 Validate served DEV/PROD routes after integration/restart/release as applicable.
+- [x] 3.3 Validate served DEV/PROD routes after integration/restart/release as applicable.
 
 Note: use project skills and local rules when touching OpenSpec, frontend tests, runtime routing, and release validation.
