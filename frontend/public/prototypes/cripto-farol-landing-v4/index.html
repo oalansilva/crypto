@@ -360,6 +360,10 @@
         return `${url.pathname}${query ? `?${query}` : ""}`.slice(0, 500);
       }
 
+      function safeCurrentUrl(url) {
+        return `${url.origin}${url.pathname}`.slice(0, 500);
+      }
+
       function captureAttribution() {
         const url = new URL(window.location.href);
         const existing = getStoredAttribution();
@@ -410,6 +414,17 @@
         return properties;
       }
 
+      function pageviewProperties() {
+        const properties = attributionProperties();
+        delete properties.landing_path;
+        return {
+          "$current_url": safeCurrentUrl(new URL(window.location.href)),
+          "$pathname": window.location.pathname,
+          origin: "landing-v4",
+          ...properties,
+        };
+      }
+
       function safeFailureReason(error) {
         return error instanceof Error && error.message === "submit_failed" ? "submit_failed" : "network_or_runtime_error";
       }
@@ -437,6 +452,13 @@
         if (!captureResult || !captureResult.properties) return captureResult;
         const properties = { ...captureResult.properties };
         deniedAutomaticProperties.forEach((property) => {
+          const keepSanitizedPageviewUrl =
+            property === "$current_url" &&
+            captureResult.event === "$pageview" &&
+            typeof properties.$current_url === "string" &&
+            !properties.$current_url.includes("?") &&
+            !properties.$current_url.includes("#");
+          if (keepSanitizedPageviewUrl) return;
           delete properties[property];
         });
         return { ...captureResult, properties };
@@ -493,6 +515,7 @@
         installPostHogSnippet();
         window.posthog.init(config.key, {
           api_host: config.host || "https://us.i.posthog.com",
+          ui_host: config.ui_host || undefined,
           capture_pageview: false,
           autocapture: false,
           before_send: stripUrlAutomaticProperties,
@@ -510,6 +533,7 @@
       }
 
       initPostHogFromRuntimeConfig();
+      captureAnalyticsEvent("$pageview", pageviewProperties());
       captureAnalyticsEvent("landing_pageview", {
         path: window.location.pathname,
         origin: "landing-v4",
