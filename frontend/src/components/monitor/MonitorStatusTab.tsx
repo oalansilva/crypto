@@ -1067,13 +1067,13 @@ export const MonitorStatusTab: React.FC = () => {
                                             <span className="status-section-label">Estado {cfg.title}</span>
                                             <h3>
                                                 <span className={`pip ${sectionKey}`} />
-                                                {sectionKey === 'hold' ? 'Em posição · Compra' : 'Em saída · Venda'}
+                                                {sectionKey === 'hold' ? 'Em posição' : 'Saída / cobertura'}
                                                 <span className="meta">({rows.length})</span>
                                             </h3>
                             <p className="desc">
                                 {sectionKey === 'hold'
                                     ? 'Posição ativa com gestão em acompanhamento contínuo.'
-                                    : 'Saída acionável ou encerrada para nova análise.'}
+                                    : 'Saída ou cobertura acionável para nova análise.'}
                             </p>
                                         </div>
 

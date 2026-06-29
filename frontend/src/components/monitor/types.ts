@@ -13,6 +13,7 @@ export interface Opportunity {
     symbol: string;
     asset_type?: string | null;
     timeframe: string;
+    direction?: string | null;
     template_name: string;
     name: string;
     notes?: string;
@@ -26,6 +27,10 @@ export interface Opportunity {
     status?: string;
     badge?: string;
     message?: string;
+    action_label?: string | null;
+    entry_action_label?: string | null;
+    exit_action_label?: string | null;
+    next_action_label?: string | null;
     last_price: number;
     timestamp: string;
     details?: any;

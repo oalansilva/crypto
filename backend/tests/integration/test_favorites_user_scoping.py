@@ -779,8 +779,19 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path, monk
             ).set_index("timestamp_utc", drop=False)
 
     with SessionLocal() as db:
+        short_payload = favorites.FavoriteStrategyCreate(
+            **{
+                **_favorite_payload("Refresh success", symbol="BTC/USDT").model_dump(),
+                "parameters": {
+                    "ema_short": 9,
+                    "sma_medium": 21,
+                    "sma_long": 50,
+                    "direction": "short",
+                },
+            }
+        )
         ok = favorites.create_favorite(
-            _favorite_payload("Refresh success", symbol="BTC/USDT"),
+            short_payload,
             current_user_id="user-a",
             db=db,
         )
@@ -841,7 +852,9 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path, monk
     assert ok_row.metrics["total_return_pct"] == 8.5
     assert ok_row.metrics["trades_history_cached"] is True
     assert ok_row.metrics["analysis_execution_mode"] == "favorite_auto_refresh"
-    assert optimizer_calls[0]["deep_backtest"] is True
+    success_call = next(call for call in optimizer_calls if call["symbol"] == "BTC/USDT")
+    assert success_call["deep_backtest"] is True
+    assert success_call["direction"] == "short"
     assert [call["timeframe"] for call in provider_calls[:2]] == ["1d", "15m"]
     assert fail_row.auto_refresh_status == REFRESH_STATUS_FAILED
     assert "market data unavailable" in fail_row.auto_refresh_error

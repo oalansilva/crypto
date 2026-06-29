@@ -67,6 +67,7 @@ function markerAction(marker: StrategyChartMarker): 'COMPRA' | 'VENDA' | null {
 }
 
 export function getMarkerSignalType(marker: StrategyChartMarker): MarkerSignalType | null {
+    if (marker.signalType === 'entry' || marker.signalType === 'exit') return marker.signalType
     const action = markerAction(marker)
     if (action === 'COMPRA') return 'entry'
     if (action === 'VENDA') return 'exit'
@@ -166,6 +167,7 @@ export function buildTradeMarkers(
             color: isShort ? '#f97316' : '#10b981',
             shape: isShort ? 'arrowDown' : 'arrowUp',
             text: entryLabel,
+            signalType: 'entry',
         }
 
         if (!exitTime) {
@@ -180,6 +182,7 @@ export function buildTradeMarkers(
                 color: isShort ? '#10b981' : '#ef4444',
                 shape: isShort ? 'arrowUp' : 'arrowDown',
                 text: `${exitLabel}${formatProfit(trade.profit)}`,
+                signalType: 'exit',
             },
         ]
     })

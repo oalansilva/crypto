@@ -3,6 +3,7 @@ import pandas as pd
 from app.services.opportunity_service import (
     _build_signal_history,
     _last_signal_index_and_position,
+    _public_monitor_message,
     _resolve_position_state,
     _signal_execution_price,
 )
@@ -86,6 +87,49 @@ def test_resolve_position_state_waits_when_entry_exists_but_trend_is_not_active(
     assert is_holding is False
     assert is_stopped_out is False
     assert stop_breached_now is False
+
+
+def test_resolve_position_state_keeps_short_holding_without_long_trend_gate():
+    is_holding, is_stopped_out, stop_breached_now = _resolve_position_state(
+        short_above_long=False,
+        last_buy_pos=10,
+        last_sell_pos=8,
+        last_sell_reason="exit_logic",
+        direction="short",
+        last_price=95.0,
+        stop_price=105.0,
+    )
+
+    assert is_holding is True
+    assert is_stopped_out is False
+    assert stop_breached_now is False
+
+
+def test_resolve_position_state_marks_short_stopped_out_above_stop():
+    is_holding, is_stopped_out, stop_breached_now = _resolve_position_state(
+        short_above_long=False,
+        last_buy_pos=10,
+        last_sell_pos=None,
+        last_sell_reason=None,
+        direction="short",
+        last_price=106.0,
+        stop_price=105.0,
+    )
+
+    assert is_holding is False
+    assert is_stopped_out is True
+    assert stop_breached_now is True
+
+
+def test_public_monitor_message_does_not_leak_long_hold_copy_for_short():
+    message = _public_monitor_message(
+        "HOLD",
+        {"message": "Compra ativa. Acompanhe a proxima venda."},
+        direction="short",
+    )
+
+    assert "Compra ativa" not in message
+    assert message.startswith("Venda ativa")
 
 
 def test_signal_execution_price_uses_signal_candle_open():

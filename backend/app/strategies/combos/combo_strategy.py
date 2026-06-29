@@ -34,6 +34,7 @@ class ComboStrategy:
         stop_gain: Optional[float] = None,
         derived_features: Optional[List[Dict[str, Any]]] = None,
         force_recompute: bool = True,
+        direction: str = "long",
     ):
         """
         Initialize combo strategy.
@@ -52,6 +53,7 @@ class ComboStrategy:
         self.stop_gain = stop_gain
         self.derived_features = derived_features or []
         self.force_recompute = bool(force_recompute)
+        self.direction = "short" if str(direction or "").lower() == "short" else "long"
 
         self._indicator_cache = {}
         self._validate_aliases()
@@ -634,17 +636,19 @@ class ComboStrategy:
 
     def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Generate buy/sell signals based on entry/exit logic AND stop loss.
+        Generate entry/exit signals based on entry/exit logic and long-side stop loss.
 
         CRITICAL: Signals are generated AFTER candle close confirmation (TradingView style).
         - Crossover detected on day N → Signal applied on day N+1
         - This ensures we only trade on confirmed crossovers after candle close
+        - Signal 1 means strategy entry and -1 means strategy exit. The trade
+          extractor maps those phases to buy/sell or sell/cover based on direction.
 
         Args:
             df: DataFrame with OHLCV data
 
         Returns:
-            DataFrame with 'signal' column (1=buy, -1=sell, 0=hold)
+            DataFrame with 'signal' column (1=entry, -1=exit, 0=hold)
         """
         # Use empty check
         if df.empty:
@@ -716,7 +720,11 @@ class ComboStrategy:
                 continue
 
             # Intra-candle Stop Loss Check (Priority)
-            if in_position and entry_price is not None:
+            #
+            # Short stop loss is handled in the direction-aware trade extractor
+            # using candle high above entry. Keeping the old low-based stop here
+            # for short would close profitable short moves as losses.
+            if self.direction == "long" and in_position and entry_price is not None:
                 current_low = float(low_arr[i])
                 low_pnl = (current_low - entry_price) / entry_price
 

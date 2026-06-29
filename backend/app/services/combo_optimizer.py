@@ -24,9 +24,7 @@ import pandas as pd
 # Log 15m coverage warning only once per symbol per process (avoids thousands of identical lines)
 _deep_coverage_warned: set = set()
 
-from app.services.sequential_optimizer import SequentialOptimizer
 from app.services.combo_service import ComboService
-from app.services.backtest_service import BacktestService
 from app.services.market_data_providers import (
     get_market_data_provider,
     resolve_data_source_for_symbol,
@@ -389,6 +387,7 @@ def _run_backtest_logic(
             entry_logic=entry_logic,
             exit_logic=exit_logic,
             stop_loss=stop_loss,
+            direction=(params or {}).get("direction", "long"),
         )
 
         # Generate signals
@@ -559,15 +558,14 @@ class ComboOptimizer:
     """
     Optimizer for combo strategies.
 
-    Extends SequentialOptimizer logic to handle multiple indicators
-    and their parameters in combo strategies.
+    Optimizes modern combo strategies and executes them through the
+    direction-aware combo trade extractor.
     """
 
     def __init__(self, checkpoint_dir: str = "backend/data/checkpoints"):
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.combo_service = ComboService()
-        self.backtest_service = BacktestService()
         self.loader = IncrementalLoader()
 
     def generate_stages(

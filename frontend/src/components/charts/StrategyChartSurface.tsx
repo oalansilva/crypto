@@ -28,6 +28,7 @@ export interface StrategyChartMarker {
     color: string
     shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'
     text: string
+    signalType?: 'entry' | 'exit'
 }
 
 export interface StrategyChartPriceLine {

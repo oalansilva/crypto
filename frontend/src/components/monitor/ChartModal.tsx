@@ -80,19 +80,34 @@ function formatTimestamp(value?: string | null) {
     }).format(new Date(value));
 }
 
-function formatSignalReason(value?: string | null) {
+function normalizeDirection(value?: string | null) {
+    return String(value || 'long').trim().toLowerCase() === 'short' ? 'short' : 'long';
+}
+
+function actionLabelsForDirection(direction?: string | null) {
+    const isShort = normalizeDirection(direction) === 'short';
+    return {
+        entry: isShort ? 'Venda' : 'Compra',
+        exit: isShort ? 'Compra' : 'Venda',
+        entrySignal: isShort ? 'Vender' : 'Comprar',
+        exitRule: isShort ? 'Regra de compra/cobertura' : 'Regra de venda',
+    };
+}
+
+function formatSignalReason(value?: string | null, direction?: string | null) {
     const normalized = String(value || '').trim().toLowerCase();
+    const labels = actionLabelsForDirection(direction);
     if (!normalized) {
         return '-';
     }
     if (normalized === 'entry') {
-        return 'Compra';
+        return labels.entry;
     }
     if (normalized === 'exit') {
-        return 'Venda';
+        return labels.exit;
     }
     if (normalized === 'exit_logic') {
-        return 'Regra de venda';
+        return labels.exitRule;
     }
     if (normalized === 'stop_loss') {
         return 'Stop loss';
@@ -100,18 +115,22 @@ function formatSignalReason(value?: string | null) {
     return normalized.replace(/_/g, ' ');
 }
 
-function getSignalHistoryLabel(item: OpportunitySignalHistoryItem) {
-    return item.type === 'entry' ? 'Compra' : 'Venda';
+function getSignalHistoryLabel(item: OpportunitySignalHistoryItem, direction?: string | null) {
+    const labels = actionLabelsForDirection(direction);
+    return item.type === 'entry' ? labels.entry : labels.exit;
 }
 
-function getSignalHistoryMarker(item: OpportunitySignalHistoryItem) {
+function getSignalHistoryMarker(item: OpportunitySignalHistoryItem, direction?: string | null) {
     const isEntry = item.type === 'entry';
+    const isShort = normalizeDirection(direction) === 'short';
     const isStop = !isEntry && String(item.reason || '').trim().toLowerCase() === 'stop_loss';
+    const isBuyVisual = (isEntry && !isShort) || (!isEntry && isShort);
     return {
-        position: isEntry ? 'belowBar' : 'aboveBar',
-        shape: isEntry ? 'arrowUp' : 'arrowDown',
-        color: isEntry ? '#3fb950' : (isStop ? '#f85149' : '#0284c7'),
-        text: getSignalHistoryLabel(item),
+        position: isBuyVisual ? 'belowBar' : 'aboveBar',
+        shape: isBuyVisual ? 'arrowUp' : 'arrowDown',
+        color: isStop ? '#f85149' : (isBuyVisual ? '#3fb950' : '#f6465d'),
+        text: getSignalHistoryLabel(item, direction),
+        signalType: item.type,
     } as const;
 }
 
@@ -202,7 +221,7 @@ function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | 
             profit,
             type: isShort ? 'short' : 'long',
             entry_signal_type: isShort ? 'Vender' : 'Comprar',
-            signal_type: formatSignalReason(item.reason),
+            signal_type: formatSignalReason(item.reason, direction),
         });
         activeEntry = null;
     });
@@ -285,7 +304,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     ]));
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
-    const opportunityDirection = String(opportunity.parameters?.direction || 'long').toLowerCase();
+    const opportunityDirection = normalizeDirection(String(opportunity.direction ?? opportunity.parameters?.direction ?? 'long'));
 
     React.useEffect(() => {
         if (!supportedTimeframes.includes(timeframe)) {
@@ -340,11 +359,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 }
                 return {
                     time,
-                    ...getSignalHistoryMarker(item),
+                    ...getSignalHistoryMarker(item, opportunityDirection),
                 };
             })
             .filter((item): item is NonNullable<typeof item> => item !== null);
-    }, [canRenderSignalHistoryMarkers, candleTimes, opportunity.signal_history, sortedCandles.length]);
+    }, [canRenderSignalHistoryMarkers, candleTimes, opportunity.signal_history, opportunityDirection, sortedCandles.length]);
     const signalHistory = React.useMemo(
         () => [...(opportunity.signal_history || [])].sort(
             (left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp),
@@ -504,6 +523,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             color: resolvedSignal.visual.markerColor,
             shape: resolvedSignal.visual.markerShape as StrategyChartMarker['shape'],
             text: signalLabel,
+            signalType: resolvedSignal.section === 'hold' ? 'entry' : 'exit',
         }] : []
     ), [
         latestCandle?.timestamp_utc,
@@ -530,12 +550,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     }, [baseChartMarkers, fallbackMarker, latestVisibleMarkerType, resolvedSignal.section, timeframe]);
     const priceLines = React.useMemo<StrategyChartPriceLine[]>(() => [
         ...(showEntryStopRows && opportunity.entry_price !== null && opportunity.entry_price !== undefined
-            ? [{ price: opportunity.entry_price, color: '#fcd535', title: 'Compra' }]
+            ? [{ price: opportunity.entry_price, color: '#fcd535', title: opportunityDirection === 'short' ? 'Venda/Short' : 'Compra' }]
             : []),
         ...(showEntryStopRows && opportunity.stop_price !== null && opportunity.stop_price !== undefined
             ? [{ price: opportunity.stop_price, color: '#f6465d', title: 'STOP' }]
             : []),
-    ], [opportunity.entry_price, opportunity.stop_price, showEntryStopRows]);
+    ], [opportunity.entry_price, opportunity.stop_price, opportunityDirection, showEntryStopRows]);
     const summaryItems: StrategyChartSummaryItem[] = [
         { label: 'Candle', value: formatTimestamp(latestCandle?.timestamp_utc) },
         {
