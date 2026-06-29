@@ -23,6 +23,24 @@ function resolveConfiguredEnvironment(values: unknown[]): RuntimeEnvironmentKind
   return null
 }
 
+function resolveHostnameEnvironment(): RuntimeEnvironmentKind | null {
+  if (typeof window === 'undefined') return null
+
+  const hostname = window.location.hostname.trim().toLowerCase()
+  if (
+    hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname === '0.0.0.0'
+    || hostname.startsWith('dev.')
+    || hostname.includes('.dev.')
+    || hostname.includes('dev-')
+  ) {
+    return 'development'
+  }
+
+  return null
+}
+
 function resolveEnvironmentKind(): RuntimeEnvironmentKind {
   const configuredEnvironment = resolveConfiguredEnvironment([
     import.meta.env.VITE_APP_ENV,
@@ -30,6 +48,9 @@ function resolveEnvironmentKind(): RuntimeEnvironmentKind {
   ])
 
   if (configuredEnvironment) return configuredEnvironment
+
+  const hostnameEnvironment = resolveHostnameEnvironment()
+  if (hostnameEnvironment) return hostnameEnvironment
 
   return import.meta.env.PROD ? 'production' : 'development'
 }
