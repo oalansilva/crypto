@@ -29,4 +29,4 @@
 - [x] 5.2 Add focused frontend tests for marker/Monitor direction semantics.
 - [x] 5.3 Run focused backend and frontend tests.
 - [x] 5.4 Run OpenSpec validation for this change and classify any unrelated global failures.
-- [ ] 5.5 Run `./restart`, validate DEV runtime, and record evidence on issue #274.
+- [x] 5.5 Run `./restart`, validate DEV runtime, and record evidence on issue #274.
