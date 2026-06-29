@@ -34,6 +34,11 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "quant_btc_1d_short_ma_breakdown_chain_w3_20260629": "BTC 1D SHORT WINNER 3: Médias de Baixa com Menor Queda",
     "quant_btc_1d_short_ma_defense_chain_w4_20260629": "BTC 1D SHORT WINNER 4: Médias de Baixa Protegida",
     "quant_btc_1d_short_macd_defense_chain_w5_20260629": "BTC 1D SHORT WINNER 5: MACD Short Defensivo",
+    "quant_btc_1d_long_bb_roc_chain_w1_20260629": "BTC 1D LONG WINNER 1: Bandas com Rompimento Defensivo",
+    "quant_btc_1d_long_dual_momentum_chain_w2_20260629": "BTC 1D LONG WINNER 2: Momentum Duplo de Continuidade",
+    "quant_btc_1d_long_dual_momentum_chain_w3_20260629": "BTC 1D LONG WINNER 3: Momentum Duplo Acelerado",
+    "quant_btc_1d_long_ma_breakout_chain_w4_20260629": "BTC 1D LONG WINNER 4: Médias com Rompimento Confirmado",
+    "quant_btc_1d_long_ma_trend_chain_w5_20260629": "BTC 1D LONG WINNER 5: Médias com Continuidade Forte",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
@@ -120,6 +125,21 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     ),
     "quant_btc_1d_short_macd_defense_chain_w5_20260629": (
         "Combina tendência e momentum de baixa do BTC em 1D para operação Short com perfil mais defensivo que a cadeia anterior e saída quando o regime enfraquece."
+    ),
+    "quant_btc_1d_long_bb_roc_chain_w1_20260629": (
+        "Acompanha rompimentos Long do BTC em 1D quando volatilidade e momentum sugerem retomada, com controle de risco para formar o primeiro degrau defensivo da cadeia."
+    ),
+    "quant_btc_1d_long_dual_momentum_chain_w2_20260629": (
+        "Combina duas leituras de momentum e tendência do BTC em 1D para buscar continuidade Long acima do primeiro degrau, mantendo controle de queda."
+    ),
+    "quant_btc_1d_long_dual_momentum_chain_w3_20260629": (
+        "Usa uma configuração Long de momentum mais acelerada para o BTC em 1D, buscando ampliar retorno frente ao degrau anterior sem piorar drawdown."
+    ),
+    "quant_btc_1d_long_ma_breakout_chain_w4_20260629": (
+        "Filtra rompimentos Long do BTC em 1D com médias e confirmação de força para melhorar qualidade e retorno na sequência da cadeia."
+    ),
+    "quant_btc_1d_long_ma_trend_chain_w5_20260629": (
+        "Acompanha continuidade Long forte do BTC em 1D com médias e saída defensiva, buscando fechar a cadeia com retorno maior e drawdown menor."
     ),
 }
 

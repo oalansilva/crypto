@@ -1,0 +1,1375 @@
+{
+  "benchmarks": {
+    "BENCHMARK_DD": {
+      "best_parameters": {
+        "bb_length": 29,
+        "bb_std": 2,
+        "direction": "long"
+      },
+      "candles_count": 3239,
+      "duration_seconds": 2.205,
+      "execution_mode": "deep_15m",
+      "favorite_id": 192,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.08619275886702277,
+        "max_drawdown_pct": 8.619275886702276,
+        "profit_factor": 4.656054381665755,
+        "sharpe_ratio": 0.4674063314054655,
+        "total_return": 50.29836248699925,
+        "total_return_pct": 5029.836248699925,
+        "total_trades": 56.0,
+        "win_rate": 0.5535714285714286
+      },
+      "name": "Bollinger_Breakout - BTC/USDT 1d (15:00:33)",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "bb_length": {
+            "max": 29,
+            "min": 29,
+            "step": 1
+          },
+          "bb_std": {
+            "max": 2,
+            "min": 2,
+            "step": 1
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": null,
+        "symbol": "BTC/USDT",
+        "template_name": "Bollinger_Breakout",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "bb_length": 29,
+        "bb_std": 2,
+        "direction": "long"
+      },
+      "status": "ok",
+      "strategy_name": "Bollinger_Breakout",
+      "trades_count": 56
+    },
+    "BENCHMARK_PARETO_SET": [
+      {
+        "best_parameters": {
+          "bb_length": 29,
+          "bb_std": 2,
+          "direction": "long"
+        },
+        "candles_count": 3239,
+        "duration_seconds": 2.205,
+        "execution_mode": "deep_15m",
+        "favorite_id": 192,
+        "metrics_summary": {
+          "analysis_execution_mode": null,
+          "max_drawdown": 0.08619275886702277,
+          "max_drawdown_pct": 8.619275886702276,
+          "profit_factor": 4.656054381665755,
+          "sharpe_ratio": 0.4674063314054655,
+          "total_return": 50.29836248699925,
+          "total_return_pct": 5029.836248699925,
+          "total_trades": 56.0,
+          "win_rate": 0.5535714285714286
+        },
+        "name": "Bollinger_Breakout - BTC/USDT 1d (15:00:33)",
+        "payload": {
+          "allow_partial_exits": false,
+          "custom_ranges": {
+            "bb_length": {
+              "max": 29,
+              "min": 29,
+              "step": 1
+            },
+            "bb_std": {
+              "max": 2,
+              "min": 2,
+              "step": 1
+            }
+          },
+          "data_source": "ccxt",
+          "deep_backtest": true,
+          "direction": "long",
+          "end_date": "2026-06-29",
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "initial_capital": 100,
+          "pyramiding": 0,
+          "start_date": null,
+          "symbol": "BTC/USDT",
+          "template_name": "Bollinger_Breakout",
+          "timeframe": "1d"
+        },
+        "saved_parameters": {
+          "bb_length": 29,
+          "bb_std": 2,
+          "direction": "long"
+        },
+        "status": "ok",
+        "strategy_name": "Bollinger_Breakout",
+        "trades_count": 56
+      },
+      {
+        "best_parameters": {
+          "direction": "long",
+          "ema": 4,
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "initial_capital": 100,
+          "pyramiding": 0,
+          "sma_l": 25,
+          "sma_m": 21,
+          "stop": 0.03
+        },
+        "candles_count": 3239,
+        "duration_seconds": 0.979,
+        "execution_mode": "deep_15m",
+        "favorite_id": 195,
+        "metrics_summary": {
+          "analysis_execution_mode": null,
+          "max_drawdown": 0.1087293523808336,
+          "max_drawdown_pct": 10.872935238083361,
+          "profit_factor": 4.970488828822099,
+          "sharpe_ratio": 0.41923054101105456,
+          "total_return": 420.1158035326602,
+          "total_return_pct": 42011.58035326602,
+          "total_trades": 84.0,
+          "win_rate": 0.4880952380952381
+        },
+        "name": "BTC 1D WINNER 3 - Médias com Defesa Reforçada",
+        "payload": {
+          "allow_partial_exits": false,
+          "custom_ranges": {
+            "ema": {
+              "max": 4,
+              "min": 4,
+              "step": 1
+            },
+            "entry_size_pct": {
+              "max": 100,
+              "min": 100,
+              "step": 1
+            },
+            "exit_size_pct": {
+              "max": 100,
+              "min": 100,
+              "step": 1
+            },
+            "initial_capital": {
+              "max": 100,
+              "min": 100,
+              "step": 1
+            },
+            "pyramiding": {
+              "max": 0,
+              "min": 0,
+              "step": 1
+            },
+            "sma_l": {
+              "max": 25,
+              "min": 25,
+              "step": 1
+            },
+            "sma_m": {
+              "max": 21,
+              "min": 21,
+              "step": 1
+            },
+            "stop": {
+              "max": 0.03,
+              "min": 0.03,
+              "step": 0.0001
+            }
+          },
+          "data_source": "ccxt",
+          "deep_backtest": true,
+          "direction": "long",
+          "end_date": "2026-06-29",
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "initial_capital": 100,
+          "pyramiding": 0,
+          "start_date": "2017-08-17",
+          "symbol": "BTC/USDT",
+          "template_name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+          "timeframe": "1d"
+        },
+        "saved_parameters": {
+          "allow_partial_exits": false,
+          "data_source": "ccxt",
+          "deep_backtest": true,
+          "direction": "long",
+          "ema": 4,
+          "entry_size_pct": 100,
+          "exit_ref": "long",
+          "exit_size_pct": 100,
+          "initial_capital": 100,
+          "pyramiding": 0,
+          "sma_l": 25,
+          "sma_m": 21,
+          "stop": 0.03
+        },
+        "status": "ok",
+        "strategy_name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+        "trades_count": 84
+      },
+      {
+        "best_parameters": {
+          "direction": "long",
+          "ema": 55,
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "initial_capital": 100,
+          "pyramiding": 0,
+          "roc": 30,
+          "rsi": 18,
+          "rsi_exit": 50,
+          "rsi_min": 55,
+          "stop": 0.026
+        },
+        "candles_count": 3239,
+        "duration_seconds": 0.919,
+        "execution_mode": "deep_15m",
+        "favorite_id": 196,
+        "metrics_summary": {
+          "analysis_execution_mode": null,
+          "max_drawdown": 0.0972915109127226,
+          "max_drawdown_pct": 9.72915109127226,
+          "profit_factor": 4.666839816122046,
+          "sharpe_ratio": 0.34129079242930677,
+          "total_return": 220.95413876143175,
+          "total_return_pct": 22095.413876143175,
+          "total_trades": 69.0,
+          "win_rate": 0.4927536231884058
+        },
+        "name": "BTC 1D WINNER 4 - Momentum com Força Relativa",
+        "payload": {
+          "allow_partial_exits": false,
+          "custom_ranges": {
+            "ema": {
+              "max": 55,
+              "min": 55,
+              "step": 1
+            },
+            "entry_size_pct": {
+              "max": 100,
+              "min": 100,
+              "step": 1
+            },
+            "exit_size_pct": {
+              "max": 100,
+              "min": 100,
+              "step": 1
+            },
+            "initial_capital": {
+              "max": 100,
+              "min": 100,
+              "step": 1
+            },
+            "pyramiding": {
+              "max": 0,
+              "min": 0,
+              "step": 1
+            },
+            "roc": {
+              "max": 30,
+              "min": 30,
+              "step": 1
+            },
+            "rsi": {
+              "max": 18,
+              "min": 18,
+              "step": 1
+            },
+            "rsi_exit": {
+              "max": 50,
+              "min": 50,
+              "step": 1
+            },
+            "rsi_min": {
+              "max": 55,
+              "min": 55,
+              "step": 1
+            },
+            "stop": {
+              "max": 0.026,
+              "min": 0.026,
+              "step": 0.0001
+            }
+          },
+          "data_source": "ccxt",
+          "deep_backtest": true,
+          "direction": "long",
+          "end_date": "2026-06-29",
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "initial_capital": 100,
+          "pyramiding": 0,
+          "start_date": "2017-08-17",
+          "symbol": "BTC/USDT",
+          "template_name": "quant_btc_1d_ema_roc_rsi_chain_w4_20260607",
+          "timeframe": "1d"
+        },
+        "saved_parameters": {
+          "allow_partial_exits": false,
+          "data_source": "ccxt",
+          "deep_backtest": true,
+          "direction": "long",
+          "ema": 55,
+          "entry_size_pct": 100,
+          "exit_size_pct": 100,
+          "initial_capital": 100,
+          "pyramiding": 0,
+          "roc": 30,
+          "rsi": 18,
+          "rsi_exit": 50,
+          "rsi_min": 55,
+          "stop": 0.026
+        },
+        "status": "ok",
+        "strategy_name": "quant_btc_1d_ema_roc_rsi_chain_w4_20260607",
+        "trades_count": 69
+      }
+    ],
+    "BENCHMARK_PF": {
+      "best_parameters": {
+        "direction": "long",
+        "ema": 14,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 44,
+        "sma_m": 25,
+        "stop": 0.034
+      },
+      "candles_count": 3239,
+      "duration_seconds": 0.86,
+      "execution_mode": "deep_15m",
+      "favorite_id": 197,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.11072248654412152,
+        "max_drawdown_pct": 11.072248654412151,
+        "profit_factor": 8.999364864911616,
+        "sharpe_ratio": 0.3425583190308435,
+        "total_return": 224.04161005205074,
+        "total_return_pct": 22404.161005205075,
+        "total_trades": 41.0,
+        "win_rate": 0.5609756097560976
+      },
+      "name": "BTC 1D WINNER 5 - Médias com Continuidade Defensiva",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema": {
+            "max": 14,
+            "min": 14,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "max": 44,
+            "min": 44,
+            "step": 1
+          },
+          "sma_m": {
+            "max": 25,
+            "min": 25,
+            "step": 1
+          },
+          "stop": {
+            "max": 0.034,
+            "min": 0.034,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": "2017-08-17",
+        "symbol": "BTC/USDT",
+        "template_name": "quant_btc_1d_ma_trend_chain_w5_20260607",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "allow_partial_exits": false,
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "ema": 14,
+        "entry_size_pct": 100,
+        "exit_ref": "long",
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 44,
+        "sma_m": 25,
+        "stop": 0.034
+      },
+      "status": "ok",
+      "strategy_name": "quant_btc_1d_ma_trend_chain_w5_20260607",
+      "trades_count": 41
+    },
+    "BENCHMARK_RETURN": {
+      "best_parameters": {
+        "direction": "long",
+        "ema": 4,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 25,
+        "sma_m": 21,
+        "stop": 0.03
+      },
+      "candles_count": 3239,
+      "duration_seconds": 0.979,
+      "execution_mode": "deep_15m",
+      "favorite_id": 195,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.1087293523808336,
+        "max_drawdown_pct": 10.872935238083361,
+        "profit_factor": 4.970488828822099,
+        "sharpe_ratio": 0.41923054101105456,
+        "total_return": 420.1158035326602,
+        "total_return_pct": 42011.58035326602,
+        "total_trades": 84.0,
+        "win_rate": 0.4880952380952381
+      },
+      "name": "BTC 1D WINNER 3 - Médias com Defesa Reforçada",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema": {
+            "max": 4,
+            "min": 4,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "max": 25,
+            "min": 25,
+            "step": 1
+          },
+          "sma_m": {
+            "max": 21,
+            "min": 21,
+            "step": 1
+          },
+          "stop": {
+            "max": 0.03,
+            "min": 0.03,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": "2017-08-17",
+        "symbol": "BTC/USDT",
+        "template_name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "allow_partial_exits": false,
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "ema": 4,
+        "entry_size_pct": 100,
+        "exit_ref": "long",
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 25,
+        "sma_m": 21,
+        "stop": 0.03
+      },
+      "status": "ok",
+      "strategy_name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+      "trades_count": 84
+    },
+    "BENCHMARK_SHARPE": {
+      "best_parameters": {
+        "direction": "long",
+        "ema_short": 18,
+        "sma_long": 35,
+        "sma_medium": 20,
+        "stop_loss": 0.042
+      },
+      "candles_count": 3239,
+      "duration_seconds": 6.746,
+      "execution_mode": "deep_15m",
+      "favorite_id": 9,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.12214660412400954,
+        "max_drawdown_pct": 12.214660412400955,
+        "profit_factor": 3.723343317608936,
+        "sharpe_ratio": 0.5027793834983001,
+        "total_return": 199.26913124189718,
+        "total_return_pct": 19926.91312418972,
+        "total_trades": 72.0,
+        "win_rate": 0.5833333333333334
+      },
+      "name": "multi_ma_crossover - BTC/USDT 1d (00:12:26)",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema_short": {
+            "max": 18,
+            "min": 18,
+            "step": 1
+          },
+          "sma_long": {
+            "max": 35,
+            "min": 35,
+            "step": 1
+          },
+          "sma_medium": {
+            "max": 20,
+            "min": 20,
+            "step": 1
+          },
+          "stop_loss": {
+            "max": 0.042,
+            "min": 0.042,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": null,
+        "symbol": "BTC/USDT",
+        "template_name": "multi_ma_crossover",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "direction": "long",
+        "ema_short": 18,
+        "sma_long": 35,
+        "sma_medium": 20,
+        "stop_loss": 0.042
+      },
+      "status": "ok",
+      "strategy_name": "multi_ma_crossover",
+      "trades_count": 72
+    }
+  },
+  "card": 277,
+  "completed_at": "2026-06-29T02:47:59.879675+00:00",
+  "direction": "long",
+  "invariants": {
+    "allow_partial_exits": false,
+    "deep_backtest": true,
+    "entry_size_pct": 100,
+    "exit_size_pct": 100,
+    "initial_capital": 100,
+    "pyramiding": 0
+  },
+  "results": [
+    {
+      "best_parameters": {
+        "direction": "long",
+        "ema_short": 18,
+        "sma_long": 35,
+        "sma_medium": 20,
+        "stop_loss": 0.042
+      },
+      "candles_count": 3239,
+      "duration_seconds": 6.746,
+      "execution_mode": "deep_15m",
+      "favorite_id": 9,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.12214660412400954,
+        "max_drawdown_pct": 12.214660412400955,
+        "profit_factor": 3.723343317608936,
+        "sharpe_ratio": 0.5027793834983001,
+        "total_return": 199.26913124189718,
+        "total_return_pct": 19926.91312418972,
+        "total_trades": 72.0,
+        "win_rate": 0.5833333333333334
+      },
+      "name": "multi_ma_crossover - BTC/USDT 1d (00:12:26)",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema_short": {
+            "max": 18,
+            "min": 18,
+            "step": 1
+          },
+          "sma_long": {
+            "max": 35,
+            "min": 35,
+            "step": 1
+          },
+          "sma_medium": {
+            "max": 20,
+            "min": 20,
+            "step": 1
+          },
+          "stop_loss": {
+            "max": 0.042,
+            "min": 0.042,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": null,
+        "symbol": "BTC/USDT",
+        "template_name": "multi_ma_crossover",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "direction": "long",
+        "ema_short": 18,
+        "sma_long": 35,
+        "sma_medium": 20,
+        "stop_loss": 0.042
+      },
+      "status": "ok",
+      "strategy_name": "multi_ma_crossover",
+      "trades_count": 72
+    },
+    {
+      "best_parameters": {
+        "direction": "long",
+        "ema_short": 10,
+        "sma_long": 22,
+        "sma_medium": 16,
+        "stop_loss": 0.035
+      },
+      "candles_count": 3239,
+      "duration_seconds": 2.264,
+      "execution_mode": "deep_15m",
+      "favorite_id": 122,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.10540263529968669,
+        "max_drawdown_pct": 10.54026352996867,
+        "profit_factor": 4.490402325451697,
+        "sharpe_ratio": 0.4326730839316477,
+        "total_return": 97.66054162776307,
+        "total_return_pct": 9766.054162776307,
+        "total_trades": 82.0,
+        "win_rate": 0.4878048780487805
+      },
+      "name": "multi_ma_crossoverV2 - BTC/USDT 1d (batch)",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema_short": {
+            "max": 10,
+            "min": 10,
+            "step": 1
+          },
+          "sma_long": {
+            "max": 22,
+            "min": 22,
+            "step": 1
+          },
+          "sma_medium": {
+            "max": 16,
+            "min": 16,
+            "step": 1
+          },
+          "stop_loss": {
+            "max": 0.035,
+            "min": 0.035,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": null,
+        "symbol": "BTC/USDT",
+        "template_name": "multi_ma_crossoverV2",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "data_source": "ccxt",
+        "direction": "long",
+        "ema_short": 10,
+        "sma_long": 22,
+        "sma_medium": 16,
+        "stop_loss": 0.035
+      },
+      "status": "ok",
+      "strategy_name": "multi_ma_crossoverV2",
+      "trades_count": 82
+    },
+    {
+      "best_parameters": {
+        "bb_length": 29,
+        "bb_std": 2,
+        "direction": "long"
+      },
+      "candles_count": 3239,
+      "duration_seconds": 2.205,
+      "execution_mode": "deep_15m",
+      "favorite_id": 192,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.08619275886702277,
+        "max_drawdown_pct": 8.619275886702276,
+        "profit_factor": 4.656054381665755,
+        "sharpe_ratio": 0.4674063314054655,
+        "total_return": 50.29836248699925,
+        "total_return_pct": 5029.836248699925,
+        "total_trades": 56.0,
+        "win_rate": 0.5535714285714286
+      },
+      "name": "Bollinger_Breakout - BTC/USDT 1d (15:00:33)",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "bb_length": {
+            "max": 29,
+            "min": 29,
+            "step": 1
+          },
+          "bb_std": {
+            "max": 2,
+            "min": 2,
+            "step": 1
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": null,
+        "symbol": "BTC/USDT",
+        "template_name": "Bollinger_Breakout",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "bb_length": 29,
+        "bb_std": 2,
+        "direction": "long"
+      },
+      "status": "ok",
+      "strategy_name": "Bollinger_Breakout",
+      "trades_count": 56
+    },
+    {
+      "best_parameters": {
+        "direction": "long",
+        "ema": 20,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 43,
+        "sma_m": 20,
+        "stop": 0.034
+      },
+      "candles_count": 3239,
+      "duration_seconds": 0.962,
+      "execution_mode": "deep_15m",
+      "favorite_id": 193,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.1017586406717185,
+        "max_drawdown_pct": 10.17586406717185,
+        "profit_factor": 6.3190615360394595,
+        "sharpe_ratio": 0.3242983734341848,
+        "total_return": 217.09261534766432,
+        "total_return_pct": 21709.261534766432,
+        "total_trades": 45.0,
+        "win_rate": 0.5777777777777777
+      },
+      "name": "BTC 1D WINNER 1 - Médias com Risco Menor",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema": {
+            "max": 20,
+            "min": 20,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "max": 43,
+            "min": 43,
+            "step": 1
+          },
+          "sma_m": {
+            "max": 20,
+            "min": 20,
+            "step": 1
+          },
+          "stop": {
+            "max": 0.034,
+            "min": 0.034,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": "2017-08-17",
+        "symbol": "BTC/USDT",
+        "template_name": "quant_btc_1d_ma_trend_chain_w1_20260607",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "allow_partial_exits": false,
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "ema": 20,
+        "entry_size_pct": 100,
+        "exit_ref": "long",
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 43,
+        "sma_m": 20,
+        "stop": 0.034
+      },
+      "status": "ok",
+      "strategy_name": "quant_btc_1d_ma_trend_chain_w1_20260607",
+      "trades_count": 45
+    },
+    {
+      "best_parameters": {
+        "direction": "long",
+        "ema": 11,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 42,
+        "sma_m": 39,
+        "stop": 0.05
+      },
+      "candles_count": 3239,
+      "duration_seconds": 1.004,
+      "execution_mode": "deep_15m",
+      "favorite_id": 194,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.10460657934655428,
+        "max_drawdown_pct": 10.460657934655428,
+        "profit_factor": 5.623681442384041,
+        "sharpe_ratio": 0.3301265672951939,
+        "total_return": 206.18206849341794,
+        "total_return_pct": 20618.206849341794,
+        "total_trades": 41.0,
+        "win_rate": 0.5365853658536586
+      },
+      "name": "BTC 1D WINNER 2 - Médias com Saída Ágil",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema": {
+            "max": 11,
+            "min": 11,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "max": 42,
+            "min": 42,
+            "step": 1
+          },
+          "sma_m": {
+            "max": 39,
+            "min": 39,
+            "step": 1
+          },
+          "stop": {
+            "max": 0.05,
+            "min": 0.05,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": "2017-08-17",
+        "symbol": "BTC/USDT",
+        "template_name": "quant_btc_1d_ma_trend_chain_w2_20260607",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "allow_partial_exits": false,
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "ema": 11,
+        "entry_size_pct": 100,
+        "exit_ref": "medium",
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 42,
+        "sma_m": 39,
+        "stop": 0.05
+      },
+      "status": "ok",
+      "strategy_name": "quant_btc_1d_ma_trend_chain_w2_20260607",
+      "trades_count": 41
+    },
+    {
+      "best_parameters": {
+        "direction": "long",
+        "ema": 4,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 25,
+        "sma_m": 21,
+        "stop": 0.03
+      },
+      "candles_count": 3239,
+      "duration_seconds": 0.979,
+      "execution_mode": "deep_15m",
+      "favorite_id": 195,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.1087293523808336,
+        "max_drawdown_pct": 10.872935238083361,
+        "profit_factor": 4.970488828822099,
+        "sharpe_ratio": 0.41923054101105456,
+        "total_return": 420.1158035326602,
+        "total_return_pct": 42011.58035326602,
+        "total_trades": 84.0,
+        "win_rate": 0.4880952380952381
+      },
+      "name": "BTC 1D WINNER 3 - Médias com Defesa Reforçada",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema": {
+            "max": 4,
+            "min": 4,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "max": 25,
+            "min": 25,
+            "step": 1
+          },
+          "sma_m": {
+            "max": 21,
+            "min": 21,
+            "step": 1
+          },
+          "stop": {
+            "max": 0.03,
+            "min": 0.03,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": "2017-08-17",
+        "symbol": "BTC/USDT",
+        "template_name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "allow_partial_exits": false,
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "ema": 4,
+        "entry_size_pct": 100,
+        "exit_ref": "long",
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 25,
+        "sma_m": 21,
+        "stop": 0.03
+      },
+      "status": "ok",
+      "strategy_name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+      "trades_count": 84
+    },
+    {
+      "best_parameters": {
+        "direction": "long",
+        "ema": 55,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "roc": 30,
+        "rsi": 18,
+        "rsi_exit": 50,
+        "rsi_min": 55,
+        "stop": 0.026
+      },
+      "candles_count": 3239,
+      "duration_seconds": 0.919,
+      "execution_mode": "deep_15m",
+      "favorite_id": 196,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.0972915109127226,
+        "max_drawdown_pct": 9.72915109127226,
+        "profit_factor": 4.666839816122046,
+        "sharpe_ratio": 0.34129079242930677,
+        "total_return": 220.95413876143175,
+        "total_return_pct": 22095.413876143175,
+        "total_trades": 69.0,
+        "win_rate": 0.4927536231884058
+      },
+      "name": "BTC 1D WINNER 4 - Momentum com Força Relativa",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema": {
+            "max": 55,
+            "min": 55,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "roc": {
+            "max": 30,
+            "min": 30,
+            "step": 1
+          },
+          "rsi": {
+            "max": 18,
+            "min": 18,
+            "step": 1
+          },
+          "rsi_exit": {
+            "max": 50,
+            "min": 50,
+            "step": 1
+          },
+          "rsi_min": {
+            "max": 55,
+            "min": 55,
+            "step": 1
+          },
+          "stop": {
+            "max": 0.026,
+            "min": 0.026,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": "2017-08-17",
+        "symbol": "BTC/USDT",
+        "template_name": "quant_btc_1d_ema_roc_rsi_chain_w4_20260607",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "allow_partial_exits": false,
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "ema": 55,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "roc": 30,
+        "rsi": 18,
+        "rsi_exit": 50,
+        "rsi_min": 55,
+        "stop": 0.026
+      },
+      "status": "ok",
+      "strategy_name": "quant_btc_1d_ema_roc_rsi_chain_w4_20260607",
+      "trades_count": 69
+    },
+    {
+      "best_parameters": {
+        "direction": "long",
+        "ema": 14,
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 44,
+        "sma_m": 25,
+        "stop": 0.034
+      },
+      "candles_count": 3239,
+      "duration_seconds": 0.86,
+      "execution_mode": "deep_15m",
+      "favorite_id": 197,
+      "metrics_summary": {
+        "analysis_execution_mode": null,
+        "max_drawdown": 0.11072248654412152,
+        "max_drawdown_pct": 11.072248654412151,
+        "profit_factor": 8.999364864911616,
+        "sharpe_ratio": 0.3425583190308435,
+        "total_return": 224.04161005205074,
+        "total_return_pct": 22404.161005205075,
+        "total_trades": 41.0,
+        "win_rate": 0.5609756097560976
+      },
+      "name": "BTC 1D WINNER 5 - Médias com Continuidade Defensiva",
+      "payload": {
+        "allow_partial_exits": false,
+        "custom_ranges": {
+          "ema": {
+            "max": 14,
+            "min": 14,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "max": 44,
+            "min": 44,
+            "step": 1
+          },
+          "sma_m": {
+            "max": 25,
+            "min": 25,
+            "step": 1
+          },
+          "stop": {
+            "max": 0.034,
+            "min": 0.034,
+            "step": 0.0001
+          }
+        },
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "end_date": "2026-06-29",
+        "entry_size_pct": 100,
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "start_date": "2017-08-17",
+        "symbol": "BTC/USDT",
+        "template_name": "quant_btc_1d_ma_trend_chain_w5_20260607",
+        "timeframe": "1d"
+      },
+      "saved_parameters": {
+        "allow_partial_exits": false,
+        "data_source": "ccxt",
+        "deep_backtest": true,
+        "direction": "long",
+        "ema": 14,
+        "entry_size_pct": 100,
+        "exit_ref": "long",
+        "exit_size_pct": 100,
+        "initial_capital": 100,
+        "pyramiding": 0,
+        "sma_l": 44,
+        "sma_m": 25,
+        "stop": 0.034
+      },
+      "status": "ok",
+      "strategy_name": "quant_btc_1d_ma_trend_chain_w5_20260607",
+      "trades_count": 41
+    }
+  ],
+  "started_at": "2026-06-29T02:47:43.700878+00:00",
+  "symbol": "BTC/USDT",
+  "timeframe": "1d"
+}
