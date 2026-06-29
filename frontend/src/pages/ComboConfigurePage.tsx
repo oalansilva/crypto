@@ -117,7 +117,7 @@ export function ComboConfigurePage() {
 
     const fetchMetadata = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/combos/meta/${templateName}`)
+            const response = await authFetch(`${API_BASE_URL}/combos/meta/${templateName}`)
             const data = await response.json()
             setMetadata(data)
 
@@ -216,7 +216,7 @@ export function ComboConfigurePage() {
         if (!batchJobId || batchPauseCancelRequested) return
         setBatchPauseCancelRequested(true)
         try {
-            const res = await fetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/pause`, { method: 'POST' })
+            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/pause`, { method: 'POST' })
             if (!res.ok) setBatchPauseCancelRequested(false)
         } catch {
             setBatchPauseCancelRequested(false)
@@ -227,7 +227,7 @@ export function ComboConfigurePage() {
         if (!batchJobId || batchPauseCancelRequested) return
         setBatchPauseCancelRequested(true)
         try {
-            const res = await fetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/cancel`, { method: 'POST' })
+            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/cancel`, { method: 'POST' })
             if (!res.ok) setBatchPauseCancelRequested(false)
         } catch {
             setBatchPauseCancelRequested(false)
@@ -268,7 +268,7 @@ export function ComboConfigurePage() {
                         return
                     }
                 }
-                const res = await fetch(`${API_BASE_URL}/combos/optimize`, {
+                const res = await authFetch(`${API_BASE_URL}/combos/optimize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -331,7 +331,7 @@ export function ComboConfigurePage() {
         setClientElapsedSec(0)
         batchStartTimeRef.current = Date.now()
         try {
-            const res = await fetch(`${API_BASE_URL}/combos/backtest/batch`, {
+            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -363,7 +363,7 @@ export function ComboConfigurePage() {
         if (!batchJobId) return
         const poll = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}`)
+                const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}`)
                 if (!res.ok) return
                 const data = await res.json()
                 setBatchProgress(data)
