@@ -29,5 +29,5 @@
 
 - [x] 5.1 Validate this OpenSpec change and any affected focused tests.
 - [x] 5.2 Run Codex review on the exact diff before commit.
-- [ ] 5.3 Commit/integrate into `develop`, run `./restart`, and re-read served Favorites/API evidence if 5/5 succeeds or a product fix was required.
-- [ ] 5.4 Move card to `Status=Done` only after technical validation, integration into `develop`, runtime proof, and evidence comment; never move to `Homologado` without Alan approval.
+- [x] 5.3 Commit/integrate into `develop`, run `./restart`, and re-read served Favorites/API evidence if 5/5 succeeds or a product fix was required.
+- [x] 5.4 Move card to `Status=Done` only after technical validation, integration into `develop`, runtime proof, and evidence comment; never move to `Homologado` without Alan approval.
