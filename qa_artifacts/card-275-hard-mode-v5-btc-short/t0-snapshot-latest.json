@@ -1,0 +1,3525 @@
+{
+  "compatible_templates": [
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-24T23:16:10.435919",
+      "description": "Volatility breakout strategy using Bollinger Bands.",
+      "inferred_direction": null,
+      "name": "Bollinger_Breakout",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "bb_length",
+            "bb_std"
+          ]
+        ],
+        "parameters": {
+          "bb_length": {
+            "max": 50,
+            "min": 10
+          },
+          "bb_std": {
+            "max": 3.0,
+            "min": 1.5
+          }
+        }
+      },
+      "public_description": "Observa momentos em que a volatilidade começa a expandir e pode abrir espaço para rompimento. Não substitui avaliação de risco e confirmação.",
+      "template_data": {
+        "entry_logic": "close > bb.upper",
+        "exit_logic": "close < bb.middle",
+        "indicators": [
+          {
+            "alias": "bb",
+            "params": {
+              "length": 20,
+              "std": 2.0
+            },
+            "type": "BBANDS"
+          }
+        ],
+        "stop_loss": 0.03
+      },
+      "updated_at": "2026-06-02T03:05:43.960742"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-18T17:52:43",
+      "description": "Price breakout confirmed by volume spike",
+      "inferred_direction": null,
+      "name": "Example: Breakout with Volume",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "stop_loss"
+          ],
+          [
+            "volume_sma_vol_avg"
+          ]
+        ],
+        "parameters": {
+          "stop_loss": {
+            "default": 0.015,
+            "max": 0.025,
+            "min": 0.01
+          },
+          "volume_sma_vol_avg": {
+            "default": 20,
+            "max": 30,
+            "min": 10
+          }
+        }
+      },
+      "public_description": "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco.",
+      "template_data": {
+        "entry_logic": "(volume > vol_avg * 2) and (close > high.shift(1))",
+        "exit_logic": "(close < close.shift(1).rolling(5).max())",
+        "indicators": [
+          {
+            "alias": "vol_avg",
+            "optimization_range": {
+              "max": 30,
+              "min": 10,
+              "step": 5
+            },
+            "params": {
+              "length": 20
+            },
+            "type": "volume_sma"
+          }
+        ],
+        "stop_loss": {
+          "default": 0.015,
+          "optimization_range": {
+            "max": 0.025,
+            "min": 0.01,
+            "step": 0.005
+          }
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960749"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-18T17:52:43",
+      "description": "Fast EMAs for scalping in short timeframes",
+      "inferred_direction": null,
+      "name": "Example: Scalping EMA 5/13",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_fast",
+            "ema_slow",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema_fast": {
+            "default": 5,
+            "max": 10,
+            "min": 3
+          },
+          "ema_slow": {
+            "default": 13,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.01,
+            "max": 0.015,
+            "min": 0.005
+          }
+        }
+      },
+      "public_description": "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco.",
+      "template_data": {
+        "entry_logic": "crossover(fast, slow)",
+        "exit_logic": "crossunder(fast, slow)",
+        "indicators": [
+          {
+            "alias": "fast",
+            "optimization_range": {
+              "max": 10,
+              "min": 3,
+              "step": 1
+            },
+            "params": {
+              "length": 5
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "slow",
+            "optimization_range": {
+              "max": 20,
+              "min": 10,
+              "step": 1
+            },
+            "params": {
+              "length": 13
+            },
+            "type": "ema"
+          }
+        ],
+        "stop_loss": {
+          "default": 0.01,
+          "optimization_range": {
+            "max": 0.015,
+            "min": 0.005,
+            "step": 0.0025
+          }
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960752"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-18T17:52:43",
+      "description": "RSI divergence detection for swing trading",
+      "inferred_direction": null,
+      "name": "Example: Swing RSI Divergence",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "rsi_length",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "rsi_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.02,
+            "max": 0.03,
+            "min": 0.01
+          }
+        }
+      },
+      "public_description": "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco.",
+      "template_data": {
+        "entry_logic": "(RSI_14 < 30) and (close < close.shift(5))",
+        "exit_logic": "(RSI_14 > 70)",
+        "indicators": [
+          {
+            "optimization_range": {
+              "max": 20,
+              "min": 10,
+              "step": 1
+            },
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": {
+          "default": 0.02,
+          "optimization_range": {
+            "max": 0.03,
+            "min": 0.01,
+            "step": 0.005
+          }
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960754"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-24T23:16:10.435922",
+      "description": "Standard MACD Trend Following.",
+      "inferred_direction": null,
+      "name": "MACD_Cross",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "macd_fast",
+            "macd_slow",
+            "macd_signal"
+          ]
+        ],
+        "parameters": {
+          "macd_fast": {
+            "max": 20,
+            "min": 8
+          },
+          "macd_signal": {
+            "max": 15,
+            "min": 5
+          },
+          "macd_slow": {
+            "max": 40,
+            "min": 20
+          }
+        }
+      },
+      "public_description": "Acompanha mudanças de momentum para indicar quando a força do movimento pode estar mudando de lado.",
+      "template_data": {
+        "entry_logic": "macd.macd > macd.signal",
+        "exit_logic": "macd.macd < macd.signal",
+        "indicators": [
+          {
+            "alias": "macd",
+            "params": {
+              "fast": 12,
+              "signal": 9,
+              "slow": 26
+            },
+            "type": "MACD"
+          }
+        ],
+        "stop_loss": 0.05
+      },
+      "updated_at": "2026-06-02T03:05:43.960756"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-24T23:16:10.435912",
+      "description": "Simple RSI + EMA crossover strategy for scalping.",
+      "inferred_direction": null,
+      "name": "RSI_EMA_Scalping",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "rsi_length",
+            "ema_fast_length",
+            "ema_slow_length"
+          ]
+        ],
+        "parameters": {
+          "ema_fast_length": {
+            "max": 15,
+            "min": 5
+          },
+          "ema_slow_length": {
+            "max": 50,
+            "min": 15
+          },
+          "rsi_length": {
+            "max": 25,
+            "min": 5
+          }
+        }
+      },
+      "public_description": "Foca leituras rápidas de curto prazo para apoiar decisões em movimentos mais ágeis. Exige acompanhamento próximo e controle de risco.",
+      "template_data": {
+        "description": "Simple RSI + EMA crossover strategy for scalping.",
+        "entry_logic": "rsi < 30 and close > ema_fast",
+        "exit_logic": "rsi > 70 or close < ema_slow",
+        "id": null,
+        "indicators": [
+          {
+            "alias": "rsi",
+            "optimization_range": null,
+            "params": {
+              "length": 14
+            },
+            "type": "RSI"
+          },
+          {
+            "alias": "ema_fast",
+            "optimization_range": null,
+            "params": {
+              "length": 9
+            },
+            "type": "EMA"
+          },
+          {
+            "alias": "ema_slow",
+            "optimization_range": null,
+            "params": {
+              "length": 21
+            },
+            "type": "EMA"
+          }
+        ],
+        "is_example": false,
+        "is_prebuilt": true,
+        "is_readonly": false,
+        "name": "RSI_EMA_Scalping",
+        "optimization_schema": {
+          "correlated_groups": [
+            [
+              "rsi_length",
+              "ema_fast_length",
+              "ema_slow_length"
+            ]
+          ],
+          "parameters": {
+            "ema_fast_length": {
+              "max": 15,
+              "min": 5,
+              "step": 1
+            },
+            "ema_slow_length": {
+              "max": 50,
+              "min": 15,
+              "step": 1
+            },
+            "rsi_length": {
+              "max": 25,
+              "min": 5,
+              "step": 1
+            }
+          }
+        },
+        "stop_loss": {
+          "default": 0.02
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960758"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "Bollinger Bands + RSI + ADX for mean reversion with trend filter",
+      "inferred_direction": null,
+      "name": "bollinger_rsi_adx",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "bb_length",
+            "bb_std",
+            "stop_loss",
+            "rsi_length",
+            "adx_length",
+            "adx_threshold"
+          ]
+        ],
+        "parameters": {
+          "adx_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "adx_threshold": {
+            "default": 20,
+            "max": 30,
+            "min": 15
+          },
+          "bb_length": {
+            "default": 20,
+            "max": 30,
+            "min": 15
+          },
+          "bb_std": {
+            "default": 2,
+            "max": 2.5,
+            "min": 1.5
+          },
+          "rsi_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.02,
+            "max": 0.013,
+            "min": 0.005
+          }
+        }
+      },
+      "public_description": "Busca leituras de possível retorno ao equilíbrio depois de movimentos esticados. Ajuda a separar exagero de mercado de tendência persistente.",
+      "template_data": {
+        "description": "Bollinger Bands + RSI + ADX for mean reversion with trend filter",
+        "entry_logic": "(close < bb_lower) & (RSI_14 < 30) & (ADX_14 > 20)",
+        "exit_logic": "(close > bb_middle) | (RSI_14 > 70)",
+        "id": null,
+        "indicators": [
+          {
+            "alias": "bb",
+            "optimization_range": null,
+            "params": {
+              "length": 20,
+              "std": 2
+            },
+            "type": "bbands"
+          },
+          {
+            "alias": null,
+            "optimization_range": null,
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          },
+          {
+            "alias": null,
+            "optimization_range": null,
+            "params": {
+              "length": 14
+            },
+            "type": "adx"
+          }
+        ],
+        "is_example": false,
+        "is_prebuilt": true,
+        "is_readonly": false,
+        "name": "bollinger_rsi_adx",
+        "optimization_schema": {
+          "correlated_groups": [
+            [
+              "bb_length",
+              "bb_std",
+              "stop_loss",
+              "rsi_length",
+              "adx_length",
+              "adx_threshold"
+            ]
+          ],
+          "parameters": {
+            "adx_length": {
+              "default": 14,
+              "max": 20,
+              "min": 10,
+              "step": 1
+            },
+            "adx_threshold": {
+              "default": 20,
+              "max": 30,
+              "min": 15,
+              "step": 1
+            },
+            "bb_length": {
+              "default": 20,
+              "max": 30,
+              "min": 15,
+              "step": 1
+            },
+            "bb_std": {
+              "default": 2,
+              "max": 2.5,
+              "min": 1.5,
+              "step": 0.1
+            },
+            "rsi_length": {
+              "default": 14,
+              "max": 20,
+              "min": 10,
+              "step": 1
+            },
+            "stop_loss": {
+              "default": 0.02,
+              "max": 0.013,
+              "min": 0.005,
+              "step": 0.002
+            }
+          }
+        },
+        "stop_loss": {
+          "default": 0.02
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960760"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "EMA + MACD + Volume combo for trend confirmation with volume filter",
+      "inferred_direction": null,
+      "name": "ema_macd_volume",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "macd_fast",
+            "macd_slow",
+            "macd_signal",
+            "stop_loss"
+          ],
+          [
+            "ema_length"
+          ],
+          [
+            "volume_length"
+          ]
+        ],
+        "parameters": {
+          "ema_length": {
+            "default": 20,
+            "max": 50,
+            "min": 10,
+            "step": 1
+          },
+          "macd_fast": {
+            "default": 12,
+            "max": 15,
+            "min": 8,
+            "step": 1
+          },
+          "macd_signal": {
+            "default": 9,
+            "max": 12,
+            "min": 5,
+            "step": 1
+          },
+          "macd_slow": {
+            "default": 26,
+            "max": 30,
+            "min": 20,
+            "step": 1
+          },
+          "stop_loss": {
+            "default": 0.02,
+            "max": 0.13,
+            "min": 0.005,
+            "step": 0.002
+          },
+          "volume_length": {
+            "default": 20,
+            "max": 30,
+            "min": 10,
+            "step": 1
+          }
+        }
+      },
+      "public_description": "Prioriza movimentos em que direção, força e participação do mercado parecem convergir. Útil para acompanhar tendências com confirmação ampla, sem garantia de resultado.",
+      "template_data": {
+        "entry_logic": "(close > EMA_20) & (MACD_macd > MACD_signal) & (volume > vol_avg)",
+        "exit_logic": "(MACD_macd < MACD_signal) | (close < EMA_20)",
+        "indicators": [
+          {
+            "params": {
+              "length": 20
+            },
+            "type": "ema"
+          },
+          {
+            "params": {
+              "fast": 12,
+              "signal": 9,
+              "slow": 26
+            },
+            "type": "macd"
+          },
+          {
+            "alias": "vol_avg",
+            "params": {
+              "length": 20
+            },
+            "type": "volume_sma"
+          }
+        ],
+        "stop_loss": 0.02
+      },
+      "updated_at": "2026-06-02T03:05:43.960762"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "EMA + RSI combo for trend following with momentum confirmation",
+      "inferred_direction": null,
+      "name": "ema_rsi",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_fast",
+            "ema_slow",
+            "stop_loss"
+          ],
+          [
+            "rsi_period",
+            "rsi_min",
+            "rsi_max"
+          ]
+        ],
+        "parameters": {
+          "ema_fast": {
+            "default": 9,
+            "max": 20,
+            "min": 5
+          },
+          "ema_slow": {
+            "default": 21,
+            "max": 50,
+            "min": 15
+          },
+          "rsi_max": {
+            "default": 50,
+            "max": 80,
+            "min": 60
+          },
+          "rsi_min": {
+            "default": 30,
+            "max": 40,
+            "min": 20
+          },
+          "rsi_period": {
+            "default": 14,
+            "max": 21,
+            "min": 7
+          },
+          "stop_loss": {
+            "default": 0.015,
+            "max": 0.05,
+            "min": 0.01
+          }
+        }
+      },
+      "public_description": "Observa força e fôlego do movimento para indicar quando uma retomada pode estar se formando. Serve como apoio para avaliar entrada, não como recomendação automática.",
+      "template_data": {
+        "entry_logic": "(close > fast) & (close > slow) & (RSI_14 > 30) & (RSI_14 < 50)",
+        "exit_logic": "(RSI_14 > 70) | (close < fast)",
+        "indicators": [
+          {
+            "alias": "fast",
+            "params": {
+              "length": 9
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "slow",
+            "params": {
+              "length": 21
+            },
+            "type": "ema"
+          },
+          {
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.015
+      },
+      "updated_at": "2026-06-02T03:05:43.960764"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "EMA + RSI + Fibonacci for trend following with retracement entries",
+      "inferred_direction": null,
+      "name": "ema_rsi_fibonacci",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_length",
+            "stop_loss"
+          ],
+          [
+            "rsi_length"
+          ],
+          [
+            "fib_lookback"
+          ],
+          [
+            "fib_tolerance"
+          ]
+        ],
+        "parameters": {
+          "ema_length": {
+            "default": 200,
+            "max": 300,
+            "min": 100
+          },
+          "fib_lookback": {
+            "default": 50,
+            "max": 100,
+            "min": 30
+          },
+          "fib_tolerance": {
+            "default": 0.02,
+            "max": 0.05,
+            "min": 0.01
+          },
+          "rsi_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.02,
+            "max": 0.03,
+            "min": 0.01
+          }
+        }
+      },
+      "public_description": "Observa recuos dentro de uma direção principal para identificar possíveis retomadas. Ajuda a estudar continuidade, sem expor a receita técnica da leitura.",
+      "template_data": {
+        "entry_logic": "(close > trend) & (RSI_14 > 40) & (RSI_14 < 60)",
+        "exit_logic": "(RSI_14 > 70) | (close < trend)",
+        "indicators": [
+          {
+            "alias": "trend",
+            "params": {
+              "length": 200
+            },
+            "type": "ema"
+          },
+          {
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.02
+      },
+      "updated_at": "2026-06-02T03:05:43.960766"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "Triple Moving Average Crossover Strategy - Classic trend following with three averages",
+      "inferred_direction": null,
+      "name": "multi_ma_crossover",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_short",
+            "sma_medium",
+            "sma_long",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema_short": {
+            "default": 9,
+            "max": 20,
+            "min": 3,
+            "step": 1
+          },
+          "sma_long": {
+            "default": 50,
+            "max": 100,
+            "min": 20,
+            "step": 1
+          },
+          "sma_medium": {
+            "default": 21,
+            "max": 40,
+            "min": 10,
+            "step": 1
+          },
+          "stop_loss": {
+            "default": 0,
+            "max": 0.13,
+            "min": 0.005,
+            "step": 0.002
+          }
+        }
+      },
+      "public_description": "Acompanha mudanças de direção para apoiar decisões quando o mercado mostra virada de tendência. Use como sinal de contexto, sempre conferindo risco e histórico antes de agir.",
+      "template_data": {
+        "entry_logic": "(crossover(short, long) | crossover(short, medium)) & (short > long)",
+        "exit_logic": "crossunder(short, medium)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 9
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 21
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 50
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.0
+      },
+      "updated_at": "2026-06-02T03:05:43.960768"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-02T03:05:43.970729",
+      "description": "BTC MEDIAS (FINAL - trend filter fixo). EMA curta + SMA inter + SMA longa. Entrada: (crossover short/long ou short/medium) e tendência alta (short > long). Saída: crossunder(short, long). Stop % configurável.",
+      "inferred_direction": null,
+      "name": "multi_ma_crossoverV2",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_short",
+            "sma_medium",
+            "sma_long",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema_short": {
+            "default": 18,
+            "max": 20,
+            "min": 3
+          },
+          "sma_long": {
+            "default": 35,
+            "max": 100,
+            "min": 20
+          },
+          "sma_medium": {
+            "default": 20,
+            "max": 40,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.042,
+            "max": 0.13,
+            "min": 0.005
+          }
+        }
+      },
+      "public_description": "Filtra movimentos direcionais e procura momentos em que a tendência parece ganhar confirmação. Ajuda a comparar oportunidades sem prometer continuidade do movimento.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, long)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 18
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 20
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 35
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.042
+      },
+      "updated_at": "2026-06-02T03:05:43.970736"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:38.646525",
+      "description": "Combina tendência, momentum e força relativa do BTC em 1D para buscar continuidade com queda menor na cadeia. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ema_roc_rsi_chain_w4_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "roc",
+            "rsi",
+            "rsi_min",
+            "rsi_exit",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 55,
+            "max": 55,
+            "min": 55,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "roc": {
+            "default": 30,
+            "max": 30,
+            "min": 30,
+            "step": 1
+          },
+          "rsi": {
+            "default": 18,
+            "max": 18,
+            "min": 18,
+            "step": 1
+          },
+          "rsi_exit": {
+            "default": 50,
+            "max": 50,
+            "min": 50,
+            "step": 1
+          },
+          "rsi_min": {
+            "default": 55,
+            "max": 55,
+            "min": 55,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.026,
+            "max": 0.026,
+            "min": 0.026,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Combina tendência, momentum e força relativa do BTC em 1D para buscar continuidade com queda menor na cadeia. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(close > trend) & (roc > 0) & (rsi > 55)",
+        "exit_logic": "(close < trend) | (rsi < 50)",
+        "indicators": [
+          {
+            "alias": "trend",
+            "params": {
+              "length": 55
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "roc",
+            "params": {
+              "length": 30
+            },
+            "type": "roc"
+          },
+          {
+            "alias": "rsi",
+            "params": {
+              "length": 18
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.026
+      },
+      "updated_at": "2026-06-07T03:03:38.646525"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T01:51:20.694300",
+      "description": "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "roc",
+            "rsi",
+            "rsi_min",
+            "rsi_exit",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 32,
+            "max": 34,
+            "min": 30,
+            "step": 1
+          },
+          "roc": {
+            "default": 9,
+            "max": 10,
+            "min": 8,
+            "step": 1
+          },
+          "rsi": {
+            "default": 10,
+            "max": 10,
+            "min": 10,
+            "step": 1
+          },
+          "rsi_exit": {
+            "default": 45,
+            "max": 45,
+            "min": 45,
+            "step": 1
+          },
+          "rsi_min": {
+            "default": 40,
+            "max": 42,
+            "min": 38,
+            "step": 1
+          },
+          "stop_loss": {
+            "default": 0.028,
+            "max": 0.03,
+            "min": 0.026,
+            "step": 0.001
+          }
+        }
+      },
+      "public_description": "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(close > trend) & (roc > 0) & (rsi > 40)",
+        "exit_logic": "(close < trend) | (rsi < 45)",
+        "indicators": [
+          {
+            "alias": "trend",
+            "params": {
+              "length": 32
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "roc",
+            "params": {
+              "length": 9
+            },
+            "type": "roc"
+          },
+          {
+            "alias": "rsi",
+            "params": {
+              "length": 10
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.028
+      },
+      "updated_at": "2026-06-07T01:51:20.694300"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:03.516483",
+      "description": "Acompanha viradas de tendência do BTC em 1D com filtro de médias e controle de risco para reduzir quedas frente ao benchmark. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ma_trend_chain_w1_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "sma_m",
+            "sma_l",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 20,
+            "max": 20,
+            "min": 20,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "default": 43,
+            "max": 43,
+            "min": 43,
+            "step": 1
+          },
+          "sma_m": {
+            "default": 20,
+            "max": 20,
+            "min": 20,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.034,
+            "max": 0.034,
+            "min": 0.034,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Acompanha viradas de tendência do BTC em 1D com filtro de médias e controle de risco para reduzir quedas frente ao benchmark. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, long)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 20
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 20
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 43
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.034
+      },
+      "updated_at": "2026-06-07T03:03:32.612026"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:34.610081",
+      "description": "Acompanha continuidade do BTC em 1D com leitura de médias e saída mais ágil quando o movimento perde força. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ma_trend_chain_w2_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "sma_m",
+            "sma_l",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 11,
+            "max": 11,
+            "min": 11,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "default": 42,
+            "max": 42,
+            "min": 42,
+            "step": 1
+          },
+          "sma_m": {
+            "default": 39,
+            "max": 39,
+            "min": 39,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.05,
+            "max": 0.05,
+            "min": 0.05,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Acompanha continuidade do BTC em 1D com leitura de médias e saída mais ágil quando o movimento perde força. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, medium)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 11
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 39
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 42
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.05
+      },
+      "updated_at": "2026-06-07T03:03:34.610081"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:36.604462",
+      "description": "Filtra tendências do BTC em 1D com médias próximas e proteção reforçada para buscar melhora de drawdown sem abandonar retorno. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "sma_m",
+            "sma_l",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 4,
+            "max": 4,
+            "min": 4,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "default": 25,
+            "max": 25,
+            "min": 25,
+            "step": 1
+          },
+          "sma_m": {
+            "default": 21,
+            "max": 21,
+            "min": 21,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.03,
+            "max": 0.03,
+            "min": 0.03,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Filtra tendências do BTC em 1D com médias próximas e proteção reforçada para buscar melhora de drawdown sem abandonar retorno. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, long)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 4
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 21
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 25
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.03
+      },
+      "updated_at": "2026-06-07T03:03:36.604462"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:40.662051",
+      "description": "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ma_trend_chain_w5_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "sma_m",
+            "sma_l",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 14,
+            "max": 14,
+            "min": 14,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "default": 44,
+            "max": 44,
+            "min": 44,
+            "step": 1
+          },
+          "sma_m": {
+            "default": 25,
+            "max": 25,
+            "min": 25,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.034,
+            "max": 0.034,
+            "min": 0.034,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, long)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 14
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 25
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 44
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.034
+      },
+      "updated_at": "2026-06-07T03:03:40.662051"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-02T03:05:43.970738",
+      "description": "BTC Short Swing – EMA200 Pullback (Stop %). Short-only: bearish trend (close < EMA200), pullback to EMA21/50 (tolerance 1%), RSI 45–70, rejection candle (shooting star / bearish engulfing / strong bearish). Exit: stop % or trend/RSI reversal.",
+      "inferred_direction": "short",
+      "name": "short_ema200_pullback",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_ema21",
+            "ema_ema50",
+            "ema_ema200",
+            "rsi_length",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema_ema200": {
+            "default": 200,
+            "max": 250,
+            "min": 150
+          },
+          "ema_ema21": {
+            "default": 21,
+            "max": 30,
+            "min": 14
+          },
+          "ema_ema50": {
+            "default": 50,
+            "max": 70,
+            "min": 40
+          },
+          "rsi_length": {
+            "default": 14,
+            "max": 18,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.06,
+            "max": 0.1,
+            "min": 0.03
+          }
+        }
+      },
+      "public_description": "Acompanha repiques contra uma direção principal de baixa para apoiar decisões de venda. Use apenas como leitura de contexto e com atenção ao risco.",
+      "template_data": {
+        "entry_logic": "(close < ema200) & ( ((close - ema21).abs() / ema21 * 100 <= 1.0) | ((high >= ema21) & (low <= ema21)) | ((close - ema50).abs() / ema50 * 100 <= 1.0) | ((high >= ema50) & (low <= ema50)) ) & (RSI_14 >= 45) & (RSI_14 <= 70) & ((high - low) > 0) & (   ( ((high - (open + close + (open - close).abs()) / 2) >= (close - open).abs() * 2) & (close < open) & (close < (low + (high - low) * 0.5)) )   | ( (close < open) & (open >= close.shift(1)) & (close <= open.shift(1)) )   | ( (close < open) & ((open - close) >= (high - low) * 0.5) ) )",
+        "exit_logic": "(close > ema200) | (RSI_14 < 45)",
+        "indicators": [
+          {
+            "alias": "ema21",
+            "params": {
+              "length": 21
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "ema50",
+            "params": {
+              "length": 50
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "ema200",
+            "params": {
+              "length": 200
+            },
+            "type": "ema"
+          },
+          {
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.06
+      },
+      "updated_at": "2026-06-02T03:05:43.970740"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "Volume + ATR Breakout strategy for volatility-based entries",
+      "inferred_direction": null,
+      "name": "volume_atr_breakout",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "atr_length",
+            "atr_entry_mult",
+            "atr_exit_mult",
+            "stop_loss"
+          ],
+          [
+            "volume_length"
+          ],
+          [
+            "volume_multiplier"
+          ]
+        ],
+        "parameters": {
+          "atr_entry_mult": {
+            "default": 0.5,
+            "max": 1.0,
+            "min": 0.3
+          },
+          "atr_exit_mult": {
+            "default": 0.3,
+            "max": 0.5,
+            "min": 0.2
+          },
+          "atr_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.025,
+            "max": 0.04,
+            "min": 0.015
+          },
+          "volume_length": {
+            "default": 20,
+            "max": 30,
+            "min": 10
+          },
+          "volume_multiplier": {
+            "default": 1.5,
+            "max": 2.0,
+            "min": 1.2
+          }
+        }
+      },
+      "public_description": "Acompanha rompimentos quando preço, volume e volatilidade sugerem aceleração. Deve ser validada junto ao risco, pois rompimentos podem falhar.",
+      "template_data": {
+        "entry_logic": "(volume > vol_avg * 1.5) & (close > close.shift(1) + ATR_14 * 0.5)",
+        "exit_logic": "close < (close.shift(1) - ATR_14 * 0.3)",
+        "indicators": [
+          {
+            "alias": "vol_avg",
+            "params": {
+              "length": 20
+            },
+            "type": "volume_sma"
+          },
+          {
+            "params": {
+              "length": 14
+            },
+            "type": "atr"
+          }
+        ],
+        "stop_loss": 0.025
+      },
+      "updated_at": "2026-06-02T03:05:43.974280"
+    }
+  ],
+  "favorite_counts": {
+    "all_symbol_timeframe": 8,
+    "by_direction": {
+      "long": 8,
+      "short": 0
+    },
+    "directional": 0
+  },
+  "favorites": [],
+  "favorites_api": {
+    "api": "http://127.0.0.1:8003",
+    "captured_at": "2026-06-29T01:53:44.121776+00:00",
+    "direction": "short",
+    "favorites": [],
+    "status": "ok",
+    "status_code": 200,
+    "symbol": "BTC/USDT",
+    "timeframe": "1d"
+  },
+  "pine_scripts": [
+    {
+      "bytes": 755,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/card-262-hard-mode-v5/01_quant_btc_1d_ma_trend_chain_w1_20260607.pine",
+      "sha256": "c86abb4900b21dbb720655ddba3617c8ad140dab8b1b0c1db6003d9670f273ae"
+    },
+    {
+      "bytes": 755,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/card-262-hard-mode-v5/02_quant_btc_1d_ma_trend_chain_w2_20260607.pine",
+      "sha256": "de1b3183f9d279d95de6cf9935d0d8b82975c1e9d8a8ee1ad66d5cc7c0c3380b"
+    },
+    {
+      "bytes": 759,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/card-262-hard-mode-v5/03_quant_btc_1d_ma_trend_chain_w3_20260607.pine",
+      "sha256": "5f506a76e13dd4dab73ca4cd5a3697bd64ac8e38879a65bd16a1edb59f364335"
+    },
+    {
+      "bytes": 648,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/card-262-hard-mode-v5/04_quant_btc_1d_ema_roc_rsi_chain_w4_20260607.pine",
+      "sha256": "670f365d29a2e44bcd799e65bd1571621679cccd5d5e71d7801f22fd080cd408"
+    },
+    {
+      "bytes": 766,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/card-262-hard-mode-v5/05_quant_btc_1d_ma_trend_chain_w5_20260607.pine",
+      "sha256": "06c6006f3e745cb191f9019030aa5aa275c6d4c06ce01e490a76481196f2824c"
+    },
+    {
+      "bytes": 2048,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607.pine",
+      "sha256": "407056d477e105d06859b42a278db29c592ab3504803357c4416a710d6d859e5"
+    },
+    {
+      "bytes": 1920,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/quant_btc_1d_roc_ema_momentum_guard_long_v3.pine",
+      "sha256": "1de8743bb2066ab373fd804980a6927f87d173b3ff58cc605433f3777e6441b3"
+    },
+    {
+      "bytes": 1605,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/quant_btc_1d_roc_ema_regime_long_v2.pine",
+      "sha256": "08932085302b4390c49ee568c3622f768510fd93b5bc2826ea3c4f36c89fc86e"
+    },
+    {
+      "bytes": 1917,
+      "compatible_with_direction": false,
+      "contains_strategy_long": true,
+      "contains_strategy_short": false,
+      "first_line": "//@version=5",
+      "path": "docs/tradingview/quant_btc_1d_roc_ema_trend_rider_long_v4.pine",
+      "sha256": "63d36265168daec82adb56b0e5900f68483ac562a1a9abd72e9895fb5828d724"
+    }
+  ],
+  "public_mappings": {
+    "resolver_functions": [
+      "public_strategy_display_name",
+      "public_strategy_description"
+    ],
+    "source": "backend/app/services/strategy_descriptions.py",
+    "strategy_description": {
+      "bollinger_breakout": "Observa momentos em que a volatilidade começa a expandir e pode abrir espaço para rompimento. Não substitui avaliação de risco e confirmação.",
+      "bollinger_rsi_adx": "Busca leituras de possível retorno ao equilíbrio depois de movimentos esticados. Ajuda a separar exagero de mercado de tendência persistente.",
+      "ema_macd_volume": "Prioriza movimentos em que direção, força e participação do mercado parecem convergir. Útil para acompanhar tendências com confirmação ampla, sem garantia de resultado.",
+      "ema_rsi": "Observa força e fôlego do movimento para indicar quando uma retomada pode estar se formando. Serve como apoio para avaliar entrada, não como recomendação automática.",
+      "ema_rsi_fibonacci": "Observa recuos dentro de uma direção principal para identificar possíveis retomadas. Ajuda a estudar continuidade, sem expor a receita técnica da leitura.",
+      "example: breakout with volume": "Procura rompimentos que ganham participação do mercado. Deve ser usada como apoio para comparar cenários, não como promessa de acerto.",
+      "example: scalping ema 5/13": "Apoia leituras curtas e rápidas para quem acompanha o movimento de perto. Não revela a configuração técnica usada.",
+      "example: swing rsi divergence": "Observa sinais de enfraquecimento do movimento para estudar possíveis reversões em operações de swing.",
+      "macd_cross": "Acompanha mudanças de momentum para indicar quando a força do movimento pode estar mudando de lado.",
+      "multi_ma_crossover": "Acompanha mudanças de direção para apoiar decisões quando o mercado mostra virada de tendência. Use como sinal de contexto, sempre conferindo risco e histórico antes de agir.",
+      "multi_ma_crossoverv2": "Filtra movimentos direcionais e procura momentos em que a tendência parece ganhar confirmação. Ajuda a comparar oportunidades sem prometer continuidade do movimento.",
+      "quant_btc_1d_adx_momentum_guard_long_v1": "Usa leituras de momentum, tendência e regime de mercado para avaliar continuidade no BTC. Serve como apoio à decisão e deve ser comparada com histórico, contexto do ativo e risco.",
+      "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": "Combina tendência, momentum e força relativa do BTC em 1D para buscar continuidade com queda menor na cadeia. Use como apoio e sempre confira risco e histórico.",
+      "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607": "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico.",
+      "quant_btc_1d_ma_trend_chain_w1_20260607": "Acompanha viradas de tendência do BTC em 1D com filtro de médias e controle de risco para reduzir quedas frente ao benchmark. Use como apoio e sempre confira risco e histórico.",
+      "quant_btc_1d_ma_trend_chain_w2_20260607": "Acompanha continuidade do BTC em 1D com leitura de médias e saída mais ágil quando o movimento perde força. Use como apoio e sempre confira risco e histórico.",
+      "quant_btc_1d_ma_trend_chain_w3_20260607": "Filtra tendências do BTC em 1D com médias próximas e proteção reforçada para buscar melhora de drawdown sem abandonar retorno. Use como apoio e sempre confira risco e histórico.",
+      "quant_btc_1d_ma_trend_chain_w5_20260607": "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico.",
+      "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Acompanha a força direcional do BTC com filtros de proteção para evitar entradas em contexto fraco. Use como apoio para avaliar continuidade, sempre conferindo risco e histórico.",
+      "quant_btc_roc_ema_momentum_guard_long_v3": "Acompanha a força direcional do BTC com filtros de proteção para evitar entradas em contexto fraco. Use como apoio para avaliar continuidade, sempre conferindo risco e histórico.",
+      "rsi_ema_scalping": "Foca leituras rápidas de curto prazo para apoiar decisões em movimentos mais ágeis. Exige acompanhamento próximo e controle de risco.",
+      "short_ema200_pullback": "Acompanha repiques contra uma direção principal de baixa para apoiar decisões de venda. Use apenas como leitura de contexto e com atenção ao risco.",
+      "volume_atr_breakout": "Acompanha rompimentos quando preço, volume e volatilidade sugerem aceleração. Deve ser validada junto ao risco, pois rompimentos podem falhar."
+    },
+    "strategy_display_name": {
+      "bollinger_breakout": "Bandas: Expansão de Volatilidade",
+      "bollinger_rsi_adx": "Bandas + RSI: Retorno ao Equilíbrio",
+      "ema_macd_volume": "MACD + Volume: Movimento com Confirmação",
+      "ema_rsi": "RSI: Retomada com Força",
+      "ema_rsi_fibonacci": "Fibonacci: Recuo de Retomada",
+      "example_breakout_with_volume": "Volume: Rompimento com Pressão",
+      "example_scalping_ema_5_13": "Médias Móveis: Leitura Ágil",
+      "example_swing_rsi_divergence": "RSI: Virada de Swing",
+      "macd_cross": "MACD: Mudança de Ritmo",
+      "multi_ma_crossover": "Médias Móveis: Tendência em Virada",
+      "multi_ma_crossoverv2": "Médias Móveis: Tendência Confirmada",
+      "quant_btc_1d_adx_momentum_guard_long_v1": "Momentum BTC: Continuidade com Regime",
+      "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": "BTC 1D WINNER 4: Momentum com Força Relativa",
+      "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607": "Momentum BTC: Continuidade com Guard RSI",
+      "quant_btc_1d_ma_trend_chain_w1_20260607": "BTC 1D WINNER 1: Médias com Risco Menor",
+      "quant_btc_1d_ma_trend_chain_w2_20260607": "BTC 1D WINNER 2: Médias com Saída Ágil",
+      "quant_btc_1d_ma_trend_chain_w3_20260607": "BTC 1D WINNER 3: Médias com Defesa Reforçada",
+      "quant_btc_1d_ma_trend_chain_w5_20260607": "BTC 1D WINNER 5: Médias com Continuidade Defensiva",
+      "quant_btc_1d_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
+      "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
+      "rsi_ema_scalping": "RSI: Movimento Curto",
+      "short_ema200_pullback": "Médias Móveis: Repique de Baixa",
+      "volume_atr_breakout": "Volume + Volatilidade: Rompimento com Pressão"
+    }
+  },
+  "revalidated_favorites": {
+    "benchmarks": {
+      "BENCHMARK_DD": null,
+      "BENCHMARK_PARETO_SET": [],
+      "BENCHMARK_PF": null,
+      "BENCHMARK_RETURN": null,
+      "BENCHMARK_SHARPE": null
+    },
+    "completed_at": "2026-06-29T01:53:45.989006+00:00",
+    "results": [],
+    "started_at": "2026-06-29T01:53:45.981422+00:00"
+  },
+  "snapshot": {
+    "card": 275,
+    "direction": "short",
+    "invariants": {
+      "allow_partial_exits": false,
+      "deep_backtest": true,
+      "entry_size_pct": 100,
+      "exit_size_pct": 100,
+      "initial_capital": 100,
+      "mixed_directions_allowed": false,
+      "pyramiding": 0
+    },
+    "symbol": "BTC/USDT",
+    "timeframe": "1d",
+    "timestamp_utc": "2026-06-29T01:53:43.957302+00:00"
+  },
+  "templates": [
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-24T23:16:10.435919",
+      "description": "Volatility breakout strategy using Bollinger Bands.",
+      "inferred_direction": null,
+      "name": "Bollinger_Breakout",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "bb_length",
+            "bb_std"
+          ]
+        ],
+        "parameters": {
+          "bb_length": {
+            "max": 50,
+            "min": 10
+          },
+          "bb_std": {
+            "max": 3.0,
+            "min": 1.5
+          }
+        }
+      },
+      "public_description": "Observa momentos em que a volatilidade começa a expandir e pode abrir espaço para rompimento. Não substitui avaliação de risco e confirmação.",
+      "template_data": {
+        "entry_logic": "close > bb.upper",
+        "exit_logic": "close < bb.middle",
+        "indicators": [
+          {
+            "alias": "bb",
+            "params": {
+              "length": 20,
+              "std": 2.0
+            },
+            "type": "BBANDS"
+          }
+        ],
+        "stop_loss": 0.03
+      },
+      "updated_at": "2026-06-02T03:05:43.960742"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-18T17:52:43",
+      "description": "Price breakout confirmed by volume spike",
+      "inferred_direction": null,
+      "name": "Example: Breakout with Volume",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "stop_loss"
+          ],
+          [
+            "volume_sma_vol_avg"
+          ]
+        ],
+        "parameters": {
+          "stop_loss": {
+            "default": 0.015,
+            "max": 0.025,
+            "min": 0.01
+          },
+          "volume_sma_vol_avg": {
+            "default": 20,
+            "max": 30,
+            "min": 10
+          }
+        }
+      },
+      "public_description": "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco.",
+      "template_data": {
+        "entry_logic": "(volume > vol_avg * 2) and (close > high.shift(1))",
+        "exit_logic": "(close < close.shift(1).rolling(5).max())",
+        "indicators": [
+          {
+            "alias": "vol_avg",
+            "optimization_range": {
+              "max": 30,
+              "min": 10,
+              "step": 5
+            },
+            "params": {
+              "length": 20
+            },
+            "type": "volume_sma"
+          }
+        ],
+        "stop_loss": {
+          "default": 0.015,
+          "optimization_range": {
+            "max": 0.025,
+            "min": 0.01,
+            "step": 0.005
+          }
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960749"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-18T17:52:43",
+      "description": "Fast EMAs for scalping in short timeframes",
+      "inferred_direction": null,
+      "name": "Example: Scalping EMA 5/13",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_fast",
+            "ema_slow",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema_fast": {
+            "default": 5,
+            "max": 10,
+            "min": 3
+          },
+          "ema_slow": {
+            "default": 13,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.01,
+            "max": 0.015,
+            "min": 0.005
+          }
+        }
+      },
+      "public_description": "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco.",
+      "template_data": {
+        "entry_logic": "crossover(fast, slow)",
+        "exit_logic": "crossunder(fast, slow)",
+        "indicators": [
+          {
+            "alias": "fast",
+            "optimization_range": {
+              "max": 10,
+              "min": 3,
+              "step": 1
+            },
+            "params": {
+              "length": 5
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "slow",
+            "optimization_range": {
+              "max": 20,
+              "min": 10,
+              "step": 1
+            },
+            "params": {
+              "length": 13
+            },
+            "type": "ema"
+          }
+        ],
+        "stop_loss": {
+          "default": 0.01,
+          "optimization_range": {
+            "max": 0.015,
+            "min": 0.005,
+            "step": 0.0025
+          }
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960752"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-18T17:52:43",
+      "description": "RSI divergence detection for swing trading",
+      "inferred_direction": null,
+      "name": "Example: Swing RSI Divergence",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "rsi_length",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "rsi_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.02,
+            "max": 0.03,
+            "min": 0.01
+          }
+        }
+      },
+      "public_description": "Estratégia configurada para apoiar decisões de entrada e saída com regras protegidas no sistema. Avalie junto ao histórico, ao contexto do ativo e ao seu controle de risco.",
+      "template_data": {
+        "entry_logic": "(RSI_14 < 30) and (close < close.shift(5))",
+        "exit_logic": "(RSI_14 > 70)",
+        "indicators": [
+          {
+            "optimization_range": {
+              "max": 20,
+              "min": 10,
+              "step": 1
+            },
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": {
+          "default": 0.02,
+          "optimization_range": {
+            "max": 0.03,
+            "min": 0.01,
+            "step": 0.005
+          }
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960754"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-24T23:16:10.435922",
+      "description": "Standard MACD Trend Following.",
+      "inferred_direction": null,
+      "name": "MACD_Cross",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "macd_fast",
+            "macd_slow",
+            "macd_signal"
+          ]
+        ],
+        "parameters": {
+          "macd_fast": {
+            "max": 20,
+            "min": 8
+          },
+          "macd_signal": {
+            "max": 15,
+            "min": 5
+          },
+          "macd_slow": {
+            "max": 40,
+            "min": 20
+          }
+        }
+      },
+      "public_description": "Acompanha mudanças de momentum para indicar quando a força do movimento pode estar mudando de lado.",
+      "template_data": {
+        "entry_logic": "macd.macd > macd.signal",
+        "exit_logic": "macd.macd < macd.signal",
+        "indicators": [
+          {
+            "alias": "macd",
+            "params": {
+              "fast": 12,
+              "signal": 9,
+              "slow": 26
+            },
+            "type": "MACD"
+          }
+        ],
+        "stop_loss": 0.05
+      },
+      "updated_at": "2026-06-02T03:05:43.960756"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-24T23:16:10.435912",
+      "description": "Simple RSI + EMA crossover strategy for scalping.",
+      "inferred_direction": null,
+      "name": "RSI_EMA_Scalping",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "rsi_length",
+            "ema_fast_length",
+            "ema_slow_length"
+          ]
+        ],
+        "parameters": {
+          "ema_fast_length": {
+            "max": 15,
+            "min": 5
+          },
+          "ema_slow_length": {
+            "max": 50,
+            "min": 15
+          },
+          "rsi_length": {
+            "max": 25,
+            "min": 5
+          }
+        }
+      },
+      "public_description": "Foca leituras rápidas de curto prazo para apoiar decisões em movimentos mais ágeis. Exige acompanhamento próximo e controle de risco.",
+      "template_data": {
+        "description": "Simple RSI + EMA crossover strategy for scalping.",
+        "entry_logic": "rsi < 30 and close > ema_fast",
+        "exit_logic": "rsi > 70 or close < ema_slow",
+        "id": null,
+        "indicators": [
+          {
+            "alias": "rsi",
+            "optimization_range": null,
+            "params": {
+              "length": 14
+            },
+            "type": "RSI"
+          },
+          {
+            "alias": "ema_fast",
+            "optimization_range": null,
+            "params": {
+              "length": 9
+            },
+            "type": "EMA"
+          },
+          {
+            "alias": "ema_slow",
+            "optimization_range": null,
+            "params": {
+              "length": 21
+            },
+            "type": "EMA"
+          }
+        ],
+        "is_example": false,
+        "is_prebuilt": true,
+        "is_readonly": false,
+        "name": "RSI_EMA_Scalping",
+        "optimization_schema": {
+          "correlated_groups": [
+            [
+              "rsi_length",
+              "ema_fast_length",
+              "ema_slow_length"
+            ]
+          ],
+          "parameters": {
+            "ema_fast_length": {
+              "max": 15,
+              "min": 5,
+              "step": 1
+            },
+            "ema_slow_length": {
+              "max": 50,
+              "min": 15,
+              "step": 1
+            },
+            "rsi_length": {
+              "max": 25,
+              "min": 5,
+              "step": 1
+            }
+          }
+        },
+        "stop_loss": {
+          "default": 0.02
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960758"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "Bollinger Bands + RSI + ADX for mean reversion with trend filter",
+      "inferred_direction": null,
+      "name": "bollinger_rsi_adx",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "bb_length",
+            "bb_std",
+            "stop_loss",
+            "rsi_length",
+            "adx_length",
+            "adx_threshold"
+          ]
+        ],
+        "parameters": {
+          "adx_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "adx_threshold": {
+            "default": 20,
+            "max": 30,
+            "min": 15
+          },
+          "bb_length": {
+            "default": 20,
+            "max": 30,
+            "min": 15
+          },
+          "bb_std": {
+            "default": 2,
+            "max": 2.5,
+            "min": 1.5
+          },
+          "rsi_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.02,
+            "max": 0.013,
+            "min": 0.005
+          }
+        }
+      },
+      "public_description": "Busca leituras de possível retorno ao equilíbrio depois de movimentos esticados. Ajuda a separar exagero de mercado de tendência persistente.",
+      "template_data": {
+        "description": "Bollinger Bands + RSI + ADX for mean reversion with trend filter",
+        "entry_logic": "(close < bb_lower) & (RSI_14 < 30) & (ADX_14 > 20)",
+        "exit_logic": "(close > bb_middle) | (RSI_14 > 70)",
+        "id": null,
+        "indicators": [
+          {
+            "alias": "bb",
+            "optimization_range": null,
+            "params": {
+              "length": 20,
+              "std": 2
+            },
+            "type": "bbands"
+          },
+          {
+            "alias": null,
+            "optimization_range": null,
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          },
+          {
+            "alias": null,
+            "optimization_range": null,
+            "params": {
+              "length": 14
+            },
+            "type": "adx"
+          }
+        ],
+        "is_example": false,
+        "is_prebuilt": true,
+        "is_readonly": false,
+        "name": "bollinger_rsi_adx",
+        "optimization_schema": {
+          "correlated_groups": [
+            [
+              "bb_length",
+              "bb_std",
+              "stop_loss",
+              "rsi_length",
+              "adx_length",
+              "adx_threshold"
+            ]
+          ],
+          "parameters": {
+            "adx_length": {
+              "default": 14,
+              "max": 20,
+              "min": 10,
+              "step": 1
+            },
+            "adx_threshold": {
+              "default": 20,
+              "max": 30,
+              "min": 15,
+              "step": 1
+            },
+            "bb_length": {
+              "default": 20,
+              "max": 30,
+              "min": 15,
+              "step": 1
+            },
+            "bb_std": {
+              "default": 2,
+              "max": 2.5,
+              "min": 1.5,
+              "step": 0.1
+            },
+            "rsi_length": {
+              "default": 14,
+              "max": 20,
+              "min": 10,
+              "step": 1
+            },
+            "stop_loss": {
+              "default": 0.02,
+              "max": 0.013,
+              "min": 0.005,
+              "step": 0.002
+            }
+          }
+        },
+        "stop_loss": {
+          "default": 0.02
+        }
+      },
+      "updated_at": "2026-06-02T03:05:43.960760"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "EMA + MACD + Volume combo for trend confirmation with volume filter",
+      "inferred_direction": null,
+      "name": "ema_macd_volume",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "macd_fast",
+            "macd_slow",
+            "macd_signal",
+            "stop_loss"
+          ],
+          [
+            "ema_length"
+          ],
+          [
+            "volume_length"
+          ]
+        ],
+        "parameters": {
+          "ema_length": {
+            "default": 20,
+            "max": 50,
+            "min": 10,
+            "step": 1
+          },
+          "macd_fast": {
+            "default": 12,
+            "max": 15,
+            "min": 8,
+            "step": 1
+          },
+          "macd_signal": {
+            "default": 9,
+            "max": 12,
+            "min": 5,
+            "step": 1
+          },
+          "macd_slow": {
+            "default": 26,
+            "max": 30,
+            "min": 20,
+            "step": 1
+          },
+          "stop_loss": {
+            "default": 0.02,
+            "max": 0.13,
+            "min": 0.005,
+            "step": 0.002
+          },
+          "volume_length": {
+            "default": 20,
+            "max": 30,
+            "min": 10,
+            "step": 1
+          }
+        }
+      },
+      "public_description": "Prioriza movimentos em que direção, força e participação do mercado parecem convergir. Útil para acompanhar tendências com confirmação ampla, sem garantia de resultado.",
+      "template_data": {
+        "entry_logic": "(close > EMA_20) & (MACD_macd > MACD_signal) & (volume > vol_avg)",
+        "exit_logic": "(MACD_macd < MACD_signal) | (close < EMA_20)",
+        "indicators": [
+          {
+            "params": {
+              "length": 20
+            },
+            "type": "ema"
+          },
+          {
+            "params": {
+              "fast": 12,
+              "signal": 9,
+              "slow": 26
+            },
+            "type": "macd"
+          },
+          {
+            "alias": "vol_avg",
+            "params": {
+              "length": 20
+            },
+            "type": "volume_sma"
+          }
+        ],
+        "stop_loss": 0.02
+      },
+      "updated_at": "2026-06-02T03:05:43.960762"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "EMA + RSI combo for trend following with momentum confirmation",
+      "inferred_direction": null,
+      "name": "ema_rsi",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_fast",
+            "ema_slow",
+            "stop_loss"
+          ],
+          [
+            "rsi_period",
+            "rsi_min",
+            "rsi_max"
+          ]
+        ],
+        "parameters": {
+          "ema_fast": {
+            "default": 9,
+            "max": 20,
+            "min": 5
+          },
+          "ema_slow": {
+            "default": 21,
+            "max": 50,
+            "min": 15
+          },
+          "rsi_max": {
+            "default": 50,
+            "max": 80,
+            "min": 60
+          },
+          "rsi_min": {
+            "default": 30,
+            "max": 40,
+            "min": 20
+          },
+          "rsi_period": {
+            "default": 14,
+            "max": 21,
+            "min": 7
+          },
+          "stop_loss": {
+            "default": 0.015,
+            "max": 0.05,
+            "min": 0.01
+          }
+        }
+      },
+      "public_description": "Observa força e fôlego do movimento para indicar quando uma retomada pode estar se formando. Serve como apoio para avaliar entrada, não como recomendação automática.",
+      "template_data": {
+        "entry_logic": "(close > fast) & (close > slow) & (RSI_14 > 30) & (RSI_14 < 50)",
+        "exit_logic": "(RSI_14 > 70) | (close < fast)",
+        "indicators": [
+          {
+            "alias": "fast",
+            "params": {
+              "length": 9
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "slow",
+            "params": {
+              "length": 21
+            },
+            "type": "ema"
+          },
+          {
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.015
+      },
+      "updated_at": "2026-06-02T03:05:43.960764"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "EMA + RSI + Fibonacci for trend following with retracement entries",
+      "inferred_direction": null,
+      "name": "ema_rsi_fibonacci",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_length",
+            "stop_loss"
+          ],
+          [
+            "rsi_length"
+          ],
+          [
+            "fib_lookback"
+          ],
+          [
+            "fib_tolerance"
+          ]
+        ],
+        "parameters": {
+          "ema_length": {
+            "default": 200,
+            "max": 300,
+            "min": 100
+          },
+          "fib_lookback": {
+            "default": 50,
+            "max": 100,
+            "min": 30
+          },
+          "fib_tolerance": {
+            "default": 0.02,
+            "max": 0.05,
+            "min": 0.01
+          },
+          "rsi_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.02,
+            "max": 0.03,
+            "min": 0.01
+          }
+        }
+      },
+      "public_description": "Observa recuos dentro de uma direção principal para identificar possíveis retomadas. Ajuda a estudar continuidade, sem expor a receita técnica da leitura.",
+      "template_data": {
+        "entry_logic": "(close > trend) & (RSI_14 > 40) & (RSI_14 < 60)",
+        "exit_logic": "(RSI_14 > 70) | (close < trend)",
+        "indicators": [
+          {
+            "alias": "trend",
+            "params": {
+              "length": 200
+            },
+            "type": "ema"
+          },
+          {
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.02
+      },
+      "updated_at": "2026-06-02T03:05:43.960766"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "Triple Moving Average Crossover Strategy - Classic trend following with three averages",
+      "inferred_direction": null,
+      "name": "multi_ma_crossover",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_short",
+            "sma_medium",
+            "sma_long",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema_short": {
+            "default": 9,
+            "max": 20,
+            "min": 3,
+            "step": 1
+          },
+          "sma_long": {
+            "default": 50,
+            "max": 100,
+            "min": 20,
+            "step": 1
+          },
+          "sma_medium": {
+            "default": 21,
+            "max": 40,
+            "min": 10,
+            "step": 1
+          },
+          "stop_loss": {
+            "default": 0,
+            "max": 0.13,
+            "min": 0.005,
+            "step": 0.002
+          }
+        }
+      },
+      "public_description": "Acompanha mudanças de direção para apoiar decisões quando o mercado mostra virada de tendência. Use como sinal de contexto, sempre conferindo risco e histórico antes de agir.",
+      "template_data": {
+        "entry_logic": "(crossover(short, long) | crossover(short, medium)) & (short > long)",
+        "exit_logic": "crossunder(short, medium)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 9
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 21
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 50
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.0
+      },
+      "updated_at": "2026-06-02T03:05:43.960768"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-02T03:05:43.970729",
+      "description": "BTC MEDIAS (FINAL - trend filter fixo). EMA curta + SMA inter + SMA longa. Entrada: (crossover short/long ou short/medium) e tendência alta (short > long). Saída: crossunder(short, long). Stop % configurável.",
+      "inferred_direction": null,
+      "name": "multi_ma_crossoverV2",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_short",
+            "sma_medium",
+            "sma_long",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema_short": {
+            "default": 18,
+            "max": 20,
+            "min": 3
+          },
+          "sma_long": {
+            "default": 35,
+            "max": 100,
+            "min": 20
+          },
+          "sma_medium": {
+            "default": 20,
+            "max": 40,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.042,
+            "max": 0.13,
+            "min": 0.005
+          }
+        }
+      },
+      "public_description": "Filtra movimentos direcionais e procura momentos em que a tendência parece ganhar confirmação. Ajuda a comparar oportunidades sem prometer continuidade do movimento.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, long)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 18
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 20
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 35
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.042
+      },
+      "updated_at": "2026-06-02T03:05:43.970736"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:38.646525",
+      "description": "Combina tendência, momentum e força relativa do BTC em 1D para buscar continuidade com queda menor na cadeia. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ema_roc_rsi_chain_w4_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "roc",
+            "rsi",
+            "rsi_min",
+            "rsi_exit",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 55,
+            "max": 55,
+            "min": 55,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "roc": {
+            "default": 30,
+            "max": 30,
+            "min": 30,
+            "step": 1
+          },
+          "rsi": {
+            "default": 18,
+            "max": 18,
+            "min": 18,
+            "step": 1
+          },
+          "rsi_exit": {
+            "default": 50,
+            "max": 50,
+            "min": 50,
+            "step": 1
+          },
+          "rsi_min": {
+            "default": 55,
+            "max": 55,
+            "min": 55,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.026,
+            "max": 0.026,
+            "min": 0.026,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Combina tendência, momentum e força relativa do BTC em 1D para buscar continuidade com queda menor na cadeia. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(close > trend) & (roc > 0) & (rsi > 55)",
+        "exit_logic": "(close < trend) | (rsi < 50)",
+        "indicators": [
+          {
+            "alias": "trend",
+            "params": {
+              "length": 55
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "roc",
+            "params": {
+              "length": 30
+            },
+            "type": "roc"
+          },
+          {
+            "alias": "rsi",
+            "params": {
+              "length": 18
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.026
+      },
+      "updated_at": "2026-06-07T03:03:38.646525"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T01:51:20.694300",
+      "description": "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "roc",
+            "rsi",
+            "rsi_min",
+            "rsi_exit",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 32,
+            "max": 34,
+            "min": 30,
+            "step": 1
+          },
+          "roc": {
+            "default": 9,
+            "max": 10,
+            "min": 8,
+            "step": 1
+          },
+          "rsi": {
+            "default": 10,
+            "max": 10,
+            "min": 10,
+            "step": 1
+          },
+          "rsi_exit": {
+            "default": 45,
+            "max": 45,
+            "min": 45,
+            "step": 1
+          },
+          "rsi_min": {
+            "default": 40,
+            "max": 42,
+            "min": 38,
+            "step": 1
+          },
+          "stop_loss": {
+            "default": 0.028,
+            "max": 0.03,
+            "min": 0.026,
+            "step": 0.001
+          }
+        }
+      },
+      "public_description": "Acompanha continuidade do BTC quando tendência, momentum e força relativa convergem, com proteção para reduzir entradas em contexto fraco. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(close > trend) & (roc > 0) & (rsi > 40)",
+        "exit_logic": "(close < trend) | (rsi < 45)",
+        "indicators": [
+          {
+            "alias": "trend",
+            "params": {
+              "length": 32
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "roc",
+            "params": {
+              "length": 9
+            },
+            "type": "roc"
+          },
+          {
+            "alias": "rsi",
+            "params": {
+              "length": 10
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.028
+      },
+      "updated_at": "2026-06-07T01:51:20.694300"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:03.516483",
+      "description": "Acompanha viradas de tendência do BTC em 1D com filtro de médias e controle de risco para reduzir quedas frente ao benchmark. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ma_trend_chain_w1_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "sma_m",
+            "sma_l",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 20,
+            "max": 20,
+            "min": 20,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "default": 43,
+            "max": 43,
+            "min": 43,
+            "step": 1
+          },
+          "sma_m": {
+            "default": 20,
+            "max": 20,
+            "min": 20,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.034,
+            "max": 0.034,
+            "min": 0.034,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Acompanha viradas de tendência do BTC em 1D com filtro de médias e controle de risco para reduzir quedas frente ao benchmark. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, long)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 20
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 20
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 43
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.034
+      },
+      "updated_at": "2026-06-07T03:03:32.612026"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:34.610081",
+      "description": "Acompanha continuidade do BTC em 1D com leitura de médias e saída mais ágil quando o movimento perde força. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ma_trend_chain_w2_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "sma_m",
+            "sma_l",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 11,
+            "max": 11,
+            "min": 11,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "default": 42,
+            "max": 42,
+            "min": 42,
+            "step": 1
+          },
+          "sma_m": {
+            "default": 39,
+            "max": 39,
+            "min": 39,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.05,
+            "max": 0.05,
+            "min": 0.05,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Acompanha continuidade do BTC em 1D com leitura de médias e saída mais ágil quando o movimento perde força. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, medium)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 11
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 39
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 42
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.05
+      },
+      "updated_at": "2026-06-07T03:03:34.610081"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:36.604462",
+      "description": "Filtra tendências do BTC em 1D com médias próximas e proteção reforçada para buscar melhora de drawdown sem abandonar retorno. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ma_trend_chain_w3_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "sma_m",
+            "sma_l",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 4,
+            "max": 4,
+            "min": 4,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "default": 25,
+            "max": 25,
+            "min": 25,
+            "step": 1
+          },
+          "sma_m": {
+            "default": 21,
+            "max": 21,
+            "min": 21,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.03,
+            "max": 0.03,
+            "min": 0.03,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Filtra tendências do BTC em 1D com médias próximas e proteção reforçada para buscar melhora de drawdown sem abandonar retorno. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, long)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 4
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 21
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 25
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.03
+      },
+      "updated_at": "2026-06-07T03:03:36.604462"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-07T03:03:40.662051",
+      "description": "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico.",
+      "inferred_direction": null,
+      "name": "quant_btc_1d_ma_trend_chain_w5_20260607",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema",
+            "sma_m",
+            "sma_l",
+            "stop",
+            "initial_capital",
+            "entry_size_pct",
+            "exit_size_pct",
+            "pyramiding"
+          ]
+        ],
+        "parameters": {
+          "ema": {
+            "default": 14,
+            "max": 14,
+            "min": 14,
+            "step": 1
+          },
+          "entry_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "exit_size_pct": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "initial_capital": {
+            "default": 100,
+            "max": 100,
+            "min": 100,
+            "step": 1
+          },
+          "pyramiding": {
+            "default": 0,
+            "max": 0,
+            "min": 0,
+            "step": 1
+          },
+          "sma_l": {
+            "default": 44,
+            "max": 44,
+            "min": 44,
+            "step": 1
+          },
+          "sma_m": {
+            "default": 25,
+            "max": 25,
+            "min": 25,
+            "step": 1
+          },
+          "stop": {
+            "default": 0.034,
+            "max": 0.034,
+            "min": 0.034,
+            "step": 0.0001
+          }
+        }
+      },
+      "public_description": "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico.",
+      "template_data": {
+        "entry_logic": "(short > long) & (crossover(short, long) | crossover(short, medium))",
+        "exit_logic": "crossunder(short, long)",
+        "indicators": [
+          {
+            "alias": "short",
+            "params": {
+              "length": 14
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "medium",
+            "params": {
+              "length": 25
+            },
+            "type": "sma"
+          },
+          {
+            "alias": "long",
+            "params": {
+              "length": 44
+            },
+            "type": "sma"
+          }
+        ],
+        "stop_loss": 0.034
+      },
+      "updated_at": "2026-06-07T03:03:40.662051"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-06-02T03:05:43.970738",
+      "description": "BTC Short Swing – EMA200 Pullback (Stop %). Short-only: bearish trend (close < EMA200), pullback to EMA21/50 (tolerance 1%), RSI 45–70, rejection candle (shooting star / bearish engulfing / strong bearish). Exit: stop % or trend/RSI reversal.",
+      "inferred_direction": "short",
+      "name": "short_ema200_pullback",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "ema_ema21",
+            "ema_ema50",
+            "ema_ema200",
+            "rsi_length",
+            "stop_loss"
+          ]
+        ],
+        "parameters": {
+          "ema_ema200": {
+            "default": 200,
+            "max": 250,
+            "min": 150
+          },
+          "ema_ema21": {
+            "default": 21,
+            "max": 30,
+            "min": 14
+          },
+          "ema_ema50": {
+            "default": 50,
+            "max": 70,
+            "min": 40
+          },
+          "rsi_length": {
+            "default": 14,
+            "max": 18,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.06,
+            "max": 0.1,
+            "min": 0.03
+          }
+        }
+      },
+      "public_description": "Acompanha repiques contra uma direção principal de baixa para apoiar decisões de venda. Use apenas como leitura de contexto e com atenção ao risco.",
+      "template_data": {
+        "entry_logic": "(close < ema200) & ( ((close - ema21).abs() / ema21 * 100 <= 1.0) | ((high >= ema21) & (low <= ema21)) | ((close - ema50).abs() / ema50 * 100 <= 1.0) | ((high >= ema50) & (low <= ema50)) ) & (RSI_14 >= 45) & (RSI_14 <= 70) & ((high - low) > 0) & (   ( ((high - (open + close + (open - close).abs()) / 2) >= (close - open).abs() * 2) & (close < open) & (close < (low + (high - low) * 0.5)) )   | ( (close < open) & (open >= close.shift(1)) & (close <= open.shift(1)) )   | ( (close < open) & ((open - close) >= (high - low) * 0.5) ) )",
+        "exit_logic": "(close > ema200) | (RSI_14 < 45)",
+        "indicators": [
+          {
+            "alias": "ema21",
+            "params": {
+              "length": 21
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "ema50",
+            "params": {
+              "length": 50
+            },
+            "type": "ema"
+          },
+          {
+            "alias": "ema200",
+            "params": {
+              "length": 200
+            },
+            "type": "ema"
+          },
+          {
+            "params": {
+              "length": 14
+            },
+            "type": "rsi"
+          }
+        ],
+        "stop_loss": 0.06
+      },
+      "updated_at": "2026-06-02T03:05:43.970740"
+    },
+    {
+      "compatible_with_short": true,
+      "created_at": "2026-01-19T01:24:41",
+      "description": "Volume + ATR Breakout strategy for volatility-based entries",
+      "inferred_direction": null,
+      "name": "volume_atr_breakout",
+      "optimization_schema": {
+        "correlated_groups": [
+          [
+            "atr_length",
+            "atr_entry_mult",
+            "atr_exit_mult",
+            "stop_loss"
+          ],
+          [
+            "volume_length"
+          ],
+          [
+            "volume_multiplier"
+          ]
+        ],
+        "parameters": {
+          "atr_entry_mult": {
+            "default": 0.5,
+            "max": 1.0,
+            "min": 0.3
+          },
+          "atr_exit_mult": {
+            "default": 0.3,
+            "max": 0.5,
+            "min": 0.2
+          },
+          "atr_length": {
+            "default": 14,
+            "max": 20,
+            "min": 10
+          },
+          "stop_loss": {
+            "default": 0.025,
+            "max": 0.04,
+            "min": 0.015
+          },
+          "volume_length": {
+            "default": 20,
+            "max": 30,
+            "min": 10
+          },
+          "volume_multiplier": {
+            "default": 1.5,
+            "max": 2.0,
+            "min": 1.2
+          }
+        }
+      },
+      "public_description": "Acompanha rompimentos quando preço, volume e volatilidade sugerem aceleração. Deve ser validada junto ao risco, pois rompimentos podem falhar.",
+      "template_data": {
+        "entry_logic": "(volume > vol_avg * 1.5) & (close > close.shift(1) + ATR_14 * 0.5)",
+        "exit_logic": "close < (close.shift(1) - ATR_14 * 0.3)",
+        "indicators": [
+          {
+            "alias": "vol_avg",
+            "params": {
+              "length": 20
+            },
+            "type": "volume_sma"
+          },
+          {
+            "params": {
+              "length": 14
+            },
+            "type": "atr"
+          }
+        ],
+        "stop_loss": 0.025
+      },
+      "updated_at": "2026-06-02T03:05:43.974280"
+    }
+  ]
+}
