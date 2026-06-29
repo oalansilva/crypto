@@ -29,6 +29,11 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "quant_btc_1d_ma_trend_chain_w3_20260607": "BTC 1D WINNER 3: Médias com Defesa Reforçada",
     "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": "BTC 1D WINNER 4: Momentum com Força Relativa",
     "quant_btc_1d_ma_trend_chain_w5_20260607": "BTC 1D WINNER 5: Médias com Continuidade Defensiva",
+    "quant_btc_1d_short_macd_bear_chain_w1_20260629": "BTC 1D SHORT WINNER 1: MACD de Baixa Controlada",
+    "quant_btc_1d_short_ma_breakdown_chain_w2_20260629": "BTC 1D SHORT WINNER 2: Médias de Quebra Defensiva",
+    "quant_btc_1d_short_ma_breakdown_chain_w3_20260629": "BTC 1D SHORT WINNER 3: Médias de Baixa com Menor Queda",
+    "quant_btc_1d_short_ma_defense_chain_w4_20260629": "BTC 1D SHORT WINNER 4: Médias de Baixa Protegida",
+    "quant_btc_1d_short_macd_defense_chain_w5_20260629": "BTC 1D SHORT WINNER 5: MACD Short Defensivo",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
@@ -100,6 +105,21 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     ),
     "quant_btc_1d_ma_trend_chain_w5_20260607": (
         "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico."
+    ),
+    "quant_btc_1d_short_macd_bear_chain_w1_20260629": (
+        "Acompanha movimentos de baixa do BTC em 1D quando tendência e momentum favorecem operação Short, com saída para reduzir exposição quando a pressão vendedora perde força."
+    ),
+    "quant_btc_1d_short_ma_breakdown_chain_w2_20260629": (
+        "Busca quebras de tendência do BTC em 1D para operações Short, combinando médias e controle de risco para melhorar a cadeia sem usar fallback Long."
+    ),
+    "quant_btc_1d_short_ma_breakdown_chain_w3_20260629": (
+        "Filtra continuações de baixa do BTC em 1D com médias e stop ajustado para aumentar retorno e reduzir drawdown frente às vencedoras Short anteriores."
+    ),
+    "quant_btc_1d_short_ma_defense_chain_w4_20260629": (
+        "Acompanha quedas do BTC em 1D com leitura defensiva de médias, priorizando melhora sequencial de drawdown em uma operação exclusivamente Short."
+    ),
+    "quant_btc_1d_short_macd_defense_chain_w5_20260629": (
+        "Combina tendência e momentum de baixa do BTC em 1D para operação Short com perfil mais defensivo que a cadeia anterior e saída quando o regime enfraquece."
     ),
 }
 

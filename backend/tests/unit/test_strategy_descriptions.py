@@ -80,6 +80,24 @@ def test_card_262_chain_winners_have_safe_product_copy():
         assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
 
 
+def test_card_276_short_chain_winners_have_safe_product_copy():
+    expected = {
+        "quant_btc_1d_short_macd_bear_chain_w1_20260629": "BTC 1D SHORT WINNER 1: MACD de Baixa Controlada",
+        "quant_btc_1d_short_ma_breakdown_chain_w2_20260629": "BTC 1D SHORT WINNER 2: Médias de Quebra Defensiva",
+        "quant_btc_1d_short_ma_breakdown_chain_w3_20260629": "BTC 1D SHORT WINNER 3: Médias de Baixa com Menor Queda",
+        "quant_btc_1d_short_ma_defense_chain_w4_20260629": "BTC 1D SHORT WINNER 4: Médias de Baixa Protegida",
+        "quant_btc_1d_short_macd_defense_chain_w5_20260629": "BTC 1D SHORT WINNER 5: MACD Short Defensivo",
+    }
+
+    for strategy_name, display_name in expected.items():
+        description = public_strategy_description(strategy_name)
+
+        assert public_strategy_display_name(strategy_name) == display_name
+        assert "short" in display_name.lower()
+        assert "short" in description.lower()
+        assert all(token not in description.lower() for token in SENSITIVE_COPY_TOKENS)
+
+
 def test_unknown_sensitive_strategy_display_name_is_protected():
     assert public_strategy_display_name("ema_9_sma_50_rsi_30_70") == "Estratégia Cripto Farol"
 

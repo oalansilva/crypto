@@ -1,0 +1,93 @@
+{
+  "created_at": "2026-06-29T02:15:00.927146+00:00",
+  "purpose": "prove full-period SHORT deep backtest engine support before counting any winner",
+  "request_payload": {
+    "template_name": "short_ema200_pullback",
+    "symbol": "BTC/USDT",
+    "timeframe": "1d",
+    "data_source": "ccxt",
+    "start_date": "2017-08-17",
+    "end_date": "2026-06-07",
+    "deep_backtest": true,
+    "initial_capital": 100,
+    "direction": "short",
+    "parameters": {
+      "direction": "short"
+    }
+  },
+  "status_code": 200,
+  "execution_mode": "deep_15m",
+  "response_direction": "short",
+  "metrics": {
+    "total_trades": 49,
+    "win_rate": 0.5714285714285714,
+    "total_return": -0.23713855516049775,
+    "total_return_pct": -23.713855516049776,
+    "avg_profit": -0.483956235021424,
+    "max_drawdown": 0.3212493812382587,
+    "max_drawdown_pct": 32.12493812382587,
+    "profit_factor": 0.7253020126146035
+  },
+  "trade_count": 49,
+  "sample_trade_types": [
+    "short"
+  ],
+  "sample_trades": [
+    {
+      "entry_time": "2018-04-17T00:00:00+00:00",
+      "entry_price": 8064.92,
+      "type": "short",
+      "exit_time": "2018-04-20T12:15:00+00:00",
+      "exit_price": 8548.815200000001,
+      "profit": -0.06159119339504655,
+      "exit_reason": "stop_loss_15m",
+      "signal_type": "Stop",
+      "entry_signal_type": "Vender"
+    },
+    {
+      "entry_time": "2018-07-06T00:00:00+00:00",
+      "entry_price": 6529.2,
+      "type": "short",
+      "exit_time": "2018-07-11T00:00:00+00:00",
+      "exit_price": 6296.91,
+      "profit": 0.03412937965742279,
+      "exit_reason": "signal_15m",
+      "signal_type": "Close entry(s) order...",
+      "entry_signal_type": "Vender"
+    },
+    {
+      "entry_time": "2018-08-02T00:00:00+00:00",
+      "entry_price": 7600.08,
+      "type": "short",
+      "exit_time": "2018-08-04T00:00:00+00:00",
+      "exit_price": 7412.27,
+      "profit": 0.023247551333334903,
+      "exit_reason": "signal_15m",
+      "signal_type": "Close entry(s) order...",
+      "entry_signal_type": "Vender"
+    },
+    {
+      "entry_time": "2018-08-31T00:00:00+00:00",
+      "entry_price": 6984.84,
+      "type": "short",
+      "exit_time": "2018-09-04T12:00:00+00:00",
+      "exit_price": 7403.9304,
+      "profit": -0.06159119339504624,
+      "exit_reason": "stop_loss_15m",
+      "signal_type": "Stop",
+      "entry_signal_type": "Vender"
+    },
+    {
+      "entry_time": "2018-09-23T00:00:00+00:00",
+      "entry_price": 6723.05,
+      "type": "short",
+      "exit_time": "2018-10-11T00:00:00+00:00",
+      "exit_price": 6630.21,
+      "profit": 0.012328812133676058,
+      "exit_reason": "signal_15m",
+      "signal_type": "Close entry(s) order...",
+      "entry_signal_type": "Vender"
+    }
+  ],
+  "short_support_proven": true
+}
