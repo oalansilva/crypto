@@ -37,6 +37,6 @@
 - [x] 6.1 Detectar manifesto cacheado sem séries utilizáveis e hidratar a análise pelo endpoint do favorito, preservando fallback seguro.
 - [x] 6.2 Cobrir favorito legado com candles/arrays alinhados e sem `analysis_strategy_transparency` em testes frontend/backend e Playwright.
 - [x] 6.3 Tornar `./restart` do source DEV canônico restrito aos serviços/portas DEV e validar que não referencia nem reinicia PROD.
-- [ ] 6.4 Rodar apply/verify, checks focados, review independente, integrar em `develop`, reiniciar somente DEV e validar o favorito real da captura.
+- [x] 6.4 Rodar apply/verify, checks focados, review independente, integrar em `develop`, reiniciar somente DEV e validar o favorito real da captura.
 
 Use project skills under `.codex/skills` when applicable for architecture, tests, debugging, frontend, accessibility and OpenSpec work.
