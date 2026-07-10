@@ -30,6 +30,6 @@
 
 - [x] 5.1 Run `$openspec-verify-change` against artifacts, implementation and completed test evidence.
 - [x] 5.2 Move card to Code Review, run an independent Codex review of the exact diff and fix/classify all findings before commit.
-- [ ] 5.3 Commit the reviewed branch, integrate into `develop`, run `./restart`, validate served Favorites/Monitor and record evidence before `Done` técnico.
+- [x] 5.3 Commit the reviewed branch, integrate into `develop`, run `./restart`, validate served Favorites/Monitor and record evidence before `Done` técnico.
 
 Use project skills under `.codex/skills` when applicable for architecture, tests, debugging, frontend, accessibility and OpenSpec work.
