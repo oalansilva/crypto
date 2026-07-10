@@ -506,6 +506,11 @@ class FavoriteBacktestRefreshService:
                     if isinstance(result.get("indicator_data"), dict)
                     else {}
                 ),
+                "analysis_strategy_transparency": (
+                    result.get("strategy_transparency")
+                    if isinstance(result.get("strategy_transparency"), dict)
+                    else None
+                ),
                 "analysis_execution_mode": result.get("execution_mode"),
                 "auto_refreshed_at": _utcnow().isoformat(),
                 "auto_refresh_run_id": run_id,

@@ -8,6 +8,7 @@ import { API_BASE_URL } from '../lib/apiBase'
 import { authFetch } from '@/lib/authFetch'
 import { formatStrategyParameterLabel, formatStrategyParameterValue } from '@/lib/strategyParameters'
 import { buildTradeMarkers } from '@/lib/tradeMarkers'
+import { normalizeStrategyTransparency, type StrategyTransparency } from '@/lib/strategyTransparency'
 
 interface BacktestResult {
     template_name: string
@@ -36,6 +37,7 @@ interface BacktestResult {
         final_capital?: number
     }>
     indicator_data: Record<string, number[]>
+    strategy_transparency?: StrategyTransparency | Record<string, unknown> | null
     candles: Array<{
         timestamp_utc: string
         open: number
@@ -181,6 +183,10 @@ export function ComboResultsPage() {
     }
 
     const trades = useMemo(() => result?.trades ?? [], [result?.trades])
+    const strategyTransparency = useMemo(
+        () => normalizeStrategyTransparency(result?.strategy_transparency),
+        [result?.strategy_transparency],
+    )
 
     // Métricas derivadas dos MESMOS trades exibidos na tabela (fechados, ordenados)
     // Garante que Win Rate e Total Return batam com a List of trades / Cumulative P&L
@@ -225,6 +231,10 @@ export function ComboResultsPage() {
     const direction = ((result as any).direction ?? result.parameters?.direction ?? 'long').toString().toLowerCase()
     const isShort = direction === 'short'
     const isProtectedResult = Boolean(result.is_strategy_protected)
+    const visibleParameters = isProtectedResult
+        ? strategyTransparency?.effective_parameters ?? {}
+        : result.parameters
+    const hasVisibleParameters = Object.keys(visibleParameters).length > 0
 
     // Usar métricas derivadas quando há trades; senão fallback para backend
     const baseMetrics = result.metrics || (result as any).best_metrics || {
@@ -267,13 +277,13 @@ export function ComboResultsPage() {
                             </div>
                         </div>
 
-                        {isProtectedResult ? (
+                        {isProtectedResult && !hasVisibleParameters ? (
                             <div className="rounded-lg border border-[#2b3139] bg-[#1e2329] px-4 py-3 text-sm text-[#eaecef]">
                                 Parâmetros técnicos protegidos para este perfil.
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" data-testid="combo-result-parameters">
-                                {Object.entries(result.parameters).map(([key, value]) => {
+                                {Object.entries(visibleParameters).map(([key, value]) => {
                                     // Skip internal keys if any
                                     if (key.startsWith('_')) return null;
 
@@ -301,9 +311,10 @@ export function ComboResultsPage() {
                         <MonitorAlignedCandlestickChart
                             candles={result.candles}
                             markers={markers as any}
-                            strategyName={result.template_name}
+                            strategyName={strategyTransparency?.display_name || result.template_name}
                             symbol={result.symbol}
                             timeframe={result.timeframe}
+                            strategyTransparency={strategyTransparency}
                         />
                     ) : (
                         <div className="glass-strong rounded-[28px] p-8 text-center border border-zinc-200 mb-8">

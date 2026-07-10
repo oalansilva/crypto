@@ -28,6 +28,7 @@ import {
 } from './types';
 import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
+import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
 
 interface ChartModalProps {
     symbol: string;
@@ -295,6 +296,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [error, setError] = React.useState<string | null>(null);
     const [analysisTrades, setAnalysisTrades] = React.useState<StrategyTrade[]>([]);
     const [analysisMetrics, setAnalysisMetrics] = React.useState<StrategyTradeMetrics | null>(null);
+    const [analysisStrategyTransparency, setAnalysisStrategyTransparency] = React.useState<Record<string, unknown> | null>(null);
     const [analysisCandles, setAnalysisCandles] = React.useState<MarketCandle[]>([]);
     const [analysisTradesLoading, setAnalysisTradesLoading] = React.useState(false);
     const [analysisTradesError, setAnalysisTradesError] = React.useState<string | null>(null);
@@ -304,6 +306,10 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     ]));
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
+    const activeStrategyTransparency = React.useMemo(
+        () => normalizeStrategyTransparency(analysisStrategyTransparency ?? opportunity.strategy_transparency),
+        [analysisStrategyTransparency, opportunity.strategy_transparency],
+    );
     const opportunityDirection = normalizeDirection(String(opportunity.direction ?? opportunity.parameters?.direction ?? 'long'));
 
     React.useEffect(() => {
@@ -497,11 +503,17 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 setAnalysisTrades(payloadTrades.length > 0 ? payloadTrades : signalHistoryTrades);
                 setAnalysisCandles(payloadCandles);
                 setAnalysisMetrics(payload?.metrics && typeof payload.metrics === 'object' ? payload.metrics : null);
+                setAnalysisStrategyTransparency(
+                    payload?.strategy_transparency && typeof payload.strategy_transparency === 'object'
+                        ? payload.strategy_transparency
+                        : null,
+                );
             } catch {
                 if (!controller.signal.aborted) {
                     setAnalysisTrades(signalHistoryTrades);
                     setAnalysisCandles([]);
                     setAnalysisMetrics(null);
+                    setAnalysisStrategyTransparency(null);
                     setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponíveis.');
                 }
             } finally {
@@ -574,7 +586,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     <button
                         key={item.value}
                         type="button"
-                        className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                        className={`min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] ${
                             active
                                 ? 'border-[#fcd535] bg-[#fcd535]/16 text-[#eaecef]'
                                 : 'border-[#2b3139] bg-[#0b0e11] text-[#929aa5] hover:border-[#fcd535] hover:text-[#eaecef]'
@@ -707,9 +719,14 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             <section>
                 <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Parâmetros</p>
                 <div className="mt-2 space-y-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] p-3" data-testid="chart-modal-parameters">
-                    {strategyProtected ? (
-                        <p className="text-[#929aa5]">Parâmetros protegidos.</p>
-                    ) : opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
+                    {activeStrategyTransparency && Object.keys(activeStrategyTransparency.effective_parameters).length > 0 ? (
+                        Object.entries(activeStrategyTransparency.effective_parameters).map(([key, value]) => (
+                            <div key={key} className="flex justify-between gap-3">
+                                <span className="text-[#929aa5]">{formatStrategyParameterLabel(key)}</span>
+                                <span className="font-mono text-[#eaecef]">{formatStrategyParameterValue(key, value)}</span>
+                            </div>
+                        ))
+                    ) : !strategyProtected && opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
                         Object.entries(opportunity.parameters).map(([key, value]) => (
                             <div key={key} className="flex justify-between gap-3">
                                 <span className="text-[#929aa5]">{formatStrategyParameterLabel(key)}</span>
@@ -758,6 +775,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     strategyName={strategyDisplayName}
                     symbol={symbol}
                     timeframe={timeframe.toUpperCase()}
+                    strategyTransparency={activeStrategyTransparency}
                     title={<span id="chart-modal-title">{symbol}</span>}
                     subtitle={`${strategyDisplayName} • ${timeframe.toUpperCase()} • ${sortedCandles.length} velas • candle ref ${formatTimestamp(opportunity.indicator_values_candle_time)}`}
                     headerMeta={(
@@ -778,7 +796,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             </div>
                             <button
                                 type="button"
-                                className="grid h-10 w-10 place-items-center rounded-lg border border-[#2b3139] bg-[#1e2329] text-2xl leading-none text-[#929aa5] transition hover:border-[#fcd535] hover:text-[#eaecef]"
+                                className="grid h-11 w-11 place-items-center rounded-lg border border-[#2b3139] bg-[#1e2329] text-2xl leading-none text-[#929aa5] transition hover:border-[#fcd535] hover:text-[#eaecef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
                                 onClick={onClose}
                                 aria-label="Fechar modal do gráfico"
                                 data-testid="chart-modal-close"

@@ -27,6 +27,8 @@ from app.database import SessionLocal
 from app.middleware.authMiddleware import ADMIN_EMAILS
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 from app.services.strategy_descriptions import public_strategy_description
+from app.schemas.strategy_transparency import StrategyTransparency
+from app.services.strategy_transparency import build_strategy_transparency
 
 logger = logging.getLogger(__name__)
 _OHLCV_CACHE_TTL_SECONDS = 300.0
@@ -733,6 +735,7 @@ class OpportunityService:
             "tier": tier,
             "notify_telegram": bool(getattr(row, "notify_telegram", True)),
             "is_curated_fallback": is_curated_fallback,
+            "_metrics": row.metrics,
         }
         if isinstance(r["parameters"], str):
             try:
@@ -740,6 +743,11 @@ class OpportunityService:
             except Exception as e:
                 logger.warning(f"Failed to parse parameters JSON for favorite {r.get('id')}: {e}")
                 r["parameters"] = {}
+        if isinstance(r["_metrics"], str):
+            try:
+                r["_metrics"] = json.loads(r["_metrics"])
+            except Exception:
+                r["_metrics"] = {}
         latest_trade_event = _latest_favorite_trade_event(getattr(row, "metrics", None))
         if latest_trade_event:
             r["_favorite_latest_trade_signal"] = latest_trade_event["type"]
@@ -1930,6 +1938,32 @@ class OpportunityService:
                     "exit_action_label": action_labels["exit"],
                     "next_action_label": next_action_label,
                 }
+                stored_manifest = (
+                    (fav.get("_metrics") or {}).get("analysis_strategy_transparency")
+                    if isinstance(fav.get("_metrics"), dict)
+                    else None
+                )
+                strategy_transparency = None
+                if isinstance(stored_manifest, dict):
+                    try:
+                        candidate = StrategyTransparency.model_validate(stored_manifest)
+                        if candidate.timeframe == normalized_tf:
+                            strategy_transparency = candidate
+                    except Exception:
+                        strategy_transparency = None
+                if strategy_transparency is None:
+                    strategy_transparency = build_strategy_transparency(
+                        template_name,
+                        {
+                            "indicators": final_indicators,
+                            "entry_logic": entry_logic,
+                            "exit_logic": exit_logic,
+                            "stop_loss": sl_param,
+                        },
+                        effective_parameters=params,
+                        timeframe=normalized_tf,
+                        dataframe=df_signals,
+                    )
 
                 opportunities.append(
                     {
@@ -1942,6 +1976,7 @@ class OpportunityService:
                         "strategy_description": public_strategy_description(
                             template_name, meta.get("description")
                         ),
+                        "strategy_transparency": strategy_transparency.model_dump(mode="json"),
                         "name": fav["name"],  # User custom name
                         "notes": fav.get("notes"),
                         "is_curated_fallback": bool(fav.get("is_curated_fallback")),

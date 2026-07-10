@@ -87,6 +87,16 @@ async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
             "next_status_label": "exit",
             "indicator_values": {"short": 71346.57},
             "indicator_values_candle_time": "2026-04-15T00:00:00+00:00",
+            "strategy_transparency": {
+                "status": "available",
+                "strategy_key": "multi_ma_crossover",
+                "display_name": "Médias Móveis: Tendência em Virada",
+                "description": "Apoio à decisão por médias.",
+                "timeframe": "1d",
+                "parameters": {"short_length": 9},
+                "indicators": [],
+                "logic_blocks": [],
+            },
             "signal_history": [
                 {
                     "timestamp": "2026-04-10T00:00:00+00:00",
@@ -129,6 +139,8 @@ async def test_opportunities_route_keeps_signal_history_in_payload(monkeypatch):
     assert response[0]["strategy_display_name"] == "Médias Móveis: Tendência em Virada"
     assert response[0]["parameters"] == {}
     assert response[0]["indicator_values"] is None
+    assert response[0]["strategy_transparency"]["strategy_key"] == "multi_ma_crossover"
+    assert response[0]["strategy_transparency"]["parameters"] == {"short_length": 9}
     assert response[0]["details"] == {}
     assert response[0]["is_strategy_protected"] is True
     assert response[0]["signal_history"][0]["type"] == "entry"

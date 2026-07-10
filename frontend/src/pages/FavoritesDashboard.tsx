@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { useAuth } from '@/stores/authStore';
 import { ScreenHelpPanel } from '@/components/onboarding/ScreenHelpPanel';
+import type { StrategyTransparency } from '@/lib/strategyTransparency';
 
 import * as XLSX from 'xlsx';
 
@@ -27,6 +28,7 @@ interface FavoriteStrategy {
     is_strategy_protected?: boolean;
     strategy_display_name?: string | null;
     strategy_description?: string | null;
+    strategy_transparency?: StrategyTransparency | Record<string, unknown> | null;
     auto_refresh_status?: string | null;
     auto_refresh_error?: string | null;
     auto_refresh_started_at?: string | null;
@@ -387,7 +389,8 @@ const FavoritesDashboard: React.FC = () => {
     };
 
     const getFavoriteStrategyLabel = (fav: FavoriteStrategy): string => {
-        return fav.strategy_display_name || (fav.is_strategy_protected
+        const manifestDisplayName = fav.strategy_transparency?.display_name;
+        return fav.strategy_display_name || (typeof manifestDisplayName === 'string' ? manifestDisplayName : '') || (fav.is_strategy_protected
             ? 'Estratégia protegida'
             : fav.strategy_name.replace(/_/g, ' '));
     };
@@ -566,6 +569,7 @@ const FavoritesDashboard: React.FC = () => {
                 executionMode: typeof fav.metrics?.analysis_execution_mode === 'string'
                     ? fav.metrics.analysis_execution_mode
                     : 'favorite_cache',
+                strategyTransparency: fav.metrics?.analysis_strategy_transparency ?? fav.strategy_transparency ?? null,
             };
         }
 
@@ -576,6 +580,7 @@ const FavoritesDashboard: React.FC = () => {
                 candles: getSavedAnalysisCandles(fav),
                 indicatorData: {},
                 executionMode: 'favorite_protected_cache',
+                strategyTransparency: fav.metrics?.analysis_strategy_transparency ?? fav.strategy_transparency ?? null,
             };
         }
 
@@ -586,6 +591,7 @@ const FavoritesDashboard: React.FC = () => {
                 candles: [],
                 indicatorData: {},
                 executionMode: 'favorite_cache',
+                strategyTransparency: fav.metrics?.analysis_strategy_transparency ?? fav.strategy_transparency ?? null,
             };
         }
 
@@ -625,6 +631,7 @@ const FavoritesDashboard: React.FC = () => {
             executionMode: typeof payload.execution_mode === 'string'
                 ? payload.execution_mode
                 : 'favorite_regenerated',
+            strategyTransparency: payload.strategy_transparency ?? fav.strategy_transparency ?? null,
         };
     };
 
@@ -661,6 +668,7 @@ const FavoritesDashboard: React.FC = () => {
             execution_mode: recovered.executionMode,
             direction: (fav.parameters?.direction as string) || 'long',
             is_strategy_protected: isFavoriteProtected(fav) && !isAdmin,
+            strategy_transparency: recovered.strategyTransparency ?? fav.strategy_transparency ?? null,
         };
     };
 
@@ -675,6 +683,7 @@ const FavoritesDashboard: React.FC = () => {
                     ? fav.metrics.analysis_indicator_data
                     : {},
                 executionMode: 'favorite_cache_timeout',
+                strategyTransparency: fav.metrics?.analysis_strategy_transparency ?? fav.strategy_transparency ?? null,
             };
             const recovered = await resolveWithTimeout(
                 loadTradesForAnalysis(fav),

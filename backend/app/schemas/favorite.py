@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from datetime import datetime
 
+from app.schemas.strategy_transparency import StrategyTransparency
+
 
 class FavoriteStrategyBase(BaseModel):
     name: str
@@ -33,6 +35,7 @@ class FavoriteStrategyResponse(FavoriteStrategyBase):
     is_strategy_protected: bool = False
     strategy_display_name: Optional[str] = None
     strategy_description: Optional[str] = None
+    strategy_transparency: Optional[StrategyTransparency] = None
 
     class Config:
         from_attributes = True

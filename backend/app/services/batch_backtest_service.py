@@ -240,6 +240,15 @@ def run_batch_backtest(job_id: str, payload: dict[str, Any]) -> None:
         best_params = result.get("best_parameters") or result.get("parameters") or {}
         best_metrics = result.get("best_metrics") or {}
         metrics = _metrics_with_source_trades(best_metrics, result.get("trades"))
+        metrics["analysis_candles"] = (
+            result.get("candles") if isinstance(result.get("candles"), list) else []
+        )
+        metrics["analysis_indicator_data"] = (
+            result.get("indicator_data") if isinstance(result.get("indicator_data"), dict) else {}
+        )
+        if isinstance(result.get("strategy_transparency"), dict):
+            metrics["analysis_strategy_transparency"] = result["strategy_transparency"]
+        metrics["analysis_execution_mode"] = result.get("execution_mode")
         params_with_direction = dict(best_params)
         params_with_direction["direction"] = direction
         if effective_data_source:

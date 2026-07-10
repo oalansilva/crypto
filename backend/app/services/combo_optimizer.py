@@ -2092,7 +2092,33 @@ class ComboOptimizer:
             "direction": best_params.get("direction", "long"),
             "data_source": selected_data_source,
             "execution_mode": execution_mode,
+            "strategy_transparency": self._build_strategy_transparency_result(
+                template_name=template_name,
+                timeframe=timeframe,
+                parameters=best_params,
+                dataframe=(df_with_signals if "df_with_signals" in locals() and candles else None),
+            ),
         }
+
+    def _build_strategy_transparency_result(
+        self,
+        *,
+        template_name: str,
+        timeframe: str,
+        parameters: dict[str, Any],
+        dataframe: pd.DataFrame | None,
+    ) -> dict[str, Any]:
+        from app.services.strategy_transparency import build_strategy_transparency
+
+        metadata = self.combo_service.get_template_metadata(template_name)
+        manifest = build_strategy_transparency(
+            template_name,
+            metadata,
+            effective_parameters=parameters,
+            timeframe=timeframe,
+            dataframe=dataframe,
+        )
+        return manifest.model_dump(mode="json")
 
 
 def _metrics_from_trades(

@@ -1,3 +1,5 @@
+import type { StrategyTransparency } from '@/lib/strategyTransparency';
+
 export type MonitorAssetType = 'crypto' | 'stock';
 
 export interface OpportunitySignalHistoryItem {
@@ -43,6 +45,7 @@ export interface Opportunity {
     is_strategy_protected?: boolean;
     strategy_display_name?: string | null;
     strategy_description?: string | null;
+    strategy_transparency?: StrategyTransparency | Record<string, unknown> | null;
 
     /** Optional risk info */
     entry_price?: number | null;
@@ -57,12 +60,14 @@ export const isProtectedStrategy = (
 ): boolean => Boolean(value?.is_strategy_protected);
 
 export const getStrategyDisplayName = (
-    opportunity: Pick<Opportunity, 'is_strategy_protected' | 'strategy_display_name' | 'template_name' | 'name' | 'symbol'>,
+    opportunity: Pick<Opportunity, 'is_strategy_protected' | 'strategy_display_name' | 'strategy_transparency' | 'template_name' | 'name' | 'symbol'>,
 ): string => {
+    const manifestDisplayName = opportunity.strategy_transparency?.display_name;
+    const publicDisplayName = opportunity.strategy_display_name || (typeof manifestDisplayName === 'string' ? manifestDisplayName : '');
     if (isProtectedStrategy(opportunity)) {
-        return opportunity.strategy_display_name || PROTECTED_STRATEGY_LABEL;
+        return publicDisplayName || PROTECTED_STRATEGY_LABEL;
     }
-    return opportunity.strategy_display_name || opportunity.template_name || opportunity.name || opportunity.symbol;
+    return publicDisplayName || opportunity.template_name || opportunity.name || opportunity.symbol;
 };
 
 export type MonitorCardMode = 'price' | 'strategy';

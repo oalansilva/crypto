@@ -22,6 +22,11 @@ from app.services.strategy_secret_visibility import (
     redact_favorite_strategy_payload,
 )
 from app.services.strategy_descriptions import public_strategy_description
+from app.schemas.strategy_transparency import StrategyTransparency
+from app.services.strategy_transparency import (
+    build_strategy_transparency,
+    build_strategy_transparency_from_serialized,
+)
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -40,6 +45,7 @@ class FavoriteTradesResponse(BaseModel):
     candles: List[Dict[str, Any]] = Field(default_factory=list)
     indicator_data: Dict[str, Any] = Field(default_factory=dict)
     execution_mode: Optional[str] = None
+    strategy_transparency: Optional[StrategyTransparency] = None
 
 
 def _decode_jsonish(value):
@@ -73,6 +79,7 @@ def _favorite_response(
     include_secrets: bool,
     tier_override: int | None | object = _TIER_UNSET,
     description_by_strategy: dict[str, str] | None = None,
+    template_by_strategy: dict[str, dict[str, Any]] | None = None,
 ) -> FavoriteStrategyResponse:
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
@@ -80,6 +87,15 @@ def _favorite_response(
         str(row.strategy_name),
         public_strategy_description(row.strategy_name),
     )
+    template_data = (template_by_strategy or {}).get(str(row.strategy_name))
+    payload["strategy_transparency"] = build_strategy_transparency(
+        row.strategy_name,
+        template_data,
+        effective_parameters=(
+            normalized.parameters if isinstance(normalized.parameters, dict) else {}
+        ),
+        timeframe=row.timeframe,
+    ).model_dump(mode="json")
     if tier_override is not _TIER_UNSET:
         payload["tier"] = tier_override
     return FavoriteStrategyResponse(
@@ -98,6 +114,45 @@ def _strategy_descriptions_for_rows(
     templates = db.query(ComboTemplate).filter(ComboTemplate.name.in_(names)).all()
     raw_by_name = {str(row.name): row.description for row in templates}
     return {name: public_strategy_description(name, raw_by_name.get(name)) for name in names}
+
+
+def _strategy_templates_for_rows(
+    db: Session,
+    rows: list[FavoriteStrategy],
+) -> dict[str, dict[str, Any]]:
+    names = sorted({str(row.strategy_name) for row in rows if row.strategy_name})
+    if not names:
+        return {}
+    templates = db.query(ComboTemplate).filter(ComboTemplate.name.in_(names)).all()
+    return {
+        str(row.name): (_decode_jsonish(row.template_data) or {})
+        for row in templates
+        if isinstance(_decode_jsonish(row.template_data), dict)
+    }
+
+
+def _favorite_transparency(
+    db: Session,
+    favorite: FavoriteStrategy,
+    metrics: dict[str, Any],
+) -> StrategyTransparency:
+    stored = metrics.get("analysis_strategy_transparency")
+    if isinstance(stored, dict):
+        try:
+            manifest = StrategyTransparency.model_validate(stored)
+            if manifest.timeframe == favorite.timeframe:
+                return manifest
+        except Exception:
+            pass
+    template_data = _strategy_templates_for_rows(db, [favorite]).get(str(favorite.strategy_name))
+    return build_strategy_transparency_from_serialized(
+        favorite.strategy_name,
+        template_data,
+        effective_parameters=favorite.parameters if isinstance(favorite.parameters, dict) else {},
+        timeframe=favorite.timeframe,
+        candles=_analysis_candles_from_metrics(metrics),
+        indicator_data=_analysis_indicators_from_metrics(metrics),
+    )
 
 
 def _configured_admin_emails() -> list[str]:
@@ -351,9 +406,13 @@ def list_favorites(
     if include_secrets or (current_user and is_admin_email(current_user.email)):
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
         descriptions = _strategy_descriptions_for_rows(db, rows)
+        templates = _strategy_templates_for_rows(db, rows)
         return [
             _favorite_response(
-                row, include_secrets=include_secrets, description_by_strategy=descriptions
+                row,
+                include_secrets=include_secrets,
+                description_by_strategy=descriptions,
+                template_by_strategy=templates,
             )
             for row in rows
         ]
@@ -361,9 +420,13 @@ def list_favorites(
     if not current_user:
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
         descriptions = _strategy_descriptions_for_rows(db, rows)
+        templates = _strategy_templates_for_rows(db, rows)
         return [
             _favorite_response(
-                row, include_secrets=include_secrets, description_by_strategy=descriptions
+                row,
+                include_secrets=include_secrets,
+                description_by_strategy=descriptions,
+                template_by_strategy=templates,
             )
             for row in rows
         ]
@@ -381,11 +444,13 @@ def list_favorites(
     has_user_rows = any(row.symbol and "/" in str(row.symbol) for row in user_rows)
     if has_user_rows:
         descriptions = _strategy_descriptions_for_rows(db, user_rows)
+        templates = _strategy_templates_for_rows(db, user_rows)
         return [
             _favorite_response(
                 row,
                 include_secrets=include_secrets,
                 description_by_strategy=descriptions,
+                template_by_strategy=templates,
             )
             for row in user_rows
         ]
@@ -393,9 +458,13 @@ def list_favorites(
     admin_user_ids = _admin_catalog_user_ids(db, exclude_user_id=current_user_id)
     if not admin_user_ids:
         descriptions = _strategy_descriptions_for_rows(db, user_rows)
+        templates = _strategy_templates_for_rows(db, user_rows)
         return [
             _favorite_response(
-                row, include_secrets=include_secrets, description_by_strategy=descriptions
+                row,
+                include_secrets=include_secrets,
+                description_by_strategy=descriptions,
+                template_by_strategy=templates,
             )
             for row in user_rows
         ]
@@ -412,12 +481,14 @@ def list_favorites(
         .all()
     )
     descriptions = _strategy_descriptions_for_rows(db, rows)
+    templates = _strategy_templates_for_rows(db, rows)
     return [
         _favorite_response(
             row,
             include_secrets=False,
             tier_override=tier_by_favorite_id.get(int(row.id)),
             description_by_strategy=descriptions,
+            template_by_strategy=templates,
         )
         for row in rows
     ]
@@ -442,6 +513,7 @@ async def get_favorite_trades(
 
     favorite = _normalize_favorite_json_fields(favorite)
     metrics = favorite.metrics if isinstance(favorite.metrics, dict) else {}
+    strategy_transparency = _favorite_transparency(db, favorite, metrics)
     saved_trades = metrics.get("trades")
     saved_trade_count = _numeric_metric(metrics.get("total_trades"))
     history_cached = metrics.get("trades_history_cached") is True
@@ -472,6 +544,7 @@ async def get_favorite_trades(
                 if isinstance(metrics.get("analysis_execution_mode"), str)
                 else None
             ),
+            strategy_transparency=strategy_transparency,
         )
 
     if not owns_favorite:
@@ -495,6 +568,7 @@ async def get_favorite_trades(
                 if isinstance(metrics.get("analysis_execution_mode"), str)
                 else None
             ),
+            strategy_transparency=strategy_transparency,
         )
 
     result = await _run_favorite_optimization(favorite)
@@ -505,6 +579,20 @@ async def get_favorite_trades(
     analysis_indicator_data = (
         result.get("indicator_data") if isinstance(result.get("indicator_data"), dict) else {}
     )
+    result_transparency = result.get("strategy_transparency")
+    if isinstance(result_transparency, dict):
+        strategy_transparency = StrategyTransparency.model_validate(result_transparency)
+    else:
+        strategy_transparency = build_strategy_transparency_from_serialized(
+            favorite.strategy_name,
+            _strategy_templates_for_rows(db, [favorite]).get(str(favorite.strategy_name)),
+            effective_parameters=(
+                favorite.parameters if isinstance(favorite.parameters, dict) else {}
+            ),
+            timeframe=favorite.timeframe,
+            candles=analysis_candles,
+            indicator_data=analysis_indicator_data,
+        )
     updated_metrics = {
         **metrics,
         **regenerated_metrics,
@@ -515,6 +603,7 @@ async def get_favorite_trades(
         "trades_reconciled_from_mismatch": not metrics_match,
         "analysis_candles": analysis_candles,
         "analysis_indicator_data": analysis_indicator_data,
+        "analysis_strategy_transparency": strategy_transparency.model_dump(mode="json"),
         "analysis_execution_mode": result.get("execution_mode"),
     }
     if not metrics_match:
@@ -534,6 +623,7 @@ async def get_favorite_trades(
         candles=analysis_candles,
         indicator_data=analysis_indicator_data,
         execution_mode=result.get("execution_mode"),
+        strategy_transparency=strategy_transparency,
     )
 
 
@@ -550,7 +640,11 @@ def create_favorite(
         db.commit()
         db.refresh(db_favorite)
         include_secrets = can_view_strategy_secrets(db, current_user_id)
-        return _favorite_response(db_favorite, include_secrets=include_secrets)
+        return _favorite_response(
+            db_favorite,
+            include_secrets=include_secrets,
+            template_by_strategy=_strategy_templates_for_rows(db, [db_favorite]),
+        )
     except Exception as e:
         import traceback
         import logging
@@ -621,6 +715,7 @@ def update_favorite(
         favorite,
         include_secrets=include_secrets,
         tier_override=tier_override,
+        template_by_strategy=_strategy_templates_for_rows(db, [favorite]),
     )
 
 
