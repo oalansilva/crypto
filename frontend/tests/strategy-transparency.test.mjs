@@ -4,6 +4,7 @@ import test from 'node:test'
 
 import {
     buildIndicatorValueIndex,
+    hasAvailableIndicatorSeries,
     indicatorValueAtTimestamp,
     normalizeStrategyTransparency,
     transparencyMatchesTimeframe,
@@ -54,6 +55,38 @@ test('bloqueia séries quando timeframe do manifesto diverge', () => {
     const transparency = normalizeStrategyTransparency({ status: 'available', timeframe: '4h' })
     assert.equal(transparencyMatchesTimeframe(transparency, '4H'), true)
     assert.equal(transparencyMatchesTimeframe(transparency, '1d'), false)
+})
+
+test('só libera cache com série disponível, pontos válidos e timeframe compatível', () => {
+    const baseManifest = {
+        status: 'available',
+        timeframe: '1d',
+        indicators: [{
+            key: 'short',
+            type: 'ema',
+            panel: 'price',
+            series_status: 'available',
+            series: [{ timestamp_utc: '2026-07-01T00:00:00Z', value: 101 }],
+        }],
+    }
+
+    assert.equal(hasAvailableIndicatorSeries(baseManifest, '1d'), true)
+    assert.equal(hasAvailableIndicatorSeries(baseManifest, '4h'), false)
+    assert.equal(hasAvailableIndicatorSeries({
+        ...baseManifest,
+        indicators: [{ ...baseManifest.indicators[0], series_status: 'unavailable' }],
+    }, '1d'), false)
+    assert.equal(hasAvailableIndicatorSeries({
+        ...baseManifest,
+        indicators: [{ ...baseManifest.indicators[0], series: [] }],
+    }, '1d'), false)
+    assert.equal(hasAvailableIndicatorSeries({
+        ...baseManifest,
+        indicators: [{
+            ...baseManifest.indicators[0],
+            series: [{ timestamp_utc: 'inválido', value: 101 }],
+        }],
+    }, '1d'), false)
 })
 
 test('indexa séries uma vez para lookup constante por timestamp', () => {

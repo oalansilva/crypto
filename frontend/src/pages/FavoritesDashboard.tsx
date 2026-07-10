@@ -7,7 +7,10 @@ import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
 import { useAuth } from '@/stores/authStore';
 import { ScreenHelpPanel } from '@/components/onboarding/ScreenHelpPanel';
-import type { StrategyTransparency } from '@/lib/strategyTransparency';
+import {
+    hasAvailableIndicatorSeries,
+    type StrategyTransparency,
+} from '@/lib/strategyTransparency';
 
 import * as XLSX from 'xlsx';
 
@@ -557,8 +560,23 @@ const FavoritesDashboard: React.FC = () => {
         const hasChartContext = Array.isArray(fav.metrics?.analysis_candles)
             && fav.metrics.analysis_candles.length > 0;
         const isProtectedForCommonUser = isFavoriteProtected(fav) && !isAdmin;
+        const cachedStrategyTransparency = fav.metrics?.analysis_strategy_transparency
+            ?? fav.strategy_transparency
+            ?? null;
+        const hasUsableCachedTransparency = hasAvailableIndicatorSeries(
+            cachedStrategyTransparency,
+            fav.timeframe,
+        );
+        const hasRecoverableCachedAnalysis = Boolean(savedTrades)
+            && (hasChartContext || hasCachedHistory);
+        const needsLegacyTransparencyHydration = hasRecoverableCachedAnalysis
+            && !hasUsableCachedTransparency;
 
-        if (savedTrades && (hasChartContext || hasCachedHistory || summaryTradeCount <= 0)) {
+        if (
+            hasUsableCachedTransparency
+            && savedTrades
+            && (hasChartContext || hasCachedHistory || summaryTradeCount <= 0)
+        ) {
             return {
                 trades: savedTrades,
                 metrics: fav.metrics || {},
@@ -569,70 +587,101 @@ const FavoritesDashboard: React.FC = () => {
                 executionMode: typeof fav.metrics?.analysis_execution_mode === 'string'
                     ? fav.metrics.analysis_execution_mode
                     : 'favorite_cache',
-                strategyTransparency: fav.metrics?.analysis_strategy_transparency ?? fav.strategy_transparency ?? null,
+                strategyTransparency: cachedStrategyTransparency,
             };
         }
 
-        if (isProtectedForCommonUser) {
+        if (isProtectedForCommonUser && !needsLegacyTransparencyHydration) {
             return {
                 trades: savedTrades || [],
                 metrics: fav.metrics || {},
                 candles: getSavedAnalysisCandles(fav),
                 indicatorData: {},
                 executionMode: 'favorite_protected_cache',
-                strategyTransparency: fav.metrics?.analysis_strategy_transparency ?? fav.strategy_transparency ?? null,
+                strategyTransparency: cachedStrategyTransparency,
             };
         }
 
-        if (summaryTradeCount <= 0) {
+        if (summaryTradeCount <= 0 && !needsLegacyTransparencyHydration) {
             return {
                 trades: [],
                 metrics: fav.metrics || {},
                 candles: [],
                 indicatorData: {},
                 executionMode: 'favorite_cache',
-                strategyTransparency: fav.metrics?.analysis_strategy_transparency ?? fav.strategy_transparency ?? null,
+                strategyTransparency: cachedStrategyTransparency,
             };
         }
 
-        const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}/trades`);
-        if (!res.ok) {
-            throw new Error(`Failed to load trades (${res.status})`);
-        }
+        try {
+            const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}/trades`);
+            if (!res.ok) {
+                throw new Error(`Failed to load trades (${res.status})`);
+            }
 
-        const payload = await res.json();
-        const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
-        const nextMetrics = payload.metrics && typeof payload.metrics === 'object'
-            ? payload.metrics
-            : {
-                ...(fav.metrics || {}),
+            const payload = await res.json();
+            const regeneratedTrades = Array.isArray(payload.trades) ? payload.trades : [];
+            const nextMetrics = payload.metrics && typeof payload.metrics === 'object'
+                ? payload.metrics
+                : {
+                    ...(fav.metrics || {}),
+                    trades: regeneratedTrades,
+                    trades_history_cached: true,
+                    trades_metrics_match: payload.metrics_match !== false,
+                    trades_metrics_deltas: payload.metrics_deltas || {},
+                };
+
+            queryClient.setQueryData<FavoriteStrategy[]>(
+                ['favorites', user?.id ?? 'anonymous'],
+                (current) => current?.map((item) => (
+                    item.id === fav.id
+                        ? {
+                            ...item,
+                            metrics: nextMetrics,
+                            strategy_transparency: payload.strategy_transparency
+                                ?? item.strategy_transparency
+                                ?? null,
+                        }
+                        : item
+                ))
+            );
+
+            return {
                 trades: regeneratedTrades,
-                trades_history_cached: true,
-                trades_metrics_match: payload.metrics_match !== false,
-                trades_metrics_deltas: payload.metrics_deltas || {},
+                metrics: nextMetrics,
+                candles: Array.isArray(payload.candles) ? payload.candles : [],
+                indicatorData: payload.indicator_data && typeof payload.indicator_data === 'object'
+                    ? payload.indicator_data
+                    : {},
+                executionMode: typeof payload.execution_mode === 'string'
+                    ? payload.execution_mode
+                    : 'favorite_regenerated',
+                strategyTransparency: payload.strategy_transparency ?? fav.strategy_transparency ?? null,
             };
+        } catch (error) {
+            if (!needsLegacyTransparencyHydration) throw error;
 
-        queryClient.setQueryData<FavoriteStrategy[]>(
-            ['favorites', user?.id ?? 'anonymous'],
-            (current) => current?.map((item) => (
-                item.id === fav.id
-                    ? { ...item, metrics: nextMetrics }
-                    : item
-            ))
-        );
-
-        return {
-            trades: regeneratedTrades,
-            metrics: nextMetrics,
-            candles: Array.isArray(payload.candles) ? payload.candles : [],
-            indicatorData: payload.indicator_data && typeof payload.indicator_data === 'object'
-                ? payload.indicator_data
-                : {},
-            executionMode: typeof payload.execution_mode === 'string'
-                ? payload.execution_mode
-                : 'favorite_regenerated',
-            strategyTransparency: payload.strategy_transparency ?? fav.strategy_transparency ?? null,
-        };
+            console.warn(
+                `Opening cached favorite without hydrated indicator series for ${fav.symbol} ${fav.timeframe}`,
+                error,
+            );
+            return {
+                trades: savedTrades || [],
+                metrics: fav.metrics || {},
+                candles: getSavedAnalysisCandles(fav),
+                indicatorData: isProtectedForCommonUser
+                    ? {}
+                    : fav.metrics?.analysis_indicator_data && typeof fav.metrics.analysis_indicator_data === 'object'
+                        ? fav.metrics.analysis_indicator_data
+                        : {},
+                executionMode: typeof fav.metrics?.analysis_execution_mode === 'string'
+                    ? fav.metrics.analysis_execution_mode
+                    : isProtectedForCommonUser
+                        ? 'favorite_protected_cache'
+                        : 'favorite_cache',
+                strategyTransparency: cachedStrategyTransparency,
+            };
+        }
     };
 
     const buildFavoriteAnalysisResult = (

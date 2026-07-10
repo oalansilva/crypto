@@ -703,6 +703,156 @@ def test_common_user_can_read_cached_admin_catalog_chart_trades(tmp_path: Path, 
     }
 
 
+def test_common_user_get_favorite_trades_rebuilds_legacy_timestamped_manifest(
+    tmp_path: Path, monkeypatch
+):
+    SessionLocal = _session_factory(tmp_path)
+    admin_id = str(uuid.uuid4())
+    common_id = str(uuid.uuid4())
+    admin_email = f"admin-{uuid.uuid4()}@example.com"
+    timestamps = [
+        "2026-06-26T00:00:00Z",
+        "2026-06-27T00:00:00Z",
+        "2026-06-28T00:00:00Z",
+    ]
+    template_data = {
+        "indicators": [
+            {"type": "ema", "alias": "short", "params": {"length": 18}},
+            {"type": "sma", "alias": "medium", "params": {"length": 20}},
+            {"type": "sma", "alias": "long", "params": {"length": 35}},
+        ],
+        "entry_logic": "(short > long) & crossover(short, medium)",
+        "exit_logic": "crossunder(short, long)",
+        "stop_loss": 0.042,
+    }
+    monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
+    monkeypatch.setattr(
+        favorites,
+        "is_admin_email",
+        lambda email: str(email).lower() == admin_email,
+    )
+    monkeypatch.setattr(
+        favorites,
+        "can_view_strategy_secrets",
+        lambda _db, user_id: str(user_id) == admin_id,
+    )
+    monkeypatch.setattr(
+        favorites,
+        "_strategy_templates_for_rows",
+        lambda _db, rows: {str(row.strategy_name): template_data for row in rows},
+    )
+
+    with SessionLocal() as db:
+        db.add(User(id=admin_id, email=admin_email, password_hash="x", name="Admin"))
+        db.add(
+            User(
+                id=common_id,
+                email=f"common-{uuid.uuid4()}@example.com",
+                password_hash="x",
+                name="Common",
+            )
+        )
+        db.commit()
+        created = favorites.create_favorite(
+            favorites.FavoriteStrategyCreate(
+                **{
+                    **_favorite_payload(
+                        "Legacy transparent cache",
+                        symbol="SOL/USDT",
+                        strategy_name="multi_ma_crossoverV2",
+                    ).model_dump(),
+                    "parameters": {
+                        "direction": "long",
+                        "ema_short": 16,
+                        "sma_medium": 17,
+                        "sma_long": 33,
+                        "stop_loss": 0.085,
+                    },
+                    "metrics": {
+                        "total_trades": 1,
+                        "win_rate": 1,
+                        "total_return_pct": 3.2,
+                        "trades_history_cached": True,
+                        "trades": [
+                            {
+                                "entry_time": timestamps[0],
+                                "entry_price": 135,
+                                "exit_time": timestamps[2],
+                                "exit_price": 139,
+                                "profit": 0.032,
+                            }
+                        ],
+                        "analysis_candles": [
+                            {"timestamp_utc": timestamp, "close": close}
+                            for timestamp, close in zip(timestamps, [135, 137, 139], strict=True)
+                        ],
+                        "analysis_indicator_data": {
+                            "short": [134.5, 135.5, 137.0],
+                            "medium": [133.0, 134.0, 135.0],
+                            "long": [130.0, 131.0, 132.0],
+                            "ADX_14": [22.0, 23.0, 24.0],
+                            "private_diagnostic": [999.0, 999.0, 999.0],
+                        },
+                    },
+                }
+            ),
+            current_user_id=admin_id,
+            db=db,
+        )
+        stored_metrics = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one().metrics
+        assert "analysis_strategy_transparency" not in stored_metrics
+
+        response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id=common_id, db=db)
+        )
+
+    manifest = response.strategy_transparency
+    assert response.regenerated is False
+    assert response.indicator_data == {}
+    assert manifest is not None
+    assert manifest.status == "available"
+    assert manifest.timeframe == "1d"
+    assert manifest.parameters == {
+        "short_length": 16,
+        "medium_length": 17,
+        "long_length": 33,
+        "stop_loss": 0.085,
+    }
+    assert [indicator.key for indicator in manifest.indicators] == ["short", "medium", "long"]
+    assert [indicator.execution_columns for indicator in manifest.indicators] == [
+        ["short"],
+        ["medium"],
+        ["long"],
+    ]
+    assert all(indicator.series_status == "available" for indicator in manifest.indicators)
+    assert [
+        [(point.timestamp_utc, point.value) for point in indicator.series]
+        for indicator in manifest.indicators
+    ] == [
+        [
+            ("2026-06-26T00:00:00+00:00", 134.5),
+            ("2026-06-27T00:00:00+00:00", 135.5),
+            ("2026-06-28T00:00:00+00:00", 137.0),
+        ],
+        [
+            ("2026-06-26T00:00:00+00:00", 133.0),
+            ("2026-06-27T00:00:00+00:00", 134.0),
+            ("2026-06-28T00:00:00+00:00", 135.0),
+        ],
+        [
+            ("2026-06-26T00:00:00+00:00", 130.0),
+            ("2026-06-27T00:00:00+00:00", 131.0),
+            ("2026-06-28T00:00:00+00:00", 132.0),
+        ],
+    ]
+    assert "ADX_14" not in {
+        column for indicator in manifest.indicators for column in indicator.execution_columns
+    }
+    assert "private_diagnostic" not in {
+        column for indicator in manifest.indicators for column in indicator.execution_columns
+    }
+
+
 def test_common_user_cannot_regenerate_admin_catalog_chart_trades(tmp_path: Path, monkeypatch):
     SessionLocal = _session_factory(tmp_path)
     admin_id = str(uuid.uuid4())

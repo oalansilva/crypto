@@ -34,3 +34,12 @@ Nomes públicos genéricos ou divergentes e gráficos que ocultam os indicadores
 - Tipos e componentes React compartilhados de gráfico, legenda, painéis e explicação da estratégia.
 - Testes backend tabulares/integração, testes frontend e E2E desktop/mobile.
 - Sem alteração de regras, sinais, stops, ranking ou performance das estratégias; sem migração de banco obrigatória.
+
+## Correção pós-validação DEV
+
+O teste de Alan em `/combo/results` mostrou somente candles e marcadores para um favorito legado. A investigação confirmou dois gaps:
+
+- o frontend novo foi servido junto de um backend DEV ainda carregado com código anterior ao card;
+- favoritos legados com candles e arrays de indicadores alinhados, mas sem `analysis_strategy_transparency`, usam um atalho de cache que não consulta a resposta de análise capaz de reconstruir as séries.
+
+A correção passa a hidratar o manifesto legado pela API de análise quando o cache não contém séries timestampadas utilizáveis e torna o `./restart` do source DEV canônico restrito aos serviços `criptofarol-dev-*`, sem atingir PROD.

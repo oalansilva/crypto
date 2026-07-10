@@ -157,6 +157,18 @@ export function transparencyMatchesTimeframe(
     return transparency.timeframe.toLowerCase() === timeframe.trim().toLowerCase()
 }
 
+export function hasAvailableIndicatorSeries(
+    value: unknown,
+    timeframe: string | undefined,
+): boolean {
+    const transparency = normalizeStrategyTransparency(value)
+    if (!transparency || !transparencyMatchesTimeframe(transparency, timeframe)) return false
+
+    return transparency.indicators.some((indicator) => (
+        indicator.availability === 'available' && indicator.series.length > 0
+    ))
+}
+
 export function indicatorValueAtTimestamp(
     indicator: StrategyTransparencyIndicator,
     timestampSeconds: number,

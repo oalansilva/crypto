@@ -57,3 +57,10 @@ Favorites list and analysis responses SHALL expose the same strategy transparenc
 - **WHEN** a favorite appears in both surfaces
 - **THEN** name, description, parameters, indicator metadata and logic explanations SHALL be identical
 - **AND** analysis SHALL add timestamped series without redefining the manifest.
+
+#### Scenario: Legacy favorite has aligned cached series but no persisted manifest
+- **WHEN** a favorite created before strategy transparency has cached candles and indicator arrays with a proven one-to-one timestamp source
+- **AND** its list payload has no usable timestamped transparency series
+- **THEN** opening full analysis SHALL request the favorite analysis response that reconstructs the canonical timestamped series
+- **AND** `/combo/results` SHALL render the declared overlays or panels
+- **AND** the Favorites list SHALL remain a summary payload without duplicating full historical series for every row.

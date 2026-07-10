@@ -64,6 +64,16 @@ Cada manifesto/série declara timeframe. Mudança de timeframe só mantém indic
 
 Legenda e manifesto usam HTML semântico (`ul`/`dl`) como alternativa ao canvas; controles têm nome acessível, `aria-pressed` quando aplicável e alvo mínimo de 44px. Painéis usam scroll vertical no modal e altura compacta no mobile, sem scroll horizontal da página. O modal preserva Escape, restaura foco e mantém ordem de foco previsível.
 
+### 7. Hidratação de favoritos legados no momento da análise
+
+A listagem continua entregando somente o resumo do manifesto para evitar multiplicar milhares de pontos por todos os favoritos. Ao abrir uma análise, o frontend só usa o atalho local quando o manifesto cacheado já contém ao menos uma série `available` com pontos e timeframe compatível. Caso contrário, consulta `/favorites/{id}/trades`, cuja `_favorite_transparency` combina os candles e arrays persistidos quando os comprimentos/timestamps são comprováveis.
+
+Isso corrige favoritos anteriores ao card sem recalcular indicadores no navegador, sem inflar a listagem e sem expor arrays diagnósticos.
+
+### 8. Restart DEV deve atingir apenas serviços DEV
+
+No source canônico `/srv/apps/dev/criptofarol/source`, `./restart` usa os serviços systemd `criptofarol-dev-backend.service` e `criptofarol-dev-frontend.service`, executa migrações/build antes do restart e valida `8004/5175`. O fluxo legado de portas `8003/5173` não pode ser acionado a partir do workspace DEV, pois essas portas pertencem a PROD neste host.
+
 ## Risks / Trade-offs
 
 - [Templates gerados podem não existir no seed] → resolver primeiro pelo template/banco/configuração do favorito e marcar indisponível quando não houver fonte técnica confiável.
