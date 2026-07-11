@@ -25,10 +25,16 @@ from app.services.strategy_descriptions import public_strategy_description
 from app.schemas.strategy_transparency import StrategyTransparency
 from app.services.strategy_transparency import (
     build_strategy_transparency,
+    build_strategy_transparency_from_candles,
     build_strategy_transparency_from_serialized,
+    normalize_strategy_transparency_colors,
 )
+from app.services.ohlcv_storage import MarketOhlcvRepository
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
+
+_FAVORITE_CHART_CANDLE_LIMIT = 5000
+_FAVORITE_OHLCV_REPO = MarketOhlcvRepository()
 
 
 class ExistsResponse(BaseModel):
@@ -141,7 +147,7 @@ def _favorite_transparency(
         try:
             manifest = StrategyTransparency.model_validate(stored)
             if manifest.timeframe == favorite.timeframe:
-                return manifest
+                return normalize_strategy_transparency_colors(manifest)
         except Exception:
             pass
     template_data = _strategy_templates_for_rows(db, [favorite]).get(str(favorite.strategy_name))
@@ -153,6 +159,78 @@ def _favorite_transparency(
         candles=_analysis_candles_from_metrics(metrics),
         indicator_data=_analysis_indicators_from_metrics(metrics),
     )
+
+
+def _normalized_candle_timestamp(candle: dict[str, Any]) -> str | None:
+    return _normalized_timestamp(candle.get("timestamp_utc"))
+
+
+def _normalized_timestamp(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat()
+
+
+def _merge_chart_candles(
+    saved_candles: list[dict[str, Any]], current_candles: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    by_timestamp: dict[str, dict[str, Any]] = {}
+    for candle in [*saved_candles, *current_candles]:
+        if not isinstance(candle, dict):
+            continue
+        timestamp = _normalized_candle_timestamp(candle)
+        if timestamp:
+            by_timestamp[timestamp] = {**candle, "timestamp_utc": timestamp}
+    return [by_timestamp[key] for key in sorted(by_timestamp)][-_FAVORITE_CHART_CANDLE_LIMIT:]
+
+
+def _current_favorite_chart_context(
+    *,
+    strategy_name: str,
+    template_data: dict[str, Any] | None,
+    effective_parameters: dict[str, Any],
+    symbol: str,
+    timeframe: str,
+    saved_candles: list[dict[str, Any]],
+    fallback_manifest: StrategyTransparency,
+) -> tuple[list[dict[str, Any]], StrategyTransparency]:
+    """Read bounded current candles and derive public series without optimizing or persisting."""
+
+    try:
+        if not _FAVORITE_OHLCV_REPO.enabled:
+            return saved_candles, fallback_manifest
+        current = _FAVORITE_OHLCV_REPO.read_recent_candles(
+            symbol, timeframe, _FAVORITE_CHART_CANDLE_LIMIT
+        )
+        merged = _merge_chart_candles(saved_candles, current)
+        if not merged:
+            return saved_candles, fallback_manifest
+        manifest = build_strategy_transparency_from_candles(
+            strategy_name,
+            template_data,
+            effective_parameters=effective_parameters,
+            timeframe=timeframe,
+            candles=merged,
+        )
+        last_candle_timestamp = _normalized_candle_timestamp(merged[-1])
+        if not last_candle_timestamp or not manifest.indicators:
+            return saved_candles, fallback_manifest
+        if any(
+            indicator.series_status != "available"
+            or not indicator.series
+            or _normalized_timestamp(indicator.series[-1].timestamp_utc) != last_candle_timestamp
+            for indicator in manifest.indicators
+        ):
+            return saved_candles, fallback_manifest
+        return merged, manifest
+    except Exception:
+        return saved_candles, fallback_manifest
 
 
 def _configured_admin_emails() -> list[str]:
@@ -519,6 +597,23 @@ async def get_favorite_trades(
     history_cached = metrics.get("trades_history_cached") is True
     has_chart_context = len(_analysis_candles_from_metrics(metrics)) > 0
 
+    async def load_current_chart_context():
+        template_data = _strategy_templates_for_rows(db, [favorite]).get(
+            str(favorite.strategy_name)
+        )
+        return await asyncio.to_thread(
+            _current_favorite_chart_context,
+            strategy_name=str(favorite.strategy_name),
+            template_data=template_data,
+            effective_parameters=(
+                favorite.parameters if isinstance(favorite.parameters, dict) else {}
+            ),
+            symbol=str(favorite.symbol),
+            timeframe=str(favorite.timeframe),
+            saved_candles=_analysis_candles_from_metrics(metrics),
+            fallback_manifest=strategy_transparency,
+        )
+
     if not include_secrets:
         if not _can_view_cached_chart_payload(
             db,
@@ -530,6 +625,8 @@ async def get_favorite_trades(
         if not isinstance(saved_trades, list):
             raise HTTPException(status_code=403, detail="Favorite trade regeneration is protected")
 
+        chart_candles, strategy_transparency = await load_current_chart_context()
+
         return FavoriteTradesResponse(
             favorite_id=favorite_id,
             trades=saved_trades,
@@ -537,7 +634,7 @@ async def get_favorite_trades(
             metrics_match=True,
             metrics_deltas={},
             regenerated=False,
-            candles=_analysis_candles_from_metrics(metrics),
+            candles=chart_candles,
             indicator_data={},
             execution_mode=(
                 metrics.get("analysis_execution_mode")
@@ -553,6 +650,7 @@ async def get_favorite_trades(
     if isinstance(saved_trades, list) and (
         has_chart_context or history_cached or int(saved_trade_count or 0) <= 0
     ):
+        chart_candles, strategy_transparency = await load_current_chart_context()
         saved_metrics_match = metrics.get("trades_metrics_match")
         return FavoriteTradesResponse(
             favorite_id=favorite_id,
@@ -561,7 +659,7 @@ async def get_favorite_trades(
             metrics_match=saved_metrics_match if isinstance(saved_metrics_match, bool) else True,
             metrics_deltas=_analysis_metrics_deltas_from_metrics(metrics),
             regenerated=False,
-            candles=_analysis_candles_from_metrics(metrics),
+            candles=chart_candles,
             indicator_data=_analysis_indicators_from_metrics(metrics),
             execution_mode=(
                 metrics.get("analysis_execution_mode")

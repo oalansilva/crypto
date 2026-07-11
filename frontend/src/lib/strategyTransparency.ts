@@ -40,6 +40,12 @@ export interface StrategyTransparency {
 
 const DEFAULT_COLORS = ['#fcd535', '#2dbdb6', '#3b82f6', '#0ecb81', '#f6465d', '#929aa5']
 
+const MOVING_AVERAGE_ROLE_COLORS: Record<string, string> = {
+    short: '#f6465d',
+    medium: '#ff9f43',
+    long: '#3b82f6',
+}
+
 const asRecord = (value: unknown): Record<string, unknown> => (
     value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 )
@@ -47,6 +53,30 @@ const asRecord = (value: unknown): Record<string, unknown> => (
 const asText = (value: unknown, fallback = ''): string => {
     const text = typeof value === 'string' ? value.trim() : ''
     return text || fallback
+}
+
+const normalizeRoleToken = (value: unknown): string => asText(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+const movingAverageRole = (indicator: Record<string, unknown>): keyof typeof MOVING_AVERAGE_ROLE_COLORS | null => {
+    const type = asText(indicator.type).toLowerCase()
+    if (!['ema', 'sma'].includes(type)) return null
+
+    const tokens = [indicator.role, indicator.alias, indicator.key, indicator.id]
+        .flatMap((value) => normalizeRoleToken(value).split(/[^a-z0-9]+/))
+        .filter(Boolean)
+
+    if (tokens.some((token) => ['short', 'fast', 'curta', 'rapida'].includes(token))) return 'short'
+    if (tokens.some((token) => ['medium', 'mid', 'intermediate', 'intermediaria'].includes(token))) return 'medium'
+    if (tokens.some((token) => ['long', 'slow', 'longa', 'lenta'].includes(token))) return 'long'
+    return null
+}
+
+const normalizeIndicatorColor = (indicator: Record<string, unknown>, fallback: string): string => {
+    const role = movingAverageRole(indicator)
+    return role ? MOVING_AVERAGE_ROLE_COLORS[role] : asText(indicator.color, fallback)
 }
 
 const normalizeAvailability = (value: unknown, hasPoints: boolean): string => {
@@ -127,7 +157,7 @@ export function normalizeStrategyTransparency(value: unknown): StrategyTranspare
             type: asText(indicator.type, 'line').toLowerCase(),
             panel: asText(indicator.panel, 'price').toLowerCase(),
             scale: asText(indicator.scale, 'auto').toLowerCase(),
-            color: asText(indicator.color, DEFAULT_COLORS[index % DEFAULT_COLORS.length]),
+            color: normalizeIndicatorColor(indicator, DEFAULT_COLORS[index % DEFAULT_COLORS.length]),
             function: asText(indicator.function ?? indicator.description),
             participation: normalizeParticipation(indicator.participation),
             references: normalizeReferences(indicator.references),

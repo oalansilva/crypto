@@ -13,6 +13,12 @@ const CANDLES = [
   { timestamp_utc: '2026-07-03T00:00:00Z', open: 105, high: 107, low: 103, close: 104, volume: 1200 },
 ]
 
+const CURRENT_CANDLES = [
+  ...CANDLES,
+  { timestamp_utc: '2026-07-04T00:00:00Z', open: 104, high: 108, low: 103, close: 107, volume: 1300 },
+  { timestamp_utc: '2026-07-05T00:00:00Z', open: 107, high: 110, low: 106, close: 109, volume: 1400 },
+]
+
 const transparency = (timeframe = '1d') => ({
   status: 'available',
   strategy_key: 'ema_rsi',
@@ -64,7 +70,7 @@ const transparency = (timeframe = '1d') => ({
   unavailable_reason: null,
 })
 
-const multiMaTransparency = () => ({
+const multiMaTransparency = (candles = CANDLES) => ({
   ...transparency(),
   strategy_key: 'multi_ma_crossoverv2',
   display_name: 'Médias Móveis: Tendência Confirmada',
@@ -84,7 +90,7 @@ const multiMaTransparency = () => ({
     references: [],
     execution_columns: [indicator.key],
     series_status: 'available',
-    series: CANDLES.map((candle, index) => ({
+    series: candles.map((candle, index) => ({
       timestamp_utc: candle.timestamp_utc,
       value: indicator.start + index,
     })),
@@ -108,6 +114,8 @@ interface FavoritePayloadOptions {
   favoriteOverrides?: Record<string, unknown>
   metricsOverrides?: Record<string, unknown>
   tradesResponseStatus?: number
+  detailsCandles?: typeof CANDLES
+  marketCandles?: typeof CANDLES
 }
 
 function favoritePayload(manifest = transparency(), options: FavoritePayloadOptions = {}) {
@@ -201,14 +209,14 @@ async function mockSharedApis(
         metrics_match: true,
         metrics_deltas: {},
         regenerated: false,
-        candles: CANDLES,
+        candles: options.detailsCandles ?? CANDLES,
         indicator_data: favorite.metrics.analysis_indicator_data,
         strategy_transparency: manifest,
         execution_mode: 'favorite_cache',
       }),
     })
   })
-  await page.route('**/api/market/candles**', (route: any) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ candles: CANDLES }) }))
+  await page.route('**/api/market/candles**', (route: any) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ candles: options.marketCandles ?? CANDLES }) }))
   await page.route('**/api/monitor/preferences', (route: any) => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -249,11 +257,13 @@ test.describe('transparência em Favoritos', () => {
     await expect(chart).toHaveAttribute('data-marker-count', '2')
   })
 
-  test('hidrata overlays de favorito legado quando a listagem só tem manifesto sem séries', async ({ page }) => {
-    const manifest = multiMaTransparency()
+  test('hidrata overlays semânticos até a última vela quando o cache legado está defasado', async ({ page }) => {
+    const manifest = multiMaTransparency(CURRENT_CANDLES)
     const api = await mockSharedApis(page, manifest, {
       includeCachedTransparency: false,
       listManifest: withoutIndicatorSeries(manifest),
+      detailsCandles: CURRENT_CANDLES,
+      marketCandles: CURRENT_CANDLES,
       favoriteOverrides: {
         name: 'multi_ma_crossoverV2 - SOL/USDT 1d',
         symbol: 'SOL/USDT',
@@ -263,10 +273,11 @@ test.describe('transparência em Favoritos', () => {
         parameters: { direction: 'long', short_length: 16, medium_length: 17, long_length: 33 },
       },
       metricsOverrides: {
+        analysis_candles: CANDLES,
         analysis_indicator_data: {
-          short: manifest.indicators[0].series.map((point) => point.value),
-          medium: manifest.indicators[1].series.map((point) => point.value),
-          long: manifest.indicators[2].series.map((point) => point.value),
+          short: manifest.indicators[0].series.slice(0, CANDLES.length).map((point) => point.value),
+          medium: manifest.indicators[1].series.slice(0, CANDLES.length).map((point) => point.value),
+          long: manifest.indicators[2].series.slice(0, CANDLES.length).map((point) => point.value),
         },
       },
     })
@@ -278,9 +289,22 @@ test.describe('transparência em Favoritos', () => {
     await expect(page).toHaveURL(/\/combo\/results$/)
     expect(api.favoriteTradesRequests()).toBe(1)
     await expect(page.getByRole('heading', { name: /Médias Móveis: Tendência Confirmada - Ação de preço/ })).toBeVisible()
-    await expect(page.getByTestId('monitor-aligned-result-chart-indicator-short')).toContainText('101.00')
-    await expect(page.getByTestId('monitor-aligned-result-chart-indicator-medium')).toContainText('99.00')
-    await expect(page.getByTestId('monitor-aligned-result-chart-indicator-long')).toContainText('97.00')
+    const chart = page.getByTestId('monitor-aligned-result-chart')
+    const lastTimestamp = new Date(CURRENT_CANDLES.at(-1)!.timestamp_utc).toISOString()
+    await expect(chart).toHaveAttribute('data-last-candle-timestamp', CURRENT_CANDLES.at(-1)!.timestamp_utc)
+    await expect(chart.locator('canvas').first()).toBeVisible()
+    for (const [key, color, value] of [
+      ['short', '#f6465d', '103.00'],
+      ['medium', '#ff9f43', '101.00'],
+      ['long', '#3b82f6', '99.00'],
+    ] as const) {
+      const indicator = page.getByTestId(`monitor-aligned-result-chart-indicator-${key}`)
+      await expect(indicator).toContainText(value)
+      await expect(indicator).not.toContainText('valor indisponível')
+      await expect(indicator).toHaveAttribute('data-indicator-color', color)
+      await expect(indicator).toHaveAttribute('data-series-points', String(CURRENT_CANDLES.length))
+      await expect(indicator).toHaveAttribute('data-series-last-timestamp', lastTimestamp)
+    }
     await expect(page.getByText(/Série indisponível/)).toHaveCount(0)
   })
 

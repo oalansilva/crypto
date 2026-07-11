@@ -105,6 +105,17 @@ _OUTPUT_ROLES = {
     "_histogram": ("Histograma", "#10ac84"),
 }
 
+_MOVING_AVERAGE_ROLE_COLORS = {
+    "short": "#f6465d",
+    "medium": "#ff9f43",
+    "long": "#3b82f6",
+}
+_MOVING_AVERAGE_ROLE_TOKENS = {
+    "short": ("short", "fast", "curta", "rapida", "rápida"),
+    "medium": ("medium", "mid", "intermediate", "intermediaria", "intermediária"),
+    "long": ("long", "slow", "longa", "lenta"),
+}
+
 
 def _public_parameters(indicator: dict[str, Any]) -> dict[str, Any]:
     params = indicator.get("params")
@@ -166,6 +177,69 @@ def _output_label(base: str, column: str) -> tuple[str, str | None]:
         if lowered.endswith(suffix):
             return f"{base} — {role}", color
     return base, None
+
+
+def _moving_average_period(indicator: StrategyIndicatorTransparency) -> float | None:
+    for key in ("length", "period", "window"):
+        value = indicator.parameters.get(key)
+        try:
+            period = float(value)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(period) and period > 0:
+            return period
+    return None
+
+
+def _moving_average_role(indicator: StrategyIndicatorTransparency) -> str | None:
+    identity = " ".join([indicator.key, indicator.label, *indicator.execution_columns]).lower()
+    for role, tokens in _MOVING_AVERAGE_ROLE_TOKENS.items():
+        if any(
+            re.search(rf"(?<![a-z0-9]){re.escape(token)}(?![a-z0-9])", identity) for token in tokens
+        ):
+            return role
+    return None
+
+
+def normalize_strategy_transparency_colors(
+    manifest: StrategyTransparency,
+) -> StrategyTransparency:
+    """Apply stable semantic colors to moving averages, including stored legacy manifests."""
+
+    moving_averages = [
+        indicator
+        for indicator in manifest.indicators
+        if indicator.type.lower() in {"ema", "sma"} and indicator.panel == "price"
+    ]
+    unresolved: list[StrategyIndicatorTransparency] = []
+    for indicator in moving_averages:
+        role = _moving_average_role(indicator)
+        if role:
+            indicator.color = _MOVING_AVERAGE_ROLE_COLORS[role]
+        else:
+            unresolved.append(indicator)
+
+    ranked = sorted(
+        (
+            (period, indicator)
+            for indicator in moving_averages
+            if (period := _moving_average_period(indicator)) is not None
+        ),
+        key=lambda item: item[0],
+    )
+    period_counts: dict[float, int] = {}
+    for period, _indicator in ranked:
+        period_counts[period] = period_counts.get(period, 0) + 1
+    distinct_periods = sorted(period_counts)
+    if len(distinct_periods) > 1:
+        shortest = distinct_periods[0]
+        longest = distinct_periods[-1]
+        for period, indicator in ranked:
+            if indicator not in unresolved or period_counts[period] > 1:
+                continue
+            role = "short" if period == shortest else "long" if period == longest else "medium"
+            indicator.color = _MOVING_AVERAGE_ROLE_COLORS[role]
+    return manifest
 
 
 def _unavailable(strategy_key: str, timeframe: str | None, reason: str) -> StrategyTransparency:
@@ -281,6 +355,7 @@ def build_strategy_transparency(
             ),
         ],
     )
+    normalize_strategy_transparency_colors(manifest)
     if dataframe is not None:
         attach_timestamped_series(manifest, dataframe, timeframe=timeframe)
     return manifest
@@ -365,6 +440,61 @@ def build_strategy_transparency_from_serialized(
         if isinstance(values, list) and len(values) == len(timestamps):
             frame_data[column] = values
     return attach_timestamped_series(manifest, pd.DataFrame(frame_data), timeframe=timeframe)
+
+
+def build_strategy_transparency_from_candles(
+    strategy_name: Any,
+    template_data: dict[str, Any] | None,
+    *,
+    effective_parameters: dict[str, Any] | None,
+    timeframe: str | None,
+    candles: Any,
+) -> StrategyTransparency:
+    """Calculate only declared indicators over timestamped OHLCV candles; never generate signals."""
+
+    manifest = build_strategy_transparency(
+        strategy_name,
+        template_data,
+        effective_parameters=effective_parameters,
+        timeframe=timeframe,
+    )
+    if manifest.status != "available" or not isinstance(template_data, dict):
+        return manifest
+    if not isinstance(candles, list) or not candles:
+        return manifest
+
+    rows: list[dict[str, Any]] = []
+    timestamps: list[pd.Timestamp] = []
+    for candle in candles:
+        if not isinstance(candle, dict):
+            continue
+        timestamp = pd.to_datetime(candle.get("timestamp_utc"), utc=True, errors="coerce")
+        if pd.isna(timestamp):
+            continue
+        row: dict[str, Any] = {}
+        for key in ("open", "high", "low", "close", "volume"):
+            if key in candle:
+                row[key] = pd.to_numeric(candle.get(key), errors="coerce")
+        if "close" not in row or pd.isna(row["close"]):
+            continue
+        rows.append(row)
+        timestamps.append(timestamp)
+    if not rows:
+        return manifest
+
+    frame = pd.DataFrame(rows, index=pd.DatetimeIndex(timestamps, name="timestamp_utc"))
+    frame = frame[~frame.index.duplicated(keep="last")].sort_index()
+    try:
+        strategy = ComboStrategy(
+            indicators=_effective_indicators(template_data, effective_parameters),
+            entry_logic=str(template_data.get("entry_logic") or ""),
+            exit_logic=str(template_data.get("exit_logic") or ""),
+            derived_features=template_data.get("derived_features"),
+        )
+        calculated = strategy.calculate_indicators(frame)
+    except Exception:
+        return manifest
+    return attach_timestamped_series(manifest, calculated, timeframe=timeframe)
 
 
 def transparency_matrix() -> list[dict[str, str]]:

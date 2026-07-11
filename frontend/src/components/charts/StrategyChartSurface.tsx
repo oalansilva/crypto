@@ -660,6 +660,7 @@ export function StrategyChartSurface({
             data-testid={rootTestId}
             data-marker-count={markerCount ?? markers?.length ?? 0}
             data-marker-labels={chartMarkers.map((marker) => marker.text).join('|')}
+            data-last-candle-timestamp={sortedCandles.at(-1)?.timestamp_utc ?? ''}
         >
             <header className="border-b border-[#2b3139] bg-[#0b0e11] px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -820,6 +821,9 @@ export function StrategyChartSurface({
                                             key={indicator.key}
                                             className="rounded-md border border-[#2b3139] bg-[#0b0e11] p-3 text-sm"
                                             data-testid={`${rootTestId}-indicator-${indicator.key}`}
+                                            data-indicator-color={indicator.color}
+                                            data-series-points={indicator.series.length}
+                                            data-series-last-timestamp={indicator.series.at(-1)?.timestamp_utc ?? ''}
                                         >
                                             <div className="flex items-start gap-2">
                                                 <span className="mt-1 h-3 w-3 shrink-0 rounded-full border border-white/20" style={{ backgroundColor: indicator.color }} aria-hidden="true" />

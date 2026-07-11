@@ -12,6 +12,8 @@ Favoritos e Monitor já compartilham `StrategyChartSurface`, mas o componente re
 - Entregar o mesmo contrato em Favoritos e Monitor, com séries timestampadas apenas dos indicadores usados.
 - Renderizar preço, volume e osciladores no gráfico compartilhado, com legenda/crosshair e alternativa textual acessível.
 - Tornar ausência, incompatibilidade de timeframe e gaps explicitamente observáveis.
+- Diferenciar médias móveis por papel temporal com curta vermelha, intermediária laranja e longa azul, preservando rótulos textuais acessíveis.
+- Entregar candles e séries da análise com o mesmo cutoff temporal, inclusive para favoritos legados com cache defasado.
 - Cobrir todos os templates ativos e impedir drift por testes tabulares.
 - Seguir `DESIGN.md`: canvas `#0b0e11`, cards `#1e2329`, hairlines `#2b3139`, ação `#fcd535`, semântica trading verde/vermelho, raio 8px e densidade compacta.
 
@@ -74,6 +76,22 @@ Isso corrige favoritos anteriores ao card sem recalcular indicadores no navegado
 
 No source canônico `/srv/apps/dev/criptofarol/source`, `./restart` usa os serviços systemd `criptofarol-dev-backend.service` e `criptofarol-dev-frontend.service`, executa migrações/build antes do restart e valida `8004/5175`. O fluxo legado de portas `8003/5173` não pode ser acionado a partir do workspace DEV, pois essas portas pertencem a PROD neste host.
 
+### 9. Cores semânticas para médias móveis ordenadas
+
+O manifesto resolve o papel temporal pelo alias/chave declarado (`short`, `medium`, `long` e equivalentes) e, quando necessário, pelo período relativo dentro do grupo de médias executadas. A curta usa `#f6465d` (`trading-down` do `DESIGN.md`), a intermediária usa `#ff9f43` como exceção visual laranja já presente nos metadados de gráfico, e a longa usa `#3b82f6` (`info` do `DESIGN.md`).
+
+A cor continua acompanhada de tipo, período, função e participação em texto; vermelho não muda o sentido do sinal e serve apenas para distinguir a linha curta conforme feedback explícito. Indicadores sem papel temporal resolvido mantêm a paleta existente. A atribuição ocorre no backend para que Favoritos, Monitor e futuras superfícies consumam o mesmo contrato.
+
+Alternativa rejeitada: trocar a cor por tipo (`EMA`/`SMA`) no frontend. Isso mantém duas SMAs indistinguíveis e cria drift entre consumidores.
+
+### 10. Reconstrução atual sem reotimizar trades
+
+Ao abrir a análise de um favorito, o backend obtém o histórico OHLCV canônico atual do mesmo símbolo/timeframe, preserva o cache salvo como fallback e calcula apenas as colunas de indicadores declaradas pelo template com os parâmetros efetivos do favorito. Candles e manifesto são montados a partir do mesmo dataframe/cutoff e retornados juntos.
+
+Esse cálculo é determinístico e separado da otimização/backtest: não altera trades, métricas, sinais, ranking ou parâmetros salvos. O payload comum recebe somente pontos públicos allowlisted; `indicator_data` bruto continua vazio. Falha ou indisponibilidade do histórico atual mantém a resposta cacheada segura e explicitamente limitada ao cutoff comprovado.
+
+O frontend pode continuar mesclando candles idempotentemente, mas nunca estende uma série sozinho. A validação exige que, quando o backend informa série `available`, o último ponto de cada média cubra o último candle retornado depois do warm-up.
+
 ## Risks / Trade-offs
 
 - [Templates gerados podem não existir no seed] → resolver primeiro pelo template/banco/configuração do favorito e marcar indisponível quando não houver fonte técnica confiável.
@@ -82,6 +100,9 @@ No source canônico `/srv/apps/dev/criptofarol/source`, `./restart` usa os servi
 - [Exposição funcional ultrapassar o necessário] → allowlist do manifesto; nunca serializar código, SQL, expressions cruas diagnósticas, credenciais ou payload completo do template.
 - [Catálogo e execução voltarem a divergir] → teste tabular sobre templates ativos, verificação de aliases/params e proibição de fallback/nomes internos.
 - [Mudança ampla causar regressão em markers/trades] → preservar `data-testid`, zoom, fontes de trades e E2E atuais de Favoritos/Monitor.
+- [Recalcular indicadores no GET aumentar latência] → usar apenas OHLCV persistido e cálculo vetorizado das colunas declaradas; manter fallback cacheado e medir no teste focado.
+- [Candle atual mudar durante a requisição] → construir candles e séries a partir de um único snapshot/dataframe e comparar pelo mesmo timestamp.
+- [Cor vermelha sugerir venda] → manter tipo/período/função em texto e registrar que a cor representa velocidade da média, não decisão de compra/venda.
 
 ## Migration Plan
 
@@ -91,6 +112,8 @@ No source canônico `/srv/apps/dev/criptofarol/source`, `./restart` usa os servi
 4. Habilitar manifesto/indicadores no gráfico compartilhado e conectar Favoritos/Monitor.
 5. Inverter testes herdados de ocultação, adicionar drift/a11y/E2E e validar desktop/mobile.
 6. Rollback: desativar o consumo do campo opcional no frontend; payloads antigos permanecem aceitos.
+7. Recalcular somente o manifesto público sobre OHLCV atual ao abrir análise, mantendo trades/métricas salvos e fallback legado.
+8. Aplicar cores semânticas no backend e validar o mesmo contrato em Favoritos e Monitor.
 
 ## Open Questions
 

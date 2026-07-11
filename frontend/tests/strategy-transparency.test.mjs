@@ -57,6 +57,26 @@ test('bloqueia séries quando timeframe do manifesto diverge', () => {
     assert.equal(transparencyMatchesTimeframe(transparency, '1d'), false)
 })
 
+test('normaliza cores semânticas de médias legadas sem alterar outros indicadores', () => {
+    const transparency = normalizeStrategyTransparency({
+        status: 'available',
+        timeframe: '1d',
+        indicators: [
+            { key: 'short', type: 'ema', color: '#fcd535' },
+            { key: 'sma_medium', type: 'sma', color: '#74b9ff' },
+            { key: 'long', alias: 'slow', type: 'sma', color: '#0ecb81' },
+            { key: 'media_20', type: 'sma', color: '#74b9ff' },
+            { key: 'rsi_14', type: 'rsi', color: '#a970ff' },
+        ],
+    })
+
+    assert.ok(transparency)
+    assert.deepEqual(
+        transparency.indicators.map((indicator) => indicator.color),
+        ['#f6465d', '#ff9f43', '#3b82f6', '#74b9ff', '#a970ff'],
+    )
+})
+
 test('só libera cache com série disponível, pontos válidos e timeframe compatível', () => {
     const baseManifest = {
         status: 'available',
@@ -113,6 +133,8 @@ test('gráfico mantém contrato acessível e integra as três superfícies', () 
     assert.match(chartSource, /aria-label="Legenda dos indicadores da estratégia"/)
     assert.match(chartSource, /Indicadores indisponíveis/)
     assert.match(chartSource, /buildIndicatorValueIndex/)
+    assert.match(chartSource, /data-last-candle-timestamp/)
+    assert.match(chartSource, /data-series-last-timestamp/)
     assert.match(chartSource, /h-11/)
     assert.match(comboSource, /strategyTransparency=\{strategyTransparency\}/)
     assert.match(favoritesSource, /strategy_transparency: recovered\.strategyTransparency/)
