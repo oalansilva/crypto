@@ -51,6 +51,11 @@ export interface StrategyChartSummaryItem {
     tone?: 'default' | 'primary' | 'success' | 'danger' | 'muted'
 }
 
+export interface StrategyChartConfigurationItem {
+    label: string
+    color?: string
+}
+
 export interface StrategyChartSnapshot {
     candle: StrategyChartCandle
     indicatorValues: Record<string, number | null>
@@ -67,6 +72,7 @@ interface StrategyChartSurfaceProps {
     title?: React.ReactNode
     subtitle?: React.ReactNode
     headerMeta?: React.ReactNode
+    configurationItems?: StrategyChartConfigurationItem[]
     headerActions?: React.ReactNode
     toolbarLeading?: React.ReactNode
     summaryItems?: StrategyChartSummaryItem[]
@@ -186,6 +192,7 @@ export function StrategyChartSurface({
     title,
     subtitle,
     headerMeta,
+    configurationItems,
     headerActions,
     toolbarLeading,
     summaryItems,
@@ -676,6 +683,18 @@ export function StrategyChartSurface({
                                 {headerMeta}
                             </div>
                             <p className="mt-1 text-sm text-[#929aa5]">{subtitleContent}</p>
+                            <div className="mt-2 flex flex-wrap gap-2" data-testid={`${rootTestId}-indicator-config`} aria-label="Configuração dos indicadores">
+                                {configurationItems && configurationItems.length > 0 ? configurationItems.map((item, index) => (
+                                    <span key={`${item.label}-${index}`} className="inline-flex items-center gap-1.5 rounded-md border border-[#2b3139] bg-[#1e2329] px-2.5 py-1 text-xs font-semibold text-[#eaecef]">
+                                        {item.color ? <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" /> : null}
+                                        {item.label}
+                                    </span>
+                                )) : (
+                                    <span className="rounded-md border border-[#fcd535]/40 bg-[#fcd535]/10 px-2.5 py-1 text-xs text-[#eaecef]">
+                                        Configuração dos indicadores indisponível
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                     {headerActions}

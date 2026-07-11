@@ -1248,6 +1248,19 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
           },
         ],
         metrics: { total_trades: 1, win_rate: 1, total_return: 0.0276, avg_profit: 0.0276 },
+        strategy_transparency: {
+          status: 'available',
+          timeframe: '1d',
+          display_name: 'Médias e momentum',
+          description: 'Configuração pública da estratégia.',
+          parameters: { stop_loss: 0.042, direction: 'long' },
+          indicators: [
+            { key: 'short', label: 'EMA curta', type: 'ema', parameters: { length: 18 }, color: '#f6465d', panel: 'price', scale: 'price', function: 'Tendência recente', participation: ['entry'], series: [], availability: 'unavailable', references: [] },
+            { key: 'medium', label: 'SMA média', type: 'sma', parameters: { length: 20 }, color: '#ff9f43', panel: 'price', scale: 'price', function: 'Confirmação', participation: ['entry'], series: [], availability: 'unavailable', references: [] },
+            { key: 'rsi', label: 'RSI', type: 'rsi', parameters: { length: 14 }, color: '#a970ff', panel: 'oscillator', scale: 'oscillator', function: 'Momentum', participation: ['entry'], series: [], availability: 'unavailable', references: [] },
+          ],
+          logic_blocks: [],
+        },
       }),
     })
   )
@@ -1369,6 +1382,12 @@ test('monitor modal shows recent entry and exit history from the strategy payloa
   await expect(dialog.getByText('Apr 13, 2099')).toBeVisible()
   await expect(dialog.getByText('Apr 15, 2099')).toBeVisible()
   await expect(dialog.getByText('Posição aberta')).toBeVisible()
+  const indicatorConfig = dialog.getByTestId('chart-modal-surface-indicator-config')
+  await expect(indicatorConfig).toContainText('EMA curta 18')
+  await expect(indicatorConfig).toContainText('SMA média 20')
+  await expect(indicatorConfig).toContainText('RSI 14')
+  await expect(indicatorConfig).toContainText('Stop de perda 4.20%')
+  await expect(indicatorConfig).toContainText('Direção Compra')
   await page.waitForTimeout(1500)
   await expect(dialog.getByTestId('chart-modal-main-chart')).toBeVisible()
   await expect(dialog.getByTestId('chart-modal-main-chart').locator('canvas').first()).toBeVisible()
