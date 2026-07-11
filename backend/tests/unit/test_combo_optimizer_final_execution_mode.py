@@ -155,8 +155,12 @@ def test_optimizer_final_backtest_preserves_requested_short_direction(monkeypatc
             "optimization_schema": {},
         },
     )
-    monkeypatch.setattr(optimizer.combo_service, "create_strategy", lambda **_kwargs: _FakeStrategy())
-    monkeypatch.setattr(combo_optimizer, "get_market_data_provider", lambda _source: _FakeProvider())
+    monkeypatch.setattr(
+        optimizer.combo_service, "create_strategy", lambda **_kwargs: _FakeStrategy()
+    )
+    monkeypatch.setattr(
+        combo_optimizer, "get_market_data_provider", lambda _source: _FakeProvider()
+    )
     monkeypatch.setattr(
         combo_optimizer.concurrent.futures,
         "ProcessPoolExecutor",

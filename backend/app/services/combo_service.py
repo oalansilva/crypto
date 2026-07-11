@@ -182,7 +182,9 @@ class ComboService:
             # Override stop_loss if provided
             if "stop_loss" in parameters:
                 stop_loss = parameters["stop_loss"]
-            direction = "short" if str(parameters.get("direction") or "").lower() == "short" else "long"
+            direction = (
+                "short" if str(parameters.get("direction") or "").lower() == "short" else "long"
+            )
 
         # Create and return strategy instance
         return ComboStrategy(
