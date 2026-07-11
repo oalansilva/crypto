@@ -63,3 +63,38 @@ def test_logic_parser_rejects_unsupported_series_methods():
 
     with pytest.raises(RuntimeError, match="unknown columns/functions: ewm|Logic references"):
         strategy._evaluate_logic_vectorized(_sample_ohlcv(), strategy.entry_logic)
+
+
+def test_generate_signals_does_not_apply_long_low_stop_to_short_positions():
+    index = pd.date_range("2026-01-01", periods=6, freq="D", tz="UTC")
+    df = pd.DataFrame(
+        {
+            "open": [100.0, 100.0, 100.0, 100.0, 100.0, 100.0],
+            "high": [101.0, 101.0, 101.0, 101.0, 101.0, 101.0],
+            "low": [99.0, 99.0, 80.0, 79.0, 78.0, 77.0],
+            "close": [101.0, 101.0, 101.0, 101.0, 101.0, 101.0],
+            "volume": [1000.0] * 6,
+        },
+        index=index,
+    )
+
+    short_strategy = ComboStrategy(
+        indicators=[],
+        entry_logic="close > 0",
+        exit_logic="close < 0",
+        stop_loss=0.05,
+        direction="short",
+    )
+    long_strategy = ComboStrategy(
+        indicators=[],
+        entry_logic="close > 0",
+        exit_logic="close < 0",
+        stop_loss=0.05,
+        direction="long",
+    )
+
+    short_signals = short_strategy.generate_signals(df)
+    long_signals = long_strategy.generate_signals(df)
+
+    assert "stop_loss" not in set(short_signals["signal_reason"].dropna())
+    assert "stop_loss" in set(long_signals["signal_reason"].dropna())

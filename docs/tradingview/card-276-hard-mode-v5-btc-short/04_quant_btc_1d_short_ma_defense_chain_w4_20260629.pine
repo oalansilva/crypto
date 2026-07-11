@@ -1,0 +1,22 @@
+//@version=5
+strategy("BTC 1D SHORT WINNER 4: Médias de Baixa Protegida", overlay=true, initial_capital=100, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0)
+
+fast = ta.ema(close, 3)
+mid = ta.sma(close, 28)
+slow = ta.sma(close, 40)
+
+entryShort = fast < slow and (ta.crossunder(fast, mid) or ta.crossunder(fast, slow))
+exitShort = ta.crossover(fast, mid) or ta.crossover(fast, slow)
+
+if entryShort and strategy.position_size == 0
+    strategy.entry("SHORT", strategy.short)
+
+if strategy.position_size < 0
+    strategy.exit("SHORT STOP", "SHORT", stop=strategy.position_avg_price * (1 + 0.022))
+
+if exitShort and strategy.position_size < 0
+    strategy.close("SHORT")
+
+plot(fast, "Fast EMA", color=color.yellow)
+plot(mid, "Mid SMA", color=color.aqua)
+plot(slow, "Slow SMA", color=color.red)

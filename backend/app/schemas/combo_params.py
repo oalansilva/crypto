@@ -5,6 +5,8 @@ Pydantic schemas for combo strategy API requests and responses.
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Dict, Any, Optional
 
+from app.schemas.strategy_transparency import StrategyTransparency
+
 
 class IndicatorConfig(BaseModel):
     """Configuration for a single indicator in a combo."""
@@ -86,6 +88,7 @@ class ComboBacktestResponse(BaseModel):
         default="fast_1d", description="Execution mode: 'fast_1d' or 'deep_15m'"
     )
     direction: str = Field(default="long", description="Backtest direction: 'long' or 'short'")
+    strategy_transparency: Optional[StrategyTransparency] = None
 
 
 class ComboOptimizationRequest(BaseModel):
@@ -145,6 +148,7 @@ class ComboOptimizationResponse(BaseModel):
         default="fast_1d",
         description="Execution mode used by final trades: 'fast_1d' or 'deep_15m'",
     )
+    strategy_transparency: Optional[StrategyTransparency] = None
 
 
 class UpdateTemplateRequest(BaseModel):

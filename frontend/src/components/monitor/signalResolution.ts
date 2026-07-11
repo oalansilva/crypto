@@ -78,6 +78,43 @@ const VISUAL_BY_KIND: Record<MonitorSignalKind, MonitorSignalVisual> = {
     },
 };
 
+const normalizeDirection = (opportunity: Opportunity): 'long' | 'short' => {
+    const raw = String((opportunity as any).direction ?? opportunity.parameters?.direction ?? 'long').trim().toLowerCase();
+    return raw === 'short' ? 'short' : 'long';
+};
+
+const resolveVisual = (section: MonitorSignalKind, direction: 'long' | 'short'): MonitorSignalVisual => {
+    if (direction === 'long') return VISUAL_BY_KIND[section];
+    if (section === 'hold') {
+        return {
+            badgeText: 'Venda',
+            badgeClass: 'bg-red-600 text-white border-red-600 font-bold shadow-md',
+            borderClass: 'border-l-red-600 border-l-4',
+            cardBgClass: 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700',
+            titleClass: 'text-red-700 dark:text-red-300',
+            markerLabel: 'Venda',
+            distanceLabel: 'compra',
+            markerPosition: 'aboveBar',
+            markerShape: 'arrowDown',
+            markerColor: '#f6465d',
+            statusClass: 'info',
+        };
+    }
+    return {
+        badgeText: 'Compra',
+        badgeClass: 'bg-green-600 text-white border-green-600 font-bold shadow-md',
+        borderClass: 'border-l-green-600 border-l-4',
+        cardBgClass: 'bg-green-50 dark:bg-green-900/40 border-green-400 dark:border-green-600',
+        titleClass: 'text-green-700 dark:text-green-300',
+        markerLabel: 'Compra',
+        distanceLabel: 'venda',
+        markerPosition: 'belowBar',
+        markerShape: 'arrowUp',
+        markerColor: '#0ecb81',
+        statusClass: 'info',
+    };
+};
+
 const asStatus = (rawStatus: unknown): string => String(rawStatus || '').trim().toUpperCase();
 const normalizeTimeframe = (timeframe: string | null | undefined): string => String(timeframe || '').trim().toLowerCase();
 const normalizeNextStatus = (nextStatusLabel: string | null | undefined): string => {
@@ -89,16 +126,20 @@ const normalizeNextStatus = (nextStatusLabel: string | null | undefined): string
     return 'próxima decisão';
 };
 
-const toPublicSignalMessage = (message: string): string => message
-    .replace(/\bEXIT\b/g, 'Venda')
-    .replace(/\bHOLD\b/g, 'Compra')
-    .replace(/\bExit\b/g, 'Venda')
-    .replace(/\bHold\b/g, 'Compra')
-    .replace(/\bexit\b/g, 'venda')
-    .replace(/\bhold\b/g, 'compra')
-    .replace(/entry/g, 'entrada')
-    .replace(/buy/g, 'compra')
-    .replace(/sell/g, 'venda');
+const toPublicSignalMessage = (message: string, direction: 'long' | 'short'): string => {
+    const entry = direction === 'short' ? 'Venda' : 'Compra';
+    const exit = direction === 'short' ? 'Compra' : 'Venda';
+    return message
+        .replace(/\bEXIT\b/g, exit)
+        .replace(/\bHOLD\b/g, entry)
+        .replace(/\bExit\b/g, exit)
+        .replace(/\bHold\b/g, entry)
+        .replace(/\bexit\b/g, exit.toLowerCase())
+        .replace(/\bhold\b/g, entry.toLowerCase())
+        .replace(/entry/g, 'entrada')
+        .replace(/buy/g, 'compra')
+        .replace(/sell/g, 'venda');
+};
 
 const toMsByTimeframe = (timeframe: string | null | undefined): number => {
     return TIMEFRAME_TO_MS[normalizeTimeframe(timeframe) || '1d'] ?? TIMEFRAME_TO_MS['1d'];
@@ -142,6 +183,7 @@ export const resolveOpportunitySignal = (
 ): ResolvedMonitorSignal => {
     const rawStatus = asStatus(opportunity.status);
     const isHolding = Boolean(opportunity.is_holding);
+    const direction = normalizeDirection(opportunity);
     const selectedTimeframe = normalizeTimeframe(context.selectedTimeframe);
     const strategyTimeframe = normalizeTimeframe(opportunity.timeframe);
     const timeframeMismatch = Boolean(selectedTimeframe) && selectedTimeframe !== strategyTimeframe;
@@ -220,12 +262,13 @@ export const resolveOpportunitySignal = (
         reasons.length = 0;
     }
 
-    const sectionVisual = VISUAL_BY_KIND[section];
+    const sectionVisual = resolveVisual(section, direction);
     const freshnessReason = reasons.length > 0 ? reasons.join(' ') : null;
     const fallbackStatusMessage = isUncertain
         ? 'Estado em revisão: decisão não confirmada pelo contexto atual.'
         : toPublicSignalMessage(
             opportunity.message || `Aguardando condição de ${normalizeNextStatus(opportunity.next_status_label)} para decisão.`,
+            direction,
         );
 
     return {

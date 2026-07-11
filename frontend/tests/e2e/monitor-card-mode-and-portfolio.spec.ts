@@ -387,7 +387,7 @@ test('monitor defaults to rated strategies and hides unstarred opportunities', a
   await expect.poll(() => mocks.requestedOpportunityTiers[0]).toBe('1,2,3')
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
   await expect(page.getByTestId('monitor-row-sol-usdt')).toHaveCount(0)
-  await expect(page.getByText('Em posição · Compra')).toBeVisible()
+  await expect(page.getByText('Em posição')).toBeVisible()
 })
 
 test('monitor hides non-actionable Espera and neutral opportunities from main board', async ({ page }) => {
@@ -461,8 +461,8 @@ test('monitor list keeps Compra when price timeframe preference differs from str
   const row = page.getByTestId('monitor-row-eth-usdt')
   await expect(row).toBeVisible()
   await expect(row.getByText('Compra')).toBeVisible()
-  await expect(page.getByText('Em posição · Compra')).toContainText('(1)')
-  await expect(page.getByText('Em saída · Venda')).toContainText('(0)')
+  await expect(page.getByText('Em posição')).toContainText('(1)')
+  await expect(page.getByText('Saída / cobertura')).toContainText('(0)')
 })
 
 test('monitor hides non-actionable WAIT and neutral opportunities from main board', async ({ page }) => {

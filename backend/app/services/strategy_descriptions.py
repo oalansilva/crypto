@@ -12,7 +12,7 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "ema_macd_volume": "MACD + Volume: Movimento com Confirmação",
     "bollinger_rsi_adx": "Bandas + RSI: Retorno ao Equilíbrio",
     "volume_atr_breakout": "Volume + Volatilidade: Rompimento com Pressão",
-    "ema_rsi_fibonacci": "Fibonacci: Recuo de Retomada",
+    "ema_rsi_fibonacci": "EMA + RSI: Retomada de Tendência",
     "short_ema200_pullback": "Médias Móveis: Repique de Baixa",
     "bollinger_breakout": "Bandas: Expansão de Volatilidade",
     "macd_cross": "MACD: Mudança de Ritmo",
@@ -24,11 +24,21 @@ PUBLIC_STRATEGY_DISPLAY_NAMES: dict[str, str] = {
     "quant_btc_roc_ema_momentum_guard_long_v3": "Momentum BTC: Continuidade Protegida",
     "quant_btc_1d_adx_momentum_guard_long_v1": "Momentum BTC: Continuidade com Regime",
     "quant_btc_1d_ema_roc_rsi_guard_long_v2_20260607": "Momentum BTC: Continuidade com Guard RSI",
-    "quant_btc_1d_ma_trend_chain_w1_20260607": "BTC 1D WINNER 1: Médias com Risco Menor",
-    "quant_btc_1d_ma_trend_chain_w2_20260607": "BTC 1D WINNER 2: Médias com Saída Ágil",
-    "quant_btc_1d_ma_trend_chain_w3_20260607": "BTC 1D WINNER 3: Médias com Defesa Reforçada",
-    "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": "BTC 1D WINNER 4: Momentum com Força Relativa",
-    "quant_btc_1d_ma_trend_chain_w5_20260607": "BTC 1D WINNER 5: Médias com Continuidade Defensiva",
+    "quant_btc_1d_ma_trend_chain_w1_20260607": "Médias BTC: Tendência com Risco Menor",
+    "quant_btc_1d_ma_trend_chain_w2_20260607": "Médias BTC: Tendência com Saída Ágil",
+    "quant_btc_1d_ma_trend_chain_w3_20260607": "Médias BTC: Tendência com Defesa Reforçada",
+    "quant_btc_1d_ema_roc_rsi_chain_w4_20260607": "Momentum BTC: Tendência com Força Relativa",
+    "quant_btc_1d_ma_trend_chain_w5_20260607": "Médias BTC: Continuidade Defensiva",
+    "quant_btc_1d_short_macd_bear_chain_w1_20260629": "MACD BTC: Baixa Controlada",
+    "quant_btc_1d_short_ma_breakdown_chain_w2_20260629": "Médias BTC: Quebra de Baixa Defensiva",
+    "quant_btc_1d_short_ma_breakdown_chain_w3_20260629": "Médias BTC: Continuidade de Baixa",
+    "quant_btc_1d_short_ma_defense_chain_w4_20260629": "Médias BTC: Baixa Protegida",
+    "quant_btc_1d_short_macd_defense_chain_w5_20260629": "MACD BTC: Baixa Defensiva",
+    "quant_btc_1d_long_bb_roc_chain_w1_20260629": "Bandas + ROC BTC: Rompimento Defensivo",
+    "quant_btc_1d_long_dual_momentum_chain_w2_20260629": "Momentum BTC: Continuidade Dupla",
+    "quant_btc_1d_long_dual_momentum_chain_w3_20260629": "Momentum BTC: Aceleração Dupla",
+    "quant_btc_1d_long_ma_breakout_chain_w4_20260629": "Médias BTC: Rompimento Confirmado",
+    "quant_btc_1d_long_ma_trend_chain_w5_20260629": "Médias BTC: Continuidade Forte",
 }
 
 PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
@@ -51,7 +61,7 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
         "Acompanha rompimentos quando preço, volume e volatilidade sugerem aceleração. Deve ser validada junto ao risco, pois rompimentos podem falhar."
     ),
     "ema_rsi_fibonacci": (
-        "Observa recuos dentro de uma direção principal para identificar possíveis retomadas. Ajuda a estudar continuidade, sem expor a receita técnica da leitura."
+        "Combina uma média exponencial com RSI para observar direção e força relativa em possíveis retomadas. Serve como apoio à decisão, sem promessa de resultado."
     ),
     "short_ema200_pullback": (
         "Acompanha repiques contra uma direção principal de baixa para apoiar decisões de venda. Use apenas como leitura de contexto e com atenção ao risco."
@@ -65,13 +75,13 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     "rsi_ema_scalping": (
         "Foca leituras rápidas de curto prazo para apoiar decisões em movimentos mais ágeis. Exige acompanhamento próximo e controle de risco."
     ),
-    "example: breakout with volume": (
+    "example_breakout_with_volume": (
         "Procura rompimentos que ganham participação do mercado. Deve ser usada como apoio para comparar cenários, não como promessa de acerto."
     ),
-    "example: scalping ema 5/13": (
+    "example_scalping_ema_5_13": (
         "Apoia leituras curtas e rápidas para quem acompanha o movimento de perto. Não revela a configuração técnica usada."
     ),
-    "example: swing rsi divergence": (
+    "example_swing_rsi_divergence": (
         "Observa sinais de enfraquecimento do movimento para estudar possíveis reversões em operações de swing."
     ),
     "quant_btc_1d_roc_ema_momentum_guard_long_v3": (
@@ -100,6 +110,36 @@ PUBLIC_STRATEGY_DESCRIPTIONS: dict[str, str] = {
     ),
     "quant_btc_1d_ma_trend_chain_w5_20260607": (
         "Acompanha continuidade defensiva do BTC em 1D com médias e controle de risco ajustado para superar a cadeia anterior. Use como apoio e sempre confira risco e histórico."
+    ),
+    "quant_btc_1d_short_macd_bear_chain_w1_20260629": (
+        "Acompanha movimentos de baixa do BTC em 1D quando tendência e momentum favorecem operação Short, com saída para reduzir exposição quando a pressão vendedora perde força."
+    ),
+    "quant_btc_1d_short_ma_breakdown_chain_w2_20260629": (
+        "Busca quebras de tendência do BTC em 1D para operações Short, combinando médias e controle de risco para melhorar a cadeia sem usar fallback Long."
+    ),
+    "quant_btc_1d_short_ma_breakdown_chain_w3_20260629": (
+        "Filtra continuações de baixa do BTC em 1D com médias e stop ajustado para aumentar retorno e reduzir drawdown frente às vencedoras Short anteriores."
+    ),
+    "quant_btc_1d_short_ma_defense_chain_w4_20260629": (
+        "Acompanha quedas do BTC em 1D com leitura defensiva de médias, priorizando melhora sequencial de drawdown em uma operação exclusivamente Short."
+    ),
+    "quant_btc_1d_short_macd_defense_chain_w5_20260629": (
+        "Combina tendência e momentum de baixa do BTC em 1D para operação Short com perfil mais defensivo que a cadeia anterior e saída quando o regime enfraquece."
+    ),
+    "quant_btc_1d_long_bb_roc_chain_w1_20260629": (
+        "Acompanha rompimentos Long do BTC em 1D quando volatilidade e momentum sugerem retomada, com controle de risco para formar o primeiro degrau defensivo da cadeia."
+    ),
+    "quant_btc_1d_long_dual_momentum_chain_w2_20260629": (
+        "Combina duas leituras de momentum e tendência do BTC em 1D para buscar continuidade Long acima do primeiro degrau, mantendo controle de queda."
+    ),
+    "quant_btc_1d_long_dual_momentum_chain_w3_20260629": (
+        "Usa uma configuração Long de momentum mais acelerada para o BTC em 1D, buscando ampliar retorno frente ao degrau anterior sem piorar drawdown."
+    ),
+    "quant_btc_1d_long_ma_breakout_chain_w4_20260629": (
+        "Filtra rompimentos Long do BTC em 1D com médias e confirmação de força para melhorar qualidade e retorno na sequência da cadeia."
+    ),
+    "quant_btc_1d_long_ma_trend_chain_w5_20260629": (
+        "Acompanha continuidade Long forte do BTC em 1D com médias e saída defensiva, buscando fechar a cadeia com retorno maior e drawdown menor."
     ),
 }
 

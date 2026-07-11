@@ -1,0 +1,15 @@
+//@version=5
+strategy("BTC 1D LONG WINNER 1 - Bandas com Rompimento Defensivo", overlay=true, initial_capital=100, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0)
+[middle, upper, lower] = ta.bb(close, 20, 3.0)
+roc = ta.roc(close, 14)
+entry = close > upper and roc > -2
+exitSignal = close < middle or roc < 0
+if entry and strategy.position_size == 0
+    strategy.entry("Long", strategy.long)
+if strategy.position_size > 0
+    strategy.exit("Stop", "Long", stop=strategy.position_avg_price * (1 - 0.014))
+if exitSignal and strategy.position_size > 0
+    strategy.close("Long")
+plot(middle, color=color.gray)
+plot(upper, color=color.teal)
+plot(lower, color=color.teal)

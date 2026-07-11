@@ -1,0 +1,15 @@
+//@version=5
+strategy("BTC 1D LONG WINNER 4 - Médias com Rompimento Confirmado", overlay=true, initial_capital=100, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0)
+fast = ta.ema(close, 13)
+trend = ta.sma(close, 34)
+roc = ta.roc(close, 8)
+entry = close > trend and ta.crossover(fast, trend) and roc > 0
+exitSignal = close < fast or roc < 0
+if entry and strategy.position_size == 0
+    strategy.entry("Long", strategy.long)
+if strategy.position_size > 0
+    strategy.exit("Stop", "Long", stop=strategy.position_avg_price * (1 - 0.026))
+if exitSignal and strategy.position_size > 0
+    strategy.close("Long")
+plot(fast, color=color.teal)
+plot(trend, color=color.orange)

@@ -1,0 +1,21 @@
+//@version=5
+strategy("BTC 1D SHORT WINNER 5: MACD Short Defensivo", overlay=true, initial_capital=100, default_qty_type=strategy.percent_of_equity, default_qty_value=100, pyramiding=0)
+
+trend = ta.ema(close, 21)
+rsi = ta.rsi(close, 14)
+[macdLine, signalLine, hist] = ta.macd(close, 8, 21, 13)
+
+entryShort = close < trend and hist < 0 and rsi < 40.0
+exitShort = hist > 0 or close > trend or rsi > 50.0
+
+if entryShort and strategy.position_size == 0
+    strategy.entry("SHORT", strategy.short)
+
+if strategy.position_size < 0
+    strategy.exit("SHORT STOP", "SHORT", stop=strategy.position_avg_price * (1 + 0.018))
+
+if exitShort and strategy.position_size < 0
+    strategy.close("SHORT")
+
+plot(trend, "Trend EMA", color=color.orange)
+plot(hist, "MACD Histogram", color=color.new(color.red, 0), display=display.none)

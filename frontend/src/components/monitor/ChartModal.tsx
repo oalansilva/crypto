@@ -28,6 +28,7 @@ import {
 } from './types';
 import { CHART_TIMEFRAMES, fetchMarketCandles, toChartTimeframe, type ChartTimeframe } from './chartData';
 import { hasExitedOpportunity, resolveOpportunitySignal } from './signalResolution';
+import { normalizeStrategyTransparency } from '@/lib/strategyTransparency';
 
 interface ChartModalProps {
     symbol: string;
@@ -80,19 +81,34 @@ function formatTimestamp(value?: string | null) {
     }).format(new Date(value));
 }
 
-function formatSignalReason(value?: string | null) {
+function normalizeDirection(value?: string | null) {
+    return String(value || 'long').trim().toLowerCase() === 'short' ? 'short' : 'long';
+}
+
+function actionLabelsForDirection(direction?: string | null) {
+    const isShort = normalizeDirection(direction) === 'short';
+    return {
+        entry: isShort ? 'Venda' : 'Compra',
+        exit: isShort ? 'Compra' : 'Venda',
+        entrySignal: isShort ? 'Vender' : 'Comprar',
+        exitRule: isShort ? 'Regra de compra/cobertura' : 'Regra de venda',
+    };
+}
+
+function formatSignalReason(value?: string | null, direction?: string | null) {
     const normalized = String(value || '').trim().toLowerCase();
+    const labels = actionLabelsForDirection(direction);
     if (!normalized) {
         return '-';
     }
     if (normalized === 'entry') {
-        return 'Compra';
+        return labels.entry;
     }
     if (normalized === 'exit') {
-        return 'Venda';
+        return labels.exit;
     }
     if (normalized === 'exit_logic') {
-        return 'Regra de venda';
+        return labels.exitRule;
     }
     if (normalized === 'stop_loss') {
         return 'Stop loss';
@@ -100,18 +116,22 @@ function formatSignalReason(value?: string | null) {
     return normalized.replace(/_/g, ' ');
 }
 
-function getSignalHistoryLabel(item: OpportunitySignalHistoryItem) {
-    return item.type === 'entry' ? 'Compra' : 'Venda';
+function getSignalHistoryLabel(item: OpportunitySignalHistoryItem, direction?: string | null) {
+    const labels = actionLabelsForDirection(direction);
+    return item.type === 'entry' ? labels.entry : labels.exit;
 }
 
-function getSignalHistoryMarker(item: OpportunitySignalHistoryItem) {
+function getSignalHistoryMarker(item: OpportunitySignalHistoryItem, direction?: string | null) {
     const isEntry = item.type === 'entry';
+    const isShort = normalizeDirection(direction) === 'short';
     const isStop = !isEntry && String(item.reason || '').trim().toLowerCase() === 'stop_loss';
+    const isBuyVisual = (isEntry && !isShort) || (!isEntry && isShort);
     return {
-        position: isEntry ? 'belowBar' : 'aboveBar',
-        shape: isEntry ? 'arrowUp' : 'arrowDown',
-        color: isEntry ? '#3fb950' : (isStop ? '#f85149' : '#0284c7'),
-        text: getSignalHistoryLabel(item),
+        position: isBuyVisual ? 'belowBar' : 'aboveBar',
+        shape: isBuyVisual ? 'arrowUp' : 'arrowDown',
+        color: isStop ? '#f85149' : (isBuyVisual ? '#3fb950' : '#f6465d'),
+        text: getSignalHistoryLabel(item, direction),
+        signalType: item.type,
     } as const;
 }
 
@@ -202,7 +222,7 @@ function buildTradesFromSignalHistory(history: OpportunitySignalHistoryItem[] | 
             profit,
             type: isShort ? 'short' : 'long',
             entry_signal_type: isShort ? 'Vender' : 'Comprar',
-            signal_type: formatSignalReason(item.reason),
+            signal_type: formatSignalReason(item.reason, direction),
         });
         activeEntry = null;
     });
@@ -276,6 +296,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     const [error, setError] = React.useState<string | null>(null);
     const [analysisTrades, setAnalysisTrades] = React.useState<StrategyTrade[]>([]);
     const [analysisMetrics, setAnalysisMetrics] = React.useState<StrategyTradeMetrics | null>(null);
+    const [analysisStrategyTransparency, setAnalysisStrategyTransparency] = React.useState<Record<string, unknown> | null>(null);
     const [analysisCandles, setAnalysisCandles] = React.useState<MarketCandle[]>([]);
     const [analysisTradesLoading, setAnalysisTradesLoading] = React.useState(false);
     const [analysisTradesError, setAnalysisTradesError] = React.useState<string | null>(null);
@@ -285,7 +306,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     ]));
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
-    const opportunityDirection = String(opportunity.parameters?.direction || 'long').toLowerCase();
+    const activeStrategyTransparency = React.useMemo(
+        () => normalizeStrategyTransparency(analysisStrategyTransparency ?? opportunity.strategy_transparency),
+        [analysisStrategyTransparency, opportunity.strategy_transparency],
+    );
+    const opportunityDirection = normalizeDirection(String(opportunity.direction ?? opportunity.parameters?.direction ?? 'long'));
 
     React.useEffect(() => {
         if (!supportedTimeframes.includes(timeframe)) {
@@ -340,11 +365,11 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 }
                 return {
                     time,
-                    ...getSignalHistoryMarker(item),
+                    ...getSignalHistoryMarker(item, opportunityDirection),
                 };
             })
             .filter((item): item is NonNullable<typeof item> => item !== null);
-    }, [canRenderSignalHistoryMarkers, candleTimes, opportunity.signal_history, sortedCandles.length]);
+    }, [canRenderSignalHistoryMarkers, candleTimes, opportunity.signal_history, opportunityDirection, sortedCandles.length]);
     const signalHistory = React.useMemo(
         () => [...(opportunity.signal_history || [])].sort(
             (left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp),
@@ -478,11 +503,17 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 setAnalysisTrades(payloadTrades.length > 0 ? payloadTrades : signalHistoryTrades);
                 setAnalysisCandles(payloadCandles);
                 setAnalysisMetrics(payload?.metrics && typeof payload.metrics === 'object' ? payload.metrics : null);
+                setAnalysisStrategyTransparency(
+                    payload?.strategy_transparency && typeof payload.strategy_transparency === 'object'
+                        ? payload.strategy_transparency
+                        : null,
+                );
             } catch {
                 if (!controller.signal.aborted) {
                     setAnalysisTrades(signalHistoryTrades);
                     setAnalysisCandles([]);
                     setAnalysisMetrics(null);
+                    setAnalysisStrategyTransparency(null);
                     setAnalysisTradesError(signalHistoryTrades.length > 0 ? null : 'Trades do favorito indisponíveis.');
                 }
             } finally {
@@ -504,6 +535,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             color: resolvedSignal.visual.markerColor,
             shape: resolvedSignal.visual.markerShape as StrategyChartMarker['shape'],
             text: signalLabel,
+            signalType: resolvedSignal.section === 'hold' ? 'entry' : 'exit',
         }] : []
     ), [
         latestCandle?.timestamp_utc,
@@ -530,12 +562,12 @@ export const ChartModal: React.FC<ChartModalProps> = ({
     }, [baseChartMarkers, fallbackMarker, latestVisibleMarkerType, resolvedSignal.section, timeframe]);
     const priceLines = React.useMemo<StrategyChartPriceLine[]>(() => [
         ...(showEntryStopRows && opportunity.entry_price !== null && opportunity.entry_price !== undefined
-            ? [{ price: opportunity.entry_price, color: '#fcd535', title: 'Compra' }]
+            ? [{ price: opportunity.entry_price, color: '#fcd535', title: opportunityDirection === 'short' ? 'Venda/Short' : 'Compra' }]
             : []),
         ...(showEntryStopRows && opportunity.stop_price !== null && opportunity.stop_price !== undefined
             ? [{ price: opportunity.stop_price, color: '#f6465d', title: 'STOP' }]
             : []),
-    ], [opportunity.entry_price, opportunity.stop_price, showEntryStopRows]);
+    ], [opportunity.entry_price, opportunity.stop_price, opportunityDirection, showEntryStopRows]);
     const summaryItems: StrategyChartSummaryItem[] = [
         { label: 'Candle', value: formatTimestamp(latestCandle?.timestamp_utc) },
         {
@@ -554,7 +586,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     <button
                         key={item.value}
                         type="button"
-                        className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                        className={`min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] ${
                             active
                                 ? 'border-[#fcd535] bg-[#fcd535]/16 text-[#eaecef]'
                                 : 'border-[#2b3139] bg-[#0b0e11] text-[#929aa5] hover:border-[#fcd535] hover:text-[#eaecef]'
@@ -687,9 +719,14 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             <section>
                 <p className="text-[10px] font-semibold uppercase tracking-normal text-[#929aa5]">Parâmetros</p>
                 <div className="mt-2 space-y-2 rounded-lg border border-[#2b3139] bg-[#0b0e11] p-3" data-testid="chart-modal-parameters">
-                    {strategyProtected ? (
-                        <p className="text-[#929aa5]">Parâmetros protegidos.</p>
-                    ) : opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
+                    {activeStrategyTransparency && Object.keys(activeStrategyTransparency.effective_parameters).length > 0 ? (
+                        Object.entries(activeStrategyTransparency.effective_parameters).map(([key, value]) => (
+                            <div key={key} className="flex justify-between gap-3">
+                                <span className="text-[#929aa5]">{formatStrategyParameterLabel(key)}</span>
+                                <span className="font-mono text-[#eaecef]">{formatStrategyParameterValue(key, value)}</span>
+                            </div>
+                        ))
+                    ) : !strategyProtected && opportunity.parameters && Object.keys(opportunity.parameters).length > 0 ? (
                         Object.entries(opportunity.parameters).map(([key, value]) => (
                             <div key={key} className="flex justify-between gap-3">
                                 <span className="text-[#929aa5]">{formatStrategyParameterLabel(key)}</span>
@@ -738,6 +775,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     strategyName={strategyDisplayName}
                     symbol={symbol}
                     timeframe={timeframe.toUpperCase()}
+                    strategyTransparency={activeStrategyTransparency}
                     title={<span id="chart-modal-title">{symbol}</span>}
                     subtitle={`${strategyDisplayName} • ${timeframe.toUpperCase()} • ${sortedCandles.length} velas • candle ref ${formatTimestamp(opportunity.indicator_values_candle_time)}`}
                     headerMeta={(
@@ -758,7 +796,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             </div>
                             <button
                                 type="button"
-                                className="grid h-10 w-10 place-items-center rounded-lg border border-[#2b3139] bg-[#1e2329] text-2xl leading-none text-[#929aa5] transition hover:border-[#fcd535] hover:text-[#eaecef]"
+                                className="grid h-11 w-11 place-items-center rounded-lg border border-[#2b3139] bg-[#1e2329] text-2xl leading-none text-[#929aa5] transition hover:border-[#fcd535] hover:text-[#eaecef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
                                 onClick={onClose}
                                 aria-label="Fechar modal do gráfico"
                                 data-testid="chart-modal-close"

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Settings, Save, ArrowLeft, AlertTriangle, Check, Code, Type } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 import { API_BASE_URL } from '../lib/apiBase'
+import { authFetch } from '@/lib/authFetch'
 
 interface ParamConfig {
     min: number
@@ -67,7 +68,7 @@ export function ComboEditPage() {
 
     const fetchMetadata = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/combos/meta/${templateName}`)
+            const response = await authFetch(`${API_BASE_URL}/combos/meta/${templateName}`)
             if (!response.ok) throw new Error('Failed to fetch template')
 
             const data = await response.json()
@@ -151,7 +152,7 @@ export function ComboEditPage() {
                 }
             }
 
-            const response = await fetch(`${API_BASE_URL}/combos/meta/${templateName}`, {
+            const response = await authFetch(`${API_BASE_URL}/combos/meta/${templateName}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -229,6 +230,45 @@ export function ComboEditPage() {
 
     return (
         <div className="app-page combo-page relative pb-20">
+            <div className="sticky top-0 z-20 border-b border-zinc-200 bg-white/90 backdrop-blur">
+                <div className="container mx-auto flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/combo/select')}
+                            className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Templates
+                        </button>
+                        <h1 className="truncate text-xl font-bold text-zinc-900">{metadata.name}</h1>
+                        <p className="flex items-center gap-2 text-sm text-zinc-500">
+                            <Check className="h-4 w-4 text-emerald-500" />
+                            Template editável
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setAdvancedMode((value) => !value)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+                        >
+                            {advancedMode ? <Type className="h-4 w-4" /> : <Code className="h-4 w-4" />}
+                            {advancedMode ? 'Modo visual' : 'JSON'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <Save className="h-4 w-4" />
+                            {saving ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {/* Main Content */}
             <main className="container mx-auto px-6 py-8">
                 {advancedMode ? (

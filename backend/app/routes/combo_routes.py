@@ -41,6 +41,7 @@ from app.services.batch_backtest_service import (
     request_cancel_batch,
 )
 from app.services.batch_backtest_queue import enqueue_batch_backtest
+from app.services.strategy_transparency import build_strategy_transparency
 from app.middleware.authMiddleware import get_current_admin
 
 logger = logging.getLogger(__name__)
@@ -564,6 +565,18 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
             },
             execution_mode=execution_mode,
             direction=direction,
+            strategy_transparency=build_strategy_transparency(
+                request.template_name,
+                {
+                    "indicators": getattr(strategy, "indicators", []),
+                    "entry_logic": getattr(strategy, "entry_logic", []),
+                    "exit_logic": getattr(strategy, "exit_logic", []),
+                    "stop_loss": getattr(strategy, "stop_loss", None),
+                },
+                effective_parameters=request.parameters,
+                timeframe=request.timeframe,
+                dataframe=df_with_signals,
+            ),
         )
         logger.info("Response object created successfully")
         from fastapi.encoders import jsonable_encoder

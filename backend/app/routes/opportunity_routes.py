@@ -14,6 +14,7 @@ from app.services.strategy_secret_visibility import (
     can_view_strategy_secrets,
     redact_opportunity_payload,
 )
+from app.schemas.strategy_transparency import StrategyTransparency
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/opportunities", tags=["opportunities"])
@@ -48,6 +49,7 @@ class OpportunityResponse(BaseModel):
     is_strategy_protected: bool = False
     strategy_display_name: Optional[str] = None
     strategy_description: Optional[str] = None
+    strategy_transparency: Optional[StrategyTransparency] = None
 
     # Risk / stop-loss (optional)
     entry_price: Optional[float] = None

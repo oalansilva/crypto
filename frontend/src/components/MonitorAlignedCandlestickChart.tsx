@@ -3,6 +3,7 @@ import {
     type StrategyChartCandle,
     type StrategyChartMarker,
 } from './charts/StrategyChartSurface'
+import type { StrategyTransparency } from '../lib/strategyTransparency'
 
 interface MonitorAlignedCandlestickChartProps {
     candles: StrategyChartCandle[]
@@ -10,6 +11,7 @@ interface MonitorAlignedCandlestickChartProps {
     strategyName: string
     symbol?: string
     timeframe?: string
+    strategyTransparency?: StrategyTransparency | Record<string, unknown> | null
 }
 
 export function MonitorAlignedCandlestickChart({
@@ -18,6 +20,7 @@ export function MonitorAlignedCandlestickChart({
     strategyName,
     symbol,
     timeframe,
+    strategyTransparency,
 }: MonitorAlignedCandlestickChartProps) {
     return (
         <StrategyChartSurface
@@ -26,6 +29,7 @@ export function MonitorAlignedCandlestickChart({
             strategyName={strategyName}
             symbol={symbol}
             timeframe={timeframe}
+            strategyTransparency={strategyTransparency}
             rootTestId="monitor-aligned-result-chart"
             chartTestId="result-main-chart"
             shellTestId="result-chart-shell"

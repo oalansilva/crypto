@@ -4,6 +4,73 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+# BEGIN CANONICAL DEV RESTART
+# The Oracle host has canonical, isolated DEV services. Never fall through to
+# the legacy 8003/5173 runtime from the DEV source, because those ports belong
+# to PROD on this host.
+if [[ "$ROOT_DIR" == "/srv/apps/dev/criptofarol/source" ]]; then
+  if [[ "${EUID}" -ne 0 ]]; then
+    if sudo -n true >/dev/null 2>&1; then
+      exec sudo -n "$0" "$@"
+    fi
+    echo "DEV restart requires root to read backend/.env and restart system services." >&2
+    exit 1
+  fi
+
+  DEV_BACKEND_UNIT="criptofarol-dev-backend.service"
+  DEV_FRONTEND_UNIT="criptofarol-dev-frontend.service"
+  DEV_BACKEND_PORT="8004"
+  DEV_FRONTEND_PORT="5175"
+
+  for unit in "$DEV_BACKEND_UNIT" "$DEV_FRONTEND_UNIT"; do
+    if ! systemctl cat "$unit" >/dev/null 2>&1; then
+      echo "Missing canonical DEV service: $unit" >&2
+      exit 1
+    fi
+  done
+
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/backend/.env"
+  set +a
+
+  echo "Running DEV database migrations..."
+  (
+    cd "$ROOT_DIR/backend"
+    "$ROOT_DIR/backend/.venv/bin/alembic" upgrade head
+  )
+
+  echo "Building DEV frontend..."
+  (
+    cd "$ROOT_DIR/frontend"
+    VITE_API_URL="/api" VITE_APP_ENV="development" npm run build
+  )
+
+  echo "Restarting canonical DEV services..."
+  systemctl restart "$DEV_BACKEND_UNIT" "$DEV_FRONTEND_UNIT"
+
+  for _ in $(seq 1 30); do
+    if curl -fsS --max-time 2 "http://127.0.0.1:${DEV_BACKEND_PORT}/api/health" >/dev/null \
+      && curl -fsS --max-time 2 "http://127.0.0.1:${DEV_FRONTEND_PORT}/" >/dev/null; then
+      echo "crypto DEV backend:  http://127.0.0.1:${DEV_BACKEND_PORT}"
+      echo "crypto DEV frontend: http://127.0.0.1:${DEV_FRONTEND_PORT}"
+      exit 0
+    fi
+    sleep 1
+  done
+
+  echo "DEV services did not become healthy after restart." >&2
+  systemctl --no-pager --lines=20 status "$DEV_BACKEND_UNIT" "$DEV_FRONTEND_UNIT" >&2 || true
+  exit 1
+fi
+# END CANONICAL DEV RESTART
+
+if [[ "$ROOT_DIR" == /srv/apps/dev/criptofarol/* ]]; then
+  echo "Refusing restart outside the canonical DEV source." >&2
+  echo "Integrate the reviewed branch, then run /srv/apps/dev/criptofarol/source/restart." >&2
+  exit 2
+fi
+
 if [[ -x ./stop ]]; then
   ./stop
 else

@@ -12,6 +12,13 @@ import {
     type UTCTimestamp,
     createChart,
 } from 'lightweight-charts'
+import {
+    buildIndicatorValueIndex,
+    normalizeStrategyTransparency,
+    transparencyMatchesTimeframe,
+    type StrategyTransparency,
+    type StrategyTransparencyIndicator,
+} from '../../lib/strategyTransparency'
 
 export interface StrategyChartCandle {
     timestamp_utc: string
@@ -28,6 +35,7 @@ export interface StrategyChartMarker {
     color: string
     shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'
     text: string
+    signalType?: 'entry' | 'exit'
 }
 
 export interface StrategyChartPriceLine {
@@ -45,6 +53,7 @@ export interface StrategyChartSummaryItem {
 
 export interface StrategyChartSnapshot {
     candle: StrategyChartCandle
+    indicatorValues: Record<string, number | null>
 }
 
 interface StrategyChartSurfaceProps {
@@ -54,6 +63,7 @@ interface StrategyChartSurfaceProps {
     strategyName: string
     symbol?: string
     timeframe?: string
+    strategyTransparency?: StrategyTransparency | Record<string, unknown> | null
     title?: React.ReactNode
     subtitle?: React.ReactNode
     headerMeta?: React.ReactNode
@@ -84,6 +94,11 @@ const LOGICAL_RANGE_PADDING = 8
 const MIN_VISIBLE_BARS = 12
 const ZOOM_STEP_FACTOR = 0.75
 const DEFAULT_VISIBLE_BARS = 180
+
+type IndicatorPanelRuntime = {
+    chart: IChartApi
+    series: Map<string, ISeriesApi<'Line'> | ISeriesApi<'Histogram'>>
+}
 
 export function toStrategyChartTimestamp(value: string | number): UTCTimestamp {
     if (typeof value === 'number') return value as UTCTimestamp
@@ -167,6 +182,7 @@ export function StrategyChartSurface({
     strategyName,
     symbol,
     timeframe,
+    strategyTransparency,
     title,
     subtitle,
     headerMeta,
@@ -197,10 +213,48 @@ export function StrategyChartSurface({
     const chartApiRef = React.useRef<IChartApi | null>(null)
     const candleSeriesRef = React.useRef<ISeriesApi<'Candlestick'> | null>(null)
     const volumeSeriesRef = React.useRef<ISeriesApi<'Histogram'> | null>(null)
+    const overlaySeriesRefs = React.useRef<Array<ISeriesApi<'Line'> | ISeriesApi<'Histogram'>>>([])
+    const panelContainersRef = React.useRef<Map<string, HTMLDivElement>>(new Map())
+    const panelRuntimesRef = React.useRef<Map<string, IndicatorPanelRuntime>>(new Map())
+    const indicatorValueIndexRef = React.useRef<Map<string, Map<number, number>>>(new Map())
+    const syncingCrosshairRef = React.useRef(false)
     const priceLineRefs = React.useRef<IPriceLine[]>([])
     const tooltipDataRef = React.useRef<Map<number, StrategyChartSnapshot>>(new Map())
     const [visibleBarCount, setVisibleBarCount] = React.useState<number | null>(null)
     const [tooltip, setTooltip] = React.useState<StrategyChartSnapshot | null>(null)
+
+    const transparency = React.useMemo(
+        () => normalizeStrategyTransparency(strategyTransparency),
+        [strategyTransparency],
+    )
+    const timeframeMatches = React.useMemo(
+        () => transparencyMatchesTimeframe(transparency, timeframe),
+        [timeframe, transparency],
+    )
+    const activeIndicators = React.useMemo(
+        () => timeframeMatches
+            ? (transparency?.indicators ?? []).filter((indicator) => indicator.availability === 'available' && indicator.series.length > 0)
+            : [],
+        [timeframeMatches, transparency],
+    )
+    const lowerPanelGroups = React.useMemo(() => {
+        const groups = new Map<string, StrategyTransparencyIndicator[]>()
+        activeIndicators.forEach((indicator) => {
+            if (indicator.panel === 'price' || indicator.panel === 'volume') return
+            const group = groups.get(indicator.panel) ?? []
+            group.push(indicator)
+            groups.set(indicator.panel, group)
+        })
+        return [...groups.entries()]
+    }, [activeIndicators])
+
+    const indicatorValueIndex = React.useMemo(
+        () => buildIndicatorValueIndex(transparency?.indicators ?? []),
+        [transparency],
+    )
+    React.useEffect(() => {
+        indicatorValueIndexRef.current = indicatorValueIndex
+    }, [indicatorValueIndex])
 
     const sortedCandles = React.useMemo(
         () => [...candles].sort((left, right) => Date.parse(left.timestamp_utc) - Date.parse(right.timestamp_utc)),
@@ -223,10 +277,16 @@ export function StrategyChartSurface({
         new Map<number, StrategyChartSnapshot>(
             sortedCandles.map((candle) => {
                 const time = toStrategyChartTimestamp(candle.timestamp_utc)
-                return [time, { candle }]
+                const indicatorValues = Object.fromEntries(
+                    (transparency?.indicators ?? []).map((indicator) => [
+                        indicator.key,
+                        timeframeMatches ? indicatorValueIndex.get(indicator.key)?.get(time) ?? null : null,
+                    ]),
+                )
+                return [time, { candle, indicatorValues }]
             }),
         )
-    ), [sortedCandles])
+    ), [indicatorValueIndex, sortedCandles, timeframeMatches, transparency])
     const latestSnapshot = React.useMemo(() => {
         const latest = sortedCandles[sortedCandles.length - 1]
         return latest ? tooltipData.get(toStrategyChartTimestamp(latest.timestamp_utc)) ?? null : null
@@ -362,15 +422,36 @@ export function StrategyChartSurface({
         candleSeriesRef.current = candleSeries
         volumeSeriesRef.current = volumeSeries
 
-        const onVisibleRangeChange = (range: LogicalRange | null) => syncVisibleBars(range)
+        const onVisibleRangeChange = (range: LogicalRange | null) => {
+            syncVisibleBars(range)
+            if (!range) return
+            panelRuntimesRef.current.forEach(({ chart: panelChart }) => {
+                panelChart.timeScale().setVisibleLogicalRange(range)
+            })
+        }
         chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange)
 
         const onCrosshairMove = (param: { time?: Time }) => {
+            if (syncingCrosshairRef.current) return
             if (typeof param.time !== 'number') {
                 setTooltip(null)
+                panelRuntimesRef.current.forEach(({ chart: panelChart }) => panelChart.clearCrosshairPosition())
                 return
             }
             setTooltip(tooltipDataRef.current.get(param.time) ?? null)
+            syncingCrosshairRef.current = true
+            panelRuntimesRef.current.forEach(({ chart: panelChart, series }) => {
+                const firstEntry = [...series.entries()].find(([key]) => (
+                    indicatorValueIndexRef.current.get(key)?.has(param.time as number)
+                ))
+                if (!firstEntry) {
+                    panelChart.clearCrosshairPosition()
+                    return
+                }
+                const value = indicatorValueIndexRef.current.get(firstEntry[0])?.get(param.time as number)
+                if (value !== undefined) panelChart.setCrosshairPosition(value, param.time as UTCTimestamp, firstEntry[1])
+            })
+            syncingCrosshairRef.current = false
         }
         chart.subscribeCrosshairMove(onCrosshairMove)
 
@@ -436,6 +517,141 @@ export function StrategyChartSurface({
         ))
     }, [priceLines])
 
+    React.useEffect(() => {
+        const chart = chartApiRef.current
+        if (!chart) return undefined
+
+        overlaySeriesRefs.current.forEach((series) => {
+            try { chart.removeSeries(series) } catch { /* chart already refreshed */ }
+        })
+        overlaySeriesRefs.current = []
+
+        activeIndicators
+            .filter((indicator) => indicator.panel === 'price' || indicator.panel === 'volume')
+            .forEach((indicator) => {
+                const isHistogram = indicator.type.includes('histogram')
+                const series = isHistogram
+                    ? chart.addHistogramSeries({
+                        color: indicator.color,
+                        priceScaleId: indicator.panel === 'volume' ? '' : 'right',
+                        priceLineVisible: false,
+                        lastValueVisible: true,
+                    })
+                    : chart.addLineSeries({
+                        color: indicator.color,
+                        lineWidth: 2,
+                        priceScaleId: indicator.panel === 'volume' ? '' : 'right',
+                        priceLineVisible: false,
+                        lastValueVisible: true,
+                        title: indicator.label,
+                    })
+                series.setData(indicator.series.map((point) => ({
+                    time: toStrategyChartTimestamp(point.timestamp_utc),
+                    value: point.value,
+                    ...(isHistogram ? { color: indicator.color } : {}),
+                })) as never)
+                indicator.references.forEach((reference) => series.createPriceLine({
+                    price: reference.value,
+                    color: reference.color || indicator.color,
+                    lineWidth: 1,
+                    lineStyle: LineStyle.Dashed,
+                    axisLabelVisible: true,
+                    title: reference.label,
+                }))
+                overlaySeriesRefs.current.push(series)
+            })
+
+        return () => {
+            overlaySeriesRefs.current.forEach((series) => {
+                try { chart.removeSeries(series) } catch { /* chart already removed */ }
+            })
+            overlaySeriesRefs.current = []
+        }
+    }, [activeIndicators])
+
+    React.useEffect(() => {
+        panelRuntimesRef.current.forEach(({ chart }) => chart.remove())
+        panelRuntimesRef.current.clear()
+
+        lowerPanelGroups.forEach(([panel, indicators]) => {
+            const container = panelContainersRef.current.get(panel)
+            if (!container) return
+            const panelChart = createChart(container, {
+                autoSize: true,
+                layout: { background: { type: ColorType.Solid, color: '#0b0e11' }, textColor: '#929aa5' },
+                grid: {
+                    vertLines: { color: 'rgba(43, 49, 57, 0.45)' },
+                    horzLines: { color: 'rgba(43, 49, 57, 0.45)' },
+                },
+                crosshair: {
+                    mode: CrosshairMode.Normal,
+                    vertLine: { color: 'rgba(252, 213, 53, 0.35)', labelBackgroundColor: '#1e2329' },
+                    horzLine: { color: 'rgba(252, 213, 53, 0.35)', labelBackgroundColor: '#1e2329' },
+                },
+                rightPriceScale: { borderColor: '#2b3139' },
+                timeScale: {
+                    borderColor: '#2b3139',
+                    timeVisible: true,
+                    secondsVisible: false,
+                    rightOffset: 8,
+                },
+                handleScroll: false,
+                handleScale: false,
+            })
+            const seriesByKey = new Map<string, ISeriesApi<'Line'> | ISeriesApi<'Histogram'>>()
+            indicators.forEach((indicator) => {
+                const isHistogram = indicator.type.includes('histogram')
+                const series = isHistogram
+                    ? panelChart.addHistogramSeries({
+                        color: indicator.color,
+                        priceLineVisible: false,
+                        lastValueVisible: true,
+                    })
+                    : panelChart.addLineSeries({
+                        color: indicator.color,
+                        lineWidth: 2,
+                        priceLineVisible: false,
+                        lastValueVisible: true,
+                        title: indicator.label,
+                    })
+                series.setData(indicator.series.map((point) => ({
+                    time: toStrategyChartTimestamp(point.timestamp_utc),
+                    value: point.value,
+                    ...(isHistogram ? { color: indicator.color } : {}),
+                })) as never)
+                indicator.references.forEach((reference) => series.createPriceLine({
+                    price: reference.value,
+                    color: reference.color || indicator.color,
+                    lineWidth: 1,
+                    lineStyle: LineStyle.Dashed,
+                    axisLabelVisible: true,
+                    title: reference.label,
+                }))
+                seriesByKey.set(indicator.key, series)
+            })
+            const currentRange = chartApiRef.current?.timeScale().getVisibleLogicalRange()
+            if (currentRange) panelChart.timeScale().setVisibleLogicalRange(currentRange)
+            else panelChart.timeScale().fitContent()
+
+            const onPanelCrosshairMove = (param: { time?: Time }) => {
+                if (syncingCrosshairRef.current || typeof param.time !== 'number') return
+                const snapshot = tooltipDataRef.current.get(param.time)
+                setTooltip(snapshot ?? null)
+                if (!snapshot || !candleSeriesRef.current || !chartApiRef.current) return
+                syncingCrosshairRef.current = true
+                chartApiRef.current.setCrosshairPosition(snapshot.candle.close, param.time, candleSeriesRef.current)
+                syncingCrosshairRef.current = false
+            }
+            panelChart.subscribeCrosshairMove(onPanelCrosshairMove)
+            panelRuntimesRef.current.set(panel, { chart: panelChart, series: seriesByKey })
+        })
+
+        return () => {
+            panelRuntimesRef.current.forEach(({ chart }) => chart.remove())
+            panelRuntimesRef.current.clear()
+        }
+    }, [lowerPanelGroups])
+
     const subtitleContent = subtitle ?? [symbol, timeframe, `${candlestickData.length} velas`].filter(Boolean).join(' • ')
 
     return (
@@ -444,6 +660,7 @@ export function StrategyChartSurface({
             data-testid={rootTestId}
             data-marker-count={markerCount ?? markers?.length ?? 0}
             data-marker-labels={chartMarkers.map((marker) => marker.text).join('|')}
+            data-last-candle-timestamp={sortedCandles.at(-1)?.timestamp_utc ?? ''}
         >
             <header className="border-b border-[#2b3139] bg-[#0b0e11] px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -483,7 +700,7 @@ export function StrategyChartSurface({
                 <div className="ml-auto flex flex-wrap items-center gap-2" role="group" aria-label="Controles de zoom do grafico">
                     <button
                         type="button"
-                        className="inline-flex h-9 items-center gap-1 rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 text-sm font-semibold text-[#eaecef] transition hover:border-[#fcd535] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex h-11 items-center gap-1 rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 text-sm font-semibold text-[#eaecef] transition hover:border-[#fcd535] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={() => applyZoom('out')}
                         disabled={candlestickData.length === 0}
                         aria-label="Reduzir zoom do grafico"
@@ -494,7 +711,7 @@ export function StrategyChartSurface({
                     </button>
                     <button
                         type="button"
-                        className="inline-flex h-9 items-center gap-1 rounded-md border border-[#fcd535]/65 bg-[#fcd535] px-3 text-sm font-semibold text-[#181a20] transition hover:bg-[#f0b90b] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex h-11 items-center gap-1 rounded-md border border-[#fcd535]/65 bg-[#fcd535] px-3 text-sm font-semibold text-[#181a20] transition hover:bg-[#f0b90b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={() => applyZoom('in')}
                         disabled={candlestickData.length === 0}
                         aria-label="Aumentar zoom do grafico"
@@ -505,7 +722,7 @@ export function StrategyChartSurface({
                     </button>
                     <button
                         type="button"
-                        className="inline-flex h-9 items-center gap-1 rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 text-sm font-semibold text-[#eaecef] transition hover:border-[#fcd535] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex h-11 items-center gap-1 rounded-md border border-[#2b3139] bg-[#0b0e11] px-3 text-sm font-semibold text-[#eaecef] transition hover:border-[#fcd535] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={resetZoom}
                         disabled={candlestickData.length === 0}
                         aria-label="Redefinir zoom do grafico"
@@ -542,6 +759,29 @@ export function StrategyChartSurface({
                     data-current-marker={currentMarkerLabel}
                 >
                     <div ref={chartRef} className={heightClassName} data-testid={chartTestId} />
+                    {lowerPanelGroups.map(([panel, indicators]) => (
+                        <section
+                            key={panel}
+                            className="mt-2 overflow-hidden rounded-lg border border-[#2b3139] bg-[#0b0e11]"
+                            aria-labelledby={`${rootTestId}-${panel}-title`}
+                            data-testid={`${rootTestId}-indicator-panel-${panel}`}
+                        >
+                            <h3
+                                id={`${rootTestId}-${panel}-title`}
+                                className="border-b border-[#2b3139] bg-[#1e2329] px-3 py-2 text-xs font-semibold uppercase text-[#eaecef]"
+                            >
+                                Painel {panel}: {indicators.map((indicator) => indicator.label).join(', ')}
+                            </h3>
+                            <div
+                                ref={(node) => {
+                                    if (node) panelContainersRef.current.set(panel, node)
+                                    else panelContainersRef.current.delete(panel)
+                                }}
+                                className="h-[150px] w-full sm:h-[180px]"
+                                aria-hidden="true"
+                            />
+                        </section>
+                    ))}
                     <div className="pointer-events-none absolute left-4 top-4 rounded-md border border-[#fcd535]/25 bg-[#0b0e11]/90 px-3 py-1 text-[11px] font-medium text-[#fcd535]">
                         Role para dar zoom
                     </div>
@@ -549,6 +789,97 @@ export function StrategyChartSurface({
                         <div className="absolute right-4 top-4 rounded-md bg-black/60 px-3 py-1.5 text-xs text-white">
                             Carregando timeframe...
                         </div>
+                    ) : null}
+
+                    {transparency ? (
+                        <section
+                            className="mt-3 rounded-lg border border-[#2b3139] bg-[#1e2329] p-3 sm:p-4"
+                            aria-labelledby={`${rootTestId}-strategy-transparency-title`}
+                            data-testid={`${rootTestId}-strategy-transparency`}
+                        >
+                            <h3 id={`${rootTestId}-strategy-transparency-title`} className="text-sm font-semibold text-[#eaecef]">
+                                {transparency.display_name || strategyName}
+                            </h3>
+                            {transparency.description ? <p className="mt-1 text-sm text-[#929aa5]">{transparency.description}</p> : null}
+
+                            {!timeframeMatches ? (
+                                <p className="mt-3 rounded-md border border-[#fcd535]/40 bg-[#fcd535]/10 px-3 py-2 text-sm text-[#eaecef]" role="status">
+                                    Indicadores indisponíveis: o manifesto usa {transparency.timeframe.toUpperCase()} e o gráfico exibe {timeframe?.toUpperCase()}.
+                                </p>
+                            ) : transparency.status !== 'available' ? (
+                                <p className="mt-3 rounded-md border border-[#fcd535]/40 bg-[#fcd535]/10 px-3 py-2 text-sm text-[#eaecef]" role="status">
+                                    Indicadores indisponíveis{transparency.unavailable_reason ? `: ${transparency.unavailable_reason}` : '.'}
+                                </p>
+                            ) : null}
+
+                            <ul className="mt-3 grid gap-2 md:grid-cols-2" aria-label="Legenda dos indicadores da estratégia">
+                                {transparency.indicators.map((indicator) => {
+                                    const value = timeframeMatches ? displaySnapshot?.indicatorValues[indicator.key] : null
+                                    const isAvailable = timeframeMatches && indicator.availability === 'available' && indicator.series.length > 0
+                                    return (
+                                        <li
+                                            key={indicator.key}
+                                            className="rounded-md border border-[#2b3139] bg-[#0b0e11] p-3 text-sm"
+                                            data-testid={`${rootTestId}-indicator-${indicator.key}`}
+                                            data-indicator-color={indicator.color}
+                                            data-series-points={indicator.series.length}
+                                            data-series-last-timestamp={indicator.series.at(-1)?.timestamp_utc ?? ''}
+                                        >
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-1 h-3 w-3 shrink-0 rounded-full border border-white/20" style={{ backgroundColor: indicator.color }} aria-hidden="true" />
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-[#eaecef]">{indicator.label}</p>
+                                                    {Object.keys(indicator.parameters).length > 0 ? (
+                                                        <p className="text-xs text-[#929aa5]">
+                                                            Configuração: {Object.entries(indicator.parameters).map(([key, value]) => `${key}=${String(value)}`).join(', ')}
+                                                        </p>
+                                                    ) : null}
+                                                    <p className="text-xs text-[#929aa5]">
+                                                        Painel {indicator.panel} • escala {indicator.scale} • valor {isAvailable && value !== null && value !== undefined ? formatPrice(value) : 'indisponível'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {indicator.function ? <p className="mt-2 text-xs text-[#929aa5]">Função: {indicator.function}</p> : null}
+                                            {indicator.participation.length > 0 ? <p className="mt-1 text-xs text-[#929aa5]">Participação: {indicator.participation.join(', ')}</p> : null}
+                                            {indicator.references.length > 0 ? (
+                                                <p className="mt-1 text-xs text-[#929aa5]">
+                                                    Referências: {indicator.references.map((reference) => `${reference.label} (${formatPrice(reference.value)})`).join(', ')}
+                                                </p>
+                                            ) : null}
+                                            {!isAvailable ? (
+                                                <p className="mt-2 text-xs text-[#fcd535]" role="status">
+                                                    Série indisponível{indicator.unavailable_reason ? `: ${indicator.unavailable_reason}` : '.'}
+                                                </p>
+                                            ) : null}
+                                        </li>
+                                    )
+                                })}
+                            </ul>
+
+                            {transparency.indicators.length === 0 ? (
+                                <p className="mt-3 text-sm text-[#929aa5]">Nenhuma série de indicador disponível.</p>
+                            ) : null}
+
+                            {Object.keys(transparency.effective_parameters).length > 0 ? (
+                                <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2" aria-label="Parâmetros efetivos da estratégia">
+                                    {Object.entries(transparency.effective_parameters).map(([key, value]) => (
+                                        <div key={key} className="flex justify-between gap-3 rounded-md bg-[#0b0e11] px-3 py-2">
+                                            <dt className="text-[#929aa5]">{key.replace(/_/g, ' ')}</dt>
+                                            <dd className="font-mono text-[#eaecef]">{String(value)}</dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            ) : null}
+
+                            {transparency.logic_blocks.length > 0 ? (
+                                <div className="mt-3">
+                                    <h4 className="text-xs font-semibold uppercase text-[#929aa5]">Lógica funcional</h4>
+                                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#eaecef]">
+                                        {transparency.logic_blocks.map((block, index) => <li key={`${block}-${index}`}>{block}</li>)}
+                                    </ul>
+                                </div>
+                            ) : null}
+                        </section>
                     ) : null}
                 </div>
 

@@ -125,3 +125,77 @@ def test_optimizer_final_backtest_uses_requested_deep_mode(monkeypatch):
     assert calls[-1]["return_mode"] is True
     assert result["execution_mode"] == "deep_15m"
     assert result["trades"][0]["exit_reason"] == "stop_loss_15m"
+
+
+def test_optimizer_final_backtest_preserves_requested_short_direction(monkeypatch):
+    optimizer = combo_optimizer.ComboOptimizer()
+    calls = []
+
+    monkeypatch.setattr(
+        optimizer,
+        "generate_stages",
+        lambda **_kwargs: [{"param": "stop_loss", "values": [0.02]}],
+    )
+    monkeypatch.setattr(
+        optimizer,
+        "_execute_opt_stages",
+        lambda *args, **_kwargs: (
+            {"direction": "short", "stop_loss": 0.02},
+            {"sharpe_ratio": 1.0, "total_trades": 1},
+        ),
+    )
+    monkeypatch.setattr(
+        optimizer.combo_service,
+        "get_template_metadata",
+        lambda _template_name: {
+            "indicators": [],
+            "entry_logic": "close > open",
+            "exit_logic": "close < open",
+            "stop_loss": 0.02,
+            "optimization_schema": {},
+        },
+    )
+    monkeypatch.setattr(
+        optimizer.combo_service, "create_strategy", lambda **_kwargs: _FakeStrategy()
+    )
+    monkeypatch.setattr(
+        combo_optimizer, "get_market_data_provider", lambda _source: _FakeProvider()
+    )
+    monkeypatch.setattr(
+        combo_optimizer.concurrent.futures,
+        "ProcessPoolExecutor",
+        _FakeExecutor,
+    )
+
+    def fake_extract_trades_with_mode(*_args, **kwargs):
+        calls.append(kwargs)
+        return (
+            [
+                {
+                    "entry_time": "2026-01-01T00:00:00+00:00",
+                    "entry_price": 100.0,
+                    "exit_time": "2026-01-02T00:00:00+00:00",
+                    "exit_price": 90.0,
+                    "profit": 0.1,
+                    "exit_reason": "signal",
+                    "type": kwargs["direction"],
+                }
+            ],
+            "fast_1d",
+        )
+
+    monkeypatch.setattr(combo_optimizer, "extract_trades_with_mode", fake_extract_trades_with_mode)
+
+    result = optimizer.run_optimization(
+        template_name="multi_ma_crossover",
+        symbol="BTC/USDT",
+        timeframe="1d",
+        start_date="2026-01-01",
+        end_date="2026-01-02",
+        direction="short",
+        deep_backtest=False,
+    )
+
+    assert calls[-1]["direction"] == "short"
+    assert result["direction"] == "short"
+    assert result["trades"][0]["type"] == "short"

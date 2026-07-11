@@ -41,18 +41,18 @@ O sistema SHALL armazenar `total_return` como Retorno Composto ao salvar nos Fav
 - **THEN** the Favorites page MUST render those values as `60.00%`, `11.00%`, and `+42.00%` respectively
 
 ### Requirement: Favorites hide strategy secrets from non-admin users
-The Favorites API and UI MUST hide clear strategy implementation details from non-admin users.
+The Favorites API and UI MUST hide implementation-only strategy secrets from non-admin users while exposing the canonical functional transparency manifest.
 
 #### Scenario: Non-admin lists favorites
 - **WHEN** a non-admin user lists saved favorite strategies
-- **THEN** each favorite MUST avoid exposing the original strategy name
-- **AND** each favorite MUST avoid exposing saved strategy parameter values
-- **AND** each favorite MUST mark the strategy as protected
+- **THEN** each favorite MUST include its specific public name, description and public manifest summary
+- **AND** MUST omit source code, credentials, raw diagnostics and unauthorized mutation controls
+- **AND** MUST NOT replace the public identity with a generic protected label.
 
 #### Scenario: Admin lists favorites
 - **WHEN** an admin user lists saved favorite strategies
-- **THEN** each favorite MUST include the original strategy name and parameter values as before
-- **AND** each favorite MUST mark the strategy as not protected
+- **THEN** each favorite MUST include the same public manifest
+- **AND** MAY additionally include original identifiers and technical fields authorized for audit.
 
 ### Requirement: Favorites screen is available to authenticated users
 The Favorites page MUST be directly accessible to any authenticated user while preserving protected strategy redaction for non-admin users, and its list layout MUST fit common desktop and mobile viewports without horizontal scrolling as the normal workflow.
@@ -201,24 +201,22 @@ The Favorites page SHALL expose a single analysis action per favorite for users 
 - **THEN** the unified analysis action SHALL NOT expose protected strategy parameters or trade regeneration to unauthorized users
 
 ### Requirement: Favorites analysis uses Monitor-aligned chart
-The Favorites analysis result view SHALL use the same operational chart presentation pattern as the Monitor when candle history is available.
+The Favorites analysis result view SHALL use the shared Monitor-aligned chart and the canonical public indicator contract when candle history is available.
 
-#### Scenario: Favorite analysis opens with candles
-- **WHEN** an admin user clicks `Ver análise completa` for a favorite whose analysis has candle history
-- **THEN** the result view SHALL render a Monitor-aligned candlestick chart
-- **AND** the chart SHALL show readable candles, volume, trade markers, and moving average overlays
-- **AND** the chart SHALL expose explicit zoom controls
+#### Scenario: Favorite analysis opens with candles and indicators
+- **WHEN** a user opens full analysis for a favorite with candle and timestamped indicator history
+- **THEN** the result SHALL show readable candles, volume, complete trade markers and manifest-defined indicator panels
+- **AND** SHALL preserve explicit zoom and the `Analisar` flow.
 
 #### Scenario: Favorite analysis opens without candles
-- **WHEN** an admin user opens favorite analysis and no candles are available
-- **THEN** the result view SHALL keep an empty chart state
-- **AND** the rest of the analysis summary and trades SHALL remain accessible
+- **WHEN** a user opens favorite analysis and no candles are available
+- **THEN** the result SHALL keep an explicit empty chart state
+- **AND** the manifesto, summary and trades SHALL remain accessible.
 
 #### Scenario: Common user opens protected favorite analysis
-- **WHEN** a common user opens analysis for a protected favorite with candle history
-- **THEN** the result view SHALL render the chart/map
-- **AND** the chart SHALL NOT draw moving average overlays
-- **AND** the result view SHALL NOT show moving average values or protected strategy parameters
+- **WHEN** a common user opens analysis for a protected favorite
+- **THEN** the result SHALL show public indicators, parameters and functional explanations from the canonical manifest
+- **AND** SHALL keep implementation-only fields and unauthorized regeneration hidden.
 
 ### Requirement: Favorites analysis uses current market candles for chart rendering
 The Favorites analysis flow SHALL use the current market candles source as the primary chart candle source when opening a favorite analysis. Saved favorite trades and metrics SHALL remain the source for summary and trade evidence. Saved `metrics.analysis_candles` SHALL be used only as a fallback when current market candles cannot be loaded.
@@ -297,24 +295,20 @@ The Favorites page MUST apply the selected ordering option as the primary sort k
 - **THEN** changing the `Ordenar` control MUST NOT break the screen or show a visual error
 
 ### Requirement: Favorites analysis preserves all recoverable trades
-The Favorites page SHALL preserve all saved or regenerated trades when opening a full analysis result from a favorite, even when Monitor synchronization returns a shorter `signal_history`.
+The Favorites page SHALL preserve all saved or regenerated trades when opening a full analysis result, even when Monitor synchronization returns a shorter `signal_history`.
 
 #### Scenario: Monitor sync has fewer trades than favorite history
-- **WHEN** the user opens full analysis from a favorite with saved or regenerated trades
-- **AND** Monitor synchronization returns fewer trades for the same strategy
-- **THEN** the result trade list SHALL include the saved or regenerated favorite trades
-- **AND** the Monitor synchronization SHALL NOT replace the favorite trade list with the shorter Monitor set
+- **WHEN** Monitor synchronization returns fewer trades than the saved or regenerated favorite history
+- **THEN** the result trade list and chart markers SHALL retain all recoverable favorite trades.
 
 #### Scenario: Monitor sync adds a missing current trade
-- **WHEN** the user opens full analysis from a favorite
-- **AND** Monitor synchronization returns a trade not already present in the saved or regenerated favorite history
-- **THEN** the result trade list SHALL include that additional Monitor trade
-- **AND** duplicate trades from both sources SHALL appear only once
+- **WHEN** Monitor synchronization returns a non-duplicate trade absent from favorite history
+- **THEN** the result SHALL include it once in the list and marker source.
 
-#### Scenario: Protected favorite remains redacted for common user
+#### Scenario: Common user opens protected favorite
 - **WHEN** a common user opens full analysis for a protected favorite
-- **THEN** the result SHALL preserve the protected favorite's available trades
-- **AND** the result SHALL NOT expose protected parameters, indicators, moving-average overlays, or moving-average values
+- **THEN** the result SHALL preserve trades and canonical public indicators
+- **AND** SHALL keep source code, diagnostics and unauthorized mutation controls hidden.
 
 ### Requirement: Favorites does not expose agent chat action
 The Favorites page SHALL NOT expose a "Chat com agente", "Trader", or equivalent agent-chat action from `/favorites`, while preserving the existing Favorites analysis, ranking, filtering, selection, and administrative delete actions.
@@ -362,3 +356,54 @@ The favorites API SHALL allow a common user to read favorite details from the ad
 #### Scenario: Common user opens private favorite from another user
 - **WHEN** the requested favorite is not owned by the current user and is not an admin catalog favorite
 - **THEN** the API returns not found
+
+### Requirement: Favorites Preserve Strategy Direction
+
+Favorites SHALL preserve strategy direction across save, list, regeneration and trade-analysis flows.
+
+#### Scenario: Short favorite regeneration uses short direction
+
+- **GIVEN** a saved favorite has `parameters.direction == "short"`
+- **WHEN** `/api/favorites/{id}/trades` regenerates analysis
+- **THEN** regeneration SHALL call the modern combo optimizer with `direction == "short"`
+- **AND** returned trades SHALL use short-side profit and stop semantics
+
+#### Scenario: Missing direction remains long compatible
+
+- **GIVEN** an existing favorite does not include direction
+- **WHEN** it is listed or regenerated
+- **THEN** the system SHALL treat it as `long`
+
+### Requirement: Favorites exposes canonical strategy transparency
+Favorites list and analysis responses SHALL expose the same strategy transparency contract used by Monitor.
+
+#### Scenario: Favorite is opened in list and analysis
+- **WHEN** a favorite appears in both surfaces
+- **THEN** name, description, parameters, indicator metadata and logic explanations SHALL be identical
+- **AND** analysis SHALL add timestamped series without redefining the manifest.
+
+#### Scenario: Legacy favorite has aligned cached series but no persisted manifest
+- **WHEN** a favorite created before strategy transparency has cached candles and indicator arrays with a proven one-to-one timestamp source
+- **AND** its list payload has no usable timestamped transparency series
+- **THEN** opening full analysis SHALL request the favorite analysis response that reconstructs the canonical timestamped series
+- **AND** `/combo/results` SHALL render the declared overlays or panels
+- **AND** the Favorites list SHALL remain a summary payload without duplicating full historical series for every row.
+
+### Requirement: Favorite analysis indicators cover current candles
+Opening full favorite analysis SHALL return public indicator series calculated by the backend over the same current OHLCV snapshot returned as chart candles, without rerunning trade optimization.
+
+#### Scenario: Cached analysis is older than canonical candles
+- **WHEN** a favorite has saved trades and indicator arrays ending before the current canonical OHLCV history
+- **THEN** the analysis response SHALL preserve the saved trades and metrics
+- **AND** SHALL recalculate only the declared indicator columns using the favorite's effective parameters
+- **AND** every available moving-average series SHALL end at the same timestamp as the last returned candle.
+
+#### Scenario: Current OHLCV reconstruction fails
+- **WHEN** current canonical candles cannot be loaded or calculated safely
+- **THEN** the analysis SHALL fall back to the proven cached candles and series
+- **AND** SHALL NOT align arrays positionally or regenerate trades implicitly.
+
+#### Scenario: Common trader receives current reconstruction
+- **WHEN** a non-admin trader is authorized to view the favorite analysis
+- **THEN** the response SHALL include current timestamped public series and candles
+- **AND** SHALL keep raw `indicator_data`, diagnostics and implementation configuration hidden.

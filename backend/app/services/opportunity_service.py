@@ -27,6 +27,8 @@ from app.database import SessionLocal
 from app.middleware.authMiddleware import ADMIN_EMAILS
 from app.models import FavoriteStrategy, MonitorStrategyPreference, User
 from app.services.strategy_descriptions import public_strategy_description
+from app.schemas.strategy_transparency import StrategyTransparency
+from app.services.strategy_transparency import build_strategy_transparency
 
 logger = logging.getLogger(__name__)
 _OHLCV_CACHE_TTL_SECONDS = 300.0
@@ -477,6 +479,8 @@ def _resolve_position_state(
         return False, True, stop_breached_now
     if has_exit_after_entry:
         return False, False, False
+    if direction == "short":
+        return bool(has_active_entry), False, False
     return bool(has_active_entry and short_above_long), False, False
 
 
@@ -502,10 +506,37 @@ def _public_monitor_badge(status: str) -> str:
     return "info" if status == "HOLD" else "neutral"
 
 
-def _public_monitor_message(status: str, analysis: dict[str, Any]) -> str:
+def _normalize_strategy_direction(direction: Any) -> str:
+    return "short" if str(direction or "").strip().lower() == "short" else "long"
+
+
+def _monitor_action_labels(direction: Any) -> dict[str, str]:
+    normalized = _normalize_strategy_direction(direction)
+    if normalized == "short":
+        return {
+            "entry": "Venda/Short",
+            "exit": "Compra/Cobertura",
+            "hold": "Venda ativa",
+            "waiting_entry": "Aguardando proxima venda/short",
+            "waiting_exit": "Aguardando proxima compra/cobertura",
+        }
+    return {
+        "entry": "Compra",
+        "exit": "Venda",
+        "hold": "Compra ativa",
+        "waiting_entry": "Aguardando proxima compra",
+        "waiting_exit": "Aguardando proxima venda",
+    }
+
+
+def _public_monitor_message(status: str, analysis: dict[str, Any], direction: Any = "long") -> str:
+    labels = _monitor_action_labels(direction)
     if status == "HOLD":
-        return str(analysis.get("message") or "Compra ativa. Acompanhe a proxima venda.")
-    return "Venda/fora de posicao. Aguardando proxima compra."
+        default = f"{labels['hold']}. Acompanhe a proxima {labels['exit'].lower()}."
+        if _normalize_strategy_direction(direction) == "short":
+            return default
+        return str(analysis.get("message") or default)
+    return f"{labels['exit']}/fora de posicao. {labels['waiting_entry']}."
 
 
 def _decode_jsonish(value: Any) -> Any:
@@ -704,6 +735,7 @@ class OpportunityService:
             "tier": tier,
             "notify_telegram": bool(getattr(row, "notify_telegram", True)),
             "is_curated_fallback": is_curated_fallback,
+            "_metrics": row.metrics,
         }
         if isinstance(r["parameters"], str):
             try:
@@ -711,6 +743,11 @@ class OpportunityService:
             except Exception as e:
                 logger.warning(f"Failed to parse parameters JSON for favorite {r.get('id')}: {e}")
                 r["parameters"] = {}
+        if isinstance(r["_metrics"], str):
+            try:
+                r["_metrics"] = json.loads(r["_metrics"])
+            except Exception:
+                r["_metrics"] = {}
         latest_trade_event = _latest_favorite_trade_event(getattr(row, "metrics", None))
         if latest_trade_event:
             r["_favorite_latest_trade_signal"] = latest_trade_event["type"]
@@ -1875,19 +1912,58 @@ class OpportunityService:
                         next_status_label = "exit"
 
                 raw_analysis_status = str(analysis.get("status") or "")
+                direction = _normalize_strategy_direction(direction)
+                action_labels = _monitor_action_labels(direction)
                 public_status = _public_monitor_status(
                     is_holding=(is_holding if favorite_latest_trade_signal != "exit" else False),
                     raw_status=raw_analysis_status,
                 )
                 public_badge = _public_monitor_badge(public_status)
-                public_message = _public_monitor_message(public_status, analysis)
+                public_message = _public_monitor_message(public_status, analysis, direction)
                 public_is_holding = public_status == "HOLD"
+                current_action_label = (
+                    action_labels["hold"] if public_is_holding else action_labels["exit"]
+                )
+                next_action_label = (
+                    action_labels["exit"] if public_is_holding else action_labels["entry"]
+                )
                 public_details = {
                     **analysis,
                     "status": public_status,
                     "badge": public_badge,
                     "message": public_message,
+                    "direction": direction,
+                    "action_label": current_action_label,
+                    "entry_action_label": action_labels["entry"],
+                    "exit_action_label": action_labels["exit"],
+                    "next_action_label": next_action_label,
                 }
+                stored_manifest = (
+                    (fav.get("_metrics") or {}).get("analysis_strategy_transparency")
+                    if isinstance(fav.get("_metrics"), dict)
+                    else None
+                )
+                strategy_transparency = None
+                if isinstance(stored_manifest, dict):
+                    try:
+                        candidate = StrategyTransparency.model_validate(stored_manifest)
+                        if candidate.timeframe == normalized_tf:
+                            strategy_transparency = candidate
+                    except Exception:
+                        strategy_transparency = None
+                if strategy_transparency is None:
+                    strategy_transparency = build_strategy_transparency(
+                        template_name,
+                        {
+                            "indicators": final_indicators,
+                            "entry_logic": entry_logic,
+                            "exit_logic": exit_logic,
+                            "stop_loss": sl_param,
+                        },
+                        effective_parameters=params,
+                        timeframe=normalized_tf,
+                        dataframe=df_signals,
+                    )
 
                 opportunities.append(
                     {
@@ -1895,10 +1971,12 @@ class OpportunityService:
                         "symbol": symbol,
                         "asset_type": classify_asset_type(symbol),
                         "timeframe": normalized_tf,
+                        "direction": direction,
                         "template_name": template_name,
                         "strategy_description": public_strategy_description(
                             template_name, meta.get("description")
                         ),
+                        "strategy_transparency": strategy_transparency.model_dump(mode="json"),
                         "name": fav["name"],  # User custom name
                         "notes": fav.get("notes"),
                         "is_curated_fallback": bool(fav.get("is_curated_fallback")),
@@ -1907,6 +1985,10 @@ class OpportunityService:
                         "is_holding": public_is_holding,
                         "distance_to_next_status": final_distance,
                         "next_status_label": next_status_label,
+                        "action_label": current_action_label,
+                        "entry_action_label": action_labels["entry"],
+                        "exit_action_label": action_labels["exit"],
+                        "next_action_label": next_action_label,
                         "indicator_values": indicator_values if indicator_values else None,
                         "indicator_values_candle_time": indicator_values_candle_time,
                         "signal_history": signal_history,

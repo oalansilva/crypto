@@ -8,6 +8,7 @@ import uuid
 
 from fastapi import HTTPException
 import pandas as pd
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -20,6 +21,18 @@ from app.services.favorite_backtest_refresh_service import (
     REFRESH_STATUS_SUCCESS,
 )
 from app.services.opportunity_service import OpportunityService
+from app.services.strategy_transparency import (
+    build_strategy_transparency,
+    build_strategy_transparency_from_candles,
+)
+
+
+@pytest.fixture(autouse=True)
+def _disable_live_favorite_candle_repository(monkeypatch):
+    class DisabledRepository:
+        enabled = False
+
+    monkeypatch.setattr(favorites, "_FAVORITE_OHLCV_REPO", DisabledRepository())
 
 
 def _session_factory(tmp_path: Path):
@@ -703,6 +716,348 @@ def test_common_user_can_read_cached_admin_catalog_chart_trades(tmp_path: Path, 
     }
 
 
+def test_common_user_get_favorite_trades_rebuilds_legacy_timestamped_manifest(
+    tmp_path: Path, monkeypatch
+):
+    SessionLocal = _session_factory(tmp_path)
+    admin_id = str(uuid.uuid4())
+    common_id = str(uuid.uuid4())
+    admin_email = f"admin-{uuid.uuid4()}@example.com"
+    timestamps = [
+        "2026-06-26T00:00:00Z",
+        "2026-06-27T00:00:00Z",
+        "2026-06-28T00:00:00Z",
+    ]
+    template_data = {
+        "indicators": [
+            {"type": "ema", "alias": "short", "params": {"length": 18}},
+            {"type": "sma", "alias": "medium", "params": {"length": 20}},
+            {"type": "sma", "alias": "long", "params": {"length": 35}},
+        ],
+        "entry_logic": "(short > long) & crossover(short, medium)",
+        "exit_logic": "crossunder(short, long)",
+        "stop_loss": 0.042,
+    }
+    monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
+    monkeypatch.setattr(
+        favorites,
+        "is_admin_email",
+        lambda email: str(email).lower() == admin_email,
+    )
+    monkeypatch.setattr(
+        favorites,
+        "can_view_strategy_secrets",
+        lambda _db, user_id: str(user_id) == admin_id,
+    )
+    monkeypatch.setattr(
+        favorites,
+        "_strategy_templates_for_rows",
+        lambda _db, rows: {str(row.strategy_name): template_data for row in rows},
+    )
+
+    with SessionLocal() as db:
+        db.add(User(id=admin_id, email=admin_email, password_hash="x", name="Admin"))
+        db.add(
+            User(
+                id=common_id,
+                email=f"common-{uuid.uuid4()}@example.com",
+                password_hash="x",
+                name="Common",
+            )
+        )
+        db.commit()
+        created = favorites.create_favorite(
+            favorites.FavoriteStrategyCreate(
+                **{
+                    **_favorite_payload(
+                        "Legacy transparent cache",
+                        symbol="SOL/USDT",
+                        strategy_name="multi_ma_crossoverV2",
+                    ).model_dump(),
+                    "parameters": {
+                        "direction": "long",
+                        "ema_short": 16,
+                        "sma_medium": 17,
+                        "sma_long": 33,
+                        "stop_loss": 0.085,
+                    },
+                    "metrics": {
+                        "total_trades": 1,
+                        "win_rate": 1,
+                        "total_return_pct": 3.2,
+                        "trades_history_cached": True,
+                        "trades": [
+                            {
+                                "entry_time": timestamps[0],
+                                "entry_price": 135,
+                                "exit_time": timestamps[2],
+                                "exit_price": 139,
+                                "profit": 0.032,
+                            }
+                        ],
+                        "analysis_candles": [
+                            {"timestamp_utc": timestamp, "close": close}
+                            for timestamp, close in zip(timestamps, [135, 137, 139], strict=True)
+                        ],
+                        "analysis_indicator_data": {
+                            "short": [134.5, 135.5, 137.0],
+                            "medium": [133.0, 134.0, 135.0],
+                            "long": [130.0, 131.0, 132.0],
+                            "ADX_14": [22.0, 23.0, 24.0],
+                            "private_diagnostic": [999.0, 999.0, 999.0],
+                        },
+                    },
+                }
+            ),
+            current_user_id=admin_id,
+            db=db,
+        )
+        stored_metrics = db.query(favorites.FavoriteStrategy).filter_by(id=created.id).one().metrics
+        assert "analysis_strategy_transparency" not in stored_metrics
+
+        response = asyncio.run(
+            favorites.get_favorite_trades(created.id, current_user_id=common_id, db=db)
+        )
+
+    manifest = response.strategy_transparency
+    assert response.regenerated is False
+    assert response.indicator_data == {}
+    assert manifest is not None
+    assert manifest.status == "available"
+    assert manifest.timeframe == "1d"
+    assert manifest.parameters == {
+        "short_length": 16,
+        "medium_length": 17,
+        "long_length": 33,
+        "stop_loss": 0.085,
+    }
+    assert [indicator.key for indicator in manifest.indicators] == ["short", "medium", "long"]
+    assert [indicator.execution_columns for indicator in manifest.indicators] == [
+        ["short"],
+        ["medium"],
+        ["long"],
+    ]
+    assert all(indicator.series_status == "available" for indicator in manifest.indicators)
+    assert [
+        [(point.timestamp_utc, point.value) for point in indicator.series]
+        for indicator in manifest.indicators
+    ] == [
+        [
+            ("2026-06-26T00:00:00+00:00", 134.5),
+            ("2026-06-27T00:00:00+00:00", 135.5),
+            ("2026-06-28T00:00:00+00:00", 137.0),
+        ],
+        [
+            ("2026-06-26T00:00:00+00:00", 133.0),
+            ("2026-06-27T00:00:00+00:00", 134.0),
+            ("2026-06-28T00:00:00+00:00", 135.0),
+        ],
+        [
+            ("2026-06-26T00:00:00+00:00", 130.0),
+            ("2026-06-27T00:00:00+00:00", 131.0),
+            ("2026-06-28T00:00:00+00:00", 132.0),
+        ],
+    ]
+    assert "ADX_14" not in {
+        column for indicator in manifest.indicators for column in indicator.execution_columns
+    }
+
+
+def test_common_user_get_favorite_trades_extends_manifest_to_current_candle_without_optimizer(
+    tmp_path: Path, monkeypatch
+):
+    SessionLocal = _session_factory(tmp_path)
+    admin_id = str(uuid.uuid4())
+    common_id = str(uuid.uuid4())
+    admin_email = f"admin-{uuid.uuid4()}@example.com"
+    template_data = {
+        "indicators": [
+            {"type": "ema", "alias": "short", "params": {"length": 16}},
+            {"type": "sma", "alias": "medium", "params": {"length": 17}},
+            {"type": "sma", "alias": "long", "params": {"length": 33}},
+        ],
+        "entry_logic": "(short > long) & crossover(short, medium)",
+        "exit_logic": "crossunder(short, long)",
+        "stop_loss": 0.085,
+    }
+    current_candles = [
+        {
+            "timestamp_utc": timestamp.isoformat(),
+            "open": float(99 + index),
+            "high": float(101 + index),
+            "low": float(98 + index),
+            "close": float(100 + index),
+            "volume": 1000.0,
+        }
+        for index, timestamp in enumerate(pd.date_range("2026-06-01", periods=42, tz="UTC"))
+    ]
+
+    class CurrentRepository:
+        enabled = True
+
+        def __init__(self):
+            self.limits = []
+
+        def read_recent_candles(self, symbol, timeframe, limit):
+            assert (symbol, timeframe) == ("SOL/USDT", "1d")
+            self.limits.append(limit)
+            return current_candles
+
+    repository = CurrentRepository()
+    monkeypatch.setattr(favorites, "_FAVORITE_OHLCV_REPO", repository)
+    monkeypatch.setattr(favorites, "ADMIN_EMAILS", {admin_email})
+    monkeypatch.setattr(
+        favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
+    )
+    monkeypatch.setattr(
+        favorites,
+        "can_view_strategy_secrets",
+        lambda _db, user_id: str(user_id) == admin_id,
+    )
+    monkeypatch.setattr(
+        favorites,
+        "_strategy_templates_for_rows",
+        lambda _db, rows: {str(row.strategy_name): template_data for row in rows},
+    )
+
+    async def fail_if_optimized(_favorite):
+        raise AssertionError("cached favorite chart refresh must not optimize")
+
+    monkeypatch.setattr(favorites, "_run_favorite_optimization", fail_if_optimized)
+
+    with SessionLocal() as db:
+        db.add(User(id=admin_id, email=admin_email, password_hash="x", name="Admin"))
+        db.add(
+            User(
+                id=common_id,
+                email=f"common-{uuid.uuid4()}@example.com",
+                password_hash="x",
+                name="Common",
+            )
+        )
+        db.commit()
+        created = favorites.create_favorite(
+            favorites.FavoriteStrategyCreate(
+                **{
+                    **_favorite_payload(
+                        "Current transparent cache",
+                        symbol="SOL/USDT",
+                        strategy_name="multi_ma_crossoverV2",
+                    ).model_dump(),
+                    "parameters": {
+                        "direction": "long",
+                        "ema_short": 16,
+                        "sma_medium": 17,
+                        "sma_long": 33,
+                        "stop_loss": 0.085,
+                    },
+                    "metrics": {
+                        "total_trades": 1,
+                        "trades_history_cached": True,
+                        "trades": [{"entry_time": current_candles[0]["timestamp_utc"]}],
+                        "analysis_candles": current_candles[:35],
+                        "analysis_indicator_data": {"private_diagnostic": [999.0] * 35},
+                    },
+                }
+            ),
+            current_user_id=admin_id,
+            db=db,
+        )
+        favorite_id = created.id
+        before_metrics = dict(
+            db.query(favorites.FavoriteStrategy).filter_by(id=favorite_id).one().metrics
+        )
+
+        response = asyncio.run(
+            favorites.get_favorite_trades(favorite_id, current_user_id=common_id, db=db)
+        )
+        after_metrics = db.query(favorites.FavoriteStrategy).filter_by(id=favorite_id).one().metrics
+
+    manifest = response.strategy_transparency
+    assert response.regenerated is False
+    assert response.indicator_data == {}
+    assert response.trades == before_metrics["trades"]
+    assert response.candles[-1]["timestamp_utc"] == "2026-07-12T00:00:00+00:00"
+    assert manifest is not None
+    assert [indicator.color for indicator in manifest.indicators] == [
+        "#f6465d",
+        "#ff9f43",
+        "#3b82f6",
+    ]
+    assert all(
+        indicator.series[-1].timestamp_utc == "2026-07-12T00:00:00+00:00"
+        for indicator in manifest.indicators
+    )
+    assert repository.limits == [5000]
+    assert after_metrics == before_metrics
+    assert "private_diagnostic" not in {
+        column for indicator in manifest.indicators for column in indicator.execution_columns
+    }
+
+
+def test_current_favorite_chart_context_falls_back_atomically_for_partial_manifest(monkeypatch):
+    template_data = {
+        "indicators": [
+            {"type": "ema", "alias": "short", "params": {"length": 3}},
+            {"type": "sma", "alias": "medium", "params": {"length": 4}},
+            {"type": "sma", "alias": "long", "params": {"length": 5}},
+        ],
+        "entry_logic": "short > medium and medium > long",
+        "exit_logic": "short < long",
+    }
+    current_candles = [
+        {
+            "timestamp_utc": timestamp.isoformat(),
+            "open": float(99 + index),
+            "high": float(101 + index),
+            "low": float(98 + index),
+            "close": float(100 + index),
+            "volume": 1000.0,
+        }
+        for index, timestamp in enumerate(pd.date_range("2026-07-01", periods=8, tz="UTC"))
+    ]
+    saved_candles = current_candles[:6]
+    fallback = build_strategy_transparency(
+        "multi_ma_crossoverV2",
+        template_data,
+        timeframe="1d",
+    )
+    partial = build_strategy_transparency_from_candles(
+        "multi_ma_crossoverV2",
+        template_data,
+        effective_parameters={},
+        timeframe="1d",
+        candles=current_candles,
+    )
+    partial.indicators[1].series = partial.indicators[1].series[:-1]
+
+    class CurrentRepository:
+        enabled = True
+
+        def read_recent_candles(self, _symbol, _timeframe, _limit):
+            return current_candles
+
+    monkeypatch.setattr(favorites, "_FAVORITE_OHLCV_REPO", CurrentRepository())
+    monkeypatch.setattr(
+        favorites,
+        "build_strategy_transparency_from_candles",
+        lambda *_args, **_kwargs: partial,
+    )
+
+    candles, manifest = favorites._current_favorite_chart_context(
+        strategy_name="multi_ma_crossoverV2",
+        template_data=template_data,
+        effective_parameters={},
+        symbol="SOL/USDT",
+        timeframe="1d",
+        saved_candles=saved_candles,
+        fallback_manifest=fallback,
+    )
+
+    assert candles == saved_candles
+    assert manifest is fallback
+
+
 def test_common_user_cannot_regenerate_admin_catalog_chart_trades(tmp_path: Path, monkeypatch):
     SessionLocal = _session_factory(tmp_path)
     admin_id = str(uuid.uuid4())
@@ -713,6 +1068,14 @@ def test_common_user_cannot_regenerate_admin_catalog_chart_trades(tmp_path: Path
         favorites, "is_admin_email", lambda email: str(email).lower() == admin_email
     )
     monkeypatch.setattr(favorites, "can_view_strategy_secrets", lambda *_args, **_kwargs: False)
+
+    class FailIfReadRepository:
+        enabled = True
+
+        def read_recent_candles(self, *_args, **_kwargs):
+            raise AssertionError("protected request must not read or calculate current candles")
+
+    monkeypatch.setattr(favorites, "_FAVORITE_OHLCV_REPO", FailIfReadRepository())
 
     with SessionLocal() as db:
         db.add(User(id=admin_id, email=admin_email, password_hash="x", name="Admin"))
@@ -779,8 +1142,19 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path, monk
             ).set_index("timestamp_utc", drop=False)
 
     with SessionLocal() as db:
+        short_payload = favorites.FavoriteStrategyCreate(
+            **{
+                **_favorite_payload("Refresh success", symbol="BTC/USDT").model_dump(),
+                "parameters": {
+                    "ema_short": 9,
+                    "sma_medium": 21,
+                    "sma_long": 50,
+                    "direction": "short",
+                },
+            }
+        )
         ok = favorites.create_favorite(
-            _favorite_payload("Refresh success", symbol="BTC/USDT"),
+            short_payload,
             current_user_id="user-a",
             db=db,
         )
@@ -841,7 +1215,9 @@ def test_favorite_auto_refresh_persists_success_and_failure(tmp_path: Path, monk
     assert ok_row.metrics["total_return_pct"] == 8.5
     assert ok_row.metrics["trades_history_cached"] is True
     assert ok_row.metrics["analysis_execution_mode"] == "favorite_auto_refresh"
-    assert optimizer_calls[0]["deep_backtest"] is True
+    success_call = next(call for call in optimizer_calls if call["symbol"] == "BTC/USDT")
+    assert success_call["deep_backtest"] is True
+    assert success_call["direction"] == "short"
     assert [call["timeframe"] for call in provider_calls[:2]] == ["1d", "15m"]
     assert fail_row.auto_refresh_status == REFRESH_STATUS_FAILED
     assert "market data unavailable" in fail_row.auto_refresh_error

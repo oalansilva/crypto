@@ -12,21 +12,22 @@ The Monitor page (`/monitor`) MUST NOT provide an Asset Type filter while the MV
 - **AND** the Monitor MUST NOT expose a stocks option
 
 ### Requirement: Monitor hides strategy secrets from non-admin users
-The Monitor API and UI MUST hide strategy implementation details from non-admin users while preserving the current trading decision workflow.
+The Monitor API and UI MUST hide implementation-only strategy secrets from non-admin users while preserving trading decisions and exposing canonical functional transparency.
 
 #### Scenario: Non-admin views monitor opportunity
-- **WHEN** a non-admin user opens the Monitor
-- **THEN** each opportunity MUST avoid showing the original strategy/template name
-- **AND** each opportunity MUST avoid showing parameter values and indicator values
-- **AND** the UI MUST show a protected strategy label instead of empty or broken content
+- **WHEN** a non-admin user opens Monitor
+- **THEN** each opportunity MUST show its specific public identity, relevant effective parameters, used indicators and functional explanation
+- **AND** MUST omit source code, credentials, raw diagnostics and internal mutation controls.
 
 #### Scenario: Admin views monitor opportunity
-- **WHEN** an admin user opens the Monitor
-- **THEN** each opportunity MUST show the original strategy/template name, parameters, indicator values, and analyzer context as before
+- **WHEN** an admin user opens Monitor
+- **THEN** each opportunity MUST show the same public manifest
+- **AND** MAY additionally show authorized original identifiers and analyzer context.
 
 #### Scenario: Non-admin exports opportunity summary
 - **WHEN** a non-admin user exports or copies an opportunity summary
-- **THEN** the exported payload MUST NOT include original strategy/template names, parameter values, indicator values, or analyzer details
+- **THEN** the export MUST include the canonical public identity and functional manifest summary
+- **AND** MUST exclude source code, credentials, raw diagnostics and internal-only fields.
 
 ### Requirement: Common-user Monitor follows Favorites star tiers
 The Monitor page MUST show only strategies marked with 1, 2, or 3 stars by default, regardless of whether the opportunity resolves to HOLD, WAIT, or EXIT. The Monitor MUST treat stars/tier as read-only classification from Favorites and MUST NOT provide its own favorite management, favorite filter, favorite counter, favorite toggle, local favorite storage, or Monitor-local favorite preferences.
@@ -78,12 +79,12 @@ The Monitor list SHALL group opportunities into HOLD, WAIT, and EXIT using the b
 - **AND** timeframe mismatch review MUST remain limited to the chart modal display context.
 
 ### Requirement: Monitor Strategy Description
-Monitor SHALL display a high-level strategy description wherever the user needs to understand what a strategy is trying to capture.
+Monitor SHALL display the canonical public name, description and functional explanation wherever the user needs to understand a strategy.
 
-#### Scenario: Opportunity row and detail show description
+#### Scenario: Opportunity row and detail show identity
 - **WHEN** Monitor renders an opportunity with strategy metadata
-- **THEN** the row/detail SHALL show the public strategy description when available
-- **AND** SHALL not expose technical parameters to common users.
+- **THEN** row and detail SHALL use the same name and description as Favorites
+- **AND** detail SHALL show indicator functions and participation without implementation-only secrets.
 
 ### Requirement: Monitor delegates favorite curation to Favorites
 The Monitor MUST NOT provide controls for adding, removing, filtering, or locally storing favorite strategies. Favorites curation and star/tier ranking SHALL be managed on the Favorites screen.
@@ -133,22 +134,21 @@ The Monitor UI SHALL expose two explicit Portuguese actions for each visible str
 - **AND** the modal SHALL render the trades list and trade metrics when available
 
 ### Requirement: Monitor chart modal uses strategy-detail layout
-The Monitor chart modal SHALL present the selected opportunity as a readable strategy-detail surface inspired by the card #218 `Estrategia.html` reference, while preserving existing signal resolution and data behavior.
+The Monitor chart modal SHALL present a readable strategy-detail surface while preserving existing signal resolution and rendering canonical public indicators.
 
 #### Scenario: User opens Monitor chart
-- **WHEN** the user opens a Monitor opportunity chart
-- **THEN** the modal SHALL show a compact strategy header with symbol, public strategy label, resolved signal and timeframe/candle context
-- **AND** the main chart SHALL remain the dominant visible surface
-- **AND** supporting context SHALL be organized in compact panels instead of a long technical stack.
+- **WHEN** the user opens an opportunity chart
+- **THEN** the main chart SHALL remain dominant with symbol, public identity, signal, timeframe and candle context
+- **AND** SHALL render manifest-defined indicator panels, legend and logic blocks when available.
 
 #### Scenario: Common user opens protected strategy chart
-- **WHEN** the chart belongs to a protected strategy and the viewer is not allowed to see parameters
-- **THEN** the modal SHALL keep parameter values redacted
-- **AND** the new layout SHALL NOT expose original protected implementation details.
+- **WHEN** a common user opens a protected strategy chart
+- **THEN** the modal SHALL show public effective parameters and functional indicator metadata
+- **AND** SHALL NOT expose source code, raw diagnostics or internal implementation payloads.
 
 #### Scenario: Modal is used on mobile
 - **WHEN** the viewport is mobile-sized
-- **THEN** the modal SHALL keep the chart and context panels usable without horizontal scrolling.
+- **THEN** chart, legend and context panels SHALL remain keyboard/touch usable without horizontal page scrolling.
 
 ### Requirement: Monitor graph shares chart base
 Monitor graph modal SHALL use the same chart base as Favorites while retaining Monitor-specific operational context.
@@ -177,4 +177,35 @@ Monitor opportunity cards SHALL open charts using the validated `1d` operational
 #### Scenario: User opens a Monitor chart
 - **WHEN** the user opens chart analysis from a Monitor opportunity card
 - **THEN** the chart request uses timeframe `1d` and does not expose stale intraday timeframe controls
+
+### Requirement: Monitor Labels Are Direction-Aware
+
+The Monitor SHALL render public signal/status labels according to strategy direction.
+
+#### Scenario: Short active position renders as sell/short
+
+- **GIVEN** an opportunity belongs to a strategy with direction `short`
+- **AND** the latest resolved phase is active/in-position
+- **WHEN** the Monitor displays the opportunity
+- **THEN** the public action label SHALL communicate sell/short semantics, not buy/long semantics
+
+#### Scenario: Short exit renders as cover/buy
+
+- **GIVEN** an opportunity belongs to a strategy with direction `short`
+- **AND** the latest resolved phase is exit/flat
+- **WHEN** the Monitor displays the opportunity
+- **THEN** the public action label SHALL communicate buy/cover semantics, not sell/long-exit semantics
+
+### Requirement: Monitor uses favorite transparency series when available
+Monitor SHALL use the saved favorite transparency payload as the canonical series source when an opportunity maps to a favorite.
+
+#### Scenario: Saved favorite analysis is available
+- **WHEN** Monitor opens a chart for an opportunity with usable favorite analysis
+- **THEN** it SHALL use the same candle timestamps, indicator series and manifest as Favorites
+- **AND** SHALL preserve Compra/Venda markers, entry/stop lines, zoom, `Abrir Gráfico` and `Ver Trades`.
+
+#### Scenario: Matching timeframe series is unavailable
+- **WHEN** Monitor cannot load public series matching the visible timeframe
+- **THEN** it SHALL clear indicator panels and show an explicit unavailable state
+- **AND** SHALL keep chart and signal actions usable.
 

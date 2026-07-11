@@ -341,7 +341,8 @@ def test_yahoo_provider_parse_and_fetch(monkeypatch):
     with pytest.raises(ValueError, match="Unsupported Yahoo timeframe"):
         provider._normalize_timeframe("5m")
 
-    assert provider._range_for_since("2026-01-01T00:00:00Z", "1y") == "6mo"
+    four_months_ago = (datetime.now(timezone.utc) - timedelta(days=120)).isoformat()
+    assert provider._range_for_since(four_months_ago, "1y") == "6mo"
 
     parsed = provider.fetch_ohlcv("AAPL", "15m", limit=1)
     assert set(parsed.columns) >= {

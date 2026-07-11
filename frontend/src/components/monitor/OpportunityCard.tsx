@@ -86,6 +86,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
     const strategyProtected = isProtectedStrategy(opportunity);
     const strategyDisplayName = getStrategyDisplayName(opportunity);
+    const isShort = String(opportunity.direction ?? opportunity.parameters?.direction ?? 'long').trim().toLowerCase() === 'short';
     const showTechnicalDetails = isAdmin || !strategyProtected;
     const effectiveTimeframe: MonitorPriceTimeframe = '1d';
     const distance = distance_to_next_status;
@@ -114,6 +115,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     const batchInfo = opportunity.timestamp ? new Date(opportunity.timestamp).toLocaleString('en-US') : '-';
     const symbolTestKey = symbolKey(symbol);
     const showEntryStopRows = resolvedSignal.section !== 'exit' && !hasExitedOpportunity(opportunity);
+    const entryStopHeading = showEntryStopRows ? (isShort ? 'Venda/Short / Stop' : 'Compra / Stop') : 'Execução';
+    const entryPriceLabel = isShort ? 'venda/short' : 'compra';
     const portfolioStatusClass = portfolioStatusTone === 'success'
         ? 'text-emerald-300'
         : portfolioStatusTone === 'warning'
@@ -379,12 +382,12 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                     <div style={{ height: '14px' }} />
                     <h5 className="h5-notes">
                         <span className="swatch" />
-                        {showEntryStopRows ? 'Compra / Stop' : 'Execução'}
+                        {entryStopHeading}
                     </h5>
                     <dl className="kv">
                         {showEntryStopRows ? (
                             <React.Fragment>
-                                <dt>compra</dt>
+                                <dt>{entryPriceLabel}</dt>
                                 <dd>
                                     {opportunity.entry_price !== null && opportunity.entry_price !== undefined
                                         ? `$${toDisplayValue(opportunity.entry_price, 8)}`
