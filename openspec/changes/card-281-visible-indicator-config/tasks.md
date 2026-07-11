@@ -14,6 +14,6 @@
 - [x] 3.1 Add focused frontend/Playwright coverage for moving averages and generic indicator configurations.
 - [x] 3.2 Run build, focused tests and OpenSpec validation.
 - [x] 3.3 Run Codex review and `/opsx:verify` equivalent.
-- [ ] 3.4 Integrate into `develop`, restart DEV, validate served UI and move card to Done.
+- [x] 3.4 Integrate into `develop`, restart DEV, validate served UI and move card to Done.
 
 Use project skills in `.codex/skills` when applicable for frontend, testing, debugging and OpenSpec verification.
